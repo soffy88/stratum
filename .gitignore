@@ -44,3 +44,10 @@ _hub/audit/diffs/
 # 批次指令书和外部文件 (不属于仓库)
 STRATUM_BATCH*_CC_INSTRUCTIONS.md
 HEVI_REVISION_REQUEST.md
+
+# 批 2 实证工作目录 (大文件不入 git)
+experiments/02-batch/samples/
+experiments/02-batch/parsed/
+experiments/02-batch/benchmarks/
+
+# 但保留报告 (报告进 _hub/audit/reports/experiments/ 入 git)
