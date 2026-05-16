@@ -1,0 +1,30 @@
+# Valid example: Karpathy's LLM gist (What is ChatGPT doing and why does it work)
+# Cross-reference: concept.technique (01HY0000000000000000000009)
+
+id: "01HY0000000000000000000003"
+slug: "karpathy-llm-intro-2023"
+title: "What is ChatGPT doing and why does it work?"
+type: "webpage"
+created_at: "2026-05-16T10:30:00+08:00"
+ingested_by: "wiki"
+schema_version: 1
+
+url: "https://writings.stephenwolfram.com/2023/02/what-is-chatgpt-doing-and-why-does-it-work/"
+archived_at: "2026-05-16T10:32:00+08:00"
+archive_method: "single-file"
+domains:
+  - "cs.ai"
+  - "cs.ml"
+  - "tech.llm"
+
+authors_or_site:
+  - "Andrej Karpathy"
+language: "en"
+html_path: "substrate/webpages/tech/karpathy-llm-intro-2023__V3W4X5Y6/original/snapshot.html"
+snapshot_size_bytes: 2847392
+copyright_status: "copyrighted"
+copyright_notes: "Blog post, fair use for personal archive."
+tags:
+  - "LLM"
+  - "neural-networks"
+  - "explainer"

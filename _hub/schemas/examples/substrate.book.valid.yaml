@@ -1,0 +1,58 @@
+# Valid example: 史记 (中华书局点校本, 1959/2014)
+# This is what a substrate/books/history/shiji-zhonghua-1959__K2J3H4G5/meta.yaml looks like.
+
+id: "01HXYZW7G5K8M2N3P4Q5R6S7T8"
+slug: "shiji-zhonghua-1959"
+title: "史记 (中华书局点校本)"
+type: "book"
+created_at: "2026-05-16T10:00:00+08:00"
+ingested_by: "wiki"
+schema_version: 1
+
+authors:
+  - "司马迁"
+editors:
+  - "顾颉刚 (点校)"
+  - "宋云彬 (点校)"
+  - "贺次君 (点校)"
+  - "聂崇岐 (点校)"
+  - "中华书局编辑部"
+
+edition_key: "isbn:978-7-101-00304-9|publisher:中华书局|year:1959"
+isbn: "978-7-101-00304-9"
+publisher: "中华书局"
+publication_year: 1959
+
+language: "zh-Hans"
+domains:
+  - "history.china.pre-qin"
+  - "history.china.qin-han"
+  - "literature.classical-chinese"
+
+original_format: "pdf"
+total_pages: 3768
+
+parsing:
+  parser: "pymupdf4llm"
+  parser_version: "0.0.17"
+  parsed_at: "2026-05-16T10:15:00+08:00"
+  paragraph_count: 12453
+  ocr_used: false
+  manual_corrections_count: 0
+
+copyright_status: "public-domain"
+copyright_notes: |
+  原文公版 (司马迁公元前作品)。
+  中华书局点校本的标点和分段在中国大陆受 25 年版权保护,
+  但事实部分 (原文) 公版。视频引用建议明确标注 "据中华书局点校本"。
+
+acquired_from: "personal-purchase-2024"
+
+tags:
+  - "二十四史"
+  - "纪传体"
+  - "司马迁"
+
+user_status: "reading"
+user_rating: 5
+last_accessed_at: "2026-05-16T14:20:00+08:00"

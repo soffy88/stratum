@@ -1,0 +1,50 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 太短 (不是 26 位)
+id: "01HY8"
+
+# ❌ 2: slug 含下划线
+slug: "marchenko_pastur_theorem"
+
+# title: (缺失 required)
+
+# ❌ 3: type 错误
+type: "lemma"
+
+# ❌ 4: created_at 非 date-time
+created_at: "1967"
+
+# ❌ 5: ingested_by 不在枚举
+ingested_by: "researcher"
+
+# ❌ 6: schema_version 类型错
+schema_version: true
+
+# ❌ 7: domains 含数字开头 (pattern 不匹配)
+domains:
+  - "7math.probability"
+
+# field: (缺失 required)
+
+# ❌ 8: provers 含非字符串
+provers:
+  - "Marchenko"
+  - 1967
+
+# ❌ 9: year_proved 类型错
+year_proved: "1967"
+
+# ❌ 10: prerequisites 项 id 类型错
+prerequisites:
+  - id: 12345
+    slug: "probability-theory"
+
+# ❌ 11: formal_statement 类型错
+formal_statement: 42
+
+# ❌ 12: 额外字段
+wikipedia_url: "https://en.wikipedia.org/wiki/Marchenko-Pastur_law"
+
+# ❌ 13: related_concepts 项含无效 id
+related_concepts:
+  - id: "invalid-ulid-not-26-chars"

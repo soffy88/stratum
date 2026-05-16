@@ -1,0 +1,41 @@
+# Valid example: Marchenko-Pastur 1967 original paper
+# Cross-reference: concept.theorem marchenko-pastur (01HY0000000000000000000008)
+
+id: "01HY0000000000000000000002"
+slug: "marchenko-pastur-1967"
+title: "Distribution of eigenvalues for some sets of random matrices"
+type: "paper"
+created_at: "2026-05-16T09:00:00+08:00"
+ingested_by: "wiki"
+schema_version: 1
+
+authors:
+  - "V. A. Marchenko"
+  - "L. A. Pastur"
+year: 1967
+language: "en"
+domains:
+  - "math.probability"
+  - "math.random-matrices"
+  - "econ.quant-finance"
+copyright_status: "copyrighted"
+
+doi: "10.1070/SM1967v001n04ABEH001994"
+venue: "Mathematics of the USSR-Sbornik"
+abstract: "Distribution of eigenvalues for sample covariance matrices in the limit of large dimension."
+total_pages: 30
+
+parsing:
+  parser: "pymupdf4llm"
+  parser_version: "0.0.17"
+  parsed_at: "2026-05-16T09:15:00+08:00"
+  paragraph_count: 187
+  ocr_used: true
+  ocr_engine: "tesseract"
+  ocr_quality_score: 0.91
+
+tags:
+  - "random-matrix-theory"
+  - "eigenvalue-distribution"
+  - "RMT"
+acquired_from: "https://doi.org/10.1070/SM1967v001n04ABEH001994"

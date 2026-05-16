@@ -1,0 +1,42 @@
+# Valid example: Marchenko-Pastur 定理
+# Cross-references: substrate.paper marchenko-pastur-1967 (01HY0000000000000000000002)
+#                   concept.technique kelly-criterion (01HY0000000000000000000009)
+
+id: "01HY0000000000000000000008"
+slug: "marchenko-pastur-theorem"
+title: "Marchenko-Pastur 定理"
+type: "theorem"
+created_at: "2026-05-16T10:00:00+08:00"
+ingested_by: "wiki"
+schema_version: 1
+
+domains:
+  - "math.probability"
+  - "math.random-matrices"
+  - "econ.quant-finance"
+
+field: "math.probability"
+
+aliases:
+  - "Marchenko-Pastur law"
+  - "MP 定律"
+
+formal_statement: |
+  设 X 为 n×p 矩阵, 元素 i.i.d., 均值 0, 方差 σ². 设 Q = X^T X / n.
+  当 n,p → ∞ 且 p/n → γ ∈ (0,∞) 时,
+  Q 的经验谱分布 (ESD) 弱收敛到 Marchenko-Pastur 分布 f_{γ,σ²}.
+  密度: f(λ) = (√((λ_+ - λ)(λ - λ_-))) / (2πγσ²λ),
+  其中 λ± = σ²(1 ± √γ)².
+
+informal_summary: "大随机矩阵的特征值分布在高维极限下收敛到确定的 Marchenko-Pastur 分布,与元素的具体分布无关。"
+
+provers:
+  - "Vladimir Marchenko"
+  - "Leonid Pastur"
+year_proved: 1967
+
+last_reviewed_at: "2026-05-16T10:00:00+08:00"
+tags:
+  - "RMT"
+  - "random-matrix"
+  - "eigenvalue"

@@ -1,0 +1,40 @@
+# Valid example: 项羽 (Xiang Yu)
+# Cross-references: event hongmen-banquet (01HY0000000000000000000007)
+#                   place hongmen (01HY000000000000000000000A)
+#                   substrate.book shiji (01HXYZW7G5K8M2N3P4Q5R6S7T8)
+
+id: "01HY0000000000000000000006"
+slug: "xiang-yu"
+title: "项羽"
+type: "person"
+created_at: "2026-05-16T10:00:00+08:00"
+ingested_by: "wiki"
+schema_version: 1
+
+domains:
+  - "history.china.qin-han"
+
+aliases:
+  - "项籍"
+  - "西楚霸王"
+  - "霸王"
+born: -232
+died: -202
+nationality: "楚国"
+roles:
+  - "军事家"
+  - "诸侯"
+  - "西楚霸王"
+
+related_concepts:
+  - id: "01HY0000000000000000000007"
+    slug: "hongmen-banquet"
+    relation: "protagonist"
+  - id: "01HY000000000000000000000A"
+    slug: "hongmen"
+    relation: "associated-place"
+
+last_reviewed_at: "2026-05-16T10:00:00+08:00"
+tags:
+  - "楚汉争霸"
+  - "秦末"
