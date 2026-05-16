@@ -1,9 +1,10 @@
-# STRATUM_SPEC v0.1
+# STRATUM_SPEC v0.1.1
 
 **Stratum — Wiki 本地知识库系统设计规范**
 
-**版本**: v0.1
+**版本**: v0.1.1
 **创建日期**: 2026-05-16
+**最后修订**: 2026-05-16 (基于批 1 完工反馈)
 **架构师**: Wiki
 **草拟**: Claude (chief advisor)
 **状态**: Draft — 待 Wiki 批准后进入实施
@@ -428,7 +429,7 @@ slug: "shiji-zhonghua-2014"      # required, 同层同类型唯一
 title: "史记 (中华书局点校本 2014 版)"  # required
 type: "book"                     # book | paper | webpage | transcript | chat
 created_at: "2026-05-16T10:00:00+08:00"   # 入库时间
-ingested_by: "wiki" | "hermes" | "claude-code"
+ingested_by: "wiki" | "hermes" | "claude-code" | "pipeline"
 schema_version: 1
 
 # type-specific 字段在各 schema 中定义
@@ -472,7 +473,8 @@ type: webpage
 url: "https://..."
 archived_at: "2026-05-16T..."
 archive_method: "single-file" | "wayback" | "self-host"
-authors_or_site: ["..."]
+site_name: "..."         # 网站/出版方名称, required
+authors: ["..."]         # 文章作者, optional (个人博客填, 企业稿可省)
 domains: [...]
 ```
 
@@ -482,11 +484,20 @@ type: transcript
 source_platform: "youtube" | "podcast"
 source_url: "..."
 source_id: "abc123xyz"
-speakers: [...]
+speakers: ["Andrej Karpathy", "Lex Fridman"]   # 自由字符串数组
 duration_seconds: 3600
 language: "zh-Hans"
 domains: [...]
 ```
+
+**关于 speakers 与 concept person 的关系**: speakers 是自由字符串,不强制是 concept 引用。
+如果某 speaker 是知识库已有的 concept person (如 "Andrej Karpathy" 已有对应 concept),
+在 note 引用此 transcript 时可通过 alias 机制建立关联,但 substrate 层不引用 concept。
+理由: substrate 应保持对 concept 层的解耦,以便 substrate 可独立入库 (即使 concept
+节点尚未创建)。
+
+**event.participants 不同**: 必须是 concept 引用对象数组 (`{id, slug, role}`),因为事件的
+参与者本质上就是历史人物 concept,直接 reference 更准确,且 event 通常在 concept 之后创建。
 
 **chat**:
 ```yaml
@@ -561,7 +572,7 @@ last_modified_at: "..."
 schema_version: 1
 status: "draft" | "active" | "archived" | "superseded"
 
-# 引用 (lint 校验目标存在)
+# 引用 (lint 校验目标存在); 所有 note 类型可选, 包括 daily
 references:
   substrate:
     - id: "01HXYZ..."
@@ -569,6 +580,9 @@ references:
   concepts:
     - id: "01HXYZ..."
 ```
+
+**关于 references 适用范围**: `references` 是**所有 note 类型的可选字段**。即使是 note.daily
+(日记) 也可以引用 substrate / concept,虽然实际很少这么做。lint 不强制 note 必须有 references。
 
 **note.adr 特化**:
 ```yaml
@@ -1201,17 +1215,43 @@ hevi v0.3 (第一个视频) 强依赖 Stratum 至少 v0.2 (流水线 MVP)。
 
 ---
 
-## §16 SPEC v0.1 → v0.2 预期变更
+## §16 SPEC v0.1.1 → v0.2 预期变更
 
 批 2 实证完成后, 预期修订:
+- §4.3 wikilink 语法 (根据 Obsidian 实证可能大改, 单点风险见 §14.3)
 - §7.1 检索系统的向量库选型
 - §12.2 依赖清单 (PDF 解析器 / 向量库 / embedding model 全部定稿)
-- §4.3 wikilink 语法 (根据 Obsidian 实证可能调整)
 - §6.1 lint 规则集 (实战可能发现新需要的 lint)
+- §0.2 项目关系表 (确认 hevi v0.3 接受了哪些 P0/P1 修订请求后回填)
 
 ---
 
-## §17 附录: 术语表
+## §17 附录: Changelog
+
+### v0.1.1 (2026-05-16)
+
+**触发**: 批 1 (立宪) 完工反馈,4 处 SPEC 反馈处理。
+
+**变更**:
+- §5.1 `ingested_by` 枚举补 `"pipeline"` (流水线自动入库标记)
+- §5.2 webpage 字段 `authors_or_site` 拆分为 `site_name` (required) + `authors` (optional)
+- §5.2 transcript 加注释,明确 speakers 不引用 concept person
+- §5.2 加注释,对比 event.participants (强引用 concept) vs transcript.speakers (字符串)
+- §5.4 note 共通字段加注释,明确 `references` 适用于所有 note 类型
+
+**不变**:
+- 三层架构 / ID 系统 / 抗腐烂机制等核心设计未变
+- 现有 16 个 schema 中除 `substrate.webpage` 和共通字段外不需修改
+- 批 1 产物 (`v0.0.1` tag) 与 v0.1.1 兼容,不需要 migration
+
+**对实施的影响**:
+- 已存在的 `substrate.webpage.schema.json` 需要按 v0.1.1 修订 (拆分字段)
+- 其他 schema 中 `ingested_by` 枚举需要补 `"pipeline"` (Claude Code 批 1 已先行实现,合规)
+- 不需要重做批 1, 仅打 patch commit
+
+---
+
+## §18 附录: 术语表
 
 | 术语 | 含义 |
 |------|------|

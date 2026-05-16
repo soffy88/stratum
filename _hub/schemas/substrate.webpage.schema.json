@@ -15,7 +15,8 @@
     "url",
     "archived_at",
     "archive_method",
-    "domains"
+    "domains",
+    "site_name"
   ],
   "additionalProperties": false,
   "properties": {
@@ -75,10 +76,15 @@
       "minItems": 1,
       "description": "Domain tags, dotted path. e.g. 'tech.ai', 'politics.us', 'science.biology'"
     },
-    "authors_or_site": {
+    "site_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "网站或出版方名称,例如 'Karpathy Blog' / '36kr' / 'NYTimes'"
+    },
+    "authors": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Author names or site/publication name"
+      "description": "文章作者列表,可选 (个人博客有作者, 企业新闻稿可能没有)"
     },
     "language": {
       "type": "string",

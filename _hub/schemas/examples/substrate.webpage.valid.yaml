@@ -17,7 +17,8 @@ domains:
   - "cs.ml"
   - "tech.llm"
 
-authors_or_site:
+site_name: "Karpathy Blog"
+authors:
   - "Andrej Karpathy"
 language: "en"
 html_path: "substrate/webpages/tech/karpathy-llm-intro-2023__V3W4X5Y6/original/snapshot.html"

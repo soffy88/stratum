@@ -43,3 +43,6 @@ copyright_status: "cc-by"
 
 # ❌ 13: 额外字段
 extra_field: "not allowed"
+
+# ❌ 14: site_name 缺失 (required 字段, 无法通过 schema 校验)
+# site_name: (omitted)
