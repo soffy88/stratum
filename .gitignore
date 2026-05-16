@@ -40,3 +40,7 @@ _hub/audit/diffs/
 
 # Windows 区域标识符 (WSL 下的 Windows 元数据)
 *:Zone.Identifier
+
+# 批次指令书和外部文件 (不属于仓库)
+STRATUM_BATCH*_CC_INSTRUCTIONS.md
+HEVI_REVISION_REQUEST.md
