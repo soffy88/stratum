@@ -1,14 +1,14 @@
-# STRATUM_SPEC v0.1.1
+# STRATUM_SPEC v0.1.2
 
 **Stratum — Wiki 本地知识库系统设计规范**
 
-**版本**: v0.1.1
+**版本**: v0.1.2
 **创建日期**: 2026-05-16
-**最后修订**: 2026-05-16 (基于批 1 完工反馈)
+**最后修订**: 2026-05-16 (实证项 #4 决策: 采用 Obsidian 原生兼容方案)
 **架构师**: Wiki
 **草拟**: Claude (chief advisor)
 **状态**: Draft — 待 Wiki 批准后进入实施
-**仓库**: `~/projects/_helios-platform/stratum/` (本地, git + git-lfs)
+**仓库**: `~/projects/stratum/` (本地, git + git-lfs)
 **License**: 个人使用,推迟决定
 **参考方法论**: HEVI_SPEC v0.2 / HELIOS_3O_SPEC v0.6 (架构治理风格)
 
@@ -42,6 +42,10 @@ STRATUM_SPEC (本文件)
 | Obsidian | Stratum **GUI 之一** | Obsidian 直接打开 Stratum 仓库作为 vault,不是必需依赖 |
 | Claude Code | Stratum **客户端之一** | 通过文件系统直读或 MCP 访问 |
 | Hermes Agent (Singapore VPS) | Stratum **远程客户端** | 通过 Tailscale 访问本地 MCP/HTTP 接口,只读为主 |
+
+**关于仓库物理位置**: Stratum 位于 `~/projects/stratum/` (不在 `~/projects/_helios-platform/` 子目录下)。
+理由: Stratum 服务多个上游消费者 (hevi / 未来视频项目 / 未来其他项目), 是跨项目基础设施,
+不属于 Helios 平台的内部组件。挂在 `_helios-platform/` 下会暗示从属关系, 不准确。
 
 ### 0.3 命名约定
 
@@ -375,45 +379,89 @@ slug: "xiang-yu"
 ---
 ```
 
-**markdown 中的段落锚点** (仅 substrate parsed 文件):
+**文件名格式** (§3.2 已定义): `<slug>__<ULID-suffix>.md`
+- 例如: `xiang-yu__A1B2C3D4.md`
+- 文件名同时承担"人类可读标识"和"ID 引用键"两个角色
+
+**markdown 中引用其他节点 (Obsidian 原生兼容语法)**:
 ```markdown
-<a id="A1B2C3"></a>
+昨天重读了 [[xiang-yu__A1B2C3D4|项羽]],对照原文
+[[shiji-007__S1T2U3V4#para-A1B2C3|《史记·项羽本纪》开篇]]。
+```
+
+**wikilink 语法**: `[[<slug>__<ULID-suffix>[#para-<paragraph-suffix>]|<display>]]`
+
+- `<slug>__<ULID-suffix>` = 目标文件名 (不含 `.md`)
+- `#para-<paragraph-suffix>` = 段落锚点 (仅 substrate 的解析文件)
+- `<display>` = 可选显示文本
+
+**为什么用这个语法 (实证项 #4 决策)**:
+- 完全 Obsidian 原生兼容,graph view / hover preview / 自动补全全部工作
+- 不需要自写 Obsidian 插件或 preprocessor
+- 文件改名 (改 slug 部分) 时 Obsidian 自动更新所有 wikilink
+- ID 健壮性靠 ULID 后缀 + frontmatter 保证: 即使改了 slug, ULID 后缀不变, 引用仍然语义稳定
+
+**关于"为什么不用纯 ULID 引用"**:
+最初 SPEC v0.1 设计为 `[[concept/01HXYZ.../xiang-yu|项羽]]`,但实证分析显示 Obsidian
+无现成插件支持此扩展语法,自写插件工作量 > 5 天且有长期维护风险 (Obsidian API
+升级风险)。改用 `<slug>__<ULID-suffix>` 文件名规则,Obsidian 把它整体当文件名识别,
+扩展能力完全保留 (ULID 后缀 8 字符随机依然防碰撞,frontmatter 仍存完整 ULID 用于
+MCP/HTTP 接口和流水线)。
+
+**段落锚点的实现**:
+
+substrate parsed 文件中段落锚点用 **Obsidian heading 形式**, 而非 HTML `<a id>`:
+
+```markdown
+## para-A1B2C3
 项籍者,下相人也,字羽。
+
+## para-A1B2C4
+其季父项梁,梁父即楚将项燕,为秦将王翦所戮者也。
 ```
 
-(完整段落 ID 不重复 substrate-ULID,因为 substrate-ULID 由文件本身确定)
+理由: Obsidian 原生支持 `[[file#heading]]` 跳转, 与 wikilink 系统无缝集成。
+`para-` 前缀避免与正文章节 heading (如 `## 第一章`) 冲突,且方便 lint 识别。
 
-**markdown 中引用其他节点**:
-```markdown
-昨天重读了 [[concept/01HXYZ.../xiang-yu|项羽]],对照原文
-[[substrate/01HXYZ.../shiji-007#A1B2C3|《史记·项羽本纪》开篇]]。
-```
-
-**wikilink 语法**: `[[<layer>/<full-ULID>/<slug>[#paragraph-suffix]|<display>]]`
-
-- `layer`: substrate / concept / note
-- `full-ULID`: 完整 ULID (用于 ID 解析)
-- `slug`: 仅用于 URL 友好,可省略 (`[[concept/01HXYZ...|项羽]]`)
-- `#paragraph-suffix`: 仅 substrate 的段落锚点
-
-**Obsidian 兼容性**: 标准 Obsidian wikilink 是 `[[文件名]]` 按文件名解析。我们的语法是扩展,需要 Obsidian 插件支持。在批 2 实证项 #4 中验证。
+替代方案 (block reference): `^A1B2C3` 这种 Obsidian 原生 block reference 语法也可用,
+但 block reference 不能跨段落范围引用,heading 更灵活。
 
 ### 4.4 ID 不可变, slug 可变
 
 - ULID 一旦分配,永久不变,即使节点被删除也不复用
-- slug 可随时改名,引用通过 ULID 找,自动跟随
+- slug 可随时改名,引用通过 Obsidian 原生改名机制自动跟随
 
 **改 slug 流程**:
-1. 改文件名 / frontmatter 中的 slug
-2. 跑 `_hub/pipelines/audit/log_changes.py` 记录变更
-3. 反链区块和索引由流水线自动更新
+1. 在 Obsidian 中重命名文件 (改 slug 部分, **保留 `__<ULID-suffix>` 不变**)
+2. Obsidian 自动更新所有 wikilink (原生能力)
+3. 跑 `_hub/pipelines/audit/log_changes.py` 记录变更并校验
+4. 反链区块和索引由流水线自动更新
+
+**重要**: ULID 后缀 (`__A1B2C3D4`) 在改名时**必须保留**, 这是引用稳定性的根。
+lint 规则 `slug_rename_check.py` (批 3 实现) 检查所有文件名都符合
+`<slug>__<8-char-ULID-suffix>.md` 模式, 不符合的报错。
 
 ### 4.5 ID 碰撞处理
 
 - ULID 碰撞概率极低 (1.21e+24 唯一值),实际不会发生
-- 段落 ID 在单 substrate 内 6 字符随机 ≈ 10 亿空间,单文件 < 10^5 段落,碰撞概率 < 10^-5
+- ULID 后缀 (8 字符) 在单库内冲突概率 < 10^-12 (40-bit 空间),实际不会发生
+- 段落 suffix 在单 substrate 内 6 字符随机 ≈ 10 亿空间,单文件 < 10^5 段落,碰撞 < 10^-5
 - 流水线在生成时检查碰撞,撞到立即重生成
 - lint 规则 `id_collision_check.py` 每周扫一次全库,发现碰撞报警
+
+### 4.6 跨层引用的语义保持
+
+由于文件名只含 `<slug>__<ULID-suffix>`, 不再显式标注 layer (substrate/concept/note),
+跨层语义靠以下机制保持:
+
+1. **目录结构**: 文件物理位置决定 layer (`concepts/people/xiang-yu__...` 一望可知是 concept)
+2. **Obsidian 链接预览**: hover 时显示目标文件路径, 间接告知 layer
+3. **流水线索引**: `_hub/indexes/meta.duckdb` 维护 `(filename, layer, type, ULID)` 表,
+   MCP/HTTP 接口查询时返回完整 layer 信息
+4. **可选 slug 前缀规范** (推荐, 不强制): substrate 的 slug 可加 `src-` 前缀
+   (例: `src-shiji-007`), concept 加 `c-` 前缀 (例: `c-xiang-yu`), note 不加。
+   这是软约定, lint 不强制, 但 Wiki 自己写 wikilink 时一眼能区分 layer。
+   **本 SPEC v0.1.2 不强制此前缀, 留 Wiki 实际使用后决定**。
 
 ---
 
@@ -860,7 +908,7 @@ _hub/pipelines/audit/
 
 - 入口: 直接打开 `stratum/` 任意路径
 - 用户: Wiki / Obsidian / Claude Code / VSCode / nvim
-- 协议: markdown + yaml frontmatter + Obsidian wikilink (扩展语法,见 §4.3)
+- 协议: markdown + yaml frontmatter + Obsidian 原生 wikilink (语法见 §4.3)
 - 写权限: Wiki 直接编辑文件; Claude Code 走 ingest/edit 流水线; Hermes 远程**只读**
 
 **Obsidian vault 配置**:
@@ -1018,7 +1066,7 @@ dev = ["pytest>=8.0", "pytest-asyncio", "ruff", "mypy"]
 
 ```bash
 # .env.example
-STRATUM_ROOT=/home/wiki/projects/_helios-platform/Stratum
+STRATUM_ROOT=/home/soffy/projects/stratum
 ANTHROPIC_API_KEY=
 ANTHROPIC_BASE_URL=
 OPENAI_API_KEY=               # 备用 embedding
@@ -1086,20 +1134,19 @@ v1.0 = v0.4.x + 90 天稳定运行 + 50+ 节点。
    - 评估维度: top-10 召回 / 排序质量
    - 输出: `_hub/audit/reports/experiment-embedding.md`
 
-4. **Obsidian UID 插件调研**
-   - 候选: dataview JS / Wikilinks Plus / Various Complements / 自写
-   - 评估: 是否支持 §4.3 的扩展 wikilink 语法
-   - 输出: `_hub/audit/reports/experiment-obsidian-uid.md`
+4. **Obsidian UID 插件调研** — ⚠️ **已解除, 跳过实证**
+   - v0.1.2 通过架构调整规避此风险 (改用 Obsidian 原生 wikilink, 见 §4.3 / §14.3)
+   - 不需要实证
 
 5. **MCP server 框架对比** (anthropic 官方 SDK / fastmcp)
    - 评估: 易用性 / 性能 / 文档
    - 输出: `_hub/audit/reports/experiment-mcp.md`
 
-6. **段落 ID 注入与 Obsidian 渲染兼容性**
-   - 测试: `<a id="...">` 锚点在 Obsidian 内的显示效果
-   - 测试: wikilink 跳转 #anchor 是否可用
-   - 输出: `_hub/audit/reports/experiment-paragraph-anchor.md`
-
+6. **段落锚点 (heading 形式) 在 Obsidian 内的实际表现** — 简化, 不再是核心风险
+   - v0.1.2 已确定段落锚点用 `## para-<suffix>` heading 形式
+   - 实证内容: 跑通 `[[file#para-A1B2C3]]` 跳转 + heading 在 Obsidian outline 中是否过度污染
+   - 工作量: 30 分钟手动验证, 非阻塞
+   - 输出: `_hub/audit/reports/experiment-paragraph-heading.md`
 **批 2 完成时**: 根据实证修订 STRATUM_SPEC 至 v0.2, 锁定技术栈。
 
 ### 13.3 批 3 详细
@@ -1155,14 +1202,24 @@ v0.x 阶段 schema 不可能一次设计对, 后续 migration 成本高。
 - 每个批次结束 review schema
 - v1.0 之前不对外保证 schema 兼容性
 
-### 14.3 Obsidian wikilink 扩展兼容性风险
+### 14.3 Obsidian wikilink 扩展兼容性风险 (v0.1.2: 已解除)
 
-§4.3 的扩展 wikilink 语法 Obsidian 默认不识别。
+**状态**: 已解除 (v0.1.2 通过架构调整规避, 无需实证)
 
-**缓解**:
-- 批 2 实证项 #4 必须给出结论
-- 兜底方案: preprocessor 把扩展 wikilink 在 Obsidian 渲染前转成标准 wikilink (失去 ID 健壮性,但保留可读)
-- 极端兜底: 不用 Obsidian, 用 VSCode + 自定义插件
+**原风险描述**: SPEC v0.1 / v0.1.1 设计的扩展 wikilink 语法
+`[[concept/01HXYZ.../xiang-yu|项羽]]` Obsidian 默认不识别。
+
+**解除方式**: v0.1.2 将 wikilink 语法调整为 Obsidian 原生兼容的
+`[[<slug>__<ULID-suffix>|项羽]]` 形式 (详见 §4.3)。文件名同时承担"人类可读"和
+"ID 引用键"两个角色, 既保留 ULID 健壮性又完全兼容 Obsidian 原生能力。
+
+**新方案的代价**:
+- ULID 不直接出现在 wikilink 文本里 (要看完整 ULID 得打开文件看 frontmatter)
+- 跨层语义弱化, 靠目录结构 + 流水线索引补强 (§4.6)
+
+这两个代价被 chief advisor 判定为可接受, 因为:
+1. 人不需要手敲 26 字符 ULID, 这反而是好事
+2. 跨层信息靠目录结构已经足够, 显式 layer 前缀是过度设计
 
 ### 14.4 段落 ID 在 PDF 重新解析后变化的风险
 
@@ -1199,7 +1256,7 @@ hevi v0.3 (第一个视频) 强依赖 Stratum 至少 v0.2 (流水线 MVP)。
 
 ### Step 1 (Wiki 做):
 - ☐ Review STRATUM_SPEC v0.1, sign-off 或要求修订
-- ☐ 在 `~/projects/_helios-platform/` 下决定是否新建 `stratum/` (本地, 暂不推到 GitHub)
+- ☐ 在 `~/projects/` 下创建 `stratum/` (本地, 暂不推到 GitHub)
 
 ### Step 2 (Claude / Claude Code 做):
 - ☐ 起 16 个 schema (`_hub/schemas/*.schema.json`)
@@ -1215,18 +1272,48 @@ hevi v0.3 (第一个视频) 强依赖 Stratum 至少 v0.2 (流水线 MVP)。
 
 ---
 
-## §16 SPEC v0.1.1 → v0.2 预期变更
+## §16 SPEC v0.1.2 → v0.2 预期变更
 
 批 2 实证完成后, 预期修订:
-- §4.3 wikilink 语法 (根据 Obsidian 实证可能大改, 单点风险见 §14.3)
 - §7.1 检索系统的向量库选型
 - §12.2 依赖清单 (PDF 解析器 / 向量库 / embedding model 全部定稿)
 - §6.1 lint 规则集 (实战可能发现新需要的 lint)
 - §0.2 项目关系表 (确认 hevi v0.3 接受了哪些 P0/P1 修订请求后回填)
 
+**已解除的 v0.2 预期项**:
+- ~~§4.3 wikilink 语法 (Obsidian 实证)~~ → v0.1.2 已通过架构调整解除
+
 ---
 
 ## §17 附录: Changelog
+
+### v0.1.2 (2026-05-16)
+
+**触发**: 实证项 #4 决策 — Wiki 决定跳过手动 Obsidian 测试, chief advisor 直接判断
+并修订 SPEC。
+
+**核心变更**: wikilink 语法从 "扩展自定义" 改为 "Obsidian 原生兼容"。
+
+**修订**:
+- §4.3 完全重写: wikilink 语法 `[[<slug>__<ULID-suffix>|display]]` (原生兼容)
+- §4.3 段落锚点改用 `## para-<suffix>` heading 形式 (原 `<a id="">` 方案废弃)
+- §4.4 改 slug 流程更新, 利用 Obsidian 原生改名能力
+- §4.5 加入 ULID 后缀碰撞分析
+- §4.6 新增: 跨层引用的语义保持机制 (目录结构 + duckdb 索引 + 可选前缀)
+- §9.1 接口 A 描述更新, 去除"扩展语法"措辞
+- §13.2 实证项 #4 标记为已解除, #6 简化为非阻塞验证
+- §14.3 风险标记为已解除
+- §16 移除 §4.3 修订项
+
+**影响**:
+- 已交付的 v0.0.2 schema **不需要任何修改** (schema 不涉及 wikilink 语法)
+- 已生成的 16 个 valid/invalid example **不需要任何修改** (frontmatter 不含 wikilink)
+- 仅 SPEC 文档变更, 无 schema/code 变更
+
+**对实施的影响**:
+- 批 3 流水线设计直接按 v0.1.2 走, 不再需要 Obsidian 插件子任务
+- 批 4 接口层节省 3-5 天 (省掉自写插件评估和原型)
+- 批 2 实证从 6 个减少到 4 个有效项 (PDF / 向量库 / embedding / MCP), 时间预算 -2 天
 
 ### v0.1.1 (2026-05-16)
 
