@@ -1,0 +1,77 @@
+[
+  {
+    "provider": "deepseek",
+    "domain": "academic",
+    "tokens_in": 198,
+    "tokens_out": 74,
+    "cost_usd": 0.00013486000000000002,
+    "elapsed_s": 3.25,
+    "ok": true
+  },
+  {
+    "provider": "deepseek",
+    "domain": "literary",
+    "tokens_in": 185,
+    "tokens_out": 57,
+    "cost_usd": 0.00011265,
+    "elapsed_s": 1.5,
+    "ok": true
+  },
+  {
+    "provider": "deepseek",
+    "domain": "technical",
+    "tokens_in": 193,
+    "tokens_out": 78,
+    "cost_usd": 0.00013791,
+    "elapsed_s": 1.89,
+    "ok": true
+  },
+  {
+    "provider": "claude",
+    "domain": "academic",
+    "error": "Claude translate failed after 3 retries: Connection error.",
+    "elapsed_s": 7.19,
+    "ok": false
+  },
+  {
+    "provider": "claude",
+    "domain": "literary",
+    "error": "Claude translate failed after 3 retries: Connection error.",
+    "elapsed_s": 7.05,
+    "ok": false
+  },
+  {
+    "provider": "claude",
+    "domain": "technical",
+    "error": "Claude translate failed after 3 retries: Connection error.",
+    "elapsed_s": 7.13,
+    "ok": false
+  },
+  {
+    "provider": "qwen3",
+    "domain": "academic",
+    "tokens_in": 225,
+    "tokens_out": 79,
+    "cost_usd": 1.915e-05,
+    "elapsed_s": 1.21,
+    "ok": true
+  },
+  {
+    "provider": "qwen3",
+    "domain": "literary",
+    "tokens_in": 207,
+    "tokens_out": 63,
+    "cost_usd": 1.6649999999999998e-05,
+    "elapsed_s": 1.17,
+    "ok": true
+  },
+  {
+    "provider": "qwen3",
+    "domain": "technical",
+    "tokens_in": 212,
+    "tokens_out": 87,
+    "cost_usd": 1.93e-05,
+    "elapsed_s": 1.34,
+    "ok": true
+  }
+]
