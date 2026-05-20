@@ -51,3 +51,5 @@ experiments/02-batch/parsed/
 experiments/02-batch/benchmarks/
 
 # 但保留报告 (报告进 _hub/audit/reports/experiments/ 入 git)
+# ADR split source (advisor's monolithic log, not tracked per-file)
+docs/decisions/_source.md
