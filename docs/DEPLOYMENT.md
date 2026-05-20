@@ -1087,5 +1087,85 @@ print(f'omodul {omodul.__version__}')
 
 ---
 
-*本文档由 CC (Claude Code) 依据 ADR-016/019/021 + Phase 1/1.5/10 完工状态撰写。*
-*Phase 2/11 章节为占位，完工后由 CC 补写详细步骤。*
+## §8 浏览器扩展安装 (Phase 4)
+
+### 8.1 启动 Stratum 后端 API
+
+```bash
+cd ~/projects/platform/omodul
+# 首次运行：安装依赖
+uv pip install -e ".[browser-extension]" --python .venv/bin/python
+
+# 启动 (仅绑定 localhost:14567)
+python -m omodul.knowledge.browser_extension
+
+# 验证
+curl http://localhost:14567/api/v1/browser-extension/health
+# → {"status":"ok","version":"0.1.0"}
+```
+
+### 8.2 初始化 Token (一次性)
+
+```bash
+python -m omodul.knowledge.browser_extension init
+# 输出 token，保存备用
+# token 存储于: ~/.stratum/secrets/browser_ext_token.txt (chmod 600)
+```
+
+### 8.3 Chrome / Edge 扩展安装
+
+```
+1. 打开 chrome://extensions/
+2. 右上角启用 "Developer mode"
+3. 点 "Load unpacked" → 选 ~/projects/stratum-extension/
+4. 工具栏出现 Stratum 图标 ✓
+```
+
+### 8.4 Firefox 扩展安装
+
+```
+1. 打开 about:debugging#/runtime/this-firefox
+2. "Load Temporary Add-on" → 选 ~/projects/stratum-extension/manifest.json
+注意: Firefox 不支持 sidePanel (chrome.sidePanel API)，Sidebar 功能不可用。
+Popup 保存 / 右键菜单 正常工作。
+```
+
+### 8.5 配置 Token
+
+```
+1. 点工具栏 Stratum 图标 → 弹出 popup
+2. 点 "Settings"（或右键扩展图标 → Options）
+3. 粘贴 §8.2 生成的 token → 点 "Save & Verify"
+4. 显示 "✓ Token saved and server reachable" 即配置完成
+```
+
+### 8.6 日常使用
+
+| 操作 | 方式 |
+|---|---|
+| 保存当前完整网页 | 点扩展图标 → "Save full page" |
+| 保存选中文字 | 选中文字 → 点扩展图标 → "Save selection" |
+| 右键快速保存 | 选中文字 → 右键 → "Save selection to Stratum" |
+| 右键保存整页 | 页面空白处右键 → "Save page to Stratum" |
+| 查看相关内容 | 点扩展图标 → "Sidebar" (Chrome/Edge only) |
+
+**URL 去重**: 同一 URL（含 utm_* 等追踪参数）重复保存时自动返回已有 substrate，不产生重复。
+
+### 8.7 故障排查
+
+```bash
+# 服务未响应
+curl http://localhost:14567/api/v1/browser-extension/health
+# → 若 Connection refused: 重新执行 §8.1
+
+# Token 无效 (401)
+cat ~/.stratum/secrets/browser_ext_token.txt
+# 重新在扩展 Options 页面填入
+
+# 查看服务日志
+python -m omodul.knowledge.browser_extension 2>&1 | head -50
+```
+
+---
+
+*本文档由 CC (Claude Code) 依据 ADR-016/019/021 + Phase 1/1.5/10/Phase2/Phase4 完工状态撰写。*
