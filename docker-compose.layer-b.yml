@@ -1,0 +1,131 @@
+---
+# Stratum Layer B — Phase 11B GPU external tools
+# Start:  docker compose -f docker-compose.layer-b.yml up -d
+# Stop:   docker compose -f docker-compose.layer-b.yml down
+#
+# NOTE: Vision LLM (qwen2.5vl:7b) runs in existing Ollama container (Layer A).
+#       screenpipe runs as native binary (not Docker) — see docs/PHASE11B_INSTALL.md.
+#       Only 1 GPU-heavy task at a time — enforced by Redis GpuLock in oprim.
+
+version: "3.9"
+
+services:
+  # ── F5-TTS (port 9001) ────────────────────────────────────────────────────
+  stratum-tts:
+    image: ghcr.io/swivid/f5-tts:main
+    container_name: stratum-tts
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              count: 1
+    ports:
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - stratum_tts_models:/root/.cache/huggingface
+      - stratum_tts_voices:/app/voices
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "9001"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── Stable Diffusion 1.5 via ComfyUI (port 9002) ─────────────────────────
+  stratum-sd:
+    image: ghcr.io/ai-dock/comfyui:latest-cuda-12.4.0-base-22.04
+    container_name: stratum-sd
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              count: 1
+    ports:
+      - "127.0.0.1:9002:8188"   # ComfyUI default port 8188 → exposed as 9002
+    volumes:
+      - stratum_sd_models:/opt/environments/python/comfyui/models
+      - stratum_sd_output:/opt/environments/python/comfyui/output
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      # SD 1.5 checkpoint: download to models/checkpoints/v1-5-pruned-emaonly.ckpt
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8188/system_stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # ── whisper.cpp server (port 9000) ────────────────────────────────────────
+  stratum-whisper:
+    image: ghcr.io/ggml-org/whisper.cpp:server-cuda
+    container_name: stratum-whisper
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              count: 1
+    ports:
+      - "127.0.0.1:9000:8080"   # whisper.cpp server default 8080 → exposed as 9000
+    volumes:
+      - stratum_whisper_models:/models
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    command:
+      - "--model"
+      - "/models/ggml-large-v3-q5_0.bin"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8080"
+      - "--diarize"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── SearXNG metasearch (port 8080) ────────────────────────────────────────
+  stratum-searxng:
+    image: searxng/searxng:latest
+    container_name: stratum-searxng
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./searxng:/etc/searxng:ro
+    environment:
+      SEARXNG_BASE_URL: "http://localhost:8080/"
+      # Proxy — inherit from host sing-box if set
+      HTTP_PROXY: "${HTTP_PROXY:-}"
+      HTTPS_PROXY: "${HTTPS_PROXY:-}"
+      NO_PROXY: "localhost,127.0.0.1"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  stratum_tts_models:
+  stratum_tts_voices:
+  stratum_sd_models:
+  stratum_sd_output:
+  stratum_whisper_models:
