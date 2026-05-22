@@ -10,7 +10,7 @@
 version: "3.9"
 
 services:
-  # ── F5-TTS (port 9001) ────────────────────────────────────────────────────
+  # ── F5-TTS (port 9301) ────────────────────────────────────────────────────
   stratum-tts:
     image: ghcr.io/swivid/f5-tts:main
     container_name: stratum-tts
@@ -22,7 +22,7 @@ services:
               capabilities: [gpu]
               count: 1
     ports:
-      - "127.0.0.1:9001:9001"
+      - "127.0.0.1:9301:9001"
     volumes:
       - stratum_tts_models:/root/.cache/huggingface
       - stratum_tts_voices:/app/voices
@@ -39,7 +39,7 @@ services:
       retries: 3
       start_period: 60s
 
-  # ── Stable Diffusion 1.5 via ComfyUI (port 9002) ─────────────────────────
+  # ── Stable Diffusion 1.5 via ComfyUI (port 9302) ─────────────────────────
   stratum-sd:
     image: ghcr.io/ai-dock/comfyui:latest-cuda
     container_name: stratum-sd
@@ -51,7 +51,7 @@ services:
               capabilities: [gpu]
               count: 1
     ports:
-      - "127.0.0.1:9002:8188"   # ComfyUI default port 8188 → exposed as 9002
+      - "127.0.0.1:9302:8188"   # ComfyUI default port 8188 → exposed as 9302
     volumes:
       - stratum_sd_models:/opt/environments/python/comfyui/models
       - stratum_sd_output:/opt/environments/python/comfyui/output
@@ -67,7 +67,7 @@ services:
       retries: 3
       start_period: 120s
 
-  # ── whisper.cpp server (port 9000) ────────────────────────────────────────
+  # ── whisper.cpp server (port 9303) ────────────────────────────────────────
   stratum-whisper:
     image: ghcr.io/ggml-org/whisper.cpp:main
     container_name: stratum-whisper
@@ -79,13 +79,13 @@ services:
               capabilities: [gpu]
               count: 1
     ports:
-      - "127.0.0.1:9000:8080"   # whisper.cpp server default 8080 → exposed as 9000
+      - "127.0.0.1:9303:8080"   # whisper.cpp server default 8080 → exposed as 9303
     volumes:
       - stratum_whisper_models:/models
     environment:
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
-    entrypoint: ["/app/server"]
+    entrypoint: ["/app/build/bin/whisper-server"]
     command:
       - "-m"
       - "/models/ggml-large-v3-q5_0.bin"
@@ -101,16 +101,16 @@ services:
       retries: 3
       start_period: 30s
 
-  # ── SearXNG metasearch (port 8080) ────────────────────────────────────────
+  # ── SearXNG metasearch (port 9304) ────────────────────────────────────────
   stratum-searxng:
     image: ghcr.io/searxng/searxng:latest
     container_name: stratum-searxng
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9304:8080"
     volumes:
       - ./searxng:/etc/searxng:ro
     environment:
-      SEARXNG_BASE_URL: "http://localhost:8080/"
+      SEARXNG_BASE_URL: "http://localhost:9304/"
       # Proxy — inherit from host sing-box if set
       HTTP_PROXY: "${HTTP_PROXY:-}"
       HTTPS_PROXY: "${HTTPS_PROXY:-}"

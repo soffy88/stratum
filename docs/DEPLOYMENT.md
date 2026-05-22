@@ -57,7 +57,7 @@ oprim (v2.5.0)  →  oskill (v2.5.0)  →  omodul (v1.2.2)
 | Layer | 设备 | GPU/RAM | Phase 1-10 状态 | Phase 11+ 计划 |
 |---|---|---|---|---|
 | **Layer A** | 笔记本 (Win11/WSL2) | 4G VRAM / 24G RAM | ✅ Stratum 主体 | + searxng |
-| **Layer B** | 主机 (Win11/WSL2) | 10G VRAM / 32G RAM | (闲置) | whisper-Q4/Q5, F5-TTS, SD 1.5, ollama qwen3:14b-q4 |
+| **Layer B** | 主机 (Win11/WSL2) | 10G VRAM / 32G RAM | (闲置) | whisper-Q4/Q5, F5-TTS, SD 1.5 (vision → Claude API, Ollama 留给 Aegis) |
 | **Layer C** | Singapore VPS | CPU only | ✅ sing-box 代理 (已有) | 无变化 |
 
 ### 跨机通信
@@ -68,10 +68,10 @@ oprim (v2.5.0)  →  oskill (v2.5.0)  →  omodul (v1.2.2)
 │                                              │
 │  Layer A (笔记本)        Layer B (主机)       │
 │  ┌─────────────────┐    ┌──────────────────┐ │
-│  │ stratum-main    │    │ whisper (9000)   │ │
-│  │ postgres (5432) │◄───│ F5-TTS  (9001)   │ │
-│  │ redis   (6379)  │    │ SD-webui (9002)  │ │
-│  │ rabbitmq (5672) │    │ ollama  (11434)  │ │
+│  │ stratum-main    │    │ whisper (9303)   │ │
+│  │ postgres (5432) │◄───│ F5-TTS  (9301)   │ │
+│  │ redis   (6379)  │    │ SD-webui (9302)  │ │
+│  │ rabbitmq (5672) │    │ ollama  (11434)  │ │  ← Aegis only (v1.0 vision → Claude API)
 │  │ lancedb  (file) │    └──────────────────┘ │
 │  └─────────────────┘                         │
 │          │                   Layer C (VPS)   │
@@ -96,7 +96,7 @@ Layer B 无数据持久化: 外挂任务数据任务完成即清理
     {
       "action": "accept",
       "src": ["tag:stratum-main"],
-      "dst": ["tag:stratum-host:9000-9002", "tag:stratum-host:11434", "tag:stratum-host:22"]
+      "dst": ["tag:stratum-host:9301-9304", "tag:stratum-host:11434", "tag:stratum-host:22"]
     },
     {
       "action": "accept",
@@ -307,14 +307,21 @@ search:
   pinned_boost: 1.5          # pinned substrate 结果得分加权
   return_citations: true     # 返回 Citation 对象 (来源段落定位)
 
-# ── Phase 11+ 外挂 (全部未启用) ─────────────────────────────
-# external:
+# ── Phase 11+ 外挂 ──────────────────────────────────────────
+external_providers:
+  vision: claude      # v1.0 默认: Claude API (ANTHROPIC_API_KEY). local=Ollama (Aegis only)
+  tts: local          # F5-TTS (localhost:9301)
+  stt: local          # whisper.cpp (localhost:9303)
+  image_gen: local    # SD 1.5/ComfyUI (localhost:9302)
+  search: local       # SearXNG (localhost:9304)
+
+# external:           # 跨机地址 (Tailscale)
 #   whisper:
-#     base_url: "${STRATUM_WHISPER_HOST}"   # http://stratum-host.ts.net:9000
+#     base_url: "${STRATUM_WHISPER_HOST}"   # http://stratum-host.ts.net:9303
 #   tts:
-#     base_url: "${STRATUM_TTS_HOST}"       # http://stratum-host.ts.net:9001
+#     base_url: "${STRATUM_TTS_HOST}"       # http://stratum-host.ts.net:9301
 #   sd:
-#     base_url: "${STRATUM_SD_HOST}"        # http://stratum-host.ts.net:9002
+#     base_url: "${STRATUM_SD_HOST}"        # http://stratum-host.ts.net:9302
 ```
 
 ### 3.5 环境变量 `.env`
@@ -335,9 +342,9 @@ DASHSCOPE_API_KEY=sk-...
 
 # ── Phase 11+ 外挂 (等 Layer B 就绪再填) ──
 # STRATUM_OLLAMA_HOST=http://stratum-host.ts.net:11434
-# STRATUM_WHISPER_HOST=http://stratum-host.ts.net:9000
-# STRATUM_TTS_HOST=http://stratum-host.ts.net:9001
-# STRATUM_SD_HOST=http://stratum-host.ts.net:9002
+# STRATUM_WHISPER_HOST=http://stratum-host.ts.net:9303
+# STRATUM_TTS_HOST=http://stratum-host.ts.net:9301
+# STRATUM_SD_HOST=http://stratum-host.ts.net:9302
 ENV_EOF
 chmod 600 ~/projects/stratum/.env
 echo ".env created with 600 permissions"
@@ -619,7 +626,7 @@ echo $! > ~/.stratum/sync.pid
 |---|---|---|---|---|
 | 1 | Tailscale mesh 已配置（三台设备入 tailnet） | — | — | ✅ |
 | 2 | 笔记本 ping/curl 主机 Tailscale IP | Wiki | 5 min | ⏳ |
-| 3 | 主机 Ollama 安装 + qwen3:14b-q4 拉取验证 | Wiki | 30 min | ⏳ |
+| 3 | 主机 Ollama 安装 + qwen3:14b-q4 拉取验证 | Wiki | 30 min | ⏸ N/A (v1.0 vision→Claude API; Ollama 留 Aegis) |
 | 4 | 主机 Docker + NVIDIA Container Runtime 配置 | Wiki | 30 min | ⏳ |
 | 5 | 笔记本 `.env` 填写 `STRATUM_*_HOST` 变量 | Wiki + CC | 5 min | ⏳ |
 | 6 | CC 部署主机 `docker-compose.layer-b.yml` | CC | 2h | ⏳ |
@@ -718,7 +725,7 @@ services:
     # image: Phase 11 启动时确定镜像 tag
     image: ghcr.io/ggml-org/whisper.cpp:latest-cuda
     ports:
-      - "0.0.0.0:9000:9000"    # 0.0.0.0: Tailscale 可访问
+      - "0.0.0.0:9303:8080"    # 0.0.0.0: Tailscale 可访问
     deploy:
       resources:
         reservations:
@@ -732,7 +739,7 @@ services:
     # image: Phase 11 启动时确定镜像 tag
     image: placeholder/f5-tts:latest
     ports:
-      - "0.0.0.0:9001:9001"
+      - "0.0.0.0:9301:9001"
     deploy:
       resources:
         reservations:
@@ -746,7 +753,7 @@ services:
     # image: Phase 11 启动时确定镜像 tag
     image: placeholder/sd-webui:latest
     ports:
-      - "0.0.0.0:9002:7860"
+      - "0.0.0.0:9302:7860"
     deploy:
       resources:
         reservations:
@@ -772,9 +779,9 @@ cat >> ~/projects/stratum/.env <<'EOF'
 
 # Phase 11: Layer B 外挂服务地址 (替换 ts.net 为实际 tailnet 域名)
 STRATUM_OLLAMA_HOST=http://stratum-host.ts.net:11434
-STRATUM_WHISPER_HOST=http://stratum-host.ts.net:9000
-STRATUM_TTS_HOST=http://stratum-host.ts.net:9001
-STRATUM_SD_HOST=http://stratum-host.ts.net:9002
+STRATUM_WHISPER_HOST=http://stratum-host.ts.net:9303
+STRATUM_TTS_HOST=http://stratum-host.ts.net:9301
+STRATUM_SD_HOST=http://stratum-host.ts.net:9302
 EOF
 ```
 
