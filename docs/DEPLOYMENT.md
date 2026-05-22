@@ -360,6 +360,43 @@ openssl rand -base64 32
 python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
+### 3.5.1 AI API Keys (`~/.stratum/secrets/.env`)
+
+> **与 §3.5 的区别**: §3.5 的 `~/projects/stratum/.env` 存 Docker 密码（Postgres/RabbitMQ）。
+> 本节的 `~/.stratum/secrets/.env` 存 AI API Key，由 oprim 在启动时自动加载。两个文件独立。
+
+```bash
+# 1. 复制模板
+cp ~/.stratum/secrets/.env.example ~/.stratum/secrets/.env
+
+# 2. 填入实际 key（用编辑器打开）
+#    DASHSCOPE_API_KEY=sk-...
+#    DEEPSEEK_API_KEY=sk-...
+#    ANTHROPIC_API_KEY=sk-ant-...
+
+# 3. 锁权限
+chmod 600 ~/.stratum/secrets/.env
+```
+
+**加载机制**（`oprim/_config.py`）：
+- import oprim 时自动执行 `load_dotenv(~/.stratum/secrets/.env, override=False)`
+- `override=False`：shell `export DASHSCOPE_API_KEY=xxx` 优先于 `.env` 文件
+- 缺少必需 key 时，`load_config()` 打印 WARNING（不 raise）：
+
+```
+WARNING oprim.config: DASHSCOPE_API_KEY 未设置 — hybrid_search / embedding 不可用
+WARNING oprim.config: DEEPSEEK_API_KEY 未设置 — 翻译不可用
+WARNING oprim.config: ANTHROPIC_API_KEY 未设置 — Claude Vision 不可用
+```
+
+**`.gitignore` 验证**（已含，无需手动添加）：
+```
+stratum/.gitignore  → .env, .env.local
+platform/.gitignore → .env, .env.*, !.env.example
+```
+
+---
+
 ### 3.6 Docker 基础服务 (`docker-compose.layer-a.yml`)
 
 > **注**: Phase 1-10 运行时不需要 Docker（DuckDB/LanceDB/Tantivy 均为嵌入式）。
