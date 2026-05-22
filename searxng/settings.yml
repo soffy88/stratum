@@ -9,6 +9,9 @@ search:
   safe_search: 0
   autocomplete: "google"
   default_lang: "auto"
+  formats:
+    - html
+    - json
 
 server:
   port: 8080
