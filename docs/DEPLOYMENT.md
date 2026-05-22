@@ -365,21 +365,29 @@ python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 > **与 §3.5 的区别**: §3.5 的 `~/projects/stratum/.env` 存 Docker 密码（Postgres/RabbitMQ）。
 > 本节的 `~/.stratum/secrets/.env` 存 AI API Key，由 oprim 在启动时自动加载。两个文件独立。
 
+**存储位置**：`~/.config/keys/.env`（OS 标准路径，不在项目目录内）。
+`~/.stratum/secrets/.env` 是指向它的软链接，两者等效。
+
 ```bash
-# 1. 复制模板
-cp ~/.stratum/secrets/.env.example ~/.stratum/secrets/.env
+# 1. 复制模板到 canonical 路径
+cp ~/.stratum/secrets/.env.example ~/.config/keys/.env
 
 # 2. 填入实际 key（用编辑器打开）
 #    DASHSCOPE_API_KEY=sk-...
 #    DEEPSEEK_API_KEY=sk-...
 #    ANTHROPIC_API_KEY=sk-ant-...
 
-# 3. 锁权限
-chmod 600 ~/.stratum/secrets/.env
+# 3. 锁权限（install 已设 600，确认一次）
+chmod 600 ~/.config/keys/.env
+
+# 4. 验证软链接正确
+ls -la ~/.stratum/secrets/.env
+# → lrwxrwxrwx ... .env -> /home/soffy/.config/keys/.env
 ```
 
 **加载机制**（`oprim/_config.py`）：
-- import oprim 时自动执行 `load_dotenv(~/.stratum/secrets/.env, override=False)`
+- import oprim 时自动执行 `load_dotenv(~/.config/keys/.env, override=False)`
+- `STRATUM_KEYS_FILE` 环境变量可覆盖路径
 - `override=False`：shell `export DASHSCOPE_API_KEY=xxx` 优先于 `.env` 文件
 - 缺少必需 key 时，`load_config()` 打印 WARNING（不 raise）：
 
@@ -393,6 +401,7 @@ WARNING oprim.config: ANTHROPIC_API_KEY 未设置 — Claude Vision 不可用
 ```
 stratum/.gitignore  → .env, .env.local
 platform/.gitignore → .env, .env.*, !.env.example
+~/.config/keys/     → 不在任何 git repo 内，天然不入 git
 ```
 
 ---
