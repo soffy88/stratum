@@ -2515,3 +2515,362 @@ class BackgroundSyncDaemon:
 
 **v1.0 限制**: 仅 LWW，无 CRDT。对于 content 字段冲突 (如 note.content 同时编辑)，后写覆盖前写，无合并。v2.0 评估 OT/CRDT。
 
+
+---
+
+## §10 View (Phase 13)
+
+> **代码位置**: `omodul/knowledge/views/`
+
+### §10.1 CRUD API
+
+```python
+# omodul/knowledge/views/crud.py
+def create_view(user_id: str, spec: dict) -> dict: ...
+def get_view(view_id: str) -> dict | None: ...
+def list_views(user_id: str) -> list[dict]: ...
+def update_view(view_id: str, updates: dict) -> dict | None: ...
+def delete_view(view_id: str) -> None: ...
+def set_default(user_id: str, view_id: str) -> None: ...
+def get_default_view(user_id: str) -> dict | None: ...
+```
+
+**create spec**:
+
+```json
+{
+  "name": "Research",
+  "description": "Papers and books only",
+  "default_filter": {"medium": ["paper", "book"], "time_range": "last_90d"},
+  "default_llm": {"provider": "qwen3_dashscope", "model": "qwen-max", "temperature": 0.2},
+  "default_system_prompt": "You are a research assistant...",
+  "icon": "📚",
+  "is_default": false,
+  "is_builtin": true
+}
+```
+
+**update 允许字段**: `name`, `description`, `default_filter`, `default_llm`, `default_system_prompt`, `icon`。
+
+**单一默认约束**: `set_default(user_id, view_id)` 先将该用户所有 view 的 `is_default=false`，再设目标为 `true`。
+
+### §10.2 View 生效机制
+
+`hybrid_search` 中 view 的应用 (oskill 层直接读 views 表，不反向 import omodul):
+
+```python
+# hybrid_search 内部
+if view_id or user_id:
+    vf = _load_view_filter(view_id, user_id)  # 直接 SQL 查 views 表
+    # 将 vf 中的 medium/domain/time_range 作为默认 filter
+```
+
+**优先级**: 显式传入的 `medium_filter` > view 的 `default_filter.medium`。
+
+### §10.3 预置 View
+
+5 个预置 view 通过 `preset_loader.install_presets(user_id)` 安装 (幂等):
+
+| name | medium filter | domain filter | time_range | icon |
+|------|--------------|---------------|------------|------|
+| All | — | — | — | 🌐 |
+| Research | paper, book | — | — | 📚 |
+| Web Clips | webpage | — | last_30d | 🔖 |
+| Notes | markdown_note | — | — | 📝 |
+| Recent | — | — | last_7d | ⏰ |
+
+---
+
+## §11 Pin (Phase 1.5)
+
+### §11.1 Pin/Unpin API
+
+**MCP tools**: `stratum.pin_substrate` / `stratum.unpin_substrate` (见 §2.2)
+
+**Python 层** (MCP handler 内部):
+
+```python
+def _set_pinned(substrate_id: str, pinned: bool) -> dict:
+    """UPDATE substrate SET is_pinned=?, pinned_at=?, updated_at=? WHERE id=?"""
+```
+
+- pin: `is_pinned=True`, `pinned_at=now()`
+- unpin: `is_pinned=False`, `pinned_at=None`
+
+### §11.2 pinned_boost 搜索效果
+
+pinned substrate 在 hybrid_search 中获得 1.5x 分数加成:
+
+```python
+# hybrid_search 内部
+if pinned_boost != 1.0:
+    fused = _boost_pinned(fused, pinned_boost)  # score × 1.5, re-sort
+```
+
+**效果**: pinned substrate 在搜索结果中排名提升，但不保证置顶 (取决于原始 RRF score)。
+
+### §11.3 list_pinned
+
+v1.0 无独立 `list_pinned` API。前端获取 pinned 列表方式:
+
+```sql
+SELECT id, title, pinned_at FROM substrate WHERE is_pinned = TRUE ORDER BY pinned_at DESC;
+```
+
+通过 MCP `stratum.search` 无法直接过滤 pinned-only。v1.1+ 评估添加 `pinned_only` 参数。
+
+---
+
+## §12 Translation (Phase 10)
+
+> **代码位置**: `oskill/knowledge/translate_substrate.py`
+
+### §12.1 translate_substrate Skill
+
+```python
+async def translate_substrate(
+    substrate_id: str,
+    target_lang: str,
+    source_lang: str = "auto",
+    provider: str = "deepseek",
+    *,
+    model: str | None = None,
+    domain: str | None = None,
+    max_chars: int = 2000,
+    checkpoint_dir: Path | None = None,
+    glossary: TerminologyGlossary | None = None,
+    overwrite: bool = False,
+    embed_translation: bool = True,
+) -> TranslateResult:
+```
+
+### §12.2 三个 Provider
+
+| provider | 模型 | 用途 | 成本 |
+|----------|------|------|------|
+| `deepseek` | deepseek-chat | 默认，性价比高 | ~$0.001/1K tokens |
+| `claude` | claude-3-haiku | 高质量学术翻译 | ~$0.003/1K tokens |
+| `qwen3` | qwen-max (dashscope) | 中文优化 | ~$0.002/1K tokens |
+
+### §12.3 异步实施
+
+- 分块翻译: 按 `max_chars=2000` 切分
+- checkpoint: 可选 `checkpoint_dir`，每 chunk 完成后写 checkpoint JSON，支持断点续传
+- glossary: `TerminologyGlossary` 对象，domain-specific 术语表
+
+### §12.4 翻译 Derivative 与跨语种 Embed
+
+翻译完成后:
+1. 写入 `derivative` 表: `kind="translation_{target_lang}"`, `meta_json` 含 provider/cost/chunks
+2. 若 `embed_translation=True` (默认): 将翻译文本分块 embed 到 `vectors_text` LanceDB
+3. 向量 ID 格式: `{derivative_id}#{chunk_idx}`
+
+**效果**: 中文 query → dense search 命中翻译 derivative → 通过 `derivative.substrate_id` 回溯原始英文 substrate。
+
+
+---
+
+## §13 错误处理
+
+### §13.1 StratumError 类树
+
+```
+StratumError (oprim/errors.py)
+├── ConfigError
+├── PDFParseError
+├── UnsupportedFileTypeError
+├── UnsupportedImageError
+├── EmbeddingError
+│   └── QuotaExceededError
+├── VectorDBError
+├── FulltextError
+├── MetaDBError
+├── LLMError
+│   └── LLMRateLimitError
+├── IngestError
+│   └── DuplicateSubstrateError
+└── AgentError (omodul/knowledge/agents/errors.py)
+    ├── AgentToolNotAllowedError
+    ├── AgentTimeoutError
+    └── AgentNotFoundError
+
+PushError (oprim/push/errors.py)
+├── PushConfigError
+├── PushDeliveryError
+└── PushRateLimitError
+
+SchedulerError (omodul/knowledge/scheduler/errors.py)
+├── JobNotFoundError
+└── (其他 scheduler 错误)
+
+SyncError (oskill/sync/errors.py)
+├── FlushError
+├── ApplyError
+└── SnapshotError
+```
+
+### §13.2 HTTP 错误码映射 (浏览器扩展 API)
+
+| 异常 | HTTP | response body |
+|------|------|---------------|
+| `AuthError` | 401 | `{"detail": "Invalid or missing token"}` |
+| `StratumError` | 500 | `{"detail": "<error message>"}` |
+| `HTTPException(400)` | 400 | `{"detail": "Either html or selection_text is required"}` |
+| `HTTPException(422)` | 422 | Pydantic validation error (FastAPI 自动) |
+| 未捕获异常 | 500 | `{"detail": "Internal Server Error"}` |
+
+**FastAPI exception handlers** (server.py):
+
+```python
+@app.exception_handler(AuthError)
+async def _auth_error_handler(request, exc):
+    return JSONResponse(status_code=401, content={"detail": str(exc)})
+
+@app.exception_handler(StratumError)
+async def _stratum_error_handler(request, exc):
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
+```
+
+### §13.3 MCP 错误响应
+
+MCP tool 不使用 MCP protocol-level error。错误通过返回值中的 `error` 字段传递:
+
+```json
+{"error": "substrate '01NONEXISTENT' not found"}
+```
+
+| 场景 | error 内容 |
+|------|-----------|
+| meta_db 不存在 | `"meta_db not found"` |
+| substrate 不存在 | `"substrate '{id}' not found"` |
+| view 不存在 | `"view '{id}' not found"` |
+| DB 异常 | `"<exception str>"` |
+
+**前端处理**: 检查返回对象是否含 `error` key，有则展示错误 UI。
+
+### §13.4 Agent 错误
+
+Agent 执行中的错误记录在 `agent_runs.error_message`:
+
+| 场景 | status | error_message |
+|------|--------|---------------|
+| 正常完成 | `completed` | null |
+| agent.run() 抛异常 | `failed` | exception message |
+| asyncio.TimeoutError | `timeout` | `"Agent exceeded timeout of {n}s"` |
+| tool 不在 allow-list | `failed` | `"'{agent}' attempted to call disallowed tool: '{tool}'"` |
+
+
+---
+
+## §14 部署
+
+### §14.1 单机拓扑
+
+**环境**: Win11 + WSL2 Ubuntu 24.04, 单台物理机 (RTX 4090 24G VRAM, 64G RAM)。
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  WSL2 Ubuntu 24.04                                          │
+│                                                             │
+│  ┌─── Layer A (核心服务, systemd) ───────────────────────┐  │
+│  │  PostgreSQL (5432)  Redis (6379)  RabbitMQ (5672)     │  │
+│  │  Ollama (11434)     Caddy (443/80)                    │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                             │
+│  ┌─── Layer B (GPU 外挂, docker compose) ────────────────┐  │
+│  │  F5-TTS (9301) [STOPPED]   ComfyUI/SD (9302)         │  │
+│  │  whisper.cpp (9303)         SearXNG (9304)            │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                             │
+│  ┌─── Stratum 应用层 (Python, 直接运行) ─────────────────┐  │
+│  │  MCP Server (stdio)                                   │  │
+│  │  Browser Extension API (14567)                        │  │
+│  │  BackgroundSyncDaemon                                 │  │
+│  │  CronEngine (APScheduler)                             │  │
+│  └───────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### §14.2 端口清单
+
+| 端口 | 服务 | 层 | 绑定 |
+|------|------|---|------|
+| 5432 | PostgreSQL | A | 127.0.0.1 |
+| 6379 | Redis | A | 127.0.0.1 |
+| 5672 | RabbitMQ | A | 127.0.0.1 |
+| 11434 | Ollama | A | 127.0.0.1 |
+| 443/80 | Caddy (reverse proxy) | A | 0.0.0.0 |
+| 9301 | F5-TTS | B | 127.0.0.1 (STOPPED) |
+| 9302 | ComfyUI/SD 1.5 | B | 127.0.0.1 |
+| 9303 | whisper.cpp | B | 127.0.0.1 |
+| 9304 | SearXNG | B | 127.0.0.1 |
+| 14567 | Browser Extension API | App | 127.0.0.1 |
+| 8765 | MCP Server | App | stdio (非 TCP) |
+
+### §14.3 用户配置
+
+**主配置**: `~/.stratum/config.yaml`
+
+```yaml
+user_id: wiki
+device_id: wsl2-desktop
+
+storage:
+  meta_db: ~/.stratum/meta.duckdb
+  lance_index: ~/.stratum/index/lance
+  tantivy_index: ~/.stratum/index/tantivy
+  inbox: ~/.stratum/inbox
+
+browser_extension:
+  port: 14567
+  token: "stratum_ext_<random_32_hex>"
+
+sync:
+  enabled: true
+  provider: gdrive
+  flush_interval_sec: 30
+  pull_interval_sec: 60
+
+embedding:
+  provider: qwen3_dashscope
+  dim: 1024
+
+translation:
+  default_provider: deepseek
+  default_target_lang: zh-CN
+
+scheduler:
+  timezone: Asia/Shanghai
+```
+
+**密钥**: `~/.config/keys/.env` (不入 git):
+
+```bash
+DASHSCOPE_API_KEY=sk-...
+DEEPSEEK_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-...
+GOOGLE_OAUTH_CLIENT_ID=...
+GOOGLE_OAUTH_CLIENT_SECRET=...
+```
+
+### §14.4 Docker Compose (Layer B)
+
+文件: `docker-compose.layer-b.yml`
+
+```bash
+# 启动
+docker compose -f docker-compose.layer-b.yml up -d
+
+# 停止单个服务 (保留 container)
+docker compose -f docker-compose.layer-b.yml stop stratum-tts
+
+# 查看状态
+docker compose -f docker-compose.layer-b.yml ps
+```
+
+**GPU 并发约束** (ADR-021):
+- whisper large-v3 (~4-5G) + F5-TTS (~6-8G) = 不可并发
+- SD (~4-6G) 可与 whisper 共存
+- Ollama (~8-10G) 运行时不启动 F5/SD
+- 通过 Redis `GpuLock` 互斥 (oprim 层)
+
