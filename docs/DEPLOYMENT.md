@@ -1069,6 +1069,55 @@ helios-platform 已有 Prometheus + Grafana + Loki 栈，Phase 11+ 接入时：
 
 ---
 
+## 8.5 Embedding Provider 配置 (Phase 11C)
+
+Stratum 支持两种 embedding provider，通过环境变量或 config.yaml 切换。
+
+### Provider 选项
+
+| Provider | 值 | 模型 | 维度 | 依赖 | 成本 |
+|----------|---|------|------|------|------|
+| DashScope (默认) | `qwen3_dashscope` | text-embedding-v3 | 1024 | DASHSCOPE_API_KEY | ~$0.0007/1K tokens |
+| 本地 Ollama | `qwen3_local` | qwen3-embedding:0.6b | 1024 | Ollama 运行中 | 免费 (GPU) |
+
+### 切换方式
+
+**方式 1: 环境变量** (推荐测试/临时切换):
+
+```bash
+export EMBEDDING_PROVIDER=qwen3_local
+```
+
+**方式 2: config.yaml** (持久配置):
+
+```yaml
+# ~/.stratum/config.yaml
+EMBEDDING_PROVIDER: qwen3_local
+```
+
+### 本地 Provider 前置条件
+
+```bash
+# 1. 确认 Ollama 运行中
+curl http://localhost:11434/api/tags
+
+# 2. 拉取模型 (~600MB)
+curl http://localhost:11434/api/pull -d '{"name":"qwen3-embedding:0.6b"}'
+
+# 3. 验证
+curl http://localhost:11434/api/embeddings -d '{"model":"qwen3-embedding:0.6b","prompt":"test"}'
+# 期待: 1024 维向量
+```
+
+### 注意事项
+
+- 两个 provider 输出维度相同 (1024)，LanceDB 索引无需重建
+- 切换 provider 后新 ingest 的 substrate 用新 provider embed；已有向量不变
+- 如需全库重新 embed (换模型后保证一致性)，需手动重建向量索引
+- `OLLAMA_BASE_URL` 可配置 Ollama 地址 (默认 `http://localhost:11434`)
+
+---
+
 ## 9. 已知问题 + 限制
 
 | # | 问题 | 影响 | 状态/计划 |
