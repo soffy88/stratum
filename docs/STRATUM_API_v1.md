@@ -1576,3 +1576,479 @@ v1.1 Web API 预期端点 (v1.0 未实施):
 - `POST /api/v1/web/views/:id/set-default` — set_default_view
 - `GET /api/v1/web/agent-runs` — list_agent_runs (分页)
 
+
+---
+
+## §4 Agent 系统
+
+### §4.1 调用契约
+
+Agent 通过 `AgentRunner.run()` 执行，完整生命周期:
+
+```
+AgentRunner.run(agent, user_id, params)
+  → tracer.create_run(run_id, status="running")
+  → asyncio.wait_for(agent.run(params, context), timeout=agent.timeout_seconds)
+  → tracer.complete_run(run_id, result)  // or fail_run on exception/timeout
+  → return AgentResult
+```
+
+**Python 签名**:
+
+```python
+class AgentRunner:
+    def __init__(self, tracer: AgentTracer) -> None: ...
+
+    async def run(self, agent: Agent, user_id: str, params: dict) -> AgentResult:
+        """Execute agent with timeout, persist trace to agent_runs table."""
+```
+
+**调用方式** (应用层):
+
+```python
+from omodul.knowledge.agents.registry import get_registry
+from omodul.knowledge.agents.runner import AgentRunner
+from omodul.knowledge.agents.tracer import AgentTracer
+
+registry = get_registry()
+agent_cls = registry.get("knowledge_curator")
+agent = agent_cls()
+runner = AgentRunner(tracer=AgentTracer())
+result = await runner.run(agent, user_id="wiki", params={"inbox_dir": "~/.stratum/inbox"})
+```
+
+**超时处理**: `asyncio.wait_for` 超时 → status="timeout", error_message 记录。
+
+---
+
+### §4.2 Builtin Agents
+
+v1.0 提供 5 个 builtin agent (+1 disabled):
+
+---
+
+#### 4.2.1 knowledge_curator
+
+**用途**: 处理 inbox 文件 — ingest (classify + dedup + embed + index)。
+
+| 属性 | 值 |
+|------|---|
+| name | `knowledge_curator` |
+| allowed_tools | `oskill.knowledge.ingest_substrate` |
+| timeout_seconds | 1800 |
+
+**params schema**:
+
+```json
+{"inbox_dir": "~/.stratum/inbox"}
+```
+
+**output schema**:
+
+```json
+{"files_found": 1, "ingested": 1, "skipped": 0, "failed": 0}
+```
+
+**真实示例**: 见 §1.7 agent_run 示例 (id `748c306e`)。
+
+---
+
+#### 4.2.2 daily_digest
+
+**用途**: 汇总过去 24h 新增 substrate，生成摘要并推送。
+
+| 属性 | 值 |
+|------|---|
+| name | `daily_digest` |
+| allowed_tools | `oskill.knowledge.hybrid_search`, `oprim.llm.llm_call`, `oprim.push.dispatcher` |
+| timeout_seconds | 1800 |
+
+**params schema**:
+
+```json
+{}
+```
+
+**output schema**:
+
+```json
+{"new_substrates": 3, "digest_sent": true, "summary": "..."}
+```
+
+---
+
+#### 4.2.3 translation_worker
+
+**用途**: 批量翻译缺少中文翻译的英文 substrate。
+
+| 属性 | 值 |
+|------|---|
+| name | `translation_worker` |
+| allowed_tools | `oskill.knowledge.translate_substrate` |
+| timeout_seconds | 3600 |
+
+**params schema**:
+
+```json
+{"max_substrates": 5, "target_lang": "zh-CN"}
+```
+
+**output schema**:
+
+```json
+{"translated": 0, "candidates": 0}
+```
+
+**真实示例** (agent_run `a597d9f4`):
+
+```json
+{
+  "trace": [{"step_num": 1, "tool_name": "list_substrates_without_translation", "tool_input": {"max": 1, "target_lang": "zh-CN"}, "tool_output": {"candidates": 0}, "duration_ms": 20}],
+  "output": {"translated": 0, "candidates": 0}
+}
+```
+
+---
+
+#### 4.2.4 reading_companion
+
+**用途**: 基于用户知识库的问答 (hybrid search + LLM grounded answer)。
+
+| 属性 | 值 |
+|------|---|
+| name | `reading_companion` |
+| allowed_tools | `oskill.knowledge.hybrid_search`, `oprim.llm.llm_call` |
+| timeout_seconds | 1800 |
+
+**params schema**:
+
+```json
+{"question": "What is the key innovation of the Transformer architecture?"}
+```
+
+**output schema**:
+
+```json
+{"answer": "...", "sources_used": 3}
+```
+
+---
+
+#### 4.2.5 lint_bot
+
+**用途**: 周度健康检查 — 孤立 substrate、断裂引用、缺失 embedding。
+
+| 属性 | 值 |
+|------|---|
+| name | `lint_bot` |
+| allowed_tools | `oskill.knowledge.lint`, `oprim.push.dispatcher` |
+| timeout_seconds | 1800 |
+
+**params schema**:
+
+```json
+{}
+```
+
+**output schema**:
+
+```json
+{"issues_found": 2, "categories": {"orphan_substrate": 1, "missing_embedding": 1}}
+```
+
+---
+
+#### 4.2.6 audio_generator (disabled)
+
+**用途**: 为 substrate 生成音频朗读 (F5-TTS)。
+
+| 属性 | 值 |
+|------|---|
+| name | `audio_generator` |
+| allowed_tools | `oskill.knowledge.generate_audio_narration` |
+| timeout_seconds | 1800 |
+| **status** | **v1.0 不可用** — upstream image broken |
+
+**params schema**:
+
+```json
+{"max_substrates": 3, "voice": "default", "speed": 1.0}
+```
+
+调用 `run()` 立即 raise `NotImplementedError("TTS unavailable v1.0")`。
+
+
+---
+
+### §4.3 AgentResult 详细 Schema
+
+`AgentResult` 是所有 agent 的统一返回类型，持久化到 `agent_runs` 表:
+
+```python
+@dataclass
+class AgentResult:
+    success: bool              # True = completed, False = failed
+    output: dict               # agent-specific output (见 §4.2 各 agent output schema)
+    trace: list[AgentStep]     # 工具调用链 (平铺 array, 按 step_num 排序)
+    citations: list[Citation]  # 引用的 substrate (可为空)
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    elapsed_seconds: float = 0.0   # runner 填入 (wall clock)
+    cost_usd: float = 0.0
+    error: str | None = None       # 失败时的错误信息
+```
+
+**持久化映射** (AgentResult → agent_runs 表):
+
+| AgentResult 字段 | agent_runs 列 | 存储格式 |
+|-----------------|---------------|---------|
+| success | status | `"completed"` if success else `"failed"` |
+| output | output | JSON string |
+| trace | trace | JSON string (AgentStep[] 序列化) |
+| citations | citations | JSON string (Citation[] 序列化) |
+| total_input_tokens | total_input_tokens | int |
+| total_output_tokens | total_output_tokens | int |
+| cost_usd | cost_usd | float |
+| error | error_message | string \| null |
+| elapsed_seconds | completed_at - started_at | 计算得出 |
+
+**AgentStep 序列化格式**:
+
+```json
+{
+  "step_num": 1,
+  "tool_name": "ingest_substrate",
+  "tool_input": {"file": "/path/to/file.md"},
+  "tool_output": {"substrate_id": "01KS2MD25C3FAAAD7B9KTF9ZM9", "medium": "other"},
+  "duration_ms": 311,
+  "error": null,
+  "timestamp": "2026-05-20T12:05:11.146744"
+}
+```
+
+**Citation 序列化格式**:
+
+```json
+{
+  "substrate_id": "01KS2E3QK3KVN1WBVYSEEFAYT9",
+  "fragment_id": "01KS2E3QK3KVN1WBVYSEEFAYT9#0",
+  "anchor": {"section": null, "char_start": 0, "char_end": 0},
+  "deep_link": "stratum://substrate/01KS2E3QK3KVN1WBVYSEEFAYT9/#01KS2E3QK3KVN1WBVYSEEFAYT9#0"
+}
+```
+
+---
+
+### §4.4 AgentTracer
+
+`AgentTracer` 负责将 agent 执行记录持久化到 DuckDB `agent_runs` 表。
+
+**API**:
+
+```python
+class AgentTracer:
+    def __init__(self, db: MetaDB | None = None) -> None: ...
+
+    def create_run(self, run_id: str, user_id: str, agent_name: str,
+                   params: dict, started_at: datetime) -> None:
+        """INSERT INTO agent_runs (status='running')."""
+
+    def complete_run(self, run_id: str, result: AgentResult) -> None:
+        """UPDATE agent_runs SET status='completed', trace=..., output=..., completed_at=now()."""
+
+    def fail_run(self, run_id: str, error: str) -> None:
+        """UPDATE agent_runs SET status='failed', error_message=..., completed_at=now()."""
+
+    def list_runs(self, user_id: str, limit: int = 50) -> list[dict]:
+        """SELECT (精简列) FROM agent_runs WHERE user_id=? ORDER BY started_at DESC."""
+```
+
+**list_runs 返回列**: `id`, `agent_name`, `status`, `started_at`, `completed_at`, `cost_usd`。不含 trace/output (大字段按需 fetch)。
+
+---
+
+### §4.5 Registry
+
+`AgentRegistry` 管理 agent 注册与查找。
+
+**API**:
+
+```python
+class AgentRegistry:
+    def register(self, agent_cls: Type[Agent]) -> None: ...
+    def get(self, name: str) -> Type[Agent]: ...       # raises AgentNotFoundError
+    def list_agents(self) -> list[dict]: ...            # [{name, description, allowed_tools, timeout_seconds}]
+    def __contains__(self, name: str) -> bool: ...
+
+# 全局单例
+_global_registry = AgentRegistry()
+def get_registry() -> AgentRegistry: ...
+
+# 装饰器注册
+@register_agent
+class MyAgent(Agent): ...
+```
+
+**v1.0 限制**: 不开放用户自定义 agent。仅 builtin 6 个 (含 disabled audio_generator)。v1.1+ 评估 plugin 机制。
+
+
+---
+
+## §5 Scheduler
+
+### §5.1 Cron Engine
+
+基于 APScheduler 3.x 的异步 cron 调度器，配合 Redis 分布式锁防止重复执行。
+
+**架构**:
+
+```
+CronEngine
+├── APScheduler (AsyncIOScheduler)
+├── JobStore (DuckDB CRUD)
+├── RunLock (Redis SETNX, key="stratum:job_lock:{job_id}")
+├── ScheduledJobRunner → AgentRunner → Agent.run()
+└── Notifier → PushDispatcher
+```
+
+**CronEngine API**:
+
+```python
+class CronEngine:
+    def __init__(self, job_store: JobStore, run_lock: RunLock, runner: ScheduledJobRunner) -> None: ...
+
+    async def start(self) -> None:
+        """Load enabled jobs from DB, register cron triggers, start scheduler."""
+
+    async def stop(self) -> None:
+        """Graceful shutdown (wait for running jobs)."""
+```
+
+**执行流程**:
+
+1. `CronEngine.start()` → 从 `scheduled_jobs` 表加载 `enabled=True` 的 job
+2. 为每个 job 注册 `CronTrigger.from_crontab(cron_expression, timezone=timezone)`
+3. 触发时 → `RunLock.acquire(job_id)` (Redis SETNX, TTL=max_runtime_seconds)
+4. 获锁成功 → `ScheduledJobRunner.run(job_id)`
+5. Runner 从 registry 获取 agent → `AgentRunner.run(agent, user_id, params)`
+6. 完成/失败 → `JobStore.update_run()` + `Notifier.notify()`
+7. 释放锁
+
+**时区**: 默认 `Asia/Shanghai`，per-job 可配置。
+
+---
+
+### §5.2 Job CRUD API
+
+`JobStore` 提供 scheduled_jobs + scheduled_job_runs 的完整 CRUD:
+
+```python
+class JobStore:
+    def create(self, spec: dict) -> dict: ...
+    def get(self, job_id: str) -> dict: ...                    # raises JobNotFoundError
+    def find_by_name(self, user_id: str, name: str) -> dict | None: ...
+    def list_jobs(self, user_id: str) -> list[dict]: ...
+    def list_enabled_jobs(self) -> list[dict]: ...
+    def update(self, job_id: str, updates: dict) -> dict: ...
+    def delete(self, job_id: str) -> None: ...                 # cascades to runs
+
+    # Run history
+    def create_run(self, run_id: str, job_id: str, status: str, started_at: datetime) -> None: ...
+    def update_run(self, run_id: str, status: str, agent_run_id: str | None = None,
+                   error_message: str | None = None, completed_at: datetime | None = None) -> None: ...
+    def list_runs(self, job_id: str, limit: int = 50) -> list[dict]: ...
+```
+
+**create spec 字段**:
+
+```json
+{
+  "user_id": "wiki",
+  "name": "daily_inbox_process",
+  "agent_name": "knowledge_curator",
+  "agent_params": {"inbox_dir": "~/.stratum/inbox"},
+  "cron_expression": "0 6 * * *",
+  "timezone": "Asia/Shanghai",
+  "enabled": true,
+  "notify_on_completion": true,
+  "notify_on_failure": true,
+  "max_runtime_seconds": 1800
+}
+```
+
+**update 允许字段**: `enabled`, `cron_expression`, `timezone`, `agent_params`, `notify_on_completion`, `notify_on_failure`, `max_runtime_seconds`。
+
+**便捷方法**:
+
+```python
+def install_builtin_jobs(user_id: str, job_store: JobStore) -> list[dict]:
+    """Idempotent — create builtin jobs if not already present (by name)."""
+```
+
+
+---
+
+### §5.3 Builtin Jobs
+
+通过 `install_builtin_jobs(user_id, job_store)` 安装，幂等 (按 name 去重):
+
+| # | name | agent | cron | 说明 | enabled |
+|---|------|-------|------|------|---------|
+| 1 | daily_inbox_process | knowledge_curator | `0 6 * * *` | 每天 6:00 处理 inbox | ✓ |
+| 2 | daily_digest | daily_digest | `0 8 * * *` | 每天 8:00 生成摘要推送 | ✓ |
+| 3 | weekly_lint | lint_bot | `0 7 * * 1` | 每周一 7:00 健康检查 | ✓ |
+| 4 | nightly_translation | translation_worker | `0 2 * * *` | 每天 2:00 批量翻译 | ✗ (用户手动启用) |
+| 5 | nightly_audio_gen | audio_generator | `0 3 * * *` | 每天 3:00 生成音频 | ✗ (v1.0 unavailable, upstream image broken) |
+
+**agent_params 默认值**:
+
+```json
+// daily_inbox_process
+{"inbox_dir": "~/.stratum/inbox"}
+
+// nightly_translation
+{"max_substrates": 5}
+
+// nightly_audio_gen
+{"max_substrates": 3, "voice": "default", "speed": 1.0}
+```
+
+---
+
+### §5.4 通知
+
+Job 完成/失败时通过 `Notifier` → `PushDispatcher` 推送:
+
+```python
+class Notifier:
+    def __init__(self, dispatcher: PushDispatcher) -> None: ...
+
+    async def notify_completion(self, job: dict, result: AgentResult) -> None:
+        """If job.notify_on_completion: push success summary."""
+
+    async def notify_failure(self, job: dict, error: str) -> None:
+        """If job.notify_on_failure: push error alert."""
+```
+
+**通知内容**:
+- 标题: `"[Stratum] {job_name} completed"` / `"[Stratum] {job_name} failed"`
+- body: 摘要 (output 前 200 字符) 或 error_message
+- deep_link: `stratum://agent_run/{agent_run_id}`
+- channels_preference: `["web", "email"]` (默认)
+
+**v1.0 状态**: Notifier 代码就绪，但 push_subscriptions 表为空 (无注册订阅)，实际不会发送。
+
+---
+
+### §5.5 缺失字段说明
+
+以下字段**不存在于** `scheduled_jobs` 表:
+
+| 字段 | 说明 | 前端处理方式 |
+|------|------|-------------|
+| `next_run_at` | 下次执行时间 | 前端用 cron-parser 库 + timezone 自行计算 |
+| `last_run_at` | 上次执行时间 | 查 `scheduled_job_runs` 表最新一条的 `started_at` |
+| `last_status` | 上次执行状态 | 查 `scheduled_job_runs` 表最新一条的 `status` |
+
+**推荐前端库**: `cron-parser` (npm) 或 `cronstrue` (人类可读描述)。
+
