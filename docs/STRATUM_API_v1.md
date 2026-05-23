@@ -1356,3 +1356,223 @@ export STRATUM_USER_ID=wiki
 | 7 | stratum.list_views | 读 | 13 | 列出用户 views |
 | 8 | stratum.set_default_view | 写 | 13 | 设置默认 view |
 
+
+---
+
+## §3 HTTP REST API (浏览器扩展)
+
+Stratum 通过 FastAPI 提供 HTTP REST API，专供浏览器扩展 (Chrome/Firefox/Edge) 调用。
+
+### §3.1 服务启动
+
+**入口**: `omodul/knowledge/browser_extension/server.py`
+
+```bash
+# 直接启动
+python -m omodul.knowledge.browser_extension --host 127.0.0.1 --port 14567
+
+# 或通过 uvicorn
+uvicorn omodul.knowledge.browser_extension.server:app --host 127.0.0.1 --port 14567
+```
+
+**默认配置**:
+- Host: `127.0.0.1` (仅本地)
+- Port: `14567`
+- Workers: 1 (单进程，DuckDB 不支持多写)
+
+---
+
+### §3.2 端点定义
+
+---
+
+#### POST `/api/v1/browser-extension/ingest`
+
+一键保存网页 / 选中文本到 Stratum。
+
+**Request**:
+
+| Header | 值 | 必填 |
+|--------|---|------|
+| Content-Type | application/json | ✓ |
+| X-Stratum-Token | `<token>` | ✓ |
+
+```json
+{
+  "url": "https://arxiv.org/abs/1706.03762",
+  "title": "Attention Is All You Need",
+  "html": "<html>...</html>",
+  "selection_text": null,
+  "tags": ["transformer", "nlp"],
+  "create_note": false,
+  "note_content": null
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| url | string | ✓ | 页面 URL |
+| title | string | ✓ | 页面标题 |
+| html | string \| null | △ | 页面 HTML (与 selection_text 二选一) |
+| selection_text | string \| null | △ | 选中文本 (优先于 html) |
+| tags | string[] | — | 用户标签 |
+| create_note | boolean | — | 是否同时创建笔记 |
+| note_content | string \| null | — | 笔记内容 (create_note=true 时) |
+
+**Response** (200):
+
+```json
+{
+  "substrate_id": "01KS2E3QK3KVN1WBVYSEEFAYT9",
+  "note_id": null,
+  "deduplicated": false,
+  "message": "Saved to Stratum"
+}
+```
+
+**Response** (200, URL 已存在 — 去重):
+
+```json
+{
+  "substrate_id": "01KS2E3QK3KVN1WBVYSEEFAYT9",
+  "note_id": null,
+  "deduplicated": true,
+  "message": "Already saved (substrate 01KS2E3QK3KVN1WBVYSEEFAYT9)"
+}
+```
+
+**错误码**:
+
+| HTTP | 场景 |
+|------|------|
+| 400 | html 和 selection_text 都为空 |
+| 401 | X-Stratum-Token 无效 |
+| 500 | ingest 流水线内部错误 |
+
+---
+
+#### POST `/api/v1/browser-extension/sidebar-search`
+
+侧边栏搜索 — 根据当前页面上下文搜索 Stratum 知识库。
+
+**Request**:
+
+| Header | 值 | 必填 |
+|--------|---|------|
+| Content-Type | application/json | ✓ |
+| X-Stratum-Token | `<token>` | ✓ |
+
+```json
+{
+  "url": "https://arxiv.org/abs/1706.03762",
+  "page_title": "Attention Is All You Need",
+  "selected_text": "multi-head attention"
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| url | string | ✓ | 当前页面 URL |
+| page_title | string | ✓ | 页面标题 (作为搜索 query 基础) |
+| selected_text | string \| null | — | 选中文本 (追加到 query) |
+
+**Response** (200):
+
+```json
+{
+  "results": [
+    {
+      "id": "01KS2E3QK3KVN1WBVYSEEFAYT9",
+      "type": "substrate",
+      "title": "attention_is_all_you_need_9bks08iy",
+      "score": 0.032786885245901636,
+      "highlight": null
+    }
+  ]
+}
+```
+
+**搜索逻辑**: `query = page_title + " " + selected_text`，调用 `hybrid_search(query, top_k=10, mode="strict")`。
+
+**错误码**:
+
+| HTTP | 场景 |
+|------|------|
+| 401 | X-Stratum-Token 无效 |
+| 500 | 搜索内部错误 |
+
+---
+
+#### GET `/api/v1/browser-extension/health`
+
+健康检查，无需鉴权。
+
+**Response** (200):
+
+```json
+{"status": "ok", "version": "0.1.0"}
+```
+
+
+---
+
+### §3.3 CORS 与 Token 鉴权
+
+#### CORS 配置
+
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "chrome-extension://*",
+        "moz-extension://*",
+        "ms-browser-extension://*",
+    ],
+    allow_origin_regex=r"(chrome-extension|moz-extension|ms-browser-extension)://.*",
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["X-Stratum-Token", "Content-Type"],
+)
+```
+
+- 仅允许浏览器扩展 origin (chrome-extension / moz-extension / ms-browser-extension)
+- 不允许 `http://localhost` 等 web origin (v1.1+ Web API 使用独立端口)
+- OPTIONS preflight 自动处理
+
+#### Token 鉴权
+
+所有 POST 端点要求 `X-Stratum-Token` header。
+
+**Token 生成**: 用户在首次配置扩展时生成，存储在 `~/.stratum/config.yaml`:
+
+```yaml
+browser_extension:
+  token: "stratum_ext_<random_32_hex>"
+```
+
+**验证逻辑** (`auth.py`):
+1. 从 header 提取 token
+2. 与 config.yaml 中的 token 比对
+3. 不匹配 → 401 `{"detail": "Invalid or missing token"}`
+
+**GET /health 无需 token** — 用于扩展连接检测。
+
+---
+
+### §3.4 v1.1+ Web API 预留
+
+v1.0 仅提供浏览器扩展 API (port 14567)。v1.1+ 计划:
+
+| 版本 | 端口 | namespace | 说明 |
+|------|------|-----------|------|
+| v1.0 | 14567 | `/api/v1/browser-extension/*` | 浏览器扩展专用 |
+| v1.1+ | 14568 | `/api/v1/web/*` | Helios Web 前端 API |
+
+v1.1 Web API 预期端点 (v1.0 未实施):
+- `GET /api/v1/web/substrates` — list_substrates (分页)
+- `GET /api/v1/web/substrates/:id` — fetch_substrate
+- `POST /api/v1/web/search` — hybrid_search (完整参数)
+- `GET /api/v1/web/views` — list_views
+- `POST /api/v1/web/views/:id/set-default` — set_default_view
+- `GET /api/v1/web/agent-runs` — list_agent_runs (分页)
+

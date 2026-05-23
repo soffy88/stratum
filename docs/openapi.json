@@ -1,0 +1,156 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Stratum Browser Extension API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/browser-extension/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_api_v1_browser_extension_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {"type": "string", "example": "ok"},
+                    "version": {"type": "string", "example": "0.1.0"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/browser-extension/ingest": {
+      "post": {
+        "summary": "Ingest Page",
+        "operationId": "ingest_page_api_v1_browser_extension_ingest_post",
+        "parameters": [
+          {
+            "name": "X-Stratum-Token",
+            "in": "header",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/IngestRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/IngestResponse"}
+              }
+            }
+          },
+          "400": {"description": "html and selection_text both empty"},
+          "401": {"description": "Invalid or missing token"},
+          "422": {"description": "Validation Error"},
+          "500": {"description": "Ingest pipeline error"}
+        }
+      }
+    },
+    "/api/v1/browser-extension/sidebar-search": {
+      "post": {
+        "summary": "Sidebar Search",
+        "operationId": "sidebar_search_api_v1_browser_extension_sidebar_search_post",
+        "parameters": [
+          {
+            "name": "X-Stratum-Token",
+            "in": "header",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/SidebarSearchRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {"$ref": "#/components/schemas/SearchResultItem"}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {"description": "Invalid or missing token"},
+          "422": {"description": "Validation Error"},
+          "500": {"description": "Search internal error"}
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "IngestRequest": {
+        "type": "object",
+        "required": ["url", "title"],
+        "properties": {
+          "url": {"type": "string", "description": "Page URL"},
+          "title": {"type": "string", "description": "Page title"},
+          "html": {"type": "string", "nullable": true, "description": "Full page HTML"},
+          "selection_text": {"type": "string", "nullable": true, "description": "Selected text (takes priority over html)"},
+          "tags": {"type": "array", "items": {"type": "string"}, "default": []},
+          "create_note": {"type": "boolean", "default": false},
+          "note_content": {"type": "string", "nullable": true}
+        }
+      },
+      "IngestResponse": {
+        "type": "object",
+        "required": ["substrate_id", "deduplicated"],
+        "properties": {
+          "substrate_id": {"type": "string", "description": "ULID of ingested substrate"},
+          "note_id": {"type": "string", "nullable": true},
+          "deduplicated": {"type": "boolean", "description": "true if URL already existed"},
+          "message": {"type": "string", "default": ""}
+        }
+      },
+      "SidebarSearchRequest": {
+        "type": "object",
+        "required": ["url", "page_title"],
+        "properties": {
+          "url": {"type": "string", "description": "Current page URL"},
+          "page_title": {"type": "string", "description": "Current page title (used as search query)"},
+          "selected_text": {"type": "string", "nullable": true, "description": "Selected text (appended to query)"}
+        }
+      },
+      "SearchResultItem": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "description": "substrate_id"},
+          "type": {"type": "string", "enum": ["substrate", "llm_augmented"]},
+          "title": {"type": "string"},
+          "score": {"type": "number"},
+          "highlight": {"type": "string", "nullable": true}
+        }
+      }
+    }
+  }
+}
