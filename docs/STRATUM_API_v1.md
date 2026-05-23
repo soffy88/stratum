@@ -806,3 +806,553 @@ interface ChangefeedSnapshot {
 
 **v1.0 状态**: schema 就绪，暂无生产数据 (0 行)。
 
+
+---
+
+## §2 MCP Server
+
+Stratum 通过 MCP (Model Context Protocol) 暴露 8 个 tool，供 Claude Desktop / Hermes / 任何 MCP 客户端调用。
+
+### §2.1 启动方式
+
+**服务端入口**: `omodul/knowledge/start_mcp_server.py`
+
+```python
+from omodul.knowledge.start_mcp_server import start_mcp_server
+start_mcp_server(host="0.0.0.0", port=8765)
+```
+
+**Claude Desktop 配置** (`~/.config/claude/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "stratum": {
+      "command": "python",
+      "args": ["-m", "omodul.knowledge.start_mcp_server"],
+      "env": {
+        "STRATUM_USER_ID": "wiki"
+      }
+    }
+  }
+}
+```
+
+**Hermes 配置** (`~/.config/hermes/mcp.json`):
+
+```json
+{
+  "stratum": {
+    "command": "python",
+    "args": ["-m", "omodul.knowledge.start_mcp_server"],
+    "env": {
+      "STRATUM_USER_ID": "wiki"
+    }
+  }
+}
+```
+
+**Server metadata**:
+- Name: `stratum`
+- Version: `0.1.6`
+- Protocol: MCP (FastMCP)
+- Tools: 8
+- Auth: 默认无鉴权，通过 `STRATUM_USER_ID` 环境变量标识用户
+
+
+### §2.2 Tool 定义
+
+---
+
+#### Tool 1: `stratum.search`
+
+Hybrid BM25 + dense vector 搜索，RRF 融合排序。
+
+**Input JSON Schema**:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {"type": "string", "description": "搜索查询文本"},
+    "top_k": {"type": "integer", "default": 20, "description": "返回结果数上限"},
+    "medium_filter": {
+      "type": "array", "items": {"type": "string"},
+      "description": "按 medium 过滤, e.g. [\"paper\", \"webpage\"]"
+    }
+  },
+  "required": ["query"]
+}
+```
+
+**Output JSON Schema**:
+
+```json
+{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": {"type": "string"},
+      "type": {"type": "string", "enum": ["substrate", "llm_augmented"]},
+      "title": {"type": "string"},
+      "score": {"type": "number"},
+      "highlight": {"type": "string", "nullable": true},
+      "metadata": {
+        "type": "object",
+        "properties": {
+          "medium": {"type": "string", "nullable": true},
+          "source_type": {"type": "string", "nullable": true},
+          "domain": {"type": "string", "nullable": true},
+          "created_at": {"type": "string", "nullable": true}
+        }
+      }
+    }
+  }
+}
+```
+
+**真实调用示例**:
+
+```json
+// Input
+{"query": "attention mechanism transformer", "top_k": 5}
+
+// Output
+[
+  {
+    "id": "01KS2E3QK3KVN1WBVYSEEFAYT9",
+    "type": "substrate",
+    "title": "attention_is_all_you_need_9bks08iy",
+    "score": 0.032786885245901636,
+    "highlight": null,
+    "metadata": {
+      "medium": "webpage",
+      "source_type": "browser_extension",
+      "domain": null,
+      "created_at": "2026-05-20 18:15:16.954104"
+    }
+  }
+]
+```
+
+---
+
+#### Tool 2: `stratum.fetch_substrate`
+
+按 ID 获取单个 substrate 记录。
+
+**Input JSON Schema**:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "substrate_id": {"type": "string", "description": "substrate ULID"}
+  },
+  "required": ["substrate_id"]
+}
+```
+
+**Output JSON Schema**:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {"type": "string"},
+    "ulid": {"type": "string"},
+    "title": {"type": "string", "nullable": true},
+    "mime": {"type": "string", "nullable": true},
+    "source_path": {"type": "string", "nullable": true},
+    "file_hash": {"type": "string", "nullable": true},
+    "byte_size": {"type": "integer", "nullable": true},
+    "medium": {"type": "string", "nullable": true},
+    "created_at": {"type": "string"}
+  }
+}
+```
+
+**真实调用示例**:
+
+```json
+// Input
+{"substrate_id": "01KS2MD25C3FAAAD7B9KTF9ZM9"}
+
+// Output
+{
+  "id": "01KS2MD25C3FAAAD7B9KTF9ZM9",
+  "ulid": "01KS2MD25C3FAAAD7B9KTF9ZM9",
+  "title": "test_rag_paper",
+  "mime": "",
+  "source_path": null,
+  "file_hash": null,
+  "byte_size": null,
+  "medium": "other",
+  "created_at": "2026-05-20 12:05:11.146788"
+}
+```
+
+**错误响应** (substrate 不存在):
+
+```json
+{"error": "substrate '01NONEXISTENT' not found"}
+```
+
+---
+
+#### Tool 3: `stratum.list_notes`
+
+列出最近的笔记 (按 created_at DESC)。
+
+**Input JSON Schema**:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "limit": {"type": "integer", "default": 20, "description": "返回数量上限"}
+  }
+}
+```
+
+**Output JSON Schema**:
+
+```json
+{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": {"type": "string"},
+      "title": {"type": "string", "nullable": true},
+      "content_preview": {"type": "string", "description": "前 200 字符"},
+      "wikilinks": {"type": "string"},
+      "substrate_id": {"type": "string", "nullable": true},
+      "created_at": {"type": "string"}
+    }
+  }
+}
+```
+
+**真实调用示例**:
+
+```json
+// Input
+{"limit": 5}
+
+// Output
+[
+  {
+    "id": "3bc57993-049a-49a6-bca7-1fa661f65648",
+    "title": "Selected Passage Test",
+    "content_preview": "Key result: BLEU score benchmark",
+    "wikilinks": "[]",
+    "substrate_id": "01KS2E3Y6D4Z3XPGX8RJHYK138",
+    "created_at": "2026-05-20 18:15:23.685501"
+  }
+]
+```
+
+---
+
+#### Tool 4: `stratum.recent_changes`
+
+列出最近的本地变更事件 (changefeed_local, 按 seq DESC)。
+
+**Input JSON Schema**:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "limit": {"type": "integer", "default": 20, "description": "返回数量上限"}
+  }
+}
+```
+
+**Output JSON Schema**:
+
+```json
+{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "seq": {"type": "integer"},
+      "table_name": {"type": "string"},
+      "row_id": {"type": "string"},
+      "op": {"type": "string", "enum": ["insert", "update", "delete"]},
+      "payload": {"type": "string", "nullable": true},
+      "ts": {"type": "string"}
+    }
+  }
+}
+```
+
+**真实调用示例**:
+
+```json
+// Input
+{"limit": 3}
+
+// Output
+[
+  {"seq": 6, "table_name": "derivative", "row_id": "01KS2MQHTQN7D0G6H3A8ZYWQHA", "op": "insert", "payload": "{\"substrate_id\": \"01KRX5S8ZM3EF5F89YASCDHSEW\", \"kind\": \"translation_zh-CN\"}", "ts": "2026-05-20 18:15:30.123456"},
+  {"seq": 5, "table_name": "substrate", "row_id": "01KS2MD25C3FAAAD7B9KTF9ZM9", "op": "insert", "payload": "{\"substrate_id\": \"01KS2MD25C3FAAAD7B9KTF9ZM9\"}", "ts": "2026-05-20 12:05:11.146788"},
+  {"seq": 4, "table_name": "substrate", "row_id": "01KS2E3Y6D4Z3XPGX8RJHYK138", "op": "insert", "payload": "{\"substrate_id\": \"01KS2E3Y6D4Z3XPGX8RJHYK138\"}", "ts": "2026-05-20 18:15:23.685501"}
+]
+```
+
+
+---
+
+#### Tool 5: `stratum.pin_substrate`
+
+Pin 一个 substrate，使其在搜索中获得 boost (默认 1.5x)。
+
+**Input JSON Schema**:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "substrate_id": {"type": "string", "description": "要 pin 的 substrate ULID"}
+  },
+  "required": ["substrate_id"]
+}
+```
+
+**Output JSON Schema**:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "substrate_id": {"type": "string"},
+    "is_pinned": {"type": "boolean"},
+    "updated_at": {"type": "string"}
+  }
+}
+```
+
+**真实调用示例**:
+
+```json
+// Input
+{"substrate_id": "01KS2E3QK3KVN1WBVYSEEFAYT9"}
+
+// Output
+{
+  "substrate_id": "01KS2E3QK3KVN1WBVYSEEFAYT9",
+  "is_pinned": true,
+  "updated_at": "2026-05-23T01:30:00.000000"
+}
+```
+
+**错误响应**:
+
+```json
+{"error": "substrate '01NONEXISTENT' not found"}
+```
+
+---
+
+#### Tool 6: `stratum.unpin_substrate`
+
+Unpin 一个 substrate，恢复正常搜索权重。
+
+**Input JSON Schema**:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "substrate_id": {"type": "string", "description": "要 unpin 的 substrate ULID"}
+  },
+  "required": ["substrate_id"]
+}
+```
+
+**Output JSON Schema**:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "substrate_id": {"type": "string"},
+    "is_pinned": {"type": "boolean"},
+    "updated_at": {"type": "string"}
+  }
+}
+```
+
+**真实调用示例**:
+
+```json
+// Input
+{"substrate_id": "01KS2E3QK3KVN1WBVYSEEFAYT9"}
+
+// Output
+{
+  "substrate_id": "01KS2E3QK3KVN1WBVYSEEFAYT9",
+  "is_pinned": false,
+  "updated_at": "2026-05-23T01:31:00.000000"
+}
+```
+
+---
+
+#### Tool 7: `stratum.list_views`
+
+列出用户的所有 view。
+
+**Input JSON Schema**:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "user_id": {"type": "string", "description": "用户 ID"}
+  },
+  "required": ["user_id"]
+}
+```
+
+**Output JSON Schema**:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "views": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "user_id": {"type": "string"},
+          "name": {"type": "string"},
+          "description": {"type": "string", "nullable": true},
+          "default_filter": {"type": "object"},
+          "default_llm": {"type": "object"},
+          "default_system_prompt": {"type": "string", "nullable": true},
+          "icon": {"type": "string", "nullable": true},
+          "is_default": {"type": "boolean"},
+          "is_builtin": {"type": "boolean"},
+          "created_at": {"type": "string"},
+          "updated_at": {"type": "string"}
+        }
+      }
+    }
+  }
+}
+```
+
+**调用示例** (views 表为空时):
+
+```json
+// Input
+{"user_id": "wiki"}
+
+// Output
+{"views": []}
+```
+
+**v1.0 说明**: 5 个预置 view 通过 `preset_loader.install_presets(user_id)` 安装后才会出现。
+
+---
+
+#### Tool 8: `stratum.set_default_view`
+
+设置用户的默认 view (单一默认约束: 同一用户只有一个 is_default=true)。
+
+**Input JSON Schema**:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "user_id": {"type": "string", "description": "用户 ID"},
+    "view_id": {"type": "string", "description": "要设为默认的 view ID"}
+  },
+  "required": ["user_id", "view_id"]
+}
+```
+
+**Output JSON Schema**:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "success": {"type": "boolean"},
+    "view_id": {"type": "string"},
+    "name": {"type": "string"}
+  }
+}
+```
+
+**调用示例**:
+
+```json
+// Input
+{"user_id": "wiki", "view_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"}
+
+// Output
+{"success": true, "view_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", "name": "Research"}
+```
+
+**错误响应**:
+
+```json
+{"error": "view 'nonexistent-id' not found"}
+```
+
+
+---
+
+### §2.3 错误处理与鉴权
+
+#### 错误响应格式
+
+所有 MCP tool 在出错时返回包含 `error` 字段的 JSON 对象 (非 MCP protocol error):
+
+```json
+{"error": "<human-readable error message>"}
+```
+
+常见错误:
+
+| 场景 | error 内容 |
+|------|-----------|
+| meta_db 文件不存在 | `"meta_db not found"` |
+| substrate 不存在 | `"substrate '{id}' not found"` |
+| view 不存在 | `"view '{id}' not found"` |
+| DuckDB 查询异常 | `"<exception message>"` |
+
+#### 鉴权
+
+**v1.0 默认无鉴权**。MCP server 运行在本地 (localhost)，通过环境变量标识用户:
+
+```bash
+export STRATUM_USER_ID=wiki
+```
+
+- `STRATUM_USER_ID` 用于 `list_views` / `set_default_view` 等需要 user_id 的 tool
+- 不传时 tool 仍可调用，但 view 相关操作需要显式传入 `user_id` 参数
+- v1.1+ 评估 token-based auth (与浏览器扩展 `X-Stratum-Token` 统一)
+
+#### Tool 汇总表
+
+| # | tool name | 读/写 | Phase | 说明 |
+|---|-----------|-------|-------|------|
+| 1 | stratum.search | 读 | 1 | Hybrid BM25+vector 搜索 |
+| 2 | stratum.fetch_substrate | 读 | 1 | 按 ID 获取 substrate |
+| 3 | stratum.list_notes | 读 | 1 | 列出笔记 |
+| 4 | stratum.recent_changes | 读 | 1 | 列出变更事件 |
+| 5 | stratum.pin_substrate | 写 | 1.5 | Pin substrate |
+| 6 | stratum.unpin_substrate | 写 | 1.5 | Unpin substrate |
+| 7 | stratum.list_views | 读 | 13 | 列出用户 views |
+| 8 | stratum.set_default_view | 写 | 13 | 设置默认 view |
+
