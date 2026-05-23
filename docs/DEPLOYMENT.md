@@ -817,6 +817,8 @@ services:
 # Q15 未决: 完整 GPU 任务调度策略待 Phase 11 设计
 ```
 
+> **v1.0 限制: F5-TTS 不可用** — upstream image (`ghcr.io/swivid/f5-tts:main`) 存在 torch/torchvision 版本冲突，容器已 stop（未删除）。v1.1 评估重试或自写 wrapper。
+
 ### 5.6 笔记本环境变量 (Phase 11 启动后填写)
 
 ```bash
