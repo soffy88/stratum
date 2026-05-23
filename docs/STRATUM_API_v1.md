@@ -2052,3 +2052,466 @@ class Notifier:
 
 **推荐前端库**: `cron-parser` (npm) 或 `cronstrue` (人类可读描述)。
 
+
+---
+
+## §6 Push
+
+> **代码位置**: `oprim/push/` (分支 `feat/phase-10-translation`，v1.0 完工前合并 main)
+
+### §6.1 PushDispatcher
+
+```python
+class PushDispatcher:
+    def __init__(self, channels: dict[str, PushChannel], db: MetaDB | None = None) -> None: ...
+
+    async def push(
+        self,
+        user_id: str,
+        title: str,
+        body: str,
+        channels_preference: list[str] | None = None,  # default: ["web", "email"]
+        deep_link: str | None = None,
+        metadata: dict | None = None,
+    ) -> list[PushResult]: ...
+```
+
+**行为**:
+1. 按 `channels_preference` 顺序尝试
+2. 从 `push_subscriptions` 表查找 user 的 recipient
+3. 调用 channel.send()
+4. **第一个成功即停止** (不重复发送)
+5. 返回所有尝试的 PushResult (含失败的)
+
+**PushResult**:
+
+```python
+@dataclass
+class PushResult:
+    channel: str           # "web" | "email" | "wechat" | "system"
+    success: bool
+    recipient: str         # 截断到 50 字符 (隐私)
+    error_message: str | None = None
+    sent_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
+```
+
+---
+
+### §6.2 四个 Channel
+
+| channel | 实现 | 依赖 | v1.0 状态 |
+|---------|------|------|-----------|
+| `web` | WebPushChannel (VAPID RFC 8030/8292) | pywebpush | 代码就绪，无订阅 |
+| `email` | EmailPushChannel (SMTP) | smtplib | 代码就绪，无订阅 |
+| `wechat` | — | — | placeholder，v1.0 未实施 |
+| `system` | — | — | placeholder，v1.0 未实施 |
+
+**WebPushChannel 配置**:
+
+```python
+WebPushChannel(
+    vapid_private_key="<base64 EC private key>",
+    vapid_claims={"sub": "mailto:admin@stratum.local"},
+)
+```
+
+**recipient 格式** (web channel):
+
+```json
+{
+  "endpoint": "https://fcm.googleapis.com/fcm/send/...",
+  "keys": {
+    "p256dh": "<base64>",
+    "auth": "<base64>"
+  }
+}
+```
+
+---
+
+### §6.3 用户订阅 (push_subscriptions 表)
+
+见 §1.10。前端注册订阅流程:
+
+1. 浏览器 `Notification.requestPermission()` + `serviceWorkerRegistration.pushManager.subscribe()`
+2. 获得 subscription JSON → POST 到 Stratum API (v1.1+ Web API)
+3. 写入 `push_subscriptions` 表
+
+**v1.0 状态**: 表存在但 0 行。无前端注册流程 (v1.1+ 实施)。
+
+---
+
+### §6.4 Deep Link 格式
+
+Push 通知中的 `deep_link` 字段，供前端路由:
+
+| 类型 | 格式 | 示例 |
+|------|------|------|
+| substrate | `stratum://substrate/{id}` | `stratum://substrate/01KS2MD25C3FAAAD7B9KTF9ZM9` |
+| substrate_fragment | `stratum://substrate/{id}/#{fragment_id}` | `stratum://substrate/01KS2MD25C3FAAAD7B9KTF9ZM9/#01KS2MD25C3FAAAD7B9KTF9ZM9#0` |
+| agent_run | `stratum://agent_run/{id}` | `stratum://agent_run/748c306e-8ac0-4c30-98c5-6a4b962ee54f` |
+| digest | `stratum://digest/{date}` | `stratum://digest/2026-05-23` |
+
+**metadata 已知 key** (push 调用时可附加):
+
+| key | 类型 | 说明 |
+|-----|------|------|
+| `agent_name` | string | 触发推送的 agent |
+| `job_name` | string | 触发推送的 scheduled job |
+| `substrate_count` | number | digest 中包含的 substrate 数 |
+
+
+---
+
+## §7 hybrid_search
+
+> **代码位置**: `oskill/knowledge/hybrid_search.py`
+
+### §7.1 Python API 签名
+
+```python
+async def hybrid_search(
+    query: str,
+    top_k: int = 20,
+    medium_filter: list[str] | None = None,
+    domain_filter: list[str] | None = None,
+    type_filter: list[str] | None = None,
+    mode: Literal["strict", "augmented"] = "augmented",
+    view_id: str | None = None,
+    user_id: str | None = None,
+    pinned_boost: float = 1.5,
+    return_citations: bool = True,
+    time_range: str | None = None,
+) -> list[SearchResult]:
+```
+
+| 参数 | 类型 | 默认 | 说明 |
+|------|------|------|------|
+| query | str | — | 搜索文本 |
+| top_k | int | 20 | 返回上限 |
+| medium_filter | list[str] \| None | None | 按 medium 过滤 |
+| domain_filter | list[str] \| None | None | 按 domain 过滤 |
+| type_filter | list[str] \| None | None | 按 result type 过滤 |
+| mode | "strict" \| "augmented" | "augmented" | 搜索模式 |
+| view_id | str \| None | None | 应用指定 view 的 default_filter |
+| user_id | str \| None | None | 无 view_id 时自动应用用户 default view |
+| pinned_boost | float | 1.5 | pinned substrate 分数乘数 |
+| return_citations | bool | True | 是否填充 citation 字段 |
+| time_range | str \| None | None | "last_24h" \| "last_7d" \| "last_30d" \| "last_90d" |
+
+---
+
+### §7.2 mode: strict vs augmented
+
+| mode | 行为 |
+|------|------|
+| `strict` | 仅返回 substrate 命中，无 LLM 兜底 |
+| `augmented` | substrate 命中为空时，调用 `oprim.llm.llm_call` 生成通用回答 (type="llm_augmented") |
+
+**v1.0 实际行为**: `augmented` 模式已实施 LLM 兜底 (通过 `_llm_augmented()`)，但仅在 **零命中** 时触发。非零命中时 augmented = strict。
+
+---
+
+### §7.3 排序: RRF + pinned_boost
+
+**执行流水线**:
+
+```
+query → [BM25 (tantivy)] → ranked list A (top_k*2)
+      → [Dense (LanceDB)] → ranked list B (top_k*2)
+      → RRF fusion (k=60) → fused list
+      → pinned_boost (×1.5 for is_pinned=true, re-sort)
+      → enrich (fetch metadata from DuckDB)
+      → apply filters (medium, domain, type, time_range)
+      → return top_k
+```
+
+**RRF 公式**: `score(d) = Σ 1/(k + rank_i(d))`, k=60
+
+**pinned_boost**: 查 `substrate` 表 `is_pinned=true` 的 ID，将其 RRF score × boost 因子，然后重新排序。
+
+---
+
+### §7.4 跨语种搜索
+
+翻译 derivative 被 embed 到同一个 `vectors_text` LanceDB 表:
+
+```
+substrate (en) → embed → vectors_text: "01KRX5S8ZM3EF5F89YASCDHSEW#0"
+derivative (zh-CN translation) → embed → vectors_text: "01KS2MQHTQN7D0G6H3A8ZYWQHA#0"
+```
+
+**效果**: 中文 query 可命中英文 substrate 的中文翻译 derivative，dense search 返回 `derivative_id#chunk_idx`，enrich 阶段通过 `derivative.substrate_id` 回溯到原始 substrate。
+
+**matched_language**: v1.0 未在 SearchResult 中暴露 matched_language 字段。前端无法区分是原文命中还是翻译命中。v1.1+ 评估添加。
+
+---
+
+### §7.5 Embedding Provider
+
+**v1.0 硬编码**: `qwen3_dashscope` (text-embedding-v3, dim=1024)
+
+```python
+vecs = embed_text([query], provider="qwen3_dashscope", dim=1024)
+```
+
+- 模型: DashScope `text-embedding-v3`
+- 维度: 1024
+- 批次上限: 10 texts/call
+- 重试: 3 次 (指数退避)
+- 成本: ~$0.0007/1K tokens
+
+**v1.0 限制**: 无 fallback provider。DashScope 不可用时 dense search 返回空，仅 BM25 生效。v1.1+ 加 bge_m3 本地 fallback。
+
+
+---
+
+## §8 浏览器扩展 (Phase 4)
+
+> **代码位置**: `omodul/knowledge/browser_extension/`
+
+### §8.1 安装步骤
+
+1. **启动后端**: `python -m omodul.knowledge.browser_extension --port 14567`
+2. **配置 token**: 在 `~/.stratum/config.yaml` 设置 `browser_extension.token`
+3. **加载扩展**: Chrome → `chrome://extensions` → 开发者模式 → 加载已解压扩展
+4. **扩展配置**: 填入 `http://127.0.0.1:14567` + token
+
+---
+
+### §8.2 三个使用场景
+
+#### 场景 1: 一键保存整页
+
+用户点击扩展图标 → 扩展抓取当前页面 HTML → POST `/ingest`:
+
+```json
+{
+  "url": "https://arxiv.org/abs/1706.03762",
+  "title": "Attention Is All You Need",
+  "html": "<html>...(full page)...</html>",
+  "tags": ["transformer"]
+}
+```
+
+后端流程: `extract_main_content(html)` → 写临时 .html → `ingest_substrate()` → 返回 substrate_id。
+
+#### 场景 2: 选中文本保存
+
+用户选中文本 → 右键菜单 "Save to Stratum" → POST `/ingest`:
+
+```json
+{
+  "url": "https://example.com/paper",
+  "title": "Selected Passage Test",
+  "selection_text": "Key result: BLEU score benchmark...",
+  "create_note": true,
+  "note_content": "Key result: BLEU score benchmark"
+}
+```
+
+后端流程: selection_text 优先于 html → ingest → 可选创建 note。
+
+#### 场景 3: 侧边栏搜索
+
+用户打开侧边栏 → 自动以当前页面标题搜索 → POST `/sidebar-search`:
+
+```json
+{
+  "url": "https://arxiv.org/abs/1706.03762",
+  "page_title": "Attention Is All You Need",
+  "selected_text": null
+}
+```
+
+返回知识库中相关 substrate 列表 (top 10, mode=strict)。
+
+---
+
+### §8.3 URL 去重
+
+**模块**: `browser_extension/url_dedup.py`
+
+**流程**:
+1. `normalize_url(url)` — 去除 trailing slash、fragment、排序 query params
+2. 查 `browser_ext_url_index` 表: `SELECT substrate_id WHERE normalized_url = ?`
+3. 已存在 → 返回 `IngestResponse(deduplicated=true, substrate_id=existing_id)`
+4. 不存在 → 正常 ingest → `mark_url_ingested(url, substrate_id)` 写入索引
+
+**normalize_url 规则**:
+- 移除 fragment (`#...`)
+- 移除 trailing `/`
+- query params 按 key 排序
+- scheme + host 小写
+
+---
+
+### §8.4 网页 substrate 存储
+
+浏览器扩展 ingest 的网页 substrate 特点:
+
+**meta_json.source 结构** (平铺，无嵌套):
+
+```json
+{
+  "medium": "webpage",
+  "source_type": "browser_extension",
+  "source": {
+    "type": "browser_extension",
+    "url": "https://arxiv.org/abs/1706.03762",
+    "title": "Attention Is All You Need",
+    "tags": ["transformer", "nlp"]
+  }
+}
+```
+
+**存储流程**:
+1. 内容写入临时 `.html` 文件 (prefix=slugified title)
+2. `ingest_substrate(path=tmp_html, source={...})` — 走标准 ingest 流水线
+3. 临时文件在 ingest 完成后删除
+4. substrate 行的 `source_path` 为 null (临时文件已删)
+5. 内容保留在 `derivative` 表 (kind="markdown" + kind="plaintext")
+
+
+---
+
+## §9 Sync (Phase 2)
+
+> **代码位置**: `oskill/sync/` (4 skills) + `omodul/sync/bg_sync.py` (daemon)
+
+### §9.1 ChangeFeed
+
+本地变更通过 `changefeed_local` 表记录 (append-only)，远端同步通过 `changefeed_events` 表交换。
+
+**本地写入** (自动，在 ingest/translate 等操作中):
+
+```sql
+INSERT INTO changefeed_local (seq, table_name, row_id, op, payload)
+VALUES (nextval('changefeed_seq'), 'substrate', ?, 'insert', ?);
+```
+
+**远端事件** (从 GDrive 拉取后写入):
+
+```sql
+INSERT INTO changefeed_events (device_id, user_id, event_type, aggregate_id, payload, seq)
+VALUES (?, ?, 'substrate_created', ?, ?, ?);
+```
+
+**per-user seq**: 每个用户维护独立的单调递增序列号，用于增量同步。
+
+---
+
+### §9.2 Google Drive 存储适配
+
+**OAuth**: Google OAuth 2.0 (Desktop app flow)，token 存储在 `~/.stratum/gdrive_token.json`。
+
+**WSL2 适配**: OAuth redirect 通过 `localhost` loopback，WSL2 环境需确保端口转发或使用 `--no-browser` 模式。
+
+**存储结构** (GDrive):
+
+```
+Stratum Sync/
+├── events/
+│   ├── {user_id}_{device_id}_{seq_start}_{seq_end}.jsonl
+│   └── ...
+└── snapshots/
+    ├── {snapshot_id}.tar.gz
+    └── ...
+```
+
+**Phase 2 集成测试**: 9 项测试通过 (flush + apply + snapshot + restore + conflict)。
+
+---
+
+### §9.3 四个 Sync Skill
+
+#### flush_outbox
+
+上传本地 changefeed_local 事件到远端存储。
+
+```python
+@dataclass
+class FlushResult:
+    flushed_count: int
+    failed_count: int
+    last_flushed_seq: int
+    uploaded_files: list[str] = field(default_factory=list)
+```
+
+#### apply_remote_events
+
+从远端拉取事件并应用到本地 DB。
+
+```python
+@dataclass
+class ApplyResult:
+    applied_count: int
+    skipped_count: int
+    conflict_count: int
+    last_applied_seq: int
+    errors: list[str] = field(default_factory=list)
+```
+
+#### snapshot_backup
+
+创建全量快照并上传到远端。
+
+```python
+async def snapshot_backup(user_id, device_id, db, storage_adapter) -> dict:
+    # Returns: {snapshot_id, seq_at, file_id, substrate_count, concept_count, note_count}
+```
+
+#### restore_from_snapshot
+
+从远端下载快照并恢复本地 DB。
+
+```python
+async def restore_from_snapshot(snapshot_file_id, db, storage_adapter) -> dict:
+    # WARNING: truncates local tables before restore
+    # Returns: {seq_at, snapshot_id, substrate_count, concept_count, note_count}
+```
+
+---
+
+### §9.4 BackgroundSyncDaemon
+
+后台同步守护进程，周期性执行 flush + pull + snapshot:
+
+```python
+class BackgroundSyncDaemon:
+    def __init__(
+        self,
+        user_id: str,
+        device_id: str,
+        db: MetaDB,
+        storage: Any,
+        *,
+        flush_interval_sec: int = 30,      # 每 30s flush 一次
+        pull_interval_sec: int = 60,       # 每 60s pull 一次
+        snapshot_interval_hours: int = 24, # 每 24h snapshot 一次
+    ) -> None: ...
+
+    async def run(self) -> None:
+        """Blocks until shutdown(). Runs 3 concurrent loops."""
+
+    async def shutdown(self) -> None:
+        """Graceful stop."""
+```
+
+**并发模型**: 3 个 asyncio task 并发运行 (flush loop / pull loop / snapshot loop)。
+
+---
+
+### §9.5 LWW 冲突解决
+
+**策略**: Last-Writer-Wins (LWW)，基于事件 `created_at` 时间戳。
+
+**冲突场景**: 两个设备同时修改同一 substrate 的 `is_pinned`:
+1. Device A: pin at T1
+2. Device B: unpin at T2 (T2 > T1)
+3. apply_remote_events 时比较 timestamp → T2 wins → is_pinned=false
+
+**conflict_count**: `ApplyResult.conflict_count` 记录本次 apply 中发生的冲突数 (信息性，不阻塞)。
+
+**v1.0 限制**: 仅 LWW，无 CRDT。对于 content 字段冲突 (如 note.content 同时编辑)，后写覆盖前写，无合并。v2.0 评估 OT/CRDT。
+
