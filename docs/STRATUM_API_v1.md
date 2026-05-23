@@ -2874,3 +2874,539 @@ docker compose -f docker-compose.layer-b.yml ps
 - Ollama (~8-10G) 运行时不启动 F5/SD
 - 通过 Redis `GpuLock` 互斥 (oprim 层)
 
+
+---
+
+## §15 已知限制与路线图
+
+### §15.1 v1.0 已知限制
+
+| # | 限制 | 影响 | 计划 |
+|---|------|------|------|
+| 1 | mode=augmented 仅零命中时触发 LLM 兜底 | 非零命中时 augmented = strict | Phase 11+ 修 |
+| 2 | 单用户场景 | 无多租户隔离 | Phase 14+ |
+| 3 | 无 wechat push | channel placeholder | v1.1+ |
+| 4 | 无 vision LLM 本地 | 走 Claude API，Aegis 接管 ollama 后切回本地 | Aegis Q4 |
+| 5 | TTS / audio_generator 不可用 | upstream image (ghcr.io/swivid/f5-tts:main) torch/torchvision 冲突 | v1.1 |
+| 6 | 无 char-level fragment | 仅 chunk-level (ULID#chunk_idx) | v2.0 |
+| 7 | 全非流式 | 所有 API 同步返回完整结果 | v1.1+ SSE |
+| 8 | list_substrates 仅 Python SDK + MCP | 无 REST 端点 | v1.1 |
+| 9 | dashscope embedding 硬编码 | 无 fallback，DashScope 不可用时 dense search 失效 | v1.1 bge_m3 |
+| 10 | next_run_at / last_run_at 不在 DB | 前端需 cron-parser 自算 | 评估中 |
+| 11 | push_subscriptions 0 行 | 通知实际不发送 | v1.1 前端注册流程 |
+| 12 | concept 表 0 行 | 概念提取流水线未实施 | Phase 14+ |
+| 13 | matched_language 未暴露 | 前端无法区分原文/翻译命中 | v1.1 |
+| 14 | Push 模块在 feat 分支 | 未合入 main | v1.0 完工前合并 |
+
+---
+
+### §15.2 v1.1 计划
+
+| 项目 | 说明 |
+|------|------|
+| TTS 自写 wrapper 或换 image | 解决 torch/torchvision 冲突 |
+| audio_generator Agent 启用 | 依赖 TTS 修复 |
+| web_search_augmented 增强 | SearXNG 集成到 augmented mode |
+| SSE 流式 | Agent 执行 + search 支持 Server-Sent Events |
+| mode=augmented 真实施 LLM 兜底 | 非零命中时也可追加 LLM 补充 |
+| list_substrates REST 端点 | port 14568 Web API |
+| bge_m3 本地 fallback | DashScope 不可用时切本地 embedding |
+| matched_language 字段 | SearchResult 中标注命中语言 |
+| push 前端注册流程 | Web Push subscription UI |
+
+---
+
+### §15.3 v2.0 (商业化期)
+
+| 项目 | 说明 |
+|------|------|
+| 多用户 / 多租户 | user_id 隔离 + RBAC |
+| 付费层 | 免费 / Pro / Enterprise |
+| 微信小程序集成 | wechat push channel 实施 |
+| char-level fragment 表 | 独立 fragment 表 + char_start/char_end |
+| CRDT 同步 | 替代 LWW，支持 content 合并 |
+| 联邦搜索 | 跨 Stratum 实例搜索 |
+
+---
+
+### §15.4 跨项目治理 (Aegis)
+
+Aegis 接管路线已确认:
+- **2026-Q4 MVP**: Aegis 统一 GPU 调度 + 模型管理
+- **当前**: Stratum 内部 `GpuLock` (Redis SETNX) 自治
+- **过渡**: Aegis MVP 后 Stratum 的 GpuLock 迁移到 Aegis 调度 API
+- **不写时间表**: 具体日期由 Aegis 团队确定
+
+
+---
+
+## 附录 A: TypeScript 接口定义
+
+供 Helios 前端使用。严格 snake_case，与 Python 字段名 1:1。
+
+```typescript
+// ═══════════════════════════════════════════════════════════════
+// Stratum API v1.0 TypeScript Interfaces
+// Generated from: oprim v2.8.0 / oskill v2.9.0 / omodul v1.8.0
+// ═══════════════════════════════════════════════════════════════
+
+// ── Core Entities ────────────────────────────────────────────
+
+interface Substrate {
+  id: string;
+  ulid: string;
+  title: string | null;
+  mime: string | null;
+  source_path: string | null;
+  file_hash: string | null;
+  byte_size: number | null;
+  page_count: number | null;
+  parser: string | null;
+  language: string | null;
+  has_cjk: boolean;
+  is_scanned: boolean;
+  created_at: string;
+  updated_at: string;
+  meta_json: SubstrateMeta;
+  is_pinned: boolean;
+  pinned_at: string | null;
+}
+
+interface SubstrateMeta {
+  medium: Medium;
+  source_type: SourceType;
+  source: Record<string, unknown>;
+  domain?: string;
+}
+
+interface Derivative {
+  id: string;
+  substrate_id: string;
+  kind: DerivativeKind;
+  seq: number;
+  content: string | null;
+  embedding_id: string | null;
+  embedding_dim: number | null;
+  meta_json: Record<string, unknown>;
+  created_at: string;
+}
+
+interface Note {
+  id: string;
+  title: string | null;
+  content: string | null;
+  wikilinks: string[];
+  substrate_id: string | null;
+  meta_json: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Concept {
+  id: string;
+  name: string;
+  aliases: string | null;
+  description: string | null;
+  wikilink: string | null;
+  source_ids: string[];
+  meta_json: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── View ─────────────────────────────────────────────────────
+
+interface View {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  default_filter: ViewFilter;
+  default_llm: ViewLLM;
+  default_system_prompt: string | null;
+  icon: string | null;
+  is_default: boolean;
+  is_builtin: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ViewFilter {
+  medium?: Medium[];
+  domain?: string[];
+  time_range?: TimeRange;
+}
+
+interface ViewLLM {
+  provider?: string;
+  model?: string;
+  temperature?: number;
+}
+
+// ── Agent ────────────────────────────────────────────────────
+
+interface AgentRun {
+  id: string;
+  user_id: string;
+  agent_name: AgentName;
+  params: Record<string, unknown>;
+  status: AgentStatus;
+  trace: AgentStep[];
+  citations: Citation[];
+  output: Record<string, unknown> | null;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  cost_usd: number;
+  started_at: string;
+  completed_at: string | null;
+  error_message: string | null;
+}
+
+interface AgentStep {
+  step_num: number;
+  tool_name: string;
+  tool_input: Record<string, unknown>;
+  tool_output: Record<string, unknown> | null;
+  duration_ms: number;
+  error: string | null;
+  timestamp: string;
+}
+
+interface Citation {
+  substrate_id: string;
+  title?: string;
+  fragment_id: string | null;
+  anchor: FragmentAnchor | null;
+  deep_link: string | null;
+}
+
+interface FragmentAnchor {
+  section: string | null;
+  char_start: number;  // v1.0: always 0
+  char_end: number;    // v1.0: always 0
+}
+
+// ── Scheduler ────────────────────────────────────────────────
+
+interface ScheduledJob {
+  id: string;
+  user_id: string;
+  name: string;
+  agent_name: AgentName;
+  agent_params: Record<string, unknown>;
+  cron_expression: string;
+  timezone: string;
+  enabled: boolean;
+  notify_on_completion: boolean;
+  notify_on_failure: boolean;
+  max_runtime_seconds: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ScheduledJobRun {
+  id: string;
+  job_id: string;
+  agent_run_id: string | null;
+  status: AgentStatus;
+  started_at: string;
+  completed_at: string | null;
+  error_message: string | null;
+}
+
+// ── Push ─────────────────────────────────────────────────────
+
+interface PushSubscription {
+  id: string;
+  user_id: string;
+  channel: PushChannel;
+  recipient: string;
+  keys_json: Record<string, unknown>;
+  enabled: boolean;
+  created_at: string;
+}
+
+// ── Sync ─────────────────────────────────────────────────────
+
+interface ChangefeedEvent {
+  id: number;
+  device_id: string;
+  user_id: string;
+  event_type: string;
+  aggregate_id: string | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+  seq: number;
+}
+
+interface ChangefeedLocal {
+  seq: number;
+  table_name: string;
+  row_id: string;
+  op: "insert" | "update" | "delete";
+  payload: Record<string, unknown> | null;
+  ts: string;
+}
+
+// ── Search ───────────────────────────────────────────────────
+
+interface SearchResult {
+  id: string;
+  type: "substrate" | "llm_augmented";
+  title: string;
+  score: number;
+  highlight: string | null;
+  metadata: SearchMetadata;
+  citation: SearchCitation | null;
+}
+
+interface SearchMetadata {
+  medium: string | null;
+  source_type: string | null;
+  domain: string | null;
+  created_at: string | null;
+}
+
+interface SearchCitation {
+  substrate_id: string;
+  fragment_id: string;
+  anchor: FragmentAnchor;
+  deep_link: string;
+}
+
+// ── Browser Extension ────────────────────────────────────────
+
+interface BrowserExtIngestRequest {
+  url: string;
+  title: string;
+  html?: string | null;
+  selection_text?: string | null;
+  tags?: string[];
+  create_note?: boolean;
+  note_content?: string | null;
+}
+
+interface BrowserExtIngestResponse {
+  substrate_id: string;
+  note_id: string | null;
+  deduplicated: boolean;
+  message: string;
+}
+
+// ── Enums / Unions ───────────────────────────────────────────
+
+type Medium = "webpage" | "paper" | "book" | "markdown_note" | "transcript" | "chat" | "other";
+type SourceType = "browser_extension" | "inbox_local" | "gdrive_sync";
+type DerivativeKind = "markdown" | "plaintext" | `translation_${string}`;
+type AgentName = "knowledge_curator" | "translation_worker" | "daily_digest"
+  | "reading_companion" | "lint_bot" | "audio_generator";
+type AgentStatus = "running" | "completed" | "failed" | "timeout";
+type PushChannel = "web" | "email" | "wechat" | "system";
+type TimeRange = "last_24h" | "last_7d" | "last_30d" | "last_90d";
+
+// ── Utility Types ────────────────────────────────────────────
+
+/** Wrap any response type with citations array */
+type WithCitations<T> = T & { citations: Citation[] };
+```
+
+
+---
+
+## 附录 B: 真实示例数据
+
+所有数据来自 Phase 1–13 实际运行，非编造。
+
+### B.1 Substrate
+
+```json
+{
+  "id": "01KS2MD25C3FAAAD7B9KTF9ZM9",
+  "title": "test_rag_paper",
+  "meta_json": {"medium": "other", "source_type": "inbox_local", "source": {"user_id": "demo_user"}},
+  "is_pinned": false,
+  "created_at": "2026-05-20T12:05:11"
+}
+```
+
+### B.2 Derivative (翻译)
+
+```json
+{
+  "id": "01KS2MQHTQN7D0G6H3A8ZYWQHA",
+  "substrate_id": "01KRX5S8ZM3EF5F89YASCDHSEW",
+  "kind": "translation_zh-CN",
+  "seq": 0,
+  "meta_json": {"source_lang": "auto", "target_lang": "zh-CN", "provider": "deepseek", "chunks": 1, "cost_usd": 0.0}
+}
+```
+
+### B.3 Agent Run (knowledge_curator, completed)
+
+```json
+{
+  "id": "748c306e-8ac0-4c30-98c5-6a4b962ee54f",
+  "agent_name": "knowledge_curator",
+  "status": "completed",
+  "trace": [
+    {"step_num": 1, "tool_name": "ingest_substrate", "tool_input": {"file": "/home/soffy/.stratum/inbox/test_rag_paper.md"}, "tool_output": {"substrate_id": "01KS2MD25C3FAAAD7B9KTF9ZM9", "medium": "other"}, "duration_ms": 311, "error": null, "timestamp": "2026-05-20T12:05:11.146744"}
+  ],
+  "output": {"files_found": 1, "ingested": 1, "skipped": 0, "failed": 0},
+  "started_at": "2026-05-20T12:05:10.750309",
+  "completed_at": "2026-05-20T12:05:11.146788"
+}
+```
+
+### B.4 Agent Run (translation_worker, completed, 0 candidates)
+
+```json
+{
+  "id": "a597d9f4-d1b9-4a7a-b041-8c0fa2ad2151",
+  "agent_name": "translation_worker",
+  "status": "completed",
+  "trace": [
+    {"step_num": 1, "tool_name": "list_substrates_without_translation", "tool_input": {"max": 1, "target_lang": "zh-CN"}, "tool_output": {"candidates": 0}, "duration_ms": 20, "error": null}
+  ],
+  "output": {"translated": 0, "candidates": 0}
+}
+```
+
+### B.5 LanceDB Vector Records
+
+```json
+[
+  {"id": "01KRX5S8ZM3EF5F89YASCDHSEW#0", "embedding": "[1024-dim float32]", "metadata": {"substrate_id": "01KRX5S8ZM3EF5F89YASCDHSEW", "chunk_idx": 0}},
+  {"id": "01KS2MQHTQN7D0G6H3A8ZYWQHA#0", "embedding": "[1024-dim float32]", "metadata": {"derivative_id": "01KS2MQHTQN7D0G6H3A8ZYWQHA", "chunk_idx": 0}}
+]
+```
+
+### B.6 Browser Extension URL Index
+
+```json
+[
+  {"id": "415ba8d8-ae4a-4f9a-b8ae-4f5587c20aa0", "url": "https://arxiv.org/abs/1706.03762", "normalized_url": "https://arxiv.org/abs/1706.03762", "substrate_id": "01KS2E3QK3KVN1WBVYSEEFAYT9", "ingested_at": "2026-05-20T18:15:17.006967"},
+  {"id": "6e40e623-3e61-4315-a252-c25e0c1ff207", "url": "https://example.com/zh/attention-survey", "normalized_url": "https://example.com/zh/attention-survey", "substrate_id": "01KS2E3TW4XXY4JWQJYA90AX1D", "ingested_at": "2026-05-20T18:15:20.463523"}
+]
+```
+
+### B.7 Changefeed Local
+
+```json
+{"seq": 1, "table_name": "substrate", "row_id": "01KRX5S8ZM3EF5F89YASCDHSEW", "op": "insert", "payload": "{\"substrate_id\": \"01KRX5S8ZM3EF5F89YASCDHSEW\"}", "ts": "2026-05-18T17:13:30.563263"}
+```
+
+
+---
+
+## 附录 C: Cron 表达式参考
+
+Stratum 使用标准 5 字段 cron (APScheduler `CronTrigger.from_crontab`):
+
+```
+┌───────────── minute (0-59)
+│ ┌───────────── hour (0-23)
+│ │ ┌───────────── day of month (1-31)
+│ │ │ ┌───────────── month (1-12)
+│ │ │ │ ┌───────────── day of week (0-6, 0=Monday)
+│ │ │ │ │
+* * * * *
+```
+
+**常用模式**:
+
+| 表达式 | 含义 | 用于 |
+|--------|------|------|
+| `0 6 * * *` | 每天 06:00 | daily_inbox_process |
+| `0 8 * * *` | 每天 08:00 | daily_digest |
+| `0 2 * * *` | 每天 02:00 | nightly_translation |
+| `0 3 * * *` | 每天 03:00 | nightly_audio_gen |
+| `0 7 * * 1` | 每周一 07:00 | weekly_lint |
+| `*/30 * * * *` | 每 30 分钟 | (自定义) |
+| `0 */4 * * *` | 每 4 小时 | (自定义) |
+| `0 0 1 * *` | 每月 1 日 00:00 | (自定义) |
+
+**时区**: per-job 配置，默认 `Asia/Shanghai`。APScheduler 内部使用 `pytz` / `zoneinfo`。
+
+**前端推荐库**:
+- `cron-parser` (npm): 计算 next/prev 执行时间
+- `cronstrue` (npm): 将 cron 表达式转为人类可读描述
+
+---
+
+## 附录 D: Enum 枚举值
+
+从 Phase 1–13 实际数据 (`SELECT DISTINCT`) + 代码定义汇总。
+
+### D.1 medium (substrate.meta_json.medium)
+
+| 值 | 说明 | 来源 |
+|----|------|------|
+| `webpage` | 网页 (浏览器扩展保存) | Phase 4 实际数据 |
+| `markdown_note` | Markdown 笔记 | Phase 1 实际数据 |
+| `paper` | 学术论文 (PDF) | schema 定义，v1.0 未产生 |
+| `book` | 书籍 (PDF/EPUB) | schema 定义，v1.0 未产生 |
+| `transcript` | 音视频字幕 | schema 定义，v1.0 未产生 |
+| `chat` | 对话存档 | schema 定义，v1.0 未产生 |
+| `other` | 未分类 | Phase 1 实际数据 |
+
+### D.2 source_type (substrate.meta_json.source_type)
+
+| 值 | 说明 |
+|----|------|
+| `browser_extension` | 浏览器扩展 ingest |
+| `inbox_local` | 本地 inbox 目录 ingest |
+| `gdrive_sync` | GDrive 同步拉取 (v1.0 未产生) |
+
+### D.3 derivative.kind
+
+| 值 | 说明 |
+|----|------|
+| `markdown` | Markdown 解析结果 |
+| `plaintext` | 纯文本提取 |
+| `translation_{lang}` | 翻译 (e.g. `translation_zh-CN`) |
+| `summary` | 摘要 (v1.0 未产生) |
+| `note` | 笔记型 derivative (v1.0 未产生) |
+| `tag` | 标签提取 (v1.0 未产生) |
+
+### D.4 agent_runs.status
+
+| 值 | 说明 |
+|----|------|
+| `running` | 执行中 |
+| `completed` | 成功完成 |
+| `failed` | 执行失败 (异常) |
+| `timeout` | 超时 (超过 timeout_seconds) |
+
+### D.5 agent_name
+
+| 值 | 说明 | v1.0 实际运行 |
+|----|------|---------------|
+| `knowledge_curator` | inbox 处理 | ✓ |
+| `daily_digest` | 每日摘要 | ✓ |
+| `translation_worker` | 批量翻译 | ✓ |
+| `reading_companion` | 问答 | ✓ |
+| `lint_bot` | 健康检查 | ✗ (未触发) |
+| `audio_generator` | 音频生成 | ✗ (disabled) |
+
+### D.6 push channel
+
+| 值 | 说明 | v1.0 状态 |
+|----|------|-----------|
+| `web` | Web Push (VAPID) | 代码就绪 |
+| `email` | SMTP 邮件 | 代码就绪 |
+| `wechat` | 微信推送 | placeholder |
+| `system` | 系统通知 | placeholder |
+
+### D.7 time_range (hybrid_search / view filter)
+
+| 值 | 天数 |
+|----|------|
+| `last_24h` | 1 |
+| `last_7d` | 7 |
+| `last_30d` | 30 |
+| `last_90d` | 90 |
+
+---
+
+**End of STRATUM_API_v1.md**
+
