@@ -1,0 +1,15 @@
+name: Daily Note
+description: Daily logging template
+content: |
+  # {{date}} ({{weekday}})
+  
+  ## Focus
+  - [ ] 
+  
+  ## Log
+  
+variables:
+  - name: date
+    source: auto
+  - name: weekday
+    source: auto

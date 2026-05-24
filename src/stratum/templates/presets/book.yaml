@@ -1,0 +1,9 @@
+name: Book Note
+content: |
+  # Book: {{title}}
+  
+  ## Meta
+  - Author: {{author}}
+  - Date: {{date}}
+  
+  ## Summary

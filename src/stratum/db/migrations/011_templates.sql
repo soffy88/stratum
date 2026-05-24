@@ -1,0 +1,6 @@
+CREATE TABLE templates (
+    id VARCHAR PRIMARY KEY,
+    name VARCHAR NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

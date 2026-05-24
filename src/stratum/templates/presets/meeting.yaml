@@ -1,0 +1,11 @@
+name: Meeting
+content: |
+  # Meeting: {{topic}} ({{date}})
+  
+  ## Attendees
+  - {{user}}
+  
+  ## Notes
+  
+  ## Actions
+  - [ ] 
