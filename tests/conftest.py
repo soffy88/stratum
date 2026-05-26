@@ -71,6 +71,22 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     timezone VARCHAR DEFAULT 'Asia/Shanghai', locale VARCHAR DEFAULT 'zh-CN',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS scheduled_jobs (
+    id VARCHAR PRIMARY KEY, user_id VARCHAR, corpus_id VARCHAR NOT NULL,
+    name VARCHAR, agent_name VARCHAR, agent_params VARCHAR,
+    cron_expression VARCHAR, timezone VARCHAR DEFAULT 'Asia/Shanghai',
+    enabled BOOLEAN DEFAULT TRUE, notify_on_completion BOOLEAN DEFAULT FALSE,
+    notify_on_failure BOOLEAN DEFAULT FALSE, max_runtime_seconds INTEGER DEFAULT 300,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS agent_runs (
+    id VARCHAR PRIMARY KEY, user_id VARCHAR, corpus_id VARCHAR NOT NULL,
+    agent_name VARCHAR, params VARCHAR, status VARCHAR DEFAULT 'pending',
+    trace VARCHAR, citations VARCHAR, output VARCHAR,
+    total_input_tokens INTEGER DEFAULT 0, total_output_tokens INTEGER DEFAULT 0,
+    cost_usd DOUBLE DEFAULT 0.0, started_at TIMESTAMP, completed_at TIMESTAMP,
+    error_message VARCHAR
+);
 """
 
 
