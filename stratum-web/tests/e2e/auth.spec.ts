@@ -9,9 +9,6 @@ const API = "http://localhost:9305";
 const suffix = Date.now().toString(36);
 
 test.describe("Auth E2E (real backend)", () => {
-  let accessToken: string;
-  let refreshCookie: string;
-
   test("register new user", async ({ request }) => {
     const res = await request.post(`${API}/api/auth/register`, {
       data: { email: `e2e_${suffix}@test.com`, username: `e2e_${suffix}`, password: "TestPass123!" },
@@ -29,10 +26,8 @@ test.describe("Auth E2E (real backend)", () => {
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.access_token).toBeTruthy();
-    accessToken = body.access_token;
     const cookies = res.headers()["set-cookie"] || "";
     expect(cookies).toContain("refresh_token");
-    refreshCookie = cookies;
   });
 
   test("GET /api/auth/me with valid token", async ({ request }) => {
