@@ -60,4 +60,29 @@ describe("useAuthStore", () => {
     expect(useAuthStore.getState().user).toBeNull();
     expect(useAuthStore.getState().isLoading).toBe(false);
   });
+
+  it("login calls post with correct payload", async () => {
+    const mockUser = { user_id: "u1", email: "a@b.com", username: "a", email_verified: false, created_at: "" };
+    vi.mocked(apiClient.post).mockResolvedValue({ access_token: "t", user: mockUser });
+    await useAuthStore.getState().login("a@b.com", "pass");
+    expect(apiClient.post).toHaveBeenCalledWith("/api/auth/login", { email_or_username: "a@b.com", password: "pass" });
+  });
+
+  it("logout calls post to /api/auth/logout", async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({});
+    await useAuthStore.getState().logout();
+    expect(apiClient.post).toHaveBeenCalledWith("/api/auth/logout", {});
+  });
+
+  it("loadCurrentUser calls get /api/auth/me", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ user_id: "u1", email: "a@b.com", username: "a", email_verified: false, created_at: "" });
+    await useAuthStore.getState().loadCurrentUser();
+    expect(apiClient.get).toHaveBeenCalledWith("/api/auth/me");
+  });
+
+  it("login failure does not set user", async () => {
+    vi.mocked(apiClient.post).mockRejectedValue(new Error("bad"));
+    await expect(useAuthStore.getState().login("a@b.com", "bad")).rejects.toThrow();
+    expect(useAuthStore.getState().user).toBeNull();
+  });
 });

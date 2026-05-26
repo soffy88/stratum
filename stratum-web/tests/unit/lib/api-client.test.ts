@@ -69,4 +69,11 @@ describe("ApiClient", () => {
     apiClient.setAccessToken("abc");
     expect(apiClient.getAccessToken()).toBe("abc");
   });
+
+  it("delete method sends DELETE request", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => ({}) });
+    vi.stubGlobal("fetch", mockFetch);
+    await apiClient.delete("/api/test");
+    expect(mockFetch.mock.calls[0]?.[1]?.method).toBe("DELETE");
+  });
 });

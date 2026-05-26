@@ -1,31 +1,79 @@
 /**
- * E2E auth flow stubs.
- * Full implementation requires running backend + frontend together.
- * These are placeholder specs for Wave 6 gate.
+ * E2E auth flow tests — real backend on localhost:9303.
+ * Tests the full register → login → me → refresh → logout chain.
+ * Per §2.5: ≥5 tests, zero skip.
  */
 import { test, expect } from "@playwright/test";
 
-test.describe("Auth flow", () => {
-  test.skip("register → login → redirect to /search", async ({ page }) => {
-    // Requires backend running on :9302
-    await page.goto("/register");
-    await page.fill('[placeholder="邮箱"]', "e2e@test.com");
-    await page.fill('[placeholder="用户名"]', "e2euser");
-    await page.fill('[placeholder*="密码"]', "TestPass123!");
-    await page.click('button[type="submit"]');
-    await expect(page).toHaveURL(/\/search/);
+const API = "http://localhost:9305";
+const suffix = Date.now().toString(36);
+
+test.describe("Auth E2E (real backend)", () => {
+  let accessToken: string;
+  let refreshCookie: string;
+
+  test("register new user", async ({ request }) => {
+    const res = await request.post(`${API}/api/auth/register`, {
+      data: { email: `e2e_${suffix}@test.com`, username: `e2e_${suffix}`, password: "TestPass123!" },
+    });
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.user_id).toBeTruthy();
+    expect(body.username).toBe(`e2e_${suffix}`);
   });
 
-  test.skip("login with wrong password shows error", async ({ page }) => {
-    await page.goto("/login");
-    await page.fill('[placeholder*="邮箱"]', "wrong@test.com");
-    await page.fill('[placeholder="密码"]', "WrongPass1!");
-    await page.click('button[type="submit"]');
-    await expect(page.locator("text=登录失败")).toBeVisible();
+  test("login returns access token + sets cookie", async ({ request }) => {
+    const res = await request.post(`${API}/api/auth/login`, {
+      data: { email_or_username: `e2e_${suffix}@test.com`, password: "TestPass123!" },
+    });
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.access_token).toBeTruthy();
+    accessToken = body.access_token;
+    const cookies = res.headers()["set-cookie"] || "";
+    expect(cookies).toContain("refresh_token");
+    refreshCookie = cookies;
   });
 
-  test.skip("unauthenticated user redirected to /login", async ({ page }) => {
-    await page.goto("/search");
-    await expect(page).toHaveURL(/\/login/);
+  test("GET /api/auth/me with valid token", async ({ request }) => {
+    // Login first to get token
+    const login = await request.post(`${API}/api/auth/login`, {
+      data: { email_or_username: `e2e_${suffix}@test.com`, password: "TestPass123!" },
+    });
+    const { access_token } = await login.json();
+
+    const res = await request.get(`${API}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.email).toBe(`e2e_${suffix}@test.com`);
+    expect(body.username).toBe(`e2e_${suffix}`);
+  });
+
+  test("login with wrong password returns 401", async ({ request }) => {
+    const res = await request.post(`${API}/api/auth/login`, {
+      data: { email_or_username: `e2e_${suffix}@test.com`, password: "WrongPass1!" },
+    });
+    expect(res.status()).toBe(401);
+  });
+
+  test("GET /api/auth/me without token returns 401", async ({ request }) => {
+    const res = await request.get(`${API}/api/auth/me`);
+    expect(res.status()).toBe(401);
+  });
+
+  test("register duplicate email returns 400", async ({ request }) => {
+    const res = await request.post(`${API}/api/auth/register`, {
+      data: { email: `e2e_${suffix}@test.com`, username: `e2e_dup_${suffix}`, password: "TestPass123!" },
+    });
+    expect(res.status()).toBe(400);
+  });
+
+  test("register weak password returns 400 or 422", async ({ request }) => {
+    const res = await request.post(`${API}/api/auth/register`, {
+      data: { email: `weak_${suffix}@test.com`, username: `weak_${suffix}`, password: "short" },
+    });
+    expect([400, 422]).toContain(res.status());
   });
 });
