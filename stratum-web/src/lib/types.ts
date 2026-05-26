@@ -38,3 +38,50 @@ export interface AgentRunsResponse {
   items: AgentRun[];
   total: number;
 }
+
+export interface ScheduledJob {
+  id: string;
+  name: string;
+  agent_name: string;
+  cron_expression: string;
+  timezone: string;
+  enabled: boolean;
+  created_at?: string | null;
+}
+
+export interface ScheduledJobsResponse {
+  items: ScheduledJob[];
+  total: number;
+}
+
+export interface SubstrateItem {
+  id: string;
+  title: string;
+  mime?: string | null;
+  language?: string | null;
+  page_count?: number | null;
+  created_at?: string | null;
+}
+
+export interface SubstratesResponse {
+  items: SubstrateItem[];
+  total: number;
+}
+
+export interface DerivativeItem {
+  id: string;
+  kind: string;
+  seq: number;
+  content: string;
+}
+
+export interface BacklinkItem {
+  id: string;
+  title: string;
+  snippet?: string | null;
+}
+
+export interface BacklinksResponse {
+  items: BacklinkItem[];
+  total: number;
+}
