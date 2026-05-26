@@ -58,6 +58,19 @@ CREATE TABLE IF NOT EXISTS templates (
     content VARCHAR, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS share_tokens (
+    token VARCHAR PRIMARY KEY, resource_type VARCHAR NOT NULL, resource_id VARCHAR NOT NULL,
+    corpus_id VARCHAR NOT NULL, created_by VARCHAR NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, expires_at TIMESTAMP,
+    revoked_at TIMESTAMP, access_count INTEGER DEFAULT 0, last_accessed_at TIMESTAMP,
+    allow_anonymous BOOLEAN DEFAULT TRUE, meta_json VARCHAR DEFAULT '{}'
+);
+CREATE TABLE IF NOT EXISTS user_profiles (
+    user_id VARCHAR PRIMARY KEY, display_name VARCHAR, avatar_url VARCHAR,
+    bio VARCHAR, location VARCHAR, website VARCHAR,
+    timezone VARCHAR DEFAULT 'Asia/Shanghai', locale VARCHAR DEFAULT 'zh-CN',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 
