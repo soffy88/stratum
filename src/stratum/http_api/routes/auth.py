@@ -64,7 +64,10 @@ async def get_me(request: Request, db=Depends(get_db)):
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "): raise HTTPException(401, "Invalid token")
     token = auth_header.split(" ")[1]
-    payload = decode_access(token)
+    try:
+        payload = decode_access(token)
+    except Exception:
+        raise HTTPException(401, "Invalid or expired token")
     user = UserDAO(db).get_user_by_id(payload.get("sub"))
     if not user: raise HTTPException(404, "User not found")
     return UserPublic(user_id=user.id, email=user.email, username=user.username, email_verified=user.email_verified, created_at=user.created_at)
