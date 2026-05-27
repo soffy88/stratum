@@ -1,47 +1,47 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api-client";
-import type { SubstrateItem, DerivativeItem } from "@/lib/types";
+import { ODocumentReader, OAnnotationLayer, OCitationCard } from "@helios/blocks";
+import type { Citation } from "@helios/blocks";
+import { useDocument } from "@/lib/adapters/documents";
+
+/**
+ * TECHNICAL_DEBT: OAnnotationLayer rendered in display-only mode (fragments=[]).
+ * No /api/annotations endpoint exists in Phase 14. See Wave 10A spec §3.3.5.
+ * When annotation endpoint is added (Phase 15+), populate fragments from API.
+ */
 
 export default function DocumentReaderPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const { substrate, derivatives, isLoading } = useDocument(id);
 
-  const { data: substrate, isLoading: loadingSub } = useQuery({
-    queryKey: ["substrate", id],
-    queryFn: () => apiClient.get<SubstrateItem>(`/api/substrates/${id}`),
-    enabled: !!id,
-  });
-
-  const { data: derivatives } = useQuery({
-    queryKey: ["derivatives", id],
-    queryFn: () => apiClient.get<{ items: DerivativeItem[] }>(`/api/substrates/${id}/derivatives`),
-    enabled: !!id,
-  });
-
-  if (loadingSub) return <p className="text-[var(--color-muted)]">加载中...</p>;
+  if (isLoading) return <p className="text-[var(--color-muted)]">加载中...</p>;
   if (!substrate) return <p className="text-red-600">文档未找到</p>;
 
-  return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-xl font-semibold mb-2">{substrate.title}</h1>
-      <div className="text-sm text-[var(--color-muted)] mb-6">
-        {substrate.mime && <span>{substrate.mime}</span>}
-        {substrate.language && <span className="ml-2">{substrate.language}</span>}
-        {substrate.page_count && <span className="ml-2">{substrate.page_count} 页</span>}
-      </div>
+  // Self-citation card: lets users copy a citation reference for this document
+  const selfCitation: Citation = {
+    substrate_id: substrate.id,
+    title: substrate.title ?? undefined,
+    fragment_id: null,
+    anchor: null,
+    deep_link: null,
+  };
 
-      <h2 className="text-lg font-medium mb-3">内容片段</h2>
-      <div className="space-y-3">
-        {derivatives?.items.map((d: DerivativeItem) => (
-          <div key={d.id} className="p-3 border border-[var(--color-border)] rounded">
-            <div className="text-xs text-[var(--color-muted)] mb-1">{d.kind} #{d.seq}</div>
-            <p className="text-sm whitespace-pre-wrap">{d.content}</p>
-          </div>
-        ))}
-        {derivatives?.items.length === 0 && <p className="text-[var(--color-muted)]">暂无片段</p>}
+  return (
+    <div className="max-w-5xl mx-auto space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
+        <ODocumentReader
+          substrate={substrate}
+          derivatives={derivatives}
+        />
+        {/* Annotation sidebar — display-only until /api/annotations is implemented */}
+        <OAnnotationLayer fragments={[]} emptyText="暂无标注" />
+      </div>
+      {/* Source citation — allows copying a structured reference for this document */}
+      <div className="pt-2 border-t border-[var(--color-border)]">
+        <p className="text-xs text-[var(--color-muted)] mb-2">引用此文档</p>
+        <OCitationCard citation={selfCitation} compact />
       </div>
     </div>
   );
