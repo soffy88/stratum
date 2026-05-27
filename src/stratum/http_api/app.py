@@ -1,5 +1,7 @@
 """Stratum HTTP API application."""
 
+import os
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -8,6 +10,20 @@ from stratum.http_api.routes import auth, search, substrates, notes, agents, sch
 from stratum.http_api.routes.feedback import router as feedback_router
 from stratum.http_api.routes.share import router as share_router
 from stratum.http_api.routes.users import router as users_router
+
+# Sentry: only initialise when SENTRY_DSN is set (env-guarded — no DSN = no telemetry)
+_sentry_dsn = os.getenv("SENTRY_DSN")
+if _sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.starlette import StarletteIntegration
+
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[StarletteIntegration(), FastApiIntegration()],
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        send_default_pii=False,
+    )
 
 app = FastAPI(title="Stratum API", version="1.2.0")
 

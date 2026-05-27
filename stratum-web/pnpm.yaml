@@ -2,3 +2,4 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - core-js-pure
+  - "@sentry/cli"
