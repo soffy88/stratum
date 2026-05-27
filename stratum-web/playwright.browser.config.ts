@@ -112,6 +112,10 @@ export default defineConfig({
       stderr: "pipe",
       env: {
         STRATUM_API_PORT: String(BACKEND_PORT),
+        // Server-side fetch in share/[token]/page.tsx uses STRATUM_API_INTERNAL_URL
+        // (full URL) instead of STRATUM_API_PORT so the Server Component finds the
+        // test backend at localhost:9311 without constructing the URL from a port.
+        STRATUM_API_INTERNAL_URL: BACKEND_URL,
         RAYON_NUM_THREADS: "2",
       },
     },
