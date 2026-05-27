@@ -4,3 +4,9 @@ dist/
 .env
 .env.local
 storybook-static/
+
+# Playwright runtime artifacts (regenerated each run)
+tests/e2e/browser/.auth.json
+tests/e2e/browser/.state.json
+playwright-report/
+test-results/
