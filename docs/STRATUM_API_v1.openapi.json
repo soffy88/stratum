@@ -1,0 +1,1052 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Stratum API",
+    "version": "1.2.0",
+    "description": "Stratum knowledge corpus API — Phase 11C + Phase 14. Narrative spec: STRATUM_API_v1.md",
+    "contact": {
+      "name": "Stratum",
+      "url": "https://github.com/soffy88/stratum"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:9305",
+      "description": "Development (uvicorn direct)"
+    },
+    {
+      "url": "http://localhost:9302",
+      "description": "Production / Docker (Caddy gateway)"
+    },
+    {
+      "url": "http://localhost:9311",
+      "description": "E2E test server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "HS256 JWT. Obtained from POST /api/auth/login. Expires in 15 minutes."
+      },
+      "AdminSecret": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Admin-Secret",
+        "description": "HMAC-compared against ADMIN_SECRET env var."
+      }
+    },
+    "schemas": {
+      "UserPublic": {
+        "type": "object",
+        "required": ["user_id", "email", "username", "email_verified", "created_at"],
+        "properties": {
+          "user_id": { "type": "string", "description": "ULID" },
+          "email": { "type": "string", "format": "email" },
+          "username": { "type": "string" },
+          "email_verified": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "UserProfilePublic": {
+        "type": "object",
+        "required": ["username", "created_at"],
+        "properties": {
+          "username": { "type": "string" },
+          "display_name": { "type": "string", "nullable": true },
+          "bio": { "type": "string", "nullable": true },
+          "avatar_url": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "NoteDetail": {
+        "type": "object",
+        "required": ["id", "wikilinks", "meta_json", "created_at", "updated_at"],
+        "properties": {
+          "id": { "type": "string", "description": "UUID v4" },
+          "title": { "type": "string", "nullable": true },
+          "content": { "type": "string", "nullable": true, "description": "Raw Markdown" },
+          "wikilinks": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "All [[wikilink]] references in content"
+          },
+          "substrate_id": { "type": "string", "nullable": true, "description": "ULID of source substrate" },
+          "meta_json": { "type": "object", "additionalProperties": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BacklinkItem": {
+        "type": "object",
+        "required": ["id", "title"],
+        "properties": {
+          "id": { "type": "string", "description": "UUID v4 of referencing note" },
+          "title": { "type": "string" },
+          "snippet": { "type": "string", "nullable": true, "description": "First 100 chars of content" }
+        }
+      },
+      "BacklinksResponse": {
+        "type": "object",
+        "required": ["items", "total"],
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/BacklinkItem" } },
+          "total": { "type": "integer" }
+        }
+      },
+      "SubstrateItem": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "description": "ULID" },
+          "title": { "type": "string", "nullable": true },
+          "mime": { "type": "string", "nullable": true },
+          "language": { "type": "string", "nullable": true, "description": "ISO 639-1" },
+          "page_count": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "SubstratesResponse": {
+        "type": "object",
+        "required": ["items", "total"],
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/SubstrateItem" } },
+          "total": { "type": "integer" }
+        }
+      },
+      "DerivativeItem": {
+        "type": "object",
+        "required": ["id", "kind", "seq"],
+        "properties": {
+          "id": { "type": "string", "description": "ULID" },
+          "kind": {
+            "type": "string",
+            "description": "markdown | plaintext | summary | note | tag | translation_{lang}"
+          },
+          "seq": { "type": "integer" },
+          "content": { "type": "string", "nullable": true }
+        }
+      },
+      "DerivativesResponse": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/DerivativeItem" } }
+        }
+      },
+      "SearchRequest": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": { "type": "string" },
+          "top_k": { "type": "integer", "default": 10 },
+          "mode": {
+            "type": "string",
+            "enum": ["strict", "augmented"],
+            "default": "augmented"
+          },
+          "rerank": { "type": "boolean", "default": false },
+          "expand": { "type": "boolean", "default": false },
+          "view_id": { "type": "string", "nullable": true },
+          "filter_medium": {
+            "type": "array",
+            "items": { "type": "string" },
+            "nullable": true
+          }
+        }
+      },
+      "SearchResultItem": {
+        "type": "object",
+        "required": ["id", "type", "title", "score"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string", "enum": ["substrate", "llm_augmented"] },
+          "title": { "type": "string" },
+          "score": { "type": "number", "minimum": 0, "maximum": 1 },
+          "highlight": { "type": "string", "nullable": true }
+        }
+      },
+      "SearchResponse": {
+        "type": "object",
+        "required": ["results", "query_used"],
+        "properties": {
+          "results": { "type": "array", "items": { "$ref": "#/components/schemas/SearchResultItem" } },
+          "query_used": { "type": "string" }
+        }
+      },
+      "AgentRun": {
+        "type": "object",
+        "required": ["id", "agent_name", "status"],
+        "properties": {
+          "id": { "type": "string", "description": "ULID" },
+          "agent_name": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "running", "completed", "failed"]
+          },
+          "output": { "type": "string", "nullable": true },
+          "started_at": { "type": "string", "format": "date-time", "nullable": true },
+          "completed_at": { "type": "string", "format": "date-time", "nullable": true },
+          "error_message": { "type": "string", "nullable": true }
+        }
+      },
+      "RunAgentRequest": {
+        "type": "object",
+        "properties": {
+          "params": { "type": "object", "additionalProperties": true, "default": {} }
+        }
+      },
+      "RunAgentResponse": {
+        "type": "object",
+        "required": ["agent_run", "message"],
+        "properties": {
+          "agent_run": { "$ref": "#/components/schemas/AgentRun" },
+          "message": { "type": "string" }
+        }
+      },
+      "AgentRunsResponse": {
+        "type": "object",
+        "required": ["items", "total"],
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/AgentRun" } },
+          "total": { "type": "integer" }
+        }
+      },
+      "ScheduledJob": {
+        "type": "object",
+        "required": ["id", "name", "agent_name", "cron_expression", "timezone", "enabled"],
+        "properties": {
+          "id": { "type": "string", "description": "ULID" },
+          "name": { "type": "string" },
+          "agent_name": {
+            "type": "string",
+            "enum": [
+              "knowledge_curator", "reading_companion", "daily_digest",
+              "translation_worker", "lint_bot", "audio_generator"
+            ]
+          },
+          "cron_expression": { "type": "string", "description": "5-field cron (e.g. '0 6 * * *')" },
+          "timezone": { "type": "string", "default": "Asia/Shanghai" },
+          "enabled": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "ScheduledJobsResponse": {
+        "type": "object",
+        "required": ["items", "total"],
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/ScheduledJob" } },
+          "total": { "type": "integer" }
+        }
+      },
+      "CreateJobRequest": {
+        "type": "object",
+        "required": ["name", "agent_name", "cron_expression"],
+        "properties": {
+          "name": { "type": "string" },
+          "agent_name": { "type": "string" },
+          "agent_params": { "type": "object", "additionalProperties": true, "default": {} },
+          "cron_expression": { "type": "string" },
+          "timezone": { "type": "string", "default": "Asia/Shanghai" },
+          "enabled": { "type": "boolean", "default": true }
+        }
+      },
+      "UpdateJobRequest": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean", "nullable": true },
+          "cron_expression": { "type": "string", "nullable": true },
+          "name": { "type": "string", "nullable": true }
+        }
+      },
+      "CreateShareRequest": {
+        "type": "object",
+        "properties": {
+          "expires_in_days": { "type": "integer", "nullable": true },
+          "allow_anonymous": { "type": "boolean", "default": true }
+        }
+      },
+      "CreateShareResponse": {
+        "type": "object",
+        "required": ["token", "share_url"],
+        "properties": {
+          "token": { "type": "string" },
+          "share_url": { "type": "string" },
+          "expires_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "ShareTokenPublic": {
+        "type": "object",
+        "required": ["token", "resource_type", "resource_id", "created_at", "access_count"],
+        "properties": {
+          "token": { "type": "string" },
+          "resource_type": { "type": "string", "enum": ["note"] },
+          "resource_id": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "expires_at": { "type": "string", "format": "date-time", "nullable": true },
+          "access_count": { "type": "integer" }
+        }
+      },
+      "ListSharesResponse": {
+        "type": "object",
+        "required": ["items", "total"],
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/ShareTokenPublic" } },
+          "total": { "type": "integer" }
+        }
+      },
+      "PublicNoteResponse": {
+        "type": "object",
+        "required": ["title", "content", "shared_by_username", "shared_at"],
+        "properties": {
+          "title": { "type": "string" },
+          "content": {
+            "type": "string",
+            "description": "Markdown content; private wikilinks ([[_...]]) replaced with [私有引用]"
+          },
+          "shared_by_username": { "type": "string" },
+          "shared_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SessionPublic": {
+        "type": "object",
+        "required": ["id", "created_at", "last_used_at", "is_current"],
+        "properties": {
+          "id": { "type": "string", "description": "ULID" },
+          "user_agent": { "type": "string", "nullable": true },
+          "ip_address": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 16,
+            "description": "Truncated for privacy"
+          },
+          "created_at": { "type": "string", "format": "date-time" },
+          "last_used_at": { "type": "string", "format": "date-time" },
+          "is_current": { "type": "boolean" }
+        }
+      },
+      "SessionsResponse": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/SessionPublic" } }
+        }
+      },
+      "FeedbackRequest": {
+        "type": "object",
+        "required": ["content"],
+        "properties": {
+          "content": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "page_url": { "type": "string", "nullable": true }
+        }
+      },
+      "AdminStats": {
+        "type": "object",
+        "required": ["users", "substrates", "active_sessions", "feedback_submissions", "share_links"],
+        "properties": {
+          "users": { "type": "integer" },
+          "substrates": { "type": "integer" },
+          "active_sessions": { "type": "integer" },
+          "feedback_submissions": { "type": "integer" },
+          "share_links": { "type": "integer" }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "required": ["detail"],
+        "properties": {
+          "detail": {
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": { "type": "string" },
+                    "loc": { "type": "array", "items": { "type": "string" } },
+                    "msg": { "type": "string" },
+                    "input": {}
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Health check",
+        "operationId": "health_check",
+        "responses": {
+          "200": {
+            "description": "Service healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "status": { "type": "string", "example": "healthy" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Register a new user",
+        "operationId": "auth_register",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "username", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "username": { "type": "string", "minLength": 3, "maxLength": 32 },
+                  "password": { "type": "string", "minLength": 10 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user_id": { "type": "string" },
+                    "email": { "type": "string" },
+                    "username": { "type": "string" },
+                    "verify_email_sent": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Email or username already taken", "$ref": "#/components/schemas/ErrorDetail" },
+          "422": { "description": "Validation error" }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Login — returns access token + sets refresh_token cookie",
+        "operationId": "auth_login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email_or_username", "password"],
+                "properties": {
+                  "email_or_username": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "headers": {
+              "Set-Cookie": {
+                "description": "refresh_token=...; HttpOnly; SameSite=Lax; Secure; Max-Age=2592000",
+                "schema": { "type": "string" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "access_token": { "type": "string" },
+                    "expires_in": { "type": "integer", "example": 900 },
+                    "user": { "$ref": "#/components/schemas/UserPublic" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Refresh access token using refresh_token cookie",
+        "operationId": "auth_refresh",
+        "responses": {
+          "200": {
+            "description": "New access token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "access_token": { "type": "string" },
+                    "expires_in": { "type": "integer", "example": 900 }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Cookie missing, invalid, expired, or session revoked" }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Logout — revokes session and clears cookie",
+        "operationId": "auth_logout",
+        "responses": {
+          "200": {
+            "description": "Session revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "status": { "type": "string", "example": "ok" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": ["auth"],
+        "summary": "Get current authenticated user",
+        "operationId": "auth_me",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Current user",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/UserPublic" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
+    "/api/notes/{note_id}": {
+      "get": {
+        "tags": ["notes"],
+        "summary": "Get note by ID",
+        "operationId": "get_note",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "note_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Note detail",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/NoteDetail" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" },
+          "404": { "description": "Note not found or not in user corpus" }
+        }
+      }
+    },
+    "/api/notes/{note_id}/backlinks": {
+      "get": {
+        "tags": ["notes"],
+        "summary": "Get backlinks for a note",
+        "operationId": "get_note_backlinks",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "note_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Backlink list",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/BacklinksResponse" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" },
+          "404": { "description": "Note not found" }
+        }
+      }
+    },
+    "/api/substrates": {
+      "get": {
+        "tags": ["substrates"],
+        "summary": "List substrates in user corpus",
+        "operationId": "list_substrates",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "medium",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 50 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Substrate list",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/SubstratesResponse" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" }
+        }
+      }
+    },
+    "/api/substrates/{substrate_id}": {
+      "get": {
+        "tags": ["substrates"],
+        "summary": "Get substrate by ID",
+        "operationId": "get_substrate",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "substrate_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Substrate detail",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/SubstrateItem" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" },
+          "404": { "description": "Substrate not found or not in user corpus" }
+        }
+      }
+    },
+    "/api/substrates/{substrate_id}/derivatives": {
+      "get": {
+        "tags": ["substrates"],
+        "summary": "Get derivatives for a substrate",
+        "operationId": "get_substrate_derivatives",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "substrate_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Derivative list",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/DerivativesResponse" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" },
+          "404": { "description": "Substrate not found" }
+        }
+      }
+    },
+    "/api/search": {
+      "post": {
+        "tags": ["search"],
+        "summary": "Search the user corpus",
+        "operationId": "search",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/SearchRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/SearchResponse" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" }
+        }
+      }
+    },
+    "/api/agents/{agent_name}/run": {
+      "post": {
+        "tags": ["agents"],
+        "summary": "Trigger an agent run",
+        "operationId": "run_agent",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "agent_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "knowledge_curator", "reading_companion", "daily_digest",
+                "translation_worker", "lint_bot", "audio_generator"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/RunAgentRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Agent run record",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/RunAgentResponse" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" }
+        }
+      }
+    },
+    "/api/agents/runs": {
+      "get": {
+        "tags": ["agents"],
+        "summary": "List agent run history",
+        "operationId": "list_agent_runs",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "agent", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent run list",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AgentRunsResponse" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" }
+        }
+      }
+    },
+    "/api/scheduled_jobs": {
+      "get": {
+        "tags": ["scheduled_jobs"],
+        "summary": "List scheduled jobs",
+        "operationId": "list_scheduled_jobs",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Job list",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ScheduledJobsResponse" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" }
+        }
+      },
+      "post": {
+        "tags": ["scheduled_jobs"],
+        "summary": "Create a scheduled job",
+        "operationId": "create_scheduled_job",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CreateJobRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created job",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ScheduledJob" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" }
+        }
+      }
+    },
+    "/api/scheduled_jobs/{job_id}": {
+      "put": {
+        "tags": ["scheduled_jobs"],
+        "summary": "Update a scheduled job",
+        "operationId": "update_scheduled_job",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "job_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/UpdateJobRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated job",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ScheduledJob" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" },
+          "404": { "description": "Job not found" }
+        }
+      },
+      "delete": {
+        "tags": ["scheduled_jobs"],
+        "summary": "Delete a scheduled job",
+        "operationId": "delete_scheduled_job",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "job_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "status": { "type": "string", "example": "deleted" } }
+                }
+              }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" },
+          "404": { "description": "Job not found" }
+        }
+      }
+    },
+    "/api/share/note/{note_id}": {
+      "post": {
+        "tags": ["share"],
+        "summary": "Create a share link for a note",
+        "operationId": "create_share",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "note_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/CreateShareRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Share token created",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/CreateShareResponse" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" },
+          "404": { "description": "Note not found" }
+        }
+      }
+    },
+    "/api/shares": {
+      "get": {
+        "tags": ["share"],
+        "summary": "List all share tokens for the current user",
+        "operationId": "list_shares",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Share token list",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ListSharesResponse" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" }
+        }
+      }
+    },
+    "/api/share/{token}": {
+      "delete": {
+        "tags": ["share"],
+        "summary": "Revoke a share token",
+        "operationId": "revoke_share",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "token", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "status": { "type": "string", "example": "revoked" } }
+                }
+              }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" },
+          "403": { "description": "Token belongs to another user" }
+        }
+      }
+    },
+    "/share/{token}": {
+      "get": {
+        "tags": ["share"],
+        "summary": "Public share page — no auth required",
+        "operationId": "get_public_share",
+        "description": "Consumed by the Next.js share/[token] Server Component via STRATUM_API_INTERNAL_URL. Not proxied through /api/*.",
+        "parameters": [
+          { "name": "token", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shared note content",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/PublicNoteResponse" } }
+            }
+          },
+          "404": { "description": "Token not found or resource missing" },
+          "410": { "description": "Token revoked or expired" }
+        }
+      }
+    },
+    "/api/users/by-username/{username}": {
+      "get": {
+        "tags": ["users"],
+        "summary": "Get public user profile by username",
+        "operationId": "get_user_by_username",
+        "parameters": [
+          { "name": "username", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public profile",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/UserProfilePublic" } }
+            }
+          },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
+    "/api/users/me/sessions": {
+      "get": {
+        "tags": ["users"],
+        "summary": "List active sessions for current user",
+        "operationId": "list_my_sessions",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Session list",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/SessionsResponse" } }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" }
+        }
+      }
+    },
+    "/api/users/me/sessions/{session_id}": {
+      "delete": {
+        "tags": ["users"],
+        "summary": "Revoke a specific session",
+        "operationId": "revoke_session",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "session_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "status": { "type": "string", "example": "revoked" } }
+                }
+              }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" },
+          "404": { "description": "Session not found" }
+        }
+      }
+    },
+    "/api/feedback": {
+      "post": {
+        "tags": ["feedback"],
+        "summary": "Submit in-app feedback",
+        "operationId": "submit_feedback",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/FeedbackRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Feedback received",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "status": { "type": "string", "example": "received" } }
+                }
+              }
+            }
+          },
+          "401": { "description": "JWT missing or invalid" },
+          "422": { "description": "Validation error (content empty or >2000 chars)" }
+        }
+      }
+    },
+    "/api/admin/stats": {
+      "get": {
+        "tags": ["admin"],
+        "summary": "Get aggregate platform statistics",
+        "operationId": "admin_stats",
+        "security": [{ "AdminSecret": [] }],
+        "responses": {
+          "200": {
+            "description": "Platform stats",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AdminStats" } }
+            }
+          },
+          "403": { "description": "Admin secret missing or incorrect" },
+          "503": { "description": "ADMIN_SECRET env var not configured" }
+        }
+      }
+    }
+  },
+  "tags": [
+    { "name": "auth", "description": "Authentication — register, login, refresh, logout, me" },
+    { "name": "notes", "description": "Note read + backlink graph" },
+    { "name": "substrates", "description": "Source document catalog and derivatives" },
+    { "name": "search", "description": "Semantic + keyword corpus search" },
+    { "name": "agents", "description": "Agent invocation and run history" },
+    { "name": "scheduled_jobs", "description": "CRON-based agent scheduling" },
+    { "name": "share", "description": "Public note sharing — create, list, revoke, read" },
+    { "name": "users", "description": "Public profiles + session management" },
+    { "name": "feedback", "description": "Alpha-period in-app feedback" },
+    { "name": "admin", "description": "Internal stats — X-Admin-Secret protected" },
+    { "name": "health", "description": "Infrastructure health probe" }
+  ]
+}
