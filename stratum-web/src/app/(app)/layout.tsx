@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { FeedbackWidget } from "@/components/shared/FeedbackWidget";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading, loadCurrentUser } = useAuthStore();
@@ -23,6 +24,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen">
       <Sidebar />
       <main className="flex-1 overflow-auto p-6">{children}</main>
+      <FeedbackWidget />
     </div>
   );
 }
