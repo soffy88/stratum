@@ -22,6 +22,12 @@ services:
       timeout: 5s
       retries: 3
 
+  # stratum-web (Next.js) is currently deployed outside Docker.
+  # When containerised, set the following in its environment:
+  #   STRATUM_API_INTERNAL_URL: http://stratum-api:9302
+  # This lets the share/[token] Server Component reach the backend
+  # via the Docker internal network instead of localhost.
+
   stratum-nginx:
     image: nginx:1.27-alpine
     container_name: stratum-nginx
