@@ -9,7 +9,7 @@ vi.mock("@/stores/auth", () => ({
   useAuthStore: () => ({ user: { username: "testuser", email: "test@t.com" } }),
 }));
 vi.mock("@/lib/api-client", () => ({
-  apiClient: { post: vi.fn() },
+  apiClient: { post: vi.fn(), get: vi.fn(), delete: vi.fn() },
   AuthRequiredError: class extends Error {},
 }));
 
@@ -46,6 +46,21 @@ describe("SettingsPage", () => {
   it("profile tab shows username and email", () => {
     render(<SettingsPage />, { wrapper: W });
     expect(screen.getByText("testuser")).toBeDefined();
+  });
+
+  it("sessions tab button is present", () => {
+    render(<SettingsPage />, { wrapper: W });
+    expect(screen.getByText("会话管理")).toBeDefined();
+  });
+
+  it("switches to sessions tab and shows loading state", async () => {
+    const { apiClient } = await import("@/lib/api-client");
+    vi.mocked(apiClient.get).mockImplementation(() => new Promise(() => {}));
+    render(<SettingsPage />, { wrapper: W });
+    fireEvent.click(screen.getByText("会话管理"));
+    await waitFor(() => {
+      expect(screen.getByText("加载中...")).toBeDefined();
+    });
   });
 });
 

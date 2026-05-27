@@ -1,27 +1,10 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth";
 import { apiClient } from "@/lib/api-client";
-
-// Mock: Part 3 will replace with GET /api/users/:username
-interface PublicProfile {
-  username: string;
-  display_name: string;
-  bio: string;
-}
-
-function useMockPublicProfile(username: string): PublicProfile {
-  return { username, display_name: username, bio: "（简介待后端接入）" };
-}
-
-interface ShareItem {
-  token: string;
-  note_id: string;
-  created_at: string;
-  allow_anonymous: boolean;
-}
+import type { UserProfilePublic } from "@/lib/types";
 
 export default function ProfilePage() {
   const params = useParams<{ username: string }>();
@@ -37,9 +20,12 @@ export default function ProfilePage() {
 function OwnProfile() {
   const { user } = useAuthStore();
 
-  const { data: shares, isLoading } = useQuery({
+  const { data: shares, isLoading: sharesLoading } = useQuery({
     queryKey: ["shares"],
-    queryFn: () => apiClient.get<{ items: ShareItem[]; total: number }>("/api/shares"),
+    queryFn: () =>
+      apiClient.get<{ items: Array<{ token: string; created_at: string }>; total: number }>(
+        "/api/shares"
+      ),
   });
 
   return (
@@ -59,8 +45,8 @@ function OwnProfile() {
 
       <div>
         <h2 className="text-base font-medium mb-3">我的公开分享</h2>
-        {isLoading && <p className="text-sm text-[var(--color-muted)]">加载中...</p>}
-        {!isLoading && shares?.total === 0 && (
+        {sharesLoading && <p className="text-sm text-[var(--color-muted)]">加载中...</p>}
+        {!sharesLoading && shares?.total === 0 && (
           <p className="text-sm text-[var(--color-muted)]">暂无公开分享</p>
         )}
         {shares && shares.total > 0 && (
@@ -91,18 +77,22 @@ function OwnProfile() {
 // ── Public (others') profile ─────────────────────────────────────────────────
 
 function PublicProfileView({ username }: { username: string }) {
-  // Part 3: replace with useQuery → GET /api/users/:username
-  const profile = useMockPublicProfile(username);
+  const { data: profile, isLoading, error } = useQuery({
+    queryKey: ["userProfile", username],
+    queryFn: () => apiClient.get<UserProfilePublic>(`/api/users/by-username/${username}`),
+    retry: false,
+  });
+
+  if (isLoading) return <p className="text-sm text-[var(--color-muted)]">加载中...</p>;
+  if (error || !profile) return <p className="text-sm text-red-600">用户不存在</p>;
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">{profile.display_name}</h1>
+        <h1 className="text-xl font-semibold">{profile.display_name ?? profile.username}</h1>
         <p className="text-sm text-[var(--color-muted)]">@{profile.username}</p>
       </div>
-      {profile.bio && (
-        <p className="text-sm text-[var(--color-muted)]">{profile.bio}</p>
-      )}
+      {profile.bio && <p className="text-sm text-[var(--color-muted)]">{profile.bio}</p>}
       <p className="text-xs text-[var(--color-muted)] border-t border-[var(--color-border)] pt-4">
         公开分享将在后续版本显示
       </p>
