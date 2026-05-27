@@ -1,15 +1,22 @@
 """Stratum HTTP API application."""
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from stratum.middleware.corpus_isolation import corpus_isolation_middleware
 from stratum.http_api.routes import auth, search, substrates, notes, agents, scheduled_jobs
 from stratum.http_api.routes.share import router as share_router
+from stratum.http_api.routes.users import router as users_router
 
 app = FastAPI(title="Stratum API", version="1.2.0")
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
-                   allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.middleware("http")
@@ -26,6 +33,9 @@ app.include_router(substrates.router, prefix="/api", tags=["substrates"])
 app.include_router(notes.router, prefix="/api", tags=["notes"])
 app.include_router(agents.router, prefix="/api", tags=["agents"])
 app.include_router(scheduled_jobs.router, prefix="/api", tags=["scheduled_jobs"])
+
+# Users: public by-username + authenticated sessions management
+app.include_router(users_router, prefix="/api/users", tags=["users"])
 
 # Share (mixed: authenticated create/revoke + public read)
 app.include_router(share_router, tags=["share"])
