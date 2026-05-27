@@ -13,6 +13,7 @@ async def corpus_isolation_middleware(request: Request, call_next):
         path.startswith("/api/auth/")
         or path.startswith("/share/")
         or path.startswith("/api/users/by-username/")
+        or path.startswith("/api/admin/")
         or path in ("/health", "/openapi.json", "/docs", "/redoc")
     ):
         return await call_next(request)

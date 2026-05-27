@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from stratum.middleware.corpus_isolation import corpus_isolation_middleware
 from stratum.http_api.routes import auth, search, substrates, notes, agents, scheduled_jobs
+from stratum.http_api.routes.admin import router as admin_router
 from stratum.http_api.routes.feedback import router as feedback_router
 from stratum.http_api.routes.share import router as share_router
 from stratum.http_api.routes.users import router as users_router
@@ -59,6 +60,9 @@ app.include_router(feedback_router, prefix="/api", tags=["feedback"])
 
 # Share (mixed: authenticated create/revoke + public read)
 app.include_router(share_router, tags=["share"])
+
+# Admin stats — wiki-only, requires X-Admin-Secret header
+app.include_router(admin_router, prefix="/api", tags=["admin"])
 
 
 @app.get("/health")
