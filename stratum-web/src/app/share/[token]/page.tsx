@@ -10,6 +10,10 @@ interface ShareData {
   shared_at: string;
 }
 
+// Backend URL: env var allows e2e browser tests to point to the test server
+// (STRATUM_API_PORT=9311) while production uses the default (9305).
+const BACKEND = `http://localhost:${process.env.STRATUM_API_PORT ?? "9305"}`;
+
 export default async function SharePage({
   params,
 }: {
@@ -17,7 +21,7 @@ export default async function SharePage({
 }) {
   const { token } = await params;
 
-  const res = await fetch(`http://localhost:9305/share/${token}`, {
+  const res = await fetch(`${BACKEND}/share/${token}`, {
     cache: "no-store",
   });
 
