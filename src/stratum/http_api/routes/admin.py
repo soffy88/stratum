@@ -1,5 +1,6 @@
 """Admin stats endpoint — wiki-only, ADMIN_SECRET gated."""
 
+import hmac
 import os
 
 import duckdb
@@ -25,7 +26,7 @@ def _require_admin(x_admin_secret: Optional[str] = Header(None)) -> None:
     admin_secret = os.getenv("ADMIN_SECRET")
     if not admin_secret:
         raise HTTPException(503, "Admin endpoint not configured")
-    if x_admin_secret != admin_secret:
+    if not hmac.compare_digest(x_admin_secret or "", admin_secret):
         raise HTTPException(403, "Forbidden")
 
 
