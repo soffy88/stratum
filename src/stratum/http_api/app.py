@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from stratum.middleware.corpus_isolation import corpus_isolation_middleware
 from stratum.http_api.routes import auth, search, substrates, notes, agents, scheduled_jobs
+from stratum.http_api.routes.feedback import router as feedback_router
 from stratum.http_api.routes.share import router as share_router
 from stratum.http_api.routes.users import router as users_router
 
@@ -36,6 +37,9 @@ app.include_router(scheduled_jobs.router, prefix="/api", tags=["scheduled_jobs"]
 
 # Users: public by-username + authenticated sessions management
 app.include_router(users_router, prefix="/api/users", tags=["users"])
+
+# Feedback (alpha period in-app feedback)
+app.include_router(feedback_router, prefix="/api", tags=["feedback"])
 
 # Share (mixed: authenticated create/revoke + public read)
 app.include_router(share_router, tags=["share"])

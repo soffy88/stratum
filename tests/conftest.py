@@ -1,4 +1,5 @@
 """Shared test fixtures for Stratum tests."""
+
 import pytest
 import duckdb
 
@@ -86,6 +87,13 @@ CREATE TABLE IF NOT EXISTS agent_runs (
     total_input_tokens INTEGER DEFAULT 0, total_output_tokens INTEGER DEFAULT 0,
     cost_usd DOUBLE DEFAULT 0.0, started_at TIMESTAMP, completed_at TIMESTAMP,
     error_message VARCHAR
+);
+CREATE TABLE IF NOT EXISTS feedback (
+    id VARCHAR PRIMARY KEY,
+    user_id VARCHAR NOT NULL,
+    content VARCHAR NOT NULL,
+    page_url VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """
 
