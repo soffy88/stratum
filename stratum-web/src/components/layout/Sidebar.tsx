@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/documents", label: "文档" },
   { href: "/ai", label: "AI" },
   { href: "/jobs", label: "任务" },
+  { href: "/admin", label: "管理" },
   { href: "/settings", label: "设置" },
 ];
 

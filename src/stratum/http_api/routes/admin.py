@@ -46,5 +46,5 @@ def get_admin_stats(db=Depends(get_db)) -> dict:
         "substrates": total_substrates,
         "active_sessions": total_sessions,
         "feedback_submissions": total_feedback,
-        "share_links": total_shares,
+        "share_tokens": total_shares,
     }
