@@ -70,7 +70,7 @@ def test_admin_stats_returns_counts(client_with_admin):
     assert "substrates" in body
     assert "active_sessions" in body
     assert "feedback_submissions" in body
-    assert "share_links" in body
+    assert "share_tokens" in body
     # Empty DB — all zeros
     assert body["users"] == 0
     assert body["substrates"] == 0

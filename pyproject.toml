@@ -1,0 +1,62 @@
+[project]
+name = "stratum"
+version = "0.0.1"
+description = "Stratum — Wiki's local knowledge base system"
+requires-python = ">=3.12"
+readme = "README.md"
+
+dependencies = [
+    "pydantic>=2.5",
+    "python-ulid>=2.0",
+    "pyyaml>=6.0",
+    "jsonschema>=4.0",
+    "typer>=0.12",
+    "structlog>=24.0",
+    "tenacity>=8.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+# 以下为预期依赖, 实际选型见批 2 实证结果
+# [PENDING_VALIDATION]
+ingest-pdf = [
+    "pymupdf4llm",
+    # "unstructured",  # 实证后选一
+    # "marker-pdf",
+]
+ingest-epub = ["ebooklib", "beautifulsoup4"]
+ingest-webpage = ["trafilatura"]
+indexing = [
+    "duckdb>=1.0",
+    "pyarrow>=16.0",
+    # "tantivy",          # 实证后定
+    # "qdrant-client",    # 实证后定
+]
+servers = [
+    "fastapi>=0.110",
+    "uvicorn>=0.30",
+    # "mcp>=0.9",         # 实证后定 SDK
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+asyncio_mode = "strict"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
