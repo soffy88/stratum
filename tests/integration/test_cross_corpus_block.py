@@ -2,6 +2,7 @@
 
 Red-line tests: any failure blocks Wave 2.
 """
+
 import pytest
 import ulid as ulid_mod
 import uuid
@@ -27,21 +28,29 @@ def two_users(db):
 
 # --- Substrate penetration ---
 
+
 def test_user_A_cannot_read_user_B_substrate(two_users):
     uA, uB, db = two_users
     sid = str(ulid_mod.ULID())
-    db.execute("INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)", (sid, sid, uB.corpus_id, "B secret"))
+    db.execute(
+        "INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)",
+        (sid, sid, uB.corpus_id, "B secret"),
+    )
     assert SubstrateDAO(db).get_substrate(substrate_id=sid, corpus_id=uA.corpus_id) is None
 
 
 def test_user_A_cannot_list_user_B_substrates(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)", ("s1", "s1", uB.corpus_id, "B doc"))
+    db.execute(
+        "INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)",
+        ("s1", "s1", uB.corpus_id, "B doc"),
+    )
     results = SubstrateDAO(db).list_substrates(corpus_id=uA.corpus_id)
     assert len(results) == 0
 
 
 # --- Note penetration ---
+
 
 def test_user_A_cannot_read_user_B_note(two_users):
     uA, uB, db = two_users
@@ -58,88 +67,123 @@ def test_user_A_cannot_list_user_B_notes(two_users):
 
 # --- Concept penetration ---
 
+
 def test_user_A_cannot_read_user_B_concept(two_users):
     uA, uB, db = two_users
     cid = str(ulid_mod.ULID())
-    db.execute("INSERT INTO concept (id, name, source_ids, corpus_id) VALUES (?,?,?,?)", (cid, "Secret", "", uB.corpus_id))
+    db.execute(
+        "INSERT INTO concept (id, name, source_ids, corpus_id) VALUES (?,?,?,?)",
+        (cid, "Secret", "", uB.corpus_id),
+    )
     assert ConceptDAO(db).get_concept(concept_id=cid, corpus_id=uA.corpus_id) is None
 
 
 # --- Derivative penetration ---
 
+
 def test_user_A_cannot_list_user_B_derivatives(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO derivative (id, substrate_id, kind, seq, content, corpus_id) VALUES (?,?,?,?,?,?)",
-               ("d1", "s1", "chunk", 0, "text", uB.corpus_id))
+    db.execute(
+        "INSERT INTO derivative (id, substrate_id, kind, seq, content, corpus_id) VALUES (?,?,?,?,?,?)",
+        ("d1", "s1", "chunk", 0, "text", uB.corpus_id),
+    )
     assert DerivativeDAO(db).list_by_substrate(substrate_id="s1", corpus_id=uA.corpus_id) == []
 
 
 # --- View penetration ---
 
+
 def test_user_A_cannot_read_user_B_view(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO views (id, user_id, corpus_id, name, default_filter) VALUES (?,?,?,?,?)",
-               ("v1", uB.id, uB.corpus_id, "B view", "{}"))
+    db.execute(
+        "INSERT INTO views (id, user_id, corpus_id, name, default_filter) VALUES (?,?,?,?,?)",
+        ("v1", uB.id, uB.corpus_id, "B view", "{}"),
+    )
     assert ViewDAO(db).get_view(view_id="v1", corpus_id=uA.corpus_id) is None
 
 
 def test_user_A_cannot_list_user_B_views(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO views (id, user_id, corpus_id, name, default_filter) VALUES (?,?,?,?,?)",
-               ("v1", uB.id, uB.corpus_id, "B view", "{}"))
+    db.execute(
+        "INSERT INTO views (id, user_id, corpus_id, name, default_filter) VALUES (?,?,?,?,?)",
+        ("v1", uB.id, uB.corpus_id, "B view", "{}"),
+    )
     assert ViewDAO(db).list_views(corpus_id=uA.corpus_id) == []
 
 
 # --- Task penetration ---
 
+
 def test_user_A_cannot_read_user_B_task(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO tasks (id, user_id, corpus_id, text) VALUES (?,?,?,?)", ("t1", uB.id, uB.corpus_id, "B task"))
+    db.execute(
+        "INSERT INTO tasks (id, user_id, corpus_id, text) VALUES (?,?,?,?)",
+        ("t1", uB.id, uB.corpus_id, "B task"),
+    )
     assert TaskDAO(db).get_task(task_id="t1", corpus_id=uA.corpus_id) is None
 
 
 def test_user_A_cannot_list_user_B_tasks(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO tasks (id, user_id, corpus_id, text) VALUES (?,?,?,?)", ("t1", uB.id, uB.corpus_id, "B task"))
+    db.execute(
+        "INSERT INTO tasks (id, user_id, corpus_id, text) VALUES (?,?,?,?)",
+        ("t1", uB.id, uB.corpus_id, "B task"),
+    )
     assert TaskDAO(db).list_tasks(corpus_id=uA.corpus_id) == []
 
 
 # --- Template penetration ---
 
+
 def test_user_A_cannot_read_user_B_template(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO templates (id, user_id, corpus_id, name, content) VALUES (?,?,?,?,?)",
-               ("tp1", uB.id, uB.corpus_id, "B tmpl", "body"))
+    db.execute(
+        "INSERT INTO templates (id, user_id, corpus_id, name, content) VALUES (?,?,?,?,?)",
+        ("tp1", uB.id, uB.corpus_id, "B tmpl", "body"),
+    )
     assert TemplateDAO(db).get_template(template_id="tp1", corpus_id=uA.corpus_id) is None
 
 
 def test_user_A_cannot_list_user_B_templates(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO templates (id, user_id, corpus_id, name, content) VALUES (?,?,?,?,?)",
-               ("tp1", uB.id, uB.corpus_id, "B tmpl", "body"))
+    db.execute(
+        "INSERT INTO templates (id, user_id, corpus_id, name, content) VALUES (?,?,?,?,?)",
+        ("tp1", uB.id, uB.corpus_id, "B tmpl", "body"),
+    )
     assert TemplateDAO(db).list_templates(corpus_id=uA.corpus_id) == []
 
 
 # --- Search isolation (mocked) ---
+
 
 @pytest.mark.asyncio
 async def test_user_A_cannot_search_user_B_content(two_users):
     uA, uB, db = two_users
     sid_a = str(ulid_mod.ULID())
     sid_b = str(ulid_mod.ULID())
-    db.execute("INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)", (sid_a, sid_a, uA.corpus_id, "A doc"))
-    db.execute("INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)", (sid_b, sid_b, uB.corpus_id, "B doc"))
+    db.execute(
+        "INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)",
+        (sid_a, sid_a, uA.corpus_id, "A doc"),
+    )
+    db.execute(
+        "INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)",
+        (sid_b, sid_b, uB.corpus_id, "B doc"),
+    )
 
     from unittest.mock import patch, AsyncMock
-    from oskill.hybrid_search import SearchResult
+    from types import SimpleNamespace
+
     mock_results = [
-        SearchResult(type="substrate", id=sid_a, title="A", score=0.9, highlight=None),
-        SearchResult(type="substrate", id=sid_b, title="B", score=0.8, highlight=None),
+        SimpleNamespace(type="substrate", id=sid_a, title="A", score=0.9, highlight=None),
+        SimpleNamespace(type="substrate", id=sid_b, title="B", score=0.8, highlight=None),
     ]
-    with patch("stratum.service.search.hybrid_search", new_callable=AsyncMock, return_value=mock_results):
+    with patch(
+        "stratum.service.search.hybrid_search", new_callable=AsyncMock, return_value=mock_results
+    ):
         with patch("stratum.service.search.duckdb") as mock_duckdb:
             mock_duckdb.connect.return_value = db
             from stratum.service.search import stratum_search
+
             results = await stratum_search(query="test", corpus_id=uA.corpus_id)
             ids = [r.id for r in results]
             assert sid_a in ids
@@ -147,6 +191,7 @@ async def test_user_A_cannot_search_user_B_content(two_users):
 
 
 # --- Injection attack tests ---
+
 
 def test_corpus_id_injection_via_direct_sql_blocked(two_users):
     """Even if attacker knows B's corpus_id, DAO enforces filtering."""
@@ -164,17 +209,20 @@ def test_corpus_id_injection_via_direct_sql_blocked(two_users):
 def test_no_api_route_accepts_corpus_id_from_input():
     """Grep routes to ensure no endpoint accepts corpus_id from query/body."""
     import pathlib
+
     routes_dir = pathlib.Path(__file__).parents[2] / "src" / "stratum" / "http_api" / "routes"
     for py_file in routes_dir.glob("*.py"):
         content = py_file.read_text()
         # corpus_id should never appear as a query param or request body field
-        assert "corpus_id: str" not in content or "request.state.corpus_id" in content, \
+        assert "corpus_id: str" not in content or "request.state.corpus_id" in content, (
             f"{py_file.name} accepts corpus_id as input parameter"
+        )
 
 
 def test_corpus_id_not_in_register_response(two_users):
     """Register response schema must not expose corpus_id."""
     from stratum.http_api.schemas.auth import RegisterResponse
+
     fields = RegisterResponse.model_fields
     assert "corpus_id" not in fields
 
@@ -182,6 +230,7 @@ def test_corpus_id_not_in_register_response(two_users):
 def test_corpus_id_not_in_user_public(two_users):
     """UserPublic schema must not expose corpus_id."""
     from stratum.http_api.schemas.auth import UserPublic
+
     fields = UserPublic.model_fields
     assert "corpus_id" not in fields
 
