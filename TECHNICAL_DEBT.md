@@ -52,6 +52,28 @@ Legend: `[ ]` open · `[x]` resolved · priority: **P0** blocker / **P1** soon /
 
 ---
 
+## v1.1 PDF ingest 改进 + license audit
+
+**背景**: book-to-skill (MIT, virgiliojr94/book-to-skill) benchmark 显示 Docling (IBM Research, MIT) 在 PDF 技术书解析上:
+- 103 页样本: 保留 48 表格 + 36 代码块 (pymupdf4llm 无法)
+- 同 token 量, 时间 0.1s vs 164s (pymupdf4llm 快但损失结构)
+- 适合 Stratum 用户上传技术书 / 论文场景
+
+**License 隐患**:
+- 当前 pymupdf4llm 是 AGPL → 商业 SaaS (beta 付费层) 衍生作品需开源
+- Docling MIT → 无商业限制
+
+**v1.1 任务**:
+1. PDF ingest 切 Docling (替代 pymupdf4llm)
+2. 整体 license audit (所有 Python deps + npm deps), 标记任何 AGPL/GPL/SSPL 依赖, 给商业化备选方案
+3. benchmark Docling vs pymupdf4llm (表格 / 代码块 / 总 token / 时间) 用 Stratum 真实用户 PDF
+4. R-4 范围决定: 影响 oprim 还是仅 Stratum 服务层 (oprim.pdf_to_substrate 改 Docling 需 Phase 11D 启动后, Stratum 服务层临时实施可走非 oprim 路径)
+
+**优先级**: v1.1 (Phase 14 alpha 100+ 用户后真用过技术书 ingest 评估)
+**触发**: 用户反馈 PDF 解析质量不够 / 商业化前 license 清理
+
+---
+
 ## Phase 11 (pre-Phase 14 carryover)
 
 - [ ] **P1** `omodul` Wissen knowledge submodules still at historical path.
