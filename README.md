@@ -74,6 +74,17 @@ tests/                # pytest 214 tests
 
 完整 API 规范见 [docs/STRATUM_API_v1.md](docs/STRATUM_API_v1.md) (27 routes, OpenAPI 3.1)。
 
+## 相关独立 Repo
+
+| Repo | 位置 | 说明 |
+|------|------|------|
+| stratum-cli | `~/projects/stratum-cli` | 命令行客户端 (Python, v0.1.0) |
+| stratum-extension | `~/projects/stratum-extension` | 浏览器扩展 (Chrome/Edge, v0.2.0) |
+| helios-blocks | Helios 独立 repo | 前端 UI 组件库 (@helios/blocks) |
+
+> stratum-cli 和 stratum-extension 各为独立 git repo，不是本 repo 的 submodule。
+> monorepo vs 独立 repo 整体策略待 v1.1 评估。
+
 ## 许可证
 
 Private — Wiki 内部项目。
