@@ -2,15 +2,13 @@ version: '3.9'
 
 services:
   stratum-api:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile.api
+    image: stratum-api:latest
     container_name: stratum-api
     restart: unless-stopped
     ports:
-      - "127.0.0.1:9302:9302"
+      - "127.0.0.1:9309:9302"
     volumes:
-      - ~/.stratum:/data/stratum
+      - ~/.stratum:/root/.stratum
     env_file:
       - /home/soffy/.config/keys/.env
     environment:
@@ -45,10 +43,8 @@ services:
     container_name: stratum-cloudflared
     restart: unless-stopped
     command: tunnel --no-autoupdate run
-    environment:
-      - TUNNEL_TOKEN_FILE=/secrets/tunnel-token
-    volumes:
-      - ~/.config/keys/cloudflared:/secrets:ro
+    env_file:
+      - /home/soffy/.config/keys/.env
     profiles:
       - public
 
