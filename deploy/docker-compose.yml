@@ -11,11 +11,11 @@ services:
       - "127.0.0.1:9302:9302"
     volumes:
       - ~/.stratum:/data/stratum
-      - ~/.config/keys:/keys:ro
+    env_file:
+      - /home/soffy/.config/keys/.env
     environment:
       - STRATUM_ENV=production
       - DATABASE_PATH=/data/stratum/meta.duckdb
-      - JWT_SECRET_FILE=/keys/.env
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9302/health"]
       interval: 30s
