@@ -2,7 +2,7 @@
 import os
 import json
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 import duckdb
 import ulid as ulid_mod
@@ -62,7 +62,7 @@ async def create_job(req: CreateJobRequest, request: Request, db=Depends(get_db)
     corpus_id = request.state.corpus_id
     user_id = request.state.user_id
     job_id = str(ulid_mod.ULID())
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db.execute("""
         INSERT INTO scheduled_jobs (id, user_id, corpus_id, name, agent_name, agent_params, cron_expression, timezone, enabled, notify_on_completion, notify_on_failure, max_runtime_seconds, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, FALSE, 300, ?, ?)
@@ -88,7 +88,7 @@ async def update_job(job_id: str, req: UpdateJobRequest, request: Request, db=De
     if req.name:
         sets.append("name = ?"); params.append(req.name)
     if sets:
-        sets.append("updated_at = ?"); params.append(datetime.utcnow())
+        sets.append("updated_at = ?"); params.append(datetime.now(timezone.utc))
         params.append(job_id); params.append(corpus_id)
         db.execute(f"UPDATE scheduled_jobs SET {', '.join(sets)} WHERE id = ? AND corpus_id = ?", params)
     # Fetch updated

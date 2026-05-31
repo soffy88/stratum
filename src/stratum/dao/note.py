@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 import ulid
 
@@ -27,6 +27,6 @@ class NoteDAO:
         return Note(*res) if res else None
     def create_note(self, *, corpus_id: str, title: str, content: str, substrate_id: Optional[str] = None) -> Note:
         note_id = str(ulid.ULID())
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         self.conn.execute("INSERT INTO note (id, corpus_id, title, content, substrate_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (note_id, corpus_id, title, content, substrate_id, now, now))
         return self.get_note(note_id=note_id, corpus_id=corpus_id)

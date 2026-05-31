@@ -2,7 +2,7 @@
 import os
 import json
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -49,7 +49,7 @@ async def run_agent(agent_name: str, req: RunAgentRequest, request: Request, db=
     # For now, return a stub indicating the agent would be invoked.
     import ulid as ulid_mod
     run_id = str(ulid_mod.ULID())
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db.execute("""
         INSERT INTO agent_runs (id, user_id, corpus_id, agent_name, params, status, started_at, total_input_tokens, total_output_tokens, cost_usd)
         VALUES (?, ?, ?, ?, ?, 'pending', ?, 0, 0, 0.0)
