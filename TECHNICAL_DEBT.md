@@ -74,6 +74,15 @@ Legend: `[ ]` open · `[x]` resolved · priority: **P0** blocker / **P1** soon /
 
 ---
 
+## Repo 结构 (monorepo vs 独立 repo)
+
+- [ ] **P2** monorepo vs 独立 repo 整体策略待 v1.1 评估。
+  当前状态: Phase 14 SaaS 主体在 `stratum/`; CLI 在 `~/projects/stratum-cli` (独立 repo);
+  extension 在 `~/projects/stratum-extension` (独立 repo); `@helios/blocks` 在 Helios 独立 repo。
+  决策点: 是否合并为 pnpm/uv workspace monorepo, 或保持独立 repo + CI 依赖管理。
+
+---
+
 ## Phase 11 (pre-Phase 14 carryover)
 
 - [ ] **P1** `omodul` Wissen knowledge submodules still at historical path.
