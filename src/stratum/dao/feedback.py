@@ -1,7 +1,7 @@
 """DAO for feedback table."""
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import ulid
@@ -24,7 +24,7 @@ class FeedbackDAO:
         self, *, user_id: str, content: str, page_url: Optional[str] = None
     ) -> Feedback:
         fb_id = str(ulid.ULID())
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         self.conn.execute(
             "INSERT INTO feedback (id, user_id, content, page_url, created_at) VALUES (?, ?, ?, ?, ?)",
             (fb_id, user_id, content, page_url, now),

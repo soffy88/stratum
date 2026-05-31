@@ -19,7 +19,6 @@ vi.mock("@helios/blocks", () => ({
     onAsk: (q: string) => Promise<{ answer: string; citations: unknown[] }>;
     placeholder?: string;
   }) => {
-    const [val, setVal] = vi.fn ? ["",(s: string) => s] : ["", () => {}];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [input, setInput] = (globalThis as any).__aiInput__ ?? ["", () => {}];
     return (

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import ulid
 from typing import Any
 
@@ -24,7 +24,7 @@ class UserDAO:
     def create_user(self, *, email: str, username: str, password_hash: str) -> User:
         user_id = str(ulid.ULID())
         corpus_id = f"user_{user_id}"
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         self.conn.execute("""
             INSERT INTO users (id, email, username, password_hash, corpus_id, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
