@@ -8,7 +8,7 @@ from ...auth.refresh_handler import create_refresh
 import duckdb
 import os
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter()
 
@@ -45,7 +45,7 @@ async def refresh(request: Request, db=Depends(get_db)):
     if not token_str: raise HTTPException(401, "Missing refresh token")
     refresh_hash = hashlib.sha256(token_str.encode()).hexdigest()
     session = SessionDAO(db).get_session_by_refresh_hash(refresh_hash)
-    if not session or session.expires_at < datetime.utcnow(): raise HTTPException(401, "Invalid or expired session")
+    if not session or session.expires_at < datetime.now(timezone.utc).replace(tzinfo=None): raise HTTPException(401, "Invalid or expired session")
     user = UserDAO(db).get_user_by_id(session.user_id)
     if not user: raise HTTPException(401, "User not found")
     return RefreshResponse(access_token=encode_access(user.id, user.corpus_id))
@@ -55,7 +55,7 @@ async def logout(request: Request, response: Response, db=Depends(get_db)):
     token_str = request.cookies.get("refresh_token")
     if token_str:
         refresh_hash = hashlib.sha256(token_str.encode()).hexdigest()
-        db.execute("UPDATE sessions SET revoked_at = ? WHERE refresh_token_hash = ?", (datetime.utcnow(), refresh_hash))
+        db.execute("UPDATE sessions SET revoked_at = ? WHERE refresh_token_hash = ?", (datetime.now(timezone.utc), refresh_hash))
     response.delete_cookie("refresh_token")
     return {"status": "ok"}
 

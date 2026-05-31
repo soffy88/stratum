@@ -48,3 +48,11 @@ def get_admin_stats(db=Depends(get_db)) -> dict:
         "feedback_submissions": total_feedback,
         "share_tokens": total_shares,
     }
+
+
+@router.get("/admin/feedback", dependencies=[Depends(_require_admin)])
+def list_feedback(db=Depends(get_db), limit: int = 50) -> dict:
+    """Return recent feedback submissions. Requires X-Admin-Secret header."""
+    from ...dao.feedback import FeedbackDAO
+    items = FeedbackDAO(db).list_recent(limit=limit)
+    return {"items": [{"id": f.id, "user_id": f.user_id, "content": f.content, "page_url": f.page_url, "created_at": str(f.created_at)} for f in items], "total": len(items)}
