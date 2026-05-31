@@ -1,0 +1,65 @@
+# 索引产物 (可重建)
+_hub/indexes/
+
+# substrate 解析产物中的向量 (大,可重建)
+substrate/*/*/embeddings/
+substrate/*/embeddings/
+
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.uv/
+
+# Build / package artifacts
+node_modules/
+**/node_modules/
+src/stratum.egg-info/
+**/*.egg-info/
+.coverage
+htmlcov/
+
+# Dev tools
+.antigravitycli/
+
+# Test / build output
+test-results/
+playwright-report/
+.next/
+out/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 临时文件
+*.tmp
+*.swp
+*~
+
+# audit 大文件 (摘要保留, 详细 diff 不入 git)
+_hub/audit/diffs/
+
+# Obsidian (非必需文件)
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/graph.json
+
+# Windows 区域标识符 (WSL 下的 Windows 元数据)
+*:Zone.Identifier
+
+# 批次指令书和外部文件 (不属于仓库)
+STRATUM_BATCH*_CC_INSTRUCTIONS.md
+HEVI_REVISION_REQUEST.md
