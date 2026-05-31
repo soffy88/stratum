@@ -11,7 +11,7 @@ from stratum.http_api.routes.admin import router as admin_router
 from stratum.http_api.routes.feedback import router as feedback_router
 from stratum.http_api.routes.share import router as share_router
 from stratum.http_api.routes.users import router as users_router
-from stratum.http_api.metrics import metrics, metrics_middleware
+from stratum.http_api.metrics import metrics_middleware
 
 # Sentry: only initialise when SENTRY_DSN is set (env-guarded — no DSN = no telemetry)
 _sentry_dsn = os.getenv("SENTRY_DSN")
@@ -74,19 +74,3 @@ app.include_router(admin_router, prefix="/api", tags=["admin"])
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
-
-
-@app.get("/metrics")
-def get_metrics():
-    import duckdb, os
-    active_sessions = 0
-    corpus_count = 0
-    try:
-        conn = duckdb.connect(os.path.expanduser("~/.stratum/meta.duckdb"), read_only=True)
-        active_sessions = conn.execute("SELECT COUNT(*) FROM sessions WHERE revoked_at IS NULL AND expires_at > CURRENT_TIMESTAMP").fetchone()[0]
-        corpus_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        conn.close()
-    except Exception:
-        pass
-    from starlette.responses import PlainTextResponse
-    return PlainTextResponse(metrics.render(active_sessions=active_sessions, corpus_count=corpus_count), media_type="text/plain; version=0.0.4")
