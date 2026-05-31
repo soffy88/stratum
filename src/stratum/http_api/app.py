@@ -27,6 +27,21 @@ if _sentry_dsn:
         send_default_pii=False,
     )
 
+
+def _validate_production_secrets() -> None:
+    """Refuse to start if any critical secret is missing or too short (production only)."""
+    if os.getenv("STRATUM_ENV") != "production":
+        return
+    for name in ("JWT_SECRET", "COOKIE_SECRET", "ADMIN_SECRET"):
+        val = os.getenv(name, "")
+        if not val or len(val) < 32:
+            raise RuntimeError(
+                f"{name} must be set and ≥ 32 chars in production (got {len(val)} chars)"
+            )
+
+
+_validate_production_secrets()
+
 app = FastAPI(title="Stratum API", version="1.2.0")
 
 app.add_middleware(
