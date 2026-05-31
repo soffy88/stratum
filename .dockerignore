@@ -1,0 +1,43 @@
+# Shrink build context sent to Docker daemon — only src/ pyproject.toml needed
+
+# Python env
+.venv/
+venv/
+**/__pycache__/
+**/*.pyc
+*.egg-info/
+
+# Frontend (not in container)
+stratum-web/
+stratum-web/.next/
+node_modules/
+**/node_modules/
+
+# Docs, design, experiments — not needed in image
+docs/
+_hub/
+concepts/
+substrate/
+experiments/
+notes/
+services/
+
+# Test / CI artifacts
+.coverage
+htmlcov/
+test-results/
+.pytest_cache/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Secrets (never in image)
+.env
+.env.local
+**/.env
+
+# IDE
+.vscode/
+.idea/
