@@ -1,0 +1,26 @@
+# 大文件走 LFS
+substrate/**/original/*.pdf filter=lfs diff=lfs merge=lfs -text
+substrate/**/original/*.epub filter=lfs diff=lfs merge=lfs -text
+substrate/**/original/*.mobi filter=lfs diff=lfs merge=lfs -text
+substrate/**/original/*.djvu filter=lfs diff=lfs merge=lfs -text
+
+# 解析产物 markdown 不走 LFS (要 diff)
+# (默认行为, 不需配置)
+
+# 图片资源走 LFS (concept 可能挂图)
+*.png filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.webp filter=lfs diff=lfs merge=lfs -text
+
+# 音频 / 视频 (transcript 可能伴随原文件)
+*.mp3 filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+*.wav filter=lfs diff=lfs merge=lfs -text
+
+# 文本类强制 LF
+*.md text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.py text eol=lf
