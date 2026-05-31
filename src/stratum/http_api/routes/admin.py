@@ -5,7 +5,10 @@ import os
 
 import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Header
+from starlette.responses import PlainTextResponse
 from typing import Optional
+
+from stratum.http_api.metrics import metrics
 
 router = APIRouter()
 
@@ -54,5 +57,35 @@ def get_admin_stats(db=Depends(get_db)) -> dict:
 def list_feedback(db=Depends(get_db), limit: int = 50) -> dict:
     """Return recent feedback submissions. Requires X-Admin-Secret header."""
     from ...dao.feedback import FeedbackDAO
+
     items = FeedbackDAO(db).list_recent(limit=limit)
-    return {"items": [{"id": f.id, "user_id": f.user_id, "content": f.content, "page_url": f.page_url, "created_at": str(f.created_at)} for f in items], "total": len(items)}
+    return {
+        "items": [
+            {
+                "id": f.id,
+                "user_id": f.user_id,
+                "content": f.content,
+                "page_url": f.page_url,
+                "created_at": str(f.created_at),
+            }
+            for f in items
+        ],
+        "total": len(items),
+    }
+
+
+@router.get("/admin/metrics", dependencies=[Depends(_require_admin)])
+def get_metrics(db=Depends(get_db)) -> PlainTextResponse:
+    """Prometheus-format metrics. Requires X-Admin-Secret header."""
+    try:
+        active_sessions = db.execute(
+            "SELECT COUNT(*) FROM sessions WHERE revoked_at IS NULL AND expires_at > CURRENT_TIMESTAMP"
+        ).fetchone()[0]
+        corpus_count = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    except Exception:
+        active_sessions = 0
+        corpus_count = 0
+    return PlainTextResponse(
+        metrics.render(active_sessions=active_sessions, corpus_count=corpus_count),
+        media_type="text/plain; version=0.0.4",
+    )
