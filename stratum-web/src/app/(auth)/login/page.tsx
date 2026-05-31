@@ -10,6 +10,8 @@ export default function LoginPage() {
         <LoginForm />
         <p className="text-center text-sm text-[var(--color-muted)]">
           没有账号？<a href="/register" className="underline">注册</a>
+          {" · "}
+          <a href="/reset-password" className="underline">忘记密码</a>
         </p>
       </div>
     </div>

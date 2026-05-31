@@ -10,6 +10,13 @@ interface ShareData {
   shared_at: string;
 }
 
+// Backend URL for server-side fetch (not the browser-facing /api/* proxy).
+// STRATUM_API_INTERNAL_URL lets each environment point to the right host:
+//   dev        → http://localhost:9305  (default, uvicorn direct)
+//   e2e tests  → http://localhost:9311  (set by playwright.browser.config.ts)
+//   production → http://stratum-api:9302 (injected by docker-compose / systemd)
+const BACKEND = process.env.STRATUM_API_INTERNAL_URL ?? "http://localhost:9305";
+
 export default async function SharePage({
   params,
 }: {
@@ -17,7 +24,7 @@ export default async function SharePage({
 }) {
   const { token } = await params;
 
-  const res = await fetch(`http://localhost:9305/share/${token}`, {
+  const res = await fetch(`${BACKEND}/share/${token}`, {
     cache: "no-store",
   });
 

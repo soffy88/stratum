@@ -1,5 +1,12 @@
+/**
+ * Wave 8/12 page unit tests — Block integration
+ *
+ * - JobsPage:      OScheduledJobsManager (Block renders job data)
+ * - DocumentsPage: ODocumentTree (Block renders substrate list)
+ * - NotePage:      ODocumentReader + OBacklinkPanel (mocked — note data needed)
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import JobsPage from "@/app/(app)/jobs/page";
 import DocumentsPage from "@/app/(app)/documents/page";
@@ -16,10 +23,98 @@ vi.mock("@/lib/api-client", () => ({
   AuthRequiredError: class extends Error {},
 }));
 
+// Stub all @helios/blocks used in these pages
+vi.mock("@helios/blocks", () => ({
+  // OScheduledJobsManager: renders job name + toggle + delete per job
+  OScheduledJobsManager: ({
+    jobs,
+    onToggleEnabled,
+    onDelete,
+  }: {
+    jobs: Array<{ id: string; name: string; enabled: boolean; is_builtin?: boolean }>;
+    onToggleEnabled?: (job: { id: string; enabled: boolean }, v: boolean) => void;
+    onDelete?: (job: { id: string }) => void;
+  }) => (
+    <div data-testid="jobs-manager">
+      {jobs.length === 0 && <p>暂无定时任务</p>}
+      {jobs.map((job) => (
+        <div key={job.id}>
+          <span>{job.name}</span>
+          <button onClick={() => onToggleEnabled?.(job, !job.enabled)}>
+            {job.enabled ? "启用" : "禁用"}
+          </button>
+          {!job.is_builtin && (
+            <button onClick={() => onDelete?.(job)}>删除</button>
+          )}
+        </div>
+      ))}
+    </div>
+  ),
+  // ODocumentTree: renders substrates as clickable items
+  ODocumentTree: ({
+    substrates,
+    onSelect,
+    emptyText,
+  }: {
+    substrates: Array<{ id: string; title: string | null }>;
+    onSelect?: (s: { id: string }) => void;
+    emptyText?: string;
+  }) => (
+    <div data-testid="document-tree">
+      {substrates.length === 0 && <p>{emptyText ?? "暂无文档"}</p>}
+      {substrates.map((s) => (
+        <button key={s.id} onClick={() => onSelect?.(s)}>
+          {s.title ?? s.id}
+        </button>
+      ))}
+    </div>
+  ),
+  // ODocumentReader: render just the substrate title in a div (not h1 to avoid collision)
+  ODocumentReader: ({ substrate }: { substrate: { title: string | null } }) => (
+    <div data-testid="document-reader">
+      <p>{substrate.title ?? "无标题"}</p>
+    </div>
+  ),
+  // OBacklinkPanel: render backlinks list
+  OBacklinkPanel: ({
+    backlinks,
+    onSelect,
+    emptyText,
+  }: {
+    backlinks: Array<{ note: { id: string; title: string | null } }>;
+    onSelect?: (item: { note: { id: string } }) => void;
+    emptyText?: string;
+  }) => (
+    <div data-testid="backlink-panel">
+      {backlinks.length === 0 && <p>{emptyText ?? "暂无反链"}</p>}
+      {backlinks.map((b) => (
+        <button key={b.note.id} onClick={() => onSelect?.(b)}>
+          {b.note.title ?? b.note.id}
+        </button>
+      ))}
+    </div>
+  ),
+  OAnnotationLayer: () => <div data-testid="annotation-layer" />,
+  OCitationCard: () => <div data-testid="citation-card" />,
+}));
+
+vi.mock("@/components/shared/ShareNoteButton", () => ({
+  ShareNoteButton: () => <button>分享</button>,
+}));
+
 function W({ children }: { children: React.ReactNode }) {
-  return <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      {children}
+    </QueryClientProvider>
+  );
 }
 
+// ---------------------------------------------------------------------------
+// JobsPage
+// ---------------------------------------------------------------------------
 describe("JobsPage", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
@@ -33,7 +128,7 @@ describe("JobsPage", () => {
   it("shows jobs list", async () => {
     const { apiClient } = await import("@/lib/api-client");
     vi.mocked(apiClient.get).mockResolvedValue({
-      items: [{ id: "j1", name: "Daily", agent_name: "digest", cron_expression: "0 8 * * *", timezone: "UTC", enabled: true }],
+      items: [{ id: "j1", name: "Daily", agent_name: "daily_digest", cron_expression: "0 8 * * *", timezone: "UTC", enabled: true }],
       total: 1,
     });
     render(<JobsPage />, { wrapper: W });
@@ -50,7 +145,7 @@ describe("JobsPage", () => {
   it("toggle button shows enabled/disabled", async () => {
     const { apiClient } = await import("@/lib/api-client");
     vi.mocked(apiClient.get).mockResolvedValue({
-      items: [{ id: "j1", name: "J", agent_name: "a", cron_expression: "* * * * *", timezone: "UTC", enabled: true }],
+      items: [{ id: "j1", name: "J", agent_name: "daily_digest", cron_expression: "* * * * *", timezone: "UTC", enabled: true }],
       total: 1,
     });
     render(<JobsPage />, { wrapper: W });
@@ -75,8 +170,9 @@ describe("JobsPage", () => {
 
   it("has delete button per job", async () => {
     const { apiClient } = await import("@/lib/api-client");
+    // Use a non-builtin agent so is_builtin=false and delete button renders
     vi.mocked(apiClient.get).mockResolvedValue({
-      items: [{ id: "j1", name: "J", agent_name: "a", cron_expression: "* * * * *", timezone: "UTC", enabled: false }],
+      items: [{ id: "j1", name: "J", agent_name: "translation_worker", cron_expression: "* * * * *", timezone: "UTC", enabled: false }],
       total: 1,
     });
     render(<JobsPage />, { wrapper: W });
@@ -84,6 +180,9 @@ describe("JobsPage", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// DocumentsPage
+// ---------------------------------------------------------------------------
 describe("DocumentsPage", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
@@ -124,38 +223,70 @@ describe("DocumentsPage", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// NotePage (uses ODocumentReader + OBacklinkPanel)
+// ---------------------------------------------------------------------------
 describe("NoteViewPage (backlinks)", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  const NOTE_DETAIL = {
+    id: "test-id",
+    title: "My Note",
+    content: "Some content",
+    wikilinks: [],
+    substrate_id: null,
+    meta_json: {},
+    created_at: "2026-01-01T00:00:00",
+    updated_at: "2026-01-01T00:00:00",
+  };
 
-  it("renders heading", async () => {
+  beforeEach(() => { vi.clearAllMocks(); mockPush.mockClear(); });
+
+  it("renders note title via ODocumentReader stub", async () => {
     const { apiClient } = await import("@/lib/api-client");
-    vi.mocked(apiClient.get).mockResolvedValue({ items: [], total: 0 });
+    vi.mocked(apiClient.get).mockImplementation((url: string) => {
+      if (url.endsWith("/backlinks")) return Promise.resolve({ items: [], total: 0 });
+      return Promise.resolve(NOTE_DETAIL);
+    });
     render(<NoteViewPage />, { wrapper: W });
-    await waitFor(() => expect(screen.getByText("笔记反链")).toBeDefined());
+    // The page also renders title as <h1>; scope to ODocumentReader container to be precise
+    await waitFor(() => {
+      const reader = screen.getByTestId("document-reader");
+      expect(within(reader).getByText("My Note")).toBeDefined();
+    });
   });
 
-  it("shows backlinks", async () => {
+  it("shows backlinks via OBacklinkPanel stub", async () => {
     const { apiClient } = await import("@/lib/api-client");
-    vi.mocked(apiClient.get).mockResolvedValue({
-      items: [{ id: "n1", title: "Linked Note", snippet: "some text" }],
-      total: 1,
+    vi.mocked(apiClient.get).mockImplementation((url: string) => {
+      if (url.endsWith("/backlinks"))
+        return Promise.resolve({
+          items: [{ id: "n1", title: "Linked Note", snippet: "some text" }],
+          total: 1,
+        });
+      return Promise.resolve(NOTE_DETAIL);
     });
     render(<NoteViewPage />, { wrapper: W });
     await waitFor(() => expect(screen.getByText("Linked Note")).toBeDefined());
   });
 
-  it("shows empty state", async () => {
+  it("shows empty state in OBacklinkPanel", async () => {
     const { apiClient } = await import("@/lib/api-client");
-    vi.mocked(apiClient.get).mockResolvedValue({ items: [], total: 0 });
+    vi.mocked(apiClient.get).mockImplementation((url: string) => {
+      if (url.endsWith("/backlinks")) return Promise.resolve({ items: [], total: 0 });
+      return Promise.resolve(NOTE_DETAIL);
+    });
     render(<NoteViewPage />, { wrapper: W });
-    await waitFor(() => expect(screen.getByText(/暂无反链/)).toBeDefined());
+    await waitFor(() => expect(screen.getByText("暂无反链")).toBeDefined());
   });
 
-  it("clicking backlink navigates", async () => {
+  it("clicking backlink navigates via OBacklinkPanel stub", async () => {
     const { apiClient } = await import("@/lib/api-client");
-    vi.mocked(apiClient.get).mockResolvedValue({
-      items: [{ id: "n2", title: "Other", snippet: null }],
-      total: 1,
+    vi.mocked(apiClient.get).mockImplementation((url: string) => {
+      if (url.endsWith("/backlinks"))
+        return Promise.resolve({
+          items: [{ id: "n2", title: "Other", snippet: null }],
+          total: 1,
+        });
+      return Promise.resolve(NOTE_DETAIL);
     });
     render(<NoteViewPage />, { wrapper: W });
     await waitFor(() => screen.getByText("Other"));

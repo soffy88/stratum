@@ -8,7 +8,7 @@ interface AdminStats {
   substrates: number;
   active_sessions: number;
   feedback_submissions: number;
-  share_links: number;
+  share_tokens: number;
 }
 
 export default function AdminDashboardPage() {
@@ -62,7 +62,7 @@ export default function AdminDashboardPage() {
           <StatCard label="文档库文件" value={data.substrates} />
           <StatCard label="活跃会话" value={data.active_sessions} />
           <StatCard label="反馈提交" value={data.feedback_submissions} />
-          <StatCard label="分享链接" value={data.share_links} />
+          <StatCard label="分享链接" value={data.share_tokens} />
         </div>
       )}
     </div>

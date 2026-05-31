@@ -1,17 +1,79 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+/**
+ * AIPage unit tests — Wave 12 (Block integration)
+ *
+ * Strategy: mock OAIQAPanel and OAISummaryCard to expose testable
+ * interfaces. Tests verify adapter callbacks and data flow.
+ */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import AIPage from "@/app/(app)/ai/page";
+
+// Stub Blocks to expose testable interfaces
+vi.mock("@helios/blocks", () => ({
+  OAIQAPanel: ({
+    onAsk,
+    placeholder,
+  }: {
+    onAsk: (q: string) => Promise<{ answer: string; citations: unknown[] }>;
+    placeholder?: string;
+  }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [input, setInput] = (globalThis as any).__aiInput__ ?? ["", () => {}];
+    return (
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget as HTMLFormElement);
+          const q = fd.get("question") as string;
+          if (!q?.trim()) return;
+          try {
+            const res = await onAsk(q);
+            const el = document.getElementById("qa-answer");
+            if (el) el.textContent = res.answer;
+          } catch (err) {
+            const el = document.getElementById("qa-error");
+            if (el) el.textContent = `错误: ${(err as Error).message}`;
+          }
+        }}
+      >
+        <input name="question" placeholder={placeholder ?? "问一个关于你的文档的问题..."} />
+        <button type="submit">提问</button>
+        <div id="qa-answer" />
+        <div id="qa-error" />
+      </form>
+    );
+  },
+  OAISummaryCard: ({
+    summary,
+    digestSent,
+  }: {
+    summary: string;
+    date?: string;
+    digestSent?: boolean;
+    citations?: unknown[];
+  }) => (
+    <div>
+      <p>{summary}</p>
+      {digestSent && <span>completed</span>}
+    </div>
+  ),
+}));
 
 vi.mock("@/lib/api-client", () => ({
   apiClient: { post: vi.fn(), get: vi.fn() },
   AuthRequiredError: class extends Error {},
 }));
 
-import { beforeEach } from "vitest";
-
-function Wrapper({ children }: { children: React.ReactNode }) {
-  return <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{children}</QueryClientProvider>;
+function W({ children }: { children: React.ReactNode }) {
+  return (
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      {children}
+    </QueryClientProvider>
+  );
 }
 
 describe("AIPage", () => {
@@ -22,110 +84,115 @@ describe("AIPage", () => {
   });
 
   it("renders heading and tabs", () => {
-    render(<AIPage />, { wrapper: Wrapper });
+    render(<AIPage />, { wrapper: W });
     expect(screen.getByRole("heading", { name: "AI 助手" })).toBeDefined();
     expect(screen.getByText("问答")).toBeDefined();
     expect(screen.getByText("摘要")).toBeDefined();
   });
 
-  it("QA tab is default", () => {
-    render(<AIPage />, { wrapper: Wrapper });
+  it("QA tab is default — OAIQAPanel placeholder visible", () => {
+    render(<AIPage />, { wrapper: W });
     expect(screen.getByPlaceholderText(/问一个/)).toBeDefined();
   });
 
-  it("QA submit calls agent API", async () => {
+  it("QA submit calls POST /api/agents/reading_companion/run", async () => {
     const { apiClient } = await import("@/lib/api-client");
-    vi.mocked(apiClient.get).mockResolvedValue({ items: [], total: 0 });
     vi.mocked(apiClient.post).mockResolvedValue({
       agent_run: { id: "r1", agent_name: "reading_companion", status: "pending", output: null },
       message: "Agent execution pending",
     });
-    render(<AIPage />, { wrapper: Wrapper });
-    fireEvent.change(screen.getByPlaceholderText(/问一个/), { target: { value: "What is X?" } });
-    fireEvent.click(screen.getByRole("button", { name: /提问/ }));
+    const user = userEvent.setup();
+    render(<AIPage />, { wrapper: W });
+    await user.type(screen.getByPlaceholderText(/问一个/), "What is X?");
+    await user.click(screen.getByRole("button", { name: "提问" }));
     await waitFor(() => {
-      expect(apiClient.post).toHaveBeenCalledWith("/api/agents/reading_companion/run", { params: { query: "What is X?" } });
+      expect(apiClient.post).toHaveBeenCalledWith(
+        "/api/agents/reading_companion/run",
+        { params: { query: "What is X?" } }
+      );
     });
   });
 
-  it("QA shows agent response message", async () => {
+  it("QA shows agent response message after answer", async () => {
     const { apiClient } = await import("@/lib/api-client");
-    vi.mocked(apiClient.get).mockResolvedValue({ items: [], total: 0 });
     vi.mocked(apiClient.post).mockResolvedValue({
       agent_run: { id: "r1", agent_name: "reading_companion", status: "pending", output: null },
       message: "Agent execution is not available",
     });
-    render(<AIPage />, { wrapper: Wrapper });
-    fireEvent.change(screen.getByPlaceholderText(/问一个/), { target: { value: "Q" } });
-    fireEvent.click(screen.getByRole("button", { name: /提问/ }));
+    const user = userEvent.setup();
+    render(<AIPage />, { wrapper: W });
+    await user.type(screen.getByPlaceholderText(/问一个/), "Q");
+    await user.click(screen.getByRole("button", { name: "提问" }));
     await waitFor(() => {
-      expect(screen.getByText(/not available/)).toBeDefined();
+      // adapter maps message → QAResponse.answer
+      expect(screen.getByText("Agent execution is not available")).toBeDefined();
     });
   });
 
   it("QA shows error on failure", async () => {
     const { apiClient } = await import("@/lib/api-client");
-    vi.mocked(apiClient.get).mockResolvedValue({ items: [], total: 0 });
     vi.mocked(apiClient.post).mockRejectedValue(new Error("Agent failed"));
-    render(<AIPage />, { wrapper: Wrapper });
-    fireEvent.change(screen.getByPlaceholderText(/问一个/), { target: { value: "Q" } });
-    fireEvent.click(screen.getByRole("button", { name: /提问/ }));
+    const user = userEvent.setup();
+    render(<AIPage />, { wrapper: W });
+    await user.type(screen.getByPlaceholderText(/问一个/), "Q");
+    await user.click(screen.getByRole("button", { name: "提问" }));
     await waitFor(() => {
-      expect(screen.getByText(/错误/)).toBeDefined();
+      expect(screen.getByText(/错误: Agent failed/)).toBeDefined();
     });
   });
 
-  it("switching to Summary tab shows loading then content", async () => {
+  it("QA does not call API on empty question", async () => {
+    const { apiClient } = await import("@/lib/api-client");
+    const user = userEvent.setup();
+    render(<AIPage />, { wrapper: W });
+    await user.click(screen.getByRole("button", { name: "提问" }));
+    expect(vi.mocked(apiClient.post)).not.toHaveBeenCalled();
+  });
+
+  it("switching to Summary tab shows content", async () => {
     const { apiClient } = await import("@/lib/api-client");
     vi.mocked(apiClient.get).mockResolvedValue({
-      items: [{ id: "r1", agent_name: "daily_digest", status: "completed", output: "Today summary", started_at: "2026-01-01T00:00:00" }],
+      items: [
+        {
+          id: "r1",
+          agent_name: "daily_digest",
+          status: "completed",
+          output: "Today summary",
+          started_at: "2026-01-01T00:00:00",
+        },
+      ],
       total: 1,
     });
-    render(<AIPage />, { wrapper: Wrapper });
-    fireEvent.click(screen.getByText("摘要"));
+    const user = userEvent.setup();
+    render(<AIPage />, { wrapper: W });
+    await user.click(screen.getByText("摘要"));
     await waitFor(() => {
       expect(screen.getByText("Today summary")).toBeDefined();
     });
   });
 
-  it("Summary tab shows empty state", async () => {
+  it("Summary tab shows empty state when no runs", async () => {
     const { apiClient } = await import("@/lib/api-client");
     vi.mocked(apiClient.get).mockResolvedValue({ items: [], total: 0 });
-    render(<AIPage />, { wrapper: Wrapper });
-    fireEvent.click(screen.getByText("摘要"));
+    const user = userEvent.setup();
+    render(<AIPage />, { wrapper: W });
+    await user.click(screen.getByText("摘要"));
     await waitFor(() => {
       expect(screen.getByText(/暂无摘要/)).toBeDefined();
     });
   });
 
-  it("QA does not submit empty question", async () => {
-    const { apiClient } = await import("@/lib/api-client");
-    render(<AIPage />, { wrapper: Wrapper });
-    fireEvent.click(screen.getByRole("button", { name: /提问/ }));
-    // post should only have been called by beforeEach mock setup, not by submit
-    const postCalls = vi.mocked(apiClient.post).mock.calls.filter(c => c[0]?.includes("agents"));
-    expect(postCalls.length).toBe(0);
-  });
-
-  it("QA button shows loading state", async () => {
-    const { apiClient } = await import("@/lib/api-client");
-    vi.mocked(apiClient.post).mockImplementation(() => new Promise(() => {}));
-    render(<AIPage />, { wrapper: Wrapper });
-    fireEvent.change(screen.getByPlaceholderText(/问一个/), { target: { value: "Q" } });
-    fireEvent.click(screen.getByText("提问"));
-    await waitFor(() => {
-      expect(screen.getByText("思考中...")).toBeDefined();
-    });
-  });
-
-  it("Summary shows status badge", async () => {
+  it("Summary shows digestSent badge for completed runs", async () => {
     const { apiClient } = await import("@/lib/api-client");
     vi.mocked(apiClient.get).mockResolvedValue({
-      items: [{ id: "r1", agent_name: "daily_digest", status: "completed", output: "X", started_at: null }],
+      items: [
+        { id: "r1", agent_name: "daily_digest", status: "completed", output: "X", started_at: null },
+      ],
       total: 1,
     });
-    render(<AIPage />, { wrapper: Wrapper });
-    fireEvent.click(screen.getByText("摘要"));
+    const user = userEvent.setup();
+    render(<AIPage />, { wrapper: W });
+    await user.click(screen.getByText("摘要"));
     await waitFor(() => {
       expect(screen.getByText("completed")).toBeDefined();
     });

@@ -1,0 +1,7 @@
+fastapi>=0.110
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+soundfile>=0.12
+# Fix upstream ghcr.io/swivid/f5-tts:main version mismatches (2026-05-23)
+torchaudio==2.11.0       # torch 2.12.0 vs torchaudio 2.4.0 symbol mismatch
+transformers<5.0         # transformers 5.x broke pipeline import in F5-TTS

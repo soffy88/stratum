@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import ulid
 
 
@@ -30,7 +30,7 @@ class SessionDAO:
         ttl_days: int = 30,
     ) -> Session:
         session_id = str(ulid.ULID())
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expires_at = now + timedelta(days=ttl_days)
         self.conn.execute(
             """
@@ -67,7 +67,7 @@ class SessionDAO:
     def revoke_session(self, session_id: str) -> None:
         self.conn.execute(
             "UPDATE sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL",
-            (datetime.utcnow(), session_id),
+            (datetime.now(timezone.utc), session_id),
         )
 
     def _row_to_session(self, row):

@@ -11,6 +11,7 @@ from stratum.http_api.routes.admin import router as admin_router
 from stratum.http_api.routes.feedback import router as feedback_router
 from stratum.http_api.routes.share import router as share_router
 from stratum.http_api.routes.users import router as users_router
+from stratum.http_api.metrics import metrics_middleware
 
 # Sentry: only initialise when SENTRY_DSN is set (env-guarded — no DSN = no telemetry)
 _sentry_dsn = os.getenv("SENTRY_DSN")
@@ -35,6 +36,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def metrics_mw(request: Request, call_next):
+    return await metrics_middleware(request, call_next)
 
 
 @app.middleware("http")
