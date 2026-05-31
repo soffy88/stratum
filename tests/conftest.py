@@ -1,5 +1,13 @@
 """Shared test fixtures for Stratum tests."""
 
+import os
+
+# Inject test-only secrets before any module that reads them at import time.
+# setdefault leaves real env vars (e.g. from CI) untouched.
+os.environ.setdefault("JWT_SECRET", "test-only-insecure-key-do-not-use-in-prod-padding")
+os.environ.setdefault("COOKIE_SECRET", "test-only-cookie-secret-do-not-use-in-prod-pad")
+os.environ.setdefault("ADMIN_SECRET", "test-admin-secret-do-not-use-in-prod-padding00")
+
 import pytest
 import duckdb
 
