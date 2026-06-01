@@ -49,6 +49,11 @@ async def search(req: SearchRequest, user_id: str = Depends(jwt_auth)):
         pgvector_mgr=None,
     )
 
+    # Defensive post-filter: when a result carries user_id (set by user-scoped
+    # backends), reject rows that don't belong to the authenticated user.
+    # Rows without user_id pass through — isolation is then the manager's job.
+    own = [r for r in result.results if getattr(r, "user_id", None) in (None, user_id)]
+
     return {
         "results": [
             {
@@ -59,7 +64,7 @@ async def search(req: SearchRequest, user_id: str = Depends(jwt_auth)):
                 "highlight": r.highlight,
                 "citation": r.citation.model_dump() if r.citation else None,
             }
-            for r in result.results[: req.top_k]
+            for r in own[: req.top_k]
         ],
         "citations": [c.model_dump() for c in (result.citations or [])],
         "search_time_ms": result.search_time_ms,
