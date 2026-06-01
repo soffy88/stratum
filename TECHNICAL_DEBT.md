@@ -1,8 +1,39 @@
 # Stratum Technical Debt
 
-Last updated: 2026-05-28 (Phase 14 P1 complete)
+Last updated: 2026-06-01 (Phase 14 SPEC 1/2 sign-off)
 
 Legend: `[ ]` open · `[x]` resolved · priority: **P0** blocker / **P1** soon / **P2** eventually
+
+---
+
+## SPEC 1/2 Service Layer (Phase 14 SaaS)
+
+### DB Layer
+
+- [ ] **P1** `SPEC 1 §S0.6 deviation`: `src/stratum/db/__init__.py` uses direct `psycopg2`
+  instead of `oprim.db_insert / db_read / db_query / db_write / db_update / db_soft_delete`.
+  oprim 1.14.0 **does** export these (signatures: `db_insert(*, dsn, table, data, returning)`),
+  but they require `dsn` per-call rather than a connection-pool, and lack JSONB dict serialisation
+  and TEXT[] array pass-through that our current impl provides (bug fixed in `5bd04740`).
+  Switch back when oprim adds connection-pooled wrappers or when Stratum moves to psycopg3.
+  Tracked: `src/stratum/db/__init__.py` ↔ `oprim.{db_insert, db_read, db_query, db_write, db_update, db_soft_delete}`
+
+- [ ] **P1** `IngestResult.substrate_id` stores `str(IngestResult(...))` repr instead of
+  bare ULID — omodul 1.14.0 bug. Workaround: `_extract_id()` regex in `inbox.py` (`159f1cb0`).
+  Fix upstream in omodul; remove `_extract_id` when fixed.
+
+### Service Layer Process
+
+- [ ] **P0** `stratum-sl` Docker service added (`deploy/docker-compose.yml`) but not yet
+  promoted to production — `docker-compose up -d stratum-sl` required after next deploy.
+  The bare-process fallback (pid ~3541718) is still running and will die on reboot.
+
+### Tests
+
+- [ ] **P1** New service layer routes (PG-backed, `src/stratum/api/routers/`) have no CI
+  integration tests — only REDLINE manual verification. Unit tests added in
+  `tests/service_layer/` cover: notes CRUD+isolation, agents, inbox, search IDOR,
+  WebSocket CSWSH. Needs DB fixture pointing at test PG instance for full CI coverage.
 
 ---
 
