@@ -67,7 +67,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     cookie_token = ws.cookies.get("access_token") or ws.cookies.get("refresh_token")
     if cookie_token:
         origin = ws.headers.get("origin")
-        if origin is not None and origin not in _ALLOWED_ORIGINS:
+        if origin is None or origin not in _ALLOWED_ORIGINS:
             await ws.close(code=4403)
             return
         try:
