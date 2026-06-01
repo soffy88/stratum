@@ -1,72 +1,77 @@
-"""Agent execution — wires to omodul when available, stubs otherwise."""
+"""Agent execution — wires to omodul workflow functions."""
 
 import asyncio
-from pathlib import Path
+from datetime import date, timezone, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from stratum.common import jwt_auth, user_agent_runs_dir, ensure_dir
+from stratum.common import jwt_auth, user_agent_runs_dir, sha256_hex, ensure_dir
 
 router = APIRouter(prefix="/api/v1/agents", tags=["agents"])
 
-# ── Optional omodul imports ───────────────────────────────────────────────────
 try:
-    from omodul.knowledge.agents.builtin.daily_digest import DailyDigestAgent
-    from omodul.knowledge.agents.builtin.knowledge_curator import KnowledgeCuratorAgent
-    from omodul.knowledge.agents.builtin.translation_worker import TranslationWorkerAgent
-    from omodul.knowledge.agents.registry import get_agent
+    from omodul.daily_digest_workflow import (
+        daily_digest_workflow,
+        DailyDigestConfig,
+        DailyDigestInput,
+    )
 
-    _HAS_AGENTS = True
+    _HAS_OMODUL = True
 except ImportError:
-    _HAS_AGENTS = False
+    _HAS_OMODUL = False
+
+_KNOWN_AGENTS = {"daily_digest", "knowledge_curator", "translation_worker"}
 
 
-async def _run_omodul_agent(agent_name: str, params: dict, user_id: str) -> dict:
-    """Dispatch to omodul agent registry."""
+async def _run_daily_digest(params: dict, user_id: str) -> dict:
     out_dir = ensure_dir(user_agent_runs_dir(user_id))
-    try:
-        agent_cls = get_agent(agent_name)
-    except Exception:
-        raise HTTPException(404, f"Unknown agent: {agent_name}")
-
-    from omodul.knowledge.agents.base import AgentContext
-
-    context = AgentContext(user_id=user_id, corpus_id=f"user_{user_id}")
-    agent = agent_cls()
-    result = await asyncio.to_thread(asyncio.run, agent.run(params, context))
+    config = DailyDigestConfig(
+        digest_date=date.today(),
+        user_id_hash=sha256_hex(user_id)[:16],
+        corpus_id=f"user_{user_id}",
+        max_items=params.get("max_items", 20),
+        llm_provider=params.get("llm_provider", "qwen3"),
+        llm_model=params.get("llm_model", "qwen3-max"),
+    )
+    input_data = DailyDigestInput(
+        recent_substrate_ids=params.get("recent_substrate_ids", []),
+    )
+    result = await asyncio.to_thread(
+        daily_digest_workflow,
+        config=config,
+        input_data=input_data,
+        output_dir=out_dir,
+    )
     return {
-        "agent_name": agent_name,
-        "status": "completed",
-        "output": result.output if hasattr(result, "output") else str(result),
-        "citations": [c.model_dump() for c in (result.citations or [])]
-        if hasattr(result, "citations")
-        else [],
+        "agent_name": "daily_digest",
+        "status": result.get("status", "unknown"),
+        "findings": result["findings"].model_dump() if result.get("findings") else None,
+        "report_fingerprint": result.get("fingerprint"),
+        "error": result.get("error"),
     }
 
 
 @router.post("/{agent_name}/run")
 async def agent_run(agent_name: str, params: dict = {}, user_id: str = Depends(jwt_auth)):
-    _KNOWN = {
-        "daily_digest",
-        "knowledge_curator",
-        "translation_worker",
-        "lint_bot",
-        "audio_generator",
-        "reading_companion",
-        "weekly_review",
-    }
-    if agent_name not in _KNOWN:
+    if agent_name not in _KNOWN_AGENTS:
         raise HTTPException(404, f"Unknown agent: {agent_name}")
 
-    if not _HAS_AGENTS:
-        # omodul agents not installed — return informative stub
+    if not _HAS_OMODUL:
         return {
             "agent_name": agent_name,
             "status": "not_implemented",
-            "message": "omodul agent runtime not yet available in this environment",
+            "message": "omodul not available in this environment",
         }
 
-    return await _run_omodul_agent(agent_name, params or {}, user_id)
+    if agent_name == "daily_digest":
+        return await _run_daily_digest(params or {}, user_id)
+
+    # knowledge_curator / translation_worker — stub (workflows not yet in omodul 1.14)
+    return {
+        "agent_name": agent_name,
+        "status": "not_implemented",
+        "message": f"{agent_name} workflow not yet available",
+    }
 
 
 @router.get("/{agent_name}/runs")
