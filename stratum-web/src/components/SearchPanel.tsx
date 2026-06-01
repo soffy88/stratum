@@ -10,7 +10,11 @@ interface SearchResult {
   citation?: { deep_link?: string } | null;
 }
 
-export function SearchPanel() {
+interface Props {
+  filter?: Record<string, unknown>;
+}
+
+export function SearchPanel({ filter = {} }: Props) {
   const [queryText, setQueryText] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [mode, setMode] = useState("augmented");
@@ -24,7 +28,7 @@ export function SearchPanel() {
     const res = await fetch("/api/v1/search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: queryText, mode, top_k: 20, rerank, expand }),
+      body: JSON.stringify({ query: queryText, mode, top_k: 20, rerank, expand, ...filter }),
       credentials: "include",
     });
     const data = await res.json();
