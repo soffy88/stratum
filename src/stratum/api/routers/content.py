@@ -28,7 +28,7 @@ async def content_feed(
     params: dict = {"limit": page_size, "offset": offset}
     where = "deleted_at IS NULL"
     if domain:
-        where += " AND %(domain)s = ANY(domain)"
+        where += " AND list_contains(domain, $domain)"
         params["domain"] = domain
 
     rows = query(
@@ -69,8 +69,8 @@ async def content_detail(content_id: str, user_id: str = Depends(jwt_auth)):
         {"uid": user_id, "cid": content_id},
     )
     user_notes = query(
-        "SELECT id, title FROM notes "
-        "WHERE %(cid)s = ANY(content_refs) AND user_id = %(uid)s AND deleted_at IS NULL",
+        "SELECT id, title FROM notes_sl "
+        "WHERE list_contains(content_refs, $cid) AND user_id = $uid AND deleted_at IS NULL",
         {"cid": content_id, "uid": user_id},
     )
 

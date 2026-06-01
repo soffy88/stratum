@@ -47,7 +47,7 @@ class ViewUpdate(BaseModel):
 async def create_view(body: ViewCreate, user_id: str = Depends(jwt_auth)):
     vid = generate_ulid()
     insert(
-        "views",
+        "user_views",
         {
             "id": vid,
             "user_id": user_id,
@@ -66,7 +66,7 @@ async def create_view(body: ViewCreate, user_id: str = Depends(jwt_auth)):
 @router.get("")
 async def list_views(user_id: str = Depends(jwt_auth)):
     user_views = query(
-        "SELECT * FROM views WHERE user_id = %(uid)s ORDER BY name",
+        "SELECT * FROM user_views WHERE user_id = %(uid)s ORDER BY name",
         {"uid": user_id},
     )
     return {"presets": PRESETS, "user_views": user_views}
@@ -74,7 +74,7 @@ async def list_views(user_id: str = Depends(jwt_auth)):
 
 @router.put("/{view_id}")
 async def update_view(view_id: str, body: ViewUpdate, user_id: str = Depends(jwt_auth)):
-    existing = read("views", view_id)
+    existing = read("user_views", view_id)
     if not existing or existing.get("user_id") != user_id:
         raise HTTPException(404, "View not found")
     changes = {k: v for k, v in body.model_dump().items() if v is not None}
@@ -82,29 +82,27 @@ async def update_view(view_id: str, body: ViewUpdate, user_id: str = Depends(jwt
         changes["default_filter"] = changes.pop("filters")
     if changes:
         changes["updated_at"] = now_utc()
-        update("views", view_id, changes)
+        update("user_views", view_id, changes)
     return {"view_id": view_id, "status": "updated"}
 
 
 @router.delete("/{view_id}")
 async def delete_view(view_id: str, user_id: str = Depends(jwt_auth)):
-    existing = read("views", view_id)
+    existing = read("user_views", view_id)
     if not existing or existing.get("user_id") != user_id:
         raise HTTPException(404, "View not found")
-    soft_delete("views", view_id)
+    soft_delete("user_views", view_id)
     return {"view_id": view_id, "status": "deleted"}
 
 
 @router.post("/{view_id}/set-default")
 async def set_default_view(view_id: str, user_id: str = Depends(jwt_auth)):
-    existing = read("views", view_id)
+    existing = read("user_views", view_id)
     if not existing or existing.get("user_id") != user_id:
         raise HTTPException(404, "View not found")
-    # Clear other defaults for this user
-    from stratum.db import _conn  # type: ignore[attr-defined]
+    # Clear other defaults for this user (DuckDB: execute directly on connection)
+    from stratum.db import execute
 
-    with _conn() as con:
-        with con.cursor() as cur:
-            cur.execute("UPDATE views SET is_default = FALSE WHERE user_id = %s", (user_id,))
-    update("views", view_id, {"is_default": True})
+    execute("UPDATE user_views SET is_default = FALSE WHERE user_id = %(uid)s", {"uid": user_id})
+    update("user_views", view_id, {"is_default": True})
     return {"view_id": view_id, "status": "default_set"}
