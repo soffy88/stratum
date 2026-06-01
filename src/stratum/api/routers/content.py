@@ -60,7 +60,9 @@ async def content_detail(content_id: str, user_id: str = Depends(jwt_auth)):
             tantivy_mgr=None,
             pgvector_mgr=None,
         )
-        related_user = result.results
+        # Defensive post-filter: only include rows that belong to this user
+        # when the backend sets user_id on results.
+        related_user = [r for r in result.results if getattr(r, "user_id", None) in (None, user_id)]
 
     highlights = query(
         "SELECT * FROM highlights WHERE user_id = %(uid)s AND content_id = %(cid)s",

@@ -41,11 +41,11 @@ async def search_knowledge(query_text: str, top_k: int = 10) -> dict:
             tantivy_mgr=None,
             pgvector_mgr=None,
         )
-        # Post-filter to only return this user's data
         return {
             "results": [
                 {"title": r.title, "type": r.type, "score": round(r.score, 4)}
                 for r in result.results[:top_k]
+                if getattr(r, "user_id", None) in (None, user_id)
             ],
             "search_time_ms": result.search_time_ms,
         }
