@@ -48,6 +48,35 @@ services:
     profiles:
       - public
 
+  stratum-sl:
+    build:
+      context: /home/soffy/projects
+      dockerfile: stratum/deploy/Dockerfile.sl
+    container_name: stratum-sl
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9304:9304"
+    env_file:
+      - /home/soffy/.config/keys/.env
+    environment:
+      # Override DSN to use Docker gateway so the container can reach the
+      # postgres container that lives in a separate compose project (deploy-postgres-1)
+      # exposed on the host at port 5433.
+      - STRATUM_DATABASE_DSN=postgresql://stratum:stratum@172.20.0.1:5433/stratum
+    volumes:
+      # Platform packages mounted editable — source changes are live without rebuild
+      - /home/soffy/projects/platform/obase:/opt/platform/obase
+      - /home/soffy/projects/platform/oprim:/opt/platform/oprim
+      - /home/soffy/projects/platform/oskill:/opt/platform/oskill
+      - /home/soffy/projects/platform/omodul:/opt/platform/omodul
+      # Data directory (DuckDB, uploads, etc.)
+      - ~/.stratum:/root/.stratum
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9304/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 networks:
   default:
     name: stratum-net
