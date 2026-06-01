@@ -6,7 +6,9 @@ import { useAuthStore } from "@/stores/auth";
 
 const NAV_ITEMS = [
   { href: "/search", label: "搜索" },
+  { href: "/discover", label: "发现" },
   { href: "/documents", label: "文档" },
+  { href: "/concepts", label: "概念" },
   { href: "/ai", label: "AI" },
   { href: "/jobs", label: "任务" },
   { href: "/admin", label: "管理" },
