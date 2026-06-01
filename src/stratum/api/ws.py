@@ -13,13 +13,28 @@ reverse proxy and visible in browser history). Two safe options are supported:
      Ticket is NOT a long-lived JWT; it is a random token stored in DedupCache.
 """
 
+import os
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from stratum.common import dedup_cache, jwt_auth, verify_token
 
 router = APIRouter()
+
+# Allowlist for Origin header enforcement when cookie auth is used.
+# Cross-origin pages can initiate WS connections and the browser will send
+# cookies automatically — this is Cross-Site WebSocket Hijacking (CSWSH).
+# Ticket-based auth is not vulnerable (tickets are one-time tokens obtained
+# via an authenticated same-origin POST request).
+_ALLOWED_ORIGINS: set[str] = {
+    o.strip()
+    for o in os.environ.get(
+        "STRATUM_WS_ALLOWED_ORIGINS",
+        "http://localhost:3000,https://stratum.uex.hk",
+    ).split(",")
+    if o.strip()
+}
 
 # user_id → list of open connections
 active_connections: dict[str, list[WebSocket]] = {}
@@ -45,9 +60,16 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     """
     user_id: str | None = None
 
-    # Option 1: HttpOnly cookie
+    # Option 1: HttpOnly cookie — only accepted from allowed origins (CSWSH guard).
+    # A cross-origin page can open a WebSocket and the browser sends cookies
+    # automatically; the Origin header is set by the browser and cannot be
+    # spoofed from a web context, so checking it is sufficient here.
     cookie_token = ws.cookies.get("access_token") or ws.cookies.get("refresh_token")
     if cookie_token:
+        origin = ws.headers.get("origin")
+        if origin is not None and origin not in _ALLOWED_ORIGINS:
+            await ws.close(code=4403)
+            return
         try:
             user_id = verify_token(f"Bearer {cookie_token}")
         except Exception:
