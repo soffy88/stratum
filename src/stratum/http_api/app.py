@@ -89,3 +89,12 @@ app.include_router(admin_router, prefix="/api", tags=["admin"])
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
+
+
+# MCP SSE endpoint — for Claude Desktop / MCP clients
+try:
+    from stratum.api.mcp import mcp_app
+
+    app.mount("/mcp", mcp_app)
+except Exception:
+    pass  # mcp optional; skip if fastmcp not installed
