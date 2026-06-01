@@ -1,8 +1,21 @@
 # Stratum Technical Debt
 
-Last updated: 2026-06-01 (Phase 14 SPEC 1/2 sign-off)
+Last updated: 2026-06-01 (Phase 14 SPEC 1/2 sign-off + Phase 14.5 sign-off)
 
 Legend: `[ ]` open · `[x]` resolved · priority: **P0** blocker / **P1** soon / **P2** eventually
+
+---
+
+## Phase 14.5 — 前端装配
+
+- [ ] **P1** `TextHighlighter` 跟 sanitized HTML 渲染冲突: `content/[id]/page.tsx` 用
+  `TextHighlighter` 包裹 body 后，`sanitizeHtml()` 输出的 HTML 标签以纯文本渲染，
+  丢失富文本格式 (alpha 期 `platform_content` 空, 影响为零; Hevi 内容灌入前必修)。
+  方案: 新建 `ContentBody` wrapper client component，内部同时持有
+  `dangerouslySetInnerHTML={{ __html: sanitizeHtml(html, SAFE_OPTIONS) }}` 渲染
+  + `onMouseUp` highlight 逻辑，替代当前 `TextHighlighter` 直接包裹方式。
+  ⚠️ 安全: `dangerouslySetInnerHTML` 必须配合 `sanitize-html` (已有 SAFE_HTML_OPTIONS
+  allowlist)，不得裸传 `body_html`。触发: `platform_content` 有真实数据 / Hevi 内容接入前。
 
 ---
 
