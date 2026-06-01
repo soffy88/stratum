@@ -16,7 +16,7 @@ async def delete_account(user_id: str = Depends(jwt_auth)):
     from stratum.common import now_utc
 
     # Soft-delete notes and concepts
-    for table in ("notes", "concepts"):
+    for table in ("notes_sl", "concepts"):
         rows = query(
             f"SELECT id FROM {table} WHERE user_id = %(uid)s AND deleted_at IS NULL",
             {"uid": user_id},
