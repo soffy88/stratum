@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { ODocumentReader, OAnnotationLayer, OCitationCard } from "@helios/blocks";
 import type { Citation } from "@helios/blocks";
 import { useDocument } from "@/lib/adapters/documents";
+import { TranslationToggle } from "@/components/TranslationToggle";
 
 /**
  * TECHNICAL_DEBT: OAnnotationLayer rendered in display-only mode (fragments=[]).
@@ -30,6 +31,10 @@ export default function DocumentReaderPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-semibold truncate">{substrate.title ?? "文档详情"}</h1>
+        <TranslationToggle substrateId={id} />
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
         <ODocumentReader
           substrate={substrate}

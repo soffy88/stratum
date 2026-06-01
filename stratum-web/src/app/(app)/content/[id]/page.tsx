@@ -1,4 +1,5 @@
 import sanitizeHtml from "sanitize-html";
+import { TextHighlighter } from "@/components/TextHighlighter";
 
 const SAFE_HTML_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img", "figure", "figcaption"]),
@@ -59,15 +60,9 @@ export default async function ArticlePage({
         {content.audio_url && (
           <audio controls src={content.audio_url} className="w-full mb-4" />
         )}
-        <div
-          className="prose max-w-none"
-          dangerouslySetInnerHTML={{
-            __html: sanitizeHtml(
-              content.body_html || content.body_markdown || "",
-              SAFE_HTML_OPTIONS
-            ),
-          }}
-        />
+        <TextHighlighter contentId={content.id}>
+          {sanitizeHtml(content.body_html || content.body_markdown || "", SAFE_HTML_OPTIONS)}
+        </TextHighlighter>
       </main>
 
       <aside className="space-y-4">

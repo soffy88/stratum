@@ -4,10 +4,12 @@ import { useState } from "react";
 import { OSemanticSearch } from "@helios/blocks";
 import { useStratumSearch } from "@/lib/adapters/search";
 import { SearchPanel } from "@/components/SearchPanel";
+import { ViewSwitcher } from "@/components/ViewSwitcher";
 
 export default function SearchPage() {
   const onSearch = useStratumSearch();
   const [advanced, setAdvanced] = useState(false);
+  const [viewFilter, setViewFilter] = useState<Record<string, unknown>>({});
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -21,7 +23,13 @@ export default function SearchPage() {
         </button>
       </div>
       {advanced ? (
-        <SearchPanel />
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm text-[var(--color-muted)]">
+            <span>视角:</span>
+            <ViewSwitcher onViewChange={setViewFilter} />
+          </div>
+          <SearchPanel filter={viewFilter} />
+        </div>
       ) : (
         <OSemanticSearch onSearch={onSearch} placeholder="输入搜索内容..." />
       )}
