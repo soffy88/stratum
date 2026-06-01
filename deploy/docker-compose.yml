@@ -49,6 +49,7 @@ services:
       - public
 
   stratum-sl:
+    image: stratum-sl:latest
     build:
       context: /home/soffy/projects
       dockerfile: stratum/deploy/Dockerfile.sl
