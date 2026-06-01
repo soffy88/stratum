@@ -6,6 +6,24 @@ Legend: `[ ]` open · `[x]` resolved · priority: **P0** blocker / **P1** soon /
 
 ---
 
+## DB 合并 §M3 — DuckDB 迁移后技术债
+
+- [ ] **P1** `db/__init__.py` JSON 列反序列化: DuckDB JSON 列返回原始字符串 (不像 psycopg2
+  自动 parse JSONB → dict). 现有路由将 anchor / payload / meta_json 等字段作为字符串返回给
+  前端, 导致 `"anchor": "{\"char_start\":0,...}"` 双序列化问题.
+  触发: §M4 REDLINE 测试, highlights / changefeed / notes_sl payload 读取失败.
+  方案: 在 `_rows()` 内对 JSON 类型列自动 `json.loads()` (通过 DuckDB `cursor.description`
+  type_code 识别, 或启发式: str 以 `{` / `[` 开头时尝试 parse).
+
+- [ ] **P1** `db/write()` ON CONFLICT 依赖唯一约束: DuckDB 支持 `ON CONFLICT ... DO UPDATE`
+  语法, 但要求目标列有 PRIMARY KEY 或 UNIQUE 索引. 若某表 `conflict_on` 列无约束,
+  运行时报 `ConstraintException`. 触发: §M4 write() 调用路径 REDLINE.
+
+- [ ] **P2** `query()` UPDATE 语句防御: `query()` 语义是 SELECT, 但若误传 UPDATE/DELETE,
+  `cursor.description` 为 None → 返回 `[]` 而非报错. 应在函数顶加 assert 检查 SQL 前缀.
+
+---
+
 ## Phase 14.5 — 前端装配
 
 - [ ] **P1** `TextHighlighter` 跟 sanitized HTML 渲染冲突: `content/[id]/page.tsx` 用
