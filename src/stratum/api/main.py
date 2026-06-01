@@ -4,12 +4,38 @@ Runs on port 9303. The existing Phase 14 SaaS (http_api/app.py) remains on 9302.
 All SPEC 2 routes are wired here.
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from stratum.api.mcp import mcp_app
 
-app = FastAPI(title="Stratum Service Layer", version="0.5.0")
+
+def _register_providers() -> None:
+    """Register 3O LLM providers with obase ProviderRegistry at startup."""
+    try:
+        from obase.provider_registry import ProviderRegistry
+        from oprim.llm.llm_call import llm_call
+
+        if not ProviderRegistry.has("llm", "qwen3"):
+
+            def _qwen3(messages, **_):
+                prompt = next((m["content"] for m in messages if m["role"] == "user"), "")
+                return llm_call(prompt=prompt, provider="qwen3_dashscope", model="qwen3-max").text
+
+            ProviderRegistry.register("llm", "qwen3", _qwen3)
+    except Exception:
+        pass  # graceful — workflows fall back to failed status without LLM
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    _register_providers()
+    yield
+
+
+app = FastAPI(title="Stratum Service Layer", version="0.5.0", lifespan=_lifespan)
 
 app.add_middleware(
     CORSMiddleware,

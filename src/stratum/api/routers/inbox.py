@@ -1,9 +1,24 @@
 """Content ingest — file upload + web-clip."""
 
 import asyncio
+import re
 import shutil
 import tempfile
 from pathlib import Path
+
+_ULID_RE = re.compile(r"[0-9A-Z]{26}")
+
+
+def _extract_id(raw: object) -> str | None:
+    """Extract bare ULID from a findings.substrate_id that may be an IngestResult repr."""
+    s = str(raw) if raw is not None else ""
+    # Happy path: already a plain ULID
+    if _ULID_RE.fullmatch(s):
+        return s
+    # Fallback: parse first ULID from IngestResult(substrate_id='...') repr
+    m = _ULID_RE.search(s)
+    return m.group(0) if m else None
+
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
@@ -22,7 +37,11 @@ _UPLOAD_MAX_BYTES = 500 * 1024 * 1024  # 500 MB
 
 # ── Optional omodul imports ───────────────────────────────────────────────────
 try:
-    from omodul.knowledge.process_inbox import process_inbox
+    from omodul.process_inbox_substrate import (
+        process_inbox_substrate,
+        InboxConfig,
+        InboxInput,
+    )
 
     _HAS_INBOX = True
 except ImportError:
@@ -63,7 +82,6 @@ async def inbox_submit(
         return {**cached, "deduplicated": True}
 
     if not _HAS_INBOX:
-        # omodul not available — record file, return stub
         return {
             "upload_id": checksum[:12],
             "substrate_id": generate_ulid(),
@@ -72,20 +90,34 @@ async def inbox_submit(
             "message": "omodul inbox pipeline not yet available; file saved to inbox dir",
         }
 
-    # Run omodul process_inbox on the single-file inbox dir
-    result = await process_inbox(inbox_dir=inbox_dir, archive_after_process=True)
+    config = InboxConfig(
+        file_path=str(file_path),
+        file_checksum=checksum,
+        user_id_hash=sha256_hex(user_id)[:16],
+        medium_hint=medium_hint,
+        auto_classify=True,
+        llm_provider="qwen3",
+        llm_model="qwen3-max",
+    )
+    result = await asyncio.to_thread(
+        process_inbox_substrate,
+        config=config,
+        input_data=InboxInput(),
+        output_dir=inbox_dir,
+    )
 
-    if result.failed:
-        raise HTTPException(500, detail=result.failed[0].get("error", "Ingest failed"))
+    if result.get("status") == "failed":
+        err = result.get("error") or {}
+        raise HTTPException(500, detail=err.get("error_message", "Ingest failed"))
 
-    processed = result.processed[0] if result.processed else None
+    findings = result.get("findings")
     response = {
         "upload_id": checksum[:12],
-        "substrate_id": str(processed.substrate_id) if processed else None,
-        "medium": str(processed.medium) if processed else medium_hint,
-        "status": "completed" if processed else "needs_review",
+        "substrate_id": _extract_id(findings.substrate_id) if findings else None,
+        "medium": str(findings.medium) if findings else medium_hint,
+        "status": result.get("status", "completed"),
     }
-    if processed:
+    if result.get("status") == "completed":
         await dedup_cache.set(fp_key, response, ttl=120)
     return response
 
@@ -106,16 +138,30 @@ async def inbox_webclip(
             "message": "omodul web-clip pipeline not yet available",
         }
 
-    # Write HTML to a temp file and process
     clip_path = inbox_dir / f"{generate_ulid()}.html"
     clip_path.write_text(
         html or f"<html><head><title>{url}</title></head><body></body></html>",
         encoding="utf-8",
     )
-    result = await process_inbox(inbox_dir=inbox_dir, archive_after_process=True)
-    processed = result.processed[0] if result.processed else None
+    checksum = sha256_hex(clip_path.read_text())
+    config = InboxConfig(
+        file_path=str(clip_path),
+        file_checksum=checksum,
+        user_id_hash=sha256_hex(user_id)[:16],
+        medium_hint="webpage",
+        auto_classify=True,
+        llm_provider="qwen3",
+        llm_model="qwen3-max",
+    )
+    result = await asyncio.to_thread(
+        process_inbox_substrate,
+        config=config,
+        input_data=InboxInput(),
+        output_dir=inbox_dir,
+    )
+    findings = result.get("findings")
     return {
-        "substrate_id": str(processed.substrate_id) if processed else None,
-        "status": "completed" if processed else "needs_review",
+        "substrate_id": _extract_id(findings.substrate_id) if findings else None,
+        "status": result.get("status", "completed"),
         "url": url,
     }
