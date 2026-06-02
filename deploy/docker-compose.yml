@@ -22,9 +22,9 @@ services:
 
   # stratum-web (Next.js) is currently deployed outside Docker.
   # When containerised, set the following in its environment:
-  #   STRATUM_API_INTERNAL_URL: http://stratum-api:9302
-  # This lets the share/[token] Server Component reach the backend
-  # via the Docker internal network instead of localhost.
+  #   STRATUM_API_INTERNAL_URL: http://stratum-sl:9304
+  # This lets RSC pages (discover, concepts, content) reach the SL
+  # via the Docker internal network instead of localhost:9304.
 
   stratum-nginx:
     image: nginx:1.27-alpine
@@ -60,10 +60,11 @@ services:
     env_file:
       - /home/soffy/.config/keys/.env
     environment:
-      # Override DSN to use Docker gateway so the container can reach the
-      # postgres container that lives in a separate compose project (deploy-postgres-1)
-      # exposed on the host at port 5433.
-      - STRATUM_DATABASE_DSN=postgresql://stratum:stratum@172.20.0.1:5433/stratum
+      # §M3 DB merge: stratum-sl now uses DuckDB (~/.stratum/meta.duckdb).
+      # STRATUM_DATABASE_DSN (PG) is no longer used — removed.
+      # STRATUM_DB_PATH defaults to ~/.stratum/meta.duckdb inside the container
+      # because ~/.stratum is mounted as /root/.stratum and ~ resolves to /root.
+      - STRATUM_DB_PATH=/root/.stratum/meta.duckdb
     volumes:
       # Platform packages mounted editable — source changes are live without rebuild
       - /home/soffy/projects/platform/obase:/opt/platform/obase

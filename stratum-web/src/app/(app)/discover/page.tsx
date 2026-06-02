@@ -12,7 +12,7 @@ interface ContentItem {
 async function getFeed(): Promise<{ items: ContentItem[] }> {
   try {
     const res = await fetch(
-      `${process.env.STRATUM_API_INTERNAL_URL || "http://localhost:9302"}/api/v1/content/feed`,
+      `${process.env.STRATUM_API_INTERNAL_URL || "http://localhost:9304"}/api/v1/content/feed`,
       { cache: "no-store" }
     );
     if (!res.ok) return { items: [] };
