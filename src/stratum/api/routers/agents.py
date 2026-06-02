@@ -79,7 +79,7 @@ async def list_agent_runs(agent_name: str, user_id: str = Depends(jwt_auth)):
     from stratum.db import query
 
     return query(
-        "SELECT id, status, started_at, completed_at FROM agent_runs_sl "
+        "SELECT id, status, started_at, completed_at FROM agent_runs "
         "WHERE user_id = %(uid)s AND agent_name = %(name)s "
         "ORDER BY started_at DESC",
         {"uid": user_id, "name": agent_name},
