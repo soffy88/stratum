@@ -99,7 +99,7 @@ def test_get_note_cross_user_isolation(client, duckdb_test_db):
     # Pre-insert a note owned by user-bob
     _db_insert(
         duckdb_test_db,
-        "notes_sl",
+        "notes",
         {"id": "NOTE-001", "user_id": "user-bob", "title": "Bob note", "content_markdown": "hi"},
     )
 
@@ -117,7 +117,7 @@ def test_delete_note_then_get_is_404(client, duckdb_test_db):
     # Pre-insert Alice's note
     _db_insert(
         duckdb_test_db,
-        "notes_sl",
+        "notes",
         {"id": "NOTE-002", "user_id": "user-alice", "title": "Alice note", "content_markdown": "x"},
     )
 
