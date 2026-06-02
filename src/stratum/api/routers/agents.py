@@ -48,6 +48,7 @@ try:
     )
     from omodul.knowledge.agents.base import AgentContext
     from omodul.knowledge.agents.builtin.audio_generator import AudioGeneratorAgent
+    from omodul.knowledge.agents.builtin.illustration_agent import IllustrationAgent
     from omodul.knowledge.agents.builtin.lint_bot import LintBotAgent
     from omodul.knowledge.agents.builtin.reading_companion import ReadingCompanionAgent
     from omodul.knowledge.agents.builtin.translation_worker import TranslationWorkerAgent
@@ -128,6 +129,7 @@ if _HAS_OMODUL:
         "reading_companion": ReadingCompanionAgent,
         "lint_bot": LintBotAgent,
         "audio_generator": AudioGeneratorAgent,
+        "illustration_agent": IllustrationAgent,
     }
 
 else:

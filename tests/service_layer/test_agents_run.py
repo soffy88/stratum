@@ -81,12 +81,18 @@ def test_no_agent_returns_501(client):
 
 @pytest.mark.parametrize(
     "agent_name",
-    ["translation_worker", "reading_companion", "lint_bot", "audio_generator"],
+    [
+        "translation_worker",
+        "reading_companion",
+        "lint_bot",
+        "audio_generator",
+        "illustration_agent",
+    ],
 )
 def test_activated_agent_classes_return_200(client, agent_name):
-    """All 4 Agent-class agents return 200 (may fail on business logic, not on import).
+    """All 5 Agent-class agents return 200 (may fail on business logic, not on import).
 
-    audio_generator requires substrate_id param; passes empty string so it fails gracefully.
+    audio_generator/illustration_agent require substrate_id param; passes {} so they fail gracefully.
     """
     r = client.post(f"/api/v1/agents/{agent_name}/run", json={}, headers=_auth())
     assert r.status_code == 200, f"{agent_name}: expected 200, got {r.status_code} — {r.text[:200]}"
