@@ -1,22 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { OAIQAPanel, OAISummaryCard } from "@helios/blocks";
 import { useAgentQA, useAgentRuns, adaptSummaryCard } from "@/lib/adapters/agents";
-import type { AgentRun } from "@/lib/types";
+import type { AgentRun, RunAgentResponse } from "@/lib/types";
 
 type Tab = "qa" | "summary" | "run";
 
 const AGENT_OPTIONS = [
   { value: "daily_digest", label: "Daily Digest" },
   { value: "knowledge_curator", label: "Knowledge Curator" },
-  { value: "translation_worker", label: "Translation Worker" },
+  { value: "translation_worker", label: "Translation Worker (暂不可用)" },
 ];
 
 function AgentRunPanel() {
   const [agentName, setAgentName] = useState("daily_digest");
-  const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [result, setResult] = useState<RunAgentResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const runs = useAgentRuns(agentName);
 
   async function runAgent() {
     setLoading(true);
@@ -29,6 +31,8 @@ function AgentRunPanel() {
     });
     setResult(await res.json());
     setLoading(false);
+    // Refresh run history after run completes
+    void runs.refetch();
   }
 
   return (
@@ -53,32 +57,73 @@ function AgentRunPanel() {
           {loading ? "运行中…" : "运行"}
         </button>
       </div>
+
       {result && (
         <div className="p-3 border border-[var(--color-border)] rounded bg-[var(--color-surface)] text-sm">
-          <p className="font-medium mb-2">
+          <p className="font-medium mb-1">
             状态:{" "}
             <span
               className={
-                result["status"] === "completed"
-                  ? "text-green-600"
-                  : "text-red-600"
+                result.status === "completed" ? "text-green-600" : "text-red-600"
               }
             >
-              {String(result["status"])}
+              {result.status}
             </span>
           </p>
-          {result["findings"] != null && (
-            <pre className="text-xs overflow-auto max-h-64 whitespace-pre-wrap">
-              {JSON.stringify(result["findings"], null, 2)}
+          {result.run_id && (
+            <p className="text-xs text-[var(--color-muted)] mb-2">
+              Run ID:{" "}
+              <Link
+                href={`/agents/runs/${result.run_id}`}
+                className="underline hover:text-[var(--color-primary)]"
+              >
+                {result.run_id}
+              </Link>
+            </p>
+          )}
+          {result.findings != null && (
+            <pre className="text-xs overflow-auto max-h-64 whitespace-pre-wrap mt-1">
+              {JSON.stringify(result.findings, null, 2)}
             </pre>
           )}
-          {result["error"] != null && (
-            <p className="text-red-500 text-xs mt-1">
-              {JSON.stringify(result["error"])}
-            </p>
+          {result.error != null && (
+            <p className="text-red-500 text-xs mt-1">{String(result.error)}</p>
           )}
         </div>
       )}
+
+      {/* Run history for selected agent */}
+      <div className="mt-4">
+        <h3 className="text-sm font-medium text-[var(--color-muted)] mb-2">
+          历史运行记录
+        </h3>
+        {runs.isLoading && (
+          <p className="text-xs text-[var(--color-muted)]">加载中...</p>
+        )}
+        {!runs.isLoading && (runs.data?.items ?? []).length === 0 && (
+          <p className="text-xs text-[var(--color-muted)]">暂无运行记录</p>
+        )}
+        <div className="space-y-1">
+          {(runs.data?.items ?? []).slice(0, 5).map((run: AgentRun) => (
+            <Link
+              key={run.id}
+              href={`/agents/runs/${run.id}`}
+              className="flex items-center justify-between p-2 border border-[var(--color-border)] rounded text-xs hover:bg-[var(--color-surface)] transition"
+            >
+              <span
+                className={
+                  run.status === "completed" ? "text-green-600" : "text-[var(--color-muted)]"
+                }
+              >
+                {run.status}
+              </span>
+              <span className="text-[var(--color-muted)]">
+                {run.started_at?.slice(0, 19).replace("T", " ") ?? "—"}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

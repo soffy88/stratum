@@ -1,8 +1,10 @@
 /**
- * Adapter: stratum /api/scheduled_jobs → OScheduledJobsManager
+ * Adapter: stratum /api/v1/scheduled-jobs → OScheduledJobsManager
  *
- * helios ScheduledJob has more fields than the backend returns.
- * This adapter fills in sensible defaults for display-only fields.
+ * Phase 15 P1-B2 fixes:
+ *   - Path updated: /api/scheduled_jobs → /api/v1/scheduled-jobs
+ *   - List returns plain array (not {items:[]}); adapter handles both
+ *   - runNow uses /api/v1/scheduled-jobs/{id}/run-now (not agent run directly)
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,12 +13,7 @@ import { apiClient } from "@/lib/api-client";
 import type { ScheduledJob, ScheduledJobsResponse } from "@/lib/types";
 
 // Builtin job names that cannot be deleted (only toggled)
-// NOTE: "weekly_review" is NOT in helios AgentName type — it's a stratum-only
-// extension. TECHNICAL_DEBT: align AgentName enum when helios adds it.
-const BUILTIN_AGENTS: AgentName[] = [
-  "daily_digest",
-  "reading_companion",
-];
+const BUILTIN_AGENTS: AgentName[] = ["daily_digest", "reading_companion"];
 
 /** Map backend ScheduledJob → helios ScheduledJobWithStatus */
 function adaptJob(job: ScheduledJob): ScheduledJobWithStatus {
@@ -41,6 +38,14 @@ function adaptJob(job: ScheduledJob): ScheduledJobWithStatus {
   };
 }
 
+/** Normalize API response: list_jobs returns plain array; test mocks may return {items:[]}. */
+function toJobArray(data: unknown): ScheduledJob[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data as ScheduledJob[];
+  const obj = data as { items?: ScheduledJob[] };
+  return obj.items ?? [];
+}
+
 export interface UseScheduledJobsResult {
   jobs: ScheduledJobWithStatus[];
   isLoading: boolean;
@@ -48,8 +53,11 @@ export interface UseScheduledJobsResult {
   editCron: (job: ScheduledJobWithStatus) => void;
   remove: (job: ScheduledJobWithStatus) => void;
   runNow: (job: ScheduledJobWithStatus) => void;
-  /** Create new job (not a Block prop — called externally from CreateJobForm) */
-  create: (payload: { name: string; agent_name: string; cron_expression: string }) => Promise<void>;
+  create: (payload: {
+    name: string;
+    agent_name: string;
+    cron_expression: string;
+  }) => Promise<void>;
 }
 
 /** Hook that provides all data and callbacks for OScheduledJobsManager */
@@ -58,42 +66,53 @@ export function useScheduledJobs(): UseScheduledJobsResult {
 
   const { data, isLoading } = useQuery({
     queryKey: ["scheduled-jobs"],
-    queryFn: () => apiClient.get<ScheduledJobsResponse>("/api/scheduled_jobs"),
+    queryFn: () =>
+      apiClient.get<ScheduledJobsResponse>("/api/v1/scheduled-jobs"),
   });
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["scheduled-jobs"] });
 
   const toggleMutation = useMutation({
-    mutationFn: ({ job, enabled }: { job: ScheduledJobWithStatus; enabled: boolean }) =>
-      apiClient.put(`/api/scheduled_jobs/${job.id}`, { enabled }),
+    mutationFn: ({
+      job,
+      enabled,
+    }: {
+      job: ScheduledJobWithStatus;
+      enabled: boolean;
+    }) => apiClient.put(`/api/v1/scheduled-jobs/${job.id}`, { enabled }),
     onSuccess: invalidate,
   });
 
   const deleteMutation = useMutation({
     mutationFn: (job: ScheduledJobWithStatus) =>
-      apiClient.delete(`/api/scheduled_jobs/${job.id}`),
+      apiClient.delete(`/api/v1/scheduled-jobs/${job.id}`),
     onSuccess: invalidate,
   });
 
   const createMutation = useMutation({
-    mutationFn: (payload: { name: string; agent_name: string; cron_expression: string }) =>
-      apiClient.post("/api/scheduled_jobs", payload),
+    mutationFn: (payload: {
+      name: string;
+      agent_name: string;
+      cron_expression: string;
+    }) => apiClient.post("/api/v1/scheduled-jobs", payload),
     onSuccess: invalidate,
   });
 
   return {
-    jobs: (data?.items ?? []).map(adaptJob),
+    jobs: toJobArray(data).map(adaptJob),
     isLoading,
     toggleEnabled: (job, enabled) => toggleMutation.mutate({ job, enabled }),
     editCron: (_job) => {
-      // TECHNICAL_DEBT: OScheduledJobsManager.onEditCron — cron edit UI not
-      // yet implemented. Placeholder: no-op. Future: show edit dialog.
+      // TECHNICAL_DEBT: cron edit UI not yet implemented — see TECHNICAL_DEBT.md
     },
     remove: (job) => deleteMutation.mutate(job),
+    // P1-B2: run-now via /api/v1/scheduled-jobs/{id}/run-now (not agent directly)
     runNow: (job) => {
-      void apiClient.post(`/api/agents/${job.agent_name}/run`, {});
+      void apiClient.post(`/api/v1/scheduled-jobs/${job.id}/run-now`, {});
     },
-    create: async (payload) => { await createMutation.mutateAsync(payload); },
+    create: async (payload) => {
+      await createMutation.mutateAsync(payload);
+    },
   };
 }
