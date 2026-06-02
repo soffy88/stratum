@@ -11,10 +11,17 @@ Phase 15 P1-C (Wave 5, post omodul PR #1 merge):
 """
 
 import asyncio
+import os
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
+
+# LLM provider config — read from env, default to qwen3_dashscope (DASHSCOPE_API_KEY set).
+# Valid oprim.llm.llm_call providers: "qwen3_dashscope", "claude".
+# Set STRATUM_LLM_PROVIDER=claude to switch to Anthropic; future deepseek support: add to oprim.
+_DEFAULT_LLM_PROVIDER: str = os.environ.get("STRATUM_LLM_PROVIDER", "qwen3_dashscope")
+_DEFAULT_LLM_MODEL: str = os.environ.get("STRATUM_LLM_MODEL", "qwen-plus")
 
 from stratum.changefeed import emit_event
 from stratum.common import (
@@ -72,8 +79,8 @@ if _HAS_OMODUL:
             user_id_hash=sha256_hex(user_id)[:16],
             corpus_id=cfg.get("corpus_id") or f"user_{user_id}",
             max_items=cfg.get("max_items", 20),
-            llm_provider=cfg.get("llm_provider", "qwen3"),
-            llm_model=cfg.get("llm_model", "qwen3-max"),
+            llm_provider=cfg.get("llm_provider", _DEFAULT_LLM_PROVIDER),
+            llm_model=cfg.get("llm_model", _DEFAULT_LLM_MODEL),
         )
         input_data = DailyDigestInput(
             recent_substrate_ids=inp.get("recent_substrate_ids", []),
@@ -85,8 +92,8 @@ if _HAS_OMODUL:
         inp = params.get("input") or {}
         now = _now_dt()
         config = WeeklyReviewConfig(
-            llm_provider=cfg.get("llm_provider", "qwen3"),
-            llm_model=cfg.get("llm_model", "qwen3-max"),
+            llm_provider=cfg.get("llm_provider", _DEFAULT_LLM_PROVIDER),
+            llm_model=cfg.get("llm_model", _DEFAULT_LLM_MODEL),
             time_window_days=cfg.get("time_window_days", 7),
         )
         input_data = WeeklyReviewInput(
@@ -100,8 +107,8 @@ if _HAS_OMODUL:
         cfg = params.get("config") or {}
         inp = params.get("input") or {}
         config = InboxConfig(
-            llm_provider=cfg.get("llm_provider", "qwen3"),
-            llm_model=cfg.get("llm_model", "qwen3-max"),
+            llm_provider=cfg.get("llm_provider", _DEFAULT_LLM_PROVIDER),
+            llm_model=cfg.get("llm_model", _DEFAULT_LLM_MODEL),
             user_id_hash=sha256_hex(user_id)[:16],
             corpus_id=cfg.get("corpus_id") or f"user_{user_id}",
             file_path=Path(cfg.get("file_path", "")),
@@ -173,7 +180,14 @@ async def agent_run(
                 agent_run_id=run_id,
                 invoked_at=_now_dt(),
             )
-            agent_result = await _AGENT_CLASSES[agent_name]().run(params or {}, context)
+            agent = _AGENT_CLASSES[agent_name]()
+            # Override LLM provider from env so agent doesn't use its hard-coded default
+            agent.llm_provider = _DEFAULT_LLM_PROVIDER
+            agent.llm_model = _DEFAULT_LLM_MODEL
+            # Inject corpus_id so hybrid_search can scope to this user
+            enriched_params = dict(params or {})
+            enriched_params.setdefault("corpus_id", f"user_{user_id}")
+            agent_result = await agent.run(enriched_params, context)
             final_status = "completed" if agent_result.success else "failed"
             citations = [
                 {
