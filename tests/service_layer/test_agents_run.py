@@ -71,21 +71,22 @@ def test_agent_unknown_returns_404(client):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_not_implemented_agent_returns_501(client):
-    """audio_generator returns 501 — oprim.tts_synthesize not exported, 0 providers."""
-    r = client.post("/api/v1/agents/audio_generator/run", json={}, headers=_auth())
-    assert r.status_code == 501, f"expected 501, got {r.status_code}"
+def test_no_agent_returns_501(client):
+    """No agents are in NOT_IMPLEMENTED_AGENTS as of obase v0.9.0 + oprim v2.24.1."""
+    r = client.post(
+        "/api/v1/agents/audio_generator/run", json={"substrate_id": "test"}, headers=_auth()
+    )
+    assert r.status_code == 200, f"audio_generator should be 200, got {r.status_code}"
 
 
 @pytest.mark.parametrize(
     "agent_name",
-    ["translation_worker", "reading_companion", "lint_bot"],
+    ["translation_worker", "reading_companion", "lint_bot", "audio_generator"],
 )
 def test_activated_agent_classes_return_200(client, agent_name):
-    """translation_worker/reading_companion/lint_bot are now real Agent classes (not 501).
+    """All 4 Agent-class agents return 200 (may fail on business logic, not on import).
 
-    They may return status=failed due to missing DB/index data in the test env,
-    but must not return 501 or 404 — the import chain is resolved.
+    audio_generator requires substrate_id param; passes empty string so it fails gracefully.
     """
     r = client.post(f"/api/v1/agents/{agent_name}/run", json={}, headers=_auth())
     assert r.status_code == 200, f"{agent_name}: expected 200, got {r.status_code} — {r.text[:200]}"

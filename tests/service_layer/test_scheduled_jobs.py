@@ -221,14 +221,18 @@ def test_run_now_cross_user_404(client):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 12. POST run-now stub agent → 501
+# 12. POST run-now audio_generator → 200 (activated in obase v0.9.0)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_run_now_stub_agent_501(client):
+def test_run_now_audio_generator_200(client):
+    """audio_generator is no longer a stub — all agents return 200 as of obase v0.9.0."""
     jid = _create(client, body=_STUB_JOB_BODY)
     r = client.post(f"/api/v1/scheduled-jobs/{jid}/run-now", headers=_auth())
-    assert r.status_code == 501, f"Expected 501 for stub agent, got {r.status_code}"
+    assert r.status_code == 200, f"Expected 200 for audio_generator, got {r.status_code}"
+    body = r.json()
+    assert body["agent_name"] == "audio_generator"
+    assert body["status"] in ("completed", "failed"), f"unexpected status: {body['status']}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
