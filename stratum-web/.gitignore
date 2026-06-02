@@ -5,6 +5,10 @@ dist/
 .env.local
 storybook-static/
 
+# TypeScript build artifacts (auto-generated)
+next-env.d.ts
+tsconfig.tsbuildinfo
+
 # Playwright runtime artifacts (regenerated each run)
 tests/e2e/browser/.auth.json
 tests/e2e/browser/.state.json

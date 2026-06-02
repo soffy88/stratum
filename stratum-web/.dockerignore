@@ -1,0 +1,13 @@
+# Build context: stratum-web/
+# Exclude heavy/unnecessary artifacts from Docker context
+
+.next/
+node_modules/
+.git/
+
+# Dev artifacts
+.env.local
+*.log
+coverage/
+test-results/
+.playwright/
