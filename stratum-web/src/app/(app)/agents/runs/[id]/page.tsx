@@ -120,7 +120,8 @@ export default function AgentRunDetailPage() {
       )}
 
       {/* Content sections */}
-      <JsonBlock label="Findings / Citations" value={run.citations} />
+      <JsonBlock label="Findings" value={run.findings} />
+      <JsonBlock label="Citations" value={run.citations} />
       <JsonBlock label="Trace" value={run.trace} />
       <JsonBlock label="Files Generated" value={run.files_generated} />
     </div>

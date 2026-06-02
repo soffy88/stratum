@@ -36,6 +36,7 @@ export interface AgentRun {
 export interface AgentRunDetail extends AgentRun {
   user_id?: string;
   params?: unknown;
+  findings?: unknown | null;
   total_input_tokens?: number;
   total_output_tokens?: number;
   cost_usd?: number;
