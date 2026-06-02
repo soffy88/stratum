@@ -31,7 +31,7 @@ interface ConceptGraph {
 async function getConcept(id: string): Promise<ConceptDetail | null> {
   try {
     const res = await fetch(
-      `${process.env.STRATUM_API_INTERNAL_URL || "http://localhost:9303"}/api/v1/concepts/${id}`,
+      `${process.env.STRATUM_API_INTERNAL_URL || "http://localhost:9304"}/api/v1/concepts/${id}`,
       { cache: "no-store" }
     );
     if (!res.ok) return null;
@@ -44,7 +44,7 @@ async function getConcept(id: string): Promise<ConceptDetail | null> {
 async function getConceptGraph(id: string): Promise<ConceptGraph | null> {
   try {
     const res = await fetch(
-      `${process.env.STRATUM_API_INTERNAL_URL || "http://localhost:9303"}/api/v1/concepts/graph/${id}`,
+      `${process.env.STRATUM_API_INTERNAL_URL || "http://localhost:9304"}/api/v1/concepts/graph/${id}`,
       { cache: "no-store" }
     );
     if (!res.ok) return null;
