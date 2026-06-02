@@ -41,7 +41,7 @@ async def create_note(body: NoteCreate, user_id: str = Depends(jwt_auth)):
             "updated_at": ts,
         },
     )
-    emit_event(user_id, "note_create", {"note_id": note_id, "title": body.title})
+    await emit_event(user_id, "note_create", {"note_id": note_id, "title": body.title})
     return {"note_id": note_id, "status": "created"}
 
 
@@ -71,7 +71,7 @@ async def update_note(note_id: str, body: NoteUpdate, user_id: str = Depends(jwt
         return {"note_id": note_id, "status": "unchanged"}
     changes["updated_at"] = now_utc()
     update("notes", note_id, changes)
-    emit_event(user_id, "note_update", {"note_id": note_id})
+    await emit_event(user_id, "note_update", {"note_id": note_id})
     return {"note_id": note_id, "status": "updated"}
 
 
@@ -81,5 +81,5 @@ async def delete_note(note_id: str, user_id: str = Depends(jwt_auth)):
     if not existing or existing.get("user_id") != user_id or existing.get("deleted_at"):
         raise HTTPException(404, "Note not found")
     soft_delete("notes", note_id)
-    emit_event(user_id, "note_delete", {"note_id": note_id})
+    await emit_event(user_id, "note_delete", {"note_id": note_id})
     return {"note_id": note_id, "status": "deleted"}

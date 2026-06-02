@@ -40,7 +40,7 @@ async def create_concept(body: ConceptCreate, user_id: str = Depends(jwt_auth)):
             "created_at": now_utc(),
         },
     )
-    emit_event(user_id, "concept_create", {"concept_id": cid, "name": body.name})
+    await emit_event(user_id, "concept_create", {"concept_id": cid, "name": body.name})
     return {"concept_id": cid}
 
 
@@ -112,7 +112,7 @@ async def update_concept(concept_id: str, body: ConceptUpdate, user_id: str = De
     changes = {k: v for k, v in body.model_dump().items() if v is not None}
     if changes:
         update("concepts", concept_id, changes)
-    emit_event(user_id, "concept_update", {"concept_id": concept_id})
+    await emit_event(user_id, "concept_update", {"concept_id": concept_id})
     return {"concept_id": concept_id, "status": "updated"}
 
 
@@ -122,5 +122,5 @@ async def delete_concept(concept_id: str, user_id: str = Depends(jwt_auth)):
     if not existing or existing.get("user_id") != user_id or existing.get("deleted_at"):
         raise HTTPException(404, "Concept not found")
     soft_delete("concepts", concept_id)
-    emit_event(user_id, "concept_delete", {"concept_id": concept_id})
+    await emit_event(user_id, "concept_delete", {"concept_id": concept_id})
     return {"concept_id": concept_id, "status": "deleted"}
