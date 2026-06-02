@@ -39,7 +39,7 @@ _JOB_BODY = {
 
 _STUB_JOB_BODY = {
     "name": "Stub job",
-    "agent_name": "translation_worker",
+    "agent_name": "audio_generator",
     "cron_expression": "0 2 * * *",
 }
 
