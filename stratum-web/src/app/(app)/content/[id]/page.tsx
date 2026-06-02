@@ -30,7 +30,7 @@ interface ContentDetail {
 async function getContent(id: string): Promise<ContentDetail | null> {
   try {
     const res = await fetch(
-      `${process.env.STRATUM_API_INTERNAL_URL || "http://localhost:9302"}/api/v1/content/${id}`,
+      `${process.env.STRATUM_API_INTERNAL_URL || "http://localhost:9304"}/api/v1/content/${id}`,
       { cache: "no-store" }
     );
     if (!res.ok) return null;

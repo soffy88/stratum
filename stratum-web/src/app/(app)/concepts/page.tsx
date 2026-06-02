@@ -9,7 +9,7 @@ interface Concept {
 async function getConcepts(): Promise<Concept[]> {
   try {
     const res = await fetch(
-      `${process.env.STRATUM_API_INTERNAL_URL || "http://localhost:9302"}/api/v1/concepts`,
+      `${process.env.STRATUM_API_INTERNAL_URL || "http://localhost:9304"}/api/v1/concepts`,
       { cache: "no-store" }
     );
     if (!res.ok) return [];
