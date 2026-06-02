@@ -1876,7 +1876,92 @@ This points both the browser-facing proxy and the server-side fetch to the isola
 
 ---
 
+## 20. Phase 15 P1 新增 Endpoints (v0.7-alpha)
+
+### P1-A: Agent Run
+
+```
+POST /api/v1/agents/{agent_name}/run
+  Body: { "config": {}, "input": {} }
+  Returns: { run_id, agent_name, status, findings, report_fingerprint, citations, error }
+  Agents: daily_digest | knowledge_curator | weekly_review
+  501 for: translation_worker | reading_companion | lint_bot | audio_generator
+
+GET  /api/v1/agents/runs?agent={name}
+  Returns: { items: AgentRun[], total: int }
+  AgentRun fields: id, agent_name, status, started_at, completed_at, error, trace, citations, files_generated
+
+GET  /api/v1/agents/runs/{run_id}
+  Returns: AgentRunDetail (full row including params, token counts, cost_usd)
+```
+
+### P1-B: Scheduled Jobs
+
+```
+POST   /api/v1/scheduled-jobs
+  Body: { name, agent_name, cron_expression, timezone?, enabled?, max_items? }
+  Returns: { job_id, status: "created" }
+
+GET    /api/v1/scheduled-jobs
+  Returns: ScheduledJob[]  (plain array)
+
+GET    /api/v1/scheduled-jobs/{id}
+  Returns: ScheduledJob
+
+PUT    /api/v1/scheduled-jobs/{id}
+  Body: { name?, cron_expression?, enabled? }
+  Returns: { job_id, status: "updated" }
+
+DELETE /api/v1/scheduled-jobs/{id}
+  Hard delete (schema has no deleted_at)
+  Returns: { job_id, status: "deleted" }
+
+POST   /api/v1/scheduled-jobs/{id}/run-now
+  Triggers agent_run synchronously for the job's agent_name
+  Returns: same as POST /api/v1/agents/{name}/run
+
+GET    /api/v1/scheduled-jobs/{id}/runs
+  Returns: scheduled_job_runs[] (empty until cron triggers)
+```
+
+### P1-C: Sync Scope + WebSocket Events
+
+```
+GET /api/v1/sync/changefeed?scope={scopes}&since={seq}&limit={n}
+  scope: comma-separated; available: notes, substrates, highlights, concepts, agents, views
+  Returns: { events: ChangefeedEvent[], latest_seq, has_more, scope }
+
+ChangefeedEvent schema:
+  { seq, event_id, event_type, payload, timestamp }
+
+WebSocket: /ws (ticket auth)
+  POST /api/v1/ws/ticket → { ticket, expires_in: 30 }
+  Connect: ws://host/ws?ticket={ticket}
+  Server push on every mutation: { event_id, event_type, payload, timestamp }
+```
+
+### P1-C: 14 changefeed event_type values
+
+| Scope      | event_type values |
+|------------|-------------------|
+| notes      | note_create, note_update, note_delete |
+| substrates | substrate_pin, substrate_unpin |
+| concepts   | concept_create, concept_update, concept_delete |
+| agents     | agent_run_completed, agent_run_failed |
+| highlights | highlight_create, highlight_delete |
+| views      | view_create, view_default_changed |
+
+---
+
 ## 19. Changelog
+
+### v1.3.0 — 2026-06-02 (Phase 15, Wave 1-4)
+
+- **Added**: P1-A: Agent run endpoints (3 real workflows, 4 stubs 501)
+- **Added**: P1-B: Scheduled jobs CRUD + run-now + runs history
+- **Added**: P1-C: Sync scope filtering + WebSocket real broadcast
+- **Added**: 14 changefeed event types (substrate/concept/agent/highlight/view + note)
+- **Added**: Platform content seed (5 articles), /discover client component
 
 ### v1.2.0 — 2026-05-27 (Phase 14, Wave 12)
 
