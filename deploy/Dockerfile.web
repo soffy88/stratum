@@ -1,0 +1,66 @@
+# Build context: /home/soffy/projects/stratum/stratum-web
+# Additional context: platform-pkg=/home/soffy/projects/platform/packages
+#   (makes helios-blocks-1.5.0.tgz available at /platform/packages/)
+#
+# Build command (must use --builder default to access local image cache offline):
+#   docker buildx --builder default build \
+#     --build-context platform-pkg=/home/soffy/projects/platform/packages \
+#     -f deploy/Dockerfile.web -t stratum-web:latest \
+#     stratum-web/
+#
+# Uses node:24-trixie-slim (local cache). The 'default' docker-driver builder
+# is required because the docker-container driver cannot access host image store.
+# pnpm@9: lockfileVersion 9.0; no supply-chain registry check.
+# output: standalone → self-contained server.js (~418MB runner image).
+
+FROM node:24-trixie-slim AS deps
+
+RUN npm install -g pnpm@9
+
+WORKDIR /app
+
+# Make @helios/blocks tarball available at path expected by lockfile:
+#   pnpm-lock.yaml: file:../../platform/packages/helios-blocks-1.5.0.tgz
+#   from WORKDIR /app → ../../ = /platform
+COPY --from=platform-pkg helios-blocks-1.5.0.tgz /platform/packages/helios-blocks-1.5.0.tgz
+
+COPY package.json pnpm-lock.yaml .npmrc ./
+RUN pnpm install --frozen-lockfile
+
+# ── Builder ───────────────────────────────────────────────────────────────────
+FROM node:24-trixie-slim AS builder
+
+RUN npm install -g pnpm@9
+
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Docker-internal API base URLs for Next.js rewrites (RSC server-side fetches)
+ENV STRATUM_API_BASE=http://stratum-api:9302
+ENV STRATUM_SL_BASE=http://stratum-sl:9304
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# pnpm-workspace.yaml has no 'packages' field → pnpm workspace mode errors.
+# Run next build directly to bypass pnpm workspace resolution.
+RUN node_modules/.bin/next build && mkdir -p /app/public
+
+# ── Runner ────────────────────────────────────────────────────────────────────
+FROM node:24-trixie-slim AS runner
+
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=15s \
+  CMD node -e "require('http').get('http://localhost:3000/',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"
+
+CMD ["node", "server.js"]
