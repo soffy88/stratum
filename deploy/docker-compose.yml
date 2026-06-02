@@ -20,11 +20,34 @@ services:
       timeout: 5s
       retries: 3
 
-  # stratum-web (Next.js) is currently deployed outside Docker.
-  # When containerised, set the following in its environment:
-  #   STRATUM_API_INTERNAL_URL: http://stratum-sl:9304
-  # This lets RSC pages (discover, concepts, content) reach the SL
-  # via the Docker internal network instead of localhost:9304.
+  stratum-web:
+    # Build offline (Docker Hub blocked): BUILDX_BUILDER=default docker compose build stratum-web
+    # Or use the explicit command in Dockerfile.web header comments.
+    image: stratum-web:latest
+    build:
+      context: /home/soffy/projects/stratum/stratum-web
+      dockerfile: /home/soffy/projects/stratum/deploy/Dockerfile.web
+      additional_contexts:
+        platform-pkg: /home/soffy/projects/platform/packages
+    container_name: stratum-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      # Docker-internal API endpoints (rewrite destinations for RSC)
+      - STRATUM_API_BASE=http://stratum-api:9302
+      - STRATUM_SL_BASE=http://stratum-sl:9304
+    depends_on:
+      - stratum-api
+      - stratum-sl
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   stratum-nginx:
     image: nginx:1.27-alpine
