@@ -29,7 +29,8 @@ RUN pip install --no-cache-dir \
         pymupdf4llm \
         lancedb \
         tantivy \
-        pymupdf
+        pymupdf \
+        "edge-tts>=6.1"
 
 # ── Platform packages (copied from host, installed editable) ──────────────────
 # obase — no inter-package deps

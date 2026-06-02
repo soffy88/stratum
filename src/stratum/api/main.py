@@ -13,7 +13,7 @@ from stratum.api.mcp import mcp_app
 
 
 def _register_providers() -> None:
-    """Register 3O LLM providers with obase ProviderRegistry at startup."""
+    """Register 3O providers (LLM + TTS + image_gen) with obase ProviderRegistry at startup."""
     try:
         from obase.provider_registry import ProviderRegistry
         from oprim.llm.llm_call import llm_call
@@ -27,6 +27,22 @@ def _register_providers() -> None:
             ProviderRegistry.register("llm", "qwen3", _qwen3)
     except Exception:
         pass  # graceful — workflows fall back to failed status without LLM
+
+    try:
+        # obase v0.9.0: register edge_tts (TTS) + wanxiang (image_gen) providers.
+        # Requires secrets backend so DASHSCOPE_API_KEY is readable by obase.secrets.
+        import os
+
+        from obase.providers import register_default_providers
+        from obase.secrets import register_backend
+        from obase.secrets.backends.env_file import EnvFileBackend
+
+        env_path = os.environ.get("STRATUM_ENV_PATH", "/home/soffy/.config/keys/.env")
+        if os.path.exists(env_path):
+            register_backend(EnvFileBackend(env_path))
+        register_default_providers()
+    except Exception:
+        pass  # graceful — audio/image agents fall back to failed status without providers
 
 
 @asynccontextmanager

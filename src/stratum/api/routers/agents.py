@@ -47,6 +47,7 @@ try:
         weekly_review_workflow,
     )
     from omodul.knowledge.agents.base import AgentContext
+    from omodul.knowledge.agents.builtin.audio_generator import AudioGeneratorAgent
     from omodul.knowledge.agents.builtin.lint_bot import LintBotAgent
     from omodul.knowledge.agents.builtin.reading_companion import ReadingCompanionAgent
     from omodul.knowledge.agents.builtin.translation_worker import TranslationWorkerAgent
@@ -57,10 +58,8 @@ except ImportError:
 
 router = APIRouter(prefix="/api/v1/agents", tags=["agents"])
 
-# Agents still unavailable — oprim external deps missing
-NOT_IMPLEMENTED_AGENTS = {
-    "audio_generator": "TTS oprim.tts_synthesize 未导出 + ProviderRegistry 0 providers, 等 oprim 经理人补",
-}
+# All agents implemented — no 501 stubs remain (audio_generator activated in obase v0.9.0)
+NOT_IMPLEMENTED_AGENTS: dict = {}
 
 
 def _now_dt() -> datetime:
@@ -128,6 +127,7 @@ if _HAS_OMODUL:
         "translation_worker": TranslationWorkerAgent,
         "reading_companion": ReadingCompanionAgent,
         "lint_bot": LintBotAgent,
+        "audio_generator": AudioGeneratorAgent,
     }
 
 else:
