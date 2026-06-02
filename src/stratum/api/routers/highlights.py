@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from stratum.changefeed import emit_event
 from stratum.common import generate_ulid, jwt_auth, now_utc
 from stratum.db import insert, query, soft_delete
 
@@ -35,6 +36,7 @@ async def create_highlight(body: HighlightCreate, user_id: str = Depends(jwt_aut
             "created_at": now_utc(),
         },
     )
+    emit_event(user_id, "highlight_create", {"highlight_id": hid})
     return {"highlight_id": hid, "status": "created"}
 
 
@@ -72,4 +74,5 @@ async def delete_highlight(highlight_id: str, user_id: str = Depends(jwt_auth)):
     if not rows or rows[0].get("user_id") != user_id:
         raise HTTPException(404, "Highlight not found")
     update("highlights", highlight_id, {"status": "deleted"})
+    emit_event(user_id, "highlight_delete", {"highlight_id": highlight_id})
     return {"highlight_id": highlight_id, "status": "deleted"}

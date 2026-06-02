@@ -13,6 +13,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from stratum.changefeed import emit_event
 from stratum.common import (
     ensure_dir,
     generate_ulid,
@@ -173,6 +174,8 @@ async def agent_run(
                 "error": err,
             },
         )
+        event_type = "agent_run_completed" if final_status == "completed" else "agent_run_failed"
+        emit_event(user_id, event_type, {"run_id": run_id, "agent_name": agent_name})
     except Exception as e:
         final_status = "failed"
         result = {"error": str(e)}
@@ -180,6 +183,11 @@ async def agent_run(
             "agent_runs",
             run_id,
             {"status": "failed", "completed_at": now_utc(), "error": str(e)},
+        )
+        emit_event(
+            user_id,
+            "agent_run_failed",
+            {"run_id": run_id, "agent_name": agent_name, "error": str(e)},
         )
 
     return {

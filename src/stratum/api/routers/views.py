@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from stratum.changefeed import emit_event
 from stratum.common import generate_ulid, jwt_auth, now_utc
 from stratum.db import insert, query, read, soft_delete, update, write
 
@@ -60,6 +61,7 @@ async def create_view(body: ViewCreate, user_id: str = Depends(jwt_auth)):
             "updated_at": now_utc(),
         },
     )
+    emit_event(user_id, "view_create", {"view_id": vid, "name": body.name})
     return {"view_id": vid}
 
 
@@ -105,4 +107,5 @@ async def set_default_view(view_id: str, user_id: str = Depends(jwt_auth)):
 
     execute("UPDATE user_views SET is_default = FALSE WHERE user_id = %(uid)s", {"uid": user_id})
     update("user_views", view_id, {"is_default": True})
+    emit_event(user_id, "view_default_changed", {"view_id": view_id})
     return {"view_id": view_id, "status": "default_set"}

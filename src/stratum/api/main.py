@@ -86,6 +86,10 @@ from stratum.api.routers import account
 
 app.include_router(account.router)
 
+from stratum.api.routers import scheduled_jobs
+
+app.include_router(scheduled_jobs.router)
+
 # ── Advanced routes (R5) ──────────────────────────────────────────────────────
 from stratum.api.routers import views
 
