@@ -1,7 +1,8 @@
-"""Unit tests for Stratum service-layer routes (src/stratum/api/).
+"""Service-layer route tests backed by real DuckDB (in-memory per test).
 
-All PostgreSQL calls are mocked — no real DB required.
-JWT_SECRET is set via conftest.py (tests/conftest.py) before import.
+§M5 rewrite: replaced mock stratum.db.* fixture with real DuckDB via conftest.py.
+Routes now execute actual SQL against an isolated temp DuckDB database, catching
+SQL dialect bugs (list_contains, SEQUENCE, etc.) that mock-only tests miss.
 
 Coverage:
   - notes CRUD + cross-user isolation   (tests 1–3)
@@ -11,7 +12,7 @@ Coverage:
   - WebSocket auth guard (no token)     (test  7)
   - WebSocket CSWSH guard (bad origin)  (test  8)
   - JWT guard: missing token            (test  9)
-  - JWT guard: invalid/expired token    (test 10)
+  - JWT guard: invalid/expired token    (test 10–11)
 """
 
 from __future__ import annotations
@@ -21,19 +22,17 @@ import os
 import time
 from unittest.mock import MagicMock, patch
 
+import duckdb
 import pytest
 from fastapi.testclient import TestClient
 
-# ── Ensure JWT_SECRET is set before anything imports stratum.common ─────────
-# conftest.py already calls setdefault; the env-var override here is a belt-
-# and-suspenders measure so the file is also usable in isolation.
+# ── JWT secret must be set before any stratum import ────────────────────────
 os.environ.setdefault("JWT_SECRET", "test-secret-for-sl-unit-tests-32x")
 
-# Import create_token after secret is set
 from stratum.common import create_token  # noqa: E402
 
 
-# ─────────────────────────────── fixture helpers ─────────────────────────────
+# ─────────────────────────────── helpers ────────────────────────────────────
 
 
 def _make_token(user_id: str = "user-alice") -> str:
@@ -45,7 +44,6 @@ def _auth(user_id: str = "user-alice") -> dict:
 
 
 def _expired_token() -> str:
-    """Create a token that is already expired (iat = exp = 1 second ago)."""
     import jwt
 
     secret = os.environ.get("JWT_SECRET", "test-secret-for-sl-unit-tests-32x")
@@ -53,97 +51,30 @@ def _expired_token() -> str:
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
+def _db_insert(db_path: str, table: str, data: dict) -> None:
+    """Insert a row directly into the test DuckDB (for test data setup)."""
+    cols = ", ".join(data.keys())
+    placeholders = ", ".join(f"${k}" for k in data)
+    conn = duckdb.connect(db_path)
+    conn.execute(f"INSERT INTO {table} ({cols}) VALUES ({placeholders})", data)
+    conn.close()
+
+
+# ─────────────────────────────── client fixture ──────────────────────────────
+
+
 @pytest.fixture()
 def client():
-    """TestClient for the service-layer FastAPI app with mocked stratum.db.
+    """TestClient for the SL FastAPI app. No DB mocks — uses real DuckDB."""
+    from stratum.api.main import app
 
-    Notes router (and others) do ``from stratum.db import read, insert, ...``
-    at import time, binding names in their own namespace.  Patching only
-    ``stratum.db.read`` after the module is loaded has no effect on those
-    already-bound names.  We therefore patch both the canonical module AND
-    every router namespace that bound the symbols, so return_value changes
-    made inside tests propagate correctly.
-    """
-    # Ensure the app (and all its routers) are imported before we patch,
-    # so the router-level names exist.
-    from stratum.api.main import app  # noqa: F401 — side-effect: registers routers
-
-    _read_mock = MagicMock(return_value=None)
-    _insert_mock = MagicMock(return_value="fake-id")
-    _update_mock = MagicMock(return_value=None)
-    _soft_delete_mock = MagicMock(return_value=None)
-    _query_mock = MagicMock(return_value=[])
-
-    # Namespaces that bind db symbols directly via `from stratum.db import ...`
-    _router_targets = [
-        "stratum.api.routers.notes",
-        "stratum.api.routers.agents",
-        "stratum.api.routers.substrate",
-        "stratum.api.routers.search",
-        "stratum.api.routers.inbox",
-        "stratum.api.routers.content",
-        "stratum.api.routers.concepts",
-        "stratum.api.routers.views",
-        "stratum.api.routers.account",
-        "stratum.api.routers.billing",
-        "stratum.api.routers.bookmarks",
-        "stratum.api.routers.highlights",
-        "stratum.api.routers.notifications",
-        "stratum.api.routers.interactions",
-        "stratum.api.routers.recommendations",
-        "stratum.api.routers.sync",
-        "stratum.api.routers.translate",
-        "stratum.api.mcp",
-    ]
-
-    import sys
-
-    patches = []
-    # Patch the canonical module
-    for sym, mock in (
-        ("stratum.db.read", _read_mock),
-        ("stratum.db.insert", _insert_mock),
-        ("stratum.db.update", _update_mock),
-        ("stratum.db.soft_delete", _soft_delete_mock),
-        ("stratum.db.query", _query_mock),
-    ):
-        p = patch(sym, mock)
-        p.start()
-        patches.append(p)
-
-    # Patch each router namespace that already bound the symbol
-    for mod_name in _router_targets:
-        mod = sys.modules.get(mod_name)
-        if mod is None:
-            continue
-        for attr, mock in (
-            ("read", _read_mock),
-            ("insert", _insert_mock),
-            ("update", _update_mock),
-            ("soft_delete", _soft_delete_mock),
-            ("query", _query_mock),
-        ):
-            if hasattr(mod, attr):
-                p = patch.object(mod, attr, mock)
-                p.start()
-                patches.append(p)
-
-    try:
-        with TestClient(app, raise_server_exceptions=True) as c:
-            c.mock_insert = _insert_mock
-            c.mock_read = _read_mock
-            c.mock_update = _update_mock
-            c.mock_soft_delete = _soft_delete_mock
-            c.mock_query = _query_mock
-            yield c
-    finally:
-        for p in reversed(patches):
-            p.stop()
+    with TestClient(app, raise_server_exceptions=True) as c:
+        yield c
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-# 1. POST /api/v1/notes — creates a note, returns note_id
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+# 1. POST /api/v1/notes — creates a note, returns ULID note_id
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_create_note_returns_note_id(client):
@@ -156,65 +87,52 @@ def test_create_note_returns_note_id(client):
     body = r.json()
     assert "note_id" in body
     assert body["status"] == "created"
-    # note_id should be a non-empty string (ULID)
     assert isinstance(body["note_id"], str) and len(body["note_id"]) == 26
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-# 2. GET /api/v1/notes/{id} — returns 404 for another user's note (isolation)
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+# 2. GET /api/v1/notes/{id} — 404 when note belongs to a different user
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_get_note_cross_user_isolation(client):
-    # DB returns a note that belongs to user-bob
-    client.mock_read.return_value = {
-        "id": "NOTE-001",
-        "user_id": "user-bob",
-        "title": "Bob's note",
-        "deleted_at": None,
-    }
+def test_get_note_cross_user_isolation(client, duckdb_test_db):
+    # Pre-insert a note owned by user-bob
+    _db_insert(
+        duckdb_test_db,
+        "notes_sl",
+        {"id": "NOTE-001", "user_id": "user-bob", "title": "Bob note", "content_markdown": "hi"},
+    )
 
-    # Alice requests that note — must get 404
+    # Alice requests that note — must get 404 (corpus isolation)
     r = client.get("/api/v1/notes/NOTE-001", headers=_auth("user-alice"))
     assert r.status_code == 404
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
 # 3. DELETE /api/v1/notes/{id} — soft-delete; subsequent GET returns 404
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_delete_note_then_get_is_404(client):
-    # First: make the note exist and belong to alice
-    client.mock_read.return_value = {
-        "id": "NOTE-002",
-        "user_id": "user-alice",
-        "title": "Alice note",
-        "deleted_at": None,
-    }
+def test_delete_note_then_get_is_404(client, duckdb_test_db):
+    # Pre-insert Alice's note
+    _db_insert(
+        duckdb_test_db,
+        "notes_sl",
+        {"id": "NOTE-002", "user_id": "user-alice", "title": "Alice note", "content_markdown": "x"},
+    )
 
     del_r = client.delete("/api/v1/notes/NOTE-002", headers=_auth("user-alice"))
     assert del_r.status_code == 200
     assert del_r.json()["status"] == "deleted"
 
-    # soft_delete was called
-    client.mock_soft_delete.assert_called_once()
-
-    # Simulate the note having a deleted_at timestamp now
-    client.mock_read.return_value = {
-        "id": "NOTE-002",
-        "user_id": "user-alice",
-        "title": "Alice note",
-        "deleted_at": "2026-01-01T00:00:00",
-    }
-
+    # After soft_delete (deleted_at = NOW()), GET must return 404
     get_r = client.get("/api/v1/notes/NOTE-002", headers=_auth("user-alice"))
     assert get_r.status_code == 404
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
 # 4. POST /api/v1/agents/daily_digest/run — returns JSON with agent_name
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_agent_run_returns_agent_name(client):
@@ -223,19 +141,18 @@ def test_agent_run_returns_agent_name(client):
         json={},
         headers=_auth(),
     )
-    # Accepts 200 whether omodul is present or not
     assert r.status_code == 200
     body = r.json()
     assert "agent_name" in body
     assert body["agent_name"] == "daily_digest"
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
 # 5. POST /api/v1/inbox/submit — returns upload_id and status
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_inbox_submit_returns_upload_id_and_status(client, tmp_path):
+def test_inbox_submit_returns_upload_id_and_status(client):
     content = b"hello world test content"
     r = client.post(
         "/api/v1/inbox/submit",
@@ -249,15 +166,12 @@ def test_inbox_submit_returns_upload_id_and_status(client, tmp_path):
     assert isinstance(body["upload_id"], str)
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-# 6. POST /api/v1/search — IDOR post-filter: results only contain caller's uid
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+# 6. POST /api/v1/search — IDOR post-filter keeps only caller's results
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_search_idor_post_filter(client):
-    """Simulate oskill returning mixed-user results; verify only own rows returned."""
-
-    # Build fake result objects with user_id attribute
     def _fake_result(rid, uid):
         r = MagicMock()
         r.id = rid
@@ -269,39 +183,32 @@ def test_search_idor_post_filter(client):
         r.citation = None
         return r
 
-    fake_search_output = MagicMock()
-    fake_search_output.results = [
-        _fake_result("R1", "user-alice"),  # belongs to caller
-        _fake_result("R2", "user-eve"),  # another user → must be filtered
+    fake_output = MagicMock()
+    fake_output.results = [
+        _fake_result("R1", "user-alice"),  # caller → keep
+        _fake_result("R2", "user-eve"),  # other user → filter out
         _fake_result("R3", None),  # no user_id → pass-through
     ]
-    fake_search_output.citations = []
-    fake_search_output.search_time_ms = 5
-    fake_search_output.scope_hit_counts = {}
+    fake_output.citations = []
+    fake_output.search_time_ms = 5
+    fake_output.scope_hit_counts = {}
 
     with (
         patch("stratum.api.routers.search._HAS_SEARCH", True),
-        patch("stratum.api.routers.search.cross_layer_search", return_value=fake_search_output),
+        patch("stratum.api.routers.search.cross_layer_search", return_value=fake_output),
     ):
-        r = client.post(
-            "/api/v1/search",
-            json={"query": "test query"},
-            headers=_auth("user-alice"),
-        )
+        r = client.post("/api/v1/search", json={"query": "test"}, headers=_auth("user-alice"))
 
     assert r.status_code == 200
-    body = r.json()
-    returned_ids = [item["id"] for item in body["results"]]
-    # R2 (user-eve) must be absent
-    assert "R2" not in returned_ids
-    # R1 (alice) and R3 (no uid) must be present
-    assert "R1" in returned_ids
-    assert "R3" in returned_ids
+    ids = [item["id"] for item in r.json()["results"]]
+    assert "R2" not in ids
+    assert "R1" in ids
+    assert "R3" in ids
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
 # 7. WS /ws without token — closes with 4001
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_ws_no_token_closes_4001(client):
@@ -309,37 +216,35 @@ def test_ws_no_token_closes_4001(client):
         with client.websocket_connect("/ws") as ws:
             ws.receive_text()
 
-    # TestClient raises WebSocketDisconnect on close; code 4001
     exc = exc_info.value
-    # starlette WebSocketDisconnect carries the code
     assert hasattr(exc, "code"), f"Expected WebSocketDisconnect, got {type(exc)}: {exc}"
-    assert exc.code == 4001, f"Expected close code 4001, got {exc.code}"
+    assert exc.code == 4001, f"Expected 4001, got {exc.code}"
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
 # 8. WS /ws with cookie from disallowed origin — closes with 4403 (CSWSH)
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_ws_cookie_disallowed_origin_closes_4403(client):
-    valid_token = _make_token("user-alice")
+    token = _make_token("user-alice")
 
     with pytest.raises(Exception) as exc_info:
         with client.websocket_connect(
             "/ws",
-            cookies={"access_token": valid_token},
+            cookies={"access_token": token},
             headers={"origin": "https://evil.example.com"},
         ) as ws:
             ws.receive_text()
 
     exc = exc_info.value
     assert hasattr(exc, "code"), f"Expected WebSocketDisconnect, got {type(exc)}: {exc}"
-    assert exc.code == 4403, f"Expected close code 4403, got {exc.code}"
+    assert exc.code == 4403, f"Expected 4403, got {exc.code}"
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
 # 9. JWT guard: missing token → 401
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_jwt_guard_missing_token_401(client):
@@ -347,15 +252,20 @@ def test_jwt_guard_missing_token_401(client):
     assert r.status_code == 401
 
 
-# ═════════════════════════════════════════════════════════════════════════════
-# 10. JWT guard: expired/invalid token → 401
-# ═════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+# 10. JWT guard: expired token → 401
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_jwt_guard_expired_token_401(client):
     token = _expired_token()
     r = client.get("/api/v1/notes", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 401
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 11. JWT guard: invalid (malformed) token → 401
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 def test_jwt_guard_invalid_token_401(client):
