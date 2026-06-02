@@ -1,8 +1,22 @@
 # Stratum Technical Debt
 
-Last updated: 2026-06-01 (Phase 14 SPEC 1/2 sign-off + Phase 14.5 sign-off)
+Last updated: 2026-06-02 (Phase 15 P1-A Wave 1)
 
 Legend: `[ ]` open · `[x]` resolved · priority: **P0** blocker / **P1** soon / **P2** eventually
+
+---
+
+## Phase 15 P1-A — Agent stub 债 (2026-06-02)
+
+- [ ] **P1** `agents.py` AGENT_REGISTRY 缺 4 个 workflow:
+  `translation_worker` (缺 `translate_substrate_workflow`) /
+  `reading_companion` (缺 `reading_companion_workflow`) /
+  `lint_bot` (缺 `lint_knowledge_base_workflow`) /
+  `audio_generator` (TTS 暂缓, Phase 11B 决策).
+  现状: 返 HTTP 501。
+  补全条件: omodul owner 实施 Phase 11D 时一并补，Stratum 端按修订 AGENT_REGISTRY 接入。
+  影响: `/ai` 页面 4 个 Agent 选项点击返 501，用户体验降级。
+  v1.0 必修触发: 100+ alpha 用户中 ≥10% 投诉这 4 个 Agent 用不了。
 
 ---
 
