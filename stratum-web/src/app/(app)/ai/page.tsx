@@ -9,9 +9,14 @@ import type { AgentRun, RunAgentResponse } from "@/lib/types";
 type Tab = "qa" | "summary" | "run";
 
 const AGENT_OPTIONS = [
-  { value: "daily_digest", label: "Daily Digest" },
-  { value: "knowledge_curator", label: "Knowledge Curator" },
-  { value: "translation_worker", label: "Translation Worker (暂不可用)" },
+  { value: "daily_digest", label: "Daily Digest (每日摘要)" },
+  { value: "weekly_review", label: "Weekly Review (周复盘)" },
+  { value: "knowledge_curator", label: "Knowledge Curator (知识整理)" },
+  { value: "translation_worker", label: "Translation Worker (翻译)" },
+  { value: "reading_companion", label: "Reading Companion (阅读伙伴)" },
+  { value: "lint_bot", label: "Lint Bot (知识库 lint)" },
+  { value: "audio_generator", label: "Audio Generator (音频朗读)" },
+  { value: "illustration_agent", label: "Illustration Agent (插图生成)" },
 ];
 
 function AgentRunPanel() {
