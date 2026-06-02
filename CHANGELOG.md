@@ -5,6 +5,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
 
 ---
 
+## [0.7.0] — 2026-06-02
+
+Phase 15 P1: 功能补足 (alpha v0.7)
+
+### Added
+- AI Agent 真触发: 3 omodul workflow 全注册 (daily_digest / weekly_review / knowledge_curator)
+- Agent run history + detail endpoint (`GET /api/v1/agents/runs`, `GET /api/v1/agents/runs/{id}`)
+- Agent run detail page (`/agents/runs/{id}`) 含 trace/citations/files_generated
+- Scheduler CRUD API (`POST/GET/PUT/DELETE /api/v1/scheduled-jobs`, run-now, runs history)
+- Scheduler 3 builtin_jobs (daily_digest 8AM / weekly_review Mon 9AM / knowledge_curator 每6h)
+- changefeed 统一 emit_event() 模块; 14 种事件 (substrate/concept/agent/highlight/view + note)
+- WebSocket 真广播 changefeed events (broadcast_to_user, active_connections)
+- Sync changefeed scope 过滤 (`?scope=notes,substrates,highlights,concepts`)
+- 平台内容 seed: 5 篇 Stratum 任务书 (build in public); /discover 真显示
+- Frontend: jobs adapter 修正路径; discover 转 client component 真显示内容
+
+### Deferred to v1.0+
+- 4 Agent stub (translation_worker / reading_companion / lint_bot / audio_generator) — 等 omodul Phase 11D
+- access_tier 拦截 (alpha 期全部 free)
+- Agent trace 可视化 UI
+
+### Tests
+- 273 pytest (baseline 235, Wave 1-3 +38)
+- vitest (前端类型安全)
+
+---
+
 ## [1.0.0-alpha] — 2026-05-28
 
 Phase 14 complete. Full SaaS backend + frontend.

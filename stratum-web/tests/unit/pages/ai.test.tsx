@@ -95,11 +95,11 @@ describe("AIPage", () => {
     expect(screen.getByPlaceholderText(/问一个/)).toBeDefined();
   });
 
-  it("QA submit calls POST /api/agents/reading_companion/run", async () => {
+  it("QA submit calls POST /api/v1/agents/reading_companion/run", async () => {
     const { apiClient } = await import("@/lib/api-client");
     vi.mocked(apiClient.post).mockResolvedValue({
-      agent_run: { id: "r1", agent_name: "reading_companion", status: "pending", output: null },
-      message: "Agent execution pending",
+      run_id: "r1", agent_name: "reading_companion", status: "failed",
+      error: "Agent execution pending",
     });
     const user = userEvent.setup();
     render(<AIPage />, { wrapper: W });
@@ -107,29 +107,29 @@ describe("AIPage", () => {
     await user.click(screen.getByRole("button", { name: "提问" }));
     await waitFor(() => {
       expect(apiClient.post).toHaveBeenCalledWith(
-        "/api/agents/reading_companion/run",
+        "/api/v1/agents/reading_companion/run",
         { params: { query: "What is X?" } }
       );
     });
   });
 
-  it("QA shows agent response message after answer", async () => {
+  it("QA shows agent error field after answer", async () => {
     const { apiClient } = await import("@/lib/api-client");
     vi.mocked(apiClient.post).mockResolvedValue({
-      agent_run: { id: "r1", agent_name: "reading_companion", status: "pending", output: null },
-      message: "Agent execution is not available",
+      run_id: "r1", agent_name: "reading_companion", status: "failed",
+      error: "Agent execution is not available",
     });
     const user = userEvent.setup();
     render(<AIPage />, { wrapper: W });
     await user.type(screen.getByPlaceholderText(/问一个/), "Q");
     await user.click(screen.getByRole("button", { name: "提问" }));
     await waitFor(() => {
-      // adapter maps message → QAResponse.answer
+      // adapter maps res.error → QAResponse.answer
       expect(screen.getByText("Agent execution is not available")).toBeDefined();
     });
   });
 
-  it("QA shows error on failure", async () => {
+  it("QA shows fallback on API failure", async () => {
     const { apiClient } = await import("@/lib/api-client");
     vi.mocked(apiClient.post).mockRejectedValue(new Error("Agent failed"));
     const user = userEvent.setup();
@@ -137,7 +137,8 @@ describe("AIPage", () => {
     await user.type(screen.getByPlaceholderText(/问一个/), "Q");
     await user.click(screen.getByRole("button", { name: "提问" }));
     await waitFor(() => {
-      expect(screen.getByText(/错误: Agent failed/)).toBeDefined();
+      // catch block returns fixed "not available" message, not the raw error
+      expect(screen.getByText(/暂不可用/)).toBeDefined();
     });
   });
 
@@ -157,7 +158,6 @@ describe("AIPage", () => {
           id: "r1",
           agent_name: "daily_digest",
           status: "completed",
-          output: "Today summary",
           started_at: "2026-01-01T00:00:00",
         },
       ],
@@ -167,7 +167,8 @@ describe("AIPage", () => {
     render(<AIPage />, { wrapper: W });
     await user.click(screen.getByText("摘要"));
     await waitFor(() => {
-      expect(screen.getByText("Today summary")).toBeDefined();
+      // adaptSummaryCard generates summary from status (no output field in P1 schema)
+      expect(screen.getByText("[daily_digest] 已完成")).toBeDefined();
     });
   });
 
