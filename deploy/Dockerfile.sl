@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         libpq-dev \
         curl \
+        libmagic-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Python runtime deps ───────────────────────────────────────────────────────
@@ -22,7 +23,13 @@ RUN pip install --no-cache-dir \
         python-ulid \
         pyyaml \
         structlog \
-        "mcp>=1.27"
+        "mcp>=1.27" \
+        alembic \
+        python-frontmatter \
+        pymupdf4llm \
+        lancedb \
+        tantivy \
+        pymupdf
 
 # ── Platform packages (copied from host, installed editable) ──────────────────
 # obase — no inter-package deps

@@ -1,10 +1,14 @@
-"""Phase 15 P1-A: Agent run endpoint tests.
+"""Agent run endpoint tests.
+
+Phase 15 P1-A (Wave 1): 3 workflow agents (daily_digest/weekly_review/knowledge_curator)
+Phase 15 P1-C (Wave 5): +3 Agent-class agents activated (translation_worker/reading_companion/lint_bot)
+                          audio_generator remains 501 (oprim.tts_synthesize not exported).
 
 Coverage:
   1. POST /{agent_name}/run — daily_digest returns status in (completed, failed), not pending
   2. POST /unknown/run — 404
-  3. POST /translation_worker/run — 501 (NOT_IMPLEMENTED stub)
-  4. POST /audio_generator/run — 501 (TTS deferred)
+  3. POST /audio_generator/run — 501 (TTS deferred, oprim provider missing)
+  4. POST /translation_worker|reading_companion|lint_bot/run — 200 (Agent-class, may fail on dep)
   5. run record persisted; GET /runs/{run_id} returns it with non-pending status
   6. GET /runs returns paginated list for authenticated user
   7. GET /runs/{run_id} — cross-user 404 isolation
@@ -67,14 +71,30 @@ def test_agent_unknown_returns_404(client):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+def test_not_implemented_agent_returns_501(client):
+    """audio_generator returns 501 — oprim.tts_synthesize not exported, 0 providers."""
+    r = client.post("/api/v1/agents/audio_generator/run", json={}, headers=_auth())
+    assert r.status_code == 501, f"expected 501, got {r.status_code}"
+
+
 @pytest.mark.parametrize(
     "agent_name",
-    ["translation_worker", "reading_companion", "lint_bot", "audio_generator"],
+    ["translation_worker", "reading_companion", "lint_bot"],
 )
-def test_not_implemented_agent_returns_501(client, agent_name):
-    """Stub agents return 501, not 404 or 200."""
+def test_activated_agent_classes_return_200(client, agent_name):
+    """translation_worker/reading_companion/lint_bot are now real Agent classes (not 501).
+
+    They may return status=failed due to missing DB/index data in the test env,
+    but must not return 501 or 404 — the import chain is resolved.
+    """
     r = client.post(f"/api/v1/agents/{agent_name}/run", json={}, headers=_auth())
-    assert r.status_code == 501, f"{agent_name}: expected 501, got {r.status_code}"
+    assert r.status_code == 200, f"{agent_name}: expected 200, got {r.status_code} — {r.text[:200]}"
+    body = r.json()
+    assert body["agent_name"] == agent_name
+    assert body["status"] in ("completed", "failed"), (
+        f"{agent_name}: status must be terminal, got {body['status']!r}"
+    )
+    assert "run_id" in body
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

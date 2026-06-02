@@ -1,7 +1,10 @@
-"""Agent execution — wires to omodul workflow functions.
+"""Agent execution — wires to omodul workflow functions and Agent classes.
 
 Phase 15 P1-A (Wave 1):
   AGENT_REGISTRY: 3 real workflows + 4 NOT_IMPLEMENTED stubs (501)
+Phase 15 P1-C (Wave 5, post omodul PR #1 merge):
+  Activated 3 Agent-class agents: translation_worker / reading_companion / lint_bot
+  Only audio_generator remains 501 (oprim.tts_synthesize not exported, no providers).
   Advisor-authorized name mapping (§7 stop-and-report, R-4 explicit auth):
     knowledge_curator → process_inbox_substrate (InboxConfig/InboxInput)
   All runs persisted to agent_runs table; GET /runs + GET /runs/{run_id} added.
@@ -36,6 +39,10 @@ try:
         process_inbox_substrate,
         weekly_review_workflow,
     )
+    from omodul.knowledge.agents.base import AgentContext
+    from omodul.knowledge.agents.builtin.lint_bot import LintBotAgent
+    from omodul.knowledge.agents.builtin.reading_companion import ReadingCompanionAgent
+    from omodul.knowledge.agents.builtin.translation_worker import TranslationWorkerAgent
 
     _HAS_OMODUL = True
 except ImportError:
@@ -43,12 +50,9 @@ except ImportError:
 
 router = APIRouter(prefix="/api/v1/agents", tags=["agents"])
 
-# Agents not yet in omodul — tracked in TECHNICAL_DEBT.md (Phase 15 P1-A)
+# Agents still unavailable — oprim external deps missing
 NOT_IMPLEMENTED_AGENTS = {
-    "translation_worker": "omodul 缺 translate_substrate_workflow, Phase 11D 补",
-    "reading_companion": "omodul 缺 reading_companion_workflow, Phase 11D 补",
-    "lint_bot": "omodul 缺 lint_knowledge_base_workflow, Phase 11D 补",
-    "audio_generator": "TTS 暂缓 (Phase 11B 决策), v1.1 评估 F5-TTS",
+    "audio_generator": "TTS oprim.tts_synthesize 未导出 + ProviderRegistry 0 providers, 等 oprim 经理人补",
 }
 
 
@@ -112,8 +116,16 @@ if _HAS_OMODUL:
         "knowledge_curator": _build_knowledge_curator,
     }
 
+    # Agent-class based agents (async run(params, context) → AgentResult)
+    _AGENT_CLASSES: dict = {
+        "translation_worker": TranslationWorkerAgent,
+        "reading_companion": ReadingCompanionAgent,
+        "lint_bot": LintBotAgent,
+    }
+
 else:
     _BUILDERS = {}
+    _AGENT_CLASSES: dict = {}
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -127,7 +139,7 @@ async def agent_run(
 ):
     if agent_name in NOT_IMPLEMENTED_AGENTS:
         raise HTTPException(501, NOT_IMPLEMENTED_AGENTS[agent_name])
-    if agent_name not in _BUILDERS:
+    if agent_name not in _BUILDERS and agent_name not in _AGENT_CLASSES:
         raise HTTPException(404, f"Unknown agent: {agent_name}")
     if not _HAS_OMODUL:
         return {
@@ -154,11 +166,42 @@ async def agent_run(
     result: dict = {}
     final_status = "failed"
     try:
-        workflow_fn, config, input_data = _BUILDERS[agent_name](params or {}, user_id)
-        result = await asyncio.to_thread(
-            workflow_fn, config=config, input_data=input_data, output_dir=out_dir
-        )
-        final_status = result.get("status", "failed")
+        if agent_name in _AGENT_CLASSES:
+            # Agent-class path: async run(params, context) → AgentResult
+            context = AgentContext(
+                user_id=user_id,
+                agent_run_id=run_id,
+                invoked_at=_now_dt(),
+            )
+            agent_result = await _AGENT_CLASSES[agent_name]().run(params or {}, context)
+            final_status = "completed" if agent_result.success else "failed"
+            citations = [
+                {
+                    "substrate_id": c.substrate_id,
+                    "title": c.title,
+                    "fragment_id": c.fragment_id,
+                    "deep_link": c.deep_link,
+                }
+                for c in (agent_result.citations or [])
+            ]
+            result = {
+                "status": final_status,
+                "findings": agent_result.output,
+                "citations": citations,
+                "error": agent_result.error,
+                "trace": [
+                    {"step": s.step_num, "tool": s.tool_name, "duration_ms": s.duration_ms}
+                    for s in (agent_result.trace or [])
+                ],
+            }
+        else:
+            # Workflow path: sync fn(config, input_data, output_dir) → dict
+            workflow_fn, config, input_data = _BUILDERS[agent_name](params or {}, user_id)
+            result = await asyncio.to_thread(
+                workflow_fn, config=config, input_data=input_data, output_dir=out_dir
+            )
+            final_status = result.get("status", "failed")
+
         err = result.get("error")
         if isinstance(err, dict):
             err = err.get("error_message") or str(err)
@@ -194,7 +237,9 @@ async def agent_run(
         "run_id": run_id,
         "agent_name": agent_name,
         "status": final_status,
-        "findings": result["findings"].model_dump() if result.get("findings") else None,
+        "findings": result.get("findings").model_dump()
+        if hasattr(result.get("findings"), "model_dump")
+        else result.get("findings"),
         "report_fingerprint": result.get("fingerprint"),
         "citations": result.get("citations"),
         "error": result.get("error"),
