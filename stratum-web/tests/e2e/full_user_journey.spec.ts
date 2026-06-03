@@ -18,7 +18,7 @@ const creds = {
 };
 
 // Shared state within each group
-let accessToken = "";
+let accessToken = ""; // eslint-disable-line @typescript-eslint/no-unused-vars
 
 // ── Journey 1: register → profile → share → revoke ───────────────────────────
 

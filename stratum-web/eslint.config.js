@@ -13,5 +13,5 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
-  { ignores: [".next/", "node_modules/"] },
+  { ignores: [".next/", "node_modules/", "playwright-report/", "storybook-static/"] },
 );

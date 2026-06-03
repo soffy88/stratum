@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth";
 import { apiClient } from "@/lib/api-client";
 import type { UserProfilePublic } from "@/lib/types";
