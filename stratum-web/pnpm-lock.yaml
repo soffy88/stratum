@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@helios/blocks':
-        specifier: file:/home/soffy/projects/platform/packages/helios-blocks-1.5.0.tgz
-        version: file:../../platform/packages/helios-blocks-1.5.0.tgz(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(@types/three@0.184.1)(immer@11.1.8)(react-dom@19.2.6(react@19.2.6))(react-is@17.0.2)(react@19.2.6)(redux@5.0.1)
+        specifier: file:/home/soffy/projects/platform/packages/helios-blocks-1.7.2.tgz
+        version: file:../../platform/packages/helios-blocks-1.7.2.tgz(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(@types/three@0.184.1)(immer@11.1.8)(react-dom@19.2.6(react@19.2.6))(react-is@17.0.2)(react@19.2.6)(redux@5.0.1)
       '@hookform/resolvers':
         specifier: ^5.0.1
         version: 5.4.0(react-hook-form@7.76.1(react@19.2.6))
@@ -971,9 +971,9 @@ packages:
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
 
-  '@helios/blocks@file:../../platform/packages/helios-blocks-1.5.0.tgz':
-    resolution: {integrity: sha512-WmwPpYJln94YNGwbrpjac69KdX6fEpia2C6VwQjQ1sXNCTT69wcupTgGNlpbYWmy0BkCQ0rI+/ut9pFHLD7hNA==, tarball: file:../../platform/packages/helios-blocks-1.5.0.tgz}
-    version: 1.5.0
+  '@helios/blocks@file:../../platform/packages/helios-blocks-1.7.2.tgz':
+    resolution: {integrity: sha512-uDh7bjgt6WKVE/oXpScLtXqITUV94fFQNscjwRK9w2PZQG7JTJM7O9b/ssfymw8xv/puGNHbZ5pN2Ow9s26yLw==, tarball: file:../../platform/packages/helios-blocks-1.7.2.tgz}
+    version: 1.7.2
     engines: {node: '>=22'}
     peerDependencies:
       react: ^19.0.0
@@ -6908,7 +6908,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.11': {}
 
-  '@helios/blocks@file:../../platform/packages/helios-blocks-1.5.0.tgz(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(@types/three@0.184.1)(immer@11.1.8)(react-dom@19.2.6(react@19.2.6))(react-is@17.0.2)(react@19.2.6)(redux@5.0.1)':
+  '@helios/blocks@file:../../platform/packages/helios-blocks-1.7.2.tgz(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(@types/three@0.184.1)(immer@11.1.8)(react-dom@19.2.6(react@19.2.6))(react-is@17.0.2)(react@19.2.6)(redux@5.0.1)':
     dependencies:
       '@radix-ui/react-accordion': 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@radix-ui/react-dialog': 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)

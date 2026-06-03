@@ -20,9 +20,9 @@ RUN npm install -g pnpm@9
 WORKDIR /app
 
 # Make @helios/blocks tarball available at path expected by lockfile:
-#   pnpm-lock.yaml: file:../../platform/packages/helios-blocks-1.5.0.tgz
+#   pnpm-lock.yaml: file:../../platform/packages/helios-blocks-1.7.2.tgz
 #   from WORKDIR /app → ../../ = /platform
-COPY --from=platform-pkg helios-blocks-1.5.0.tgz /platform/packages/helios-blocks-1.5.0.tgz
+COPY --from=platform-pkg helios-blocks-1.7.2.tgz /platform/packages/helios-blocks-1.7.2.tgz
 
 COPY package.json pnpm-lock.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile
