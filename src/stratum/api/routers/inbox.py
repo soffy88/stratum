@@ -170,6 +170,16 @@ async def _fetch_url_html(url: str) -> str:
 
     Raises HTTPException on fetch failure with generic messages to avoid
     leaking internal network topology.
+
+    SECURITY NOTE — TOCTOU / DNS rebinding (MEDIUM, tracked):
+    _validate_fetch_url resolves the hostname and checks IPs, but httpx
+    performs a second DNS lookup at connect time. A DNS rebinding attack
+    could change the resolution between these two points. Full mitigation
+    requires a pinned-IP custom transport (pre-resolve → pass exact IP to
+    kernel, preserve Host/SNI for TLS). Not implemented here because:
+    - endpoint is JWT-authenticated (attacker needs a valid token first)
+    - single-user alpha; anyone with the JWT already has full API access
+    Upgrade to pinned-IP transport before multi-user / public launch.
     """
     _validate_fetch_url(url)
     import logging
