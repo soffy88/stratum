@@ -6,6 +6,8 @@ import shutil
 import tempfile
 from pathlib import Path
 
+import httpx
+
 _ULID_RE = re.compile(r"[0-9A-Z]{26}")
 
 
@@ -122,13 +124,44 @@ async def inbox_submit(
     return response
 
 
+_WEB_CLIP_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+_WEB_CLIP_TIMEOUT = 30.0
+
+
+async def _fetch_url_html(url: str) -> str:
+    """Fetch URL and return HTML. Raises HTTPException on fetch failure."""
+    try:
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=_WEB_CLIP_TIMEOUT,
+            headers={"User-Agent": "StratumBot/1.0 (+https://stratum.uex.hk)"},
+        ) as client:
+            resp = await client.get(url)
+            if resp.status_code == 404:
+                raise HTTPException(404, f"URL not found: {url}")
+            resp.raise_for_status()
+            if len(resp.content) > _WEB_CLIP_MAX_BYTES:
+                raise HTTPException(413, "Page too large (max 10 MB)")
+            return resp.text
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        raise HTTPException(504, f"Timeout fetching URL: {url}")
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            exc.response.status_code, f"HTTP error {exc.response.status_code}: {url}"
+        )
+    except Exception as exc:
+        raise HTTPException(502, f"Failed to fetch URL: {exc}")
+
+
 @router.post("/web-clip")
 async def inbox_webclip(
     url: str = Form(...),
     html: str = Form(None),
     user_id: str = Depends(jwt_auth),
 ):
-    """Save a web page clip to inbox."""
+    """Save a web page clip to inbox. Fetches URL server-side if html not provided."""
     inbox_dir = ensure_dir(user_inbox_dir(user_id))
 
     if not _HAS_INBOX:
@@ -138,11 +171,11 @@ async def inbox_webclip(
             "message": "omodul web-clip pipeline not yet available",
         }
 
+    if not html:
+        html = await _fetch_url_html(url)
+
     clip_path = inbox_dir / f"{generate_ulid()}.html"
-    clip_path.write_text(
-        html or f"<html><head><title>{url}</title></head><body></body></html>",
-        encoding="utf-8",
-    )
+    clip_path.write_text(html, encoding="utf-8")
     checksum = sha256_hex(clip_path.read_text())
     config = InboxConfig(
         file_path=str(clip_path),
