@@ -25,7 +25,12 @@ class StratumWebSocketClient {
     this.currentToken = token;
 
     const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsUrl = `${proto}://${window.location.host}/ws?token=${token}`;
+    // SECURITY NOTE: token in query string appears in proxy/access logs.
+    // Proper fix: Sec-WebSocket-Protocol header auth or short-lived ticket endpoint.
+    // Both require backend changes (R-4 blocked for alpha). encodeURIComponent is
+    // applied to prevent token injection but does not solve the logging exposure.
+    // Track as: backend WS auth upgrade (post-alpha, before public launch).
+    const wsUrl = `${proto}://${window.location.host}/ws?token=${encodeURIComponent(token)}`;
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
