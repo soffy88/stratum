@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { OScheduledJobsManager } from "@helios/blocks";
 import { useScheduledJobs } from "@/lib/adapters/jobs";
+import { AGENT_OPTIONS } from "@/lib/agent-options";
 
 export default function JobsPage() {
   const { jobs, isLoading, toggleEnabled, editCron, remove, runNow, create } =
@@ -80,9 +81,9 @@ function CreateJobForm({
         onChange={(e) => setAgentName(e.target.value)}
         className="w-full border border-[var(--color-border)] rounded px-3 py-2 text-sm"
       >
-        <option value="daily_digest">daily_digest</option>
-        <option value="weekly_review">weekly_review</option>
-        <option value="reading_companion">reading_companion</option>
+        {AGENT_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
       </select>
       <input
         value={cron}
