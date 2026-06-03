@@ -9,8 +9,12 @@ const NAV_ITEMS = [
   { href: "/discover", label: "发现" },
   { href: "/documents", label: "文档" },
   { href: "/concepts", label: "概念" },
+  { href: "/notes", label: "笔记" },
+  { href: "/highlights", label: "高亮" },
+  { href: "/views", label: "视图" },
   { href: "/ai", label: "AI" },
   { href: "/jobs", label: "任务" },
+  { href: "/profile", label: "我的" },
   { href: "/admin", label: "管理" },
   { href: "/settings", label: "设置" },
 ];
