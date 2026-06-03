@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiClient } from "@/lib/api-client";
 
 type Result = { substrate_id: string | null; status: string; url: string; message?: string };
 
@@ -16,13 +17,19 @@ export function UrlIngestDialog({ onClose }: { onClose: () => void }) {
     setError(null);
     setResult(null);
     try {
+      const token = apiClient.getAccessToken();
       const body = new FormData();
       body.append("url", url.trim());
       const res = await fetch("/api/v1/inbox/web-clip", {
         method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
         body,
         credentials: "include",
       });
+      if (res.status === 401) {
+        setError("未登录或会话已过期，请刷新页面重新登录");
+        return;
+      }
       if (!res.ok) {
         const text = await res.text();
         setError(`${res.status}: ${text}`);
