@@ -20,7 +20,7 @@ vi.mock("@helios/blocks", () => ({
     placeholder?: string;
   }) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [input, setInput] = (globalThis as any).__aiInput__ ?? ["", () => {}];
+    const [input, setInput] = (globalThis as any).__aiInput__ ?? ["", () => {}]; // eslint-disable-line @typescript-eslint/no-unused-vars
     return (
       <form
         onSubmit={async (e) => {
