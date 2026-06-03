@@ -1,6 +1,6 @@
 # Stratum Technical Debt
 
-Last updated: 2026-06-02 (Phase 15 P1-A Wave 1)
+Last updated: 2026-06-03 (Phase 17 P0)
 
 Legend: `[ ]` open · `[x]` resolved · priority: **P0** blocker / **P1** soon / **P2** eventually
 
@@ -113,6 +113,22 @@ Legend: `[ ]` open · `[x]` resolved · priority: **P0** blocker / **P1** soon /
   placeholder UI only. Planned for v1.1+. (B-3)
 
 ### Auth & Security
+
+- [ ] **P0 (pre-multi-user)** `_fetch_url_html` TOCTOU / DNS rebinding: `_validate_fetch_url()` resolves
+  hostname and validates IP, but httpx performs a second DNS lookup at connect time. A DNS rebinding
+  attack could swap the resolution between checks (validated public IP → internal private IP).
+  Full fix: pinned-IP custom transport — pre-resolve hostname, validate every returned IP, pass the
+  exact validated IP to the kernel (preserving `Host`/SNI for TLS).
+  Current state: acceptable for **alpha single-user** (endpoint requires valid JWT; if attacker has JWT
+  they have full API access already). **Must fix before multi-user /引流 public launch.**
+  Same severity bucket as JWT-in-WS-URL. File: `src/stratum/api/routers/inbox.py:_fetch_url_html`.
+  Tracked: Phase 17 17-A, documented in code. (2026-06-03)
+
+- [ ] **P0 (pre-public)** WS token in URL: `ws-client.ts` passes JWT as `?token=...` query parameter.
+  Token appears in Nginx/Cloudflare access logs in plaintext.
+  Full fix: `Sec-WebSocket-Protocol` header auth or short-lived ticket endpoint (both need backend changes).
+  Current state: acceptable for alpha single-user. **Must fix before public launch / 引流.**
+  File: `stratum-web/src/lib/ws-client.ts`. Tracked: Phase 16-Frontend P1-B. (2026-06-03)
 
 - [ ] **P2** JWT secret read from `STRATUM_JWT_SECRET` env var; no rotation mechanism.
   Rotation requires session invalidation strategy. (Wave 1)
