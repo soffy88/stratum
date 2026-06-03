@@ -1,10 +1,13 @@
 """Content ingest — file upload + web-clip."""
 
 import asyncio
+import ipaddress
 import re
 import shutil
+import socket
 import tempfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 
@@ -128,31 +131,83 @@ _WEB_CLIP_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
 _WEB_CLIP_TIMEOUT = 30.0
 
 
+def _validate_fetch_url(url: str) -> None:
+    """Reject SSRF-prone URLs before any network call.
+
+    Checks: scheme is http/https, hostname resolves to a public IP (not
+    loopback / private / link-local / reserved / multicast / unspecified).
+    Raises HTTPException(400) for invalid URLs, HTTPException(403) for
+    disallowed destinations — generic messages avoid SSRF reconnaissance.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(400, "URL must use http or https scheme")
+    host = parsed.hostname
+    if not host:
+        raise HTTPException(400, "Invalid URL")
+    try:
+        addrs = socket.getaddrinfo(host.lower().rstrip("."), None)
+    except socket.gaierror:
+        raise HTTPException(400, "Cannot resolve URL hostname")
+    for *_, sockaddr in addrs:
+        try:
+            ip = ipaddress.ip_address(sockaddr[0])
+        except ValueError:
+            continue
+        if (
+            ip.is_loopback
+            or ip.is_private
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
+            raise HTTPException(403, "URL resolves to a disallowed address")
+
+
 async def _fetch_url_html(url: str) -> str:
-    """Fetch URL and return HTML. Raises HTTPException on fetch failure."""
+    """Fetch URL and return HTML. Validates URL before fetching.
+
+    Raises HTTPException on fetch failure with generic messages to avoid
+    leaking internal network topology.
+    """
+    _validate_fetch_url(url)
+    import logging
+
+    log = logging.getLogger(__name__)
     try:
         async with httpx.AsyncClient(
-            follow_redirects=True,
+            follow_redirects=False,
             timeout=_WEB_CLIP_TIMEOUT,
             headers={"User-Agent": "StratumBot/1.0 (+https://stratum.uex.hk)"},
         ) as client:
-            resp = await client.get(url)
-            if resp.status_code == 404:
-                raise HTTPException(404, f"URL not found: {url}")
-            resp.raise_for_status()
-            if len(resp.content) > _WEB_CLIP_MAX_BYTES:
-                raise HTTPException(413, "Page too large (max 10 MB)")
-            return resp.text
+            async with client.stream("GET", url) as resp:
+                if resp.status_code == 404:
+                    raise HTTPException(404, "URL not found")
+                if resp.status_code in (301, 302, 307, 308):
+                    raise HTTPException(400, "URL redirects are not followed; use the final URL")
+                resp.raise_for_status()
+                cl = resp.headers.get("content-length")
+                if cl and int(cl) > _WEB_CLIP_MAX_BYTES:
+                    raise HTTPException(413, "Page too large (max 10 MB)")
+                buf = bytearray()
+                async for chunk in resp.aiter_bytes():
+                    buf.extend(chunk)
+                    if len(buf) > _WEB_CLIP_MAX_BYTES:
+                        raise HTTPException(413, "Page too large (max 10 MB)")
+                encoding = resp.encoding or "utf-8"
+                return buf.decode(encoding, errors="replace")
     except HTTPException:
         raise
     except httpx.TimeoutException:
-        raise HTTPException(504, f"Timeout fetching URL: {url}")
+        log.warning("web_clip_timeout url=%s", url)
+        raise HTTPException(504, "URL fetch timed out")
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(
-            exc.response.status_code, f"HTTP error {exc.response.status_code}: {url}"
-        )
+        log.warning("web_clip_http_error status=%s url=%s", exc.response.status_code, url)
+        raise HTTPException(exc.response.status_code, "URL fetch failed")
     except Exception as exc:
-        raise HTTPException(502, f"Failed to fetch URL: {exc}")
+        log.warning("web_clip_fetch_error url=%s error=%s", url, exc)
+        raise HTTPException(502, "Failed to fetch URL")
 
 
 @router.post("/web-clip")
