@@ -5,19 +5,9 @@ import Link from "next/link";
 import { OAIQAPanel, OAISummaryCard } from "@helios/blocks";
 import { useAgentQA, useAgentRuns, adaptSummaryCard } from "@/lib/adapters/agents";
 import type { AgentRun, RunAgentResponse } from "@/lib/types";
+import { AGENT_OPTIONS } from "@/lib/agent-options";
 
 type Tab = "qa" | "summary" | "run";
-
-const AGENT_OPTIONS = [
-  { value: "daily_digest", label: "Daily Digest (每日摘要)" },
-  { value: "weekly_review", label: "Weekly Review (周复盘)" },
-  { value: "knowledge_curator", label: "Knowledge Curator (知识整理)" },
-  { value: "translation_worker", label: "Translation Worker (翻译)" },
-  { value: "reading_companion", label: "Reading Companion (阅读伙伴)" },
-  { value: "lint_bot", label: "Lint Bot (知识库 lint)" },
-  { value: "audio_generator", label: "Audio Generator (音频朗读)" },
-  { value: "illustration_agent", label: "Illustration Agent (插图生成)" },
-];
 
 function AgentRunPanel() {
   const [agentName, setAgentName] = useState("daily_digest");
