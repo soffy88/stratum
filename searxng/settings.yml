@@ -1,0 +1,17 @@
+use_default_settings: true
+general:
+  instance_name: "Stratum SearxNG"
+search:
+  formats:
+    - html
+    - json
+server:
+  secret_key: "stratum-searxng-secret-local-only-not-public"
+  limiter: false
+engines:
+  - name: google
+    disabled: false
+  - name: duckduckgo
+    disabled: false
+  - name: bing
+    disabled: true

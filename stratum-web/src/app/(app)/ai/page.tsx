@@ -86,6 +86,18 @@ function AgentParamsForm({
     );
   }
 
+  if (agent.requiresParam === "query") {
+    return (
+      <input
+        type="text"
+        placeholder="研究主题, e.g. 凯利公式 BTC 实战"
+        value={question}
+        onChange={(e) => onQuestion(e.target.value)}
+        className="w-full border border-[var(--color-border)] rounded px-3 py-2 text-sm mb-3 bg-[var(--color-surface)]"
+      />
+    );
+  }
+
   return null;
 }
 
