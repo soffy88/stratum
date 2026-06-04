@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { FeedbackWidget } from "@/components/shared/FeedbackWidget";
 import { wsClient } from "@/lib/ws-client";
 import { apiClient } from "@/lib/api-client";
+import { OnboardingTour } from "@/components/OnboardingTour";
 
 const WS_TOAST_MESSAGES: Record<string, string> = {
   note_create: "笔记已创建",
@@ -66,6 +67,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <main className="flex-1 overflow-auto p-6">{children}</main>
       <FeedbackWidget />
+      <OnboardingTour />
     </div>
   );
 }
