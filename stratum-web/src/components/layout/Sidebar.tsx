@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/search", label: "搜索" },
   { href: "/discover", label: "发现" },
   { href: "/documents", label: "文档" },
+  { href: "/feeds", label: "订阅源" },
   { href: "/concepts", label: "概念" },
   { href: "/notes", label: "笔记" },
   { href: "/highlights", label: "高亮" },

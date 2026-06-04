@@ -135,6 +135,10 @@ from stratum.api.routers import interactions
 
 app.include_router(interactions.router)
 
+from stratum.api.routers import feeds
+
+app.include_router(feeds.router)
+
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 from stratum.api.ws import router as ws_router
 
