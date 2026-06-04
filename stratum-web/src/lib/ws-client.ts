@@ -23,14 +23,33 @@ class StratumWebSocketClient {
   connect(token: string) {
     if (this.ws?.readyState === WebSocket.OPEN) return;
     this.currentToken = token;
+    void this._connectWithTicket(token);
+  }
+
+  private async _connectWithTicket(token: string): Promise<void> {
+    let ticket: string;
+    try {
+      const res = await fetch("/api/v1/ws/ticket", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+      });
+      if (!res.ok) {
+        console.error("[WS] ticket request failed:", res.status);
+        return;
+      }
+      const data = (await res.json()) as { ticket: string };
+      ticket = data.ticket;
+    } catch (e) {
+      console.error("[WS] failed to obtain WS ticket:", e);
+      return;
+    }
+
+    // Guard: disconnect() was called while awaiting ticket
+    if (!this.currentToken) return;
 
     const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    // SECURITY NOTE: token in query string appears in proxy/access logs.
-    // Proper fix: Sec-WebSocket-Protocol header auth or short-lived ticket endpoint.
-    // Both require backend changes (R-4 blocked for alpha). encodeURIComponent is
-    // applied to prevent token injection but does not solve the logging exposure.
-    // Track as: backend WS auth upgrade (post-alpha, before public launch).
-    const wsUrl = `${proto}://${window.location.host}/ws?token=${encodeURIComponent(token)}`;
+    const wsUrl = `${proto}://${window.location.host}/ws?ticket=${ticket}`;
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
