@@ -10,7 +10,7 @@ import { UrlIngestDialog } from "@/components/UrlIngestDialog";
 
 export default function DocumentsPage() {
   const router = useRouter();
-  const { substrates, isLoading } = useDocumentTree();
+  const { substrates, isLoading, refetch } = useDocumentTree();
   const [showUrlDialog, setShowUrlDialog] = useState(false);
 
   const handleSelect = (substrate: Substrate) => {
@@ -21,7 +21,12 @@ export default function DocumentsPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      {showUrlDialog && <UrlIngestDialog onClose={() => setShowUrlDialog(false)} />}
+      {showUrlDialog && (
+        <UrlIngestDialog
+          onClose={() => setShowUrlDialog(false)}
+          onSuccess={() => void refetch?.()}
+        />
+      )}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold">文档</h1>
       </div>

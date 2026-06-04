@@ -225,10 +225,32 @@ async def _fetch_url_html(url: str) -> str:
         raise HTTPException(502, "Failed to fetch URL")
 
 
+def _extract_html_meta(html: str, url: str) -> dict:
+    """Extract title and snippet from raw HTML for inline preview."""
+    import html as html_lib
+    import re
+
+    # Title from <title> tag
+    title_m = re.search(r"<title[^>]*>([^<]{1,300})</title>", html, re.I | re.S)
+    title = html_lib.unescape(title_m.group(1).strip()) if title_m else url
+
+    # Strip tags for snippet
+    text = re.sub(r"<[^>]+>", " ", html)
+    text = re.sub(r"\s+", " ", text).strip()
+    snippet = text[:500] if text else ""
+    word_count = len(text.split()) if text else 0
+
+    return {"title": title, "snippet": snippet, "word_count": word_count}
+
+
 @router.post("/web-clip")
 async def inbox_webclip(
     url: str = Form(...),
     html: str = Form(None),
+    title_override: str = Form(None),
+    tags: str = Form(None),
+    fetch_mode: str = Form("full"),
+    note: str = Form(None),
     user_id: str = Depends(jwt_auth),
 ):
     """Save a web page clip to inbox. Fetches URL server-side if html not provided."""
@@ -243,6 +265,13 @@ async def inbox_webclip(
 
     if not html:
         html = await _fetch_url_html(url)
+
+    # Extract title/snippet before writing — used in response preview
+    html_meta = _extract_html_meta(html, url)
+    display_title = (
+        title_override.strip() if title_override and title_override.strip() else html_meta["title"]
+    )
+    parsed_tags = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
 
     clip_path = inbox_dir / f"{generate_ulid()}.html"
     clip_path.write_text(html, encoding="utf-8")
@@ -270,24 +299,33 @@ async def inbox_webclip(
     # which was renamed during Phase 14 DB merge — it fails silently.
     # This ensures the substrate is visible to /api/substrates (stratum-api).
     if substrate_id and result.get("status") != "failed":
-        title = getattr(findings, "title", None) or url
+        omodul_title = getattr(findings, "title", None)
         medium = getattr(findings, "medium", "webpage") or "webpage"
         page_count = getattr(findings, "page_count", 0) or 0
         byte_size = clip_path.stat().st_size if clip_path.exists() else 0
+        stored_title = display_title or omodul_title or url
+        meta = {
+            "source_url": url,
+            "medium": medium,
+            "tags": parsed_tags,
+            "fetch_mode": fetch_mode,
+        }
+        if note:
+            meta["note"] = note
         try:
             db_insert(
                 "substrates",
                 {
                     "id": substrate_id,
                     "user_id": user_id,
-                    "title": title,
+                    "title": stored_title,
                     "mime": f"text/html; medium={medium}",
                     "source_path": str(clip_path),
                     "file_hash": checksum,
                     "byte_size": byte_size,
                     "page_count": page_count,
                     "is_pinned": False,
-                    "meta_json": json.dumps({"source_url": url, "medium": medium}),
+                    "meta_json": json.dumps(meta),
                     "created_at": now_utc(),
                     "updated_at": now_utc(),
                 },
@@ -301,4 +339,9 @@ async def inbox_webclip(
         "substrate_id": substrate_id,
         "status": result.get("status", "completed"),
         "url": url,
+        "title": display_title or html_meta["title"],
+        "snippet": html_meta["snippet"],
+        "word_count": html_meta["word_count"],
+        "medium": getattr(findings, "medium", "webpage") if findings else "webpage",
+        "tags": parsed_tags,
     }
