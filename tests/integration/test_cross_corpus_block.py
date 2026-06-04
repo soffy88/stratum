@@ -33,19 +33,19 @@ def test_user_A_cannot_read_user_B_substrate(two_users):
     uA, uB, db = two_users
     sid = str(ulid_mod.ULID())
     db.execute(
-        "INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)",
-        (sid, sid, uB.corpus_id, "B secret"),
+        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
+        (sid, uB.id, "B secret"),
     )
-    assert SubstrateDAO(db).get_substrate(substrate_id=sid, corpus_id=uA.corpus_id) is None
+    assert SubstrateDAO(db).get_substrate(substrate_id=sid, user_id=uA.id) is None
 
 
 def test_user_A_cannot_list_user_B_substrates(two_users):
     uA, uB, db = two_users
     db.execute(
-        "INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)",
-        ("s1", "s1", uB.corpus_id, "B doc"),
+        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
+        ("s1", uB.id, "B doc"),
     )
-    results = SubstrateDAO(db).list_substrates(corpus_id=uA.corpus_id)
+    results = SubstrateDAO(db).list_substrates(user_id=uA.id)
     assert len(results) == 0
 
 
@@ -162,12 +162,12 @@ async def test_user_A_cannot_search_user_B_content(two_users):
     sid_a = str(ulid_mod.ULID())
     sid_b = str(ulid_mod.ULID())
     db.execute(
-        "INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)",
-        (sid_a, sid_a, uA.corpus_id, "A doc"),
+        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
+        (sid_a, uA.id, "A doc"),
     )
     db.execute(
-        "INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)",
-        (sid_b, sid_b, uB.corpus_id, "B doc"),
+        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
+        (sid_b, uB.id, "B doc"),
     )
 
     from unittest.mock import patch, AsyncMock
@@ -184,7 +184,7 @@ async def test_user_A_cannot_search_user_B_content(two_users):
             mock_duckdb.connect.return_value = db
             from stratum.service.search import stratum_search
 
-            results = await stratum_search(query="test", corpus_id=uA.corpus_id)
+            results = await stratum_search(query="test", corpus_id=uA.corpus_id, user_id=uA.id)
             ids = [r.id for r in results]
             assert sid_a in ids
             assert sid_b not in ids
