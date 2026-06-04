@@ -80,6 +80,7 @@ export function useDocumentTree() {
     substrates: (query.data?.items ?? []).map(adaptSubstrate),
     isLoading: query.isLoading,
     error: query.error,
+    refetch: query.refetch,
   };
 }
 
