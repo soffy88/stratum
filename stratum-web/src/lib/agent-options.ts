@@ -14,4 +14,5 @@ export const AGENT_OPTIONS: AgentOption[] = [
   { value: "lint_bot", label: "Lint Bot (知识库 lint)", description: "检查知识库的结构问题" },
   { value: "audio_generator", label: "Audio Generator (音频朗读)", description: "为 substrate 生成朗读音频", requiresParam: "substrate_id" },
   { value: "illustration_agent", label: "Illustration Agent (插图生成)", description: "为 substrate 生成插图", requiresParam: "substrate_id" },
+  { value: "researcher", label: "Researcher (主动研究)", description: "输入研究主题, 自动找资料 + 总结", requiresParam: "query" },
 ];
