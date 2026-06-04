@@ -33,20 +33,21 @@ RUN pip install --no-cache-dir \
         "edge-tts>=6.1"
 
 # ── Platform packages (copied from host, installed editable) ──────────────────
+# Packages live at platform/3O/{obase,oprim,oskill,omodul} in the build context.
 # obase — no inter-package deps
-COPY platform/obase /opt/platform/obase
+COPY platform/3O/obase /opt/platform/obase
 RUN pip install --no-cache-dir -e /opt/platform/obase
 
 # oprim — no inter-package deps
-COPY platform/oprim /opt/platform/oprim
+COPY platform/3O/oprim /opt/platform/oprim
 RUN pip install --no-cache-dir -e /opt/platform/oprim
 
 # oskill — depends on oprim
-COPY platform/oskill /opt/platform/oskill
+COPY platform/3O/oskill /opt/platform/oskill
 RUN pip install --no-cache-dir -e /opt/platform/oskill
 
 # omodul — depends on oprim + oskill + obase
-COPY platform/omodul /opt/platform/omodul
+COPY platform/3O/omodul /opt/platform/omodul
 RUN pip install --no-cache-dir -e /opt/platform/omodul
 
 # ── Application source ────────────────────────────────────────────────────────
