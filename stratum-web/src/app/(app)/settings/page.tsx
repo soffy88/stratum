@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth";
 import { setTheme, getTheme, type Theme } from "@/lib/theme";
 import { apiClient } from "@/lib/api-client";
+import { resetOnboardingTour } from "@/components/OnboardingTour";
 import type { SessionItem, SessionListResponse } from "@/lib/types";
 
 type Tab = "profile" | "theme" | "sessions";
@@ -50,6 +51,17 @@ function ProfileTab() {
         <p className="font-medium">{user?.email}</p>
       </div>
       <p className="text-xs text-[var(--color-muted)]">编辑功能将在后续版本提供</p>
+      <div className="pt-2 border-t border-[var(--color-border)]">
+        <button
+          onClick={() => {
+            resetOnboardingTour();
+            window.location.reload();
+          }}
+          className="text-sm text-[var(--color-primary)] hover:underline"
+        >
+          重看引导教程
+        </button>
+      </div>
     </div>
   );
 }
