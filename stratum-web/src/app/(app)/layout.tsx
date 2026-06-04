@@ -63,9 +63,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex flex-col md:flex-row h-screen">
       <Sidebar />
-      <main className="flex-1 overflow-auto p-6">{children}</main>
+      <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
       <FeedbackWidget />
       <OnboardingTour />
     </div>
