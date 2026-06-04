@@ -1,0 +1,50 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 太长 (27 chars)
+id: "01HY000000000000000000000DD"
+
+# ❌ 2: slug 含大写
+slug: "Helixa-RabbitMQ-2026"
+
+# title: (缺失 required)
+
+# ❌ 3: type 错误
+type: "incident-report"
+
+# ❌ 4: created_at 格式错误
+created_at: "2026-05-16 09:00"
+
+# ❌ 5: last_modified_at 类型错
+last_modified_at: 20260516
+
+# ❌ 6: ingested_by 不在枚举
+ingested_by: "ops-team"
+
+# ❌ 7: schema_version 非整数
+schema_version: 1.0
+
+# ❌ 8: domains 含数字开头
+domains:
+  - "3rd-party.messaging"
+
+# ❌ 9: status 不在枚举
+status: "closed"
+
+# ❌ 10: incident_date 格式错误 (应为 date 即 YYYY-MM-DD)
+incident_date: "March 14, 2026"
+
+# severity: (缺失 required)
+
+# ❌ 11: action_items 项缺 required description
+action_items:
+  - owner: "wiki"
+    due_date: "2026-03-15"
+    done: true
+
+# ❌ 12: root_causes 含非字符串
+root_causes:
+  - "heartbeat 未配置"
+  - 42
+
+# ❌ 13: 额外字段
+jira_ticket: "OPS-1234"

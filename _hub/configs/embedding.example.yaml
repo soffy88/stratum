@@ -1,0 +1,6 @@
+# Embedding 配置 (批 2 实证后定稿)
+provider: "bge-m3"    # [PENDING_VALIDATION]
+model_path: "BAAI/bge-m3"
+dimensions: 1024
+batch_size: 32
+device: "cuda"        # cuda | cpu | mps

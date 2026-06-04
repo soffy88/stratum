@@ -1,0 +1,9 @@
+parser: docling
+version: 2.x
+sample: S2
+elapsed_s: 76.56
+para_count: 118
+avg_para_length: 351.6
+short_para_ratio: 0.653
+total_chars: 43152
+num_pages: 12

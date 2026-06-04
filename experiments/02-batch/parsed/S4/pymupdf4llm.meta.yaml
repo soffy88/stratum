@@ -1,0 +1,31 @@
+detected_pages: 15
+errors: null
+math_stats:
+  latex_block: 0
+  latex_env: 0
+  latex_inline: 0
+  math_commands: 0
+  total_math_indicators: 26
+  unicode_math_chars: 26
+memory_mb_peak: 99.7
+ocr_used: false
+output_chars: 40498
+paragraph_stats:
+  avg_para_length: 193.6
+  paragraph_count: 206
+  short_para_ratio: 0.18
+parse_time_seconds: 1.6
+parser: pymupdf4llm
+parser_version: 0.3.4
+scores:
+  D1_paragraph: 5
+  D2_formulas: null
+  D3_tables: 4.5
+  D4_ocr: null
+  D5_speed_s: 1.6
+  D6_memory: low
+  D7_errors: 0
+table_stats:
+  html_tables: 0
+  markdown_table_rows: 16
+  markdown_table_separators: 2

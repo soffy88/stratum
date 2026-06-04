@@ -1,0 +1,45 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 含无效字符 (O = letter O, 不在 Crockford base32 中)
+id: "01HYOOOOOOOOOOOOOOOOOOOOOO"
+
+# ❌ 2: slug 含下划线
+slug: "lex_fridman_333"
+
+# title: (缺失 required)
+
+# ❌ 3: type 错误
+type: "video"
+
+# ❌ 4: created_at 非 date-time
+created_at: "2026-05-16"
+
+# ❌ 5: ingested_by 不在枚举
+ingested_by: "auto-scraper"
+
+# ❌ 6: schema_version 为字符串
+schema_version: "one"
+
+# ❌ 7: source_platform 不在枚举
+source_platform: "tiktok"
+
+# ❌ 8: source_url 非 URI
+source_url: "not a url at all"
+
+# ❌ 9: speakers 为空 (minItems: 1)
+speakers: []
+
+# ❌ 10: language 不在枚举
+language: "American English"
+
+# ❌ 11: domains 为空 (minItems: 1)
+domains: []
+
+# ❌ 12: duration_seconds 为负数
+duration_seconds: -600
+
+# ❌ 13: episode_number 超出范围 (minimum: 1)
+episode_number: 0
+
+# ❌ 14: 额外字段违反 additionalProperties
+rss_feed: "https://example.com/feed.xml"

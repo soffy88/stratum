@@ -1,0 +1,76 @@
+{
+  "pgvector": {
+    "status": "INFRA_SKIP",
+    "reason": "PostgreSQL not installed in WSL2 environment. psql command not found."
+  },
+  "qdrant": {
+    "status": "OK",
+    "insert_time_s": 3.09,
+    "insert_rate_vps": 3232,
+    "vector_query": {
+      "p50_ms": 106.62,
+      "p95_ms": 127.85,
+      "p99_ms": 138.07,
+      "mean_ms": 105.52,
+      "total_queries": 300
+    },
+    "filter_query": {
+      "p50_ms": 154.19,
+      "p95_ms": 184.01,
+      "p99_ms": 207.51,
+      "mean_ms": 152.82,
+      "total_queries": 300
+    },
+    "rss_after_insert_mb": 305,
+    "deployment": "in-memory (QdrantClient(':memory:'))",
+    "code_lines_insert": 12,
+    "code_lines_query": 6
+  },
+  "chromadb": {
+    "status": "OK",
+    "insert_time_s": 6.61,
+    "insert_rate_vps": 1513,
+    "vector_query": {
+      "p50_ms": 1.96,
+      "p95_ms": 3.28,
+      "p99_ms": 5.15,
+      "mean_ms": 2.14,
+      "total_queries": 300
+    },
+    "filter_query": {
+      "p50_ms": 13.25,
+      "p95_ms": 21.26,
+      "p99_ms": 43.74,
+      "mean_ms": 14.48,
+      "total_queries": 300
+    },
+    "rss_after_insert_mb": 343,
+    "deployment": "in-memory (chromadb.Client())",
+    "code_lines_insert": 10,
+    "code_lines_query": 5
+  },
+  "lancedb": {
+    "status": "OK",
+    "insert_time_s": 0.63,
+    "insert_rate_vps": 15787,
+    "vector_query": {
+      "p50_ms": 17.16,
+      "p95_ms": 27.45,
+      "p99_ms": 46.15,
+      "mean_ms": 18.59,
+      "total_queries": 300
+    },
+    "filter_query": {
+      "p50_ms": 26.05,
+      "p95_ms": 39.8,
+      "p99_ms": 54.01,
+      "mean_ms": 26.8,
+      "total_queries": 300
+    },
+    "rss_after_insert_mb": 1230,
+    "disk_mb": 40.6,
+    "deployment": "local file (/tmp/lancedb_bench_ki3hamq0)",
+    "code_lines_insert": 15,
+    "code_lines_query": 4
+  }
+}

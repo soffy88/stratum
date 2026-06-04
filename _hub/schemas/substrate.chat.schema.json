@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Stratum.local/schemas/substrate.chat.schema.json",
+  "title": "Substrate Chat",
+  "description": "Schema for an exported chat conversation in the substrate layer. v1.",
+  "type": "object",
+  "required": [
+    "id",
+    "slug",
+    "title",
+    "type",
+    "created_at",
+    "ingested_by",
+    "schema_version",
+    "participants",
+    "platform",
+    "exported_at",
+    "domains",
+    "significance"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "ULID, 26 chars, Crockford base32"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 2,
+      "maxLength": 80,
+      "description": "Human-readable identifier, unique within chats layer"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "type": {
+      "const": "chat"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ingested_by": {
+      "type": "string",
+      "enum": ["wiki", "hermes", "claude-code", "pipeline"]
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "participants": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 2,
+      "description": "Names or identifiers of all participants in the conversation"
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["claude.ai", "chatgpt", "telegram", "discord", "slack", "other"],
+      "description": "Platform or application the chat took place on"
+    },
+    "exported_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when the chat was exported"
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9.-]*$"
+      },
+      "minItems": 1,
+      "description": "Domain tags, dotted path. e.g. 'research.planning', 'tech.ai', 'personal'"
+    },
+    "significance": {
+      "type": "string",
+      "enum": ["high", "medium", "low"],
+      "description": "Significance level. Used by lint to filter low-value chats from indexing."
+    },
+    "message_count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Total number of messages in the exported conversation"
+    },
+    "duration_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Elapsed time from first to last message in seconds"
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "zh-Hans", "zh-Hant",
+        "en", "ja", "ko",
+        "fr", "de", "es", "ru",
+        "la", "grc",
+        "mixed", "other"
+      ],
+      "description": "Primary language of the conversation. 'mixed' for multilingual chats."
+    },
+    "chat_path": {
+      "type": "string",
+      "description": "Relative path to the stored chat export file"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Free-form tags, lighter than domains. Avoid duplicating domain info."
+    },
+    "copyright_status": {
+      "type": "string",
+      "enum": [
+        "public-domain",
+        "copyrighted",
+        "fair-use",
+        "unknown"
+      ]
+    }
+  }
+}

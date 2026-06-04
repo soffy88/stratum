@@ -1,0 +1,46 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 含 I (无效 Crockford 字符)
+id: "01HYIIIIIIIIIIIIIIIIIIIIIB"
+
+# ❌ 2: slug 含斜杠
+slug: "history/china/qin-han"
+
+# title: (缺失 required)
+
+# ❌ 3: type 错误
+type: "category"
+
+# ❌ 4: created_at 非 date-time
+created_at: "2026"
+
+# ❌ 5: ingested_by 不在枚举
+ingested_by: "taxonomy-bot"
+
+# ❌ 6: schema_version 负数
+schema_version: -1
+
+# ❌ 7: domains 为空 (minItems: 1)
+domains: []
+
+# ❌ 8: parent_domain 含大写 (pattern 不匹配)
+parent_domain: "History.China"
+
+# ❌ 9: related_concepts 项缺少 id
+related_concepts:
+  - slug: "xiang-yu"
+    relation: "key-figure"
+
+# ❌ 10: description 类型错 (应为 string)
+description: 42
+
+# ❌ 11: aliases 含非字符串
+aliases:
+  - "秦汉"
+  - true
+
+# ❌ 12: 额外字段
+node_count: 150
+
+# ❌ 13: last_reviewed_at 格式错误
+last_reviewed_at: "not-a-date"

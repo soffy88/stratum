@@ -1,0 +1,31 @@
+{
+  "voyage-3": {
+    "status": "SKIP",
+    "reason": "Paid API requires API key not provided. Cost: $0.06/1M tokens."
+  },
+  "e5-mistral-7b": {
+    "status": "SKIP",
+    "reason": "7B model requires GPU. WSL2 environment has CUDA driver but no GPU-capable torch."
+  },
+  "bge-m3": {
+    "model": "bge-m3",
+    "load_time_s": 35.5,
+    "dim": 1024,
+    "corpus_encode_time_s": 427.1,
+    "corpus_encode_rate": 2.3,
+    "miracl_ndcg10": 0.5412,
+    "miracl_recall10": 0.4167,
+    "miracl_n_valid_queries": 2,
+    "query_latency_p50_ms": 1.763,
+    "custom_judge_pass_rate": 0.867,
+    "custom_judge_method": "heuristic (top1_sim > 0.5)",
+    "throughput_50texts_s": 61.56,
+    "throughput_texts_per_s": 0.8,
+    "status": "OK"
+  },
+  "qwen3-embedding-0.6B": {
+    "model": "qwen3-embedding-0.6B",
+    "status": "LOAD_FAIL",
+    "error": "The checkpoint you are trying to load has model type `qwen3` but Transformers does not recognize this architecture. This could be because of an issue with the checkpoint, or because your version of Transformers is out of date."
+  }
+}
