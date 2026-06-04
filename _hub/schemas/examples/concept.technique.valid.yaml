@@ -1,0 +1,35 @@
+# Valid example: Kelly Criterion
+# Cross-references: concept.theorem marchenko-pastur (01HY0000000000000000000008) via econ domain
+
+id: "01HY0000000000000000000009"
+slug: "kelly-criterion"
+title: "Kelly Criterion"
+type: "technique"
+created_at: "2026-05-16T10:00:00+08:00"
+ingested_by: "wiki"
+schema_version: 1
+
+domains:
+  - "econ.quant-finance"
+  - "math.probability"
+  - "econ.betting"
+
+aliases:
+  - "Kelly formula"
+  - "Kelly bet"
+  - "凯利公式"
+
+description: "在已知胜率和赔率的情况下,最大化长期对数期望财富增长率的最优投注比例公式。f* = (bp - q) / b,其中 b 为赔率, p 为胜率, q = 1-p。"
+applies_to_domains:
+  - "econ.quant-finance"
+  - "econ.betting"
+
+inventors:
+  - "John L. Kelly Jr."
+year_introduced: 1956
+
+last_reviewed_at: "2026-05-16T10:00:00+08:00"
+tags:
+  - "optimal-betting"
+  - "information-theory"
+  - "position-sizing"

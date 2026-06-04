@@ -1,0 +1,31 @@
+# Valid example: ADR-038 (Stratum MCP server protocol selection)
+# Cross-references: concept.domain tech.knowledge-management
+
+id: "01HY000000000000000000000C"
+slug: "038-stratum-mcp-server-protocol"
+title: "ADR-038: Stratum 对外接口采用 MCP + HTTP 双协议"
+type: "adr"
+created_at: "2026-05-16T09:00:00+08:00"
+last_modified_at: "2026-05-16T09:00:00+08:00"
+ingested_by: "wiki"
+schema_version: 1
+
+domains:
+  - "tech.knowledge-management"
+  - "cs.architecture"
+
+status: "active"
+adr_number: 38
+project: "stratum"
+decision_status: "active"
+
+context: "Stratum 需要对外暴露接口供 hevi、Hermes、Obsidian 等消费者访问。候选方案: 纯 MCP、纯 HTTP REST、MCP + HTTP 双协议。"
+decision: "采用 MCP + HTTP 双协议。MCP 服务 Claude Code / Hermes (AI agent) 场景, HTTP REST 服务 hevi / 未来 web UI 场景。两者共享底层 search 和 fetch 实现。"
+consequences: "需维护两套路由层, 但底层逻辑共享。MCP 优先实现, HTTP 作为 batch 3+ 工作。"
+
+superseded_by: null
+
+tags:
+  - "architecture"
+  - "MCP"
+  - "HTTP"

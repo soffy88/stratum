@@ -1,0 +1,18 @@
+2026/05/31 12:11:19 [error] 33#33: *12 "/etc/nginx/html/index.html" is not found (2: No such file or directory), client: 172.20.0.4, server: _, request: "GET / HTTP/1.1", host: "stratum.uex.hk"
+2026/05/31 12:11:20 [error] 33#33: *12 open() "/etc/nginx/html/favicon.ico" failed (2: No such file or directory), client: 172.20.0.4, server: _, request: "GET /favicon.ico HTTP/1.1", host: "stratum.uex.hk", referrer: "https://stratum.uex.hk/"
+2026/05/31 12:11:24 [error] 33#33: *12 "/etc/nginx/html/index.html" is not found (2: No such file or directory), client: 172.20.0.4, server: _, request: "GET / HTTP/1.1", host: "stratum.uex.hk"
+2026/05/31 12:14:37 [error] 34#34: *13 "/etc/nginx/html/index.html" is not found (2: No such file or directory), client: 172.20.0.4, server: _, request: "GET / HTTP/1.1", host: "stratum.uex.hk"
+2026/05/31 12:16:06 [notice] 48#48: signal process started
+2026/05/31 12:16:12 [error] 54#54: *15 "/etc/nginx/html/index.html" is not found (2: No such file or directory), client: 172.20.0.4, server: _, request: "GET / HTTP/1.1", host: "stratum.uex.hk"
+2026/05/31 12:16:50 [error] 54#54: *15 "/etc/nginx/html/index.html" is not found (2: No such file or directory), client: 172.20.0.4, server: _, request: "GET / HTTP/1.1", host: "stratum.uex.hk"
+2026/05/31 12:16:59 [error] 56#56: *16 "/etc/nginx/html/index.html" is not found (2: No such file or directory), client: 172.20.0.1, server: _, request: "GET / HTTP/1.1", host: "localhost:8443"
+2026/06/01 12:08:54 [notice] 46#46: signal process started
+2026/06/01 14:13:06 [error] 22#22: *148 connect() failed (111: Connection refused) while connecting to upstream, client: 172.20.0.4, server: _, request: "GET /api/v1/health HTTP/1.1", upstream: "http://172.20.0.1:9304/api/v1/health", host: "stratum.uex.hk"
+2026/06/01 14:13:07 [error] 22#22: *151 connect() failed (111: Connection refused) while connecting to upstream, client: 172.20.0.1, server: _, request: "GET /api/v1/health HTTP/1.1", upstream: "http://172.20.0.1:9304/api/v1/health", host: "localhost:8443"
+2026/06/02 23:51:15 [error] 27#27: *639 connect() failed (111: Connection refused) while connecting to upstream, client: 172.20.0.1, server: _, request: "GET / HTTP/1.1", upstream: "http://172.20.0.1:3000/", host: "127.0.0.1:8443"
+2026/06/02 23:51:15 [error] 27#27: *641 connect() failed (111: Connection refused) while connecting to upstream, client: 172.20.0.1, server: _, request: "GET /ai HTTP/1.1", upstream: "http://172.20.0.1:3000/ai", host: "127.0.0.1:8443"
+2026/06/02 23:51:41 [error] 27#27: *643 connect() failed (111: Connection refused) while connecting to upstream, client: 172.20.0.1, server: _, request: "GET / HTTP/1.1", upstream: "http://172.20.0.1:3000/", host: "127.0.0.1:8443"
+2026/06/02 23:51:41 [error] 27#27: *645 connect() failed (111: Connection refused) while connecting to upstream, client: 172.20.0.1, server: _, request: "GET /ai HTTP/1.1", upstream: "http://172.20.0.1:3000/ai", host: "127.0.0.1:8443"
+2026/06/02 23:51:50 [notice] 40#40: signal process started
+2026/06/02 23:51:52 [error] 46#46: *647 connect() failed (111: Connection refused) while connecting to upstream, client: 172.20.0.1, server: _, request: "GET / HTTP/1.1", upstream: "http://172.20.0.1:3000/", host: "127.0.0.1:8443"
+2026/06/03 03:51:54 [emerg] 1#1: host not found in upstream "stratum-api:9302" in /etc/nginx/nginx.conf:14

@@ -1,0 +1,36 @@
+# Valid example: 2026-05-16 日记
+
+id: "01HY0000000000000000000010"
+slug: "daily-2026-05-16"
+title: "2026-05-16 日记"
+type: "daily"
+created_at: "2026-05-16T23:00:00+08:00"
+last_modified_at: "2026-05-16T23:00:00+08:00"
+ingested_by: "wiki"
+schema_version: 1
+
+domains:
+  - "personal"
+
+status: "active"
+date: "2026-05-16"
+mood: "good"
+
+focus_areas:
+  - "Stratum 批 1 立宪"
+  - "史记项羽本纪阅读"
+
+highlights:
+  - "完成了 Stratum 16 个 JSON Schema 的起草, CC FULL AUTO 执行良好"
+  - "鸿门宴笔记有了雏形, 项羽 ↔ 鸿门宴 ↔ 鸿门 ↔ 史记的关联图清晰了"
+
+references:
+  concepts:
+    - id: "01HY0000000000000000000006"
+      slug: "xiang-yu"
+    - id: "01HY000000000000000000000B"
+      slug: "history-china-qin-han"
+
+tags:
+  - "Stratum"
+  - "项羽"

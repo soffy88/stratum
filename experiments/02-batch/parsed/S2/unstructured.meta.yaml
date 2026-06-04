@@ -1,0 +1,11 @@
+parser: unstructured
+version: 0.18.32
+strategy: fast
+sample: S2
+elapsed_s: 0.9
+total_elements: 250
+element_counts: {"Text": 108, "Title": 76, "NarrativeText": 66}
+para_count: 78
+avg_para_length: 110.2
+short_para_ratio: 0.333
+total_chars: 10311

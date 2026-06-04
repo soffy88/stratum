@@ -1,0 +1,46 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 含小写
+id: "01hy000000000000000000000c"
+
+# ❌ 2: slug 含特殊字符
+slug: "ADR#038 protocol!"
+
+# title: (缺失 required)
+
+# ❌ 3: type 错误 (应为 adr)
+type: "decision"
+
+# ❌ 4: created_at 格式错误
+created_at: "16/05/2026"
+
+# ❌ 5: last_modified_at 非 date-time
+last_modified_at: "just now"
+
+# ❌ 6: ingested_by 不在枚举
+ingested_by: "wiki-private"
+
+# ❌ 7: schema_version 类型错
+schema_version: "1"
+
+# ❌ 8: domains 含大写 pattern 不匹配
+domains:
+  - "Tech.Architecture"
+
+# ❌ 9: status 不在枚举
+status: "pending"
+
+# ❌ 10: adr_number 为零 (minimum: 1)
+adr_number: 0
+
+# project: (缺失 required)
+
+# ❌ 11: decision_status 不在枚举
+decision_status: "approved"
+
+# ❌ 12: supersedes 项缺少 required id
+supersedes:
+  - note: "原方案已废弃"
+
+# ❌ 13: 额外字段
+ticket_url: "https://linear.app/helios/issue/ADR-038"

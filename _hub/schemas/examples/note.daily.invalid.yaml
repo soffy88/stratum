@@ -1,0 +1,52 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 含 I (无效 Crockford 字符)
+id: "01HYIIIIIIIIIIIIIIIIIIIIII"
+
+# ❌ 2: slug 含下划线
+slug: "daily_2026_05_16"
+
+# title: (缺失 required)
+
+# ❌ 3: type 错误
+type: "journal"
+
+# ❌ 4: created_at 格式错误
+created_at: "2026/05/16 23:00"
+
+# ❌ 5: last_modified_at 为 null (应为 string)
+last_modified_at: null
+
+# ❌ 6: ingested_by 不在枚举
+ingested_by: "diary-app"
+
+# ❌ 7: schema_version 为负数
+schema_version: -1
+
+# ❌ 8: domains 含大写
+domains:
+  - "Personal"
+
+# ❌ 9: status 不在枚举
+status: "live"
+
+# date: (缺失 required)
+
+# ❌ 10: mood 不在枚举
+mood: "happy"
+
+# ❌ 11: focus_areas 含非字符串
+focus_areas:
+  - "Stratum"
+  - 42
+
+# ❌ 12: references.concepts 项缺少 required id
+references:
+  concepts:
+    - slug: "xiang-yu"
+
+# ❌ 13: 额外字段
+weather: "sunny"
+
+# ❌ 14: highlights 类型错 (应为 array)
+highlights: "完成了 Stratum 批 1"

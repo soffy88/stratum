@@ -1,0 +1,9 @@
+parser: docling
+version: 2.x
+sample: S5
+elapsed_s: 215.44
+para_count: 41
+avg_para_length: 2960.0
+short_para_ratio: 0.073
+total_chars: 121559
+num_pages: 40

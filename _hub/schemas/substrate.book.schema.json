@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Stratum.local/schemas/substrate.book.schema.json",
+  "title": "Substrate Book",
+  "description": "Schema for a book in the substrate layer (PDF/EPUB-backed). v1.",
+  "type": "object",
+  "required": [
+    "id",
+    "slug",
+    "title",
+    "type",
+    "created_at",
+    "ingested_by",
+    "schema_version",
+    "authors",
+    "edition_key",
+    "language",
+    "domains",
+    "original_format",
+    "copyright_status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "ULID, 26 chars, Crockford base32"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 2,
+      "maxLength": 80,
+      "description": "Human-readable identifier, unique within books layer"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "type": {
+      "const": "book"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ingested_by": {
+      "type": "string",
+      "enum": ["wiki", "hermes", "claude-code", "pipeline"]
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "authors": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "editors": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "translators": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "edition_key": {
+      "type": "string",
+      "description": "Unique edition identifier. Format: 'isbn:<isbn>|publisher:<pub>|year:<year>' or fallback 'publisher:<pub>|year:<year>|translator:<tr>'",
+      "minLength": 5
+    },
+    "isbn": {
+      "type": "string",
+      "pattern": "^(978|979)?[0-9-]{9,17}$"
+    },
+    "publisher": {
+      "type": "string"
+    },
+    "publication_year": {
+      "type": "integer",
+      "minimum": -3000,
+      "maximum": 3000
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "zh-Hans", "zh-Hant",
+        "en", "ja", "ko",
+        "fr", "de", "es", "ru",
+        "la", "grc",
+        "mixed", "other"
+      ],
+      "description": "Primary language. 'mixed' for multilingual works."
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9.-]*$"
+      },
+      "minItems": 1,
+      "description": "Domain tags, dotted path. e.g. 'history.china.qin-han', 'math.probability'"
+    },
+    "original_format": {
+      "type": "string",
+      "enum": ["pdf", "epub", "mobi", "txt", "html", "djvu", "other"]
+    },
+    "total_pages": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "parsing": {
+      "type": "object",
+      "required": ["parser", "parser_version", "parsed_at", "paragraph_count"],
+      "properties": {
+        "parser": {
+          "type": "string",
+          "enum": ["pymupdf4llm", "unstructured", "marker", "docling", "manual", "other"]
+        },
+        "parser_version": { "type": "string" },
+        "parsed_at": { "type": "string", "format": "date-time" },
+        "paragraph_count": { "type": "integer", "minimum": 0 },
+        "ocr_used": { "type": "boolean" },
+        "ocr_engine": { "type": "string" },
+        "ocr_quality_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Self-reported quality, 0-1"
+        },
+        "manual_corrections_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "copyright_status": {
+      "type": "string",
+      "enum": [
+        "public-domain",
+        "copyrighted",
+        "fair-use",
+        "unknown"
+      ]
+    },
+    "copyright_notes": {
+      "type": "string",
+      "description": "Free-text notes on copyright situation"
+    },
+    "acquired_from": {
+      "type": "string",
+      "description": "How/where this book was acquired (URL, store, etc.). Internal audit only."
+    },
+    "alternate_editions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["substrate_id", "relation"],
+        "properties": {
+          "substrate_id": {
+            "type": "string",
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+          },
+          "relation": {
+            "type": "string",
+            "enum": ["earlier-edition", "later-edition", "translation", "abridgment", "annotated"]
+          },
+          "note": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "description": "Cross-reference to other substrate entries that are alternate editions of the same work"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Free-form tags, lighter than domains. Avoid duplicating domain info."
+    },
+    "user_rating": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Wiki's personal rating, optional"
+    },
+    "user_status": {
+      "type": "string",
+      "enum": ["unread", "reading", "completed", "abandoned", "reference-only"]
+    },
+    "last_accessed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

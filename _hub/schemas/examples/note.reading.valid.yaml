@@ -1,0 +1,48 @@
+# Valid example: 史记·项羽本纪 读书笔记
+# Cross-references: substrate.book shiji (01HXYZW7G5K8M2N3P4Q5R6S7T8)
+#                   concept.person xiang-yu (01HY0000000000000000000006)
+#                   concept.event hongmen-banquet (01HY0000000000000000000007)
+
+id: "01HY000000000000000000000E"
+slug: "shiji-xiang-yu-benji-reading"
+title: "《史记·项羽本纪》读书笔记: 反领导力的标本"
+type: "reading"
+created_at: "2026-05-16T09:00:00+08:00"
+last_modified_at: "2026-05-16T09:00:00+08:00"
+ingested_by: "wiki"
+schema_version: 1
+
+domains:
+  - "history.china.qin-han"
+  - "leadership"
+
+status: "active"
+substrate_id: "01HXYZW7G5K8M2N3P4Q5R6S7T8"
+rating: 5
+
+summary: "项羽本纪是研究反领导力的最佳案例。天才军事家如何因无法容人、不能分权、刚愎自用而最终败于看似无能的刘邦。"
+
+key_quotes:
+  - "项籍者,下相人也,字羽。初起时,年二十四。"
+  - "力拔山兮气盖世,时不利兮骓不逝。"
+  - "鸿门宴: 项庄舞剑,意在沛公。"
+
+takeaways:
+  - "军事天才 ≠ 政治领袖: 项羽万人敌,但不能纳贤"
+  - "鸿门宴是楚汉之争的转折点,范增的失误是放走刘邦"
+  - "自刎乌江: 太史公的叙事选择揭示了'天亡我'的自我叙事陷阱"
+
+references:
+  substrate:
+    - id: "01HXYZW7G5K8M2N3P4Q5R6S7T8"
+      paragraph_ids: ["A1B2C3", "D4E5F6"]
+  concepts:
+    - id: "01HY0000000000000000000006"
+      slug: "xiang-yu"
+    - id: "01HY0000000000000000000007"
+      slug: "hongmen-banquet"
+
+tags:
+  - "项羽"
+  - "楚汉争霸"
+  - "领导力"

@@ -1,0 +1,48 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 含 U (无效 Crockford 字符)
+id: "01HYUUUUUUUUUUUUUUUUUUUUU9"
+
+# slug: (缺失 required)
+
+# ❌ 2: title 为空字符串
+title: ""
+
+# ❌ 3: type 错误
+type: "method"
+
+# ❌ 4: created_at 非 date-time
+created_at: "last year"
+
+# ❌ 5: ingested_by 不在枚举
+ingested_by: "wiki-auto"
+
+# ❌ 6: schema_version 错误值 (const: 1)
+schema_version: 99
+
+# ❌ 7: domains 为空 (minItems: 1)
+domains: []
+
+# ❌ 8: applies_to_domains 含数字开头 pattern 不匹配
+applies_to_domains:
+  - "1econ.finance"
+
+# ❌ 9: year_introduced 类型错
+year_introduced: "1956"
+
+# ❌ 10: related_theorems 项缺少 id
+related_theorems:
+  - slug: "marchenko-pastur-theorem"
+
+# ❌ 11: prerequisites 项含额外字段
+prerequisites:
+  - id: "01HY0000000000000000000008"
+    extra_key: "not allowed"
+
+# ❌ 12: inventors 含非字符串元素
+inventors:
+  - "John Kelly"
+  - 1956
+
+# ❌ 13: 额外字段
+patent_number: "US1234567"

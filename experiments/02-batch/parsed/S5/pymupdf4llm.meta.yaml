@@ -1,0 +1,8 @@
+parser: pymupdf4llm
+version: 0.3.4
+sample: S5_rebuilt
+elapsed_s: 4.45
+total_chars: 121894
+para_count: 532
+avg_para_length: 225.2
+short_para_ratio: 0.282

@@ -1,0 +1,11 @@
+# 检索配置
+hybrid:
+  exact_top_k: 20
+  semantic_top_k: 20
+  rerank_top_k: 10
+  rerank_model: "bge-reranker-v2-m3"  # [PENDING_VALIDATION]
+  fusion_method: "reciprocal_rank"
+
+scope_defaults:
+  include_drafts: false
+  include_archived: false

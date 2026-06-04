@@ -1,0 +1,47 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 含 L (无效 Crockford 字符)
+id: "01HYLLLLLLLLLLLLLLLLLLLLLF"
+
+# ❌ 2: slug 含特殊字符
+slug: "ai-skeptic-channel!"
+
+# title: (缺失 required)
+
+# ❌ 3: type 错误
+type: "concept"
+
+# ❌ 4: created_at 格式错误
+created_at: "16 May 2026"
+
+# ❌ 5: last_modified_at 非 date-time
+last_modified_at: 1715865600
+
+# ❌ 6: ingested_by 不在枚举
+ingested_by: "self"
+
+# ❌ 7: schema_version 为 float
+schema_version: 1.1
+
+# ❌ 8: domains 为空 (minItems: 1)
+domains: []
+
+# ❌ 9: status 不在枚举
+status: "incubating"
+
+# maturity: (缺失 required)
+
+# ❌ 10: related_ideas 项缺少 required id
+related_ideas:
+  - slug: "some-other-idea"
+
+# ❌ 11: related_ideas 项含额外字段
+  - id: "01HY000000000000000000000F"
+    slug: "another-idea"
+    priority: "high"
+
+# ❌ 12: next_step 类型错
+next_step: 42
+
+# ❌ 13: 额外字段
+notion_page_id: "abc123def456"

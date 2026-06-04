@@ -1,0 +1,30 @@
+# Valid example: Wiki ↔ Claude Stratum design conversation
+# Cross-reference: concept.domain history.china.qin-han (01HY000000000000000000000B)
+
+id: "01HY0000000000000000000005"
+slug: "wiki-claude-stratum-design-2026-05"
+title: "Stratum 知识库架构设计讨论 (2026-05)"
+type: "chat"
+created_at: "2026-05-16T14:00:00+08:00"
+ingested_by: "wiki"
+schema_version: 1
+
+participants:
+  - "wiki"
+  - "claude-sonnet-4"
+platform: "claude.ai"
+exported_at: "2026-05-16T17:30:00+08:00"
+domains:
+  - "tech.knowledge-management"
+  - "cs.ai"
+significance: "high"
+
+message_count: 147
+duration_seconds: 10800
+language: "zh-Hans"
+chat_path: "substrate/chats/tech/wiki-claude-stratum-design-2026-05__A1B2C3D4/original/export.json"
+copyright_status: "unknown"
+tags:
+  - "Stratum"
+  - "architecture"
+  - "SPEC"

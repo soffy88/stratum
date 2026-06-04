@@ -1,0 +1,54 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 含小写 (pattern 不匹配)
+id: "01hy0000000000000000000002"
+
+# ❌ 2: slug 含大写和特殊字符
+slug: "Marchenko_Pastur_1967"
+
+# title: (缺失 required)
+
+# ❌ 3: type 错误
+type: "article"
+
+# ❌ 4: created_at 格式错误
+created_at: "2026/05/16"
+
+# ❌ 5: ingested_by 不在枚举
+ingested_by: "human"
+
+# ❌ 6: schema_version 类型错
+schema_version: "v1"
+
+# ❌ 7: authors 为空 (minItems: 1)
+authors: []
+
+# ❌ 8: year 超出范围
+year: 1500
+
+# ❌ 9: language 不在枚举
+language: "Russian"
+
+# domains: (缺失 required)
+
+# ❌ 10: copyright_status 不在枚举
+copyright_status: "open-access"
+
+# ❌ 11: doi 格式错误 (不含斜杠)
+doi: "10.1234"
+
+# ❌ 12: 额外字段违反 additionalProperties: false
+unknown_field: "should not be here"
+
+# ❌ 13: arxiv_id 格式错误
+arxiv_id: "not-an-arxiv-id"
+
+# ❌ 14: total_pages 超出范围 (minimum: 1)
+total_pages: 0
+
+# ❌ 15: parsing.paragraph_count 类型错
+parsing:
+  parser: "pymupdf4llm"
+  parser_version: "0.0.17"
+  parsed_at: "2026-05-16T09:15:00+08:00"
+  paragraph_count: "many"

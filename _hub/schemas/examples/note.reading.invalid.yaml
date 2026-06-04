@@ -1,0 +1,52 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 含 O (字母 O, 无效 Crockford 字符)
+id: "01HYOOOOOOOOOOOOOOOOOOOOOE"
+
+# ❌ 2: slug 含点号
+slug: "shiji.reading"
+
+# title: (缺失 required)
+
+# ❌ 3: type 错误
+type: "book-review"
+
+# ❌ 4: created_at 非 date-time
+created_at: "今天"
+
+# ❌ 5: last_modified_at 格式错误
+last_modified_at: "2026-05"
+
+# ❌ 6: ingested_by 不在枚举
+ingested_by: "reader"
+
+# ❌ 7: schema_version 类型错
+schema_version: "v1"
+
+# ❌ 8: domains 含大写
+domains:
+  - "History.China.Qin-Han"
+
+# ❌ 9: status 不在枚举
+status: "published"
+
+# ❌ 10: substrate_id 不是有效 ULID (含小写)
+substrate_id: "01hxyzw7g5k8m2n3p4q5r6s7t8"
+
+# ❌ 11: rating 超出范围 (maximum: 5)
+rating: 6
+
+# ❌ 12: key_quotes 含非字符串
+key_quotes:
+  - "项籍者,下相人也"
+  - 42
+
+# ❌ 13: references.concepts 项含额外字段
+references:
+  concepts:
+    - id: "01HY0000000000000000000006"
+      slug: "xiang-yu"
+      extra_ref_field: "not allowed"
+
+# ❌ 14: 额外字段
+goodreads_url: "https://www.goodreads.com"

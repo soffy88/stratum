@@ -1,0 +1,48 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 太短 (pattern 不匹配 — 非26位)
+id: "SHORT_ID"
+
+# ❌ 2: slug 含空格和大写
+slug: "Karpathy LLM 2023"
+
+# ❌ 3: title 为空 (minLength: 1)
+title: ""
+
+# ❌ 4: type 错误 (应为 webpage)
+type: "website"
+
+# ❌ 5: created_at 非 date-time
+created_at: "May 16, 2026"
+
+# ❌ 6: ingested_by 不在枚举
+ingested_by: "bot"
+
+# ❌ 7: schema_version 错误值 (const: 1)
+schema_version: 2
+
+# url: (缺失 required)
+
+# archived_at: (缺失 required)
+
+# ❌ 8: archive_method 不在枚举
+archive_method: "screenshot"
+
+# ❌ 9: domains 含大写 pattern 不匹配
+domains:
+  - "Tech.AI"
+
+# ❌ 10: snapshot_size_bytes 为负数 (minimum: 0)
+snapshot_size_bytes: -100
+
+# ❌ 11: language 不在枚举
+language: "Chinese"
+
+# ❌ 12: copyright_status 不在枚举
+copyright_status: "cc-by"
+
+# ❌ 13: 额外字段
+extra_field: "not allowed"
+
+# ❌ 14: site_name 缺失 (required 字段, 无法通过 schema 校验)
+# site_name: (omitted)

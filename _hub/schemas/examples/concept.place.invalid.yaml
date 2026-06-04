@@ -1,0 +1,54 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 不是 26 位
+id: "TOOSHORT"
+
+# ❌ 2: slug minLength 不足 (minLength: 2)
+slug: "h"
+
+# title: (缺失 required)
+
+# ❌ 3: type 错误
+type: "location"
+
+# ❌ 4: created_at 格式错误
+created_at: "16th May 2026"
+
+# ❌ 5: ingested_by 不在枚举
+ingested_by: "gps-device"
+
+# ❌ 6: schema_version 类型错
+schema_version: "v1"
+
+# ❌ 7: domains 含大写 (pattern 不匹配)
+domains:
+  - "History.China"
+
+# ❌ 8: place_type 不在枚举
+place_type: "battlefield"
+
+# ❌ 9: coordinates 含额外字段
+coordinates:
+  lat: 34.3947
+  lng: 109.2547
+  altitude: 400
+
+# ❌ 10: coordinates.lat 类型错
+# (overrides above — separate invalid doc)
+# lat: "34.3947"
+
+# ❌ 11: related_concepts 项 id 格式错
+related_concepts:
+  - id: "not-a-ulid"
+    relation: "event-location"
+
+# ❌ 12: historical_names 含非字符串
+historical_names:
+  - "鸿门"
+  - 206
+
+# ❌ 13: 额外字段
+gps_accuracy_meters: 5
+
+# ❌ 14: aliases 类型错 (应为 array)
+aliases: "鸿门坂"

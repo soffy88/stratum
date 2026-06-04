@@ -1,0 +1,43 @@
+# Valid example: 鸿门宴 (Hongmen Banquet)
+# Cross-references: person xiang-yu (01HY0000000000000000000006)
+#                   place hongmen (01HY000000000000000000000A)
+#                   domain history.china.qin-han (01HY000000000000000000000B)
+#                   substrate.book shiji (01HXYZW7G5K8M2N3P4Q5R6S7T8)
+
+id: "01HY0000000000000000000007"
+slug: "hongmen-banquet"
+title: "鸿门宴"
+type: "event"
+created_at: "2026-05-16T10:00:00+08:00"
+ingested_by: "wiki"
+schema_version: 1
+
+domains:
+  - "history.china.qin-han"
+
+aliases:
+  - "鸿门之会"
+date_start: "-0206-12"
+date_end: "-0206-12"
+location: "鸿门 (今陕西省临潼县东)"
+
+participants:
+  - id: "01HY0000000000000000000006"
+    slug: "xiang-yu"
+    role: "主持者 (设宴方)"
+  - id: "01HY0000000000000000000010"
+    slug: "liu-bang"
+    role: "赴宴者"
+
+related_concepts:
+  - id: "01HY000000000000000000000A"
+    slug: "hongmen"
+    relation: "location"
+  - id: "01HY000000000000000000000B"
+    slug: "history-china-qin-han"
+    relation: "belongs-to-domain"
+
+last_reviewed_at: "2026-05-16T10:00:00+08:00"
+tags:
+  - "楚汉争霸"
+  - "历史转折点"

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Stratum.local/schemas/concept.domain.schema.json",
+  "title": "Concept — Domain",
+  "description": "A knowledge domain node in the Stratum knowledge base. The 'domains' field lists the broader domains this domain node itself belongs to.",
+  "type": "object",
+  "required": ["id", "slug", "title", "type", "created_at", "ingested_by", "schema_version", "domains"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 2,
+      "maxLength": 80
+    },
+    "title": { "type": "string" },
+    "type": { "type": "string", "const": "domain" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "ingested_by": {
+      "type": "string",
+      "enum": ["wiki", "hermes", "claude-code", "pipeline"]
+    },
+    "domains": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9.-]*$" },
+      "minItems": 1,
+      "description": "The broader domains this domain node belongs to (e.g. the 'history.china' domain node belongs to ['history'])."
+    },
+    "aliases": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "parent_domain": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9.-]*$",
+      "description": "The immediate parent domain slug, e.g. 'history' for a 'history.china' domain."
+    },
+    "description": { "type": "string" },
+    "related_concepts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$" },
+          "slug": { "type": "string" },
+          "relation": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "last_reviewed_at": { "type": "string", "format": "date-time" },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "draft": { "type": "boolean" }
+  }
+}

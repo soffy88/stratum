@@ -1,0 +1,48 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 含小写
+id: "01hy0000000000000000000005"
+
+# ❌ 2: slug 超过 maxLength (80)
+slug: "this-slug-is-way-too-long-because-it-exceeds-the-eighty-character-maximum-limit-set-by-schema"
+
+# title: (缺失 required)
+
+# ❌ 3: type 错误 (应为 chat)
+type: "conversation"
+
+# ❌ 4: created_at 格式错误
+created_at: "16-05-2026 14:00"
+
+# ❌ 5: ingested_by 不在枚举
+ingested_by: "wiki-personal"
+
+# ❌ 6: schema_version 非整数
+schema_version: 1.5
+
+# ❌ 7: participants 只有一人 (minItems: 2)
+participants:
+  - "wiki"
+
+# ❌ 8: platform 不在枚举
+platform: "whatsapp"
+
+# exported_at: (缺失 required)
+
+# ❌ 9: domains 含数字开头 (pattern 不匹配)
+domains:
+  - "1tech.ai"
+
+# significance: (缺失 required)
+
+# ❌ 10: message_count 为零 (minimum: 1)
+message_count: 0
+
+# ❌ 11: language 不在枚举
+language: "Mandarin"
+
+# ❌ 12: 额外字段
+thread_id: "abc123"
+
+# ❌ 13: copyright_status 不在枚举
+copyright_status: "proprietary"

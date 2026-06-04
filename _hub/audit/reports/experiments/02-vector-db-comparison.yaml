@@ -1,0 +1,41 @@
+experiment: "02-vector-db-comparison"
+date: "2026-05-17"
+status: "COMPLETE"
+selection: "chromadb"
+selection_rationale: "Fastest query latency (1.96ms p50 vs lancedb 17ms vs qdrant 107ms), low RAM (343MB), trivial PersistentClient API"
+
+candidates:
+  pgvector:
+    status: "INFRA_SKIP"
+    reason: "PostgreSQL not installed in WSL2 environment"
+  qdrant:
+    status: "OK"
+    version: "qdrant-client 1.18.0"
+    insert_rate_vps: 3232
+    vector_query_p50_ms: 106.62
+    vector_query_p95_ms: 127.85
+    filter_query_p50_ms: 154.19
+    rss_mb: 305
+  chromadb:
+    status: "OK"
+    insert_rate_vps: 1513
+    vector_query_p50_ms: 1.96
+    vector_query_p95_ms: 3.28
+    filter_query_p50_ms: 13.25
+    rss_mb: 343
+  lancedb:
+    status: "OK"
+    insert_rate_vps: 15787
+    vector_query_p50_ms: 17.16
+    vector_query_p95_ms: 27.45
+    filter_query_p50_ms: 26.05
+    rss_mb: 1230
+    disk_mb: 40.6
+
+benchmark:
+  corpus_size: 10000
+  vector_dim: 1024
+  embedding_note: "128 real bge-m3 + 9872 normalized random unit vectors (valid for latency)"
+  query_count: 100
+  query_runs: 3
+  total_latency_samples: 300

@@ -1,0 +1,122 @@
+{
+  "S1_unstructured": {
+    "parser": "unstructured",
+    "version": "0.18.x",
+    "strategy": "fast",
+    "sample": "S1",
+    "elapsed_s": 0.0,
+    "total_elements": 0,
+    "element_counts": {},
+    "para_count": 0,
+    "avg_para_length": 0.0,
+    "short_para_ratio": 0.0,
+    "total_chars": 0
+  },
+  "S2_unstructured": {
+    "parser": "unstructured",
+    "version": "0.18.x",
+    "strategy": "fast",
+    "sample": "S2",
+    "elapsed_s": 0.0,
+    "total_elements": 0,
+    "element_counts": {},
+    "para_count": 0,
+    "avg_para_length": 0.0,
+    "short_para_ratio": 0.0,
+    "total_chars": 0
+  },
+  "S3_unstructured": {
+    "parser": "unstructured",
+    "version": "0.18.x",
+    "strategy": "fast",
+    "sample": "S3",
+    "elapsed_s": 0.0,
+    "total_elements": 0,
+    "element_counts": {},
+    "para_count": 0,
+    "avg_para_length": 0.0,
+    "short_para_ratio": 0.0,
+    "total_chars": 0
+  },
+  "S4_unstructured": {
+    "parser": "unstructured",
+    "version": "0.18.x",
+    "strategy": "fast",
+    "sample": "S4",
+    "elapsed_s": 0.0,
+    "total_elements": 0,
+    "element_counts": {},
+    "para_count": 0,
+    "avg_para_length": 0.0,
+    "short_para_ratio": 0.0,
+    "total_chars": 0
+  },
+  "S5_unstructured": {
+    "parser": "unstructured",
+    "version": "0.18.x",
+    "strategy": "fast",
+    "sample": "S5",
+    "elapsed_s": 0.0,
+    "total_elements": 0,
+    "element_counts": {},
+    "para_count": 0,
+    "avg_para_length": 0.0,
+    "short_para_ratio": 0.0,
+    "total_chars": 0
+  },
+  "S1_docling": {
+    "parser": "docling",
+    "version": "2.x",
+    "sample": "S1",
+    "elapsed_s": 219.04,
+    "para_count": 161,
+    "avg_para_length": 61.6,
+    "short_para_ratio": 0.323,
+    "total_chars": 10386,
+    "num_pages": 10
+  },
+  "S2_docling": {
+    "parser": "docling",
+    "version": "2.x",
+    "sample": "S2",
+    "elapsed_s": 76.56,
+    "para_count": 118,
+    "avg_para_length": 351.6,
+    "short_para_ratio": 0.653,
+    "total_chars": 43152,
+    "num_pages": 12
+  },
+  "S3_docling": {
+    "parser": "docling",
+    "version": "2.x",
+    "sample": "S3",
+    "elapsed_s": 128.69,
+    "para_count": 372,
+    "avg_para_length": 94.4,
+    "short_para_ratio": 0.594,
+    "total_chars": 36714,
+    "num_pages": 21
+  },
+  "S4_docling": {
+    "parser": "docling",
+    "version": "2.x",
+    "sample": "S4",
+    "elapsed_s": 444.47,
+    "para_count": 111,
+    "avg_para_length": 436.5,
+    "short_para_ratio": 0.243,
+    "total_chars": 48957,
+    "num_pages": 15
+  },
+  "S5_docling": {
+    "parser": "docling",
+    "version": "2.x",
+    "sample": "S5",
+    "elapsed_s": 215.44,
+    "para_count": 41,
+    "avg_para_length": 2960.0,
+    "short_para_ratio": 0.073,
+    "total_chars": 121559,
+    "num_pages": 40
+  }
+}
