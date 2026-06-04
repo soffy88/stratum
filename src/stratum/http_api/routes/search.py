@@ -1,4 +1,5 @@
 """POST /api/search — hybrid search with corpus isolation."""
+
 import os
 from typing import Optional, Literal
 
@@ -43,17 +44,25 @@ class SearchResponse(BaseModel):
 @router.post("/search", response_model=SearchResponse)
 async def search(req: SearchRequest, request: Request, db=Depends(get_db)):
     corpus_id = request.state.corpus_id
+    user_id = request.state.user_id
 
-    # Call service layer (imports oskill)
     try:
         from stratum.service.search import stratum_search
-        raw = await stratum_search(query=req.query, corpus_id=corpus_id, top_k=req.top_k)
-        results = [SearchResultItem(id=r.id, type=r.type, title=r.title, score=r.score, highlight=r.highlight) for r in raw]
+
+        raw = await stratum_search(
+            query=req.query, corpus_id=corpus_id, user_id=user_id, top_k=req.top_k
+        )
+        results = [
+            SearchResultItem(
+                id=r.id, type=r.type, title=r.title, score=r.score, highlight=r.highlight
+            )
+            for r in raw
+        ]
     except ImportError:
-        # Fallback: direct DB search if oskill unavailable
+        # Fallback: direct DB search if oskill unavailable (uses substrates plural, user_id)
         rows = db.execute(
-            "SELECT id, 'substrate' as type, title FROM substrate WHERE corpus_id = ? AND title ILIKE ? LIMIT ?",
-            (corpus_id, f"%{req.query}%", req.top_k)
+            "SELECT id, 'substrate' as type, title FROM substrates WHERE user_id = ? AND title ILIKE ? LIMIT ?",
+            (user_id, f"%{req.query}%", req.top_k),
         ).fetchall()
         results = [SearchResultItem(id=r[0], type=r[1], title=r[2], score=1.0) for r in rows]
 
