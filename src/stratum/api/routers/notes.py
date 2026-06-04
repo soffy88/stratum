@@ -83,3 +83,21 @@ async def delete_note(note_id: str, user_id: str = Depends(jwt_auth)):
     soft_delete("notes", note_id)
     await emit_event(user_id, "note_delete", {"note_id": note_id})
     return {"note_id": note_id, "status": "deleted"}
+
+
+@router.get("/notes/{note_id}/backlinks")
+async def note_backlinks(note_id: str, user_id: str = Depends(jwt_auth)):
+    """Return notes that contain a [[note_id]] wikilink to this note."""
+    existing = read("notes", note_id)
+    if not existing or existing.get("user_id") != user_id or existing.get("deleted_at"):
+        raise HTTPException(404, "Note not found")
+    rows = query(
+        "SELECT id, title, created_at FROM notes "
+        "WHERE user_id = %(user_id)s "
+        "AND deleted_at IS NULL "
+        "AND content_markdown LIKE %(pattern)s "
+        "AND id != %(note_id)s "
+        "ORDER BY created_at DESC LIMIT 50",
+        {"user_id": user_id, "pattern": f"%[[{note_id}]]%", "note_id": note_id},
+    )
+    return {"note_id": note_id, "backlinks": rows}

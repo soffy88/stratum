@@ -76,7 +76,15 @@ export default async function ConceptDetailPage({
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">{concept.name}</h1>
+        <div className="flex items-start justify-between gap-2">
+          <h1 className="text-2xl font-bold">{concept.name}</h1>
+          <Link
+            href={`/concepts/${params.id}/graph`}
+            className="shrink-0 px-3 py-1.5 text-xs border border-[var(--color-border)] rounded hover:bg-[var(--color-surface)] transition"
+          >
+            查看图谱 →
+          </Link>
+        </div>
         {concept.type && (
           <span className="text-xs text-[var(--color-muted)] bg-[var(--color-border)] px-2 py-0.5 rounded mt-1 inline-block">
             {concept.type}

@@ -13,7 +13,11 @@ Track: omodul FeedTrackerAgent + builtin_jobs wiring (Phase 17.7 R-3).
 """
 
 import asyncio
+import html as html_lib
+import ipaddress
 import logging
+import socket
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -59,40 +63,58 @@ class FeedUpdateRequest(BaseModel):
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 
-async def _fetch_page_html(url: str) -> str:
-    """Minimal page fetch for feed discovery (reuses SSRF guard from inbox)."""
-    import httpx
-    import ipaddress
-    import socket
-    from urllib.parse import urlparse
-
+def _validate_feed_url(url: str) -> None:
+    """SSRF guard: reject non-public URLs before any network call."""
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
-        raise HTTPException(400, "URL must use http or https")
+        raise HTTPException(400, "URL must use http or https scheme")
     host = parsed.hostname
     if not host:
         raise HTTPException(400, "Invalid URL")
     try:
         addrs = socket.getaddrinfo(host.lower().rstrip("."), None)
     except socket.gaierror:
-        raise HTTPException(400, "Cannot resolve hostname")
+        raise HTTPException(400, "Cannot resolve URL hostname")
     for *_, sockaddr in addrs:
         try:
             ip = ipaddress.ip_address(sockaddr[0])
         except ValueError:
             continue
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+        if (
+            ip.is_loopback
+            or ip.is_private
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
             raise HTTPException(403, "URL resolves to a disallowed address")
 
+
+async def _fetch_page_html(url: str) -> str:
+    """Fetch page HTML for feed discovery. Validates URL before fetching."""
+    import httpx
+
+    _validate_feed_url(url)
     try:
-        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
-            resp = await client.get(url, headers={"User-Agent": "StratumBot/1.0"})
+        async with httpx.AsyncClient(
+            timeout=15.0,
+            follow_redirects=False,  # no redirects — avoids SSRF bypass
+            headers={"User-Agent": "StratumBot/1.0"},
+        ) as client:
+            resp = await client.get(url)
+            # Accept successful responses only; ignore redirects (SSRF guard)
+            if resp.status_code in (301, 302, 307, 308):
+                raise HTTPException(400, "URL redirects are not followed; use the final URL")
             resp.raise_for_status()
             return resp.text
+    except HTTPException:
+        raise
     except httpx.TimeoutException:
         raise HTTPException(504, "Page fetch timed out")
-    except Exception as exc:
-        raise HTTPException(502, f"Failed to fetch page: {exc}")
+    except Exception:
+        log.warning("feed_page_fetch_error url=%s", url, exc_info=True)
+        raise HTTPException(502, "Failed to fetch page")
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -122,12 +144,15 @@ async def subscribe_feed(req: FeedSubscribeRequest, user_id: str = Depends(jwt_a
     if req.frequency_hours < 1 or req.frequency_hours > 168:
         raise HTTPException(400, "frequency_hours must be between 1 and 168")
 
+    # SSRF guard before any network call
+    _validate_feed_url(req.url)
+
     # Validate feed is fetchable
     try:
         feed_data = await asyncio.to_thread(fetch_rss_feed, url=req.url, max_items=5)
     except Exception as exc:
         log.warning("feed_validate_error url=%s error=%s", req.url, exc)
-        raise HTTPException(400, f"Cannot fetch feed: {exc}")
+        raise HTTPException(400, "Cannot fetch feed")
 
     if not feed_data.get("items"):
         raise HTTPException(422, "No feed items found — is this a valid RSS/Atom URL?")
@@ -227,15 +252,19 @@ async def check_feed_now(feed_id: str, user_id: str = Depends(jwt_auth)):
 
     feed_url: str = row["feed_url"]
 
+    # Re-validate stored URL (defense-in-depth; URL was validated on subscribe)
+    _validate_feed_url(feed_url)
+
     try:
         feed_data = await asyncio.to_thread(fetch_rss_feed, url=feed_url)
     except Exception as exc:
+        log.warning("feed_check_error feed_id=%s error=%s", feed_id, exc)
         update(
             "feed_subscriptions",
             feed_id,
-            {"status": "error", "error_message": str(exc), "updated_at": now_utc()},
+            {"status": "error", "error_message": "fetch_failed", "updated_at": now_utc()},
         )
-        raise HTTPException(502, f"Cannot fetch feed: {exc}")
+        raise HTTPException(502, "Cannot fetch feed")
 
     new_items = feed_data.get("items", [])
     ingested = 0
@@ -248,14 +277,20 @@ async def check_feed_now(feed_id: str, user_id: str = Depends(jwt_auth)):
                 continue
             try:
                 import hashlib
-                from pathlib import Path
+                import re
 
-                content = item.get("content") or item.get("summary") or ""
+                # Strip all HTML tags from title and content — store as plain text
+                # to prevent feed-origin script injection reaching the substrate renderer
+                raw_title = html_lib.unescape(item.get("title") or "")
+                safe_title = html_lib.escape(re.sub(r"<[^>]+>", " ", raw_title).strip())
+                raw_content = item.get("content") or item.get("summary") or ""
+                safe_content = html_lib.escape(re.sub(r"<[^>]+>", " ", raw_content))
+
                 item_id = hashlib.sha256(item_url.encode()).hexdigest()[:12]
                 html_path = inbox_dir / f"feed_{item_id}.html"
                 html_path.write_text(
-                    f"<html><head><title>{item.get('title', '')}</title></head>"
-                    f"<body>{content}</body></html>",
+                    f"<html><head><title>{safe_title}</title></head>"
+                    f"<body><pre>{safe_content}</pre></body></html>",
                     encoding="utf-8",
                 )
                 checksum = sha256_hex(html_path.read_text())
