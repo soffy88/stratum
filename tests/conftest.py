@@ -33,6 +33,14 @@ CREATE TABLE IF NOT EXISTS substrate (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, meta_json VARCHAR DEFAULT '{}',
     is_pinned BOOLEAN DEFAULT FALSE, pinned_at TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS substrates (
+    id VARCHAR PRIMARY KEY, user_id VARCHAR NOT NULL, title VARCHAR,
+    mime VARCHAR, source_path VARCHAR, file_hash VARCHAR, byte_size BIGINT,
+    page_count INTEGER, parser VARCHAR, language VARCHAR, has_cjk BOOLEAN,
+    is_scanned BOOLEAN, is_pinned BOOLEAN DEFAULT FALSE, pinned_at TIMESTAMP,
+    pin_priority INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, meta_json JSON DEFAULT '{}'
+);
 CREATE TABLE IF NOT EXISTS note (
     id VARCHAR PRIMARY KEY, corpus_id VARCHAR NOT NULL, title VARCHAR, content VARCHAR,
     wikilinks VARCHAR, substrate_id VARCHAR, meta_json VARCHAR DEFAULT '{}',

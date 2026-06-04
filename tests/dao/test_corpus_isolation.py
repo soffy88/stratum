@@ -3,6 +3,7 @@
 Covers: substrate, note, concept, derivative, view, task, template.
 Each entity: user A cannot read/list user B's data.
 """
+
 import pytest
 import ulid as ulid_mod
 from datetime import datetime
@@ -26,46 +27,52 @@ def two_users(db):
 
 # --- Substrate isolation (≥5) ---
 
+
 def test_substrate_get_blocked_cross_corpus(two_users):
     uA, uB, db = two_users
     sid = str(ulid_mod.ULID())
-    db.execute("INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)", (sid, sid, uA.corpus_id, "A's doc"))
+    db.execute(
+        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)", (sid, uA.id, "A's doc")
+    )
     dao = SubstrateDAO(db)
-    assert dao.get_substrate(substrate_id=sid, corpus_id=uB.corpus_id) is None
+    assert dao.get_substrate(substrate_id=sid, user_id=uB.id) is None
 
 
 def test_substrate_get_own_corpus(two_users):
     uA, uB, db = two_users
     sid = str(ulid_mod.ULID())
-    db.execute("INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)", (sid, sid, uA.corpus_id, "A's doc"))
+    db.execute(
+        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)", (sid, uA.id, "A's doc")
+    )
     dao = SubstrateDAO(db)
-    assert dao.get_substrate(substrate_id=sid, corpus_id=uA.corpus_id) is not None
+    assert dao.get_substrate(substrate_id=sid, user_id=uA.id) is not None
 
 
 def test_substrate_list_only_own(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)", ("s1", "s1", uA.corpus_id, "A1"))
-    db.execute("INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)", ("s2", "s2", uB.corpus_id, "B1"))
+    db.execute("INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)", ("s1", uA.id, "A1"))
+    db.execute("INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)", ("s2", uB.id, "B1"))
     dao = SubstrateDAO(db)
-    a_list = dao.list_substrates(corpus_id=uA.corpus_id)
-    assert all(s.corpus_id == uA.corpus_id for s in a_list)
+    a_list = dao.list_substrates(user_id=uA.id)
+    assert all(s.user_id == uA.id for s in a_list)
     assert len(a_list) == 1
 
 
 def test_substrate_list_empty_for_other(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO substrate (id, ulid, corpus_id, title) VALUES (?,?,?,?)", ("s1", "s1", uA.corpus_id, "A1"))
+    db.execute("INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)", ("s1", uA.id, "A1"))
     dao = SubstrateDAO(db)
-    assert dao.list_substrates(corpus_id=uB.corpus_id) == []
+    assert dao.list_substrates(user_id=uB.id) == []
 
 
 def test_substrate_nonexistent_id_returns_none(two_users):
     uA, _, db = two_users
     dao = SubstrateDAO(db)
-    assert dao.get_substrate(substrate_id="fake", corpus_id=uA.corpus_id) is None
+    assert dao.get_substrate(substrate_id="fake", user_id=uA.id) is None
 
 
 # --- Note isolation (≥5) ---
+
 
 def test_note_create_and_get_own(two_users):
     uA, uB, db = two_users
@@ -107,10 +114,14 @@ def test_note_corpus_id_stored_correctly(two_users):
 
 # --- Concept isolation (≥3) ---
 
+
 def test_concept_get_blocked_cross_corpus(two_users):
     uA, uB, db = two_users
     cid = str(ulid_mod.ULID())
-    db.execute("INSERT INTO concept (id, name, source_ids, corpus_id) VALUES (?,?,?,?)", (cid, "X", "", uA.corpus_id))
+    db.execute(
+        "INSERT INTO concept (id, name, source_ids, corpus_id) VALUES (?,?,?,?)",
+        (cid, "X", "", uA.corpus_id),
+    )
     dao = ConceptDAO(db)
     assert dao.get_concept(concept_id=cid, corpus_id=uB.corpus_id) is None
 
@@ -118,82 +129,113 @@ def test_concept_get_blocked_cross_corpus(two_users):
 def test_concept_get_own(two_users):
     uA, _, db = two_users
     cid = str(ulid_mod.ULID())
-    db.execute("INSERT INTO concept (id, name, source_ids, corpus_id) VALUES (?,?,?,?)", (cid, "X", "", uA.corpus_id))
+    db.execute(
+        "INSERT INTO concept (id, name, source_ids, corpus_id) VALUES (?,?,?,?)",
+        (cid, "X", "", uA.corpus_id),
+    )
     dao = ConceptDAO(db)
     assert dao.get_concept(concept_id=cid, corpus_id=uA.corpus_id) is not None
 
 
 # --- Derivative isolation (≥3) ---
 
+
 def test_derivative_list_blocked_cross_corpus(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO derivative (id, substrate_id, kind, seq, content, corpus_id) VALUES (?,?,?,?,?,?)",
-               ("d1", "s1", "chunk", 0, "text", uA.corpus_id))
+    db.execute(
+        "INSERT INTO derivative (id, substrate_id, kind, seq, content, corpus_id) VALUES (?,?,?,?,?,?)",
+        ("d1", "s1", "chunk", 0, "text", uA.corpus_id),
+    )
     dao = DerivativeDAO(db)
     assert dao.list_by_substrate(substrate_id="s1", corpus_id=uB.corpus_id) == []
 
 
 def test_derivative_list_own(two_users):
     uA, _, db = two_users
-    db.execute("INSERT INTO derivative (id, substrate_id, kind, seq, content, corpus_id) VALUES (?,?,?,?,?,?)",
-               ("d1", "s1", "chunk", 0, "text", uA.corpus_id))
+    db.execute(
+        "INSERT INTO derivative (id, substrate_id, kind, seq, content, corpus_id) VALUES (?,?,?,?,?,?)",
+        ("d1", "s1", "chunk", 0, "text", uA.corpus_id),
+    )
     dao = DerivativeDAO(db)
     assert len(dao.list_by_substrate(substrate_id="s1", corpus_id=uA.corpus_id)) == 1
 
 
 # --- View isolation (≥3) ---
 
+
 def test_view_get_blocked_cross_corpus(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO views (id, user_id, corpus_id, name, default_filter) VALUES (?,?,?,?,?)",
-               ("v1", uA.id, uA.corpus_id, "My View", "{}"))
+    db.execute(
+        "INSERT INTO views (id, user_id, corpus_id, name, default_filter) VALUES (?,?,?,?,?)",
+        ("v1", uA.id, uA.corpus_id, "My View", "{}"),
+    )
     dao = ViewDAO(db)
     assert dao.get_view(view_id="v1", corpus_id=uB.corpus_id) is None
 
 
 def test_view_list_only_own(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO views (id, user_id, corpus_id, name, default_filter) VALUES (?,?,?,?,?)",
-               ("v1", uA.id, uA.corpus_id, "A View", "{}"))
-    db.execute("INSERT INTO views (id, user_id, corpus_id, name, default_filter) VALUES (?,?,?,?,?)",
-               ("v2", uB.id, uB.corpus_id, "B View", "{}"))
+    db.execute(
+        "INSERT INTO views (id, user_id, corpus_id, name, default_filter) VALUES (?,?,?,?,?)",
+        ("v1", uA.id, uA.corpus_id, "A View", "{}"),
+    )
+    db.execute(
+        "INSERT INTO views (id, user_id, corpus_id, name, default_filter) VALUES (?,?,?,?,?)",
+        ("v2", uB.id, uB.corpus_id, "B View", "{}"),
+    )
     dao = ViewDAO(db)
     assert len(dao.list_views(corpus_id=uA.corpus_id)) == 1
 
 
 # --- Task isolation (≥3) ---
 
+
 def test_task_get_blocked_cross_corpus(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO tasks (id, user_id, corpus_id, text) VALUES (?,?,?,?)",
-               ("t1", uA.id, uA.corpus_id, "Do thing"))
+    db.execute(
+        "INSERT INTO tasks (id, user_id, corpus_id, text) VALUES (?,?,?,?)",
+        ("t1", uA.id, uA.corpus_id, "Do thing"),
+    )
     dao = TaskDAO(db)
     assert dao.get_task(task_id="t1", corpus_id=uB.corpus_id) is None
 
 
 def test_task_list_only_own(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO tasks (id, user_id, corpus_id, text) VALUES (?,?,?,?)", ("t1", uA.id, uA.corpus_id, "A task"))
-    db.execute("INSERT INTO tasks (id, user_id, corpus_id, text) VALUES (?,?,?,?)", ("t2", uB.id, uB.corpus_id, "B task"))
+    db.execute(
+        "INSERT INTO tasks (id, user_id, corpus_id, text) VALUES (?,?,?,?)",
+        ("t1", uA.id, uA.corpus_id, "A task"),
+    )
+    db.execute(
+        "INSERT INTO tasks (id, user_id, corpus_id, text) VALUES (?,?,?,?)",
+        ("t2", uB.id, uB.corpus_id, "B task"),
+    )
     dao = TaskDAO(db)
     assert len(dao.list_tasks(corpus_id=uA.corpus_id)) == 1
 
 
 # --- Template isolation (≥3) ---
 
+
 def test_template_get_blocked_cross_corpus(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO templates (id, user_id, corpus_id, name, content) VALUES (?,?,?,?,?)",
-               ("tp1", uA.id, uA.corpus_id, "My Tmpl", "body"))
+    db.execute(
+        "INSERT INTO templates (id, user_id, corpus_id, name, content) VALUES (?,?,?,?,?)",
+        ("tp1", uA.id, uA.corpus_id, "My Tmpl", "body"),
+    )
     dao = TemplateDAO(db)
     assert dao.get_template(template_id="tp1", corpus_id=uB.corpus_id) is None
 
 
 def test_template_list_only_own(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO templates (id, user_id, corpus_id, name, content) VALUES (?,?,?,?,?)",
-               ("tp1", uA.id, uA.corpus_id, "A", "a"))
-    db.execute("INSERT INTO templates (id, user_id, corpus_id, name, content) VALUES (?,?,?,?,?)",
-               ("tp2", uB.id, uB.corpus_id, "B", "b"))
+    db.execute(
+        "INSERT INTO templates (id, user_id, corpus_id, name, content) VALUES (?,?,?,?,?)",
+        ("tp1", uA.id, uA.corpus_id, "A", "a"),
+    )
+    db.execute(
+        "INSERT INTO templates (id, user_id, corpus_id, name, content) VALUES (?,?,?,?,?)",
+        ("tp2", uB.id, uB.corpus_id, "B", "b"),
+    )
     dao = TemplateDAO(db)
     assert len(dao.list_templates(corpus_id=uA.corpus_id)) == 1
