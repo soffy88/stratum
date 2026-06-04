@@ -90,10 +90,11 @@ services:
       - STRATUM_DB_PATH=/root/.stratum/meta.duckdb
     volumes:
       # Platform packages mounted editable — source changes are live without rebuild
-      - /home/soffy/projects/platform/obase:/opt/platform/obase
-      - /home/soffy/projects/platform/oprim:/opt/platform/oprim
-      - /home/soffy/projects/platform/oskill:/opt/platform/oskill
-      - /home/soffy/projects/platform/omodul:/opt/platform/omodul
+      # Packages live at platform/3O/{pkg} on the host.
+      - /home/soffy/projects/platform/3O/obase:/opt/platform/obase
+      - /home/soffy/projects/platform/3O/oprim:/opt/platform/oprim
+      - /home/soffy/projects/platform/3O/oskill:/opt/platform/oskill
+      - /home/soffy/projects/platform/3O/omodul:/opt/platform/omodul
       # Data directory (DuckDB, uploads, etc.)
       - ~/.stratum:/root/.stratum
     healthcheck:
