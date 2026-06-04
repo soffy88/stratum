@@ -1,0 +1,46 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 含 L (无效 Crockford 字符)
+id: "01HYLLLLLLLLLLLLLLLLLLLLL6"
+
+# ❌ 2: slug 含点号 (pattern 只允许 a-z0-9-)
+slug: "xiang.yu"
+
+# title: (缺失 required)
+
+# ❌ 3: type 错误
+type: "human"
+
+# ❌ 4: created_at 非 date-time
+created_at: "公元前 232 年"
+
+# ❌ 5: ingested_by 不在枚举
+ingested_by: "admin"
+
+# ❌ 6: schema_version 错误值
+schema_version: 0
+
+# ❌ 7: domains 为空 (minItems: 1)
+domains: []
+
+# ❌ 8: born 超出范围 (minimum: -3000)
+born: -5000
+
+# ❌ 9: died 类型错误
+died: "前 202 年"
+
+# ❌ 10: aliases 含非字符串
+aliases:
+  - "项籍"
+  - 12345
+
+# ❌ 11: related_concepts 项缺少 required id
+related_concepts:
+  - slug: "hongmen-banquet"
+    relation: "protagonist"
+
+# ❌ 12: last_reviewed_at 非 date-time
+last_reviewed_at: "yesterday"
+
+# ❌ 13: 额外字段
+biography_url: "https://example.com/xiangyu"

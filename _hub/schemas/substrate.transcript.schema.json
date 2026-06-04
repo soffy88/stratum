@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Stratum.local/schemas/substrate.transcript.schema.json",
+  "title": "Substrate Transcript",
+  "description": "Schema for a transcript of a video, podcast, or audio source in the substrate layer. v1.",
+  "type": "object",
+  "required": [
+    "id",
+    "slug",
+    "title",
+    "type",
+    "created_at",
+    "ingested_by",
+    "schema_version",
+    "source_platform",
+    "source_url",
+    "speakers",
+    "language",
+    "domains"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+      "description": "ULID, 26 chars, Crockford base32"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 2,
+      "maxLength": 80,
+      "description": "Human-readable identifier, unique within transcripts layer"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "type": {
+      "const": "transcript"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ingested_by": {
+      "type": "string",
+      "enum": ["wiki", "hermes", "claude-code", "pipeline"]
+    },
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "source_platform": {
+      "type": "string",
+      "enum": ["youtube", "podcast", "bilibili", "twitter-space", "other"],
+      "description": "Platform or medium the original audio/video was published on"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL of the original audio/video source"
+    },
+    "speakers": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Names of speakers or hosts in the transcript"
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "zh-Hans", "zh-Hant",
+        "en", "ja", "ko",
+        "fr", "de", "es", "ru",
+        "la", "grc",
+        "mixed", "other"
+      ],
+      "description": "Primary language of the transcript. 'mixed' for multilingual content."
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9.-]*$"
+      },
+      "minItems": 1,
+      "description": "Domain tags, dotted path. e.g. 'tech.ai', 'history.china', 'philosophy'"
+    },
+    "source_id": {
+      "type": "string",
+      "description": "Platform-native ID of the source (e.g. YouTube video ID, podcast episode GUID)"
+    },
+    "duration_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total duration of the source audio/video in seconds"
+    },
+    "episode_number": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Episode number within a series or podcast"
+    },
+    "series_title": {
+      "type": "string",
+      "description": "Title of the series, show, or channel this episode belongs to"
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Original publication timestamp of the source"
+    },
+    "transcript_path": {
+      "type": "string",
+      "description": "Relative path to the stored transcript text file"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Free-form tags, lighter than domains. Avoid duplicating domain info."
+    },
+    "copyright_status": {
+      "type": "string",
+      "enum": [
+        "public-domain",
+        "copyrighted",
+        "fair-use",
+        "unknown"
+      ]
+    },
+    "copyright_notes": {
+      "type": "string",
+      "description": "Free-text notes on copyright situation"
+    }
+  }
+}

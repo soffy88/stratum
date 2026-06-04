@@ -1,0 +1,35 @@
+# Valid example: history.china.qin-han 领域节点
+# Cross-references: event hongmen-banquet (01HY0000000000000000000007)
+#                   person xiang-yu (01HY0000000000000000000006)
+#                   substrate.book shiji (01HXYZW7G5K8M2N3P4Q5R6S7T8)
+
+id: "01HY000000000000000000000B"
+slug: "history-china-qin-han"
+title: "秦汉史"
+type: "domain"
+created_at: "2026-05-16T10:00:00+08:00"
+ingested_by: "wiki"
+schema_version: 1
+
+domains:
+  - "history"
+
+aliases:
+  - "秦汉时期"
+  - "qin-han"
+parent_domain: "history.china"
+description: "公元前 221 年秦统一六国至公元 220 年东汉灭亡, 约 440 年。包含秦朝、西汉、新朝、东汉四个主要阶段。是中国历史上第一个大一统王朝周期, 奠定了此后两千年的政治体制基础。"
+
+related_concepts:
+  - id: "01HY0000000000000000000006"
+    slug: "xiang-yu"
+    relation: "key-figure"
+  - id: "01HY0000000000000000000007"
+    slug: "hongmen-banquet"
+    relation: "key-event"
+
+last_reviewed_at: "2026-05-16T10:00:00+08:00"
+tags:
+  - "秦朝"
+  - "西汉"
+  - "东汉"

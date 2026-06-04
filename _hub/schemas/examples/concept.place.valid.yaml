@@ -1,0 +1,44 @@
+# Valid example: 鸿门 (Hongmen)
+# Cross-references: event hongmen-banquet (01HY0000000000000000000007)
+#                   person xiang-yu (01HY0000000000000000000006)
+#                   domain history.china.qin-han (01HY000000000000000000000B)
+
+id: "01HY000000000000000000000A"
+slug: "hongmen"
+title: "鸿门"
+type: "place"
+created_at: "2026-05-16T10:00:00+08:00"
+ingested_by: "wiki"
+schema_version: 1
+
+domains:
+  - "history.china.qin-han"
+
+aliases:
+  - "鸿门坂"
+  - "新丰鸿门"
+modern_name: "陕西省西安市临潼区新丰镇鸿门堡村"
+historical_names:
+  - "鸿门"
+  - "戏水之侧"
+
+coordinates:
+  lat: 34.3947
+  lng: 109.2547
+
+country: "中国"
+region: "陕西省"
+place_type: "site"
+
+related_concepts:
+  - id: "01HY0000000000000000000007"
+    slug: "hongmen-banquet"
+    relation: "event-location"
+  - id: "01HY0000000000000000000006"
+    slug: "xiang-yu"
+    relation: "historical-association"
+
+last_reviewed_at: "2026-05-16T10:00:00+08:00"
+tags:
+  - "历史遗址"
+  - "秦末"

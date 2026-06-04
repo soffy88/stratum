@@ -1,0 +1,11 @@
+# 保留策略
+audit_log:
+  keep_days: 365
+  rotate_size_mb: 100
+
+indexes:
+  rebuild_full_weekly: true
+  rebuild_incremental_hourly: true
+
+substrate_embeddings:
+  recompute_on_parser_upgrade: true

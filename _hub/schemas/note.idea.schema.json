@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Stratum.local/schemas/note.idea.schema.json",
+  "title": "Stratum Note — Idea",
+  "description": "Captures a nascent or developing idea within the Stratum knowledge base.",
+  "type": "object",
+  "required": [
+    "id",
+    "slug",
+    "title",
+    "type",
+    "created_at",
+    "last_modified_at",
+    "ingested_by",
+    "schema_version",
+    "domains",
+    "status",
+    "maturity"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 2,
+      "maxLength": 80
+    },
+    "title": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "const": "idea"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_modified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ingested_by": {
+      "type": "string",
+      "enum": ["wiki", "hermes", "claude-code", "pipeline"]
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9.-]*$"
+      },
+      "minItems": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "archived", "superseded"]
+    },
+    "maturity": {
+      "type": "string",
+      "enum": ["seed", "sprout", "sapling", "tree"]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "draft": {
+      "type": "boolean"
+    },
+    "next_step": {
+      "type": "string"
+    },
+    "motivation": {
+      "type": "string"
+    },
+    "related_ideas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+          },
+          "slug": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "references": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "substrate": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+              },
+              "paragraph_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "concepts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+              },
+              "slug": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

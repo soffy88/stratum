@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Stratum.local/schemas/concept.technique.schema.json",
+  "title": "Concept — Technique",
+  "description": "A method, algorithm, or technique node in the Stratum knowledge base.",
+  "type": "object",
+  "required": ["id", "slug", "title", "type", "created_at", "ingested_by", "schema_version", "domains"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 2,
+      "maxLength": 80
+    },
+    "title": { "type": "string" },
+    "type": { "type": "string", "const": "technique" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "ingested_by": {
+      "type": "string",
+      "enum": ["wiki", "hermes", "claude-code", "pipeline"]
+    },
+    "domains": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9.-]*$" },
+      "minItems": 1
+    },
+    "aliases": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "description": { "type": "string" },
+    "applies_to_domains": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9.-]*$" }
+    },
+    "related_theorems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$" },
+          "slug": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "prerequisites": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$" },
+          "slug": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "related_concepts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$" },
+          "slug": { "type": "string" },
+          "relation": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "inventors": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "year_introduced": { "type": "integer" },
+    "last_reviewed_at": { "type": "string", "format": "date-time" },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "draft": { "type": "boolean" }
+  }
+}

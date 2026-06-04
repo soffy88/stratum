@@ -1,0 +1,52 @@
+# Invalid example: 多个常见错误,schema 必须能抓到全部
+# 用于测试 schema_check pipeline
+
+# ❌ 错误 1: id 不是合法 ULID (包含小写)
+id: "01hxyzw7g5k8m2n3p4q5r6s7t8"
+
+# ❌ 错误 2: slug 包含大写和下划线
+slug: "Shiji_ZhongHua"
+
+# title: (缺失, required)
+
+# ❌ 错误 3: type 应为 book, 这里写错
+type: "novel"
+
+# ❌ 错误 4: created_at 不是 ISO 8601
+created_at: "2026/5/16 10:00"
+
+# ❌ 错误 5: ingested_by 不在枚举中
+ingested_by: "wiki-personal"
+
+# ❌ 错误 6: schema_version 应为 1
+schema_version: "v1"
+
+# ❌ 错误 7: authors 为空数组 (minItems: 1)
+authors: []
+
+# ❌ 错误 8: edition_key 过短
+edition_key: "abc"
+
+# ❌ 错误 9: language 不在枚举中
+language: "Chinese"
+
+# ❌ 错误 10: domains 中包含大写
+domains:
+  - "History.China"
+
+# ❌ 错误 11: original_format 不在枚举中
+original_format: "kindle"
+
+# ❌ 错误 12: copyright_status 不在枚举中
+copyright_status: "free"
+
+# ❌ 错误 13: 多了一个 schema 未定义的字段 (additionalProperties: false)
+random_extra_field: "should not be allowed"
+
+# ❌ 错误 14: user_rating 超出范围
+user_rating: 6
+
+# ❌ 错误 15: parsing 中缺 required 字段
+parsing:
+  parser: "pymupdf4llm"
+  # 缺 parser_version / parsed_at / paragraph_count

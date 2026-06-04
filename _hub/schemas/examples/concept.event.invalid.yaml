@@ -1,0 +1,47 @@
+# Invalid example: 10+ deliberate violations
+
+# ❌ 1: id 含空格
+id: "01HY 000000000000000000007"
+
+# ❌ 2: slug 含大写
+slug: "HongmenBanquet"
+
+# ❌ 3: title 类型错误
+title: 12345
+
+# ❌ 4: type 错误 (应为 event)
+type: "happening"
+
+# ❌ 5: created_at 非 date-time
+created_at: "2026年5月16日"
+
+# ❌ 6: ingested_by 不在枚举
+ingested_by: "museum"
+
+# ❌ 7: schema_version 非整数
+schema_version: "1"
+
+# ❌ 8: domains 为空 (minItems: 1)
+domains: []
+
+# ❌ 9: participants 项缺少 required id
+participants:
+  - slug: "xiang-yu"
+    role: "主持者"
+
+# ❌ 10: participants 项含额外字段
+  - id: "01HY0000000000000000000006"
+    slug: "xiang-yu"
+    role: "主持者"
+    importance: "high"
+
+# ❌ 11: related_concepts 项 id 为小写
+related_concepts:
+  - id: "01hy000000000000000000000a"
+    relation: "location"
+
+# ❌ 12: last_reviewed_at 格式错误
+last_reviewed_at: "2026-05"
+
+# ❌ 13: 额外字段
+casualties: 0
