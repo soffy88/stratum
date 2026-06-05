@@ -4,6 +4,7 @@ Runs on port 9303. The existing Phase 14 SaaS (http_api/app.py) remains on 9302.
 All SPEC 2 routes are wired here.
 """
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -45,10 +46,26 @@ def _register_providers() -> None:
         pass  # graceful — audio/image agents fall back to failed status without providers
 
 
+async def _feed_tracker_loop() -> None:
+    """Run FeedTrackerEngine tick every hour. Errors are logged, never propagated."""
+    from stratum.services.feed_tracker_service import run_feed_tracker_tick
+    import logging
+
+    log = logging.getLogger(__name__)
+    while True:
+        await asyncio.sleep(3600)
+        try:
+            await run_feed_tracker_tick()
+        except Exception:
+            log.exception("feed_tracker_loop tick failed")
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     _register_providers()
+    task = asyncio.create_task(_feed_tracker_loop())
     yield
+    task.cancel()
 
 
 app = FastAPI(title="Stratum Service Layer", version="0.5.0", lifespan=_lifespan)
