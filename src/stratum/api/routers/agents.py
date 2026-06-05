@@ -59,19 +59,39 @@ def _make_oprim_llm_adapter(provider: str, model: str):
     return _adapter
 
 
+def _make_searxng_adapter(searxng_url: str):
+    """Bind searxng_url into searxng_search so ResearcherEngine can call it without the URL arg."""
+    from oprim import searxng_search
+
+    def _adapter(*, query: str, max_results: int = 5, **_):
+        r = searxng_search(query=query, searxng_url=searxng_url, max_results=max_results)
+        # searxng_search returns dict{"results": [...]}; ResearcherEngine expects a plain list
+        return r.get("results", []) if isinstance(r, dict) else (r or [])
+
+    _adapter.__module__ = "oprim.search"  # satisfy oservice kind="oprim" check
+    _adapter.__name__ = "searxng_adapter"
+    return _adapter
+
+
 def _get_researcher_engine():
     global _RESEARCHER_ENGINE
     if _RESEARCHER_ENGINE is not None:
         return _RESEARCHER_ENGINE
     try:
+        import os
+
+        searxng_url = os.environ.get("SEARXNG_URL", "")
+        if not searxng_url:
+            raise RuntimeError("SEARXNG_URL env var not set")
+
         from oservice import assemble, ServiceManifest
-        from oprim import searxng_search, url_fetch_ssrf_safe
+        from oprim import url_fetch_ssrf_safe
 
         manifest = ServiceManifest(
             name="stratum-researcher",
             skeleton="researcher",
             inject={
-                "search_oprim": [searxng_search],
+                "search_oprim": [_make_searxng_adapter(searxng_url)],
                 "fetch_oprim": [url_fetch_ssrf_safe],
                 "llm_caller": [_make_oprim_llm_adapter(_DEFAULT_LLM_PROVIDER, _DEFAULT_LLM_MODEL)],
                 # ingest_omodul omitted (cardinality=0..1): returns results without DB ingestion.
