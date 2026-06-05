@@ -1,42 +1,15 @@
-"""Tests for POST /api/v1/inbox/web-clip — server-side URL fetch + SSRF guard."""
+"""Tests for POST /api/v1/inbox/web-clip — server-side URL fetch + SSRF guard.
 
-import socket
+SSRF protection is now delegated to oprim.url_fetch_ssrf_safe (DNS-pinned transport).
+Tests verify that _fetch_url_html correctly maps oprim results to HTTP exceptions.
+"""
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-from stratum.api.routers.inbox import router, _fetch_url_html, _validate_fetch_url
-
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-
-def _make_stream_resp(body: bytes, status: int = 200, encoding: str = "utf-8"):
-    """Build an async-context-manager mock for httpx streaming response."""
-
-    async def _aiter_bytes():
-        yield body
-
-    resp = MagicMock()
-    resp.status_code = status
-    resp.headers = {}
-    resp.encoding = encoding
-    resp.raise_for_status = MagicMock()
-    resp.aiter_bytes = _aiter_bytes
-
-    cm = MagicMock()
-    cm.__aenter__ = AsyncMock(return_value=resp)
-    cm.__aexit__ = AsyncMock(return_value=False)
-    return cm
-
-
-def _make_client_mock(stream_cm):
-    client = MagicMock()
-    client.stream = MagicMock(return_value=stream_cm)
-    client.__aenter__ = AsyncMock(return_value=client)
-    client.__aexit__ = AsyncMock(return_value=False)
-    return client
+from stratum.api.routers.inbox import router, _fetch_url_html
 
 
 # ── Test client fixture ───────────────────────────────────────────────────────
@@ -52,163 +25,99 @@ def client():
     return TestClient(app, raise_server_exceptions=False)
 
 
-# ── _validate_fetch_url tests ─────────────────────────────────────────────────
-
-
-def test_validate_url_rejects_non_http_scheme():
-    with pytest.raises(HTTPException) as exc:
-        _validate_fetch_url("file:///etc/passwd")
-    assert exc.value.status_code == 400
-
-
-def test_validate_url_rejects_ftp():
-    with pytest.raises(HTTPException) as exc:
-        _validate_fetch_url("ftp://example.com/file")
-    assert exc.value.status_code == 400
-
-
-def test_validate_url_rejects_loopback():
-    with patch("socket.getaddrinfo", return_value=[(None, None, None, None, ("127.0.0.1", 0))]):
-        with pytest.raises(HTTPException) as exc:
-            _validate_fetch_url("http://localhost/admin")
-        assert exc.value.status_code == 403
-
-
-def test_validate_url_rejects_private_rfc1918():
-    with patch("socket.getaddrinfo", return_value=[(None, None, None, None, ("192.168.1.1", 0))]):
-        with pytest.raises(HTTPException) as exc:
-            _validate_fetch_url("http://internal.corp/secret")
-        assert exc.value.status_code == 403
-
-
-def test_validate_url_rejects_link_local():
-    # AWS metadata endpoint
-    with patch(
-        "socket.getaddrinfo", return_value=[(None, None, None, None, ("169.254.169.254", 0))]
-    ):
-        with pytest.raises(HTTPException) as exc:
-            _validate_fetch_url("http://169.254.169.254/latest/meta-data/")
-        assert exc.value.status_code == 403
-
-
-def test_validate_url_rejects_unresolvable():
-    with patch("socket.getaddrinfo", side_effect=socket.gaierror("nxdomain")):
-        with pytest.raises(HTTPException) as exc:
-            _validate_fetch_url("https://does-not-exist.invalid/")
-        assert exc.value.status_code == 400
-
-
-def test_validate_url_passes_public_domain():
-    # example.com resolves to a public IP — no exception expected
-    with patch("socket.getaddrinfo", return_value=[(None, None, None, None, ("93.184.216.34", 0))]):
-        _validate_fetch_url("https://example.com/article")  # must not raise
-
-
 # ── _fetch_url_html unit tests ────────────────────────────────────────────────
+
+
+def _ssrf_result(**kwargs):
+    base = {
+        "url": "https://example.com",
+        "status_code": 200,
+        "content_type": "text/html",
+        "body_bytes": b"",
+        "body_text": None,
+        "error": None,
+    }
+    base.update(kwargs)
+    return base
 
 
 @pytest.mark.asyncio
 async def test_fetch_url_html_success():
-    stream_cm = _make_stream_resp(b"<html><body>Hello</body></html>", status=200)
-    mock_client = _make_client_mock(stream_cm)
-
+    ok_result = _ssrf_result(body_text="<html><body>Hello</body></html>")
     with (
-        patch("stratum.api.routers.inbox._validate_fetch_url"),
-        patch("stratum.api.routers.inbox.httpx.AsyncClient", return_value=mock_client),
+        patch("stratum.api.routers.inbox._HAS_SSRF_SAFE", True),
+        patch("stratum.api.routers.inbox._url_fetch_ssrf_safe", return_value=ok_result),
     ):
         result = await _fetch_url_html("https://example.com")
     assert "Hello" in result
 
 
 @pytest.mark.asyncio
-async def test_fetch_url_html_404():
-    stream_cm = _make_stream_resp(b"", status=404)
-    mock_client = _make_client_mock(stream_cm)
-
+async def test_fetch_url_html_ssrf_blocked():
+    blocked = _ssrf_result(error="ssrf_blocked", body_bytes=b"", body_text=None, status_code=None)
     with (
-        patch("stratum.api.routers.inbox._validate_fetch_url"),
-        patch("stratum.api.routers.inbox.httpx.AsyncClient", return_value=mock_client),
+        patch("stratum.api.routers.inbox._HAS_SSRF_SAFE", True),
+        patch("stratum.api.routers.inbox._url_fetch_ssrf_safe", return_value=blocked),
     ):
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(HTTPException) as exc:
+            await _fetch_url_html("http://192.168.1.1/")
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_fetch_url_html_404():
+    not_found = _ssrf_result(status_code=404, body_text=None)
+    with (
+        patch("stratum.api.routers.inbox._HAS_SSRF_SAFE", True),
+        patch("stratum.api.routers.inbox._url_fetch_ssrf_safe", return_value=not_found),
+    ):
+        with pytest.raises(HTTPException) as exc:
             await _fetch_url_html("https://example.com/missing")
-    assert exc_info.value.status_code == 404
+    assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_fetch_url_html_timeout():
-    import httpx
-
-    mock_client = MagicMock()
-    mock_client.stream = MagicMock(side_effect=httpx.TimeoutException("timed out"))
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=False)
-
+    timeout = _ssrf_result(error="<urlopen error timed out>", body_bytes=b"", status_code=None)
     with (
-        patch("stratum.api.routers.inbox._validate_fetch_url"),
-        patch("stratum.api.routers.inbox.httpx.AsyncClient", return_value=mock_client),
+        patch("stratum.api.routers.inbox._HAS_SSRF_SAFE", True),
+        patch("stratum.api.routers.inbox._url_fetch_ssrf_safe", return_value=timeout),
     ):
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(HTTPException) as exc:
             await _fetch_url_html("https://slow.example.com")
-    assert exc_info.value.status_code == 504
+    assert exc.value.status_code == 504
 
 
 @pytest.mark.asyncio
-async def test_fetch_url_html_too_large_via_content_length():
-    """Content-Length header exceeds limit → 413 before streaming body."""
-
-    async def _aiter_bytes():
-        yield b""  # never reached
-
-    resp = MagicMock()
-    resp.status_code = 200
-    resp.headers = {"content-length": str(11 * 1024 * 1024)}
-    resp.encoding = "utf-8"
-    resp.raise_for_status = MagicMock()
-    resp.aiter_bytes = _aiter_bytes
-
-    cm = MagicMock()
-    cm.__aenter__ = AsyncMock(return_value=resp)
-    cm.__aexit__ = AsyncMock(return_value=False)
-    mock_client = _make_client_mock(cm)
-
+async def test_fetch_url_html_generic_error():
+    err = _ssrf_result(error="connection refused", body_bytes=b"", status_code=None)
     with (
-        patch("stratum.api.routers.inbox._validate_fetch_url"),
-        patch("stratum.api.routers.inbox.httpx.AsyncClient", return_value=mock_client),
+        patch("stratum.api.routers.inbox._HAS_SSRF_SAFE", True),
+        patch("stratum.api.routers.inbox._url_fetch_ssrf_safe", return_value=err),
     ):
-        with pytest.raises(HTTPException) as exc_info:
-            await _fetch_url_html("https://huge.example.com")
-    assert exc_info.value.status_code == 413
+        with pytest.raises(HTTPException) as exc:
+            await _fetch_url_html("https://example.com")
+    assert exc.value.status_code == 502
 
 
 @pytest.mark.asyncio
-async def test_fetch_url_html_too_large_streaming():
-    """Chunked body exceeds limit mid-stream → 413."""
-
-    chunk = b"x" * (6 * 1024 * 1024)  # 6 MB × 2 chunks = 12 MB total
-
-    async def _aiter_bytes():
-        yield chunk
-        yield chunk
-
-    resp = MagicMock()
-    resp.status_code = 200
-    resp.headers = {}
-    resp.encoding = "utf-8"
-    resp.raise_for_status = MagicMock()
-    resp.aiter_bytes = _aiter_bytes
-
-    cm = MagicMock()
-    cm.__aenter__ = AsyncMock(return_value=resp)
-    cm.__aexit__ = AsyncMock(return_value=False)
-    mock_client = _make_client_mock(cm)
-
+async def test_fetch_url_html_empty_body():
+    empty = _ssrf_result(body_text="", status_code=200)
     with (
-        patch("stratum.api.routers.inbox._validate_fetch_url"),
-        patch("stratum.api.routers.inbox.httpx.AsyncClient", return_value=mock_client),
+        patch("stratum.api.routers.inbox._HAS_SSRF_SAFE", True),
+        patch("stratum.api.routers.inbox._url_fetch_ssrf_safe", return_value=empty),
     ):
-        with pytest.raises(HTTPException) as exc_info:
-            await _fetch_url_html("https://huge.example.com")
-    assert exc_info.value.status_code == 413
+        with pytest.raises(HTTPException) as exc:
+            await _fetch_url_html("https://example.com")
+    assert exc.value.status_code == 502
+
+
+@pytest.mark.asyncio
+async def test_fetch_url_html_no_oprim():
+    with patch("stratum.api.routers.inbox._HAS_SSRF_SAFE", False):
+        with pytest.raises(HTTPException) as exc:
+            await _fetch_url_html("https://example.com")
+    assert exc.value.status_code == 503
 
 
 # ── web-clip endpoint integration tests ──────────────────────────────────────

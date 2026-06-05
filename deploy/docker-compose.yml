@@ -95,6 +95,7 @@ services:
       - /home/soffy/projects/platform/3O/oprim:/opt/platform/oprim
       - /home/soffy/projects/platform/3O/oskill:/opt/platform/oskill
       - /home/soffy/projects/platform/3O/omodul:/opt/platform/omodul
+      - /home/soffy/projects/platform/3O/oservice:/opt/platform/oservice
       # Data directory (DuckDB, uploads, etc.)
       - ~/.stratum:/root/.stratum
     healthcheck:
