@@ -30,7 +30,8 @@ RUN pip install --no-cache-dir \
         lancedb \
         tantivy \
         pymupdf \
-        "edge-tts>=6.1"
+        "edge-tts>=6.1" \
+        defusedxml
 
 # ── Platform packages (copied from host, installed editable) ──────────────────
 # Packages live at platform/3O/{obase,oprim,oskill,omodul} in the build context.
@@ -50,9 +51,10 @@ RUN pip install --no-cache-dir -e /opt/platform/oskill
 COPY platform/3O/omodul /opt/platform/omodul
 RUN pip install --no-cache-dir -e /opt/platform/omodul
 
-# oservice — depends on obase + oprim + oskill + omodul
+# oservice — depends on obase + oprim + oskill + omodul (already installed above).
+# --no-deps avoids pulling git+ssh:// refs that require SSH keys unavailable in Docker build.
 COPY platform/3O/oservice /opt/platform/oservice
-RUN pip install --no-cache-dir -e /opt/platform/oservice
+RUN pip install --no-cache-dir --no-deps -e /opt/platform/oservice
 
 # ── Application source ────────────────────────────────────────────────────────
 COPY stratum/src/ /app/src/
