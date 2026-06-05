@@ -1,15 +1,8 @@
 """Content ingest — file upload + web-clip."""
 
 import asyncio
-import ipaddress
 import re
-import shutil
-import socket
-import tempfile
 from pathlib import Path
-from urllib.parse import urlparse
-
-import httpx
 
 _ULID_RE = re.compile(r"[0-9A-Z]{26}")
 
@@ -40,6 +33,13 @@ from stratum.common import (
     user_inbox_dir,
 )
 from stratum.db import insert as db_insert
+
+try:
+    from oprim import url_fetch_ssrf_safe as _url_fetch_ssrf_safe
+
+    _HAS_SSRF_SAFE = True
+except ImportError:
+    _HAS_SSRF_SAFE = False
 
 router = APIRouter(prefix="/api/v1/inbox", tags=["inbox"])
 
@@ -133,96 +133,49 @@ async def inbox_submit(
 
 
 _WEB_CLIP_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
-_WEB_CLIP_TIMEOUT = 30.0
-
-
-def _validate_fetch_url(url: str) -> None:
-    """Reject SSRF-prone URLs before any network call.
-
-    Checks: scheme is http/https, hostname resolves to a public IP (not
-    loopback / private / link-local / reserved / multicast / unspecified).
-    Raises HTTPException(400) for invalid URLs, HTTPException(403) for
-    disallowed destinations — generic messages avoid SSRF reconnaissance.
-    """
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https"):
-        raise HTTPException(400, "URL must use http or https scheme")
-    host = parsed.hostname
-    if not host:
-        raise HTTPException(400, "Invalid URL")
-    try:
-        addrs = socket.getaddrinfo(host.lower().rstrip("."), None)
-    except socket.gaierror:
-        raise HTTPException(400, "Cannot resolve URL hostname")
-    for *_, sockaddr in addrs:
-        try:
-            ip = ipaddress.ip_address(sockaddr[0])
-        except ValueError:
-            continue
-        if (
-            ip.is_loopback
-            or ip.is_private
-            or ip.is_link_local
-            or ip.is_reserved
-            or ip.is_multicast
-            or ip.is_unspecified
-        ):
-            raise HTTPException(403, "URL resolves to a disallowed address")
+_WEB_CLIP_TIMEOUT = 30  # seconds (int for url_fetch_ssrf_safe)
 
 
 async def _fetch_url_html(url: str) -> str:
-    """Fetch URL and return HTML. Validates URL before fetching.
+    """Fetch URL via oprim.url_fetch_ssrf_safe (DNS-pinned, SSRF-safe).
 
     Raises HTTPException on fetch failure with generic messages to avoid
     leaking internal network topology.
-
-    SECURITY NOTE — TOCTOU / DNS rebinding (MEDIUM, tracked):
-    _validate_fetch_url resolves the hostname and checks IPs, but httpx
-    performs a second DNS lookup at connect time. A DNS rebinding attack
-    could change the resolution between these two points. Full mitigation
-    requires a pinned-IP custom transport (pre-resolve → pass exact IP to
-    kernel, preserve Host/SNI for TLS). Not implemented here because:
-    - endpoint is JWT-authenticated (attacker needs a valid token first)
-    - single-user alpha; anyone with the JWT already has full API access
-    Upgrade to pinned-IP transport before multi-user / public launch.
     """
-    _validate_fetch_url(url)
     import logging
 
     log = logging.getLogger(__name__)
-    try:
-        async with httpx.AsyncClient(
-            follow_redirects=False,
-            timeout=_WEB_CLIP_TIMEOUT,
-            headers={"User-Agent": "StratumBot/1.0 (+https://stratum.uex.hk)"},
-        ) as client:
-            async with client.stream("GET", url) as resp:
-                if resp.status_code == 404:
-                    raise HTTPException(404, "URL not found")
-                if resp.status_code in (301, 302, 307, 308):
-                    raise HTTPException(400, "URL redirects are not followed; use the final URL")
-                resp.raise_for_status()
-                cl = resp.headers.get("content-length")
-                if cl and int(cl) > _WEB_CLIP_MAX_BYTES:
-                    raise HTTPException(413, "Page too large (max 10 MB)")
-                buf = bytearray()
-                async for chunk in resp.aiter_bytes():
-                    buf.extend(chunk)
-                    if len(buf) > _WEB_CLIP_MAX_BYTES:
-                        raise HTTPException(413, "Page too large (max 10 MB)")
-                encoding = resp.encoding or "utf-8"
-                return buf.decode(encoding, errors="replace")
-    except HTTPException:
-        raise
-    except httpx.TimeoutException:
+
+    if not _HAS_SSRF_SAFE:
+        raise HTTPException(503, "URL fetch unavailable: oprim not installed")
+
+    result = await asyncio.to_thread(
+        _url_fetch_ssrf_safe,
+        url=url,
+        timeout=_WEB_CLIP_TIMEOUT,
+        max_bytes=_WEB_CLIP_MAX_BYTES,
+    )
+
+    err = result.get("error")
+    if err == "ssrf_blocked":
+        raise HTTPException(403, "URL resolves to a disallowed address")
+    if err and "timed out" in err:
         log.warning("web_clip_timeout url=%s", url)
         raise HTTPException(504, "URL fetch timed out")
-    except httpx.HTTPStatusError as exc:
-        log.warning("web_clip_http_error status=%s url=%s", exc.response.status_code, url)
-        raise HTTPException(exc.response.status_code, "URL fetch failed")
-    except Exception as exc:
-        log.warning("web_clip_fetch_error url=%s error=%s", url, exc)
+    if err:
+        log.warning("web_clip_fetch_error url=%s error=%s", url, err)
         raise HTTPException(502, "Failed to fetch URL")
+
+    status = result.get("status_code")
+    if status == 404:
+        raise HTTPException(404, "URL not found")
+    if status and status >= 400:
+        raise HTTPException(status, "URL fetch failed")
+
+    html = result.get("body_text") or ""
+    if not html:
+        raise HTTPException(502, "URL returned empty content")
+    return html
 
 
 def _extract_html_meta(html: str, url: str) -> dict:

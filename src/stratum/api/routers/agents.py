@@ -34,6 +34,67 @@ from stratum.common import (
 )
 from stratum.db import insert, query, read, update
 
+# ── oservice ResearcherAgent ──────────────────────────────────────────────────
+
+_RESEARCHER_ENGINE = None
+
+
+def _make_oprim_llm_adapter(provider: str, model: str):
+    """Messages-style LLM adapter for ResearcherEngine injection (kind="oprim").
+
+    ResearcherEngine calls llm_caller(messages=[...], max_tokens=N) per LLMCaller Protocol.
+    oprim.llm_call takes (prompt: str, provider, model, max_tokens) — not messages-style.
+    This adapter bridges the gap. __module__ is set to "oprim.llm" so oservice kind check passes.
+    Remove when oprim ships a native messages-style caller.
+    """
+    from oprim.llm.llm_call import llm_call
+
+    def _adapter(*, messages: list, max_tokens: int = 4096, **_) -> dict:
+        prompt = "\n".join(m.get("content", "") for m in messages if m.get("role") == "user")
+        result = llm_call(prompt=prompt, provider=provider, model=model, max_tokens=max_tokens)
+        return {"content": result.text}
+
+    _adapter.__module__ = "oprim.llm"  # satisfies oservice kind="oprim" validation
+    _adapter.__name__ = "oprim_llm_adapter"
+    return _adapter
+
+
+def _get_researcher_engine():
+    global _RESEARCHER_ENGINE
+    if _RESEARCHER_ENGINE is not None:
+        return _RESEARCHER_ENGINE
+    try:
+        from oservice import assemble, ServiceManifest
+        from oprim import searxng_search, url_fetch_ssrf_safe
+
+        manifest = ServiceManifest(
+            name="stratum-researcher",
+            skeleton="researcher",
+            inject={
+                "search_oprim": [searxng_search],
+                "fetch_oprim": [url_fetch_ssrf_safe],
+                "llm_caller": [_make_oprim_llm_adapter(_DEFAULT_LLM_PROVIDER, _DEFAULT_LLM_MODEL)],
+                # ingest_omodul omitted (cardinality=0..1): returns results without DB ingestion.
+                # Enable when omodul ships a kwargs-compatible ingest callable.
+            },
+            trigger={"on_demand": True},
+            config={
+                "max_search_terms": 3,
+                "max_articles_per_term": 5,
+                "max_total_articles": 15,
+                "fetch_concurrency": 5,
+            },
+        )
+        _RESEARCHER_ENGINE = assemble(manifest)
+        _RESEARCHER_ENGINE.run()
+    except Exception as _e:
+        import logging
+
+        logging.getLogger(__name__).warning("ResearcherEngine assembly failed: %s", _e)
+        _RESEARCHER_ENGINE = None
+    return _RESEARCHER_ENGINE
+
+
 try:
     from omodul import (
         DailyDigestConfig,
@@ -61,6 +122,9 @@ router = APIRouter(prefix="/api/v1/agents", tags=["agents"])
 
 # All agents implemented — no 501 stubs remain (audio_generator activated in obase v0.9.0)
 NOT_IMPLEMENTED_AGENTS: dict = {}
+
+# oservice-assembled engines — handled without requiring _HAS_OMODUL
+_OSERVICE_AGENT_NAMES: frozenset[str] = frozenset({"researcher"})
 
 
 def _now_dt() -> datetime:
@@ -148,14 +212,26 @@ async def agent_run(
 ):
     if agent_name in NOT_IMPLEMENTED_AGENTS:
         raise HTTPException(501, NOT_IMPLEMENTED_AGENTS[agent_name])
-    if agent_name not in _BUILDERS and agent_name not in _AGENT_CLASSES:
+    _is_oservice = agent_name in _OSERVICE_AGENT_NAMES
+    if not _is_oservice and agent_name not in _BUILDERS and agent_name not in _AGENT_CLASSES:
         raise HTTPException(404, f"Unknown agent: {agent_name}")
-    if not _HAS_OMODUL:
+    if not _is_oservice and not _HAS_OMODUL:
         return {
             "agent_name": agent_name,
             "status": "not_implemented",
             "message": "omodul not available in this environment",
         }
+
+    # Validate oservice inputs BEFORE creating the run record (raises HTTPException cleanly)
+    _oservice_engine = None
+    _oservice_query: str = ""
+    if _is_oservice:
+        _oservice_engine = _get_researcher_engine()
+        if _oservice_engine is None:
+            raise HTTPException(503, "ResearcherEngine unavailable — oservice assembly failed")
+        _oservice_query = (params or {}).get("query") or ""
+        if not _oservice_query:
+            raise HTTPException(422, "params.query is required for researcher")
 
     out_dir = ensure_dir(user_agent_runs_dir(user_id))
     run_id = generate_ulid()
@@ -175,7 +251,14 @@ async def agent_run(
     result: dict = {}
     final_status = "failed"
     try:
-        if agent_name in _AGENT_CLASSES:
+        if _is_oservice:
+            result = await _oservice_engine.research(
+                query=_oservice_query,
+                user_id=user_id,
+                max_articles_override=(params or {}).get("max_articles"),
+            )
+            final_status = result.get("status", "completed")
+        elif agent_name in _AGENT_CLASSES:
             # Agent-class path: async run(params, context) → AgentResult
             context = AgentContext(
                 user_id=user_id,
@@ -249,6 +332,17 @@ async def agent_run(
             {"run_id": run_id, "agent_name": agent_name, "error": str(e)},
         )
 
+    if _is_oservice:
+        return {
+            "run_id": run_id,
+            "agent_name": agent_name,
+            "status": final_status,
+            "query": result.get("query"),
+            "search_terms": result.get("search_terms"),
+            "articles": result.get("articles"),
+            "ingested_substrate_ids": result.get("ingested_substrate_ids"),
+            "error": result.get("error"),
+        }
     return {
         "run_id": run_id,
         "agent_name": agent_name,

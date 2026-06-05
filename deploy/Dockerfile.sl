@@ -50,6 +50,10 @@ RUN pip install --no-cache-dir -e /opt/platform/oskill
 COPY platform/3O/omodul /opt/platform/omodul
 RUN pip install --no-cache-dir -e /opt/platform/omodul
 
+# oservice — depends on obase + oprim + oskill + omodul
+COPY platform/3O/oservice /opt/platform/oservice
+RUN pip install --no-cache-dir -e /opt/platform/oservice
+
 # ── Application source ────────────────────────────────────────────────────────
 COPY stratum/src/ /app/src/
 
