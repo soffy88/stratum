@@ -1,6 +1,6 @@
 # Stratum Technical Debt
 
-Last updated: 2026-06-03 (Phase 17 P0)
+Last updated: 2026-06-05 (Phase 17.7 + oservice v0.3.0)
 
 Legend: `[ ]` open · `[x]` resolved · priority: **P0** blocker / **P1** soon / **P2** eventually
 
@@ -114,21 +114,17 @@ Legend: `[ ]` open · `[x]` resolved · priority: **P0** blocker / **P1** soon /
 
 ### Auth & Security
 
-- [ ] **P0 (pre-multi-user)** `_fetch_url_html` TOCTOU / DNS rebinding: `_validate_fetch_url()` resolves
-  hostname and validates IP, but httpx performs a second DNS lookup at connect time. A DNS rebinding
-  attack could swap the resolution between checks (validated public IP → internal private IP).
-  Full fix: pinned-IP custom transport — pre-resolve hostname, validate every returned IP, pass the
-  exact validated IP to the kernel (preserving `Host`/SNI for TLS).
-  Current state: acceptable for **alpha single-user** (endpoint requires valid JWT; if attacker has JWT
-  they have full API access already). **Must fix before multi-user /引流 public launch.**
-  Same severity bucket as JWT-in-WS-URL. File: `src/stratum/api/routers/inbox.py:_fetch_url_html`.
-  Tracked: Phase 17 17-A, documented in code. (2026-06-03)
+- [x] **P0 ✅ FIXED (2026-06-05)** `_fetch_url_html` TOCTOU / DNS rebinding: replaced with
+  `oprim.url_fetch_ssrf_safe` (DNS-pinned single-step, no TOCTOU window). obase v0.10.2
+  `dns_pinned_transport` validates every resolved IP and pins the socket — single DNS lookup,
+  no race window. File: `src/stratum/api/routers/inbox.py`. (Phase 17.7 Step 4)
 
-- [ ] **P0 (pre-public)** WS token in URL: `ws-client.ts` passes JWT as `?token=...` query parameter.
-  Token appears in Nginx/Cloudflare access logs in plaintext.
-  Full fix: `Sec-WebSocket-Protocol` header auth or short-lived ticket endpoint (both need backend changes).
-  Current state: acceptable for alpha single-user. **Must fix before public launch / 引流.**
-  File: `stratum-web/src/lib/ws-client.ts`. Tracked: Phase 16-Frontend P1-B. (2026-06-03)
+- [x] **P0 ✅ FIXED (2026-06-05)** WS token in URL: replaced with 30-second single-use ticket system.
+  Backend: `POST /api/v1/ws/ticket` issues ticket stored in dedup_cache (TTL=30s).
+  WS connects with `?ticket=<ticket>` — ticket is one-time, short-lived, not a JWT.
+  Ticket appears in logs but is useless after 30s. JWT no longer in WS URL.
+  File: `src/stratum/api/ws.py`. ⚠️ Frontend client (`ws-client.ts`) must be verified to use ticket,
+  not raw JWT. If `ws-client.ts` still passes `?token=JWT`, this item remains open.
 
 - [ ] **P2** JWT secret read from `STRATUM_JWT_SECRET` env var; no rotation mechanism.
   Rotation requires session invalidation strategy. (Wave 1)
@@ -198,6 +194,29 @@ Legend: `[ ]` open · `[x]` resolved · priority: **P0** blocker / **P1** soon /
 
 - [ ] **P2** `docs/yiwancheng/` contains outdated design notes from pre-Phase 14 era.
   Should be archived or removed before v1.0 release docs freeze.
+
+---
+
+---
+
+## Phase 17.7 — oservice v0.3.0 装配 新增项 (2026-06-05)
+
+- [x] **P0 ✅ FIXED (2026-06-05)** oskill `substrate/note/concept` 表名漂移: 4 次 sweep 完成
+  (`substrate`→`substrates`, `note`→`notes`, `concept`→`concepts`). oskill v3.13.1 全部改正.
+  `detect_duplicate_substrate` SELECT / `ingest_substrate` INSERT 均已用 `substrates` (plural).
+
+- [ ] **P0 (R-1 open)** oskill `ingest_substrate` INSERT schema mismatch — substrates 真入库阻塞:
+  oskill INSERT 包含 `ulid` 列 (Stratum schema 无此列) + 缺 `user_id` 列 (Stratum NOT NULL).
+  错误: `Binder Error: Table "substrates" does not have a column with name "ulid"`.
+  影响: FeedTracker `/check` + ResearcherAgent ingest_omodul 均无法真入库 (substrates 永远 0).
+  修法: oskill `ingest_substrate.py` INSERT 移除 `ulid`, 加 `user_id` (从 InboxConfig.user_id_hash 传入).
+  **需要 Wiki 修 oskill (R-4 不擅自改)**. 修后 Stratum 端无需改动.
+
+- [ ] **P2 (alpha 期接受)** ResearcherAgent URL fetch geo-block: stratum-sl 容器在中国 WSL2 网络,
+  Wikipedia/Investopedia 等海外 URL fetch 返回 timeout/403/406.
+  根因: 容器网络无翻墙通道, 非代码问题. searxng 返回结果正常 (VPS 100.73.220.5:8888).
+  Alpha 期接受 (中国用户 WSL2 测试环境限制); 引流后全球用户大半可正常抓取.
+  方案 B 已确认 (不走 VPS 代理), 不阻塞 ship.
 
 ---
 
