@@ -32,6 +32,7 @@ from stratum.common import (
     sha256_hex,
     user_inbox_dir,
 )
+from stratum.utils.user_id_hash import hash_user_id
 from stratum.db import insert as db_insert
 
 try:
@@ -103,7 +104,7 @@ async def inbox_submit(
     config = InboxConfig(
         file_path=str(file_path),
         file_checksum=checksum,
-        user_id_hash=sha256_hex(user_id)[:16],
+        user_id_hash=hash_user_id(user_id),
         medium_hint=medium_hint,
         auto_classify=True,
         llm_provider="qwen3",
@@ -269,7 +270,7 @@ async def inbox_webclip(
     config = InboxConfig(
         file_path=str(clip_path),
         file_checksum=checksum,
-        user_id_hash=sha256_hex(user_id)[:16],
+        user_id_hash=hash_user_id(user_id),
         medium_hint="webpage",
         auto_classify=True,
         llm_provider="qwen3",

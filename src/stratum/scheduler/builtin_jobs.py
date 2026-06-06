@@ -60,11 +60,11 @@ def execute_builtin_job(job: dict[str, Any], user_id: str = "system") -> dict:
     now = datetime.now(UTC)
 
     if name == "daily_digest":
-        from stratum.common import sha256_hex
+        from stratum.utils.user_id_hash import hash_user_id
 
         cfg = DailyDigestConfig(
             digest_date=str(now.date()),
-            user_id_hash=sha256_hex(user_id)[:16],
+            user_id_hash=hash_user_id(user_id),
             corpus_id=f"user_{user_id}",
             max_items=job.get("config", {}).get("max_items", 20),
             llm_provider="qwen3",
@@ -87,12 +87,12 @@ def execute_builtin_job(job: dict[str, Any], user_id: str = "system") -> dict:
         return weekly_review_workflow(config=cfg, input_data=inp, output_dir=out_dir)
 
     if name == "knowledge_curator":
-        from stratum.common import sha256_hex
+        from stratum.utils.user_id_hash import hash_user_id
 
         cfg = InboxConfig(
             llm_provider="qwen3",
             llm_model="qwen3-max",
-            user_id_hash=sha256_hex(user_id)[:16],
+            user_id_hash=hash_user_id(user_id),
             corpus_id=f"user_{user_id}",
             file_path=Path(""),
             file_checksum="",

@@ -9,6 +9,7 @@ import ulid as ulid_mod
 from datetime import datetime
 from stratum.dao.users import UserDAO
 from stratum.dao.substrate import SubstrateDAO
+from stratum.utils.user_id_hash import hash_user_id
 from stratum.dao.note import NoteDAO
 from stratum.dao.concept import ConceptDAO
 from stratum.dao.derivative import DerivativeDAO
@@ -32,7 +33,8 @@ def test_substrate_get_blocked_cross_corpus(two_users):
     uA, uB, db = two_users
     sid = str(ulid_mod.ULID())
     db.execute(
-        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)", (sid, uA.id, "A's doc")
+        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
+        (sid, hash_user_id(uA.id), "A's doc"),
     )
     dao = SubstrateDAO(db)
     assert dao.get_substrate(substrate_id=sid, user_id=uB.id) is None
@@ -42,7 +44,8 @@ def test_substrate_get_own_corpus(two_users):
     uA, uB, db = two_users
     sid = str(ulid_mod.ULID())
     db.execute(
-        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)", (sid, uA.id, "A's doc")
+        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
+        (sid, hash_user_id(uA.id), "A's doc"),
     )
     dao = SubstrateDAO(db)
     assert dao.get_substrate(substrate_id=sid, user_id=uA.id) is not None
@@ -50,17 +53,26 @@ def test_substrate_get_own_corpus(two_users):
 
 def test_substrate_list_only_own(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)", ("s1", uA.id, "A1"))
-    db.execute("INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)", ("s2", uB.id, "B1"))
+    db.execute(
+        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
+        ("s1", hash_user_id(uA.id), "A1"),
+    )
+    db.execute(
+        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
+        ("s2", hash_user_id(uB.id), "B1"),
+    )
     dao = SubstrateDAO(db)
     a_list = dao.list_substrates(user_id=uA.id)
-    assert all(s.user_id == uA.id for s in a_list)
+    assert all(s.user_id == hash_user_id(uA.id) for s in a_list)
     assert len(a_list) == 1
 
 
 def test_substrate_list_empty_for_other(two_users):
     uA, uB, db = two_users
-    db.execute("INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)", ("s1", uA.id, "A1"))
+    db.execute(
+        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
+        ("s1", hash_user_id(uA.id), "A1"),
+    )
     dao = SubstrateDAO(db)
     assert dao.list_substrates(user_id=uB.id) == []
 
