@@ -1,16 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
+import { use } from "react";
 
 interface ConceptNode {
   id: string;
   type: string;
   label?: string;
   title?: string;
-}
-
-interface ConceptEdge {
-  from: string;
-  to: string;
-  type: string;
 }
 
 interface ConceptDetail {
@@ -20,68 +19,46 @@ interface ConceptDetail {
   aliases?: string[];
   wikilink?: string;
   platform_view?: Record<string, unknown> | null;
-  related_substrates?: { id: string; title: string; medium: string }[];
+  related_substrates?: { id: string; title: string }[];
 }
 
 interface ConceptGraph {
   nodes: ConceptNode[];
-  edges: ConceptEdge[];
+  edges: unknown[];
 }
 
-async function getConcept(id: string): Promise<ConceptDetail | null> {
-  try {
-    const res = await fetch(
-      `${process.env.STRATUM_API_INTERNAL_URL || "http://localhost:9304"}/api/v1/concepts/${id}`,
-      { cache: "no-store" }
-    );
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
-
-async function getConceptGraph(id: string): Promise<ConceptGraph | null> {
-  try {
-    const res = await fetch(
-      `${process.env.STRATUM_API_INTERNAL_URL || "http://localhost:9304"}/api/v1/concepts/graph/${id}`,
-      { cache: "no-store" }
-    );
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
-
-export default async function ConceptDetailPage({
+export default function ConceptDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const [concept, graph] = await Promise.all([
-    getConcept(params.id),
-    getConceptGraph(params.id),
-  ]);
+  const { id } = use(params);
 
-  if (!concept) {
-    return <p className="p-6 text-[var(--color-muted)]">概念未找到。</p>;
-  }
+  const { data: concept, isLoading } = useQuery({
+    queryKey: ["concept", id],
+    queryFn: () => apiClient.get<ConceptDetail>(`/api/v1/concepts/${id}`),
+    enabled: !!id,
+  });
 
-  const relatedConcepts = graph?.nodes.filter(
-    (n) => n.type === "concept" && n.id !== params.id
-  );
+  const { data: graph } = useQuery({
+    queryKey: ["concept-graph", id],
+    queryFn: () => apiClient.get<ConceptGraph>(`/api/v1/concepts/graph/${id}`),
+    enabled: !!id,
+  });
+
+  if (isLoading) return <p className="p-6 text-sm text-[var(--color-muted)]">加载中...</p>;
+  if (!concept) return <p className="p-6 text-sm text-[var(--color-muted)]">概念未找到。</p>;
+
+  const relatedConcepts = graph?.nodes.filter((n) => n.type === "concept" && n.id !== id);
   const relatedSubstrates = graph?.nodes.filter((n) => n.type === "substrate");
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <div className="mb-6">
         <div className="flex items-start justify-between gap-2">
-          <h1 className="text-2xl font-bold">{concept.name}</h1>
-          <Link
-            href={`/concepts/${params.id}/graph`}
-            className="shrink-0 px-3 py-1.5 text-xs border border-[var(--color-border)] rounded hover:bg-[var(--color-surface)] transition"
-          >
+          <h1 className="text-xl font-semibold">{concept.name}</h1>
+          <Link href={`/concepts/${id}/graph`}
+            className="shrink-0 px-3 py-1.5 text-xs border border-[var(--color-border)] rounded hover:bg-[var(--color-surface)]">
             查看图谱 →
           </Link>
         </div>
@@ -91,82 +68,46 @@ export default async function ConceptDetailPage({
           </span>
         )}
         {(concept.aliases?.length ?? 0) > 0 && (
-          <p className="text-sm text-[var(--color-muted)] mt-2">
-            别名：{concept.aliases!.join(" · ")}
-          </p>
-        )}
-        {concept.wikilink && (
-          <p className="text-sm mt-2">
-            <Link
-              href={concept.wikilink}
-              className="text-blue-500 hover:underline"
-            >
-              {concept.wikilink}
-            </Link>
-          </p>
+          <p className="text-sm text-[var(--color-muted)] mt-2">别名：{concept.aliases!.join(" · ")}</p>
         )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {(concept.related_substrates?.length ?? 0) > 0 && (
           <section>
-            <h2 className="font-semibold mb-3">相关资料</h2>
-            <div className="space-y-2">
+            <h2 className="font-medium text-sm mb-2">相关资料</h2>
+            <div className="space-y-1">
               {concept.related_substrates!.map((s) => (
-                <div
-                  key={s.id}
-                  className="p-2 border border-[var(--color-border)] rounded text-sm"
-                >
-                  <span className="font-medium">{s.title}</span>
-                  <span className="text-[var(--color-muted)] ml-2">
-                    {s.medium}
-                  </span>
-                </div>
+                <Link key={s.id} href={`/documents/${s.id}`}
+                  className="block p-2 border border-[var(--color-border)] rounded text-sm hover:bg-[var(--color-surface)]">
+                  {s.title}
+                </Link>
               ))}
             </div>
           </section>
         )}
-
         {(relatedConcepts?.length ?? 0) > 0 && (
           <section>
-            <h2 className="font-semibold mb-3">相关概念</h2>
-            <div className="space-y-2">
+            <h2 className="font-medium text-sm mb-2">相关概念</h2>
+            <div className="space-y-1">
               {relatedConcepts!.map((n) => (
-                <Link
-                  key={n.id}
-                  href={`/concepts/${n.id}`}
-                  className="block p-2 border border-[var(--color-border)] rounded text-sm hover:bg-[var(--color-border)] transition"
-                >
+                <Link key={n.id} href={`/concepts/${n.id}`}
+                  className="block p-2 border border-[var(--color-border)] rounded text-sm hover:bg-[var(--color-surface)]">
                   {n.label}
                 </Link>
               ))}
             </div>
           </section>
         )}
-
         {(relatedSubstrates?.length ?? 0) > 0 && (
           <section>
-            <h2 className="font-semibold mb-3">引用此概念的文档</h2>
-            <div className="space-y-2">
+            <h2 className="font-medium text-sm mb-2">引用此概念的文档</h2>
+            <div className="space-y-1">
               {relatedSubstrates!.map((n) => (
-                <div
-                  key={n.id}
-                  className="p-2 border border-[var(--color-border)] rounded text-sm"
-                >
+                <div key={n.id} className="p-2 border border-[var(--color-border)] rounded text-sm">
                   {n.title}
                 </div>
               ))}
-            </div>
-          </section>
-        )}
-
-        {concept.platform_view && (
-          <section>
-            <h2 className="font-semibold mb-3">平台知识</h2>
-            <div className="p-3 bg-[var(--color-border)] rounded text-sm">
-              <pre className="whitespace-pre-wrap">
-                {JSON.stringify(concept.platform_view, null, 2)}
-              </pre>
             </div>
           </section>
         )}

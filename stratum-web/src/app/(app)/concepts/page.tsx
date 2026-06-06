@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
 
 interface Concept {
   id: string;
@@ -6,27 +10,20 @@ interface Concept {
   type?: string;
 }
 
-async function getConcepts(): Promise<Concept[]> {
-  try {
-    const res = await fetch(
-      `${process.env.STRATUM_API_INTERNAL_URL || "http://localhost:9304"}/api/v1/concepts`,
-      { cache: "no-store" }
-    );
-    if (!res.ok) return [];
-    return res.json();
-  } catch {
-    return [];
-  }
-}
+export default function ConceptsPage() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["concepts"],
+    queryFn: () => apiClient.get<Concept[]>("/api/v1/concepts"),
+  });
 
-export default async function ConceptsPage() {
-  const concepts = await getConcepts();
+  const concepts = data ?? [];
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">概念</h1>
-      {concepts.length === 0 && (
-        <p className="text-[var(--color-muted)]">暂无概念。</p>
+    <div className="max-w-3xl mx-auto">
+      <h1 className="text-xl font-semibold mb-4">概念</h1>
+      {isLoading && <p className="text-sm text-[var(--color-muted)]">加载中...</p>}
+      {!isLoading && concepts.length === 0 && (
+        <p className="text-sm text-[var(--color-muted)]">暂无概念。</p>
       )}
       <div className="space-y-2">
         {concepts.map((c) => (
