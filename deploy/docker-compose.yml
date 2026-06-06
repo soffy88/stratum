@@ -91,6 +91,7 @@ services:
     volumes:
       # Stratum source mounted live — code changes take effect after container restart, no rebuild.
       - /home/soffy/projects/stratum/src:/app/src
+      - /home/soffy/projects/stratum/scripts:/app/scripts:ro
       # Platform packages mounted editable — source changes are live without rebuild
       # Packages live at platform/3O/{pkg} on the host.
       - /home/soffy/projects/platform/3O/obase:/opt/platform/obase
@@ -100,6 +101,8 @@ services:
       - /home/soffy/projects/platform/3O/oservice:/opt/platform/oservice
       # Data directory (DuckDB, uploads, etc.)
       - ~/.stratum:/root/.stratum
+      # AII shared export volume — Wave 4
+      - /home/soffy/shared/stratum-to-aii:/data/shared/stratum-to-aii:rw
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9304/api/v1/health"]
       interval: 30s
