@@ -18,6 +18,44 @@ def _extract_id(raw: object) -> str | None:
     return m.group(0) if m else None
 
 
+def _fill_derivative_content(substrate_id: str, findings: object) -> None:
+    """Write parsed content from findings.derivative_ids into derivative.content.
+
+    omodul stores content as a list of Python repr-strings, e.g.:
+      ["{'markdown': '# Title...', 'plaintext': '...', 'chapters': '[...]'}"]
+    We parse each item and UPDATE derivative rows by (substrate_id, kind).
+    """
+    deriv_ids = getattr(findings, "derivative_ids", None) or []
+    if not deriv_ids:
+        return
+    log = logging.getLogger(__name__)
+    for item in deriv_ids:
+        try:
+            d = ast.literal_eval(item) if isinstance(item, str) else item
+        except (ValueError, SyntaxError):
+            log.warning("deriv_parse_failed substrate_id=%s", substrate_id)
+            continue
+        if not isinstance(d, dict):
+            continue
+        for kind, content in d.items():
+            if not content or not isinstance(content, str):
+                continue
+            try:
+                db_execute(
+                    "UPDATE derivative SET content = $content"
+                    " WHERE substrate_id = $sid AND kind = $kind",
+                    {"content": content, "sid": substrate_id, "kind": kind},
+                )
+            except Exception as exc:
+                log.warning(
+                    "deriv_content_update_failed substrate_id=%s kind=%s error=%s",
+                    substrate_id,
+                    kind,
+                    exc,
+                )
+
+
+import ast
 import json
 import logging
 
@@ -33,7 +71,7 @@ from stratum.common import (
     user_inbox_dir,
 )
 from stratum.utils.user_id_hash import hash_user_id
-from stratum.db import insert as db_insert, update as db_update
+from stratum.db import execute as db_execute, insert as db_insert, update as db_update
 
 try:
     from oprim import url_fetch_ssrf_safe as _url_fetch_ssrf_safe
@@ -129,7 +167,7 @@ async def inbox_submit(
         "status": result.get("status", "completed"),
     }
 
-    # UPDATE title to original filename after oskill's INSERT (oskill uses path.stem = ULID as title).
+    # UPDATE title + populate derivative.content from omodul findings.
     substrate_id = response["substrate_id"]
     if substrate_id and result.get("status") != "failed":
         stored_title = (
@@ -141,6 +179,8 @@ async def inbox_submit(
             logging.getLogger(__name__).warning(
                 "upload_title_update_failed substrate_id=%s error=%s", substrate_id, exc
             )
+        if findings:
+            _fill_derivative_content(substrate_id, findings)
 
     if result.get("status") == "completed":
         await dedup_cache.set(fp_key, response, ttl=120)
@@ -262,7 +302,7 @@ async def inbox_webclip(
     findings = result.get("findings")
     substrate_id = _extract_id(findings.substrate_id) if findings else None
 
-    # UPDATE title to extracted HTML title after oskill's INSERT (oskill uses path.stem = ULID as title).
+    # UPDATE title + populate derivative.content from omodul findings.
     if substrate_id and result.get("status") != "failed":
         stored_title = (
             display_title or (getattr(findings, "title", None) if findings else None) or url
@@ -273,6 +313,8 @@ async def inbox_webclip(
             logging.getLogger(__name__).warning(
                 "web_clip_title_update_failed substrate_id=%s error=%s", substrate_id, exc
             )
+        if findings:
+            _fill_derivative_content(substrate_id, findings)
 
     return {
         "substrate_id": substrate_id,
