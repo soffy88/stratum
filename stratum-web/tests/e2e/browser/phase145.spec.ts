@@ -52,11 +52,11 @@ test.describe("Phase 14.5 — Nav + simple pages", () => {
     ).toBeVisible({ timeout: 10_000 });
   });
 
-  test("T05: /documents UploadButton 点击上传 可见", async ({ page }) => {
+  test("T05: /documents 上传文件按钮可见", async ({ page }) => {
     await page.goto("/documents");
     await page.waitForLoadState("networkidle");
-    // UploadButton renders a label "📁 点击上传 或拖拽文件到此处"
-    await expect(page.locator('label[for="upload-input"]')).toBeVisible({ timeout: 10_000 });
+    // UploadDialog trigger button
+    await expect(page.locator('button:has-text("上传文件")')).toBeVisible({ timeout: 10_000 });
   });
 });
 
