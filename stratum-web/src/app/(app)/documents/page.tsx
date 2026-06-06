@@ -5,13 +5,14 @@ import { ODocumentTree } from "@helios/blocks";
 import { useRouter } from "next/navigation";
 import { useDocumentTree } from "@/lib/adapters/documents";
 import type { Substrate } from "@helios/blocks";
-import { UploadButton } from "@/components/UploadButton";
+import { UploadDialog } from "@/components/UploadDialog";
 import { UrlIngestDialog } from "@/components/UrlIngestDialog";
 import { FeedSubscribeDialog } from "@/components/FeedSubscribeDialog";
 
 export default function DocumentsPage() {
   const router = useRouter();
   const { substrates, isLoading, refetch } = useDocumentTree();
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [showUrlDialog, setShowUrlDialog] = useState(false);
   const [showFeedDialog, setShowFeedDialog] = useState(false);
 
@@ -23,6 +24,12 @@ export default function DocumentsPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {showUploadDialog && (
+        <UploadDialog
+          onClose={() => setShowUploadDialog(false)}
+          onSuccess={() => void refetch?.()}
+        />
+      )}
       {showUrlDialog && (
         <UrlIngestDialog
           onClose={() => setShowUrlDialog(false)}
@@ -39,7 +46,12 @@ export default function DocumentsPage() {
         <h1 className="text-xl font-semibold">文档</h1>
       </div>
       <div className="flex items-center gap-3">
-        <UploadButton onSuccess={() => void refetch?.()} />
+        <button
+          onClick={() => setShowUploadDialog(true)}
+          className="px-3 py-1.5 bg-[var(--color-primary)] text-white rounded text-sm hover:opacity-90 transition"
+        >
+          上传文件
+        </button>
         <button
           onClick={() => setShowUrlDialog(true)}
           className="px-3 py-1.5 border border-[var(--color-border)] rounded text-sm hover:bg-[var(--color-surface)] transition"

@@ -59,7 +59,7 @@ import ast
 import json
 import logging
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 
 from stratum.common import (
     dedup_cache,
@@ -81,6 +81,47 @@ except ImportError:
     _HAS_SSRF_SAFE = False
 
 router = APIRouter(prefix="/api/v1/inbox", tags=["inbox"])
+
+_DERIVATIVE_AGENT_MAP: dict[str, str] = {
+    "translation": "translation_worker",
+    "audio": "audio_generator",
+    "illustration": "illustration_agent",
+}
+
+
+async def _run_agent_background(agent_name: str, params: dict, user_id: str) -> None:
+    """Fire-and-forget: run an omodul agent after upload without blocking the response."""
+    try:
+        if not _HAS_INBOX:
+            return
+        import os
+        from datetime import datetime, timezone
+        from omodul.knowledge.agents.base import AgentContext
+
+        if agent_name == "translation_worker":
+            from omodul.knowledge.agents.builtin.translation_worker import (
+                TranslationWorkerAgent as _Cls,
+            )
+        elif agent_name == "audio_generator":
+            from omodul.knowledge.agents.builtin.audio_generator import AudioGeneratorAgent as _Cls
+        elif agent_name == "illustration_agent":
+            from omodul.knowledge.agents.builtin.illustration_agent import IllustrationAgent as _Cls
+        else:
+            return
+        context = AgentContext(
+            user_id=user_id,
+            agent_run_id=generate_ulid(),
+            invoked_at=datetime.now(timezone.utc),
+        )
+        agent = _Cls()
+        agent.llm_provider = os.environ.get("STRATUM_LLM_PROVIDER", "qwen3_dashscope")
+        agent.llm_model = os.environ.get("STRATUM_LLM_MODEL", "qwen-plus")
+        enriched = dict(params)
+        enriched.setdefault("corpus_id", f"user_{user_id}")
+        await agent.run(enriched, context)
+    except Exception as exc:
+        logging.getLogger(__name__).warning("bg_agent_failed name=%s error=%s", agent_name, exc)
+
 
 _UPLOAD_MAX_BYTES = 500 * 1024 * 1024  # 500 MB
 
@@ -112,8 +153,12 @@ async def _save_upload(file: UploadFile, dest_dir: Path) -> tuple[Path, str]:
 
 @router.post("/submit")
 async def inbox_submit(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     medium_hint: str = Form(None),
+    title_override: str = Form(None),
+    tags: str = Form(None),
+    derivatives: list[str] | None = Form(None),
     user_id: str = Depends(jwt_auth),
 ):
     inbox_dir = ensure_dir(user_inbox_dir(user_id))
@@ -160,18 +205,17 @@ async def inbox_submit(
         raise HTTPException(500, detail=err.get("error_message", "Ingest failed"))
 
     findings = result.get("findings")
-    response = {
-        "upload_id": checksum[:12],
-        "substrate_id": _extract_id(findings.substrate_id) if findings else None,
-        "medium": str(findings.medium) if findings else medium_hint,
-        "status": result.get("status", "completed"),
-    }
+    substrate_id = _extract_id(findings.substrate_id) if findings else None
+    stored_title = "untitled"
+    derivatives_queued: list[str] = []
 
     # UPDATE title + populate derivative.content from omodul findings.
-    substrate_id = response["substrate_id"]
     if substrate_id and result.get("status") != "failed":
         stored_title = (
-            file.filename or (getattr(findings, "title", None) if findings else None) or "untitled"
+            (title_override.strip() if title_override and title_override.strip() else None)
+            or file.filename
+            or (getattr(findings, "title", None) if findings else None)
+            or "untitled"
         )
         try:
             db_update("substrates", substrate_id, {"title": stored_title, "updated_at": now_utc()})
@@ -181,7 +225,26 @@ async def inbox_submit(
             )
         if findings:
             _fill_derivative_content(substrate_id, findings)
+        # Schedule optional derivative agents as background tasks.
+        for d in derivatives or []:
+            agent_name = _DERIVATIVE_AGENT_MAP.get(d)
+            if agent_name:
+                background_tasks.add_task(
+                    _run_agent_background,
+                    agent_name,
+                    {"substrate_id": substrate_id},
+                    user_id,
+                )
+                derivatives_queued.append(d)
 
+    response = {
+        "upload_id": checksum[:12],
+        "substrate_id": substrate_id,
+        "title": stored_title,
+        "medium": str(findings.medium) if findings else medium_hint,
+        "status": result.get("status", "completed"),
+        "derivatives_queued": derivatives_queued,
+    }
     if result.get("status") == "completed":
         await dedup_cache.set(fp_key, response, ttl=120)
     return response
