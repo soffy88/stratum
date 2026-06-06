@@ -39,14 +39,49 @@ class SubstrateDAO:
         self.conn = db_conn
 
     def list_substrates(
-        self, *, user_id: str, medium: Optional[str] = None, limit: int = 50
+        self,
+        *,
+        user_id: str,
+        medium: Optional[str] = None,
+        limit: int = 50,
+        view_filter: Optional[dict] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
     ) -> List[Substrate]:
+        import json as _json
+        uid_hash = hash_user_id(user_id)
         sql = f"SELECT {self._COLS} FROM substrates WHERE user_id = ?"
-        params: list = [hash_user_id(user_id)]
-        if medium:
+        params: list = [uid_hash]
+
+        # Merge view_filter into query conditions
+        if view_filter:
+            mediums = view_filter.get("medium") or []
+            tags = view_filter.get("tags") or []
+            languages = view_filter.get("language") or []
+            if mediums:
+                placeholders = ", ".join("?" for _ in mediums)
+                # medium maps to mime prefix: "paper"→"application/pdf", else LIKE %medium%
+                mime_conditions = []
+                for m in mediums:
+                    mime_conditions.append("mime LIKE ?")
+                    params.append(f"%{m}%")
+                sql += f" AND ({' OR '.join(mime_conditions)})"
+            if tags:
+                for t in tags:
+                    sql += " AND (meta_json->>'$.tags' LIKE ? OR meta_json LIKE ?)"
+                    params.extend([f'%"{t}"%', f'%{t}%'])
+            if languages:
+                placeholders = ", ".join("?" for _ in languages)
+                sql += f" AND language IN ({placeholders})"
+                params.extend(languages)
+        elif medium:
             sql += " AND mime LIKE ?"
             params.append(f"%{medium}%")
-        sql += " ORDER BY created_at DESC LIMIT ?"
+
+        allowed_sorts = {"created_at", "updated_at", "title", "pin_priority"}
+        col = sort_by if sort_by in allowed_sorts else "created_at"
+        order = "ASC" if sort_order.lower() == "asc" else "DESC"
+        sql += f" ORDER BY {col} {order} LIMIT ?"
         params.append(limit)
         return [Substrate(*r) for r in self.conn.execute(sql, params).fetchall()]
 

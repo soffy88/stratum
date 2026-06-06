@@ -71,10 +71,11 @@ export function adaptDerivative(item: DerivativeItem, substrateId: string): Deri
 // ---------------------------------------------------------------------------
 
 /** Hook: list all substrates for ODocumentTree */
-export function useDocumentTree() {
+export function useDocumentTree(viewId?: string | null) {
+  const url = viewId ? `/api/substrates?view_id=${viewId}` : "/api/substrates";
   const query = useQuery({
-    queryKey: ["substrates"],
-    queryFn: () => apiClient.get<SubstratesResponse>("/api/substrates"),
+    queryKey: ["substrates", viewId ?? "all"],
+    queryFn: () => apiClient.get<SubstratesResponse>(url),
   });
   return {
     substrates: (query.data?.items ?? []).map(adaptSubstrate),

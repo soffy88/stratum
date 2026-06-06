@@ -45,18 +45,45 @@ class DerivativeItem(BaseModel):
 
 @router.get("/substrates", response_model=ListSubstratesResponse)
 async def list_substrates(
-    request: Request, medium: Optional[str] = None, limit: int = 50, db=Depends(get_db)
+    request: Request,
+    medium: Optional[str] = None,
+    view_id: Optional[str] = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
+    limit: int = 50,
+    db=Depends(get_db),
 ):
+    import json as _json
     user_id = request.state.user_id
-    subs = SubstrateDAO(db).list_substrates(user_id=user_id, medium=medium, limit=limit)
+
+    view_filter = None
+    if view_id:
+        from stratum.utils.user_id_hash import hash_user_id
+        uid_hash = hash_user_id(user_id)
+        row = db.execute(
+            "SELECT filter_json, sort_by, sort_order FROM user_saved_views WHERE id = ? AND user_id = ?",
+            (view_id, uid_hash),
+        ).fetchone()
+        if row:
+            try:
+                view_filter = _json.loads(row[0]) if isinstance(row[0], str) else (row[0] or {})
+            except Exception:
+                view_filter = {}
+            sort_by = row[1] or sort_by
+            sort_order = row[2] or sort_order
+
+    subs = SubstrateDAO(db).list_substrates(
+        user_id=user_id,
+        medium=medium,
+        limit=limit,
+        view_filter=view_filter,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
     items = [
         SubstrateItem(
-            id=s.id,
-            title=s.title,
-            mime=s.mime,
-            language=s.language,
-            page_count=s.page_count,
-            created_at=s.created_at,
+            id=s.id, title=s.title, mime=s.mime,
+            language=s.language, page_count=s.page_count, created_at=s.created_at,
         )
         for s in subs
     ]
