@@ -41,6 +41,7 @@ except ImportError:
 try:
     from omodul import InboxConfig, InboxInput, process_inbox_substrate
     from stratum.common import sha256_hex, user_inbox_dir, ensure_dir
+    from stratum.utils.user_id_hash import hash_user_id
 
     _HAS_INBOX = True
 except ImportError:
@@ -297,7 +298,7 @@ async def check_feed_now(feed_id: str, user_id: str = Depends(jwt_auth)):
                 config = InboxConfig(
                     file_path=str(html_path),
                     file_checksum=checksum,
-                    user_id_hash=sha256_hex(user_id)[:16],
+                    user_id_hash=hash_user_id(user_id),
                     medium_hint="webpage",
                     auto_classify=True,
                     llm_provider="qwen3",

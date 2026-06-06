@@ -12,6 +12,7 @@ from stratum.middleware.corpus_isolation import corpus_isolation_middleware
 from stratum.http_api.routes import search, substrates, notes, agents, scheduled_jobs
 from stratum.dao.users import UserDAO
 from stratum.dao.note import NoteDAO
+from stratum.utils.user_id_hash import hash_user_id
 
 
 @pytest.fixture
@@ -83,7 +84,7 @@ def test_search_returns_results(app_client, users):
     # substrates (plural, user_id) — Phase 14 schema used by SubstrateDAO post-filter
     db.execute(
         "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
-        ("s1", a.id, "Machine Learning Intro"),
+        ("s1", hash_user_id(a.id), "Machine Learning Intro"),
     )
     from unittest.mock import patch, AsyncMock
     from types import SimpleNamespace
@@ -108,7 +109,7 @@ def test_search_corpus_isolated(app_client, users):
     a, b = users
     db.execute(
         "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
-        ("s1", b.id, "Secret B Doc"),
+        ("s1", hash_user_id(b.id), "Secret B Doc"),
     )
     r = client.post("/api/search", json={"query": "Secret"}, headers=_h(a))
     assert all(item["id"] != "s1" for item in r.json()["results"])
@@ -122,7 +123,7 @@ def test_list_substrates(app_client, users):
     a, _ = users
     db.execute(
         "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
-        ("s1", a.id, "Doc A"),
+        ("s1", hash_user_id(a.id), "Doc A"),
     )
     r = client.get("/api/substrates", headers=_h(a))
     assert r.status_code == 200
@@ -134,7 +135,7 @@ def test_list_substrates_corpus_isolated(app_client, users):
     a, b = users
     db.execute(
         "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
-        ("s1", b.id, "B Doc"),
+        ("s1", hash_user_id(b.id), "B Doc"),
     )
     r = client.get("/api/substrates", headers=_h(a))
     assert r.json()["total"] == 0
@@ -145,7 +146,7 @@ def test_get_substrate_by_id(app_client, users):
     a, _ = users
     db.execute(
         "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
-        ("s1", a.id, "My Doc"),
+        ("s1", hash_user_id(a.id), "My Doc"),
     )
     r = client.get("/api/substrates/s1", headers=_h(a))
     assert r.status_code == 200
@@ -157,7 +158,7 @@ def test_get_substrate_cross_corpus_404(app_client, users):
     a, b = users
     db.execute(
         "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
-        ("s1", b.id, "B Doc"),
+        ("s1", hash_user_id(b.id), "B Doc"),
     )
     r = client.get("/api/substrates/s1", headers=_h(a))
     assert r.status_code == 404
@@ -169,7 +170,7 @@ def test_get_derivatives(app_client, users):
     # substrates (plural) for ownership check; derivative keeps corpus_id
     db.execute(
         "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
-        ("s1", a.id, "Doc"),
+        ("s1", hash_user_id(a.id), "Doc"),
     )
     db.execute(
         "INSERT INTO derivative (id, substrate_id, kind, seq, content, corpus_id) VALUES (?,?,?,?,?,?)",
