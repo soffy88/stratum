@@ -74,8 +74,9 @@ def _make_ingest_adapter():
     """
     from omodul import process_inbox_substrate, InboxConfig, InboxInput
     from stratum.utils.user_id_hash import hash_user_id
-    from stratum.db import update as db_update
+    from stratum.db import execute as db_execute, update as db_update
     from stratum.common import now_utc
+    import ast
     import hashlib
     import re
     import tempfile
@@ -111,19 +112,43 @@ def _make_ingest_adapter():
         result = process_inbox_substrate(
             config=config, input_data=InboxInput(), output_dir=tmp_path.parent
         )
-        # UPDATE title to real feed entry title (oskill uses temp path.stem as title).
-        if title and result.get("status") != "failed":
+        if result.get("status") != "failed":
             findings = result.get("findings")
             sid_raw = getattr(findings, "substrate_id", None) if findings else None
             if sid_raw:
                 m = _ULID_RE.search(str(sid_raw))
                 if m:
-                    try:
-                        db_update(
-                            "substrates", m.group(0), {"title": title, "updated_at": now_utc()}
-                        )
-                    except Exception as exc:
-                        log.warning("feed_title_update_failed sid=%s error=%s", m.group(0), exc)
+                    sid = m.group(0)
+                    # UPDATE title to real feed entry title
+                    if title:
+                        try:
+                            db_update("substrates", sid, {"title": title, "updated_at": now_utc()})
+                        except Exception as exc:
+                            log.warning("feed_title_update_failed sid=%s error=%s", sid, exc)
+                    # Populate derivative.content from findings.derivative_ids
+                    for item in getattr(findings, "derivative_ids", None) or []:
+                        try:
+                            d = ast.literal_eval(item) if isinstance(item, str) else item
+                        except (ValueError, SyntaxError):
+                            continue
+                        if not isinstance(d, dict):
+                            continue
+                        for kind, deriv_content in d.items():
+                            if not deriv_content or not isinstance(deriv_content, str):
+                                continue
+                            try:
+                                db_execute(
+                                    "UPDATE derivative SET content = $content"
+                                    " WHERE substrate_id = $sid AND kind = $kind",
+                                    {"content": deriv_content, "sid": sid, "kind": kind},
+                                )
+                            except Exception as exc:
+                                log.warning(
+                                    "feed_deriv_update_failed sid=%s kind=%s error=%s",
+                                    sid,
+                                    kind,
+                                    exc,
+                                )
         return result
 
     _ingest_adapter.__module__ = "omodul.feed_ingest"  # satisfy kind="omodul" check
