@@ -160,6 +160,10 @@ from stratum.api.routers import timeline
 
 app.include_router(timeline.router)
 
+from stratum.api.routers import export
+
+app.include_router(export.router)
+
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 from stratum.api.ws import router as ws_router
 

@@ -18,6 +18,19 @@ def _extract_id(raw: object) -> str | None:
     return m.group(0) if m else None
 
 
+def _extract_source_metadata(findings: object, fallback_source: str | None = None) -> dict:
+    """Return {source, published_at} from omodul findings, falling back to provided values."""
+    source = (
+        getattr(findings, "source_url", None)
+        or getattr(findings, "source", None)
+        or fallback_source
+    )
+    published_at = getattr(findings, "published_at", None) or getattr(
+        findings, "creation_date", None
+    )
+    return {"source": source, "published_at": published_at}
+
+
 def _fill_derivative_content(substrate_id: str, findings: object) -> None:
     """Write parsed content from findings.derivative_ids into derivative.content.
 
@@ -217,8 +230,18 @@ async def inbox_submit(
             or (getattr(findings, "title", None) if findings else None)
             or "untitled"
         )
+        source_meta = (
+            _extract_source_metadata(findings, fallback_source=file.filename)
+            if findings
+            else {"source": file.filename, "published_at": None}
+        )
+        update_data = {"title": stored_title, "updated_at": now_utc()}
+        if source_meta.get("source"):
+            update_data["source"] = source_meta["source"]
+        if source_meta.get("published_at"):
+            update_data["published_at"] = source_meta["published_at"]
         try:
-            db_update("substrates", substrate_id, {"title": stored_title, "updated_at": now_utc()})
+            db_update("substrates", substrate_id, update_data)
         except Exception as exc:
             logging.getLogger(__name__).warning(
                 "upload_title_update_failed substrate_id=%s error=%s", substrate_id, exc
@@ -370,8 +393,18 @@ async def inbox_webclip(
         stored_title = (
             display_title or (getattr(findings, "title", None) if findings else None) or url
         )
+        source_meta = (
+            _extract_source_metadata(findings, fallback_source=url)
+            if findings
+            else {"source": url, "published_at": None}
+        )
+        wc_update = {"title": stored_title, "updated_at": now_utc()}
+        if source_meta.get("source"):
+            wc_update["source"] = source_meta["source"]
+        if source_meta.get("published_at"):
+            wc_update["published_at"] = source_meta["published_at"]
         try:
-            db_update("substrates", substrate_id, {"title": stored_title, "updated_at": now_utc()})
+            db_update("substrates", substrate_id, wc_update)
         except Exception as exc:
             logging.getLogger(__name__).warning(
                 "web_clip_title_update_failed substrate_id=%s error=%s", substrate_id, exc
