@@ -39,7 +39,7 @@ export default function DocumentsPage() {
         <h1 className="text-xl font-semibold">文档</h1>
       </div>
       <div className="flex items-center gap-3">
-        <UploadButton />
+        <UploadButton onSuccess={() => void refetch?.()} />
         <button
           onClick={() => setShowUrlDialog(true)}
           className="px-3 py-1.5 border border-[var(--color-border)] rounded text-sm hover:bg-[var(--color-surface)] transition"

@@ -127,6 +127,43 @@ async def inbox_submit(
         "medium": str(findings.medium) if findings else medium_hint,
         "status": result.get("status", "completed"),
     }
+
+    # Write substrate into Stratum's own DB (substrates table).
+    # oskill's internal INSERT targets the old 'substrate' singular table
+    # renamed in Phase 14 — same shim as web_clip handler.
+    substrate_id = response["substrate_id"]
+    if substrate_id and result.get("status") != "failed":
+        omodul_title = getattr(findings, "title", None) if findings else None
+        medium = response["medium"] or medium_hint or "unknown"
+        page_count = getattr(findings, "page_count", 0) or 0
+        byte_size = file_path.stat().st_size if file_path.exists() else 0
+        stored_title = omodul_title or file.filename or "untitled"
+        meta: dict = {"medium": medium, "original_filename": file.filename}
+        if medium_hint:
+            meta["medium_hint"] = medium_hint
+        try:
+            db_insert(
+                "substrates",
+                {
+                    "id": substrate_id,
+                    "user_id": user_id,
+                    "title": stored_title,
+                    "mime": f"application/octet-stream; medium={medium}",
+                    "source_path": str(file_path),
+                    "file_hash": checksum,
+                    "byte_size": byte_size,
+                    "page_count": page_count,
+                    "is_pinned": False,
+                    "meta_json": json.dumps(meta),
+                    "created_at": now_utc(),
+                    "updated_at": now_utc(),
+                },
+            )
+        except Exception as exc:
+            logging.getLogger(__name__).warning(
+                "upload_db_insert_failed substrate_id=%s error=%s", substrate_id, exc
+            )
+
     if result.get("status") == "completed":
         await dedup_cache.set(fp_key, response, ttl=120)
     return response
