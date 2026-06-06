@@ -74,8 +74,13 @@ def _make_ingest_adapter():
     """
     from omodul import process_inbox_substrate, InboxConfig, InboxInput
     from stratum.utils.user_id_hash import hash_user_id
-    import tempfile
+    from stratum.db import update as db_update
+    from stratum.common import now_utc
     import hashlib
+    import re
+    import tempfile
+
+    _ULID_RE = re.compile(r"[0-9A-Z]{26}")
 
     def _ingest_adapter(
         *,
@@ -103,9 +108,23 @@ def _make_ingest_adapter():
             llm_provider="qwen3_dashscope",
             llm_model="qwen-plus",
         )
-        return process_inbox_substrate(
+        result = process_inbox_substrate(
             config=config, input_data=InboxInput(), output_dir=tmp_path.parent
         )
+        # UPDATE title to real feed entry title (oskill uses temp path.stem as title).
+        if title and result.get("status") != "failed":
+            findings = result.get("findings")
+            sid_raw = getattr(findings, "substrate_id", None) if findings else None
+            if sid_raw:
+                m = _ULID_RE.search(str(sid_raw))
+                if m:
+                    try:
+                        db_update(
+                            "substrates", m.group(0), {"title": title, "updated_at": now_utc()}
+                        )
+                    except Exception as exc:
+                        log.warning("feed_title_update_failed sid=%s error=%s", m.group(0), exc)
+        return result
 
     _ingest_adapter.__module__ = "omodul.feed_ingest"  # satisfy kind="omodul" check
     _ingest_adapter.__name__ = "ingest_adapter"
