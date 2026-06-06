@@ -33,6 +33,7 @@ from stratum.common import (
     user_agent_runs_dir,
 )
 from stratum.db import insert, query, read, update
+from stratum.utils.user_id_hash import hash_user_id
 
 # ── oservice ResearcherAgent ──────────────────────────────────────────────────
 
@@ -160,7 +161,7 @@ if _HAS_OMODUL:
         inp = params.get("input") or {}
         config = DailyDigestConfig(
             digest_date=cfg.get("digest_date") or str(date.today()),
-            user_id_hash=sha256_hex(user_id)[:16],
+            user_id_hash=hash_user_id(user_id),
             corpus_id=cfg.get("corpus_id") or f"user_{user_id}",
             max_items=cfg.get("max_items", 20),
             llm_provider=cfg.get("llm_provider", _DEFAULT_LLM_PROVIDER),
@@ -193,7 +194,7 @@ if _HAS_OMODUL:
         config = InboxConfig(
             llm_provider=cfg.get("llm_provider", _DEFAULT_LLM_PROVIDER),
             llm_model=cfg.get("llm_model", _DEFAULT_LLM_MODEL),
-            user_id_hash=sha256_hex(user_id)[:16],
+            user_id_hash=hash_user_id(user_id),
             corpus_id=cfg.get("corpus_id") or f"user_{user_id}",
             file_path=Path(cfg.get("file_path", "")),
             file_checksum=cfg.get("file_checksum", ""),

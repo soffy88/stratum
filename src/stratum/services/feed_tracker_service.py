@@ -73,6 +73,7 @@ def _make_ingest_adapter():
     Adapter: writes content to a temp file and builds InboxConfig.
     """
     from omodul import process_inbox_substrate, InboxConfig, InboxInput
+    from stratum.utils.user_id_hash import hash_user_id
     import tempfile
     import hashlib
 
@@ -96,7 +97,7 @@ def _make_ingest_adapter():
         config = InboxConfig(
             file_path=str(tmp_path),
             file_checksum=checksum,
-            user_id_hash=hashlib.sha256(user_id.encode()).hexdigest()[:16],
+            user_id_hash=hash_user_id(user_id),
             medium_hint="webpage",
             auto_classify=True,
             llm_provider="qwen3_dashscope",

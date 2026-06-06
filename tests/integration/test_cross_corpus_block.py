@@ -13,6 +13,7 @@ from stratum.dao.substrate import SubstrateDAO
 from stratum.dao.note import NoteDAO
 from stratum.dao.concept import ConceptDAO
 from stratum.dao.derivative import DerivativeDAO
+from stratum.utils.user_id_hash import hash_user_id
 from stratum.dao.view import ViewDAO
 from stratum.dao.task import TaskDAO
 from stratum.dao.template import TemplateDAO
@@ -34,7 +35,7 @@ def test_user_A_cannot_read_user_B_substrate(two_users):
     sid = str(ulid_mod.ULID())
     db.execute(
         "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
-        (sid, uB.id, "B secret"),
+        (sid, hash_user_id(uB.id), "B secret"),
     )
     assert SubstrateDAO(db).get_substrate(substrate_id=sid, user_id=uA.id) is None
 
@@ -43,7 +44,7 @@ def test_user_A_cannot_list_user_B_substrates(two_users):
     uA, uB, db = two_users
     db.execute(
         "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
-        ("s1", uB.id, "B doc"),
+        ("s1", hash_user_id(uB.id), "B doc"),
     )
     results = SubstrateDAO(db).list_substrates(user_id=uA.id)
     assert len(results) == 0
@@ -163,11 +164,11 @@ async def test_user_A_cannot_search_user_B_content(two_users):
     sid_b = str(ulid_mod.ULID())
     db.execute(
         "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
-        (sid_a, uA.id, "A doc"),
+        (sid_a, hash_user_id(uA.id), "A doc"),
     )
     db.execute(
         "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
-        (sid_b, uB.id, "B doc"),
+        (sid_b, hash_user_id(uB.id), "B doc"),
     )
 
     from unittest.mock import patch, AsyncMock

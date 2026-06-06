@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, List
 
+from stratum.utils.user_id_hash import hash_user_id
+
 
 @dataclass
 class Substrate:
@@ -40,7 +42,7 @@ class SubstrateDAO:
         self, *, user_id: str, medium: Optional[str] = None, limit: int = 50
     ) -> List[Substrate]:
         sql = f"SELECT {self._COLS} FROM substrates WHERE user_id = ?"
-        params: list = [user_id]
+        params: list = [hash_user_id(user_id)]
         if medium:
             sql += " AND mime LIKE ?"
             params.append(f"%{medium}%")
@@ -51,6 +53,6 @@ class SubstrateDAO:
     def get_substrate(self, *, substrate_id: str, user_id: str) -> Optional[Substrate]:
         res = self.conn.execute(
             f"SELECT {self._COLS} FROM substrates WHERE id = ? AND user_id = ?",
-            (substrate_id, user_id),
+            (substrate_id, hash_user_id(user_id)),
         ).fetchone()
         return Substrate(*res) if res else None
