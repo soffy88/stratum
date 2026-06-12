@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from stratum.api.mcp import mcp_app
+from stratum.db.run_migrations import run_migrations
 
 
 def _register_providers() -> None:
@@ -62,6 +63,7 @@ async def _feed_tracker_loop() -> None:
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
+    run_migrations()  # 启动时自动建表
     _register_providers()
     task = asyncio.create_task(_feed_tracker_loop())
     yield
@@ -87,9 +89,9 @@ from stratum.api.routers import agents
 
 app.include_router(agents.router)
 
-from stratum.api.routers import substrate
+from stratum.api.routers import substrates
 
-app.include_router(substrate.router)
+app.include_router(substrates.router)
 
 from stratum.api.routers import search
 

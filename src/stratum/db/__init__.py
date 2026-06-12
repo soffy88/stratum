@@ -35,6 +35,9 @@ def _conn():
         conn.close()
 
 
+get_conn = _conn
+
+
 def _serialize(v: Any) -> Any:
     """Dicts → JSON strings for JSON columns; lists pass through for VARCHAR[]."""
     if isinstance(v, dict):

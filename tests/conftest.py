@@ -39,7 +39,34 @@ CREATE TABLE IF NOT EXISTS substrates (
     page_count INTEGER, parser VARCHAR, language VARCHAR, has_cjk BOOLEAN,
     is_scanned BOOLEAN, is_pinned BOOLEAN DEFAULT FALSE, pinned_at TIMESTAMP,
     pin_priority INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, meta_json JSON DEFAULT '{}'
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, meta_json JSON DEFAULT '{}',
+    source VARCHAR, published_at TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS user_saved_views (
+    id           VARCHAR PRIMARY KEY,
+    user_id      VARCHAR NOT NULL,
+    name         VARCHAR NOT NULL,
+    description  VARCHAR,
+    is_preset    BOOLEAN DEFAULT FALSE,
+    icon         VARCHAR,
+    filter_json  JSON DEFAULT '{}',
+    sort_by      VARCHAR DEFAULT 'created_at',
+    sort_order   VARCHAR DEFAULT 'desc',
+    display_mode VARCHAR DEFAULT 'list',
+    position     INTEGER DEFAULT 0,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS highlights (
+    id VARCHAR PRIMARY KEY,
+    user_id VARCHAR NOT NULL,
+    substrate_id VARCHAR NOT NULL,
+    color VARCHAR DEFAULT 'yellow',
+    text VARCHAR NOT NULL,
+    note VARCHAR,
+    location_json JSON DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS note (
     id VARCHAR PRIMARY KEY, corpus_id VARCHAR NOT NULL, title VARCHAR, content VARCHAR,
