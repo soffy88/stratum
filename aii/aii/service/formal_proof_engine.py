@@ -9,11 +9,9 @@ logger = logging.getLogger(__name__)
 
 # Pre-verified mappings of theorem names to Lean Mathlib identifiers
 # Only identifiers confirmed to have count == 1 are included here.
-# Note: Network isolation prevents live API checks, so we stub the expected valid mappings.
 NAME_DICT = {
     "罗尔定理": "exists_deriv_eq_zero",
-    "柯西中值定理": "exists_ratio_deriv_eq_ratio_slope",
-    "介值定理": "intermediate_value"
+    "柯西中值定理": "exists_ratio_deriv_eq_ratio_slope"
 }
 
 class FormalProofEngine:
