@@ -98,6 +98,12 @@ class PgBackend(StorageBackend, EpistemicStore):
                 "verified", "is_quarantined", "provenance", "fingerprint"
             }}
             row["ku_id"] = ku_id
+            
+            # Serialize JSONB fields
+            for json_field in ["symbolic_form", "provenance"]:
+                if json_field in row and isinstance(row[json_field], dict):
+                    row[json_field] = json.dumps(row[json_field])
+
             if "embedding" in row and isinstance(row["embedding"], list):
                 # Ensure embedding is handled correctly (pgvector expects list of floats or np array)
                 pass 
@@ -128,13 +134,13 @@ class PgBackend(StorageBackend, EpistemicStore):
 
     async def search_ku_by_vector(self, query_vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
         pool = await self._ensure_pool()
-        # obase.persistence.vector_search expects certain params
+        # obase.persistence.vector_search expects 'top_k' instead of 'limit'
         results = await vector_search(
             pool=pool,
             table="aii.ku",
             vector_column="embedding",
             query_vector=query_vector,
-            limit=limit
+            top_k=limit
         )
         return results
 
