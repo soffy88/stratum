@@ -7,7 +7,7 @@ Phase 15 P1-C (Wave 5, post omodul PR #1 merge):
   Only audio_generator remains 501 (oprim.tts_synthesize not exported, no providers).
   Advisor-authorized name mapping (§7 stop-and-report, R-4 explicit auth):
     knowledge_curator → process_inbox_substrate (InboxConfig/InboxInput)
-  All runs persisted to agent_runs table; GET /runs + GET /runs/{run_id} added.
+  All runs persisted to agent_runs_sl table; GET /runs + GET /runs/{run_id} added.
 """
 
 import asyncio
@@ -117,15 +117,15 @@ def _get_researcher_engine():
 
 
 try:
-    from omodul import (
+    from omodul.daily_digest_workflow import (
         DailyDigestConfig,
         DailyDigestInput,
-        InboxConfig,
-        InboxInput,
+        daily_digest_workflow,
+    )
+    from omodul.process_inbox_substrate import InboxConfig, InboxInput, process_inbox_substrate
+    from omodul.weekly_review_workflow import (
         WeeklyReviewConfig,
         WeeklyReviewInput,
-        daily_digest_workflow,
-        process_inbox_substrate,
         weekly_review_workflow,
     )
     from omodul.knowledge.agents.base import AgentContext
@@ -138,6 +138,45 @@ try:
     _HAS_OMODUL = True
 except ImportError:
     _HAS_OMODUL = False
+
+# ── ProviderRegistry + secrets bootstrap ──────────────────────────────────────
+# oprim/obase entry_points not wired in pyproject.toml; register at import time.
+try:
+    import logging as _logging
+    import os as _os
+    from obase import ProviderRegistry as _PR
+    from obase.secrets import register_backend as _reg_secrets
+    from oprim.llm.llm_call import llm_call as _oprim_llm_call
+
+    # 1. Env-backed secrets so obase.get_secret("DASHSCOPE_API_KEY") works.
+    class _EnvSecretsBackend:
+        def get(self, name: str):
+            return _os.environ.get(name)
+        def set(self, name: str, value: str) -> None:
+            raise NotImplementedError("env backend is read-only")
+
+    _reg_secrets(_EnvSecretsBackend())
+
+    # 2. LLM providers (qwen3_dashscope / qwen3).
+    def _qwen3_ds_caller(messages, model="qwen-plus", **_):
+        user_msg = "\n".join(m.get("content", "") for m in messages if m.get("role") == "user")
+        system_msg = next((m.get("content") for m in messages if m.get("role") == "system"), None)
+        return _oprim_llm_call(prompt=user_msg, provider="qwen3_dashscope", model=model, system=system_msg).text
+
+    _pr_instance = _PR.get()
+    for _pname in ("qwen3_dashscope", "qwen3"):
+        _pr_instance.register_llm(_pname, _qwen3_ds_caller)
+
+    # 3. Image provider: wanxiang (needs secrets backend registered above).
+    try:
+        from obase.providers._image.dashscope_wanxiang import register as _reg_wanx
+        _reg_wanx(replace=True)
+    except Exception as _wx_err:
+        _logging.getLogger(__name__).warning("wanxiang provider registration skipped: %s", _wx_err)
+
+except Exception as _pr_err:
+    import logging as _logging
+    _logging.getLogger(__name__).warning("ProviderRegistry bootstrap failed: %s", _pr_err)
 
 router = APIRouter(prefix="/api/v1/agents", tags=["agents"])
 
@@ -199,7 +238,7 @@ if _HAS_OMODUL:
             file_path=Path(cfg.get("file_path", "")),
             file_checksum=cfg.get("file_checksum", ""),
         )
-        input_data = InboxInput(metadata_override=inp.get("metadata_override"))
+        input_data = InboxInput(metadata_override=inp.get("metadata_override") or {})
         return process_inbox_substrate, config, input_data
 
     _BUILDERS = {
@@ -258,7 +297,7 @@ async def agent_run(
     run_id = generate_ulid()
 
     insert(
-        "agent_runs",
+        "agent_runs_sl",
         {
             "id": run_id,
             "user_id": user_id,
@@ -326,7 +365,7 @@ async def agent_run(
         if isinstance(err, dict):
             err = err.get("error_message") or str(err)
         update(
-            "agent_runs",
+            "agent_runs_sl",
             run_id,
             {
                 "status": final_status,
@@ -343,7 +382,7 @@ async def agent_run(
         final_status = "failed"
         result = {"error": str(e)}
         update(
-            "agent_runs",
+            "agent_runs_sl",
             run_id,
             {"status": "failed", "completed_at": now_utc(), "error": str(e)},
         )
@@ -381,13 +420,13 @@ async def agent_run(
 async def list_runs(agent: str | None = None, user_id: str = Depends(jwt_auth)):
     if agent:
         rows = query(
-            "SELECT * FROM agent_runs WHERE user_id = $uid AND agent_name = $agent ORDER BY started_at DESC",
+            "SELECT * FROM agent_runs_sl WHERE user_id = $uid AND agent_name = $agent ORDER BY started_at DESC",
             {"uid": user_id, "agent": agent},
             limit=20,
         )
     else:
         rows = query(
-            "SELECT * FROM agent_runs WHERE user_id = $uid ORDER BY started_at DESC",
+            "SELECT * FROM agent_runs_sl WHERE user_id = $uid ORDER BY started_at DESC",
             {"uid": user_id},
             limit=20,
         )
@@ -396,7 +435,7 @@ async def list_runs(agent: str | None = None, user_id: str = Depends(jwt_auth)):
 
 @router.get("/runs/{run_id}")
 async def get_run(run_id: str, user_id: str = Depends(jwt_auth)):
-    run = read("agent_runs", run_id)
+    run = read("agent_runs_sl", run_id)
     if not run or run.get("user_id") != user_id:
         raise HTTPException(404, "Agent run not found")
     return run
@@ -405,8 +444,36 @@ async def get_run(run_id: str, user_id: str = Depends(jwt_auth)):
 @router.get("/{agent_name}/runs")
 async def list_agent_runs(agent_name: str, user_id: str = Depends(jwt_auth)):
     return query(
-        "SELECT id, status, started_at, completed_at FROM agent_runs "
+        "SELECT id, status, started_at, completed_at FROM agent_runs_sl "
         "WHERE user_id = $uid AND agent_name = $name ORDER BY started_at DESC",
         {"uid": user_id, "name": agent_name},
         limit=20,
     )
+
+
+@router.get("/_debug/providers")
+async def debug_providers(_: str = Depends(jwt_auth)):
+    """Temporary: introspect live provider + module state for illustration_agent diagnosis."""
+    import sys as _sys
+    from obase import ProviderRegistry as _PR
+    info: dict = {}
+    # ProviderRegistry state
+    info["registered_providers"] = [f"{c}:{n}" for c, n in _PR.list_providers()]
+    wanx = _PR._providers.get(("image_gen", "wanxiang"))
+    info["wanxiang_type"] = type(wanx).__name__ if wanx else None
+    info["wanxiang_callable"] = callable(wanx) if wanx else None
+    # illustration_agent module binding
+    ia = _sys.modules.get("omodul.knowledge.agents.builtin.illustration_agent")
+    if ia:
+        ig = getattr(ia, "image_generate", None)
+        info["ia_image_generate_type"] = type(ig).__name__
+        info["ia_image_generate_callable"] = callable(ig) if ig is not None else None
+        info["ia_image_generate_repr"] = repr(ig)[:120]
+    else:
+        info["ia_module_loaded"] = False
+    # oprim.image_generate state
+    import oprim as _oprim
+    oprim_ig = getattr(_oprim, "image_generate", None)
+    info["oprim_image_generate_type"] = type(oprim_ig).__name__
+    info["oprim_image_generate_callable"] = callable(oprim_ig) if oprim_ig else None
+    return info
