@@ -158,10 +158,26 @@ try:
     _reg_secrets(_EnvSecretsBackend())
 
     # 2. LLM providers (qwen3_dashscope / qwen3).
-    def _qwen3_ds_caller(messages, model="qwen-plus", **_):
-        user_msg = "\n".join(m.get("content", "") for m in messages if m.get("role") == "user")
-        system_msg = next((m.get("content") for m in messages if m.get("role") == "system"), None)
-        return _oprim_llm_call(prompt=user_msg, provider="qwen3_dashscope", model=model, system=system_msg).text
+    # Direct DashScope caller: bypasses oprim.llm_call whose _call_dashscope parses
+    # output.choices but the /generation endpoint returns output.text for qwen-plus.
+    def _qwen3_ds_caller(messages, model="qwen-plus", max_tokens=4096, **_):
+        import httpx as _httpx
+        _api_key = _os.environ.get("DASHSCOPE_API_KEY", "")
+        if not _api_key:
+            raise RuntimeError("DASHSCOPE_API_KEY not set")
+        _resp = _httpx.post(
+            "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+            headers={"Authorization": f"Bearer {_api_key}", "Content-Type": "application/json"},
+            json={
+                "model": model,
+                "input": {"messages": messages},
+                "parameters": {"max_tokens": max_tokens, "temperature": 0.7},
+            },
+            timeout=60.0,
+        )
+        _resp.raise_for_status()
+        _data = _resp.json()
+        return _data["output"]["text"]
 
     _pr_instance = _PR.get()
     for _pname in ("qwen3_dashscope", "qwen3"):
