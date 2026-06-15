@@ -166,6 +166,10 @@ from stratum.api.routers import export
 
 app.include_router(export.router)
 
+from stratum.api.routers import graph as graph_router
+
+app.include_router(graph_router.router)
+
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 from stratum.api.ws import router as ws_router
 

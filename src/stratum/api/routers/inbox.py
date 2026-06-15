@@ -150,6 +150,12 @@ try:
 except ImportError:
     _HAS_INBOX = False
 
+try:
+    from stratum.services.graph_builder_service import build_graph_from_substrate as _build_graph
+    _HAS_GRAPH = True
+except ImportError:
+    _HAS_GRAPH = False
+
 
 async def _save_upload(file: UploadFile, dest_dir: Path) -> tuple[Path, str]:
     """Stream upload to temp file, return (path, sha256)."""
@@ -248,6 +254,12 @@ async def inbox_submit(
             )
         if findings:
             _fill_derivative_content(substrate_id, findings)
+        if substrate_id and _HAS_GRAPH:
+            background_tasks.add_task(
+                _build_graph,
+                substrate_id=substrate_id,
+                user_id_hash=hash_user_id(user_id),
+            )
         # Schedule optional derivative agents as background tasks.
         for d in derivatives or []:
             agent_name = _DERIVATIVE_AGENT_MAP.get(d)
@@ -339,6 +351,7 @@ def _extract_html_meta(html: str, url: str) -> dict:
 
 @router.post("/web-clip")
 async def inbox_webclip(
+    background_tasks: BackgroundTasks,
     url: str = Form(...),
     html: str = Form(None),
     title_override: str = Form(None),
@@ -411,6 +424,12 @@ async def inbox_webclip(
             )
         if findings:
             _fill_derivative_content(substrate_id, findings)
+        if substrate_id and _HAS_GRAPH:
+            background_tasks.add_task(
+                _build_graph,
+                substrate_id=substrate_id,
+                user_id_hash=hash_user_id(user_id),
+            )
 
     return {
         "substrate_id": substrate_id,
