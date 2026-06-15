@@ -157,6 +157,38 @@ try:
 
     _reg_secrets(_EnvSecretsBackend())
 
+    # 1b. Patch oprim._call_dashscope in-memory: oprim 3.10.6 parses output.choices
+    # but DashScope /generation returns output.text for qwen-plus. §20-compliant
+    # (memory-only override, no source file changes).
+    import sys as _sys
+    _oprim_llm_mod = _sys.modules['oprim.llm.llm_call']  # attr import gives function, not module
+    from oprim.llm._types import LLMResponse as _LLMResponse
+    from oprim.errors import LLMError as _LLMError
+
+    def _fixed_dashscope(prompt, model, temperature, max_tokens, system):
+        import httpx as _hx
+        _key = _os.getenv("DASHSCOPE_API_KEY", "")
+        if not _key:
+            raise _LLMError("DASHSCOPE_API_KEY not set")
+        _msgs = []
+        if system:
+            _msgs.append({"role": "system", "content": system})
+        _msgs.append({"role": "user", "content": prompt})
+        _m = model or "qwen-plus"
+        _r = _hx.post(
+            "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+            headers={"Authorization": f"Bearer {_key}", "Content-Type": "application/json"},
+            json={"model": _m, "input": {"messages": _msgs},
+                  "parameters": {"max_tokens": max_tokens, "temperature": temperature}},
+            timeout=60.0,
+        )
+        _r.raise_for_status()
+        _d = _r.json()
+        _text = _d["output"].get("text") or _d["output"].get("choices", [{}])[0].get("message", {}).get("content", "")
+        return _LLMResponse(text=_text, model=_m)
+
+    _oprim_llm_mod._call_dashscope = _fixed_dashscope
+
     # 2. LLM providers (qwen3_dashscope / qwen3).
     # Direct DashScope caller: bypasses oprim.llm_call whose _call_dashscope parses
     # output.choices but the /generation endpoint returns output.text for qwen-plus.
@@ -348,6 +380,55 @@ async def agent_run(
             # Inject corpus_id so hybrid_search can scope to this user
             enriched_params = dict(params or {})
             enriched_params.setdefault("corpus_id", f"user_{user_id}")
+
+            # Stage B: inject graph context for reading_companion
+            if agent_name == "reading_companion":
+                _question = enriched_params.get("question", "")
+                if _question:
+                    try:
+                        from stratum.dao.graph import get_entity_neighbors, query_entities_by_ids
+                        from stratum.db import get_conn as _get_conn
+                        from oprim import entity_graph_search as _egs
+                        from stratum.utils.user_id_hash import hash_user_id as _huid
+
+                        _uh = _huid(user_id)
+
+                        class _E:
+                            __slots__ = ("dst_id",)
+                            def __init__(self, d): self.dst_id = d
+
+                        with _get_conn() as _c:
+                            _seed_rows = _c.execute(
+                                "SELECT id FROM graph_entities WHERE user_id=? "
+                                "ORDER BY mention_count DESC LIMIT 10", (_uh,)
+                            ).fetchall()
+                        _seed_ids = [r[0] for r in _seed_rows]
+
+                        if _seed_ids:
+                            _ranked = _egs(
+                                seed_ids=_seed_ids[:5],
+                                list_edges=lambda nid: [
+                                    _E(n["target"]) for n in get_entity_neighbors(_uh, [nid])
+                                ],
+                                hops=2, top_k=10,
+                            )
+                            _top_ids = [r[0] for r in _ranked] if _ranked else _seed_ids[:5]
+                            _entities = query_entities_by_ids(_uh, _top_ids)
+                            _graph_lines = "\n".join(
+                                f"- {e['name']} ({e['type']}): {e['description'] or ''}"
+                                for e in _entities[:5]
+                            )
+                            # ReadingCompanionAgent uses params["question"] in LLM prompt;
+                            # prepend graph context so LLM sees known entities (§20 compliant).
+                            enriched_params["question"] = (
+                                f"[知识图谱背景]\n{_graph_lines}\n\n问题: {_question}"
+                            )
+                    except Exception as _g_err:
+                        import logging as _glog
+                        _glog.getLogger(__name__).warning(
+                            "graph_context injection failed: %s", _g_err
+                        )
+
             agent_result = await agent.run(enriched_params, context)
             final_status = "completed" if agent_result.success else "failed"
             citations = [
