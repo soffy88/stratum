@@ -40,7 +40,7 @@ async def build_graph_from_substrate(substrate_id: str, user_id_hash: str) -> di
     write to graph tables.
     Returns {"entities_added": N, "relations_added": M}
     """
-    from oprim import structural_chunk, llm_call
+    from oprim import structural_chunk
 
     # 1. 读 markdown derivative
     with get_conn() as conn:
@@ -74,15 +74,17 @@ async def build_graph_from_substrate(substrate_id: str, user_id_hash: str) -> di
     relations_added = 0
     seen_entities: dict[str, str] = {}  # name → entity_id
 
-    # 3. 每 chunk LLM 抽取（llm_call 是同步阻塞调用，run in thread）
+    # 3. 每 chunk LLM 抽取（通过 ProviderRegistry 走已注册的 caller，run in thread）
+    from obase import ProviderRegistry as _PR
+    _llm_caller = _PR.get().llm("qwen3_dashscope")
     for chunk_text in chunks[:5]:
         try:
-            resp = await asyncio.to_thread(
-                llm_call,
-                _EXTRACT_PROMPT + chunk_text,
-                "qwen3_dashscope",
+            raw = await asyncio.to_thread(
+                _llm_caller,
+                messages=[{"role": "user", "content": _EXTRACT_PROMPT + chunk_text}],
+                max_tokens=1000,
             )
-            text = resp.text.strip().strip("```json").strip("```").strip()
+            text = (raw if isinstance(raw, str) else str(raw)).strip().strip("```json").strip("```").strip()
             data = json.loads(text)
         except Exception as e:
             log.warning("graph_builder: LLM extract failed for chunk: %s", e)
