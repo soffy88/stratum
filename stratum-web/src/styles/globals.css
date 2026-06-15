@@ -1,6 +1,5 @@
 @import "tailwindcss";
-@import "@helios/blocks/styles.css";
-@import "@helios/blocks/themes/zen.css";
+/* @helios/blocks/styles.css and themes/zen.css stubbed out (private package) */
 
 /* --color-* aliases: bridge existing hand-written UI to helios zen vars.
  * TECHNICAL_DEBT: migrate pages to native helios var names (--background,

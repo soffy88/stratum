@@ -27,8 +27,6 @@ services:
     build:
       context: /home/soffy/projects/stratum/stratum-web
       dockerfile: /home/soffy/projects/stratum/deploy/Dockerfile.web
-      additional_contexts:
-        platform-pkg: /home/soffy/projects/platform/packages
     container_name: stratum-web
     restart: unless-stopped
     ports:
@@ -99,7 +97,7 @@ services:
       - /home/soffy/projects/platform/3O/oprim:/opt/platform/oprim
       - /home/soffy/projects/platform/3O/oskill:/opt/platform/oskill
       - /home/soffy/projects/platform/3O/omodul:/opt/platform/omodul
-      - /home/soffy/projects/platform/3O/oservice:/opt/platform/oservice
+      - /home/soffy/projects/platform/3O/oservi:/opt/platform/oservi
       # Data directory (DuckDB, uploads, etc.)
       - ~/.stratum:/root/.stratum
       # AII shared export volume — Wave 4
