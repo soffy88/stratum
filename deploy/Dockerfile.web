@@ -1,16 +1,13 @@
 # Build context: /home/soffy/projects/stratum/stratum-web
-# Additional context: platform-pkg=/home/soffy/projects/platform/packages
-#   (makes helios-blocks-1.5.0.tgz available at /platform/packages/)
 #
 # Build command (must use --builder default to access local image cache offline):
-#   docker buildx --builder default build \
-#     --build-context platform-pkg=/home/soffy/projects/platform/packages \
-#     -f deploy/Dockerfile.web -t stratum-web:latest \
-#     stratum-web/
+#   BUILDX_BUILDER=default docker compose build stratum-web --no-cache
 #
 # Uses node:24-trixie-slim (local cache). The 'default' docker-driver builder
 # is required because the docker-container driver cannot access host image store.
 # pnpm@9: lockfileVersion 9.0; no supply-chain registry check.
+# @helios/blocks: removed from package.json (import type only); types provided by
+#   src/types/helios-blocks.d.ts stub, no tarball needed.
 # output: standalone → self-contained server.js (~418MB runner image).
 
 FROM node:24-trixie-slim AS deps
@@ -18,11 +15,6 @@ FROM node:24-trixie-slim AS deps
 RUN npm install -g pnpm@9
 
 WORKDIR /app
-
-# Make @helios/blocks tarball available at path expected by lockfile:
-#   pnpm-lock.yaml: file:../../platform/packages/helios-blocks-1.7.2.tgz
-#   from WORKDIR /app → ../../ = /platform
-COPY --from=platform-pkg helios-blocks-1.7.2.tgz /platform/packages/helios-blocks-1.7.2.tgz
 
 COPY package.json pnpm-lock.yaml .npmrc ./
 RUN pnpm install --no-frozen-lockfile

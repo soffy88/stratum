@@ -1,142 +1,111 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useAuthStore } from "@/stores/auth";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  Search, Compass, FileText, Rss, Clock, Network, StickyNote,
+  Highlighter, LayoutGrid, Share2, Sparkles, CheckSquare, User, Shield, Settings,
+  Menu, X,
+} from 'lucide-react';
 
-const NAV_ITEMS = [
-  { href: "/search", label: "搜索" },
-  { href: "/discover", label: "发现" },
-  { href: "/documents", label: "文档" },
-  { href: "/feeds", label: "订阅源" },
-  { href: "/timeline", label: "时光机" },
-  { href: "/concepts", label: "概念" },
-  { href: "/notes", label: "笔记" },
-  { href: "/highlights", label: "高亮" },
-  { href: "/views", label: "视图" },
-  { href: "/ai", label: "AI" },
-  { href: "/jobs", label: "任务" },
-  { href: "/profile", label: "我的" },
-  { href: "/admin", label: "管理" },
-  { href: "/settings", label: "设置" },
+interface NavItem { href: string; label: string; icon: React.ComponentType<{ className?: string }>; }
+interface NavGroup { title?: string; items: NavItem[]; }
+
+const NAV: NavGroup[] = [
+  { items: [
+    { href: '/search', label: '搜索', icon: Search },
+    { href: '/discover', label: '发现', icon: Compass },
+  ] },
+  { title: '知识获取', items: [
+    { href: '/documents', label: '文档', icon: FileText },
+    { href: '/feeds', label: '订阅源', icon: Rss },
+  ] },
+  { title: '知识整理', items: [
+    { href: '/highlights', label: '高亮', icon: Highlighter },
+    { href: '/notes', label: '笔记', icon: StickyNote },
+    { href: '/concepts', label: '概念', icon: Network },
+    { href: '/graph', label: '知识图谱', icon: Share2 },  // 新增
+  ] },
+  { title: '视图', items: [
+    { href: '/views', label: '视图', icon: LayoutGrid },
+    { href: '/timeline', label: '时光机', icon: Clock },
+  ] },
+  { title: 'AI', items: [
+    { href: '/ai', label: 'AI 助手', icon: Sparkles },
+  ] },
+  { title: '系统', items: [
+    { href: '/tasks', label: '任务', icon: CheckSquare },
+    { href: '/my', label: '我的', icon: User },
+    { href: '/admin', label: '管理', icon: Shield },
+    { href: '/settings', label: '设置', icon: Settings },
+  ] },
 ];
 
-function NavLinks({
-  pathname,
-  onClick,
-}: {
-  pathname: string | null;
-  onClick?: () => void;
-}) {
-  return (
-    <>
-      {NAV_ITEMS.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          onClick={onClick}
-          className={`block px-3 py-2.5 rounded text-sm min-h-[44px] flex items-center ${
-            pathname?.startsWith(item.href)
-              ? "bg-[var(--color-border)] font-medium"
-              : "hover:bg-[var(--color-border)]/50"
-          }`}
-        >
-          {item.label}
-        </Link>
-      ))}
-    </>
-  );
-}
-
-function MobileSidebar() {
+function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
-  const [open, setOpen] = useState(false);
-
   return (
-    <>
-      {/* Top bar */}
-      <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 h-12 bg-[var(--color-background)] border-b border-[var(--color-border)]">
-        <span className="font-semibold text-base">Stratum</span>
-        <button
-          onClick={() => setOpen(true)}
-          className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xl"
-          aria-label="打开菜单"
-        >
-          ☰
-        </button>
-      </header>
-
-      {/* Spacer for fixed header */}
-      <div className="h-12" />
-
-      {/* Drawer overlay */}
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex"
-          onClick={() => setOpen(false)}
-        >
-          {/* Backdrop */}
-          <div className="flex-1 bg-black/50" />
-          {/* Drawer panel */}
-          <div
-            className="w-64 bg-[var(--color-background)] h-full flex flex-col overflow-y-auto shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
-              <span className="font-semibold">Stratum</span>
-              <button
-                onClick={() => setOpen(false)}
-                className="text-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
-              >
-                ×
-              </button>
+    <nav className="flex flex-col gap-4 p-3">
+      {NAV.map((group, gi) => (
+        <div key={gi} className="flex flex-col gap-0.5">
+          {group.title && (
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3 mb-1">
+              {group.title}
             </div>
-            <nav className="flex-1 px-2 py-2 space-y-0.5">
-              <NavLinks pathname={pathname} onClick={() => setOpen(false)} />
-            </nav>
-            <div className="p-4 border-t border-[var(--color-border)] text-sm">
-              <div className="text-[var(--color-muted)]">{user?.username}</div>
-              <button
-                onClick={() => logout()}
-                className="text-[var(--color-muted)] hover:underline mt-1 min-h-[44px] flex items-center"
-              >
-                退出
-              </button>
-            </div>
-          </div>
+          )}
+          {group.items.map(item => {
+            const active = pathname === item.href || pathname.startsWith(item.href + '/');
+            const Icon = item.icon;
+            return (
+              <Link key={item.href} href={item.href} onClick={onNavigate}
+                className={`flex items-center gap-3 px-3 rounded-lg text-sm min-h-11 transition-colors
+                  ${active ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted'}`}>
+                <Icon className="w-4 h-4 shrink-0" />
+                {item.label}
+              </Link>
+            );
+          })}
         </div>
-      )}
-    </>
-  );
-}
-
-function DesktopSidebar() {
-  const pathname = usePathname();
-  const { user, logout } = useAuthStore();
-
-  return (
-    <aside className="w-56 border-r border-[var(--color-border)] flex flex-col h-full">
-      <div className="p-4 font-semibold text-lg">Stratum</div>
-      <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto">
-        <NavLinks pathname={pathname} />
-      </nav>
-      <div className="p-4 border-t border-[var(--color-border)] text-sm">
-        <div className="text-[var(--color-muted)]">{user?.username}</div>
-        <button
-          onClick={() => logout()}
-          className="text-[var(--color-muted)] hover:underline mt-1"
-        >
-          退出
-        </button>
-      </div>
-    </aside>
+      ))}
+    </nav>
   );
 }
 
 export function Sidebar() {
-  const isMobile = useMediaQuery("(max-width: 768px)");
-  return isMobile ? <MobileSidebar /> : <DesktopSidebar />;
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  return (
+    <>
+      {/* 移动端汉堡按钮 */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="md:hidden fixed top-3 left-3 z-30 p-2 rounded-lg bg-background border min-h-11 min-w-11 flex items-center justify-center"
+        aria-label="打开菜单"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
+      {/* 桌面端固定侧栏 */}
+      <aside className="hidden md:block w-60 shrink-0 border-r bg-card overflow-y-auto h-dvh">
+        <div className="px-5 py-4 font-bold text-lg">Stratum</div>
+        <NavLinks />
+      </aside>
+
+      {/* 移动端 drawer */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
+          <aside className="absolute left-0 top-0 h-full w-72 bg-card overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4">
+              <span className="font-bold text-lg">Stratum</span>
+              <button onClick={() => setMobileOpen(false)} className="p-2 min-h-11 min-w-11 flex items-center justify-center" aria-label="关闭">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <NavLinks onNavigate={() => setMobileOpen(false)} />
+          </aside>
+        </div>
+      )}
+    </>
+  );
 }
