@@ -1,85 +1,121 @@
 'use client';
 
-/**
- * /documents 页改造 — 增加 View Banner 支持。
- *
- * 注:这是在现有 documents 页基础上加 View Banner 的参考实现。
- * 若现有页已有文档列表/上传逻辑,把 View Banner 部分(标 ★)合并进去即可。
- */
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { apiClient } from '@/lib/api-client';
+import { ODocumentTree } from '@helios/blocks';
+import { useDocumentTree } from '@/lib/adapters/documents';
+import type { Substrate } from '@helios/blocks';
+import { UploadDialog } from '@/components/UploadDialog';
+import { UrlIngestDialog } from '@/components/UrlIngestDialog';
+import { FeedSubscribeDialog } from '@/components/FeedSubscribeDialog';
+import { FolderIngestDialog } from '@/components/FolderIngestDialog';
 import { listViews, type View } from '@/lib/views';
-import { CardSkeleton } from '@/components/LoadingSkeleton';
-
-interface Substrate {
-  id: string;
-  title: string;
-  medium?: string;
-  created_at?: string;
-}
 
 export default function DocumentsPage() {
-  const searchParams = useSearchParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const viewId = searchParams.get('view');
 
-  const [docs, setDocs] = useState<Substrate[]>([]);
-  const [total, setTotal] = useState(0);
-  const [currentView, setCurrentView] = useState<View | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { substrates, isLoading, refetch } = useDocumentTree();
 
-  // ★ 解析当前 view 元信息(用于 Banner)
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showUrlDialog, setShowUrlDialog] = useState(false);
+  const [showFeedDialog, setShowFeedDialog] = useState(false);
+  const [showFolderDialog, setShowFolderDialog] = useState(false);
+  const [currentView, setCurrentView] = useState<View | null>(null);
+
   useEffect(() => {
     if (!viewId) { setCurrentView(null); return; }
-    listViews().then(vs => setCurrentView(vs.find(v => v.id === viewId) ?? null)).catch(() => {});
+    listViews()
+      .then(vs => setCurrentView(vs.find(v => v.id === viewId) ?? null))
+      .catch(() => {});
   }, [viewId]);
 
-  // 拉文档(带 view filter)
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const qs = viewId ? `?view=${encodeURIComponent(viewId)}&limit=50&offset=0` : '?limit=50&offset=0';
-      const items = await apiClient.get<Substrate[]>(`/api/v1/documents${qs}`);
-      setDocs(items);
-      setTotal(items.length);
-    } catch { toast.error('加载文档失败'); }
-    finally { setLoading(false); }
-  }, [viewId]);
+  const handleSelect = (substrate: Substrate) => {
+    router.push(`/documents/${substrate.id}`);
+  };
 
-  useEffect(() => { load(); }, [load]);
+  if (isLoading) return <p className="text-[var(--color-muted)]">加载中...</p>;
 
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto">
-      <h1 className="text-xl font-bold mb-4">文档</h1>
+    <div className="max-w-4xl mx-auto p-4">
+      {showUploadDialog && (
+        <UploadDialog
+          onClose={() => setShowUploadDialog(false)}
+          onSuccess={() => void refetch?.()}
+        />
+      )}
+      {showUrlDialog && (
+        <UrlIngestDialog
+          onClose={() => setShowUrlDialog(false)}
+          onSuccess={() => void refetch?.()}
+        />
+      )}
+      {showFeedDialog && (
+        <FeedSubscribeDialog
+          onClose={() => setShowFeedDialog(false)}
+          onSuccess={() => void refetch?.()}
+        />
+      )}
+      {showFolderDialog && (
+        <FolderIngestDialog
+          onClose={() => setShowFolderDialog(false)}
+          onSuccess={() => void refetch?.()}
+        />
+      )}
 
-      {/* ★ View Banner */}
+      {/* View Banner */}
       {viewId && currentView && (
         <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-lg mb-4">
           <span className="font-medium">{currentView.icon} {currentView.name}</span>
-          <span className="text-muted-foreground text-sm">· {total} 篇文档</span>
+          <span className="text-muted-foreground text-sm">· {substrates.length} 篇</span>
           <button
             onClick={() => router.push('/documents')}
-            className="ml-auto text-sm text-primary hover:underline min-h-9 px-2"
+            className="ml-auto text-sm text-muted-foreground hover:text-foreground"
           >
-            清除视图
+            清除视图 ×
           </button>
         </div>
       )}
 
-      {loading ? <CardSkeleton count={5} /> : (
-        <div className="flex flex-col gap-2">
-          {docs.map(d => (
-            <button key={d.id} onClick={() => router.push(`/documents/${d.id}`)}
-              className="text-left border rounded-lg p-3 hover:border-primary/50 transition-colors min-h-11">
-              <div className="font-medium">{d.title}</div>
-              {d.medium && <span className="text-xs text-muted-foreground">{d.medium}</span>}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-semibold">文档</h1>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <button
+          onClick={() => setShowUploadDialog(true)}
+          className="px-3 py-1.5 bg-[var(--color-primary)] text-white rounded text-sm hover:opacity-90 transition"
+        >
+          上传文件
+        </button>
+        <button
+          onClick={() => setShowUrlDialog(true)}
+          className="px-3 py-1.5 border border-[var(--color-border)] rounded text-sm hover:bg-[var(--color-surface)] transition"
+        >
+          输入 URL
+        </button>
+        <button
+          onClick={() => setShowFeedDialog(true)}
+          className="px-3 py-1.5 border border-[var(--color-border)] rounded text-sm hover:bg-[var(--color-surface)] transition"
+        >
+          订阅 RSS
+        </button>
+        <button
+          onClick={() => setShowFolderDialog(true)}
+          className="px-3 py-1.5 border border-[var(--color-border)] rounded text-sm hover:bg-[var(--color-surface)] transition"
+        >
+          文件夹
+        </button>
+      </div>
+
+      <div className="mt-6">
+        <ODocumentTree
+          substrates={substrates}
+          onSelect={handleSelect}
+          emptyText="暂无文档，点击上方上传文件"
+        />
+      </div>
     </div>
   );
 }
