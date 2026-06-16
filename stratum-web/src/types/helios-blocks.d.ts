@@ -173,4 +173,12 @@ declare module '@helios/blocks' {
     [key: string]: unknown;
   }
   export const OBacklinkPanel: ComponentType<OBacklinkPanelProps>;
+
+  export interface ODocumentTreeProps {
+    substrates: Substrate[];
+    onSelect?: (substrate: Substrate) => void;
+    emptyText?: string;
+    [key: string]: unknown;
+  }
+  export const ODocumentTree: ComponentType<ODocumentTreeProps>;
 }

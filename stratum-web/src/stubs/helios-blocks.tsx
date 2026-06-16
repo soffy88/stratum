@@ -39,6 +39,9 @@ export const OSemanticSearch = (props: Record<string, unknown>) =>
 export const OBacklinkPanel = (props: Record<string, unknown>) =>
   <Placeholder name="OBacklinkPanel" {...props} />;
 
+export const ODocumentTree = (props: Record<string, unknown>) =>
+  <Placeholder name="ODocumentTree" {...props} />;
+
 // ── Type re-exports (values must exist to avoid module resolution errors) ────
 export type Medium = string;
 export type SourceType = string;
