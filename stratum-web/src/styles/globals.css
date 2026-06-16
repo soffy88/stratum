@@ -1,11 +1,25 @@
 @import "tailwindcss";
 /* @helios/blocks/styles.css and themes/zen.css stubbed out (private package) */
 
-/* --color-* aliases: bridge existing hand-written UI to helios zen vars.
- * TECHNICAL_DEBT: migrate pages to native helios var names (--background,
- * --text-primary, --muted-foreground, --border, --primary) in a follow-up.
+/* Zen theme base variables — substituting for @helios/blocks/themes/zen.css.
+ * TECHNICAL_DEBT: remove when @helios/blocks is available from private registry.
  */
 [data-theme='zen'] {
+  --background: #ffffff;
+  --text-primary: #111827;
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+  --muted-foreground: #6b7280;
+  --border: #e5e7eb;
+  --accent: #f3f4f6;
+  --accent-foreground: #111827;
+  --secondary: #f3f4f6;
+  --secondary-foreground: #374151;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --input: #e5e7eb;
+
+  /* --color-* aliases: bridge existing hand-written UI to helios zen vars. */
   --color-background: var(--background);
   --color-foreground: var(--text-primary);
   --color-primary: var(--primary);
