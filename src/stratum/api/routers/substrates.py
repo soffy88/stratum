@@ -96,18 +96,47 @@ async def list_documents(
     return {"items": items, "total": total}
 
 
+@router.get("/{substrate_id}")
+async def get_document(substrate_id: str, user=Depends(get_current_user)):
+    uh = hash_user_id(user.user_id)
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id, title, mime, byte_size, page_count, language, "
+            "is_pinned, created_at, meta_json "
+            "FROM substrates WHERE id=? AND (user_id=? OR user_id=?)",
+            (substrate_id, uh, user.user_id),
+        ).fetchone()
+    if not row:
+        raise HTTPException(404, "Document not found")
+    meta = json.loads(row[8] or "{}") if row[8] else {}
+    return {
+        "id": row[0],
+        "title": row[1],
+        "mime": row[2] or "",
+        "byte_size": row[3],
+        "page_count": row[4],
+        "language": row[5],
+        "is_pinned": bool(row[6]),
+        "created_at": str(row[7]),
+        "medium": meta.get("medium") or _mime_to_medium(row[2] or ""),
+        "source": (lambda s: s if isinstance(s, str) else "upload")(
+            meta.get("source_type") or meta.get("source")
+        ),
+    }
+
+
 @router.get("/{substrate_id}/derivatives")
 async def get_derivatives(substrate_id: str, user=Depends(get_current_user)):
     uh = hash_user_id(user.user_id)
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT d.kind FROM derivative d "
+            "SELECT d.kind, d.content FROM derivative d "
             "JOIN substrates s ON d.substrate_id = s.id "
-            "WHERE d.substrate_id = ? AND s.user_id = ? "
-            "ORDER BY d.created_at",
-            (substrate_id, uh),
+            "WHERE d.substrate_id = ? AND (s.user_id=? OR s.user_id=?) "
+            "ORDER BY d.seq, d.created_at",
+            (substrate_id, uh, user.user_id),
         ).fetchall()
-    return [{"kind": r[0]} for r in rows]
+    return [{"kind": r[0], "content": r[1]} for r in rows]
 
 
 @router.post("/{substrate_id}/pin")
