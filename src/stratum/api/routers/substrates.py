@@ -1,14 +1,17 @@
 """Substrate CRUD — documents listing with view integration."""
 
 import json
+import logging
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
 from stratum.api.deps import get_current_user
 from stratum.common import jwt_auth, now_utc
 from stratum.db import get_conn, read, update
 from stratum.utils.user_id_hash import hash_user_id
+
+log = logging.getLogger(__name__)
 
 
 
@@ -102,7 +105,7 @@ async def get_document(substrate_id: str, user=Depends(get_current_user)):
     with get_conn() as conn:
         row = conn.execute(
             "SELECT id, title, mime, byte_size, page_count, language, "
-            "is_pinned, created_at, meta_json "
+            "is_pinned, created_at, meta_json, source_path "
             "FROM substrates WHERE id=? AND (user_id=? OR user_id=?)",
             (substrate_id, uh, user.user_id),
         ).fetchone()
@@ -122,7 +125,39 @@ async def get_document(substrate_id: str, user=Depends(get_current_user)):
         "source": (lambda s: s if isinstance(s, str) else "upload")(
             meta.get("source_type") or meta.get("source")
         ),
+        "source_path": row[9],
     }
+
+
+async def _run_generate(substrate_id: str, user_id_hash: str, kind: str):
+    log.info("generate_derivative queued: %s kind=%s user=%s", substrate_id, kind, user_id_hash)
+    try:
+        from stratum.services.folder_watcher_service import _scan_one_watch  # noqa: F401
+        # Placeholder: real derivative generation dispatched by kind
+        # Currently logs intent; full AI pipeline integration planned
+        log.info("generate_derivative: kind=%s for %s (pipeline not yet wired)", kind, substrate_id)
+    except Exception as e:
+        log.error("generate_derivative error: %s", e)
+
+
+@router.post("/{substrate_id}/generate", status_code=202)
+async def generate_derivative(
+    substrate_id: str,
+    body: dict,
+    background_tasks: BackgroundTasks,
+    user_id: str = Depends(jwt_auth),
+):
+    uh = hash_user_id(user_id)
+    kind = body.get("kind", "markdown")
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id, source_path FROM substrates WHERE id=? AND user_id=?",
+            (substrate_id, uh),
+        ).fetchone()
+    if not row:
+        raise HTTPException(404, "Document not found")
+    background_tasks.add_task(_run_generate, substrate_id, uh, kind)
+    return {"task_id": substrate_id, "kind": kind, "status": "queued"}
 
 
 @router.get("/{substrate_id}/derivatives")
