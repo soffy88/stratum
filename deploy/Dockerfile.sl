@@ -31,30 +31,76 @@ RUN pip install --no-cache-dir \
         tantivy \
         pymupdf \
         "edge-tts>=6.1" \
-        defusedxml
+        defusedxml \
+        numpy \
+        scipy \
+        pandas \
+        scikit-learn \
+        statsmodels \
+        fsrs \
+        paramiko \
+        apscheduler \
+        redis \
+        duckdb \
+        docker \
+        asyncpg \
+        "psycopg[binary]" \
+        psutil \
+        python-magic \
+        boto3 \
+        dnspython \
+        trafilatura \
+        readability-lxml \
+        jinja2 \
+        python-alipay-sdk \
+        stripe \
+        tenacity \
+        bcrypt \
+        pyotp \
+        qrcode \
+        rapidfuzz \
+        pgvector \
+        beautifulsoup4 \
+        lxml \
+        Pillow \
+        ebooklib \
+        chardet \
+        google-api-python-client \
+        google-auth-oauthlib \
+        google-auth-httplib2 \
+        dashscope \
+        argon2-cffi \
+        pyjwt
+
+# python-ulid v3.x installs as module 'ulid'; oskill/omodul use 'python_ulid' (v2.x name).
+# Shim: expose the same package under the old module name.
+RUN python3 -c "\
+import site, pathlib; \
+d = pathlib.Path(site.getsitepackages()[0]) / 'python_ulid.py'; \
+d.write_text('from ulid import *\nfrom ulid import ULID\n')"
 
 # ── Platform packages (copied from host, installed editable) ──────────────────
 # Packages live at platform/3O/{obase,oprim,oskill,omodul} in the build context.
 # obase — no inter-package deps
 COPY platform/3O/obase /opt/platform/obase
-RUN pip install --no-cache-dir -e /opt/platform/obase
+RUN pip install --no-cache-dir --no-deps -e /opt/platform/obase
 
 # oprim — no inter-package deps
 COPY platform/3O/oprim /opt/platform/oprim
-RUN pip install --no-cache-dir -e /opt/platform/oprim
+RUN pip install --no-cache-dir --no-deps -e /opt/platform/oprim
 
 # oskill — depends on oprim
 COPY platform/3O/oskill /opt/platform/oskill
-RUN pip install --no-cache-dir -e /opt/platform/oskill
+RUN pip install --no-cache-dir --no-deps -e /opt/platform/oskill
 
 # omodul — depends on oprim + oskill + obase
 COPY platform/3O/omodul /opt/platform/omodul
-RUN pip install --no-cache-dir -e /opt/platform/omodul
+RUN pip install --no-cache-dir --no-deps -e /opt/platform/omodul
 
-# oservice — depends on obase + oprim + oskill + omodul (already installed above).
+# oservi — depends on obase + oprim + oskill + omodul (already installed above).
 # --no-deps avoids pulling git+ssh:// refs that require SSH keys unavailable in Docker build.
-COPY platform/3O/oservice /opt/platform/oservice
-RUN pip install --no-cache-dir --no-deps -e /opt/platform/oservice
+COPY platform/3O/oservi /opt/platform/oservi
+RUN pip install --no-cache-dir --no-deps -e /opt/platform/oservi
 
 # ── Application source ────────────────────────────────────────────────────────
 COPY stratum/src/ /app/src/

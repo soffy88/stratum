@@ -35,6 +35,8 @@ async def search(req: SearchRequest, user_id: str = Depends(jwt_auth)):
     if not _HAS_SEARCH:
         return {"results": [], "citations": [], "search_time_ms": 0, "scope_hits": {}}
 
+    from stratum.api.search_utils import get_tantivy_mgr, get_lancedb_mgr
+    
     result = await asyncio.to_thread(
         cross_layer_search,
         query=req.query,
@@ -44,8 +46,8 @@ async def search(req: SearchRequest, user_id: str = Depends(jwt_auth)):
         medium_filter=req.medium_filter,
         domain_filter=req.domain_filter,
         date_range=req.date_range,
-        lancedb_mgr=None,
-        tantivy_mgr=None,
+        lancedb_mgr=get_lancedb_mgr(),
+        tantivy_mgr=get_tantivy_mgr(),
         pgvector_mgr=None,
     )
 
