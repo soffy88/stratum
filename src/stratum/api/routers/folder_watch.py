@@ -28,13 +28,12 @@ class FolderWatchResponse(BaseModel):
 @router.post("", response_model=FolderWatchResponse)
 async def add_folder_watch(
     body: FolderWatchRequest,
-    user=Depends(jwt_auth),
+    user_id: str = Depends(jwt_auth),
 ):
     watch_id = generate_ulid()
-    user_id = user["sub"]
     now = now_utc()
 
-    await insert(
+    insert(
         "folder_watches",
         {
             "id": watch_id,
@@ -57,10 +56,10 @@ async def add_folder_watch(
 
 
 @router.get("", response_model=list[FolderWatchResponse])
-async def list_folder_watches(user=Depends(jwt_auth)):
-    rows = await query(
+async def list_folder_watches(user_id: str = Depends(jwt_auth)):
+    rows = query(
         "SELECT id, path, description, status FROM folder_watches WHERE user_id = $1 ORDER BY created_at DESC",
-        user["sub"],
+        user_id,
     )
     return [
         FolderWatchResponse(
