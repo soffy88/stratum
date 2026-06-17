@@ -104,7 +104,7 @@ services:
       - /home/soffy/shared/stratum-to-aii:/data/shared/stratum-to-aii:rw
       # User file folders for folder_watcher_service
       - /home/soffy/papers:/mnt/user/papers:ro
-      - /mnt/d/books:/mnt/user/books:ro
+      - /home/soffy/books:/mnt/user/books:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9304/api/v1/health"]
       interval: 30s
