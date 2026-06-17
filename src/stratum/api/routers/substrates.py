@@ -10,6 +10,8 @@ from stratum.common import jwt_auth, now_utc
 from stratum.db import get_conn, read, update
 from stratum.utils.user_id_hash import hash_user_id
 
+
+
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
 
 
@@ -71,6 +73,20 @@ async def list_documents(
         # Mapping rows to dicts (assuming standard column order from 020+022)
         # This is a simplified list for recovery.
         return [dict(zip([d[0] for d in conn.description], r)) for r in rows]
+
+
+@router.get("/{substrate_id}/derivatives")
+async def get_derivatives(substrate_id: str, user=Depends(get_current_user)):
+    uh = hash_user_id(user.user_id)
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT d.kind FROM derivative d "
+            "JOIN substrates s ON d.substrate_id = s.id "
+            "WHERE d.substrate_id = ? AND s.user_id = ? "
+            "ORDER BY d.created_at",
+            (substrate_id, uh),
+        ).fetchall()
+    return [{"kind": r[0]} for r in rows]
 
 
 @router.post("/{substrate_id}/pin")
