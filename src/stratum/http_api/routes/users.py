@@ -25,14 +25,20 @@ def get_db():
         conn.close()
 
 
-def _current_user_id(request: Request) -> str:
-    """Extract user_id from Bearer token. Raises 401 if missing or invalid."""
+def _current_user_id(request: Request, db=None) -> str:
+    """Extract user_id from Bearer token. Returns ULID (for session ops).
+    sub is now email; look up user.id (ULID) so session table lookups still work."""
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         raise HTTPException(401, "Missing Authorization header")
     try:
         payload = decode_access(auth.split(" ")[1])
-        return payload["sub"]
+        sub = payload["sub"]
+        if db and "@" in sub:
+            user = UserDAO(db).get_user_by_email(sub)
+            if user:
+                return user.id
+        return sub
     except Exception:
         raise HTTPException(401, "Invalid or expired token")
 
@@ -85,7 +91,7 @@ async def get_user_by_username(username: str, db=Depends(get_db)):
 
 @router.get("/me/sessions", response_model=SessionListResponse)
 async def list_my_sessions(request: Request, db=Depends(get_db)):
-    user_id = _current_user_id(request)
+    user_id = _current_user_id(request, db)
     sessions = SessionDAO(db).list_user_sessions(user_id, active_only=True)
 
     # Identify current session via refresh_token cookie (absent in API tests → no match)
@@ -113,7 +119,7 @@ async def list_my_sessions(request: Request, db=Depends(get_db)):
 
 @router.delete("/me/sessions/{session_id}")
 async def revoke_my_session(session_id: str, request: Request, db=Depends(get_db)):
-    user_id = _current_user_id(request)
+    user_id = _current_user_id(request, db)
     session = SessionDAO(db).get_session_by_id(session_id)
     if not session or session.user_id != user_id:
         raise HTTPException(404, "Session not found")
