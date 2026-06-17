@@ -18,12 +18,16 @@ def _file_hash_sync(path: Path) -> str:
     return h.hexdigest()
 
 
-async def _scan_one_watch(watch_id: str, user_id_hash: str, path_str: str):
+async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
     from stratum.db import get_conn
     from omodul.process_inbox_substrate import (
         process_inbox_substrate, InboxConfig, InboxInput
     )
     from stratum.common import ensure_dir, user_inbox_dir
+    from stratum.utils.user_id_hash import hash_user_id
+
+    # user_id_raw may be email (jwt sub) or legacy ULID — always hash before using
+    user_id_hash = hash_user_id(user_id_raw)
 
     path = Path(path_str)
     if not path.exists():
