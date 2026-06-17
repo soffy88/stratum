@@ -83,6 +83,15 @@ async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
                     )
 
                     if result.get("status") == "completed":
+                        findings = result.get("findings")
+                        if findings:
+                            from stratum.api.routers.inbox import (
+                                _fill_derivative_content,
+                                _extract_id,
+                            )
+                            sid = _extract_id(findings.substrate_id)
+                            if sid:
+                                _fill_derivative_content(sid, findings)
                         ingested += 1
                         log.info("folder_watcher: ingested %s", f.name)
                     else:
