@@ -8,30 +8,26 @@ logger = logging.getLogger(__name__)
 def register_providers():
     """Register computational providers for AII (A24 Routing)."""
     
-    # 1. LLM Provider (DeepSeek via oprim/oskill standard mechanism)
-    # Note: oprim/oskill usually look for provider configurations in ProviderRegistry
-    # For DeepSeek, we expect it to be handled by the underlying LLM caller.
-    # We register a placeholder/config for 'llm/default'
+    # 1. LLM Provider (DeepSeek)
     api_key = os.getenv("DEEPSEEK_API_KEY")
-    if not api_key or api_key == "your_key_here":
-        logger.warning("DEEPSEEK_API_KEY is not set correctly. LLM calls will fail.")
-    
-    # In 3O, we typically register a factory or a configuration for the provider.
-    # Since we are using oprim/oskill's default behavior:
+    # Note: we still register a dict for LLM as oprim/oskill LLM callers usually handle it
     ProviderRegistry.register("llm", "default", {
-        "provider_type": "openai_compatible", # DeepSeek is OpenAI compatible
+        "provider_type": "openai_compatible",
         "base_url": "https://api.deepseek.com",
         "api_key": api_key,
         "model": "deepseek-chat"
     })
     
-    # 2. Embedding Provider (Local BGE-M3 via sentence-transformers)
-    # We register the 'embedding/default'
-    ProviderRegistry.register("embedding", "default", {
-        "provider_type": "local",
-        "model_name": "BAAI/bge-m3",
-        "device": "cpu" # Default to CPU for stability in this env
-    })
+    # 2. Embedding Provider (Real BGE-M3)
+    from oprim.embedding.bge_m3 import BgeM3Embedder
+    try:
+        embedder = BgeM3Embedder()
+        ProviderRegistry.register("embedding", "default", embedder.embed)
+        logger.info("REAL BGE-M3 Provider registered.")
+    except Exception as e:
+        logger.error(f"Failed to load REAL BGE-M3: {e}")
+        # Fallback to dict might cause TypeError in vector_encode, 
+        # so we let it fail or log clearly.
     
     logger.info("AII Providers registered: llm/default, embedding/default")
 
