@@ -41,6 +41,7 @@ async def list_documents(
     limit: int = 50,
     offset: int = 0,
     q: Optional[str] = None,
+    kind: Optional[str] = None,
     user=Depends(get_current_user),
 ):
     uh = hash_user_id(user.user_id)
@@ -70,6 +71,10 @@ async def list_documents(
     if q:
         filters += " AND title ILIKE ?"
         params.append(f"%{q}%")
+
+    if kind:
+        filters += " AND id IN (SELECT substrate_id FROM derivative WHERE kind = ?)"
+        params.append(kind)
 
     # Count total
     with get_conn() as conn:

@@ -24,7 +24,7 @@ export interface Derivative {
 }
 
 export const listDocuments = (params?: {
-  view?: string; limit?: number; offset?: number; q?: string;
+  view?: string; limit?: number; offset?: number; q?: string; kind?: string;
 }) =>
   apiClient.get<DocumentListResult>('/api/v1/documents', { params }).then(r => r.data);
 
