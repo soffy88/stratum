@@ -13,11 +13,6 @@ class SynthesisEngine:
 
     def __init__(self, backend: PgBackend):
         self.backend = backend
-        try:
-            self.llm_config = ProviderRegistry.get("llm", "default")
-        except Exception as e:
-            logger.warning(f"Failed to load LLM config: {e}")
-            self.llm_config = None
 
     async def chat(self, message: str) -> dict[str, Any]:
         """Process a user message and return a synthesized response."""
@@ -95,13 +90,19 @@ class SynthesisEngine:
 
     async def _call_deepseek(self, query: str, context: list[dict]) -> str:
         """Call DeepSeek API using the registered configuration."""
-        if not self.llm_config:
+        try:
+            llm_config = ProviderRegistry.get("llm", "default")
+        except Exception as e:
+            logger.warning(f"Failed to load LLM config: {e}")
+            llm_config = None
+
+        if not llm_config:
             return "(MOCK) LLM provider not configured."
         
         import httpx
-        api_key = self.llm_config.get("api_key")
-        base_url = self.llm_config.get("base_url")
-        model = self.llm_config.get("model", "deepseek-chat")
+        api_key = llm_config.get("api_key")
+        base_url = llm_config.get("base_url")
+        model = llm_config.get("model", "deepseek-chat")
         
         if not api_key or api_key == "your_key_here":
              return "(MOCK) API key missing. Knowledge context: " + "; ".join([c.get("natural_text", "")[:50] for c in context])
