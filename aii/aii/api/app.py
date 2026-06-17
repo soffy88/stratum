@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. Load environment
-    load_dotenv()
+    # 1. Load environment (override to ignore placeholder system env vars)
+    load_dotenv(override=True)
     
     # 2. Register providers (LLM, Embedding)
     register_providers()
