@@ -7,9 +7,10 @@ log = logging.getLogger(__name__)
 
 SUPPORTED_EXTENSIONS = {'.pdf', '.epub', '.md', '.txt'}
 SCAN_INTERVAL_SECONDS = 300
+MAX_FILE_SIZE_MB = 100  # 超过 100MB 跳过
 
 
-def _file_hash(path: Path) -> str:
+def _file_hash_sync(path: Path) -> str:
     h = hashlib.sha256()
     with open(path, 'rb') as f:
         for chunk in iter(lambda: f.read(65536), b''):
@@ -33,9 +34,19 @@ async def _scan_one_watch(watch_id: str, user_id_hash: str, path_str: str):
              if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS]
 
     ingested = 0
+    skipped_large = 0
+
     for f in files:
         try:
-            fhash = _file_hash(f)
+            # 跳过大文件
+            size_mb = f.stat().st_size / 1024 / 1024
+            if size_mb > MAX_FILE_SIZE_MB:
+                log.info("folder_watcher: skip large file (%.0fMB) %s", size_mb, f.name)
+                skipped_large += 1
+                continue
+
+            # hash 在线程里跑，不阻塞 event loop
+            fhash = await asyncio.to_thread(_file_hash_sync, f)
 
             with get_conn() as conn:
                 exists = conn.execute(
@@ -78,8 +89,8 @@ async def _scan_one_watch(watch_id: str, user_id_hash: str, path_str: str):
             (len(files), watch_id)
         )
 
-    log.info("folder_watcher: %s — %d files, %d ingested",
-             path_str, len(files), ingested)
+    log.info("folder_watcher: %s — %d files, %d ingested, %d skipped (>%dMB)",
+             path_str, len(files), ingested, skipped_large, MAX_FILE_SIZE_MB)
 
 
 async def folder_watcher_loop():
