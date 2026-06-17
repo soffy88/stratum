@@ -13,6 +13,10 @@ interface Watch {
   status: string;
   last_scan_at?: string | null;
   file_count: number;
+  scan_status: string;
+  scanned_count: number;
+  ingested_count: number;
+  current_file: string;
 }
 
 export function FolderIngestDialog({
@@ -38,6 +42,13 @@ export function FolderIngestDialog({
   }, []);
 
   useEffect(() => { void loadWatches(); }, [loadWatches]);
+
+  // 有 scanning 状态时每 3 秒轮询
+  useEffect(() => {
+    if (!watches.some(w => w.scan_status === 'scanning')) return;
+    const timer = setInterval(() => { void loadWatches(); }, 3000);
+    return () => clearInterval(timer);
+  }, [watches, loadWatches]);
 
   async function handleSubmit() {
     if (!path.trim()) return;
@@ -157,17 +168,55 @@ export function FolderIngestDialog({
               {watches.map(w => (
                 <li key={w.id} className="border border-[var(--color-border)] rounded p-3 text-sm">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="font-mono text-xs truncate">{w.path}</p>
                       {w.description && (
                         <p className="text-[var(--color-muted)] text-xs mt-0.5">{w.description}</p>
                       )}
-                      <p className="text-xs text-[var(--color-muted)] mt-1">
-                        {w.file_count} 个文件
-                        {w.last_scan_at
-                          ? ` · 上次扫描 ${new Date(w.last_scan_at).toLocaleString('zh-CN')}`
-                          : ' · 等待首次扫描'}
-                      </p>
+
+                      {/* 扫描进度 */}
+                      {w.scan_status === 'scanning' && (
+                        <div className="mt-2">
+                          <div className="text-xs text-[var(--color-muted)]">
+                            扫描中... {w.scanned_count}/{w.file_count} 文件
+                            {w.ingested_count > 0 && ` · 已入库 ${w.ingested_count} 本`}
+                          </div>
+                          {w.current_file && (
+                            <div className="text-xs text-[var(--color-muted)] truncate mt-0.5">
+                              正在处理: {w.current_file}
+                            </div>
+                          )}
+                          <div className="w-full bg-[var(--color-surface)] rounded-full h-1.5 mt-1.5">
+                            <div
+                              className="bg-[var(--color-primary)] h-1.5 rounded-full transition-all duration-300"
+                              style={{
+                                width: w.file_count > 0
+                                  ? `${Math.round(w.scanned_count / w.file_count * 100)}%`
+                                  : '0%',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 扫描完成 */}
+                      {w.scan_status === 'completed' && (
+                        <div className="text-xs text-green-600 mt-1">
+                          ✓ 扫描完成 · 共 {w.file_count} 文件 · 入库 {w.ingested_count} 本
+                        </div>
+                      )}
+
+                      {/* idle / 未扫描 */}
+                      {(w.scan_status === 'idle' || !w.scan_status) && (
+                        <p className="text-xs text-[var(--color-muted)] mt-1">
+                          {w.file_count > 0
+                            ? `${w.file_count} 个文件`
+                            : '等待首次扫描'}
+                          {w.last_scan_at
+                            ? ` · 上次扫描 ${new Date(w.last_scan_at).toLocaleString('zh-CN')}`
+                            : ''}
+                        </p>
+                      )}
                     </div>
                     <div className="flex gap-1 shrink-0">
                       <button

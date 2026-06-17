@@ -33,64 +33,80 @@ async def _scan_one_watch(watch_id: str, user_id_hash: str, path_str: str):
     files = [f for f in path.rglob('*')
              if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS]
 
+    total = len(files)
     ingested = 0
+    scanned = 0
     skipped_large = 0
+
+    # 扫描开始：重置进度，写入总文件数
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE folder_watches SET scan_status='scanning', scanned_count=0, "
+            "ingested_count=0, file_count=?, current_file='' WHERE id=?",
+            (total, watch_id)
+        )
 
     for f in files:
         try:
-            # 跳过大文件
             size_mb = f.stat().st_size / 1024 / 1024
             if size_mb > MAX_FILE_SIZE_MB:
                 log.info("folder_watcher: skip large file (%.0fMB) %s", size_mb, f.name)
                 skipped_large += 1
-                continue
-
-            # hash 在线程里跑，不阻塞 event loop
-            fhash = await asyncio.to_thread(_file_hash_sync, f)
-
-            with get_conn() as conn:
-                exists = conn.execute(
-                    "SELECT id FROM substrates WHERE file_hash=? AND user_id=?",
-                    (fhash, user_id_hash)
-                ).fetchone()
-
-            if exists:
-                continue
-
-            config = InboxConfig(
-                file_path=str(f),
-                file_checksum=fhash,
-                user_id_hash=user_id_hash,
-                auto_classify=True,
-                llm_provider="qwen3",
-                llm_model="qwen3-max",
-            )
-
-            result = await asyncio.to_thread(
-                process_inbox_substrate,
-                config=config,
-                input_data=InboxInput(),
-                output_dir=ensure_dir(user_inbox_dir(user_id_hash)),
-            )
-
-            if result.get("status") == "completed":
-                ingested += 1
-                log.info("folder_watcher: ingested %s", f.name)
             else:
-                log.warning("folder_watcher: failed %s: %s",
-                            f.name, result.get("error"))
+                fhash = await asyncio.to_thread(_file_hash_sync, f)
+
+                with get_conn() as conn:
+                    exists = conn.execute(
+                        "SELECT id FROM substrates WHERE file_hash=? AND user_id=?",
+                        (fhash, user_id_hash)
+                    ).fetchone()
+
+                if not exists:
+                    config = InboxConfig(
+                        file_path=str(f),
+                        file_checksum=fhash,
+                        user_id_hash=user_id_hash,
+                        auto_classify=True,
+                        llm_provider="qwen3",
+                        llm_model="qwen3-max",
+                    )
+
+                    result = await asyncio.to_thread(
+                        process_inbox_substrate,
+                        config=config,
+                        input_data=InboxInput(),
+                        output_dir=ensure_dir(user_inbox_dir(user_id_hash)),
+                    )
+
+                    if result.get("status") == "completed":
+                        ingested += 1
+                        log.info("folder_watcher: ingested %s", f.name)
+                    else:
+                        log.warning("folder_watcher: failed %s: %s",
+                                    f.name, result.get("error"))
 
         except Exception as e:
             log.warning("folder_watcher: skip %s: %s", f.name, e)
 
+        # 每个文件处理后立即写进度
+        scanned += 1
+        with get_conn() as conn:
+            conn.execute(
+                "UPDATE folder_watches SET scanned_count=?, ingested_count=?, "
+                "current_file=? WHERE id=?",
+                (scanned, ingested, f.name, watch_id)
+            )
+
+    # 扫描完成
     with get_conn() as conn:
         conn.execute(
-            "UPDATE folder_watches SET last_scan_at=NOW(), file_count=? WHERE id=?",
-            (len(files), watch_id)
+            "UPDATE folder_watches SET scan_status='completed', last_scan_at=NOW(), "
+            "file_count=?, ingested_count=?, scanned_count=?, current_file='' WHERE id=?",
+            (total, ingested, total, watch_id)
         )
 
     log.info("folder_watcher: %s — %d files, %d ingested, %d skipped (>%dMB)",
-             path_str, len(files), ingested, skipped_large, MAX_FILE_SIZE_MB)
+             path_str, total, ingested, skipped_large, MAX_FILE_SIZE_MB)
 
 
 async def folder_watcher_loop():
