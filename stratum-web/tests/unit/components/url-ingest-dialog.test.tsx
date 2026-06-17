@@ -12,9 +12,9 @@ vi.mock("@/lib/api-client", () => ({
 
 function renderDialog(props?: Partial<Parameters<typeof UrlIngestDialog>[0]>) {
   const onClose = vi.fn();
-  const onSuccess = vi.fn();
-  render(<UrlIngestDialog onClose={onClose} onSuccess={onSuccess} {...props} />);
-  return { onClose, onSuccess };
+  const onIngested = vi.fn();
+  render(<UrlIngestDialog open={true} onClose={onClose} onIngested={onIngested} {...props} />);
+  return { onClose, onIngested };
 }
 
 describe("UrlIngestDialog — Phase 17.5", () => {
@@ -94,7 +94,7 @@ describe("UrlIngestDialog — Phase 17.5", () => {
     vi.spyOn(global, "fetch").mockResolvedValue(
       new Response(JSON.stringify(mockResult), { status: 200 }),
     );
-    const { onSuccess } = renderDialog();
+    const { onIngested } = renderDialog();
     fireEvent.change(screen.getByPlaceholderText(/https:\/\/example.com/i), {
       target: { value: "https://example.com" },
     });
@@ -103,7 +103,7 @@ describe("UrlIngestDialog — Phase 17.5", () => {
     await waitFor(() => expect(screen.getByText("✓ 抓取成功，已入库")).toBeInTheDocument());
     expect(screen.getByText("Test Article Title")).toBeInTheDocument();
     expect(screen.getByText(/1,234/)).toBeInTheDocument();
-    expect(onSuccess).toHaveBeenCalledWith("01TEST123");
+    expect(onIngested).toHaveBeenCalled();
   });
 
   it("shows 查看完整 link with correct substrate id", async () => {

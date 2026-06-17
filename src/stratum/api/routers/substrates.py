@@ -14,10 +14,22 @@ from stratum.utils.user_id_hash import hash_user_id
 
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
 
+_MIME_TO_MEDIUM = {
+    "application/pdf": "pdf",
+    "application/epub+zip": "epub",
+    "text/plain": "text",
+    "text/markdown": "text",
+    "text/html": "webpage",
+}
+
+def _mime_to_medium(mime: str) -> str:
+    return _MIME_TO_MEDIUM.get(mime, "pdf")
+
 
 @router.get("")
 async def list_documents(
     view_id: Optional[str] = None,
+    view: Optional[str] = None,
     medium: Optional[List[str]] = Query(None),
     tags: Optional[List[str]] = Query(None),
     tag_exclude: Optional[List[str]] = Query(None),
@@ -25,16 +37,18 @@ async def list_documents(
     sort_order: str = "desc",
     limit: int = 50,
     offset: int = 0,
+    q: Optional[str] = None,
     user=Depends(get_current_user),
 ):
     uh = hash_user_id(user.user_id)
+    # Accept both view_id (backend) and view (frontend)
+    effective_view_id = view_id or view
 
-    # view_id 传入 → load view filter 覆盖
-    if view_id:
+    if effective_view_id:
         with get_conn() as conn:
             v = conn.execute(
                 "SELECT filter_json, sort_by, sort_order FROM user_saved_views WHERE id=? AND user_id=?",
-                (view_id, uh),
+                (effective_view_id, uh),
             ).fetchone()
             if v:
                 vf = json.loads(v[0]) if v[0] else {}
@@ -44,35 +58,42 @@ async def list_documents(
                 sort_by = v[1] or sort_by
                 sort_order = v[2] or sort_order
 
-    # Build SQL with filters
-    # For now, implementing a basic version that handles user isolation.
-    # Full complex filtering logic would expand here.
-    query_sql = f"SELECT * FROM substrates WHERE user_id = ?"
-    params = [uh]
+    # user_id: support both hashed format and raw format (backward compat)
+    base_cond = "user_id = ? OR user_id = ?"
+    params: list = [uh, user.user_id]
 
-    # Simple medium filter implementation (assuming meta_json extraction or medium column)
-    # The audit indicated substrates schema from migration 020 doesn't have a direct 'medium' column,
-    # but uses 'mime'. Phase 17.12 instructions mention 'medium' logic.
-    # Using mime as a proxy for medium in this recovery step if medium column missing.
-    # Or check if medium column was added in 020? (Checking 020 again...)
-    # 020 substrates: id, user_id, title, mime, source_path, file_hash, byte_size, page_count, parser, language, has_cjk, is_scanned, is_pinned, pinned_at, pin_priority, created_at, updated_at, meta_json
+    filters = f"({base_cond})"
 
-    # Simplified medium filter implementation
-    if medium:
-        # Check both direct 'mime' column and 'medium' field inside meta_json
-        placeholders = ",".join(["?" for _ in medium])
-        query_sql += f" AND (mime IN ({placeholders}) OR meta_json->>'$.medium' IN ({placeholders}))"
-        params.extend(medium)
-        params.extend(medium)
+    if q:
+        filters += " AND title ILIKE ?"
+        params.append(f"%{q}%")
 
-    query_sql += f" ORDER BY {sort_by} {sort_order} LIMIT ? OFFSET ?"
-    params.extend([limit, offset])
-
+    # Count total
     with get_conn() as conn:
-        rows = conn.execute(query_sql, params).fetchall()
-        # Mapping rows to dicts (assuming standard column order from 020+022)
-        # This is a simplified list for recovery.
-        return [dict(zip([d[0] for d in conn.description], r)) for r in rows]
+        total = conn.execute(
+            f"SELECT COUNT(*) FROM substrates WHERE {filters}", params
+        ).fetchone()[0]
+
+        data_params = params + [limit, offset]
+        rows = conn.execute(
+            f"SELECT id, user_id, title, mime, source_path, file_hash, "
+            f"byte_size, page_count, language, is_pinned, created_at, updated_at, meta_json "
+            f"FROM substrates WHERE {filters} "
+            f"ORDER BY {sort_by} {sort_order} LIMIT ? OFFSET ?",
+            data_params,
+        ).fetchall()
+        col_names = [d[0] for d in conn.description]
+
+    items = []
+    for row in rows:
+        d = dict(zip(col_names, row))
+        meta = json.loads(d.get("meta_json") or "{}") if d.get("meta_json") else {}
+        d["medium"] = meta.get("medium") or _mime_to_medium(d.get("mime", ""))
+        raw_source = meta.get("source_type") or meta.get("source")
+        d["source"] = raw_source if isinstance(raw_source, str) else "upload"
+        items.append(d)
+
+    return {"items": items, "total": total}
 
 
 @router.get("/{substrate_id}/derivatives")

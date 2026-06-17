@@ -56,7 +56,7 @@ export default function HighlightsPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {items.map(h => {
-            const c = COLOR_MAP[h.color] ?? { dot: '⚪', card: 'bg-gray-50 border-gray-200 dark:bg-gray-900/20 dark:border-gray-800' };
+            const c = (COLOR_MAP[h.color] ?? COLOR_MAP['default'])!;
             return (
               <div key={h.id} className={`border rounded-lg p-4 ${c.card}`}>
                 <div className="flex gap-2">
