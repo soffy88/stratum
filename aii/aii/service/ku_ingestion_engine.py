@@ -21,7 +21,6 @@ class KuIngestionEngine:
         """Process raw text into knowledge units and store them."""
         
         # 1. Extraction Pipeline (oskill)
-        # Returns: {candidates: list[dict], rejected: list[dict], chunks_processed: int}
         logger.info(f"Extracting KUs from text (length: {len(text)})")
         extracted = ku_extract_pipeline(
             text=text,
@@ -51,8 +50,7 @@ class KuIngestionEngine:
             embedding = vector_encode(texts=[embed_input], provider="default")
             cand["embedding"] = embedding[0].tolist() if isinstance(embedding, np.ndarray) else embedding[0]
             
-            # Register via omodul (will call backend.put_node internally)
-            # input_data for register_ku: {"ku": {...}}
+            # Register via omodul
             try:
                 reg_res = register_ku(config, {"ku": cand})
                 results["registered"].append(cand.get("ku_id"))
@@ -67,7 +65,6 @@ class KuIngestionEngine:
                 results["quarantined"].append(ku_id)
 
         # 4. Trigger Reflux (omodul)
-        # 3O §5.2: run_reflux for graph completion
         logger.info("Triggering knowledge reflux for graph completion")
         reflux_config = KnowledgeRefluxConfig(backend=self.backend)
         try:

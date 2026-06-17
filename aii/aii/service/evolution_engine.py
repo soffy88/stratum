@@ -1,10 +1,10 @@
 import logging
 from typing import Any
 
-from omodul.knowledge_reflux import run_reflux, KnowledgeRefluxConfig
-from omodul.verify_knowledge import verify_knowledge, VerifyKnowledgeConfig
-from omodul.learning_distill import learning_distill, LearningDistillConfig
-from omodul.governance_adjudicate import governance_adjudicate, GovernanceAdjudicateConfig
+import omodul.knowledge_reflux
+import omodul.verify_knowledge
+import omodul.learning_distill
+import omodul.governance_adjudicate
 
 from aii.storage.pg_backend import PgBackend
 from aii.service.formal_proof_engine import FormalProofEngine
@@ -39,12 +39,12 @@ class EvolutionEngine:
         # Step 1: Graph Completion & Coherence (Reflux)
         # =====================================================================
         logger.info("Step 1: Graph Reflux")
-        reflux_config = KnowledgeRefluxConfig(
+        reflux_config = omodul.knowledge_reflux.KnowledgeRefluxConfig(
             backend=self.backend, 
             auto_apply_low=True # Auto-apply coherence_boost and missing_inverse
         )
         try:
-            reflux_result = run_reflux(reflux_config, {})
+            reflux_result = omodul.knowledge_reflux.run_reflux(reflux_config, {})
             # Extract findings. Ensure it's a list.
             findings = reflux_result.get("findings") or []
             for f in findings:
@@ -68,7 +68,7 @@ class EvolutionEngine:
                 "SELECT * FROM aii.ku WHERE grade != 'proven' AND is_quarantined = FALSE"
             )
         
-        vk_config = VerifyKnowledgeConfig()
+        vk_config = omodul.verify_knowledge.VerifyKnowledgeConfig()
 
         import json
         for row in candidate_rows:
@@ -124,7 +124,7 @@ class EvolutionEngine:
             if v_type:
                 logger.debug(f"Verifying empirical KU ({v_type}): {name}")
                 try:
-                    vk_result = verify_knowledge(vk_config, v_input)
+                    vk_result = omodul.verify_knowledge.verify_knowledge(vk_config, v_input)
                     vk_findings = vk_result.get("findings")
                     
                     if vk_findings:
@@ -154,12 +154,12 @@ class EvolutionEngine:
         # Step 3: Skill Distillation
         # =====================================================================
         logger.info("Step 3: Skill Distillation")
-        distill_config = LearningDistillConfig()
+        distill_config = omodul.learning_distill.LearningDistillConfig()
         # In a real run, we fetch recent episodes to distill into solution_strategies.
         # For this skeleton, we run it with an empty payload to test orchestration.
         try:
              # Input expects episodes with success/failure signals
-             distill_res = learning_distill(distill_config, {"episodes": []})
+             distill_res = omodul.learning_distill.learning_distill(distill_config, {"episodes": []})
              # report["distilled"] = len(distill_res.get("findings", {}).get("strategies_generated", []))
              report["distilled"] = 0 
         except Exception as e:
@@ -169,13 +169,13 @@ class EvolutionEngine:
         # Step 4: Governance Adjudication (Human-in-the-loop preparation)
         # =====================================================================
         logger.info("Step 4: Governance Adjudication")
-        gov_config = GovernanceAdjudicateConfig(backend=self.backend)
+        gov_config = omodul.governance_adjudicate.GovernanceAdjudicateConfig(backend=self.backend)
         # We pass the high-risk items collected during reflux into governance
         gov_input = {
             "pending_decisions": report["needs_review"]
         }
         try:
-            gov_res = governance_adjudicate(gov_config, gov_input)
+            gov_res = omodul.governance_adjudicate.governance_adjudicate(gov_config, gov_input)
             # Governance processes them and might mark them for human review
             # We don't automatically apply high-risk changes here.
         except Exception as e:

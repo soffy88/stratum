@@ -134,15 +134,17 @@ class PgBackend(StorageBackend, EpistemicStore):
 
     async def search_ku_by_vector(self, query_vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
         pool = await self._ensure_pool()
-        # obase.persistence.vector_search expects 'top_k' instead of 'limit'
-        results = await vector_search(
-            pool=pool,
-            table="aii.ku",
-            vector_column="embedding",
-            query_vector=query_vector,
-            top_k=limit
-        )
-        return results
+        # Use direct asyncpg query with vector distance operator
+        # Since we use enable_vector=True, asyncpg handles list[float] correctly
+        sql = f"""
+            SELECT *, embedding <=> $1 AS distance
+            FROM aii.ku
+            ORDER BY embedding <=> $1
+            LIMIT $2
+        """
+        async with pool.acquire() as conn:
+            records = await conn.fetch(sql, query_vector, limit)
+        return [dict(r) for r in records]
 
     async def record_state_change(self, ku_id: str, to_grade: str, reason: str | None = None, decision_trail: dict[str, Any] | None = None) -> None:
         pool = await self._ensure_pool()
