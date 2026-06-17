@@ -1,5 +1,6 @@
 """Folder watch — accept a local/remote path and trigger background scan."""
 
+import json
 import logging
 from datetime import datetime
 
@@ -17,6 +18,7 @@ router = APIRouter(prefix="/api/v1/folder-watch", tags=["folder-watch"])
 class FolderWatchRequest(BaseModel):
     path: str
     description: str | None = None
+    generate_derivatives: list[str] = []
 
 
 class FolderWatchResponse(BaseModel):
@@ -47,6 +49,7 @@ async def add_folder_watch(
             "path": body.path,
             "description": body.description,
             "status": "active",
+            "generate_derivatives": json.dumps(body.generate_derivatives),
             "created_at": now_utc(),
         },
     )
