@@ -1,134 +1,125 @@
 'use client';
-
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { listDocuments, type Substrate } from '@/lib/documents';
+import { UploadDialog } from '@/components/UploadDialog';
+import { UrlIngestDialog } from '@/components/UrlIngestDialog';
+import { FolderIngestDialog } from '@/components/FolderIngestDialog';
+import { FeedSubscribeDialog } from '@/components/FeedSubscribeDialog';
 
-type TabKey = 'original' | 'markdown' | 'translation' | 'audio' | 'illustration';
+type SectionKey = 'original' | 'markdown' | 'translation' | 'audio' | 'illustration';
 
-const TABS: { key: TabKey; label: string; emptyMsg: string }[] = [
-  { key: 'original',     label: '原始文档', emptyMsg: '暂无文档，点右上角入库' },
-  { key: 'markdown',     label: 'Markdown', emptyMsg: '还没有 Markdown 内容，在文档详情页点「立即生成」' },
-  { key: 'translation',  label: '中文翻译', emptyMsg: '还没有翻译内容，在文档详情页点「立即生成」' },
-  { key: 'audio',        label: '音频朗读', emptyMsg: '还没有音频内容，在文档详情页点「立即生成」' },
-  { key: 'illustration', label: '插图',     emptyMsg: '还没有插图内容，在文档详情页点「立即生成」' },
+interface SectionDef {
+  key: SectionKey;
+  label: string;
+  kind?: string;
+  action: string;
+  emptyMsg: string;
+}
+
+const SECTIONS: SectionDef[] = [
+  { key: 'original',     label: '原始文档', kind: undefined,     action: '打开', emptyMsg: '暂无文档，点右上角入库' },
+  { key: 'markdown',     label: 'Markdown', kind: 'markdown',    action: '阅读', emptyMsg: '还没有 Markdown' },
+  { key: 'translation',  label: '中文翻译', kind: 'translation', action: '阅读', emptyMsg: '还没有翻译，详情页点「立即生成」' },
+  { key: 'audio',        label: '音频朗读', kind: 'audio',       action: '收听', emptyMsg: '还没有音频，详情页点「立即生成」' },
+  { key: 'illustration', label: '插图',     kind: 'illustration',action: '查看', emptyMsg: '还没有插图，详情页点「立即生成」' },
 ];
 
 const MIME_ICON: Record<string, string> = {
-  'application/pdf':     '📄',
-  'application/epub+zip':'📗',
-  'text/plain':          '📝',
-  'text/markdown':       '📝',
-  'text/html':           '🌐',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '📃',
+  pdf: '📄', epub: '📗', book: '📗', text: '📝', webpage: '🌐', note: '📝',
 };
-
-function fmtSize(bytes?: number): string {
-  if (!bytes) return '';
-  const mb = bytes / 1024 / 1024;
-  return mb >= 1 ? `${mb.toFixed(0)} MB` : `${(bytes / 1024).toFixed(0)} KB`;
-}
 
 export default function DocumentsPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabKey>('original');
-  const [docs, setDocs] = useState<Substrate[]>([]);
+  const [sections, setSections] = useState<Record<SectionKey, Substrate[]>>({
+    original: [], markdown: [], translation: [], audio: [], illustration: [],
+  });
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
+  const [showUpload, setShowUpload] = useState(false);
+  const [showUrl, setShowUrl] = useState(false);
+  const [showFolder, setShowFolder] = useState(false);
+  const [showFeed, setShowFeed] = useState(false);
 
-  const load = useCallback(async (tab: TabKey, query: string) => {
+  const loadAll = useCallback(async (query: string) => {
     setLoading(true);
     try {
-      const params: { limit: number; kind?: string; q?: string } = { limit: 500 };
-      if (tab !== 'original') params.kind = tab;
-      if (query) params.q = query;
-      const res = await listDocuments(params);
-      setDocs(res.items ?? []);
+      const results: Substrate[][] = await Promise.all(
+        SECTIONS.map(s =>
+          listDocuments({ limit: 500, kind: s.kind, q: query || undefined })
+            .then((r): Substrate[] => r?.items || [])
+            .catch((): Substrate[] => [])
+        )
+      );
+      const next = {} as Record<SectionKey, Substrate[]>;
+      SECTIONS.forEach((s, i) => { next[s.key] = results[i] ?? []; });
+      setSections(next);
     } catch {
       toast.error('加载文档失败');
-      setDocs([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(activeTab, q); }, [load, activeTab, q]);
+  useEffect(() => { loadAll(q); }, [loadAll, q]);
 
-  const tabInfo = TABS.find(t => t.key === activeTab)!;
+  const refresh = () => loadAll(q);
 
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto">
-      {/* 页头 */}
-      <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
-        <h1 className="text-xl font-bold">文档</h1>
-        <div className="flex gap-2">
-          <button className="text-sm px-3 min-h-11 rounded-lg border hover:bg-muted">上传文件</button>
-          <button className="text-sm px-3 min-h-11 rounded-lg border hover:bg-muted">输入 URL</button>
-          <button className="text-sm px-3 min-h-11 rounded-lg border hover:bg-muted">订阅 RSS</button>
-          <button className="text-sm px-3 min-h-11 rounded-lg border hover:bg-muted">文件夹</button>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h1 className="text-2xl font-semibold">文档</h1>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setShowUpload(true)} className="px-3 py-2 text-sm bg-primary text-primary-foreground rounded-lg min-h-11 hover:opacity-90">上传文件</button>
+          <button onClick={() => setShowUrl(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">输入 URL</button>
+          <button onClick={() => setShowFeed(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">订阅 RSS</button>
+          <button onClick={() => setShowFolder(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">文件夹</button>
         </div>
       </div>
 
-      {/* Tab 栏 */}
-      <div className="flex border-b mb-4 overflow-x-auto">
-        {TABS.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === t.key
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder="搜索文档..." className="w-full mb-6 px-4 py-2.5 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/40" />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {SECTIONS.map(section => {
+          const items = sections[section.key];
+          return (
+            <div key={section.key} className="bg-card border border-border rounded-xl p-4 flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium">{section.label}</span>
+                <span className="text-xs text-muted-foreground">{items.length}</span>
+              </div>
+              <div className="flex-1 overflow-y-auto" style={{ maxHeight: '420px' }}>
+                {loading ? (
+                  <div className="text-xs text-muted-foreground py-4">加载中...</div>
+                ) : items.length === 0 ? (
+                  <div className="text-xs text-muted-foreground py-4 leading-relaxed">{section.emptyMsg}</div>
+                ) : (
+                  <ul className="space-y-1">
+                    {items.map(d => (
+                      <li key={d.id} onClick={() => router.push(`/documents/${d.id}`)} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer group">
+                        <span className="flex items-center gap-1.5 text-xs truncate min-w-0">
+                          <span className="shrink-0">{MIME_ICON[d.medium] || '📄'}</span>
+                          <span className="truncate">{d.title}</span>
+                        </span>
+                        <span className="text-xs text-primary shrink-0 opacity-0 group-hover:opacity-100">{section.action}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {section.key === 'original' && items.length > 0 && (
+                <div className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border">共 {items.length} 篇</div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* 搜索 */}
-      <input
-        className="w-full mb-4 px-3 py-2 rounded-lg border bg-background text-sm min-h-11"
-        placeholder="搜索文档..."
-        value={q}
-        onChange={e => setQ(e.target.value)}
-      />
-
-      {/* 内容 */}
-      {loading ? (
-        <div className="text-center text-muted-foreground py-8">加载中…</div>
-      ) : docs.length === 0 ? (
-        <div className="text-center text-muted-foreground py-16">{tabInfo.emptyMsg}</div>
-      ) : (
-        <>
-          <div className="text-xs text-muted-foreground mb-3">
-            {docs.length} 篇文档
-          </div>
-          <div className="flex flex-col">
-            {docs.map(d => (
-              <div key={d.id} className="flex items-center gap-3 py-3 border-b last:border-0">
-                <span className="text-xl shrink-0">{MIME_ICON[d.mime] ?? '📄'}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate text-sm">{d.title}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {(d.medium || 'PDF').toUpperCase()}
-                    {d.byte_size ? ` · ${fmtSize(d.byte_size)}` : ''}
-                    {` · ${new Date(d.created_at).toLocaleDateString('zh-CN')}`}
-                    {d.source && d.source !== 'upload' ? ` · ${d.source}` : ''}
-                  </div>
-                </div>
-                <button
-                  onClick={() => router.push(`/documents/${d.id}`)}
-                  className="text-sm px-3 min-h-9 rounded-lg border hover:bg-muted shrink-0"
-                >
-                  查看
-                </button>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      {showUpload && <UploadDialog open={showUpload} onClose={() => setShowUpload(false)} onUploaded={() => { setShowUpload(false); refresh(); }} />}
+      {showUrl && <UrlIngestDialog open={showUrl} onClose={() => setShowUrl(false)} onIngested={() => { setShowUrl(false); refresh(); }} />}
+      {showFolder && <FolderIngestDialog open={showFolder} onClose={() => setShowFolder(false)} onCreated={() => { setShowFolder(false); refresh(); }} />}
+      {showFeed && <FeedSubscribeDialog onClose={() => { setShowFeed(false); refresh(); }} />}
     </div>
   );
 }
