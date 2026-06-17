@@ -10,7 +10,7 @@ from stratum.common import jwt_auth, now_utc
 from stratum.db import get_conn, read, update
 from stratum.utils.user_id_hash import hash_user_id
 
-router = APIRouter(prefix="/api/v1/substrates", tags=["substrates"])
+router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
 
 
 @router.get("")
@@ -55,9 +55,12 @@ async def list_documents(
     # Or check if medium column was added in 020? (Checking 020 again...)
     # 020 substrates: id, user_id, title, mime, source_path, file_hash, byte_size, page_count, parser, language, has_cjk, is_scanned, is_pinned, pinned_at, pin_priority, created_at, updated_at, meta_json
 
+    # Simplified medium filter implementation
     if medium:
-        # Simplified: just checking mime for this recovery step
-        query_sql += f" AND mime IN ({','.join(['?' for _ in medium])})"
+        # Check both direct 'mime' column and 'medium' field inside meta_json
+        placeholders = ",".join(["?" for _ in medium])
+        query_sql += f" AND (mime IN ({placeholders}) OR meta_json->>'$.medium' IN ({placeholders}))"
+        params.extend(medium)
         params.extend(medium)
 
     query_sql += f" ORDER BY {sort_by} {sort_order} LIMIT ? OFFSET ?"

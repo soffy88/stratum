@@ -28,7 +28,7 @@ async def create_note(body: NoteCreate, user_id: str = Depends(jwt_auth)):
     note_id = generate_ulid()
     ts = now_utc()
     insert(
-        "notes",
+        "notes_sl",
         {
             "id": note_id,
             "user_id": user_id,
@@ -48,14 +48,14 @@ async def create_note(body: NoteCreate, user_id: str = Depends(jwt_auth)):
 @router.get("/notes")
 async def list_notes(user_id: str = Depends(jwt_auth)):
     return query(
-        "SELECT id, title, updated_at FROM notes WHERE user_id = %(uid)s AND deleted_at IS NULL ORDER BY updated_at DESC",
+        "SELECT id, title, updated_at FROM notes_sl WHERE user_id = %(uid)s AND deleted_at IS NULL ORDER BY updated_at DESC",
         {"uid": user_id},
     )
 
 
 @router.get("/notes/{note_id}")
 async def get_note(note_id: str, user_id: str = Depends(jwt_auth)):
-    note = read("notes", note_id)
+    note = read("notes_sl", note_id)
     if not note or note.get("user_id") != user_id or note.get("deleted_at"):
         raise HTTPException(404, "Note not found")
     return note
@@ -63,24 +63,24 @@ async def get_note(note_id: str, user_id: str = Depends(jwt_auth)):
 
 @router.put("/notes/{note_id}")
 async def update_note(note_id: str, body: NoteUpdate, user_id: str = Depends(jwt_auth)):
-    existing = read("notes", note_id)
+    existing = read("notes_sl", note_id)
     if not existing or existing.get("user_id") != user_id or existing.get("deleted_at"):
         raise HTTPException(404, "Note not found")
     changes = {k: v for k, v in body.model_dump().items() if v is not None}
     if not changes:
         return {"note_id": note_id, "status": "unchanged"}
     changes["updated_at"] = now_utc()
-    update("notes", note_id, changes)
+    update("notes_sl", note_id, changes)
     await emit_event(user_id, "note_update", {"note_id": note_id})
     return {"note_id": note_id, "status": "updated"}
 
 
 @router.delete("/notes/{note_id}")
 async def delete_note(note_id: str, user_id: str = Depends(jwt_auth)):
-    existing = read("notes", note_id)
+    existing = read("notes_sl", note_id)
     if not existing or existing.get("user_id") != user_id or existing.get("deleted_at"):
         raise HTTPException(404, "Note not found")
-    soft_delete("notes", note_id)
+    soft_delete("notes_sl", note_id)
     await emit_event(user_id, "note_delete", {"note_id": note_id})
     return {"note_id": note_id, "status": "deleted"}
 
@@ -88,11 +88,11 @@ async def delete_note(note_id: str, user_id: str = Depends(jwt_auth)):
 @router.get("/notes/{note_id}/backlinks")
 async def note_backlinks(note_id: str, user_id: str = Depends(jwt_auth)):
     """Return notes that contain a [[note_id]] wikilink to this note."""
-    existing = read("notes", note_id)
+    existing = read("notes_sl", note_id)
     if not existing or existing.get("user_id") != user_id or existing.get("deleted_at"):
         raise HTTPException(404, "Note not found")
     rows = query(
-        "SELECT id, title, created_at FROM notes "
+        "SELECT id, title, created_at FROM notes_sl "
         "WHERE user_id = %(user_id)s "
         "AND deleted_at IS NULL "
         "AND content_markdown LIKE %(pattern)s "

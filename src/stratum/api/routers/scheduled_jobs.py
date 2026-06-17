@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from stratum.common import generate_ulid, jwt_auth, now_utc
 from stratum.db import execute, insert, query, read, update
 
-router = APIRouter(prefix="/api/v1/scheduled-jobs", tags=["scheduled_jobs"])
+router = APIRouter(prefix="/api/v1/scheduled-jobs", tags=["scheduled_jobs_sl"])
 
 
 class JobCreate(BaseModel):
@@ -39,7 +39,7 @@ class JobUpdate(BaseModel):
 async def create_job(body: JobCreate, user_id: str = Depends(jwt_auth)):
     jid = generate_ulid()
     insert(
-        "scheduled_jobs",
+        "scheduled_jobs_sl",
         {
             "id": jid,
             "user_id": user_id,
@@ -58,14 +58,14 @@ async def create_job(body: JobCreate, user_id: str = Depends(jwt_auth)):
 @router.get("")
 async def list_jobs(user_id: str = Depends(jwt_auth)):
     return query(
-        "SELECT * FROM scheduled_jobs WHERE user_id = %(uid)s ORDER BY created_at DESC",
+        "SELECT * FROM scheduled_jobs_sl WHERE user_id = %(uid)s ORDER BY created_at DESC",
         {"uid": user_id},
     )
 
 
 @router.get("/{job_id}")
 async def get_job(job_id: str, user_id: str = Depends(jwt_auth)):
-    job = read("scheduled_jobs", job_id)
+    job = read("scheduled_jobs_sl", job_id)
     if not job or job.get("user_id") != user_id:
         raise HTTPException(404, "Scheduled job not found")
     return job
@@ -73,23 +73,23 @@ async def get_job(job_id: str, user_id: str = Depends(jwt_auth)):
 
 @router.put("/{job_id}")
 async def update_job(job_id: str, body: JobUpdate, user_id: str = Depends(jwt_auth)):
-    existing = read("scheduled_jobs", job_id)
+    existing = read("scheduled_jobs_sl", job_id)
     if not existing or existing.get("user_id") != user_id:
         raise HTTPException(404, "Scheduled job not found")
     changes = body.model_dump(exclude_none=True)
     if changes:
-        update("scheduled_jobs", job_id, changes)
+        update("scheduled_jobs_sl", job_id, changes)
     return {"job_id": job_id, "status": "updated"}
 
 
 @router.delete("/{job_id}")
 async def delete_job(job_id: str, user_id: str = Depends(jwt_auth)):
-    existing = read("scheduled_jobs", job_id)
+    existing = read("scheduled_jobs_sl", job_id)
     if not existing or existing.get("user_id") != user_id:
         raise HTTPException(404, "Scheduled job not found")
-    # Hard delete: scheduled_jobs has no deleted_at column
+    # Hard delete: scheduled_jobs_sl has no deleted_at column
     execute(
-        "DELETE FROM scheduled_jobs WHERE id = %(jid)s AND user_id = %(uid)s",
+        "DELETE FROM scheduled_jobs_sl WHERE id = %(jid)s AND user_id = %(uid)s",
         {"jid": job_id, "uid": user_id},
     )
     return {"job_id": job_id, "status": "deleted"}
@@ -101,7 +101,7 @@ async def delete_job(job_id: str, user_id: str = Depends(jwt_auth)):
 @router.post("/{job_id}/run-now")
 async def run_job_now(job_id: str, user_id: str = Depends(jwt_auth)):
     """手动触发 — 复用 agents.agent_run 逻辑 (同步)."""
-    job = read("scheduled_jobs", job_id)
+    job = read("scheduled_jobs_sl", job_id)
     if not job or job.get("user_id") != user_id:
         raise HTTPException(404, "Scheduled job not found")
 
@@ -113,11 +113,11 @@ async def run_job_now(job_id: str, user_id: str = Depends(jwt_auth)):
 @router.get("/{job_id}/runs")
 async def list_job_runs(job_id: str, user_id: str = Depends(jwt_auth)):
     """Return agent_runs triggered via this scheduled job's run-now or cron."""
-    job = read("scheduled_jobs", job_id)
+    job = read("scheduled_jobs_sl", job_id)
     if not job or job.get("user_id") != user_id:
         raise HTTPException(404, "Scheduled job not found")
     return query(
-        "SELECT * FROM scheduled_job_runs WHERE job_id = %(jid)s ORDER BY started_at DESC",
+        "SELECT * FROM scheduled_job_runs_sl WHERE job_id = %(jid)s ORDER BY started_at DESC",
         {"jid": job_id},
         limit=50,
     )
