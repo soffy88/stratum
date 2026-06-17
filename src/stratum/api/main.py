@@ -61,13 +61,25 @@ async def _feed_tracker_loop() -> None:
             log.exception("feed_tracker_loop tick failed")
 
 
+async def _folder_watcher_loop() -> None:
+    from stratum.services.folder_watcher_service import folder_watcher_loop
+    import logging as _log
+    _l = _log.getLogger(__name__)
+    try:
+        await folder_watcher_loop()
+    except Exception:
+        _l.exception("folder_watcher_loop crashed")
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     run_migrations()  # 启动时自动建表
     _register_providers()
     task = asyncio.create_task(_feed_tracker_loop())
+    fw_task = asyncio.create_task(_folder_watcher_loop())
     yield
     task.cancel()
+    fw_task.cancel()
 
 
 app = FastAPI(title="Stratum Service Layer", version="0.5.0", lifespan=_lifespan)
