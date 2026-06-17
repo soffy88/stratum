@@ -26,6 +26,10 @@ class FolderWatchResponse(BaseModel):
     status: str
     last_scan_at: datetime | None = None
     file_count: int = 0
+    scan_status: str = "idle"
+    scanned_count: int = 0
+    ingested_count: int = 0
+    current_file: str = ""
 
 
 @router.post("", response_model=FolderWatchResponse)
@@ -57,25 +61,36 @@ async def add_folder_watch(
     )
 
 
+def _row_to_response(r: dict) -> FolderWatchResponse:
+    return FolderWatchResponse(
+        id=r["id"],
+        path=r["path"],
+        description=r.get("description"),
+        status=r["status"],
+        last_scan_at=r.get("last_scan_at"),
+        file_count=r.get("file_count") or 0,
+        scan_status=r.get("scan_status") or "idle",
+        scanned_count=r.get("scanned_count") or 0,
+        ingested_count=r.get("ingested_count") or 0,
+        current_file=r.get("current_file") or "",
+    )
+
+
+_SELECT = (
+    "SELECT id, path, description, status, last_scan_at, file_count, "
+    "scan_status, scanned_count, ingested_count, current_file "
+    "FROM folder_watches"
+)
+
+
 @router.get("", response_model=list[FolderWatchResponse])
 async def list_folder_watches(user_id: str = Depends(jwt_auth)):
     rows = query(
-        "SELECT id, path, description, status, last_scan_at, file_count "
-        "FROM folder_watches WHERE user_id = %(uid)s ORDER BY created_at DESC",
+        _SELECT + " WHERE user_id = %(uid)s ORDER BY created_at DESC",
         {"uid": user_id},
         limit=500,
     )
-    return [
-        FolderWatchResponse(
-            id=r["id"],
-            path=r["path"],
-            description=r.get("description"),
-            status=r["status"],
-            last_scan_at=r.get("last_scan_at"),
-            file_count=r.get("file_count") or 0,
-        )
-        for r in rows
-    ]
+    return [_row_to_response(r) for r in rows]
 
 
 @router.delete("/{watch_id}", status_code=204)
@@ -92,18 +107,8 @@ async def pause_folder_watch(watch_id: str, user_id: str = Depends(jwt_auth)):
         "UPDATE folder_watches SET status = 'paused' WHERE id = %(id)s AND user_id = %(uid)s",
         {"id": watch_id, "uid": user_id},
     )
-    rows = query(
-        "SELECT id, path, description, status, last_scan_at, file_count "
-        "FROM folder_watches WHERE id = %(id)s",
-        {"id": watch_id},
-        limit=1,
-    )
-    r = rows[0]
-    return FolderWatchResponse(
-        id=r["id"], path=r["path"], description=r.get("description"),
-        status=r["status"], last_scan_at=r.get("last_scan_at"),
-        file_count=r.get("file_count") or 0,
-    )
+    rows = query(_SELECT + " WHERE id = %(id)s", {"id": watch_id}, limit=1)
+    return _row_to_response(rows[0])
 
 
 @router.patch("/{watch_id}/resume", response_model=FolderWatchResponse)
@@ -112,15 +117,5 @@ async def resume_folder_watch(watch_id: str, user_id: str = Depends(jwt_auth)):
         "UPDATE folder_watches SET status = 'active' WHERE id = %(id)s AND user_id = %(uid)s",
         {"id": watch_id, "uid": user_id},
     )
-    rows = query(
-        "SELECT id, path, description, status, last_scan_at, file_count "
-        "FROM folder_watches WHERE id = %(id)s",
-        {"id": watch_id},
-        limit=1,
-    )
-    r = rows[0]
-    return FolderWatchResponse(
-        id=r["id"], path=r["path"], description=r.get("description"),
-        status=r["status"], last_scan_at=r.get("last_scan_at"),
-        file_count=r.get("file_count") or 0,
-    )
+    rows = query(_SELECT + " WHERE id = %(id)s", {"id": watch_id}, limit=1)
+    return _row_to_response(rows[0])
