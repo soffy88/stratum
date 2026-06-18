@@ -25,6 +25,7 @@ class Substrate:
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
     meta_json: Optional[str]
+    parse_quality: Optional[str] = None
 
 
 class SubstrateDAO:
@@ -32,7 +33,7 @@ class SubstrateDAO:
     _COLS = (
         "id, user_id, title, mime, source_path, file_hash, byte_size, page_count, "
         "parser, language, has_cjk, is_scanned, is_pinned, pinned_at, pin_priority, "
-        "created_at, updated_at, meta_json"
+        "created_at, updated_at, meta_json, parse_quality"
     )
 
     def __init__(self, db_conn):

@@ -101,6 +101,8 @@ export default function DocumentsPage() {
                         <span className="flex items-center gap-1.5 text-xs truncate min-w-0">
                           <span className="shrink-0">{MIME_ICON[d.medium] || '📄'}</span>
                           <span className="truncate">{d.title}</span>
+                          {d.parse_quality === 'scanned' && <span className="shrink-0 text-[10px] px-1 py-0 rounded bg-muted text-muted-foreground">扫描版</span>}
+                          {(d.parse_quality === 'empty' || d.parse_quality === 'garbled') && <span className="shrink-0 text-[10px] px-1 py-0 rounded bg-destructive/10 text-destructive">解析失败</span>}
                         </span>
                         <span className="text-xs text-primary shrink-0 opacity-0 group-hover:opacity-100">{section.action}</span>
                       </li>

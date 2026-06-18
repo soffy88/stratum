@@ -11,6 +11,7 @@ export interface Substrate {
   byte_size?: number;
   created_at: string;
   is_pinned: boolean;
+  parse_quality?: string | null;
 }
 
 export interface DocumentListResult {

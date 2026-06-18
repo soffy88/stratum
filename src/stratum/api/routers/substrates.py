@@ -87,7 +87,7 @@ async def list_documents(
         data_params = params + [limit, offset]
         rows = conn.execute(
             f"SELECT id, user_id, title, mime, source_path, file_hash, "
-            f"byte_size, page_count, language, is_pinned, created_at, updated_at, meta_json "
+            f"byte_size, page_count, language, is_pinned, created_at, updated_at, meta_json, parse_quality "
             f"FROM substrates WHERE {filters} "
             f"ORDER BY {sort_by} {sort_order} LIMIT ? OFFSET ?",
             data_params,
