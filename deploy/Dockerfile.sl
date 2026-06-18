@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq-dev \
         curl \
         libmagic-dev \
+        ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Python runtime deps ───────────────────────────────────────────────────────
@@ -70,7 +71,8 @@ RUN pip install --no-cache-dir \
         google-auth-httplib2 \
         dashscope \
         argon2-cffi \
-        pyjwt
+        pyjwt \
+        yt-dlp
 
 # python-ulid v3.x installs as module 'ulid'; oskill/omodul use 'python_ulid' (v2.x name).
 # Shim: expose the same package under the old module name.
