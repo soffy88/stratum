@@ -3,6 +3,7 @@ from typing import Any
 
 from oprim import epistemic_confidence_compute as ecc_fn
 from oprim import vector_encode as vector_encode_fn
+from oprim import failure_lesson_extract
 from obase import ProviderRegistry
 from aii.storage.pg_backend import PgBackend
 
@@ -21,10 +22,23 @@ class SynthesisEngine:
         else:
             return await self._handle_chitchat(message)
 
+    async def _get_known_blind_spots(self) -> list[str]:
+        """Return high_miss_topic strings from the latest gap report (pure stats, no LLM)."""
+        try:
+            gap = await self.backend.get_latest_capability_gap_async()
+            if gap:
+                return [t["topic"] for t in gap.get("high_miss_topics", [])]
+        except Exception:
+            pass
+        return []
+
     async def _handle_grounded(self, query: str) -> dict[str, Any]:
         """Handle questions requiring knowledge base grounding."""
+        # Check known blind spots before KB search (pure stats lookup)
+        blind_spots = await self._get_known_blind_spots()
+        is_known_blind_spot = any(bs in query or query[:30] in bs for bs in blind_spots)
+
         try:
-            # FIX: explicit submodule function call
             qv = vector_encode_fn(texts=[query], provider="default")[0]
         except Exception as e:
             logger.error(f"Vector encoding failed: {e}")
@@ -36,11 +50,23 @@ class SynthesisEngine:
 
         # Search DB
         results = await self.backend.search_ku_by_vector([float(x) for x in qv], limit=3)
-        
+
         # 2. No Knowledge Check
         # Threshold: similarity < 0.4 (distance > 0.6)
         if not results or results[0].get("distance", 1.0) > 0.6:
             logger.info(f"No grounding found. Top distance: {results[0].get('distance') if results else 'N/A'}")
+            # 记 retrieval_miss，供缺口感知 step5 聚合（旁路，不改 grade）
+            try:
+                fl = failure_lesson_extract(
+                    trigger_type="retrieval_miss",
+                    evidence={"query": query},
+                    subject_ref=query[:60],
+                )
+                await self.backend.record_failure_lesson_async(
+                    fl.trigger_type, fl.subject_ref, fl.evidence, fl.lesson
+                )
+            except Exception as e:
+                logger.warning(f"Retrieval miss lesson extract failed: {e}")
             return {
                 "mode": "no_knowledge",
                 "answer": "抱歉，我的知识库中尚未覆盖相关内容，无法为您提供准确解答。",
@@ -60,6 +86,10 @@ class SynthesisEngine:
 
         # 4. Generate Answer via LLM
         answer = await self._call_deepseek(query, results)
+
+        # 盲区诚实暴露：已知盲区主动声明（比硬答可信）
+        if is_known_blind_spot:
+            answer = f"[提示：此主题是我的已知盲区，知识储量有限，请谨慎参考。]\n\n{answer}"
 
         return {
             "mode": "grounded",
