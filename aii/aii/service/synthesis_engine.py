@@ -52,8 +52,8 @@ class SynthesisEngine:
         results = await self.backend.search_ku_by_vector([float(x) for x in qv], limit=3)
 
         # 2. No Knowledge Check
-        # Threshold: similarity < 0.4 (distance > 0.6)
-        if not results or results[0].get("distance", 1.0) > 0.6:
+        # Threshold: cosine distance > 0.75 (similarity < 0.25); BGE-M3 typical semantic match ~0.65
+        if not results or results[0].get("distance", 1.0) > 0.75:
             logger.info(f"No grounding found. Top distance: {results[0].get('distance') if results else 'N/A'}")
             # 记 retrieval_miss，供缺口感知 step5 聚合（旁路，不改 grade）
             try:
@@ -119,43 +119,31 @@ class SynthesisEngine:
         }
 
     async def _call_deepseek(self, query: str, context: list[dict]) -> str:
-        """Call DeepSeek API using the registered configuration."""
+        """Call DeepSeek via the registered LLM callable."""
         try:
-            llm_config = ProviderRegistry.get("llm", "default")
+            llm = ProviderRegistry.get("llm", "default")
         except Exception as e:
-            logger.warning(f"Failed to load LLM config: {e}")
-            llm_config = None
+            logger.warning(f"LLM provider not found: {e}")
+            llm = None
 
-        if not llm_config:
+        if not llm or not callable(llm):
             return "(MOCK) LLM provider not configured."
-        
-        import httpx
-        api_key = llm_config.get("api_key")
-        base_url = llm_config.get("base_url")
-        model = llm_config.get("model", "deepseek-chat")
-        
-        if not api_key or api_key == "your_key_here":
-             return "(MOCK) API key missing. Knowledge context: " + "; ".join([c.get("natural_text", "")[:50] for c in context])
-             
+
         system_prompt = "你是一个严谨的 AI 助手。请基于以下知识回答问题。如果知识未提及，请说不知道。不要给出投资建议。\n\n"
         for i, ku in enumerate(context):
             system_prompt += f"[{i+1}] {ku.get('natural_text')}\n"
 
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": query}
-        ]
+        full_prompt = system_prompt + "\n用户问题：" + query
 
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    f"{base_url}/chat/completions",
-                    headers={"Authorization": f"Bearer {api_key}"},
-                    json={"model": model, "messages": messages},
-                    timeout=15.0
-                )
-                resp.raise_for_status()
-                return resp.json()["choices"][0]["message"]["content"]
+            import asyncio as _asyncio
+            import concurrent.futures as _cf
+            # llm is a sync callable; run in thread to avoid blocking event loop
+            loop = _asyncio.get_event_loop()
+            with _cf.ThreadPoolExecutor(max_workers=1) as ex:
+                answer = await loop.run_in_executor(ex, llm, full_prompt)
+            return answer
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
             return f"(LLM_ERROR) {e}"
+

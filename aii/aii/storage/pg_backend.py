@@ -1,4 +1,5 @@
 import asyncio
+import concurrent.futures
 import json
 import logging
 from typing import Any, AsyncIterator
@@ -10,18 +11,31 @@ from aii.storage.backend import StorageBackend, EpistemicStore
 
 logger = logging.getLogger(__name__)
 
+
+def _run_coro(coro):
+    """Run an async coroutine from sync context, even if an event loop is already running.
+    Uses a thread executor when called from within an existing event loop (e.g. omodul
+    sync callbacks triggered during an async engine run)."""
+    try:
+        asyncio.get_running_loop()
+        # Already inside a running loop — offload to a new thread with its own loop
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            return executor.submit(asyncio.run, coro).result()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+
 class PgBackend(StorageBackend, EpistemicStore):
     """PostgreSQL implementation of StorageBackend and EpistemicStore using obase.persistence."""
 
     def __init__(self, pool_name: str = "aii_pool", dsn: str | None = None):
         self.pool_name = pool_name
         import os
-        self.dsn = dsn or os.getenv("AII_PG_DSN")
+        self.dsn = dsn or os.getenv("AII_PG_DSN") or os.getenv("DATABASE_URL")
         if not self.dsn and os.getenv("POSTGRES_USER"):
             user = os.getenv("POSTGRES_USER")
             password = os.getenv("POSTGRES_PASSWORD")
             db = os.getenv("POSTGRES_DB")
-            # Default to localhost:5435 based on docker-compose mapping
             self.dsn = f"postgresql://{user}:{password}@localhost:5435/{db}"
         self._pool = None
 
@@ -54,10 +68,10 @@ class PgBackend(StorageBackend, EpistemicStore):
 
     def put_node(self, node_id: str, payload: dict[str, Any]) -> None:
         """Synchronous wrapper for put_ku (standard omodul behavior)."""
-        asyncio.run(self.put_ku(payload))
+        self.put_ku(payload)
 
     def get_node(self, node_id: str) -> dict[str, Any] | None:
-        return asyncio.run(self.get_ku(node_id))
+        return _run_coro(self.get_ku(node_id))
 
     def list_nodes(self) -> list[str]:
         async def _list():
@@ -65,14 +79,14 @@ class PgBackend(StorageBackend, EpistemicStore):
             async with pool.acquire() as conn:
                 rows = await conn.fetch("SELECT ku_id FROM aii.ku")
                 return [str(r["ku_id"]) for r in rows]
-        return asyncio.run(_list())
+        return _run_coro(_list())
 
     def put_edge(self, src_id: str, relation: str, dst_id: str) -> None:
         async def _put():
             pool = await self._ensure_pool()
             row = {"src_id": UUID(src_id), "relation": relation, "dst_id": UUID(dst_id)}
             await upsert_batch(pool=pool, table="aii.edge", rows=[row], conflict_columns=["src_id", "relation", "dst_id"])
-        asyncio.run(_put())
+        _run_coro(_put())
 
     def list_edges(self, node_id: str | None = None) -> list[dict[str, Any]]:
         async def _list():
@@ -83,67 +97,93 @@ class PgBackend(StorageBackend, EpistemicStore):
                 else:
                     rows = await conn.fetch("SELECT * FROM aii.edge")
                 return [dict(r) for r in rows]
-        return asyncio.run(_list())
+        return _run_coro(_list())
 
     # --- EpistemicStore Implementation ---
 
-    async def put_ku(self, ku: dict[str, Any]) -> None:
-        pool = await self._ensure_pool()
+    def put_ku(self, ku: dict[str, Any]) -> None:
+        """Sync entry point called by omodul. Delegates to async impl via _run_coro."""
+        _run_coro(self._put_ku_async(ku))
+
+    async def _put_ku_async(self, ku: dict[str, Any]) -> None:
+        """Async KU write. Uses a fresh direct connection (not the shared pool) so it
+        works correctly when invoked from a thread executor with its own event loop."""
+        import asyncpg as _asyncpg
+        if not self.dsn:
+            raise ValueError("DSN must be provided to initialize PgPool")
+
         ku_id = ku.get("ku_id")
         if not ku_id:
             raise ValueError("ku_id is required")
-        
-        # Ensure UUID format
         if isinstance(ku_id, str):
             ku_id = UUID(ku_id)
 
+        import hashlib as _hashlib
         fingerprint = ku.get("fingerprint")
-        
-        async with transaction(pool) as conn:
-            # 1. Fingerprint de-duplication
-            if fingerprint:
-                existing = await conn.fetchrow(
-                    "SELECT ku_id FROM aii.ku WHERE fingerprint = $1 AND is_quarantined = FALSE", 
-                    fingerprint
+        if not fingerprint:
+            # Derive fingerprint from natural_text so dedup still works
+            _text = ku.get("natural_text", str(ku_id))
+            fingerprint = _hashlib.sha256(_text.encode()).hexdigest()[:32]
+
+        conn = await _asyncpg.connect(self.dsn)
+        try:
+            from pgvector.asyncpg import register_vector as _register_vector
+            await _register_vector(conn)
+            async with conn.transaction():
+                # 1. Fingerprint de-duplication
+                if fingerprint:
+                    existing = await conn.fetchrow(
+                        "SELECT ku_id FROM aii.ku WHERE fingerprint = $1 AND is_quarantined = FALSE",
+                        fingerprint
+                    )
+                    if existing and existing["ku_id"] != ku_id:
+                        logger.info("KU fingerprint dup %s → skipping", fingerprint[:8])
+                        return
+
+                # 2. Get old grade for audit
+                old_row = await conn.fetchrow(
+                    "SELECT grade FROM aii.ku WHERE ku_id = $1 FOR UPDATE", ku_id
                 )
-                if existing and existing["ku_id"] != ku_id:
-                    logger.info(f"KU with fingerprint {fingerprint} already exists as {existing['ku_id']}. Skipping.")
-                    return
+                old_grade = old_row["grade"] if old_row else None
+                new_grade = ku.get("grade", "unverified")
 
-            # 2. Get old grade for audit
-            old_row = await conn.fetchrow("SELECT grade FROM aii.ku WHERE ku_id = $1 FOR UPDATE", ku_id)
-            old_grade = old_row["grade"] if old_row else None
-            new_grade = ku.get("grade", "unverified")
+                # 3. Build column lists dynamically from what's in ku
+                _allowed = {
+                    "ku_id", "project_id", "natural_text", "knowledge_type",
+                    "symbolic_form", "embedding", "grade", "source",
+                    "verified", "is_quarantined", "provenance", "fingerprint",
+                }
+                row = {k: v for k, v in ku.items() if k in _allowed}
+                row["ku_id"] = ku_id
+                row["fingerprint"] = fingerprint
+                for json_field in ("symbolic_form", "provenance"):
+                    if json_field in row and isinstance(row[json_field], dict):
+                        row[json_field] = json.dumps(row[json_field])
 
-            # 3. Upsert KU
-            # Prepare row for upsert (excluding fields handled by DB defaults or special logic)
-            row = {k: v for k, v in ku.items() if k in {
-                "ku_id", "project_id", "natural_text", "knowledge_type", 
-                "symbolic_form", "embedding", "grade", "source", 
-                "verified", "is_quarantined", "provenance", "fingerprint"
-            }}
-            row["ku_id"] = ku_id
-            
-            # Serialize JSONB fields
-            for json_field in ["symbolic_form", "provenance"]:
-                if json_field in row and isinstance(row[json_field], dict):
-                    row[json_field] = json.dumps(row[json_field])
-
-            if "embedding" in row and isinstance(row["embedding"], list):
-                # Ensure embedding is handled correctly (pgvector expects list of floats or np array)
-                pass 
-
-            await upsert_batch(pool=pool, table="aii.ku", rows=[row], conflict_columns=["ku_id"])
-
-            # 4. Record state change if grade changed
-            if old_grade != new_grade:
-                await conn.execute(
-                    """
-                    INSERT INTO aii.ku_state_history (ku_id, from_grade, to_grade, trigger, decision_trail)
-                    VALUES ($1, $2, $3, $4, $5)
-                    """,
-                    ku_id, old_grade, new_grade, "put_ku", json.dumps(ku.get("decision_trail", {}))
+                cols = list(row.keys())
+                placeholders = ", ".join(f"${i+1}" for i in range(len(cols)))
+                updates = ", ".join(
+                    f"{c}=EXCLUDED.{c}" for c in cols if c != "ku_id"
                 )
+                sql = (
+                    f"INSERT INTO aii.ku ({', '.join(cols)}) VALUES ({placeholders}) "
+                    f"ON CONFLICT (ku_id) DO UPDATE SET {updates}"
+                )
+                await conn.execute(sql, *[row[c] for c in cols])
+
+                # 4. Record state change if grade changed
+                if old_grade != new_grade:
+                    await conn.execute(
+                        """
+                        INSERT INTO aii.ku_state_history
+                            (ku_id, from_grade, to_grade, trigger, decision_trail)
+                        VALUES ($1, $2, $3, $4, $5)
+                        """,
+                        ku_id, old_grade, new_grade, "put_ku",
+                        json.dumps(ku.get("decision_trail", {})),
+                    )
+        finally:
+            await conn.close()
 
     async def get_ku(self, ku_id: str) -> dict[str, Any] | None:
         pool = await self._ensure_pool()
