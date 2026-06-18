@@ -16,20 +16,22 @@ import { apiClient } from '@/lib/apiClient';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
-pdfjs.GlobalWorkerOptions.workerSrc =
-  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 interface Props {
   documentId: string;
   mime: string;
   medium: string;
   title: string;
+  byteSize?: number | null;
 }
 
 const PDF_BATCH = 5; // 每批渲染页数(懒加载)
+const MAX_INLINE_SIZE = 50 * 1024 * 1024; // 50MB 兜底
 
-export default function DocumentViewer({ documentId, mime, medium, title }: Props) {
+export default function DocumentViewer({ documentId, mime, medium, title, byteSize }: Props) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [dataBuffer, setDataBuffer] = useState<ArrayBuffer | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloadPct, setDownloadPct] = useState(0);
   const [error, setError] = useState(false);
@@ -44,7 +46,14 @@ export default function DocumentViewer({ documentId, mime, medium, title }: Prop
   const isPdf = mime?.includes('pdf') || medium === 'pdf';
   const isEpub = mime?.includes('epub') || medium === 'epub' || medium === 'book';
 
+  const isTooLarge = (byteSize || 0) > MAX_INLINE_SIZE;
+
   useEffect(() => {
+    if (isTooLarge) {
+      setLoading(false);
+      return;
+    }
+
     let url: string | null = null;
     let cancelled = false;
     setLoading(true); setError(false); setDownloadPct(0);
@@ -53,19 +62,41 @@ export default function DocumentViewer({ documentId, mime, medium, title }: Prop
       .get(`/api/v1/documents/${documentId}/file`, {
         responseType: 'blob',
         onDownloadProgress: (e: { loaded: number; total?: number }) => {
-          if (e.total) setDownloadPct(Math.round((e.loaded / e.total) * 100));
+          const total = e.total || byteSize || 0;
+          if (total) setDownloadPct(Math.round((e.loaded / total) * 100));
         },
       })
-      .then(res => {
+      .then(async res => {
         if (cancelled) return;
-        url = URL.createObjectURL(res.data as Blob);
-        setBlobUrl(url);
+        const blob = res.data as Blob;
+        
+        if (isEpub) {
+          const buf = await blob.arrayBuffer();
+          if (cancelled) return;
+          setDataBuffer(buf);
+        } else {
+          url = URL.createObjectURL(blob);
+          setBlobUrl(url);
+        }
         setLoading(false);
       })
       .catch(() => { if (!cancelled) { setError(true); setLoading(false); } });
 
     return () => { cancelled = true; if (url) URL.revokeObjectURL(url); };
-  }, [documentId]);
+  }, [documentId, isTooLarge, isEpub, byteSize]);
+
+  if (isTooLarge) {
+    return (
+      <div className="py-12 text-center text-muted-foreground border rounded-lg bg-muted/20">
+        <p className="mb-4">文件较大 ({(byteSize! / 1024 / 1024).toFixed(1)}MB)，为保证浏览器性能，建议下载查看。</p>
+        <a href={`/api/v1/documents/${documentId}/file`} 
+           className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors inline-block"
+           download={title}>
+          立即下载
+        </a>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -139,7 +170,7 @@ export default function DocumentViewer({ documentId, mime, medium, title }: Prop
     return (
       <div style={{ height: '75vh' }} className="border border-border rounded-lg overflow-hidden">
         <ReactReader
-          url={blobUrl}
+          url={dataBuffer || blobUrl || ''}
           location={epubLocation}
           locationChanged={(loc: string) => setEpubLocation(loc)}
           title={title}
