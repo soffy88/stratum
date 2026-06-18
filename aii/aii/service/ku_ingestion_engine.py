@@ -5,7 +5,7 @@ import numpy as np
 from oskill.ku_extract_pipeline import ku_extract_pipeline
 from omodul.register_ku import register_ku, RegisterKuConfig
 from omodul.knowledge_reflux import run_reflux, KnowledgeRefluxConfig
-from oprim.vector_encode import vector_encode
+from oprim import vector_encode
 
 from aii.storage.pg_backend import PgBackend
 

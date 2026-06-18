@@ -203,7 +203,7 @@ class PgBackend(StorageBackend, EpistemicStore):
                 INSERT INTO aii.failure_lesson (trigger_type, subject_ref, evidence, lesson, occurrences)
                 VALUES ($1, $2, $3, $4, 1)
                 ON CONFLICT (trigger_type, COALESCE(subject_ref, ''))
-                DO UPDATE SET 
+                DO UPDATE SET
                     occurrences = aii.failure_lesson.occurrences + 1,
                     evidence = EXCLUDED.evidence,
                     lesson = EXCLUDED.lesson,
@@ -212,6 +212,30 @@ class PgBackend(StorageBackend, EpistemicStore):
             async with pool.acquire() as conn:
                 await conn.execute(sql, trigger_type, subject_ref, json.dumps(evidence), lesson)
         asyncio.run(_record())
+
+    async def record_failure_lesson_async(self, trigger_type: str, subject_ref: str | None, evidence: dict, lesson: str) -> None:
+        pool = await self._ensure_pool()
+        sql = """
+            INSERT INTO aii.failure_lesson (trigger_type, subject_ref, evidence, lesson, occurrences)
+            VALUES ($1, $2, $3, $4, 1)
+            ON CONFLICT (trigger_type, COALESCE(subject_ref, ''))
+            DO UPDATE SET
+                occurrences = aii.failure_lesson.occurrences + 1,
+                evidence = EXCLUDED.evidence,
+                lesson = EXCLUDED.lesson,
+                updated_at = NOW();
+        """
+        async with pool.acquire() as conn:
+            await conn.execute(sql, trigger_type, subject_ref, json.dumps(evidence), lesson)
+
+    async def has_failure_lesson_async(self, trigger_type: str, subject_ref: str) -> bool:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT 1 FROM aii.failure_lesson WHERE trigger_type = $1 AND subject_ref = $2",
+                trigger_type, subject_ref
+            )
+            return row is not None
 
     def query_failure_lessons(self, trigger_type: str = None, subject_ref: str = None) -> list[dict]:
         async def _query():

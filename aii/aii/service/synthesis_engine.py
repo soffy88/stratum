@@ -1,10 +1,10 @@
 import logging
 from typing import Any
 
-from oprim.epistemic_confidence_compute import epistemic_confidence_compute as ecc_fn
+from oprim import epistemic_confidence_compute as ecc_fn
+from oprim import vector_encode as vector_encode_fn
 from obase import ProviderRegistry
 from aii.storage.pg_backend import PgBackend
-from oprim.vector_encode import vector_encode as vector_encode_fn
 
 logger = logging.getLogger(__name__)
 

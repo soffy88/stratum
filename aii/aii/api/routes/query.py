@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Body
 from aii.api._dependencies import backend
 from aii.api._envelope import success_response, error_response
-from oprim.vector_encode import vector_encode
+from oprim import vector_encode
 
 router = APIRouter()
 

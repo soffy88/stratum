@@ -5,6 +5,7 @@ import omodul.knowledge_reflux
 import omodul.verify_knowledge
 import omodul.learning_distill
 import omodul.governance_adjudicate
+from oprim import failure_lesson_extract
 
 from aii.storage.pg_backend import PgBackend
 from aii.service.formal_proof_engine import FormalProofEngine
@@ -53,6 +54,19 @@ class EvolutionEngine:
                 else:
                     # High risk (contradiction, defeater, supersede_stale) go to review
                     report["needs_review"].append(f)
+                    # Defeater击落：记失败教训（旁路，不改grade）
+                    if f.get("kind") == "defeater":
+                        try:
+                            fl = failure_lesson_extract(
+                                trigger_type="defeater_struck",
+                                evidence={"contradicts_from": str(f.get("src_id", "unknown"))},
+                                subject_ref=str(f.get("dst_id")) if f.get("dst_id") else None,
+                            )
+                            await self.backend.record_failure_lesson_async(
+                                fl.trigger_type, fl.subject_ref, fl.evidence, fl.lesson
+                            )
+                        except Exception as e:
+                            logger.warning(f"Defeater lesson extract failed: {e}")
         except Exception as e:
             logger.error(f"Reflux failed: {e}")
 
@@ -88,12 +102,32 @@ class EvolutionEngine:
             
             # 2a. Mathematical Theorems -> FormalProofEngine
             if k_type == "theorem":
+                # 确证前查重蹈：已知失败则跳过，省成本
+                theorem_name = (
+                    ku.get("symbolic_form", {}).get("name", "") if isinstance(ku.get("symbolic_form"), dict) else ""
+                ) or ku.get("name", "") or ku.get("natural_text", "")[:30]
+                if theorem_name and await self.backend.has_failure_lesson_async("verify_failed", theorem_name):
+                    logger.info(f"Skipping known failure theorem: {theorem_name}")
+                    report["skipped"].append(ku_id)
+                    continue
                 logger.debug(f"Verifying theorem: {name}")
                 res = await self.formal_proof_engine.verify(ku)
                 if res["status"] == "proven":
                     report["upgraded"].append(ku_id)
                 elif res["status"] == "not_elevated":
-                     report["skipped"].append(ku_id)
+                    # 记失败教训（loogle_count=0，旁路不改grade）
+                    try:
+                        fl = failure_lesson_extract(
+                            trigger_type="verify_failed",
+                            evidence={"loogle_count": 0},
+                            subject_ref=theorem_name or ku_id,
+                        )
+                        await self.backend.record_failure_lesson_async(
+                            fl.trigger_type, fl.subject_ref, fl.evidence, fl.lesson
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failure lesson extract failed: {e}")
+                    report["skipped"].append(ku_id)
                 continue
 
             # 2b. Empirical Knowledge -> verify_knowledge (Requires Evidence)

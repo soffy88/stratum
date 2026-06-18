@@ -1,7 +1,7 @@
 import os
 import logging
 from obase import ProviderRegistry
-from oprim.vector_encode import vector_encode
+from oprim import vector_encode
 
 logger = logging.getLogger(__name__)
 
