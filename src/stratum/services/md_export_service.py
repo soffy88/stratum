@@ -32,6 +32,7 @@ _MEDIUM_TO_DOC_TYPE = {
     "webpage": "article",
     "pdf": "paper",
     "text": "article",
+    "video": "article",
 }
 
 
