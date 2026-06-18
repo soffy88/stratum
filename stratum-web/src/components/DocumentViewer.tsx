@@ -1,79 +1,57 @@
 'use client';
 
 /**
- * DocumentViewer — 内嵌 PDF/EPUB 阅读器(文档详情页「原始文档」Tab)
+ * DocumentViewer — 按 mime 分发到 PdfReader / EpubReader / 其他。
  *
- * file endpoint 需 JWT,不能直接 iframe src → fetch 成 blob 再喂 viewer(方案 A)。
- * PDF:react-pdf(PDF.js)分批渲染(大文件不一次性全渲染,§6)。
- * EPUB:react-reader(epub.js,本身分章节)。
- * 其他:文件信息 + 下载链接。
+ * file endpoint 需 JWT → fetch 成 blob(带 token)。
+ * PDF:blob URL 喂 @react-pdf-viewer。EPUB:ArrayBuffer 喂 react-reader(比 blob URL 稳)。
+ * 大文件兜底(§6):>200MB 直接给下载,不内嵌;50-200MB 显示下载进度。
  */
 
-import { useState, useEffect, useRef } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
-import { ReactReader } from 'react-reader';
+import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/apiClient';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
-
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+import { PdfReader } from './PdfReader';
+import { EpubReader } from './EpubReader';
 
 interface Props {
   documentId: string;
   mime: string;
   medium: string;
   title: string;
-  byteSize?: number | null;
+  byteSize?: number;
 }
 
-const PDF_BATCH = 5; // 每批渲染页数(懒加载)
-const MAX_INLINE_SIZE = 50 * 1024 * 1024; // 50MB 兜底
+const MB = 1024 * 1024;
 
 export default function DocumentViewer({ documentId, mime, medium, title, byteSize }: Props) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [dataBuffer, setDataBuffer] = useState<ArrayBuffer | null>(null);
+  const [buffer, setBuffer] = useState<ArrayBuffer | null>(null);
   const [loading, setLoading] = useState(true);
-  const [downloadPct, setDownloadPct] = useState(0);
+  const [pct, setPct] = useState(0);
   const [error, setError] = useState(false);
-
-  const [numPages, setNumPages] = useState(0);
-  const [shownPages, setShownPages] = useState(PDF_BATCH);
-  const [scale, setScale] = useState(1);
-  const [epubLocation, setEpubLocation] = useState<string | number>(0);
-
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const isPdf = mime?.includes('pdf') || medium === 'pdf';
   const isEpub = mime?.includes('epub') || medium === 'epub' || medium === 'book';
-
-  const isTooLarge = (byteSize || 0) > MAX_INLINE_SIZE;
+  const tooLarge = (byteSize ?? 0) > 200 * MB;
 
   useEffect(() => {
-    if (isTooLarge) {
-      setLoading(false);
-      return;
-    }
-
+    if (tooLarge) { setLoading(false); return; }
     let url: string | null = null;
     let cancelled = false;
-    setLoading(true); setError(false); setDownloadPct(0);
+    setLoading(true); setError(false); setPct(0);
 
     apiClient
       .get(`/api/v1/documents/${documentId}/file`, {
         responseType: 'blob',
         onDownloadProgress: (e: { loaded: number; total?: number }) => {
-          const total = e.total || byteSize || 0;
-          if (total) setDownloadPct(Math.round((e.loaded / total) * 100));
+          if (e.total) setPct(Math.round((e.loaded / e.total) * 100));
         },
       })
       .then(async res => {
         if (cancelled) return;
         const blob = res.data as Blob;
-        
         if (isEpub) {
-          const buf = await blob.arrayBuffer();
-          if (cancelled) return;
-          setDataBuffer(buf);
+          setBuffer(await blob.arrayBuffer());
         } else {
           url = URL.createObjectURL(blob);
           setBlobUrl(url);
@@ -83,108 +61,50 @@ export default function DocumentViewer({ documentId, mime, medium, title, byteSi
       .catch(() => { if (!cancelled) { setError(true); setLoading(false); } });
 
     return () => { cancelled = true; if (url) URL.revokeObjectURL(url); };
-  }, [documentId, isTooLarge, isEpub, byteSize]);
+  }, [documentId, isEpub, tooLarge]);
 
-  if (isTooLarge) {
+  // 大文件兜底
+  if (tooLarge) {
     return (
-      <div className="py-12 text-center text-muted-foreground border rounded-lg bg-muted/20">
-        <p className="mb-4">文件较大 ({(byteSize! / 1024 / 1024).toFixed(1)}MB)，为保证浏览器性能，建议下载查看。</p>
-        <a href={`/api/v1/documents/${documentId}/file`} 
-           className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors inline-block"
-           download={title}>
-          立即下载
-        </a>
+      <div className="py-12 text-center text-muted-foreground">
+        <p className="mb-3">文件较大（{Math.round((byteSize ?? 0) / MB)}MB），建议下载查看</p>
+        <a href={`/api/v1/documents/${documentId}/file`} className="text-primary hover:underline">下载文件</a>
       </div>
     );
   }
 
   if (loading) {
+    const big = (byteSize ?? 0) > 50 * MB;
     return (
       <div className="py-12 text-center text-muted-foreground">
-        加载文件中…{downloadPct > 0 && ` ${downloadPct}%`}
-        {downloadPct > 0 && (
+        {big ? '正在加载大文件' : '加载文件中'}…{pct > 0 && ` ${pct}%`}
+        {pct > 0 && (
           <div className="max-w-xs mx-auto mt-3 h-1 bg-muted rounded-full overflow-hidden">
-            <div className="h-full bg-primary transition-all" style={{ width: `${downloadPct}%` }} />
+            <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
           </div>
         )}
       </div>
     );
   }
 
-  if (error || !blobUrl) {
+  if (error) {
     return (
       <div className="py-12 text-center text-muted-foreground">
         无法加载文件。
-        <a href={`/api/v1/documents/${documentId}/file`} className="text-primary ml-1 hover:underline">
-          下载查看
-        </a>
+        <a href={`/api/v1/documents/${documentId}/file`} className="text-primary ml-1 hover:underline">下载查看</a>
       </div>
     );
   }
 
-  // ── PDF ──
-  if (isPdf) {
-    return (
-      <div className="flex flex-col gap-3">
-        {/* 工具栏 */}
-        <div className="flex items-center gap-2 justify-end">
-          <button className="px-2 min-h-9 rounded border hover:bg-muted text-sm"
-            onClick={() => setScale(s => Math.max(0.5, s - 0.2))}>−</button>
-          <span className="text-sm text-muted-foreground tabular-nums">{Math.round(scale * 100)}%</span>
-          <button className="px-2 min-h-9 rounded border hover:bg-muted text-sm"
-            onClick={() => setScale(s => Math.min(2.5, s + 0.2))}>+</button>
-        </div>
+  if (isPdf && blobUrl) return <PdfReader blobUrl={blobUrl} documentId={documentId} />;
+  if (isEpub && buffer) return <EpubReader buffer={buffer} documentId={documentId} title={title} />;
 
-        <div ref={containerRef} className="border border-border rounded-lg overflow-auto max-h-[80vh] flex flex-col items-center bg-muted/30">
-          <Document
-            file={blobUrl}
-            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-            loading={<div className="py-12 text-muted-foreground">解析 PDF…</div>}
-            error={<div className="py-12 text-muted-foreground">PDF 解析失败,
-              <a href={`/api/v1/documents/${documentId}/file`} className="text-primary ml-1">下载查看</a></div>}
-          >
-            {Array.from({ length: Math.min(shownPages, numPages) }, (_, i) => (
-              <Page key={i} pageNumber={i + 1} scale={scale} className="mb-2 shadow-sm"
-                renderTextLayer renderAnnotationLayer={false} />
-            ))}
-          </Document>
-
-          {/* 懒加载:加载更多 */}
-          {shownPages < numPages && (
-            <button
-              className="my-4 px-4 min-h-11 rounded-lg border hover:bg-muted text-sm"
-              onClick={() => setShownPages(n => Math.min(n + PDF_BATCH, numPages))}>
-              加载更多({shownPages}/{numPages} 页)
-            </button>
-          )}
-          {numPages > 0 && shownPages >= numPages && (
-            <div className="my-4 text-xs text-muted-foreground">共 {numPages} 页 · 已全部加载</div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ── EPUB ──
-  if (isEpub) {
-    return (
-      <div style={{ height: '75vh' }} className="border border-border rounded-lg overflow-hidden">
-        <ReactReader
-          url={dataBuffer || blobUrl || ''}
-          location={epubLocation}
-          locationChanged={(loc: string) => setEpubLocation(loc)}
-          title={title}
-        />
-      </div>
-    );
-  }
-
-  // ── 其他类型 ──
+  // 其他类型
   return (
     <div className="py-8 text-center">
       <p className="text-muted-foreground mb-1">{title}</p>
       <p className="text-sm text-muted-foreground mb-4">此类型暂不支持内嵌预览（{mime}）</p>
-      <a href={blobUrl} download={title} className="text-primary text-sm hover:underline">下载文件</a>
+      <a href={`/api/v1/documents/${documentId}/file`} className="text-primary text-sm hover:underline">下载文件</a>
     </div>
   );
 }
