@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+import { toast } from 'sonner';
 import { apiClient } from '@/lib/apiClient';
+
+// ★ DocumentViewer 动态导入(PDF.js/epub.js 仅客户端)
+const DocumentViewer = dynamic(() => import('@/components/DocumentViewer'), {
+  ssr: false,
+  loading: () => <div className="py-12 text-center text-muted-foreground">加载阅读器…</div>,
+});
 
 interface Derivative {
   kind: string;
@@ -19,9 +27,11 @@ interface Substrate {
   source_path?: string | null;
   byte_size?: number | null;
   page_count?: number | null;
+  language?: string;
 }
 
 const TABS = [
+  { key: 'overview',     label: '概览' },
   { key: 'original',     label: '原始文档' },
   { key: 'markdown',     label: 'Markdown' },
   { key: 'translation',  label: '中文翻译' },
@@ -69,7 +79,7 @@ export default function DocumentDetailPage() {
       setDoc(docRes.data);
       setDerivatives(derivRes.data);
     } catch {
-      // handled below
+      toast.error('加载文档失败');
     } finally {
       if (showLoader) setLoading(false);
     }
@@ -107,7 +117,7 @@ export default function DocumentDetailPage() {
     : doc.title;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6">
       <button
         onClick={() => router.back()}
         className="text-sm text-muted-foreground mb-4 hover:text-foreground min-h-9 px-1"
@@ -124,12 +134,12 @@ export default function DocumentDetailPage() {
       </p>
 
       {/* Tab 栏 */}
-      <div className="flex gap-1 border-b mb-6">
+      <div className="flex gap-1 border-b mb-6 overflow-x-auto">
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setActiveTab(t.key)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap min-h-11 ${
               activeTab === t.key
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -142,40 +152,43 @@ export default function DocumentDetailPage() {
 
       {/* 内容区 */}
       <div className="prose dark:prose-invert max-w-none">
-        {activeTab === 'original' ? (
-          <div className="space-y-3">
-            <div className="rounded-lg border p-4 bg-muted/40">
-              <p className="font-medium text-sm mb-2">{filename}</p>
-              <div className="flex gap-4 text-xs text-muted-foreground flex-wrap">
-                {doc.byte_size && <span>{fmtSize(doc.byte_size)}</span>}
-                {doc.page_count && <span>{doc.page_count} 页</span>}
-                {doc.mime && <span>{doc.mime}</span>}
-              </div>
-              {doc.source_path && (
-                <p className="text-xs text-muted-foreground mt-2 break-all">
-                  路径: {doc.source_path}
-                </p>
-              )}
+        {activeTab === 'overview' && (
+          <div className="text-sm space-y-2 text-muted-foreground">
+            <p><strong>文件名:</strong> {filename}</p>
+            <p><strong>MIME 类型:</strong> {doc.mime}</p>
+            <p><strong>来源:</strong> {doc.source}</p>
+            {doc.language && <p><strong>语言:</strong> {doc.language}</p>}
+            {doc.source_path && <p className="break-all"><strong>路径:</strong> {doc.source_path}</p>}
+          </div>
+        )}
+
+        {/* ★ 原始文档 Tab:内嵌阅读器 */}
+        {activeTab === 'original' && (
+          <DocumentViewer
+            documentId={doc.id}
+            mime={doc.mime}
+            medium={doc.medium}
+            title={doc.title}
+          />
+        )}
+
+        {['markdown', 'translation', 'audio', 'illustration'].includes(activeTab) && (
+          getContent(activeTab) ? (
+            <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans">{getContent(activeTab)}</pre>
+          ) : (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground mb-4">
+                {EMPTY_MSG[activeTab] ?? '内容未生成'}
+              </p>
+              <button
+                onClick={() => handleGenerate(activeTab)}
+                disabled={!!generating}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 disabled:opacity-50 min-h-11"
+              >
+                {generating === activeTab ? '生成中...' : (GENERATE_LABEL[activeTab] ?? '立即生成')}
+              </button>
             </div>
-            <p className="text-sm text-muted-foreground">
-              原始文件预览暂不支持，请在本地直接打开文件。
-            </p>
-          </div>
-        ) : getContent(activeTab) ? (
-          <pre className="whitespace-pre-wrap text-sm leading-relaxed">{getContent(activeTab)}</pre>
-        ) : (
-          <div className="text-center py-16">
-            <p className="text-muted-foreground mb-4">
-              {EMPTY_MSG[activeTab] ?? '内容未生成'}
-            </p>
-            <button
-              onClick={() => handleGenerate(activeTab)}
-              disabled={!!generating}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 disabled:opacity-50"
-            >
-              {generating === activeTab ? '生成中...' : (GENERATE_LABEL[activeTab] ?? '立即生成')}
-            </button>
-          </div>
+          )
         )}
       </div>
     </div>
