@@ -13,3 +13,4 @@ build/
 *.log
 *:Zone.Identifier
 *.egg-info/
+backups/
