@@ -297,6 +297,21 @@ class PgBackend(StorageBackend, EpistemicStore):
                 return res
         return asyncio.run(_get())
 
+    async def get_grade_distribution_async(self) -> dict:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT knowledge_type, grade, COUNT(*) as count FROM aii.ku GROUP BY knowledge_type, grade"
+            )
+            res = {}
+            for r in rows:
+                kt = r["knowledge_type"]
+                grade = r["grade"]
+                count = r["count"]
+                if kt not in res: res[kt] = {}
+                res[kt][grade] = count
+            return res
+
     def get_stale_unverified(self, days: int) -> list[dict]:
         async def _get():
             pool = await self._ensure_pool()
@@ -307,6 +322,15 @@ class PgBackend(StorageBackend, EpistemicStore):
                 )
                 return [dict(r) for r in rows]
         return asyncio.run(_get())
+
+    async def get_stale_unverified_async(self, days: int) -> list[dict]:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT * FROM aii.ku WHERE grade = 'unverified' AND provenance IS NOT NULL AND updated_at < NOW() - make_interval(days => $1)",
+                days
+            )
+            return [dict(r) for r in rows]
 
     def get_isolated_kus(self) -> list[str]:
         async def _get():
@@ -320,3 +344,39 @@ class PgBackend(StorageBackend, EpistemicStore):
                 rows = await conn.fetch(sql)
                 return [str(r["ku_id"]) for r in rows]
         return asyncio.run(_get())
+
+    async def get_isolated_kus_async(self) -> list[str]:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            sql = """
+                SELECT ku_id FROM aii.ku
+                WHERE ku_id NOT IN (SELECT src_id FROM aii.edge)
+                  AND ku_id NOT IN (SELECT dst_id FROM aii.edge)
+            """
+            rows = await conn.fetch(sql)
+            return [str(r["ku_id"]) for r in rows]
+
+    async def query_failure_lessons_async(self, trigger_type: str = None, subject_ref: str = None) -> list[dict]:
+        pool = await self._ensure_pool()
+        sql = "SELECT * FROM aii.failure_lesson WHERE 1=1"
+        params = []
+        if trigger_type:
+            params.append(trigger_type)
+            sql += f" AND trigger_type = ${len(params)}"
+        if subject_ref:
+            params.append(subject_ref)
+            sql += f" AND subject_ref = ${len(params)}"
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(sql, *params)
+            return [dict(r) for r in rows]
+
+    async def save_capability_gap_async(self, report: dict) -> None:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            await conn.execute("INSERT INTO aii.capability_gap (report) VALUES ($1)", json.dumps(report))
+
+    async def get_latest_capability_gap_async(self) -> dict | None:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT report FROM aii.capability_gap ORDER BY snapshot_at DESC LIMIT 1")
+            return json.loads(row["report"]) if row else None

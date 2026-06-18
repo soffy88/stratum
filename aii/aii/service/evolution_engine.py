@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 import omodul.knowledge_reflux
@@ -6,6 +7,7 @@ import omodul.verify_knowledge
 import omodul.learning_distill
 import omodul.governance_adjudicate
 from oprim import failure_lesson_extract
+from oskill import capability_gap_analyze
 
 from aii.storage.pg_backend import PgBackend
 from aii.service.formal_proof_engine import FormalProofEngine
@@ -33,7 +35,8 @@ class EvolutionEngine:
             "capped": [],
             "skipped": [],
             "distilled": 0,
-            "needs_review": []
+            "needs_review": [],
+            "gaps": None,
         }
 
         # =====================================================================
@@ -214,6 +217,67 @@ class EvolutionEngine:
             # We don't automatically apply high-risk changes here.
         except Exception as e:
              logger.error(f"Governance failed: {e}")
+
+        # =====================================================================
+        # Step 5: Capability Gap Analysis (纯统计，无LLM，不自动补)
+        # =====================================================================
+        logger.info("Step 5: Capability Gap Analysis")
+        try:
+            grade_dist = await self.backend.get_grade_distribution_async()
+
+            # failure_stats: aggregate retrieval_miss by topic
+            miss_lessons = await self.backend.query_failure_lessons_async(trigger_type="retrieval_miss")
+            failure_stats: dict[str, int] = {}
+            for l in miss_lessons:
+                topic = l.get("subject_ref") or (l.get("evidence") or {}).get("query", "unknown")
+                failure_stats[topic] = failure_stats.get(topic, 0) + int(l.get("occurrences", 1))
+
+            # graph_stats: isolated KUs have degree 0
+            isolated_ids = await self.backend.get_isolated_kus_async()
+            graph_stats = {ku_id: {"degree": 0} for ku_id in isolated_ids}
+
+            # stale_candidates: build from stale unverified rows
+            stale_raw = await self.backend.get_stale_unverified_async(days=7)
+            now_utc = datetime.now(timezone.utc)
+            stale_candidates = []
+            for ku in stale_raw:
+                updated_at = ku.get("updated_at")
+                if updated_at and hasattr(updated_at, "year"):
+                    if updated_at.tzinfo is None:
+                        updated_at = updated_at.replace(tzinfo=timezone.utc)
+                    days_old = (now_utc - updated_at).days
+                else:
+                    days_old = 7
+                stale_candidates.append({
+                    "ku_id": str(ku["ku_id"]),
+                    "days_unverified": days_old,
+                    "verified": ku.get("verified", False),
+                })
+
+            gap_report = capability_gap_analyze(
+                grade_distribution=grade_dist,
+                failure_stats=failure_stats,
+                graph_stats=graph_stats,
+                stale_threshold_days=7,
+                stale_candidates=stale_candidates,
+            )
+
+            gap_dict = {
+                "high_miss_topics": gap_report.high_miss_topics,
+                "stale_unverified": gap_report.stale_unverified,
+                "isolated_kus": gap_report.isolated_kus,
+                "grade_imbalance": gap_report.grade_imbalance,
+            }
+            await self.backend.save_capability_gap_async(gap_dict)
+
+            report["gaps"] = {
+                "high_miss_topics": gap_report.high_miss_topics,
+                "stale_unverified": len(gap_report.stale_unverified),
+                "isolated_kus": len(gap_report.isolated_kus),
+                "grade_imbalance": gap_report.grade_imbalance,
+            }
+        except Exception as e:
+            logger.error(f"Capability gap analysis failed: {e}")
 
         logger.info("Evolution Cycle Complete.")
         return report
