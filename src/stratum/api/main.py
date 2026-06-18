@@ -182,6 +182,10 @@ from stratum.api.routers import graph as graph_router
 
 app.include_router(graph_router.router)
 
+from stratum.api.routers import media
+
+app.include_router(media.router)
+
 from stratum.api.routers import folder_watch
 
 app.include_router(folder_watch.router)

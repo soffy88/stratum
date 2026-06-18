@@ -7,6 +7,7 @@ import { UploadDialog } from '@/components/UploadDialog';
 import { UrlIngestDialog } from '@/components/UrlIngestDialog';
 import { FolderIngestDialog } from '@/components/FolderIngestDialog';
 import { FeedSubscribeDialog } from '@/components/FeedSubscribeDialog';
+import { VideoIngestDialog } from '@/components/VideoIngestDialog';
 
 type SectionKey = 'original' | 'markdown' | 'translation' | 'audio' | 'illustration';
 
@@ -27,7 +28,7 @@ const SECTIONS: SectionDef[] = [
 ];
 
 const MIME_ICON: Record<string, string> = {
-  pdf: '📄', epub: '📗', book: '📗', text: '📝', webpage: '🌐', note: '📝',
+  pdf: '📄', epub: '📗', book: '📗', text: '📝', webpage: '🌐', note: '📝', video: '🎬',
 };
 
 export default function DocumentsPage() {
@@ -41,6 +42,7 @@ export default function DocumentsPage() {
   const [showUrl, setShowUrl] = useState(false);
   const [showFolder, setShowFolder] = useState(false);
   const [showFeed, setShowFeed] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
 
   const loadAll = useCallback(async (query: string) => {
     setLoading(true);
@@ -75,6 +77,7 @@ export default function DocumentsPage() {
           <button onClick={() => setShowUrl(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">输入 URL</button>
           <button onClick={() => setShowFeed(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">订阅 RSS</button>
           <button onClick={() => setShowFolder(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">文件夹</button>
+          <button onClick={() => setShowVideo(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">视频 URL</button>
         </div>
       </div>
 
@@ -122,6 +125,7 @@ export default function DocumentsPage() {
       {showUrl && <UrlIngestDialog open={showUrl} onClose={() => setShowUrl(false)} onIngested={() => { setShowUrl(false); refresh(); }} />}
       {showFolder && <FolderIngestDialog open={showFolder} onClose={() => setShowFolder(false)} onCreated={() => { setShowFolder(false); refresh(); }} />}
       {showFeed && <FeedSubscribeDialog onClose={() => { setShowFeed(false); refresh(); }} />}
+      {showVideo && <VideoIngestDialog open={showVideo} onClose={() => setShowVideo(false)} onIngested={() => { setShowVideo(false); refresh(); }} />}
     </div>
   );
 }
