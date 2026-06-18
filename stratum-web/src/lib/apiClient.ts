@@ -3,9 +3,13 @@
  * Wraps api-client.ts, adds { params } support and { data } wrapping.
  */
 
-import { apiClient as _client } from './api-client';
+import { apiClient as _client, type RequestConfig } from './api-client';
 
 type Params = Record<string, string | number | boolean | undefined | null>;
+
+interface MergedConfig extends RequestConfig {
+  params?: Params;
+}
 
 function buildUrl(path: string, params?: Params): string {
   if (!params) return path;
@@ -16,19 +20,19 @@ function buildUrl(path: string, params?: Params): string {
 }
 
 export const apiClient = {
-  get<T>(path: string, config?: { params?: Params }) {
-    return _client.get<T>(buildUrl(path, config?.params)).then(data => ({ data }));
+  get<T>(path: string, config?: MergedConfig) {
+    return _client.get<T>(buildUrl(path, config?.params), config).then(data => ({ data }));
   },
-  post<T>(path: string, body?: unknown) {
-    return _client.post<T>(path, body).then(data => ({ data }));
+  post<T>(path: string, body?: unknown, config?: RequestConfig) {
+    return _client.post<T>(path, body, config).then(data => ({ data }));
   },
-  put<T>(path: string, body?: unknown) {
-    return _client.put<T>(path, body).then(data => ({ data }));
+  put<T>(path: string, body?: unknown, config?: RequestConfig) {
+    return _client.put<T>(path, body, config).then(data => ({ data }));
   },
-  patch<T>(path: string, body?: unknown) {
-    return _client.patch<T>(path, body).then(data => ({ data }));
+  patch<T>(path: string, body?: unknown, config?: RequestConfig) {
+    return _client.patch<T>(path, body, config).then(data => ({ data }));
   },
-  delete(path: string) {
-    return _client.delete<unknown>(path).then(data => ({ data }));
+  delete(path: string, config?: RequestConfig) {
+    return _client.delete<unknown>(path, config).then(data => ({ data }));
   },
 };
