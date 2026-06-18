@@ -9,6 +9,7 @@ from aii.api._provider import register_providers
 from aii.storage.pg_backend import PgBackend
 from aii.api._dependencies import backend
 from aii.api.routes import health, ingest, feed, query, chat, evolution, governance
+from aii.api._auth import APIKeyMiddleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -54,6 +55,9 @@ async def lifespan(app: FastAPI):
         logger.info("AII PG Pool closed.")
 
 app = FastAPI(title="AII API", version="0.1.0", lifespan=lifespan)
+
+# Auth + rate limiting (runs before CORS so preflight still passes)
+app.add_middleware(APIKeyMiddleware)
 
 # CORS setup
 app.add_middleware(

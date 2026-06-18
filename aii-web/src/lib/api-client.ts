@@ -41,6 +41,8 @@ interface RequestOpts {
   signal?: AbortSignal;
 }
 
+const _API_KEY = process.env.NEXT_PUBLIC_AII_API_KEY ?? '';
+
 async function request<T>(path: string, opts: RequestOpts = {}): Promise<ApiResult<T>> {
   const { method = 'GET', body, timeoutMs = 10_000 } = opts;
   const ctrl = new AbortController();
@@ -48,9 +50,12 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<ApiResu
 
   try {
     const url = `${AII_API_BASE}${path}`;
+    const headers: Record<string, string> = {};
+    if (body) headers['Content-Type'] = 'application/json';
+    if (_API_KEY) headers['X-API-Key'] = _API_KEY;
     const init: RequestInit = {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers,
       body: body ? JSON.stringify(body) : undefined,
       signal: opts.signal ?? ctrl.signal,
     };

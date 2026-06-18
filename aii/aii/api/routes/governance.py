@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Body
 from aii.api._dependencies import backend
 from aii.api._envelope import success_response, error_response
-from omodul import governance_adjudicate, GovernanceAdjudicateConfig
+from omodul.governance_adjudicate import governance_adjudicate, GovernanceAdjudicateConfig
 
 router = APIRouter()
 
