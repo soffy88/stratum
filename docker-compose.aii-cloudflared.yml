@@ -3,7 +3,9 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: aii-cloudflared
     restart: unless-stopped
-    command: tunnel --no-autoupdate run --token ${AII_TUNNEL_TOKEN}
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run --token ${AII_TUNNEL_TOKEN}
     env_file:
       - /home/soffy/.config/keys/.env
+    volumes:
+      - /home/soffy/projects/AII/.cloudflared-cfg:/etc/cloudflared:ro
     network_mode: host
