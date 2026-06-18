@@ -169,9 +169,9 @@ export default function DocumentDetailPage() {
             mime={doc.mime}
             medium={doc.medium}
             title={doc.title}
+            byteSize={doc.byte_size}
           />
         )}
-
         {['markdown', 'translation', 'audio', 'illustration'].includes(activeTab) && (
           getContent(activeTab) ? (
             <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans">{getContent(activeTab)}</pre>
