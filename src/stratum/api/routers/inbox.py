@@ -255,7 +255,8 @@ async def inbox_submit(
         if findings:
             _fill_derivative_content(substrate_id, findings)
             from stratum.services.md_export_service import export_one
-            export_one(substrate_id)
+            for _sid in (getattr(findings, "substrate_ids", None) or [substrate_id]):
+                export_one(_sid)
         if substrate_id and _HAS_GRAPH:
             background_tasks.add_task(
                 _build_graph,
@@ -427,7 +428,8 @@ async def inbox_webclip(
         if findings:
             _fill_derivative_content(substrate_id, findings)
             from stratum.services.md_export_service import export_one
-            export_one(substrate_id)
+            for _sid in (getattr(findings, "substrate_ids", None) or [substrate_id]):
+                export_one(_sid)
         if substrate_id and _HAS_GRAPH:
             background_tasks.add_task(
                 _build_graph,
