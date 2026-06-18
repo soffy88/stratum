@@ -44,7 +44,7 @@ interface RequestOpts {
 const _API_KEY = process.env.NEXT_PUBLIC_AII_API_KEY ?? '';
 
 async function request<T>(path: string, opts: RequestOpts = {}): Promise<ApiResult<T>> {
-  const { method = 'GET', body, timeoutMs = 10_000 } = opts;
+  const { method = 'GET', body, timeoutMs = 30_000 } = opts;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
 
