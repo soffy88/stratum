@@ -15,14 +15,39 @@ class PgBackend(StorageBackend, EpistemicStore):
 
     def __init__(self, pool_name: str = "aii_pool", dsn: str | None = None):
         self.pool_name = pool_name
-        self.dsn = dsn
+        import os
+        self.dsn = dsn or os.getenv("AII_PG_DSN")
+        if not self.dsn and os.getenv("POSTGRES_USER"):
+            user = os.getenv("POSTGRES_USER")
+            password = os.getenv("POSTGRES_PASSWORD")
+            db = os.getenv("POSTGRES_DB")
+            # Default to localhost:5435 based on docker-compose mapping
+            self.dsn = f"postgresql://{user}:{password}@localhost:5435/{db}"
         self._pool = None
 
     async def _ensure_pool(self) -> PgPool:
-        if self._pool is None:
+        # Check obase registry first
+        try:
+            pool = PgPool.get(self.pool_name)
+            # Test if pool is alive and on the current loop
+            async with pool.acquire() as conn:
+                await conn.execute("SELECT 1")
+            self._pool = pool
+        except (KeyError, Exception):
+            # If not in registry or pool is dead/on closed loop, try to clean up
+            try:
+                pool = PgPool.get(self.pool_name)
+                # We can't easily close it if the loop is closed, 
+                # but we MUST remove it from registry to recreate.
+                # Accessing private _registry to force clear if needed
+                PgPool._registry.pop(self.pool_name, None)
+            except KeyError:
+                pass
+            
             if not self.dsn:
                 raise ValueError("DSN must be provided to initialize PgPool")
             self._pool = await PgPool.create(name=self.pool_name, dsn=self.dsn, enable_vector=True)
+        
         return self._pool
 
     # --- StorageBackend Implementation ---
@@ -168,3 +193,106 @@ class PgBackend(StorageBackend, EpistemicStore):
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             await conn.execute("UPDATE aii.ku SET is_quarantined = TRUE WHERE ku_id = $1", UUID(ku_id))
+
+    # --- New Methods for Failure Lessons and Capability Gaps ---
+
+    def record_failure_lesson(self, trigger_type: str, subject_ref: str, evidence: dict, lesson: str) -> None:
+        async def _record():
+            pool = await self._ensure_pool()
+            sql = """
+                INSERT INTO aii.failure_lesson (trigger_type, subject_ref, evidence, lesson, occurrences)
+                VALUES ($1, $2, $3, $4, 1)
+                ON CONFLICT (trigger_type, COALESCE(subject_ref, ''))
+                DO UPDATE SET 
+                    occurrences = aii.failure_lesson.occurrences + 1,
+                    evidence = EXCLUDED.evidence,
+                    lesson = EXCLUDED.lesson,
+                    updated_at = NOW();
+            """
+            async with pool.acquire() as conn:
+                await conn.execute(sql, trigger_type, subject_ref, json.dumps(evidence), lesson)
+        asyncio.run(_record())
+
+    def query_failure_lessons(self, trigger_type: str = None, subject_ref: str = None) -> list[dict]:
+        async def _query():
+            pool = await self._ensure_pool()
+            sql = "SELECT * FROM aii.failure_lesson WHERE 1=1"
+            params = []
+            if trigger_type:
+                params.append(trigger_type)
+                sql += f" AND trigger_type = ${len(params)}"
+            if subject_ref:
+                params.append(subject_ref)
+                sql += f" AND subject_ref = ${len(params)}"
+            
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(sql, *params)
+                return [dict(r) for r in rows]
+        return asyncio.run(_query())
+
+    def has_failure_lesson(self, trigger_type: str, subject_ref: str) -> bool:
+        async def _has():
+            pool = await self._ensure_pool()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT 1 FROM aii.failure_lesson WHERE trigger_type = $1 AND subject_ref = $2",
+                    trigger_type, subject_ref
+                )
+                return row is not None
+        return asyncio.run(_has())
+
+    def save_capability_gap(self, report: dict) -> None:
+        async def _save():
+            pool = await self._ensure_pool()
+            async with pool.acquire() as conn:
+                await conn.execute("INSERT INTO aii.capability_gap (report) VALUES ($1)", json.dumps(report))
+        asyncio.run(_save())
+
+    def get_latest_capability_gap(self) -> dict | None:
+        async def _get():
+            pool = await self._ensure_pool()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow("SELECT report FROM aii.capability_gap ORDER BY snapshot_at DESC LIMIT 1")
+                return json.loads(row["report"]) if row else None
+        return asyncio.run(_get())
+
+    def get_grade_distribution(self) -> dict:
+        async def _get():
+            pool = await self._ensure_pool()
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(
+                    "SELECT knowledge_type, grade, COUNT(*) as count FROM aii.ku GROUP BY knowledge_type, grade"
+                )
+                res = {}
+                for r in rows:
+                    kt = r["knowledge_type"]
+                    grade = r["grade"]
+                    count = r["count"]
+                    if kt not in res: res[kt] = {}
+                    res[kt][grade] = count
+                return res
+        return asyncio.run(_get())
+
+    def get_stale_unverified(self, days: int) -> list[dict]:
+        async def _get():
+            pool = await self._ensure_pool()
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(
+                    "SELECT * FROM aii.ku WHERE grade = 'unverified' AND provenance IS NOT NULL AND updated_at < NOW() - $1::interval",
+                    f"{days} days"
+                )
+                return [dict(r) for r in rows]
+        return asyncio.run(_get())
+
+    def get_isolated_kus(self) -> list[str]:
+        async def _get():
+            pool = await self._ensure_pool()
+            async with pool.acquire() as conn:
+                sql = """
+                    SELECT ku_id FROM aii.ku
+                    WHERE ku_id NOT IN (SELECT src_id FROM aii.edge)
+                      AND ku_id NOT IN (SELECT dst_id FROM aii.edge)
+                """
+                rows = await conn.fetch(sql)
+                return [str(r["ku_id"]) for r in rows]
+        return asyncio.run(_get())
