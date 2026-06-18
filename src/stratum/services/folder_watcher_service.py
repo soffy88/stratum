@@ -92,6 +92,8 @@ async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
                             sid = _extract_id(findings.substrate_id)
                             if sid:
                                 _fill_derivative_content(sid, findings)
+                                from stratum.services.md_export_service import export_one
+                                export_one(sid)
                         ingested += 1
                         log.info("folder_watcher: ingested %s", f.name)
                     else:
