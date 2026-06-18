@@ -2,9 +2,11 @@
 
 import json
 import logging
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 
 from stratum.api.deps import get_current_user
 from stratum.common import jwt_auth, now_utc
@@ -134,15 +136,55 @@ async def get_document(substrate_id: str, user=Depends(get_current_user)):
     }
 
 
+@router.get("/{substrate_id}/file")
+async def get_document_file(substrate_id: str, user=Depends(get_current_user)):
+    uh = hash_user_id(user.user_id)
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT source_path, title, mime FROM substrates "
+            "WHERE id=? AND (user_id=? OR user_id=?)",
+            (substrate_id, uh, user.user_id),
+        ).fetchone()
+    if not row:
+        raise HTTPException(404, "Document not found")
+    file_path, title, mime = row
+    if not file_path:
+        raise HTTPException(404, "File path not found in database")
+    p = Path(file_path)
+    if not p.exists():
+        log.error(f"File not found on disk: {file_path}")
+        raise HTTPException(404, "File not found on disk")
+    return FileResponse(
+        path=str(p),
+        media_type=mime or "application/octet-stream",
+        filename=title,
+        headers={"Content-Disposition": "inline"},
+    )
+
+
 async def _run_generate(substrate_id: str, user_id_hash: str, kind: str):
-    log.info("generate_derivative queued: %s kind=%s user=%s", substrate_id, kind, user_id_hash)
+    log.info("generate_derivative: %s kind=%s", substrate_id, kind)
     try:
-        from stratum.services.folder_watcher_service import _scan_one_watch  # noqa: F401
-        # Placeholder: real derivative generation dispatched by kind
-        # Currently logs intent; full AI pipeline integration planned
-        log.info("generate_derivative: kind=%s for %s (pipeline not yet wired)", kind, substrate_id)
+        if kind == "translation":
+            from oskill.translate_substrate import translate_substrate
+            await translate_substrate(
+                substrate_id=substrate_id,
+                target_lang="zh-CN",
+                embed_translation=False,
+                overwrite=True,
+            )
+            # translate_substrate writes kind='translation_zh-CN'; normalize for UI
+            with get_conn() as conn:
+                conn.execute(
+                    "UPDATE derivative SET kind='translation' "
+                    "WHERE substrate_id=? AND kind='translation_zh-CN'",
+                    (substrate_id,),
+                )
+            log.info("generate_derivative: translation done %s", substrate_id)
+        else:
+            log.info("generate_derivative: kind=%s not yet wired for %s", kind, substrate_id)
     except Exception as e:
-        log.error("generate_derivative error: %s", e)
+        log.error("generate_derivative error: kind=%s %s: %s", kind, substrate_id, e)
 
 
 @router.post("/{substrate_id}/generate", status_code=202)
