@@ -78,6 +78,7 @@ export interface SubstrateItem {
   language?: string | null;
   page_count?: number | null;
   created_at?: string | null;
+  parse_quality?: string | null;
 }
 
 export interface SubstratesResponse {

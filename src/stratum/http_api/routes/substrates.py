@@ -29,6 +29,7 @@ class SubstrateItem(BaseModel):
     language: Optional[str] = None
     page_count: Optional[int] = None
     created_at: Optional[datetime] = None
+    parse_quality: Optional[str] = None
 
 
 class ListSubstratesResponse(BaseModel):
@@ -57,6 +58,7 @@ async def list_substrates(
             language=s.language,
             page_count=s.page_count,
             created_at=s.created_at,
+            parse_quality=getattr(s, 'parse_quality', None),
         )
         for s in subs
     ]

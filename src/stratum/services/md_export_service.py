@@ -116,7 +116,8 @@ def export_all(doc_type_filter: str | None = None) -> dict:
             "SELECT DISTINCT s.id, s.mime, s.meta_json "
             "FROM substrates s "
             "JOIN derivative d ON s.id = d.substrate_id "
-            "WHERE d.kind = 'markdown' AND d.content IS NOT NULL AND LENGTH(d.content) > 0"
+            "WHERE d.kind = 'markdown' AND d.content IS NOT NULL AND LENGTH(d.content) > 0 "
+            "AND (s.parse_quality IS NULL OR s.parse_quality = 'ok')"
         ).fetchall()
 
     targets = []
