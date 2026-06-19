@@ -51,6 +51,7 @@ def _run_ingest(video_url: str, user_id_hash: str, asr_backend: str, transcribe:
         transcribe_if_no_subtitle=transcribe,
         llm_provider="qwen3",
         llm_model="qwen3-max",
+        cookies_path="~/.stratum/youtube_cookies.txt",
     )
 
     with tempfile.TemporaryDirectory(prefix="media_ingest_") as tmpdir:
