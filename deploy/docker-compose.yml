@@ -105,6 +105,8 @@ services:
       # User file folders for folder_watcher_service
       - /home/soffy/papers:/mnt/user/papers:ro
       - /home/soffy/books:/mnt/user/books:ro
+      # Whisper model — faster-whisper base model (CPU int8)
+      - /home/soffy/models/faster-whisper-base:/models/whisper:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9304/api/v1/health"]
       interval: 30s
