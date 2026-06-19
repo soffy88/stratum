@@ -4,10 +4,13 @@ version = "0.1.0"
 description = "AII Knowledge Ingestion & Persistence Engine"
 requires-python = ">=3.12"
 dependencies = [
-    "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.10.11",
-    "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.25.3",
-    "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.29.2",
-    "obase @ git+ssh://git@github.com/helios-plat/obase.git@v0.14.1",
+    # oprim/oskill: 5 新元素(relation_extract_rule/llm, community_cluster等)在 local dev source
+    # 因 oprim._aii_graph_types 尚未发布到 tag, 需 editable install from platform/3O
+    # 待 oprim>=3.10.18 发布后改回 git tag pin
+    "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.10.14",
+    "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.25.7",
+    "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.30.5",
+    "obase @ git+ssh://git@github.com/helios-plat/obase.git@v0.15.10",
     "asyncpg>=0.31.0",
     "pgvector>=0.2.5",
     "fastapi>=0.115.0",
