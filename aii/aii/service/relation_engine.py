@@ -25,25 +25,6 @@ from oskill import relation_extract_llm
 from aii.storage.pg_backend import PgBackend
 
 
-def _make_llm_adapter(sync_llm):
-    """Wrap a sync callable(prompt)->str into the async (messages,system,max_tokens)->dict
-    format that relation_extract_llm expects (Anthropic-style response dict)."""
-    async def _async_llm(*, messages, system="", max_tokens=512, **_):
-        # Build combined prompt: system block + user messages
-        parts = []
-        if system:
-            parts.append(system)
-        for msg in messages:
-            if msg.get("role") == "user":
-                parts.append(msg.get("content", ""))
-        combined = "\n\n".join(p for p in parts if p)
-        loop = asyncio.get_event_loop()
-        import concurrent.futures as _cf
-        with _cf.ThreadPoolExecutor(max_workers=1) as ex:
-            answer = await loop.run_in_executor(ex, sync_llm, combined)
-        return {"content": [{"type": "text", "text": answer}]}
-    return _async_llm
-
 logger = logging.getLogger(__name__)
 
 # confidence_signal → edge grade 映射 (规则边, 最高 medium)
@@ -148,8 +129,7 @@ class RelationEngine:
         logger.info("RelationEngine Step2: LLM extraction for %d KU pairs", len(ku_ids))
         llm = None
         try:
-            raw_llm = ProviderRegistry.get().llm("default")
-            llm = _make_llm_adapter(raw_llm)
+            llm = ProviderRegistry.get().llm("default")
         except Exception as e:
             logger.warning("LLM provider not available, skipping LLM step: %s", e)
 

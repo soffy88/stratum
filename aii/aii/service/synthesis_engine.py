@@ -119,30 +119,27 @@ class SynthesisEngine:
         }
 
     async def _call_deepseek(self, query: str, context: list[dict]) -> str:
-        """Call DeepSeek via the registered LLM callable."""
+        """Call DeepSeek via the registered async LLM callable."""
         try:
-            llm = ProviderRegistry.get("llm", "default")
+            llm = ProviderRegistry.get().llm("default")
         except Exception as e:
             logger.warning(f"LLM provider not found: {e}")
-            llm = None
-
-        if not llm or not callable(llm):
             return "(MOCK) LLM provider not configured."
 
         system_prompt = "你是一个严谨的 AI 助手。请基于以下知识回答问题。如果知识未提及，请说不知道。不要给出投资建议。\n\n"
         for i, ku in enumerate(context):
             system_prompt += f"[{i+1}] {ku.get('natural_text')}\n"
 
-        full_prompt = system_prompt + "\n用户问题：" + query
-
         try:
-            import asyncio as _asyncio
-            import concurrent.futures as _cf
-            # llm is a sync callable; run in thread to avoid blocking event loop
-            loop = _asyncio.get_event_loop()
-            with _cf.ThreadPoolExecutor(max_workers=1) as ex:
-                answer = await loop.run_in_executor(ex, llm, full_prompt)
-            return answer
+            resp = await llm(
+                messages=[{"role": "user", "content": query}],
+                system=system_prompt,
+                max_tokens=2048,
+            )
+            for block in resp.get("content", []):
+                if isinstance(block, dict) and block.get("type") == "text":
+                    return block["text"].strip()
+            return ""
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
             return f"(LLM_ERROR) {e}"
