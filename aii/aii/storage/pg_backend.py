@@ -526,6 +526,31 @@ class PgBackend(StorageBackend, EpistemicStore):
                 substrate_id, title, medium, ku_count,
             )
 
+    async def mark_deep_understood(self, substrate_id: str) -> None:
+        """Set deep_understood_at = NOW() for a substrate after deep understanding pipeline completes."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE aii.ingested_substrate SET deep_understood_at = NOW() WHERE substrate_id = $1",
+                substrate_id,
+            )
+
+    async def list_substrates_needing_deep_understanding(self, limit: int = 2) -> list[dict]:
+        """Return substrates that have KUs but haven't had deep understanding run yet."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT substrate_id, title, medium
+                FROM aii.ingested_substrate
+                WHERE ku_count > 0 AND deep_understood_at IS NULL
+                ORDER BY ingested_at
+                LIMIT $1
+                """,
+                limit,
+            )
+        return [dict(r) for r in rows]
+
     async def search_synthesis_kus(self, query_vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
         """Vector search restricted to synthesis (is_synthesis=true) KUs."""
         pool = await self._ensure_pool()

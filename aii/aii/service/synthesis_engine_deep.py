@@ -71,22 +71,23 @@ class DeepSynthesisEngine:
         except RuntimeError:
             return asyncio.run(self._build_overview_async(ku_ids))
 
-    async def build_overview_async(self, ku_ids: list[str]) -> dict[str, Any]:
-        return await self._build_overview_async(ku_ids)
+    async def build_overview_async(self, ku_ids: list[str], provider: str = "default") -> dict[str, Any]:
+        return await self._build_overview_async(ku_ids, provider=provider)
 
     async def build_book_understanding_async(
         self,
         book_substrate_id: str,
         ku_ids: list[str],
         doc_type: str = "science",
+        provider: str = "default",
     ) -> dict[str, Any]:
-        return await self._build_book_understanding_async(book_substrate_id, ku_ids, doc_type)
+        return await self._build_book_understanding_async(book_substrate_id, ku_ids, doc_type, provider=provider)
 
     # ──────────────────────────────────────────────────────────────────────
     # Step A: Community cluster + summary synthesis
     # ──────────────────────────────────────────────────────────────────────
 
-    async def _build_overview_async(self, ku_ids: list[str]) -> dict[str, Any]:
+    async def _build_overview_async(self, ku_ids: list[str], provider: str = "default") -> dict[str, Any]:
         # 1. 取 embedding 向量
         embeddings_map = await self.backend.get_ku_embeddings(ku_ids)
         kus_with_emb = [(kid, embeddings_map[kid]) for kid in ku_ids if kid in embeddings_map]
@@ -131,7 +132,7 @@ class DeepSynthesisEngine:
                 config = SummarySynthesizeConfig(
                     community_label=comm.label,
                     max_source_kus=20,
-                    llm_provider="default",
+                    llm_provider=provider,
                 )
                 input_data = SummarySynthesizeInput(
                     ku_ids=comm_ku_ids,
@@ -193,6 +194,7 @@ class DeepSynthesisEngine:
         book_substrate_id: str,
         ku_ids: list[str],
         doc_type: str = "science",
+        provider: str = "default",
     ) -> dict[str, Any]:
         # 加载 KU 数据
         all_kus = await self.backend.list_kus()
@@ -208,7 +210,7 @@ class DeepSynthesisEngine:
         config = BookUnderstandingConfig(
             book_substrate_id=book_substrate_id,
             doc_type=doc_type,
-            llm_provider="default",
+            llm_provider=provider,
         )
         input_data = BookUnderstandingInput(
             ku_ids=valid_ids,

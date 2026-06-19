@@ -53,17 +53,21 @@ class RelationEngine:
     def __init__(self, backend: PgBackend):
         self.backend = backend
 
-    def extract_relations_for_book(self, ku_ids: list[str]) -> dict[str, Any]:
+    def extract_relations_for_book(self, ku_ids: list[str], provider: str = "default") -> dict[str, Any]:
         """同步入口; 在现有事件循环内调用时走线程."""
         try:
             asyncio.get_running_loop()
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                return ex.submit(asyncio.run, self._extract_async(ku_ids)).result()
+                return ex.submit(asyncio.run, self._extract_async(ku_ids, provider=provider)).result()
         except RuntimeError:
-            return asyncio.run(self._extract_async(ku_ids))
+            return asyncio.run(self._extract_async(ku_ids, provider=provider))
 
-    async def _extract_async(self, ku_ids: list[str]) -> dict[str, Any]:
+    async def extract_relations_async(self, ku_ids: list[str], provider: str = "default") -> dict[str, Any]:
+        """异步公开入口; 供 ingest_one 等 async 调用者直接 await."""
+        return await self._extract_async(ku_ids, provider=provider)
+
+    async def _extract_async(self, ku_ids: list[str], provider: str = "default") -> dict[str, Any]:
         # ── 加载 KU 数据 ──────────────────────────────────────────────────
         all_kus = await self.backend.list_kus()
         ku_map: dict[str, dict] = {str(ku["ku_id"]): ku for ku in all_kus}
@@ -129,7 +133,7 @@ class RelationEngine:
         logger.info("RelationEngine Step2: LLM extraction for %d KU pairs", len(ku_ids))
         llm = None
         try:
-            llm = ProviderRegistry.get().llm("default")
+            llm = ProviderRegistry.get().llm(provider)
         except Exception as e:
             logger.warning("LLM provider not available, skipping LLM step: %s", e)
 

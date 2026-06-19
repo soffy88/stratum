@@ -8,6 +8,11 @@ grade_cap 守命门:
 provider 分流:
   video/audio/podcast → "ollama-local" (qwen2.5:7b 本地, 免费快, grade低无需精确)
   paper/book/其他     → "default"      (DeepSeek, 精确, 用于数学/科学内容)
+
+深度理解管道 (每文件摄取后自动跑，单步失败不崩):
+  1. RelationEngine.extract_relations_async  → 结网 (规则+LLM边unverified)
+  2. DeepSynthesisEngine.build_overview_async → 社区聚类+大局摘要
+  3. DeepSynthesisEngine.build_book_understanding_async → 书级理解(stance/论据grade独立)
 """
 from __future__ import annotations
 
@@ -17,6 +22,8 @@ import re
 from pathlib import Path
 
 from aii.service.ku_ingestion_engine import KuIngestionEngine
+from aii.service.relation_engine import RelationEngine
+from aii.service.synthesis_engine_deep import DeepSynthesisEngine
 from aii.storage.pg_backend import PgBackend
 
 logger = logging.getLogger(__name__)
@@ -33,6 +40,15 @@ _MEDIUM_PROVIDER: dict[str, str] = {
     "video": "ollama-local",
     "audio": "ollama-local",
     "podcast": "ollama-local",
+}
+
+# medium → doc_type (书级理解的文档类型标签)
+_MEDIUM_DOC_TYPE: dict[str, str] = {
+    "video": "lecture",
+    "audio": "lecture",
+    "podcast": "lecture",
+    "paper": "science",
+    # book/article/其他 → "science" (默认; 无法仅凭medium区分数学书和文史书)
 }
 
 _PICTURE_RE = re.compile(
@@ -74,6 +90,9 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
 
     grade_cap = _MEDIUM_GRADE_CAP.get(medium)
     provider = _MEDIUM_PROVIDER.get(medium, "default")
+    doc_type = _MEDIUM_DOC_TYPE.get(medium, "science")
+
+    # ── Step 1: KU 抽取 ────────────────────────────────────────────────────
     engine = KuIngestionEngine(backend)
     try:
         result = await engine.ingest(
@@ -93,4 +112,51 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
         "auto_ingest: %s medium=%s provider=%s grade_cap=%s → %d KUs",
         title[:50], medium, provider, grade_cap, ku_count,
     )
+
+    if ku_count == 0:
+        return 0
+
+    registered_ids = [str(kid) for kid in result.get("registered", []) if kid]
+
+    # ── Step 2: 结网 (RelationEngine) ──────────────────────────────────────
+    try:
+        rel_engine = RelationEngine(backend)
+        rel_result = await rel_engine.extract_relations_async(registered_ids, provider=provider)
+        logger.info(
+            "auto_ingest: relation %s → rule=%d llm=%d edges",
+            title[:30], rel_result.get("rule_edges", 0), rel_result.get("llm_edges", 0),
+        )
+    except Exception:
+        logger.exception("auto_ingest: RelationEngine failed for %s (non-fatal)", substrate_id[:8])
+
+    # ── Step 3: 社区聚类 + 大局摘要 (DeepSynthesisEngine.build_overview) ────
+    try:
+        deep_engine = DeepSynthesisEngine(backend)
+        ov_result = await deep_engine.build_overview_async(registered_ids, provider=provider)
+        logger.info(
+            "auto_ingest: overview %s → communities=%d synthesis=%d",
+            title[:30], ov_result.get("communities", 0), ov_result.get("synthesis_count", 0),
+        )
+    except Exception:
+        logger.exception("auto_ingest: build_overview failed for %s (non-fatal)", substrate_id[:8])
+
+    # ── Step 4: 书级理解 (DeepSynthesisEngine.build_book_understanding) ────
+    try:
+        deep_engine2 = DeepSynthesisEngine(backend)
+        bk_result = await deep_engine2.build_book_understanding_async(
+            substrate_id, registered_ids, doc_type=doc_type, provider=provider,
+        )
+        logger.info(
+            "auto_ingest: book_understanding %s → status=%s claims=%d",
+            title[:30], bk_result.get("status"), bk_result.get("main_claims_count", 0),
+        )
+    except Exception:
+        logger.exception("auto_ingest: book_understanding failed for %s (non-fatal)", substrate_id[:8])
+
+    # 标记深度理解完成 (供飞轮回填检查)
+    try:
+        await backend.mark_deep_understood(substrate_id)
+    except Exception:
+        logger.warning("auto_ingest: mark_deep_understood failed for %s (non-fatal)", substrate_id[:8])
+
     return ku_count

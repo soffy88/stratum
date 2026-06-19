@@ -74,6 +74,59 @@ def _write_needs(gaps: dict) -> None:
         logger.exception("flywheel: needs.json write failed (non-fatal)")
 
 
+async def _backfill_deep_one(backend) -> bool:
+    """找 1 个已摄入但尚未做深度理解的 substrate, 跑 RelationEngine + DeepSynthesis.
+    返回 True 表示找到并处理了, False 表示没有需要回填的."""
+    from aii.service.auto_ingest import _MEDIUM_PROVIDER, _MEDIUM_DOC_TYPE
+    from aii.service.relation_engine import RelationEngine
+    from aii.service.synthesis_engine_deep import DeepSynthesisEngine
+
+    rows = await backend.list_substrates_needing_deep_understanding(limit=1)
+    if not rows:
+        return False
+
+    row = rows[0]
+    substrate_id = row["substrate_id"]
+    title = row.get("title", substrate_id[:12])
+    medium = (row.get("medium") or "").lower()
+    provider = _MEDIUM_PROVIDER.get(medium, "default")
+    doc_type = _MEDIUM_DOC_TYPE.get(medium, "science")
+
+    pool = await backend._ensure_pool()
+    async with pool.acquire() as conn:
+        ku_rows = await conn.fetch(
+            "SELECT ku_id FROM aii.ku WHERE substrate_id=$1 AND is_synthesis IS NOT TRUE",
+            substrate_id,
+        )
+    ku_ids = [str(r["ku_id"]) for r in ku_rows]
+    if not ku_ids:
+        await backend.mark_deep_understood(substrate_id)
+        return True
+
+    logger.info("backfill: deep understanding for %s (%d KUs)", title[:40], len(ku_ids))
+
+    try:
+        rel = RelationEngine(backend)
+        rel_r = await rel.extract_relations_async(ku_ids, provider=provider)
+        logger.info("backfill: relation %s → rule=%d llm=%d", title[:30],
+                    rel_r.get("rule_edges", 0), rel_r.get("llm_edges", 0))
+    except Exception:
+        logger.exception("backfill: RelationEngine failed for %s (non-fatal)", substrate_id[:8])
+
+    try:
+        deep = DeepSynthesisEngine(backend)
+        await deep.build_overview_async(ku_ids, provider=provider)
+        bk = await deep.build_book_understanding_async(
+            substrate_id, ku_ids, doc_type=doc_type, provider=provider,
+        )
+        logger.info("backfill: book_understanding %s → status=%s", title[:30], bk.get("status"))
+    except Exception:
+        logger.exception("backfill: DeepSynthesis failed for %s (non-fatal)", substrate_id[:8])
+
+    await backend.mark_deep_understood(substrate_id)
+    return True
+
+
 async def flywheel_loop(backend) -> None:
     """后台飞轮主循环. 由 app.py lifespan asyncio.create_task() 启动."""
     from aii.service.auto_ingest import ingest_one
@@ -108,6 +161,14 @@ async def flywheel_loop(backend) -> None:
                         logger.exception("flywheel: ingest_one failed for %s (non-fatal)", md.name)
             else:
                 logger.info("flywheel: no new files this round")
+
+            # ── A2. 回填深度理解 (已摄入但无深度理解的, 每轮处理1个) ────────
+            try:
+                did = await _backfill_deep_one(backend)
+                if did:
+                    logger.info("flywheel: backfill deep understanding done (1 substrate)")
+            except Exception:
+                logger.exception("flywheel: backfill failed (non-fatal)")
 
             # ── B. 定期 evolve + 写需求文件 ──────────────────────────────────
             if round_num % FLYWHEEL_EVOLVE_EVERY == 0:
