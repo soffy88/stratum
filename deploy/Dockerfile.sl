@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         libmagic-dev \
         ffmpeg \
+        nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Python runtime deps ───────────────────────────────────────────────────────
@@ -72,7 +73,11 @@ RUN pip install --no-cache-dir \
         dashscope \
         argon2-cffi \
         pyjwt \
-        yt-dlp
+        yt-dlp \
+        faster-whisper
+
+# yt-dlp: use nodejs as JS runtime (avoids deno default which isn't installed)
+RUN mkdir -p /root/.config/yt-dlp && echo '--js-runtimes node' > /root/.config/yt-dlp/config
 
 # python-ulid v3.x installs as module 'ulid'; oskill/omodul use 'python_ulid' (v2.x name).
 # Shim: expose the same package under the old module name.
