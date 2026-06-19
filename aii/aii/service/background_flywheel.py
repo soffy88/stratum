@@ -2,8 +2,8 @@
 
 配置 (环境变量 / 默认值):
   FLYWHEEL_ENABLED          = true      开关
-  FLYWHEEL_MAX_FILES_ROUND  = 3         ★限流: 每轮最多处理 N 个文件
-  FLYWHEEL_INTERVAL         = 300       轮间隔(秒)
+  FLYWHEEL_MAX_FILES_ROUND  = 10        ★限流: 每轮最多处理 N 个文件
+  FLYWHEEL_INTERVAL         = 60        轮间隔(秒)
   FLYWHEEL_EVOLVE_EVERY     = 4         每 N 轮跑一次 evolve+needs
 
 守命门:
@@ -26,8 +26,8 @@ _SHARED_DIR = Path(os.getenv("FLYWHEEL_SHARED_DIR", "/home/soffy/shared/stratum-
 _OUTPUT_DIR = Path(os.getenv("FLYWHEEL_OUTPUT_DIR", "/home/soffy/shared/aii-to-stratum"))
 
 FLYWHEEL_ENABLED: bool = os.getenv("FLYWHEEL_ENABLED", "true").lower() not in {"false", "0", "no"}
-FLYWHEEL_MAX_FILES_ROUND: int = int(os.getenv("FLYWHEEL_MAX_FILES_ROUND", "3"))
-FLYWHEEL_INTERVAL: int = int(os.getenv("FLYWHEEL_INTERVAL", "300"))
+FLYWHEEL_MAX_FILES_ROUND: int = int(os.getenv("FLYWHEEL_MAX_FILES_ROUND", "10"))
+FLYWHEEL_INTERVAL: int = int(os.getenv("FLYWHEEL_INTERVAL", "60"))
 FLYWHEEL_EVOLVE_EVERY: int = int(os.getenv("FLYWHEEL_EVOLVE_EVERY", "4"))
 
 
