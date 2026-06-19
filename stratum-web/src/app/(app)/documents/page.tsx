@@ -9,6 +9,7 @@ import { FolderIngestDialog } from '@/components/FolderIngestDialog';
 import { FeedSubscribeDialog } from '@/components/FeedSubscribeDialog';
 import { VideoIngestDialog } from '@/components/VideoIngestDialog';
 import { ChannelSubscribeDialog } from '@/components/ChannelSubscribeDialog';
+import { BackgroundTasksPanel } from '@/components/BackgroundTasksPanel';
 
 type SectionKey = 'original' | 'markdown' | 'translation' | 'audio' | 'illustration';
 
@@ -83,6 +84,8 @@ export default function DocumentsPage() {
           <button onClick={() => setShowChannel(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">订阅频道</button>
         </div>
       </div>
+
+      <BackgroundTasksPanel onFolderDeleted={refresh} />
 
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="搜索文档..." className="w-full mb-6 px-4 py-2.5 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/40" />
 
