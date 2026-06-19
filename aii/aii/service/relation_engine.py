@@ -159,6 +159,8 @@ class RelationEngine:
                     )
                     if result is None:
                         continue
+                    if not result.relation_type:
+                        continue  # LLM determined no relationship exists; null type must not be written
                     # result.grade is hardcoded "unverified" by RelationResult.__post_init__
                     await self.backend.add_relation_edge(
                         src_id=src_id if result.direction in ("a_to_b", "bidirectional") else dst_id,

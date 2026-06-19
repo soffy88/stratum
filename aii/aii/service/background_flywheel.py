@@ -162,13 +162,17 @@ async def flywheel_loop(backend) -> None:
             else:
                 logger.info("flywheel: no new files this round")
 
-            # ── A2. 回填深度理解 (已摄入但无深度理解的, 每轮处理1个) ────────
-            try:
-                did = await _backfill_deep_one(backend)
-                if did:
-                    logger.info("flywheel: backfill deep understanding done (1 substrate)")
-            except Exception:
-                logger.exception("flywheel: backfill failed (non-fatal)")
+            # ── A2. 回填深度理解 (已摄入但无深度理解的, 每轮最多3个) ────────
+            for _bi in range(3):
+                try:
+                    did = await _backfill_deep_one(backend)
+                    if did:
+                        logger.info("flywheel: backfill deep understanding done (substrate %d/3)", _bi + 1)
+                    else:
+                        break  # 没有待回填的了
+                except Exception:
+                    logger.exception("flywheel: backfill failed (non-fatal)")
+                    break
 
             # ── B. 定期 evolve + 写需求文件 ──────────────────────────────────
             if round_num % FLYWHEEL_EVOLVE_EVERY == 0:
