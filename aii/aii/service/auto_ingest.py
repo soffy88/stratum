@@ -1,9 +1,13 @@
-"""auto_ingest — 单文件自动摄取，按 medium 分级.
+"""auto_ingest — 单文件自动摄取，按 medium 分级 + provider 分流.
 
 grade_cap 守命门:
   video/audio/podcast → grade_cap="unverified"  (讲课内容不自动升级)
   paper/book/article  → grade_cap=None          (可proven)
   其他                → grade_cap=None
+
+provider 分流:
+  video/audio/podcast → "ollama-local" (qwen2.5:7b 本地, 免费快, grade低无需精确)
+  paper/book/其他     → "default"      (DeepSeek, 精确, 用于数学/科学内容)
 """
 from __future__ import annotations
 
@@ -21,6 +25,14 @@ _MEDIUM_GRADE_CAP: dict[str, str] = {
     "video": "unverified",
     "audio": "unverified",
     "podcast": "unverified",
+}
+
+# 低信任来源用本地模型(快/免费/grade_cap=unverified下质量够用)
+# 高信任来源保留DeepSeek(数学/科学需要精确symbolic_form识别)
+_MEDIUM_PROVIDER: dict[str, str] = {
+    "video": "ollama-local",
+    "audio": "ollama-local",
+    "podcast": "ollama-local",
 }
 
 _PICTURE_RE = re.compile(
@@ -61,6 +73,7 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
         return 0
 
     grade_cap = _MEDIUM_GRADE_CAP.get(medium)
+    provider = _MEDIUM_PROVIDER.get(medium, "default")
     engine = KuIngestionEngine(backend)
     try:
         result = await engine.ingest(
@@ -68,6 +81,7 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
             project_id=substrate_id,
             substrate_id=substrate_id,
             grade_cap=grade_cap,
+            provider=provider,
         )
     except Exception:
         logger.exception("auto_ingest: ingest failed for %s", md_path.name)
@@ -76,7 +90,7 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
     ku_count = len(result.get("registered", []))
     await backend.mark_substrate_ingested(substrate_id, title, medium, ku_count)
     logger.info(
-        "auto_ingest: %s medium=%s grade_cap=%s → %d KUs",
-        title[:50], medium, grade_cap, ku_count,
+        "auto_ingest: %s medium=%s provider=%s grade_cap=%s → %d KUs",
+        title[:50], medium, provider, grade_cap, ku_count,
     )
     return ku_count

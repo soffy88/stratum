@@ -29,6 +29,7 @@ class KuIngestionEngine:
         project_id: str = "default",
         substrate_id: str = "",
         grade_cap: str | None = None,
+        provider: str = "default",
     ) -> dict[str, Any]:
         """Process raw text into knowledge units and store them."""
         # Strip picture-omitted placeholders from PDF markdown before extraction
@@ -39,11 +40,11 @@ class KuIngestionEngine:
         text = text.strip()
 
         # 1. Extraction Pipeline (oskill)
-        logger.info(f"Extracting KUs from text (length: {len(text)})")
+        logger.info(f"Extracting KUs from text (length: {len(text)}) provider={provider}")
         extracted = ku_extract_pipeline(
             text=text,
             project_id=project_id,
-            provider="default"
+            provider=provider,
         )
 
         candidates = extracted.get("candidates", [])
