@@ -171,7 +171,7 @@ class PgBackend(StorageBackend, EpistemicStore):
                     "ku_id", "project_id", "natural_text", "knowledge_type",
                     "symbolic_form", "embedding", "grade", "source",
                     "verified", "is_quarantined", "provenance", "fingerprint",
-                    "is_synthesis", "synthesis_meta",
+                    "is_synthesis", "synthesis_meta", "substrate_id",
                 }
                 row = {k: v for k, v in ku.items() if k in _allowed}
                 row["ku_id"] = ku_id
@@ -502,6 +502,29 @@ class PgBackend(StorageBackend, EpistemicStore):
                 [UUID(kid) for kid in ku_ids],
             )
             return {str(r["ku_id"]): list(r["embedding"]) for r in rows}
+
+    async def is_substrate_ingested(self, substrate_id: str) -> bool:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT 1 FROM aii.ingested_substrate WHERE substrate_id = $1",
+                substrate_id,
+            )
+            return row is not None
+
+    async def mark_substrate_ingested(
+        self, substrate_id: str, title: str, medium: str, ku_count: int
+    ) -> None:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO aii.ingested_substrate (substrate_id, title, medium, ku_count)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (substrate_id) DO UPDATE SET ku_count = EXCLUDED.ku_count
+                """,
+                substrate_id, title, medium, ku_count,
+            )
 
     async def search_synthesis_kus(self, query_vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
         """Vector search restricted to synthesis (is_synthesis=true) KUs."""

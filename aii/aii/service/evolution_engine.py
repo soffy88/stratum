@@ -289,14 +289,4 @@ class EvolutionEngine:
             logger.error(f"Capability gap analysis failed: {e}")
 
         logger.info("Evolution Cycle Complete.")
-
-        # Close the main-loop asyncpg pool so its background tasks are cancelled
-        # gracefully before asyncio.run() exits (prevents orphan-future log noise).
-        if self.backend._pool is not None:
-            try:
-                await self.backend._pool.close()
-            except Exception as e:
-                logger.debug(f"Pool close on evolve exit: {e}")
-            self.backend._pool = None
-
         return report
