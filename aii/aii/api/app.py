@@ -1,3 +1,4 @@
+import asyncio
 import os
 import logging
 from contextlib import asynccontextmanager
@@ -46,10 +47,21 @@ async def lifespan(app: FastAPI):
     backend.dsn = dsn
     await backend._ensure_pool()
     logger.info("AII Backend initialized and PG Pool started.")
-    
+
+    # 5. 启动后台飞轮
+    from aii.service.background_flywheel import flywheel_loop
+    flywheel_task = asyncio.create_task(flywheel_loop(backend), name="aii-flywheel")
+    app.state.flywheel_task = flywheel_task
+    logger.info("AII background flywheel started.")
+
     yield
-    
-    # Cleanup (if needed)
+
+    # Cleanup
+    flywheel_task.cancel()
+    try:
+        await flywheel_task
+    except asyncio.CancelledError:
+        pass
     if backend._pool:
         await backend._pool.close()
         logger.info("AII PG Pool closed.")
