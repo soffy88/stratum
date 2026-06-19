@@ -71,15 +71,27 @@ async def _folder_watcher_loop() -> None:
         _l.exception("folder_watcher_loop crashed")
 
 
+async def _channel_watcher_loop() -> None:
+    from stratum.services.channel_watcher_service import channel_watcher_loop
+    import logging as _log
+    _l = _log.getLogger(__name__)
+    try:
+        await channel_watcher_loop()
+    except Exception:
+        _l.exception("channel_watcher_loop crashed")
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     run_migrations()  # 启动时自动建表
     _register_providers()
     task = asyncio.create_task(_feed_tracker_loop())
     fw_task = asyncio.create_task(_folder_watcher_loop())
+    cw_task = asyncio.create_task(_channel_watcher_loop())
     yield
     task.cancel()
     fw_task.cancel()
+    cw_task.cancel()
 
 
 app = FastAPI(title="Stratum Service Layer", version="0.5.0", lifespan=_lifespan)
@@ -189,6 +201,10 @@ app.include_router(media.router)
 from stratum.api.routers import folder_watch
 
 app.include_router(folder_watch.router)
+
+from stratum.api.routers import channels
+
+app.include_router(channels.router)
 
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 from stratum.api.ws import router as ws_router
