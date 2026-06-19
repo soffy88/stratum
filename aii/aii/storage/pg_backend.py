@@ -171,11 +171,12 @@ class PgBackend(StorageBackend, EpistemicStore):
                     "ku_id", "project_id", "natural_text", "knowledge_type",
                     "symbolic_form", "embedding", "grade", "source",
                     "verified", "is_quarantined", "provenance", "fingerprint",
+                    "is_synthesis", "synthesis_meta",
                 }
                 row = {k: v for k, v in ku.items() if k in _allowed}
                 row["ku_id"] = ku_id
                 row["fingerprint"] = fingerprint
-                for json_field in ("symbolic_form", "provenance"):
+                for json_field in ("symbolic_form", "provenance", "synthesis_meta"):
                     if json_field in row and isinstance(row[json_field], dict):
                         row[json_field] = json.dumps(row[json_field])
 
@@ -439,3 +440,79 @@ class PgBackend(StorageBackend, EpistemicStore):
         async with pool.acquire() as conn:
             row = await conn.fetchrow("SELECT report FROM aii.capability_gap ORDER BY snapshot_at DESC LIMIT 1")
             return json.loads(row["report"]) if row else None
+
+    # --- Deep Understanding methods ---
+
+    async def list_kus(self) -> list[dict[str, Any]]:
+        """Return all non-quarantined KUs (detail only, not synthesis)."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT * FROM aii.ku WHERE is_quarantined = FALSE ORDER BY created_at"
+            )
+            return [dict(r) for r in rows]
+
+    async def add_relation_edge(
+        self,
+        src_id: str,
+        relation_type: str,
+        dst_id: str,
+        *,
+        grade: str = "unverified",
+        evidence: dict | None = None,
+        extraction_method: str = "rule",
+    ) -> None:
+        """Upsert a rich relation edge with grade, evidence, and extraction method."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO aii.edge (src_id, relation, dst_id, relation_type, grade, evidence, extraction_method)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT (src_id, relation, dst_id) DO UPDATE SET
+                    relation_type = EXCLUDED.relation_type,
+                    grade = EXCLUDED.grade,
+                    evidence = EXCLUDED.evidence,
+                    extraction_method = EXCLUDED.extraction_method
+                """,
+                UUID(src_id), relation_type, UUID(dst_id),
+                relation_type, grade,
+                json.dumps(evidence or {}), extraction_method,
+            )
+
+    async def get_relation_edges(self, ku_id: str | None = None) -> list[dict[str, Any]]:
+        """Return relation edges with grade and extraction metadata."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            if ku_id:
+                rows = await conn.fetch(
+                    "SELECT * FROM aii.edge WHERE src_id = $1 OR dst_id = $1",
+                    UUID(ku_id),
+                )
+            else:
+                rows = await conn.fetch("SELECT * FROM aii.edge")
+            return [dict(r) for r in rows]
+
+    async def get_ku_embeddings(self, ku_ids: list[str]) -> dict[str, list[float]]:
+        """Return {ku_id: embedding_vector} for given ku_ids that have embeddings."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT ku_id, embedding FROM aii.ku WHERE ku_id = ANY($1) AND embedding IS NOT NULL",
+                [UUID(kid) for kid in ku_ids],
+            )
+            return {str(r["ku_id"]): list(r["embedding"]) for r in rows}
+
+    async def search_synthesis_kus(self, query_vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
+        """Vector search restricted to synthesis (is_synthesis=true) KUs."""
+        pool = await self._ensure_pool()
+        sql = """
+            SELECT *, embedding <=> $1 AS distance
+            FROM aii.ku
+            WHERE is_synthesis = TRUE AND embedding IS NOT NULL
+            ORDER BY embedding <=> $1
+            LIMIT $2
+        """
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(sql, query_vector, limit)
+            return [dict(r) for r in rows]
