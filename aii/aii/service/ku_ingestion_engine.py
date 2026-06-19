@@ -18,7 +18,18 @@ class KuIngestionEngine:
     def __init__(self, backend: PgBackend):
         self.backend = backend
 
-    async def ingest(self, text: str, project_id: str = "default") -> dict[str, Any]:
+    _GRADE_RANKS: dict[str, int] = {
+        "unverified": 0, "low": 1, "medium": 2,
+        "high": 3, "verified": 4, "proven": 5,
+    }
+
+    async def ingest(
+        self,
+        text: str,
+        project_id: str = "default",
+        substrate_id: str = "",
+        grade_cap: str | None = None,
+    ) -> dict[str, Any]:
         """Process raw text into knowledge units and store them."""
         # Strip picture-omitted placeholders from PDF markdown before extraction
         text = re.sub(
@@ -34,29 +45,39 @@ class KuIngestionEngine:
             project_id=project_id,
             provider="default"
         )
-        
+
         candidates = extracted.get("candidates", [])
         rejected = extracted.get("rejected", [])
-        
+
         results = {
             "registered": [],
             "quarantined": [],
             "chunks_processed": extracted.get("chunks_processed", 0)
         }
 
+        # Apply substrate_id + grade_cap before registration
+        cap_rank = self._GRADE_RANKS.get(grade_cap, 999) if grade_cap else 999
+        for cand in candidates:
+            if substrate_id:
+                cand["substrate_id"] = substrate_id
+            if grade_cap:
+                g = cand.get("grade", "unverified")
+                if self._GRADE_RANKS.get(g, 0) > cap_rank:
+                    cand["grade"] = grade_cap
+
         # 2. Register Candidates (omodul)
         config = RegisterKuConfig(backend=self.backend)
-        
+
         for cand in candidates:
             # 策略B: 向量化输入用 「名称:natural_text」
             name = cand.get("name") or cand.get("title", "unnamed")
             natural_text = cand.get("natural_text", "")
             embed_input = f"{name}:{natural_text}"
-            
+
             logger.info(f"Encoding vector for KU: {name}")
             embedding = vector_encode(texts=[embed_input], provider="default")
             cand["embedding"] = embedding[0].tolist() if isinstance(embedding, np.ndarray) else embedding[0]
-            
+
             # Register via omodul
             try:
                 reg_res = register_ku(config, {"ku": cand})
