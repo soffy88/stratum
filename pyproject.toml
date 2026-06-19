@@ -4,8 +4,8 @@ version = "0.1.0"
 description = "AII Knowledge Ingestion & Persistence Engine"
 requires-python = ">=3.12"
 dependencies = [
-    "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.10.18",
-    "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.25.7",
+    "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.10.20",
+    "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.25.8",
     "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.30.5",
     "obase @ git+ssh://git@github.com/helios-plat/obase.git@v0.15.10",
     "asyncpg>=0.31.0",
