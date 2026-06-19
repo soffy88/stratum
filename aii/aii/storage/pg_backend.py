@@ -15,12 +15,31 @@ logger = logging.getLogger(__name__)
 def _run_coro(coro):
     """Run an async coroutine from sync context, even if an event loop is already running.
     Uses a thread executor when called from within an existing event loop (e.g. omodul
-    sync callbacks triggered during an async engine run)."""
+    sync callbacks triggered during an async engine run).
+
+    Wraps the coro in cleanup logic that closes any PgPool instances created inside the
+    thread's event loop before asyncio.run() returns — preventing orphaned background tasks
+    (asyncpg keepalive/recycler futures) that would otherwise log
+    'Future exception was never retrieved' when the thread loop closes.
+    """
     try:
         asyncio.get_running_loop()
         # Already inside a running loop — offload to a new thread with its own loop
+
+        async def _with_pool_cleanup():
+            pool_ids_before = {id(p) for p in PgPool._registry.values()}
+            try:
+                return await coro
+            finally:
+                for p in list(PgPool._registry.values()):
+                    if id(p) not in pool_ids_before:
+                        try:
+                            await p.close()
+                        except Exception:
+                            pass
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            return executor.submit(asyncio.run, coro).result()
+            return executor.submit(asyncio.run, _with_pool_cleanup()).result()
     except RuntimeError:
         return asyncio.run(coro)
 
