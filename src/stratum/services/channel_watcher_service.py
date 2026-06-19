@@ -31,6 +31,7 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
         proxy = kwargs.get("proxy")
         asr_backend = kwargs.get("asr_backend", "local")
         transcribe = kwargs.get("transcribe_if_no_subtitle", True)
+        cookies_path = kwargs.get("cookies_path")
 
         config = MediaConfig(
             video_url=video_url,
@@ -40,6 +41,7 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
             transcribe_if_no_subtitle=transcribe,
             llm_provider="qwen3",
             llm_model="qwen3-max",
+            cookies_path=cookies_path,
         )
 
         with tempfile.TemporaryDirectory(prefix="channel_ingest_") as tmpdir:
@@ -128,9 +130,17 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
         llm_filter=rules_dict.get("llm_filter"),
     )
 
+    async def adapted_list_videos(channel_url: str, proxy: str | None = None, limit: int | None = None):
+        return await channel_list_videos(
+            channel_url=channel_url,
+            proxy=proxy,
+            limit=limit,
+            cookies_path="~/.stratum/youtube_cookies.txt",
+        )
+
     # 真实装配调用 ChannelWatcherEngine
     engine = ChannelWatcherEngine(
-        list_videos=channel_list_videos,
+        list_videos=adapted_list_videos,
         filter_videos=custom_filter_videos,
         ingest_media=adapted_ingest_media,
         subscription=store,
@@ -141,6 +151,7 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
             "user_id_hash": user_id_hash,
             "asr_backend": "local",
             "transcribe_if_no_subtitle": True,
+            "cookies_path": "~/.stratum/youtube_cookies.txt",
         }
     )
 
