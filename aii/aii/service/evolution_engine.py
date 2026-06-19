@@ -49,21 +49,30 @@ class EvolutionEngine:
         )
         try:
             reflux_result = omodul.knowledge_reflux.run_reflux(reflux_config, {})
-            # Extract findings. Ensure it's a list.
-            findings = reflux_result.get("findings") or []
-            for f in findings:
-                if f.get("kind") in ["missing_inverse", "coherence_boost"] and f.get("applied"):
-                     report["reflux_applied"].append(f)
-                else:
-                    # High risk (contradiction, defeater, supersede_stale) go to review
-                    report["needs_review"].append(f)
-                    # Defeater击落：记失败教训（旁路，不改grade）
-                    if f.get("kind") == "defeater":
+            # findings is a RefluxReport dataclass object, not a dict or list
+            reflux_report = reflux_result.get("findings")
+            if reflux_report is not None:
+                # auto_applied: low-risk items already executed by run_reflux
+                for f in reflux_report.auto_applied:
+                    report["reflux_applied"].append({
+                        "kind": f.kind, "subject": f.subject,
+                        "severity": f.severity, "detail": f.detail,
+                    })
+                # needs_review: high-risk items for governance/human-in-the-loop
+                for f in reflux_report.needs_review:
+                    item = {
+                        "kind": f.kind, "subject": f.subject,
+                        "severity": f.severity, "detail": f.detail,
+                    }
+                    report["needs_review"].append(item)
+                    # coherence_defeater: record failure lesson (bypass, don't change grade)
+                    if f.kind == "coherence_defeater":
                         try:
+                            contradictors = f.detail.get("contradictors", [])
                             fl = failure_lesson_extract(
                                 trigger_type="defeater_struck",
-                                evidence={"contradicts_from": str(f.get("src_id", "unknown"))},
-                                subject_ref=str(f.get("dst_id")) if f.get("dst_id") else None,
+                                evidence={"contradicts_from": str(contradictors)},
+                                subject_ref=str(f.subject),
                             )
                             await self.backend.record_failure_lesson_async(
                                 fl.trigger_type, fl.subject_ref, fl.evidence, fl.lesson
