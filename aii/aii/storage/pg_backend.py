@@ -172,6 +172,7 @@ class PgBackend(StorageBackend, EpistemicStore):
                     "symbolic_form", "embedding", "grade", "source",
                     "verified", "is_quarantined", "provenance", "fingerprint",
                     "is_synthesis", "synthesis_meta", "substrate_id",
+                    "sources", "merge_count",
                 }
                 row = {k: v for k, v in ku.items() if k in _allowed}
                 row["ku_id"] = ku_id
@@ -179,6 +180,8 @@ class PgBackend(StorageBackend, EpistemicStore):
                 for json_field in ("symbolic_form", "provenance", "synthesis_meta"):
                     if json_field in row and isinstance(row[json_field], dict):
                         row[json_field] = json.dumps(row[json_field])
+                if "sources" in row and isinstance(row["sources"], list):
+                    row["sources"] = json.dumps(row["sources"])
 
                 cols = list(row.keys())
                 placeholders = ", ".join(f"${i+1}" for i in range(len(cols)))
@@ -524,6 +527,51 @@ class PgBackend(StorageBackend, EpistemicStore):
                 ON CONFLICT (substrate_id) DO UPDATE SET ku_count = EXCLUDED.ku_count
                 """,
                 substrate_id, title, medium, ku_count,
+            )
+
+    async def find_nearest_ku(
+        self, embedding: list[float], exclude_synthesis: bool = True
+    ) -> dict | None:
+        """Return the single nearest KU by cosine distance (pgvector <=>), or None.
+        Result includes 'distance' field (0=identical, 2=opposite)."""
+        pool = await self._ensure_pool()
+        clauses = ["embedding IS NOT NULL"]
+        if exclude_synthesis:
+            clauses.append("(is_synthesis IS NOT TRUE)")
+        where = " AND ".join(clauses)
+        sql = f"""
+            SELECT ku_id, natural_text, grade, knowledge_type,
+                   (embedding <=> $1) AS distance
+            FROM aii.ku
+            WHERE {where}
+            ORDER BY embedding <=> $1
+            LIMIT 1
+        """
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(sql, embedding)
+        return dict(row) if row else None
+
+    async def merge_ku_sources(
+        self, existing_ku_id: str, substrate_id: str, natural_text: str
+    ) -> None:
+        """Append a source record to existing KU's sources array and increment merge_count.
+        Preserves all expressions — multi-perspective is better than lost provenance."""
+        from datetime import datetime, timezone
+        source_entry = json.dumps([{
+            "substrate_id": substrate_id,
+            "natural_text": natural_text[:200],
+            "ingested_at": datetime.now(timezone.utc).isoformat(),
+        }])
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE aii.ku
+                SET sources = COALESCE(sources, '[]'::jsonb) || $2::jsonb,
+                    merge_count = COALESCE(merge_count, 1) + 1
+                WHERE ku_id = $1::uuid
+                """,
+                existing_ku_id, source_entry,
             )
 
     async def mark_deep_understood(self, substrate_id: str) -> None:

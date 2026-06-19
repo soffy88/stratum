@@ -1,8 +1,10 @@
 import logging
+import os
 import re
 from typing import Any
 import numpy as np
 
+from obase import ProviderRegistry
 from oskill.ku_extract_pipeline import ku_extract_pipeline
 from omodul.register_ku import register_ku, RegisterKuConfig
 from omodul.knowledge_reflux import run_reflux, KnowledgeRefluxConfig
@@ -11,6 +13,11 @@ from oprim import vector_encode
 from aii.storage.pg_backend import PgBackend
 
 logger = logging.getLogger(__name__)
+
+# 粗筛阈值: cosine distance (pgvector <=>), 0=完全相同, 2=完全相反
+# distance <= 0.15 (similarity >= 0.85) 才触发 LLM 精确确认
+DEDUP_COARSE_THRESHOLD: float = float(os.getenv("DEDUP_COARSE_THRESHOLD", "0.15"))
+
 
 class KuIngestionEngine:
     """End-to-end Knowledge Unit Ingestion Engine."""
@@ -23,6 +30,70 @@ class KuIngestionEngine:
         "high": 3, "verified": 4, "proven": 5,
     }
 
+    async def _dedupe_check(
+        self, cand: dict, provider: str = "default"
+    ) -> tuple[str | None, bool]:
+        """两级查重:
+        ① 粗筛(免费): pgvector 最近邻 distance > COARSE_THRESHOLD → 无重复
+        ② LLM精确确认(仅候选触发): 回答 SAME → 合并; DIFFERENT/不确定 → 新建
+
+        守命门: 任何异常/不确定 → 返回 (None, False) 新建, 宁可重复不错合。
+        返回: (existing_ku_id, True) = 确认相同; (None, False) = 新建
+        """
+        embedding = cand.get("embedding")
+        if not embedding:
+            return None, False
+
+        # ── Level 1: 向量粗筛 (无 LLM, 免费) ─────────────────────────────
+        try:
+            nearest = await self.backend.find_nearest_ku(embedding, exclude_synthesis=True)
+        except Exception as e:
+            logger.warning("dedup: find_nearest_ku failed → new KU: %s", e)
+            return None, False
+
+        if nearest is None or nearest["distance"] > DEDUP_COARSE_THRESHOLD:
+            return None, False  # 无近邻, 直接新建
+
+        # ── Level 2: LLM 精确确认 (仅近邻触发) ──────────────────────────
+        text_a = (nearest.get("natural_text") or "")[:300]
+        text_b = (cand.get("natural_text") or "")[:300]
+        if not text_a or not text_b:
+            return None, False
+
+        prompt = (
+            "以下两个知识单元是否表达完全相同的知识点？"
+            "（不是相关，而是同一个知识）\n"
+            f"KU_A: {text_a}\n"
+            f"KU_B: {text_b}\n"
+            "只回答 SAME 或 DIFFERENT。如有任何不确定，回答 DIFFERENT。"
+        )
+        try:
+            # 查重判断用本地模型(快/免费,SAME/DIFFERENT 够用); 失败降级到 provider
+            # call_sync_plain: 不带 format=json, 返回自然语言不受 JSON 结构干扰
+            try:
+                llm = ProviderRegistry.get().llm("ollama-local")
+            except Exception:
+                llm = ProviderRegistry.get().llm(provider)
+            caller = getattr(llm, "call_sync_plain", None) or getattr(llm, "call_sync", None) or llm
+            answer = caller(prompt).strip().upper()
+            # 只有明确回答 SAME(且没有 DIFFERENT) 才合并; 其余全部新建
+            import re as _re
+            tokens = _re.findall(r'\b(SAME|DIFFERENT)\b', answer)
+            if tokens and tokens[-1] == "SAME":
+                logger.info(
+                    "dedup: SAME (dist=%.3f) → merge into %s",
+                    nearest["distance"], str(nearest["ku_id"])[:8],
+                )
+                return str(nearest["ku_id"]), True
+            logger.debug(
+                "dedup: DIFFERENT (dist=%.3f, tokens=%r, answer=%r) → new KU",
+                nearest["distance"], tokens, answer[:40],
+            )
+        except Exception as e:
+            logger.warning("dedup: LLM check failed → DIFFERENT (new KU): %s", e)
+
+        return None, False  # DIFFERENT 或异常 → 新建
+
     async def ingest(
         self,
         text: str,
@@ -32,7 +103,6 @@ class KuIngestionEngine:
         provider: str = "default",
     ) -> dict[str, Any]:
         """Process raw text into knowledge units and store them."""
-        # Strip picture-omitted placeholders from PDF markdown before extraction
         text = re.sub(
             r'[^\n]*(?:picture|figure|image)[^\n]*(?:intentionally\s+)?omitted[^\n]*\n?',
             '', text, flags=re.IGNORECASE
@@ -52,8 +122,9 @@ class KuIngestionEngine:
 
         results = {
             "registered": [],
+            "merged": [],       # KU ids that were merged into existing KUs
             "quarantined": [],
-            "chunks_processed": extracted.get("chunks_processed", 0)
+            "chunks_processed": extracted.get("chunks_processed", 0),
         }
 
         # Apply substrate_id + grade_cap before registration
@@ -66,11 +137,10 @@ class KuIngestionEngine:
                 if self._GRADE_RANKS.get(g, 0) > cap_rank:
                     cand["grade"] = grade_cap
 
-        # 2. Register Candidates (omodul)
+        # 2. Register Candidates (omodul) with two-level dedup
         config = RegisterKuConfig(backend=self.backend)
 
         for cand in candidates:
-            # 策略B: 向量化输入用 「名称:natural_text」
             name = cand.get("name") or cand.get("title", "unnamed")
             natural_text = cand.get("natural_text", "")
             embed_input = f"{name}:{natural_text}"
@@ -79,7 +149,23 @@ class KuIngestionEngine:
             embedding = vector_encode(texts=[embed_input], provider="default")
             cand["embedding"] = embedding[0].tolist() if isinstance(embedding, np.ndarray) else embedding[0]
 
-            # Register via omodul
+            # ── 两级查重 ──────────────────────────────────────────────────
+            existing_ku_id, is_same = await self._dedupe_check(cand, provider=provider)
+            if is_same and existing_ku_id:
+                # 确认相同 → 合并: 追加来源, 不新建
+                try:
+                    await self.backend.merge_ku_sources(
+                        existing_ku_id,
+                        substrate_id=cand.get("substrate_id", ""),
+                        natural_text=natural_text,
+                    )
+                    results["merged"].append(existing_ku_id)
+                    logger.info("dedup: merged KU '%s' → existing %s", name[:30], existing_ku_id[:8])
+                except Exception as e:
+                    logger.error("dedup: merge_ku_sources failed for %s: %s", existing_ku_id[:8], e)
+                continue  # 不调 register_ku
+
+            # 不重复 → 正常注册
             try:
                 reg_res = register_ku(config, {"ku": cand})
                 results["registered"].append(cand.get("ku_id"))

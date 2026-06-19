@@ -74,9 +74,19 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
     _client = httpx.Client(trust_env=False, timeout=120)  # 120s covers cold model load
 
     def _call_sync(prompt: str) -> str:
+        """KU 抽取用: format=json 强制结构化输出."""
         resp = _client.post(
             f"{base_url}/api/generate",
             json={"model": model, "prompt": prompt[:3000], "stream": False, "format": "json"},
+        )
+        resp.raise_for_status()
+        return resp.json()["response"]
+
+    def _call_sync_plain(prompt: str) -> str:
+        """纯文本用 (查重 SAME/DIFFERENT 等): 不加 format=json, 直接返回自然语言."""
+        resp = _client.post(
+            f"{base_url}/api/generate",
+            json={"model": model, "prompt": prompt[:3000], "stream": False},
         )
         resp.raise_for_status()
         return resp.json()["response"]
@@ -95,7 +105,8 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
             answer = await loop.run_in_executor(ex, _call_sync, combined)
         return {"content": [{"type": "text", "text": answer}]}
 
-    _call_async.call_sync = _call_sync
+    _call_async.call_sync = _call_sync          # extraction: JSON mode
+    _call_async.call_sync_plain = _call_sync_plain  # dedup/plain-text: no JSON mode
     return _call_async
 
 def register_providers():
