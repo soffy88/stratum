@@ -81,6 +81,16 @@ async def _channel_watcher_loop() -> None:
         _l.exception("channel_watcher_loop crashed")
 
 
+async def _arxiv_watcher_loop() -> None:
+    from stratum.services.arxiv_watcher_service import arxiv_watcher_loop
+    import logging as _log
+    _l = _log.getLogger(__name__)
+    try:
+        await arxiv_watcher_loop()
+    except Exception:
+        _l.exception("arxiv_watcher_loop crashed")
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     run_migrations()  # 启动时自动建表
@@ -88,10 +98,12 @@ async def _lifespan(app: FastAPI):
     task = asyncio.create_task(_feed_tracker_loop())
     fw_task = asyncio.create_task(_folder_watcher_loop())
     cw_task = asyncio.create_task(_channel_watcher_loop())
+    ax_task = asyncio.create_task(_arxiv_watcher_loop())
     yield
     task.cancel()
     fw_task.cancel()
     cw_task.cancel()
+    ax_task.cancel()
 
 
 app = FastAPI(title="Stratum Service Layer", version="0.5.0", lifespan=_lifespan)
@@ -205,6 +217,10 @@ app.include_router(folder_watch.router)
 from stratum.api.routers import channels
 
 app.include_router(channels.router)
+
+from stratum.api.routers import arxiv
+
+app.include_router(arxiv.router)
 
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 from stratum.api.ws import router as ws_router
