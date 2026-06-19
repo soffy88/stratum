@@ -5287,3 +5287,7 @@
 172.19.0.6 - - [18/Jun/2026:09:08:09 +0000] "POST /api/v1/highlights HTTP/1.1" 201 201 "-" "curl/8.18.0"
 172.19.0.6 - - [18/Jun/2026:09:08:56 +0000] "GET /api/v1/highlights?substrate_id=01KVAKXN87ZJMM3WT4MN9FMG8C HTTP/1.1" 200 279 "-" "curl/8.18.0"
 172.19.0.6 - - [18/Jun/2026:09:09:39 +0000] "PATCH /api/v1/highlights/01KVCZSR2X72VCTZJMFS10H067 HTTP/1.1" 200 11 "-" "curl/8.18.0"
+172.19.0.6 - - [18/Jun/2026:09:40:52 +0000] "GET / HTTP/1.1" 200 5105 "-" "python-requests/2.32.5"
+172.19.0.6 - - [18/Jun/2026:12:14:35 +0000] "GET /documents HTTP/1.1" 200 2705 "-" "curl/8.18.0"
+172.19.0.6 - - [18/Jun/2026:23:19:13 +0000] "GET /documents HTTP/1.1" 200 2701 "-" "curl/8.18.0"
+172.19.0.6 - - [18/Jun/2026:23:19:22 +0000] "POST /api/v1/media/ingest HTTP/1.1" 401 26 "-" "curl/8.18.0"

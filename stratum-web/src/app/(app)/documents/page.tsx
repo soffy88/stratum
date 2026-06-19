@@ -8,6 +8,7 @@ import { UrlIngestDialog } from '@/components/UrlIngestDialog';
 import { FolderIngestDialog } from '@/components/FolderIngestDialog';
 import { FeedSubscribeDialog } from '@/components/FeedSubscribeDialog';
 import { VideoIngestDialog } from '@/components/VideoIngestDialog';
+import { ChannelSubscribeDialog } from '@/components/ChannelSubscribeDialog';
 
 type SectionKey = 'original' | 'markdown' | 'translation' | 'audio' | 'illustration';
 
@@ -43,6 +44,7 @@ export default function DocumentsPage() {
   const [showFolder, setShowFolder] = useState(false);
   const [showFeed, setShowFeed] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+  const [showChannel, setShowChannel] = useState(false);
 
   const loadAll = useCallback(async (query: string) => {
     setLoading(true);
@@ -78,6 +80,7 @@ export default function DocumentsPage() {
           <button onClick={() => setShowFeed(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">订阅 RSS</button>
           <button onClick={() => setShowFolder(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">文件夹</button>
           <button onClick={() => setShowVideo(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">视频 URL</button>
+          <button onClick={() => setShowChannel(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">订阅频道</button>
         </div>
       </div>
 
@@ -126,6 +129,7 @@ export default function DocumentsPage() {
       {showFolder && <FolderIngestDialog open={showFolder} onClose={() => setShowFolder(false)} onCreated={() => { setShowFolder(false); refresh(); }} />}
       {showFeed && <FeedSubscribeDialog onClose={() => { setShowFeed(false); refresh(); }} />}
       {showVideo && <VideoIngestDialog open={showVideo} onClose={() => setShowVideo(false)} onIngested={() => { setShowVideo(false); refresh(); }} />}
+      {showChannel && <ChannelSubscribeDialog open={showChannel} onClose={() => { setShowChannel(false); refresh(); }} />}
     </div>
   );
 }
