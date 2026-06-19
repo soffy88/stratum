@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Any
 import numpy as np
 
@@ -19,7 +20,13 @@ class KuIngestionEngine:
 
     async def ingest(self, text: str, project_id: str = "default") -> dict[str, Any]:
         """Process raw text into knowledge units and store them."""
-        
+        # Strip picture-omitted placeholders from PDF markdown before extraction
+        text = re.sub(
+            r'[^\n]*(?:picture|figure|image)[^\n]*(?:intentionally\s+)?omitted[^\n]*\n?',
+            '', text, flags=re.IGNORECASE
+        )
+        text = text.strip()
+
         # 1. Extraction Pipeline (oskill)
         logger.info(f"Extracting KUs from text (length: {len(text)})")
         extracted = ku_extract_pipeline(

@@ -1,11 +1,13 @@
 import os
 import glob
+import logging
 from typing import Optional
 from fastapi import APIRouter, Body
 from aii.api._dependencies import backend
 from aii.api._envelope import success_response, error_response
 from aii.service.ku_ingestion_engine import KuIngestionEngine
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/feed")
@@ -40,6 +42,7 @@ async def feed(
             if max_chunks and total_chunks >= max_chunks:
                 break
         except Exception as e:
+            logger.exception("feed: ingest failed for %s", fpath)
             continue
 
     return success_response({
