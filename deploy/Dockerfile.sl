@@ -76,10 +76,16 @@ RUN pip install --no-cache-dir \
         argon2-cffi \
         pyjwt \
         yt-dlp \
-        faster-whisper
+        faster-whisper \
+        paddleocr \
+        paddlex \
+        "paddlex[ocr]" \
+        opencv-contrib-python \
+        shapely \
+        pyclipper
 
-# yt-dlp: use nodejs as JS runtime (avoids deno default which isn't installed)
-RUN mkdir -p /root/.config/yt-dlp && echo '--js-runtimes node' > /root/.config/yt-dlp/config
+# yt-dlp: use nodejs as JS runtime + enable remote ejs component for JS challenges
+RUN mkdir -p /root/.config/yt-dlp && printf -- "--js-runtimes node\n--remote-components ejs:github\n" > /root/.config/yt-dlp/config
 
 # python-ulid v3.x installs as module 'ulid'; oskill/omodul use 'python_ulid' (v2.x name).
 # Shim: expose the same package under the old module name.

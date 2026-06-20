@@ -234,6 +234,10 @@ from stratum.api.routers import sources
 
 app.include_router(sources.router)
 
+from stratum.api.routers import scan_ocr
+
+app.include_router(scan_ocr.router)
+
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 from stratum.api.ws import router as ws_router
 
