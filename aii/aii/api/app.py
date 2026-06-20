@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from aii.api._provider import register_providers
 from aii.storage.pg_backend import PgBackend
 from aii.api._dependencies import backend
-from aii.api.routes import health, ingest, feed, query, chat, evolution, governance, stats, display
+from aii.api.routes import health, ingest, feed, query, chat, evolution, governance, stats, display, textbook_export
 from aii.api._auth import APIKeyMiddleware
 
 # Configure logging
@@ -81,18 +81,31 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Ollama warm-up failed (non-fatal): %s", e)
 
-    # 5. 启动后台飞轮
+    # 5. 启动后台飞轮 (管道1: 普通文档)
     from aii.service.background_flywheel import flywheel_loop
     flywheel_task = asyncio.create_task(flywheel_loop(backend), name="aii-flywheel")
     app.state.flywheel_task = flywheel_task
     logger.info("AII background flywheel started.")
 
+    # 5b. 启动管道2飞轮 (教材, 独立启停)
+    from aii.service.background_flywheel_textbook import textbook_flywheel_loop
+    textbook_flywheel_task = asyncio.create_task(
+        textbook_flywheel_loop(backend), name="aii-textbook-flywheel"
+    )
+    app.state.textbook_flywheel_task = textbook_flywheel_task
+    logger.info("AII textbook flywheel (Pipeline 2) started.")
+
     yield
 
     # Cleanup
     flywheel_task.cancel()
+    textbook_flywheel_task.cancel()
     try:
         await flywheel_task
+    except asyncio.CancelledError:
+        pass
+    try:
+        await textbook_flywheel_task
     except asyncio.CancelledError:
         pass
     if backend._pool:
@@ -126,3 +139,4 @@ app.include_router(evolution.router, prefix="/api", tags=["evolution"])
 app.include_router(governance.router, prefix="/api", tags=["governance"])
 app.include_router(stats.router, prefix="/api", tags=["stats"])
 app.include_router(display.router, prefix="/api", tags=["display"])
+app.include_router(textbook_export.router, prefix="/api", tags=["textbook"])
