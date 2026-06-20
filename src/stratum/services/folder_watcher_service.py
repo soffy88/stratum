@@ -61,8 +61,12 @@ async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
 
                 with get_conn() as conn:
                     exists = conn.execute(
-                        "SELECT id FROM substrates WHERE file_hash=? AND user_id=?",
-                        (fhash, user_id_hash)
+                        """SELECT id FROM substrates
+                           WHERE user_id=? AND (
+                               file_hash=?
+                               OR meta_json::VARCHAR LIKE ?
+                           ) LIMIT 1""",
+                        (user_id_hash, fhash, f'%"bundle_file_hash":"{fhash}"%')
                     ).fetchone()
 
                 if not exists:
