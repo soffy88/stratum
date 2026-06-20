@@ -228,17 +228,16 @@ def _guardrail_need_count(need_hash: str) -> int:
         return 0
 
 
-def _anti_loop_check(need_hash: str, topic: str) -> bool:
-    """G5: 检查是否连续 miss。True = 应停（记 needs_human_review）。"""
+def _anti_loop_check(need_hash: str, source_type: str) -> bool:
+    """G5: 检查该 source_type 是否连续 miss。True = 应停（记 needs_human_review）。"""
     try:
         with get_conn() as conn:
             row = conn.execute(
-                "SELECT miss_rounds FROM aii_processed_needs WHERE need_hash=? ORDER BY processed_at DESC LIMIT 1",
-                (need_hash,)
+                "SELECT miss_rounds FROM aii_processed_needs "
+                "WHERE need_hash=? AND source_type=?",
+                (need_hash, source_type)
             ).fetchone()
-        if row and row[0] >= ANTI_LOOP_ROUNDS:
-            return True
-        return False
+        return bool(row and row[0] >= ANTI_LOOP_ROUNDS)
     except Exception as exc:
         log.warning("aii_feedback: anti_loop query failed: %s", exc)
         return False
@@ -319,8 +318,13 @@ def _record_need(need_hash: str, topic: str, source_type: str, sub_id: str | Non
         with get_conn() as conn:
             conn.execute(
                 "INSERT INTO aii_processed_needs "
-                "(id, need_hash, topic, source_type, sub_id, result, miss_rounds, ingested_count, notes) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "(id, need_hash, topic, source_type, sub_id, result, miss_rounds, ingested_count, notes, processed_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()) "
+                "ON CONFLICT (need_hash, source_type) DO UPDATE SET "
+                "sub_id=excluded.sub_id, result=excluded.result, "
+                "miss_rounds=excluded.miss_rounds, "
+                "ingested_count=ingested_count + excluded.ingested_count, "
+                "notes=excluded.notes, processed_at=excluded.processed_at",
                 (str(ULID()), need_hash, topic[:300], source_type, sub_id,
                  result, miss_rounds, ingested_count, notes[:500]),
             )
@@ -338,13 +342,6 @@ async def _process_one_need(need: dict, user_id: str) -> None:
 
     nh = _need_hash(topic, reason)
     log.info("aii_feedback: processing need hash=%s topic=%r", nh, topic[:50])
-
-    # G5: anti-loop
-    if _anti_loop_check(nh, topic):
-        log.warning("aii_feedback: G5 anti-loop triggered for topic=%r, skip", topic[:50])
-        _log_to_file(UNRESOLVED_LOG,
-            f"ANTI-LOOP topic={topic!r} reason={reason} — 已达 {ANTI_LOOP_ROUNDS} 轮 miss，转人工")
-        return
 
     # G2/G3: daily/monthly cap
     day_c, mon_c = _guardrail_daily_monthly()
@@ -377,6 +374,14 @@ async def _process_one_need(need: dict, user_id: str) -> None:
             log.info("aii_feedback: G4 skip non-whitelisted source=%r", source_type)
             continue
 
+        # G5: per-source anti-loop（独立判定，不跨源污染）
+        if _anti_loop_check(nh, source_type):
+            log.warning("aii_feedback: G5 anti-loop source=%r topic=%r, skip source",
+                        source_type, topic[:50])
+            _log_to_file(UNRESOLVED_LOG,
+                f"ANTI-LOOP topic={topic!r} source={source_type} — 已达 {ANTI_LOOP_ROUNDS} 轮 miss，转人工")
+            continue  # 仅跳过此源，其他源继续
+
         # G2/G3 re-check
         day_c, mon_c = _guardrail_daily_monthly()
         if day_c >= MAX_PER_DAY or mon_c >= MAX_PER_MONTH:
@@ -399,17 +404,19 @@ async def _process_one_need(need: dict, user_id: str) -> None:
         )
         total_ingested += ingested
 
-        miss_rounds = 0 if ingested > 0 else 1
         if ingested == 0:
             try:
                 with get_conn() as _c:
                     prev = _c.execute(
-                        "SELECT miss_rounds FROM aii_processed_needs WHERE need_hash=? ORDER BY processed_at DESC LIMIT 1",
-                        (nh,)
+                        "SELECT miss_rounds FROM aii_processed_needs "
+                        "WHERE need_hash=? AND source_type=?",
+                        (nh, source_type)
                     ).fetchone()
                 miss_rounds = (prev[0] if prev else 0) + 1
             except Exception:
-                pass
+                miss_rounds = 1
+        else:
+            miss_rounds = 0  # 只清自己源的计数
 
         result = "ok" if ingested > 0 else (
             "needs_human_review" if miss_rounds >= ANTI_LOOP_ROUNDS else "ok"
