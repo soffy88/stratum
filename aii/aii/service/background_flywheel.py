@@ -30,10 +30,65 @@ FLYWHEEL_MAX_FILES_ROUND: int = int(os.getenv("FLYWHEEL_MAX_FILES_ROUND", "10"))
 FLYWHEEL_INTERVAL: int = int(os.getenv("FLYWHEEL_INTERVAL", "60"))
 FLYWHEEL_EVOLVE_EVERY: int = int(os.getenv("FLYWHEEL_EVOLVE_EVERY", "4"))
 
+# 合集过滤: 超过此大小的文件跳过(MB), 0=不过滤
+FLYWHEEL_MAX_FILE_MB: float = float(os.getenv("FLYWHEEL_MAX_FILE_MB", "5"))
+
+# 标题关键词过滤: 含这些词的视为合集/套装,跳过等待 Stratum 拆分
+_COLLECTION_KEYWORDS = ("套装", "合集", "全集", "丛书", "系列", "册）", "册)", "全套")
+
+
+def _is_collection(md: Path, meta: dict) -> tuple[bool, str]:
+    """判断是否为合集/超大文件. 返回 (is_skip, reason)."""
+    # 文件大小检查
+    if FLYWHEEL_MAX_FILE_MB > 0:
+        mb = md.stat().st_size / 1024 / 1024
+        if mb > FLYWHEEL_MAX_FILE_MB:
+            return True, f"file_too_large({mb:.1f}MB>{FLYWHEEL_MAX_FILE_MB}MB)"
+    # 标题关键词检查
+    title = (meta.get("title") or meta.get("name") or "")
+    for kw in _COLLECTION_KEYWORDS:
+        if kw in title:
+            return True, f"collection_keyword({kw!r} in title)"
+    return False, ""
+
+
+def _write_skipped_collections(skipped: list[dict]) -> None:
+    """将跳过的合集写到 aii-to-stratum/skipped_collections.json 供 Stratum 返工."""
+    if not skipped:
+        return
+    try:
+        _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        out_path = _OUTPUT_DIR / "skipped_collections.json"
+        # 合并已有记录(去重)
+        existing: list[dict] = []
+        if out_path.exists():
+            try:
+                existing = json.loads(out_path.read_text(encoding="utf-8"))
+            except Exception:
+                existing = []
+        existing_ids = {e.get("id") for e in existing}
+        new_entries = [s for s in skipped if s.get("id") not in existing_ids]
+        all_entries = existing + new_entries
+        out_path.write_text(
+            json.dumps(all_entries, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        if new_entries:
+            logger.info(
+                "flywheel: skipped_collections.json updated (+%d new, %d total)",
+                len(new_entries), len(all_entries),
+            )
+    except Exception:
+        logger.exception("flywheel: write skipped_collections failed (non-fatal)")
+
 
 async def _collect_new_files(backend, limit: int) -> list[Path]:
-    """返回至多 limit 个尚未摄入的 .md 文件 (配对 .json 必须存在)."""
+    """返回至多 limit 个尚未摄入的 .md 文件 (配对 .json 必须存在).
+    跳过超大合集(>FLYWHEEL_MAX_FILE_MB 或标题含套装/合集等关键词).
+    跳过的文件不标为已摄取, Stratum 拆分后可重新进来."""
     found: list[Path] = []
+    skipped_collections: list[dict] = []
+
     for md in sorted(_SHARED_DIR.glob("*.md")):
         if len(found) >= limit:
             break
@@ -43,10 +98,35 @@ async def _collect_new_files(backend, limit: int) -> list[Path]:
         try:
             meta = json.loads(jp.read_text(encoding="utf-8"))
             sid = meta.get("id", "")
-            if sid and not await backend.is_substrate_ingested(sid):
-                found.append(md)
+            if not sid:
+                continue
+            if await backend.is_substrate_ingested(sid):
+                continue
+
+            # ── 合集/大文件过滤 ──────────────────────────────────────────
+            skip, reason = _is_collection(md, meta)
+            if skip:
+                mb = md.stat().st_size / 1024 / 1024
+                title = (meta.get("title") or meta.get("name") or md.stem)[:80]
+                logger.info(
+                    "flywheel: SKIP collection %s (%.1fMB) reason=%s",
+                    title, mb, reason,
+                )
+                skipped_collections.append({
+                    "id": sid,
+                    "title": title,
+                    "file": md.name,
+                    "size_mb": round(mb, 1),
+                    "reason": reason,
+                })
+                continue  # 不加入 found, 不标已摄
+
+            found.append(md)
         except Exception:
             logger.warning("flywheel: bad sidecar %s, skip", jp.name)
+
+    # 写合集清单供 Stratum 返工
+    _write_skipped_collections(skipped_collections)
     return found
 
 
