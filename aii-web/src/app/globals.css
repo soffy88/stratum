@@ -1,8 +1,8 @@
 @import "tailwindcss";
-@import "../styles/helios-blocks-styles.css";
-@import "../styles/helios-base.css";
-@import "../styles/helios-professional.css";
-@import "../styles/helios-oui.css";
+@import "@helios/blocks/styles.css";
+@import "@helios/blocks/themes/base.css";
+@import "@helios/blocks/themes/professional.css";
+@import "@helios/oui/oui.css";
 
 /* ── AII 全局覆盖 ── */
 html, body {

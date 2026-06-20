@@ -187,3 +187,205 @@ export interface ChatResponse {
   /** 免责/标注(金融场景必有) */
   disclaimer?: string;
 }
+
+// ============================================================
+// REQ AII-FRONTEND-DISPLAY-001 — 成果展示视图类型
+//   契约见文档 §六。后端待实现(AII 经理人推进 CC)。
+//   注意:grade 枚举用 blocks 真实 EpistemicGrade(moderate 非 medium)。
+// ============================================================
+
+/** 关系类型(aii.edge.relation_type)。contradicts 为诚实亮点,UI 标红。 */
+export type RelationType =
+  | 'references'
+  | 'special_case_of'
+  | 'prerequisite_of'
+  | 'contradicts'
+  | 'supports'
+  | 'derived_from'
+  | 'related_to';
+
+/** 抽取方式 — rule(规则边,实线)/ llm(线索边,虚线)。命门:视觉区分可信度。 */
+export type ExtractionMethod = 'rule' | 'llm';
+
+/** 摄取介质 */
+export type Medium = 'book' | 'paper' | 'video';
+
+/** 知识类型 */
+export type KnowledgeType =
+  | 'theorem' | 'definition' | 'lemma' | 'proposition'
+  | 'concept' | 'claim' | 'method' | 'example' | 'observation';
+
+// ── 视图1:概览仪表盘 GET /api/stats/overview ──
+export interface StatsOverviewResponse {
+  ku_count: number;
+  edge_count: number;
+  kc_count: number;
+  bu_count: number;
+  /** grade 分布(命门:诚实呈现"大部分未确证")。 */
+  grade_dist: Partial<Record<EpistemicGrade, number>>;
+  /** 合并过的 KU 数(merge_count>1)。 */
+  merge_count: number;
+  /** 查重节省条数(去重析出内核)。 */
+  dedup_saved: number;
+  /** 关系类型分布。 */
+  relation_type_dist: Partial<Record<RelationType, number>>;
+}
+
+// ── 视图1:摄取进度 GET /api/stats/ingestion ──
+export interface StatsIngestionResponse {
+  total_files: number;
+  ingested: number;
+  by_medium: Partial<Record<Medium, { total: number; ingested: number }>>;
+  /** 完整深度理解(BU)已生成数。 */
+  deep_understood: number;
+}
+
+// ── 视图2:KU 浏览 GET /api/ku/list ──
+export interface KuListItem {
+  id: string;
+  natural_text: string;
+  grade: EpistemicGrade;
+  knowledge_type: KnowledgeType;
+  /** 来源 substrate(书名)。 */
+  substrate_id: string;
+  substrate_title: string;
+  /** >1 表示多书共有,UI 标"多书共有"。 */
+  merge_count: number;
+  defeater_count: number;
+}
+
+export interface KuListRequest {
+  grade?: EpistemicGrade;
+  type?: KnowledgeType;
+  substrate?: string;
+  /** 是否只看合并过的(merge_count>1)。 */
+  merged_only?: boolean;
+  page?: number;
+  page_size?: number;
+}
+
+export interface KuListResponse {
+  items: KuListItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  /** 可选的筛选 facet(供筛选器渲染 count)。 */
+  facets?: {
+    grades?: Partial<Record<EpistemicGrade, number>>;
+    types?: Partial<Record<KnowledgeType, number>>;
+    substrates?: Array<{ id: string; title: string; count: number }>;
+  };
+}
+
+/** KU 详情(含 sources 多表述) */
+export interface KuSource {
+  substrate_id: string;
+  substrate_title: string;
+  /** 该书里的原始表述(多书共有时会有多条)。 */
+  text: string;
+  locator?: string;
+}
+export interface KuDetail extends KuListItem {
+  sources: KuSource[];
+  defeaters: EpistemicDefeater[];
+  /** 关联边(去重后) */
+  edges: Array<{
+    target_id: string;
+    target_text: string;
+    relation_type: RelationType;
+    extraction_method: ExtractionMethod;
+    grade: EpistemicGrade;
+  }>;
+}
+
+// ── 视图3:知识图谱 GET /api/graph/subgraph ──
+export interface GraphNode {
+  id: string;
+  label: string;
+  grade: EpistemicGrade;
+  knowledge_type: KnowledgeType;
+  /** 连接数(决定节点大小)。 */
+  degree: number;
+}
+export interface GraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  relation_type: RelationType;
+  /** rule=实线 / llm=虚线(命门)。 */
+  extraction_method: ExtractionMethod;
+  grade: EpistemicGrade;
+}
+export interface SubgraphRequest {
+  ku_id: string;
+  hops?: number;
+  limit?: number;
+  /** 可选:按 relation_type 过滤。 */
+  relation_types?: RelationType[];
+}
+export interface SubgraphResponse {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  /** 中心节点 id。 */
+  center_id: string;
+  /** 是否被 limit 截断。 */
+  truncated: boolean;
+}
+export interface GraphSearchRequest { q: string; limit?: number; }
+export interface GraphSearchResponse {
+  matches: Array<{ id: string; label: string; grade: EpistemicGrade }>;
+}
+
+// ── 视图4:知识簇 KC GET /api/kc/list, /api/kc/{id} ──
+export interface KcListItem {
+  id: string;
+  community_label: string;
+  /** 簇摘要(AII 综合,非原文断言)。 */
+  summary: string;
+  /** ≤ 源 KU,永不 proven。 */
+  grade: EpistemicGrade;
+  community_size: number;
+}
+export interface KcDetail extends KcListItem {
+  source_ku_ids: string[];
+  members: Array<{ id: string; natural_text: string; grade: EpistemicGrade }>;
+}
+
+// ── 视图5:书级理解 BU GET /api/bu/list, /api/bu/{id} ──
+export interface BuListItem {
+  id: string;
+  substrate_id: string;
+  book_title: string;
+  /** AII 综合摘要。 */
+  summary: string;
+  grade: EpistemicGrade;
+  main_claim_count: number;
+}
+/** 主要论断 — 带 stance_marker("X书主张")+ 独立 grade。命门:论断≠真理。 */
+export interface MainClaim {
+  id: string;
+  text: string;
+  /** 立场标记,如 "《资本论》主张"。 */
+  stance_marker: string;
+  claim_grade: EpistemicGrade;
+}
+/** 论点→论据,论据 grade 独立(哪些论据强/弱)。 */
+export interface ArgumentNode {
+  id: string;
+  /** 论点 */
+  thesis: string;
+  thesis_grade: EpistemicGrade;
+  /** 论据列表,每条 grade 独立 */
+  evidence: Array<{ text: string; grade: EpistemicGrade }>;
+}
+export interface BuStructureSection {
+  title: string;
+  children?: BuStructureSection[];
+}
+export interface BuDetail extends BuListItem {
+  main_claims: MainClaim[];
+  argument_structure: ArgumentNode[];
+  structure: BuStructureSection[];
+  /** 核心概念 KU(链到 /knowledge)。 */
+  key_concepts: Array<{ ku_id: string; label: string; grade: EpistemicGrade }>;
+}

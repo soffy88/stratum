@@ -59,7 +59,20 @@ async def stats_overview():
 @router.get("/stats/ingestion")
 async def stats_ingestion():
     try:
-        total_files = len(list(_SHARED_DIR.glob("*.md"))) if _SHARED_DIR.is_dir() else 0
+        # Count total files per medium from .json sidecars
+        medium_total: dict[str, int] = {}
+        total_files = 0
+        if _SHARED_DIR.is_dir():
+            import json as _json
+            for jp in _SHARED_DIR.glob("*.json"):
+                total_files += 1
+                try:
+                    meta = _json.loads(jp.read_text(encoding="utf-8"))
+                    m = (meta.get("medium") or "").lower()
+                    if m:
+                        medium_total[m] = medium_total.get(m, 0) + 1
+                except Exception:
+                    pass
 
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:
@@ -71,10 +84,19 @@ async def stats_ingestion():
                 "SELECT count(*) FROM aii.ingested_substrate WHERE deep_understood_at IS NOT NULL"
             )
 
+        # by_medium: {medium: {total, ingested}} per frontend contract
+        by_medium = {}
+        for r in medium_rows:
+            m = r["medium"]
+            by_medium[m] = {
+                "total": medium_total.get(m, r["cnt"]),
+                "ingested": r["cnt"],
+            }
+
         return success_response({
             "total_files": total_files,
             "ingested": ingested,
-            "by_medium": {r["medium"]: r["cnt"] for r in medium_rows},
+            "by_medium": by_medium,
             "deep_understood": deep_done,
         })
     except Exception as e:

@@ -32,27 +32,14 @@ export function ChatPage() {
     const uid1 = uid(), uid2 = uid();
     setHistory(h => [...h, { role: 'user', id: uid1, content: message }, { role: 'aii-loading', id: uid2 }]);
     setInFlight(true);
-    try {
-      const result = await api.chat({ message });
-      setDegraded(result.degraded);
-      const errMsg = typeof result.error === 'string'
-        ? result.error
-        : result.error
-          ? (result.error as { message?: string }).message ?? JSON.stringify(result.error)
-          : '请求失败';
-      setHistory(h => h.map(it => it.id !== uid2 ? it
-        : result.ok && result.data
-          ? { role: 'aii',       id: it.id, response: result.data }
-          : { role: 'aii-error', id: it.id, error: errMsg }
-      ));
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setHistory(h => h.map(it => it.id !== uid2 ? it
-        : { role: 'aii-error', id: it.id, error: msg }
-      ));
-    } finally {
-      setInFlight(false);
-    }
+    const result = await api.chat({ message });
+    setDegraded(result.degraded);
+    setHistory(h => h.map(it => it.id !== uid2 ? it
+      : result.ok && result.data
+        ? { role: 'aii',       id: it.id, response: result.data }
+        : { role: 'aii-error', id: it.id, error: result.error ?? '请求失败' }
+    ));
+    setInFlight(false);
   }, []);
 
   const onCitationClick = useCallback((c: ChatCitation) => {

@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-CN" data-theme="professional">
+    <html lang="zh-CN">
       <body>
         <OAppProviders theme="professional">
           <LangProvider lang="zh-en">

@@ -1,6 +1,6 @@
 {
   "name": "aii-web",
-  "version": "0.1.0",
+  "version": "0.7.0",
   "private": true,
   "description": "AII 认识论知识图谱 web (REQ-001 6 Pages). Frontend scaffolding by Helios 前端架构组.",
   "scripts": {
@@ -11,9 +11,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@helios/blocks": "file:./vendor/helios-blocks-2.0.0.tgz",
-    "@helios/oui": "file:./vendor/helios-oui-1.0.1.tgz",
-    "next": "^16.2.9",
+    "@helios/blocks": "file:./vendor/helios-blocks-2.8.0.tgz",
+    "@helios/oui": "file:./vendor/helios-oui-1.7.0.tgz",
+    "next": "^16.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

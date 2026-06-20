@@ -11,7 +11,7 @@
  *   - 默认 10s timeout(AbortController)
  */
 
-import { AII_API_BASE, USE_MOCK } from './env';
+import { AII_API_BASE, AII_API_KEY, USE_MOCK } from './env';
 import type {
   ApiEnvelope,
   ApiResult,
@@ -41,21 +41,19 @@ interface RequestOpts {
   signal?: AbortSignal;
 }
 
-const _API_KEY = process.env.NEXT_PUBLIC_AII_API_KEY ?? '';
-
 async function request<T>(path: string, opts: RequestOpts = {}): Promise<ApiResult<T>> {
-  const { method = 'GET', body, timeoutMs = 30_000 } = opts;
+  const { method = 'GET', body, timeoutMs = 10_000 } = opts;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
 
   try {
     const url = `${AII_API_BASE}${path}`;
-    const headers: Record<string, string> = {};
-    if (body) headers['Content-Type'] = 'application/json';
-    if (_API_KEY) headers['X-API-Key'] = _API_KEY;
     const init: RequestInit = {
       method,
-      headers,
+      headers: {
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+        ...(AII_API_KEY ? { 'X-API-Key': AII_API_KEY } : {}),
+      },
       body: body ? JSON.stringify(body) : undefined,
       signal: opts.signal ?? ctrl.signal,
     };
@@ -131,4 +129,85 @@ export async function governanceAction(
 export async function chat(req: ChatRequest): Promise<ApiResult<ChatResponse>> {
   if (USE_MOCK) return mock.mockChat(req);
   return request<ChatResponse>('/api/chat', { method: 'POST', body: req });
+}
+
+// ============================================================
+// AII-FRONTEND-DISPLAY-001 — 成果展示 endpoints(§六)
+//   后端待实现;Mock 模式走 mock-data。真模式打 GET /api/...
+// ============================================================
+
+import type {
+  StatsOverviewResponse,
+  StatsIngestionResponse,
+  KuListRequest,
+  KuListResponse,
+  KuDetail,
+  SubgraphRequest,
+  SubgraphResponse,
+  GraphSearchRequest,
+  GraphSearchResponse,
+  KcListItem,
+  KcDetail,
+  BuListItem,
+  BuDetail,
+} from '@/types/api';
+
+function qs(params: Record<string, unknown>): string {
+  const u = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== '') u.set(k, String(v));
+  }
+  const s = u.toString();
+  return s ? `?${s}` : '';
+}
+
+export async function getStatsOverview(): Promise<ApiResult<StatsOverviewResponse>> {
+  if (USE_MOCK) return mock.mockStatsOverview();
+  return request<StatsOverviewResponse>('/api/stats/overview', { method: 'GET' });
+}
+
+export async function getStatsIngestion(): Promise<ApiResult<StatsIngestionResponse>> {
+  if (USE_MOCK) return mock.mockStatsIngestion();
+  return request<StatsIngestionResponse>('/api/stats/ingestion', { method: 'GET' });
+}
+
+export async function getKuList(req: KuListRequest): Promise<ApiResult<KuListResponse>> {
+  if (USE_MOCK) return mock.mockKuList(req);
+  return request<KuListResponse>(`/api/ku/list${qs({ ...req })}`, { method: 'GET' });
+}
+
+export async function getKuDetail(id: string): Promise<ApiResult<KuDetail>> {
+  if (USE_MOCK) return mock.mockKuDetail(id);
+  return request<KuDetail>(`/api/ku/${encodeURIComponent(id)}`, { method: 'GET' });
+}
+
+export async function getSubgraph(req: SubgraphRequest): Promise<ApiResult<SubgraphResponse>> {
+  if (USE_MOCK) return mock.mockSubgraph(req);
+  return request<SubgraphResponse>(
+    `/api/graph/subgraph${qs({ ku_id: req.ku_id, hops: req.hops, limit: req.limit })}`,
+    { method: 'GET' }
+  );
+}
+
+export async function graphSearch(req: GraphSearchRequest): Promise<ApiResult<GraphSearchResponse>> {
+  if (USE_MOCK) return mock.mockGraphSearch(req);
+  return request<GraphSearchResponse>(`/api/graph/search${qs({ q: req.q, limit: req.limit })}`, { method: 'GET' });
+}
+
+export async function getKcList(): Promise<ApiResult<KcListItem[]>> {
+  if (USE_MOCK) return mock.mockKcList();
+  return request<KcListItem[]>('/api/kc/list', { method: 'GET' });
+}
+export async function getKcDetail(id: string): Promise<ApiResult<KcDetail>> {
+  if (USE_MOCK) return mock.mockKcDetail(id);
+  return request<KcDetail>(`/api/kc/${encodeURIComponent(id)}`, { method: 'GET' });
+}
+
+export async function getBuList(): Promise<ApiResult<BuListItem[]>> {
+  if (USE_MOCK) return mock.mockBuList();
+  return request<BuListItem[]>('/api/bu/list', { method: 'GET' });
+}
+export async function getBuDetail(id: string): Promise<ApiResult<BuDetail>> {
+  if (USE_MOCK) return mock.mockBuDetail(id);
+  return request<BuDetail>(`/api/bu/${encodeURIComponent(id)}`, { method: 'GET' });
 }
