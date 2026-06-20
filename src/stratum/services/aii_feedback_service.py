@@ -155,29 +155,19 @@ def _need_hash(topic: str, reason: str = "") -> str:
 def _guardrail_daily_monthly() -> tuple[int, int]:
     """返回 (today_count, month_count) from aii_processed_needs。"""
     now = datetime.now(timezone.utc)
-    day_start  = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    day_start   = now.replace(hour=0, minute=0, second=0, microsecond=0)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     try:
-        import duckdb, time
-        for _ in range(10):
-            try:
-                conn = duckdb.connect('/root/.stratum/meta.duckdb', read_only=True)
-                day_c = conn.execute(
-                    "SELECT COUNT(*) FROM aii_processed_needs WHERE result='ok' AND processed_at >= ?",
-                    (day_start.isoformat(),)
-                ).fetchone()[0]
-                mon_c = conn.execute(
-                    "SELECT COUNT(*) FROM aii_processed_needs WHERE result='ok' AND processed_at >= ?",
-                    (month_start.isoformat(),)
-                ).fetchone()[0]
-                conn.close()
-                return day_c, mon_c
-            except Exception as e:
-                if 'lock' in str(e).lower():
-                    time.sleep(2)
-                else:
-                    raise
-        return 0, 0
+        with get_conn() as conn:
+            day_c = conn.execute(
+                "SELECT COUNT(*) FROM aii_processed_needs WHERE result='ok' AND processed_at >= ?",
+                (day_start.isoformat(),)
+            ).fetchone()[0]
+            mon_c = conn.execute(
+                "SELECT COUNT(*) FROM aii_processed_needs WHERE result='ok' AND processed_at >= ?",
+                (month_start.isoformat(),)
+            ).fetchone()[0]
+        return day_c, mon_c
     except Exception as exc:
         log.warning("aii_feedback: guardrail count query failed: %s", exc)
         return 0, 0
@@ -186,49 +176,30 @@ def _guardrail_daily_monthly() -> tuple[int, int]:
 def _guardrail_need_count(need_hash: str) -> int:
     """本 need 已创建的订阅数。"""
     try:
-        import duckdb, time
-        for _ in range(10):
-            try:
-                conn = duckdb.connect('/root/.stratum/meta.duckdb', read_only=True)
-                c = conn.execute(
-                    "SELECT COUNT(*) FROM aii_processed_needs WHERE need_hash=? AND result='ok'",
-                    (need_hash,)
-                ).fetchone()[0]
-                conn.close()
-                return c
-            except Exception as e:
-                if 'lock' in str(e).lower():
-                    time.sleep(2)
-                else:
-                    raise
+        with get_conn() as conn:
+            return conn.execute(
+                "SELECT COUNT(*) FROM aii_processed_needs WHERE need_hash=? AND result='ok'",
+                (need_hash,)
+            ).fetchone()[0]
     except Exception as exc:
         log.warning("aii_feedback: need_count query failed: %s", exc)
-    return 0
+        return 0
 
 
 def _anti_loop_check(need_hash: str, topic: str) -> bool:
     """G5: 检查是否连续 miss。True = 应停（记 needs_human_review）。"""
     try:
-        import duckdb, time
-        for _ in range(10):
-            try:
-                conn = duckdb.connect('/root/.stratum/meta.duckdb', read_only=True)
-                rows = conn.execute(
-                    "SELECT miss_rounds FROM aii_processed_needs WHERE need_hash=? ORDER BY processed_at DESC LIMIT 1",
-                    (need_hash,)
-                ).fetchone()
-                conn.close()
-                if rows and rows[0] >= ANTI_LOOP_ROUNDS:
-                    return True
-                return False
-            except Exception as e:
-                if 'lock' in str(e).lower():
-                    time.sleep(2)
-                else:
-                    raise
+        with get_conn() as conn:
+            row = conn.execute(
+                "SELECT miss_rounds FROM aii_processed_needs WHERE need_hash=? ORDER BY processed_at DESC LIMIT 1",
+                (need_hash,)
+            ).fetchone()
+        if row and row[0] >= ANTI_LOOP_ROUNDS:
+            return True
+        return False
     except Exception as exc:
         log.warning("aii_feedback: anti_loop query failed: %s", exc)
-    return False
+        return False
 
 
 # ── 订阅创建 ─────────────────────────────────────────────────────────────────
@@ -236,20 +207,9 @@ def _anti_loop_check(need_hash: str, topic: str) -> bool:
 def _get_default_user_id() -> str:
     """取现有订阅用的 user_id_hash（系统用户）。"""
     try:
-        import duckdb, time
-        for _ in range(10):
-            try:
-                conn = duckdb.connect('/root/.stratum/meta.duckdb', read_only=True)
-                row = conn.execute(
-                    "SELECT user_id FROM source_subscriptions LIMIT 1"
-                ).fetchone()
-                conn.close()
-                return row[0] if row else "56d6bc01edc35765"
-            except Exception as e:
-                if 'lock' in str(e).lower():
-                    time.sleep(2)
-                else:
-                    raise
+        with get_conn() as conn:
+            row = conn.execute("SELECT user_id FROM source_subscriptions LIMIT 1").fetchone()
+        return row[0] if row else "56d6bc01edc35765"
     except Exception:
         pass
     return "56d6bc01edc35765"
@@ -285,22 +245,13 @@ async def _create_and_run_subscription(
     except Exception as exc:
         log.error("aii_feedback: scan failed sub=%s: %s", sub_id, exc)
 
-    # 读取最终 ingested_count
+    # 读取最终 ingested_count（与 FastAPI 共享同一连接，无锁争用）
     try:
-        import duckdb, time
-        for _ in range(10):
-            try:
-                conn_r = duckdb.connect('/root/.stratum/meta.duckdb', read_only=True)
-                row = conn_r.execute(
-                    "SELECT ingested_count FROM source_subscriptions WHERE id=?", (sub_id,)
-                ).fetchone()
-                conn_r.close()
-                return sub_id, (row[0] if row else 0)
-            except Exception as e:
-                if 'lock' in str(e).lower():
-                    time.sleep(2)
-                else:
-                    break
+        with get_conn() as conn:
+            row = conn.execute(
+                "SELECT ingested_count FROM source_subscriptions WHERE id=?", (sub_id,)
+            ).fetchone()
+        return sub_id, (row[0] if row else 0)
     except Exception:
         pass
     return sub_id, 0
@@ -399,25 +350,15 @@ async def _process_one_need(need: dict, user_id: str) -> None:
         total_ingested += ingested
 
         miss_rounds = 0 if ingested > 0 else 1
-        # 累加 miss_rounds（读上次记录）
+        # 累加 miss_rounds（读上次记录，使用共享连接无锁争用）
         if ingested == 0:
             try:
-                import duckdb, time
-                for _ in range(10):
-                    try:
-                        c = duckdb.connect('/root/.stratum/meta.duckdb', read_only=True)
-                        prev = c.execute(
-                            "SELECT miss_rounds FROM aii_processed_needs WHERE need_hash=? ORDER BY processed_at DESC LIMIT 1",
-                            (nh,)
-                        ).fetchone()
-                        c.close()
-                        miss_rounds = (prev[0] if prev else 0) + 1
-                        break
-                    except Exception as e:
-                        if 'lock' in str(e).lower():
-                            time.sleep(2)
-                        else:
-                            break
+                with get_conn() as _c:
+                    prev = _c.execute(
+                        "SELECT miss_rounds FROM aii_processed_needs WHERE need_hash=? ORDER BY processed_at DESC LIMIT 1",
+                        (nh,)
+                    ).fetchone()
+                miss_rounds = (prev[0] if prev else 0) + 1
             except Exception:
                 pass
 
