@@ -18,20 +18,7 @@ import {
 } from '@helios/blocks';
 import { useApiNoArg, useApi } from '@/hooks/useApi';
 import * as api from '@/lib/api-client';
-import type { BuListItem, BuDetail, BuStructureSection } from '@/types/api';
-
-function StructureTree({ nodes, depth = 0 }: { nodes: BuStructureSection[]; depth?: number }) {
-  return (
-    <ul className={depth === 0 ? 'flex flex-col gap-1' : 'flex flex-col gap-1 ml-4 mt-1'}>
-      {nodes.map((n, i) => (
-        <li key={i} className="text-sm">
-          <span className={depth === 0 ? 'font-medium' : 'text-[color:var(--text-secondary)]'}>{n.title}</span>
-          {n.children && n.children.length > 0 && <StructureTree nodes={n.children} depth={depth + 1} />}
-        </li>
-      ))}
-    </ul>
-  );
-}
+import type { BuListItem, BuDetail } from '@/types/api';
 
 function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
   const [state, run] = useApi(api.getBuDetail);
@@ -97,10 +84,12 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
             </section>
 
             {/* 章节骨架 */}
-            <section className="flex flex-col gap-2">
-              <h4 className="text-sm font-semibold">章节骨架 / Structure</h4>
-              <StructureTree nodes={d.structure} />
-            </section>
+            {d.structure && (
+              <section className="flex flex-col gap-2">
+                <h4 className="text-sm font-semibold">章节骨架 / Structure</h4>
+                <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{d.structure}</p>
+              </section>
+            )}
 
             {/* 核心概念 → 链到 KU */}
             <section className="flex flex-col gap-2">
