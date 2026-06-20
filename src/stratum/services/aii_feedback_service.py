@@ -1,14 +1,19 @@
 """AII 全自动回流：监控 needs.json → 自动拉料入库。
 
 Pipeline:
-  needs.json → 护栏检查 → 话题→查询条件映射 → 创建订阅 → 触发扫描 → 记日志
+  needs.json → 性质判断 → 护栏检查 → 话题→查询条件映射 → 创建订阅 → 触发扫描 → 记日志
 
 五道护栏 (§4):
-  G1 MAX_PER_NEED=5       每个 need 最多创建 5 个订阅
+  G1 MAX_PER_NEED=5       一个 need 实际入库总篇数 ≤ 5（跨源累计，不是每源5）
   G2 MAX_PER_DAY=20       每天全局最多创建 20 个订阅
   G3 MAX_PER_MONTH=200    每月全局最多创建 200 个订阅
   G4 source whitelist     只用 arxiv / gutenberg（oapen 网络待修）
   G5 anti-loop            同 need 2 轮 ingested=0 → needs_human_review，停
+
+need 性质判断 (§3):
+  "是什么"/"基础"/"入门"/"原理" → 拉书（gutenberg/oapen）
+  "最新"/"方法"/"算法"/"前沿"  → 拉论文（arxiv）
+  不命中 → 默认偏书（书先，arxiv 少量补充）
 
 §20: 只调 Layer3/4 接口，不改主库。
 """
@@ -35,10 +40,34 @@ UNRESOLVED_LOG = Path("/data/logs/aii_unresolved.log")
 LOOP_INTERVAL   = 3600   # 1h
 ALLOWED_SOURCES = {"arxiv", "gutenberg"}   # oapen 待网络修复
 
-MAX_PER_NEED    = 5
+MAX_PER_NEED    = 5   # 一个 need 实际入库总篇数上限
 MAX_PER_DAY     = 20
 MAX_PER_MONTH   = 200
 ANTI_LOOP_ROUNDS = 2   # 连续 N 轮 ingested=0 → 停
+
+# ── need 性质信号词（§3）─────────────────────────────────────────────────────
+
+_BOOK_SIGNALS = (
+    "是什么", "什么是", "基础", "入门", "原理", "概念", "导论",
+    "介绍", "教材", "what is", "introduction", "basics", "fundamentals",
+)
+_PAPER_SIGNALS = (
+    "最新", "方法", "算法", "前沿", "sota", "进展", "研究", "模型",
+    "如何", "怎么", "实现", "latest", "method", "algorithm", "survey",
+)
+
+
+def _classify_need_type(topic: str) -> str:
+    """返回 'book' | 'paper' | 'both'。默认偏书（AII high_miss 多为基础盲区）。"""
+    tl = topic.lower()
+    has_book  = any(s in tl for s in _BOOK_SIGNALS)
+    has_paper = any(s in tl for s in _PAPER_SIGNALS)
+    if has_book and not has_paper:
+        return "book"
+    if has_paper and not has_book:
+        return "paper"
+    return "both"  # 中性：书优先 + arxiv 少量补充
+
 
 # ── 话题→查询 映射表（无需 LLM 的快速路径）────────────────────────────────
 
@@ -101,12 +130,21 @@ _TOPIC_MAP: list[tuple[list[str], list[dict]]] = [
 ]
 
 
-def _map_topic_rule(topic: str) -> list[dict] | None:
-    """快速规则映射：返回 [{source_type, query}, ...] 或 None（未命中）。"""
+def _map_topic_rule(topic: str, need_type: str = "both") -> list[dict] | None:
+    """快速规则映射，按 need_type 过滤来源。返回 [{source_type, query},...] 或 None。"""
     topic_l = topic.lower()
     for keywords, queries in _TOPIC_MAP:
         if any(k.lower() in topic_l for k in keywords):
-            return queries
+            if need_type == "book":
+                filtered = [q for q in queries if q["source_type"] != "arxiv"]
+            elif need_type == "paper":
+                filtered = [q for q in queries if q["source_type"] not in ("gutenberg", "oapen")]
+            else:
+                # 中性：书优先（gutenberg/oapen 先），arxiv 补充
+                books  = [q for q in queries if q["source_type"] in ("gutenberg", "oapen")]
+                papers = [q for q in queries if q["source_type"] == "arxiv"]
+                filtered = books + papers
+            return filtered if filtered else queries  # 若该性质无对应源则回退全部
     return None
 
 
@@ -136,14 +174,17 @@ def _map_topic_llm(topic: str) -> list[dict]:
         return []
 
 
-def _map_topic(topic: str) -> list[dict]:
-    """topic → [{source_type, query}] 列表（规则优先，LLM 兜底）。"""
-    queries = _map_topic_rule(topic)
+def _map_topic(topic: str) -> tuple[list[dict], str]:
+    """topic → (sources_list, need_type)。规则优先，LLM 兜底。"""
+    need_type = _classify_need_type(topic)
+    log.info("aii_feedback: need_type=%r for topic=%r", need_type, topic[:40])
+    queries = _map_topic_rule(topic, need_type)
     if queries is not None:
-        log.info("aii_feedback: rule-mapped topic=%r → %d sources", topic[:40], len(queries))
-        return queries
+        log.info("aii_feedback: rule-mapped topic=%r → %d sources (type=%s)",
+                 topic[:40], len(queries), need_type)
+        return queries, need_type
     log.info("aii_feedback: no rule match for topic=%r, falling back to LLM", topic[:40])
-    return _map_topic_llm(topic)
+    return _map_topic_llm(topic), need_type
 
 
 # ── 护栏 ────────────────────────────────────────────────────────────────────
@@ -174,13 +215,14 @@ def _guardrail_daily_monthly() -> tuple[int, int]:
 
 
 def _guardrail_need_count(need_hash: str) -> int:
-    """本 need 已创建的订阅数。"""
+    """此 need 跨全部历史已实际入库的论文/书总数（SUM ingested_count）。"""
     try:
         with get_conn() as conn:
-            return conn.execute(
-                "SELECT COUNT(*) FROM aii_processed_needs WHERE need_hash=? AND result='ok'",
+            row = conn.execute(
+                "SELECT COALESCE(SUM(ingested_count), 0) FROM aii_processed_needs WHERE need_hash=?",
                 (need_hash,)
-            ).fetchone()[0]
+            ).fetchone()
+        return int(row[0]) if row else 0
     except Exception as exc:
         log.warning("aii_feedback: need_count query failed: %s", exc)
         return 0
@@ -270,16 +312,17 @@ def _log_to_file(path: Path, msg: str) -> None:
 
 
 def _record_need(need_hash: str, topic: str, source_type: str, sub_id: str | None,
-                 result: str, miss_rounds: int, notes: str = "") -> None:
+                 result: str, miss_rounds: int, ingested_count: int = 0,
+                 notes: str = "") -> None:
     from ulid import ULID
     try:
         with get_conn() as conn:
             conn.execute(
                 "INSERT INTO aii_processed_needs "
-                "(id, need_hash, topic, source_type, sub_id, result, miss_rounds, notes) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "(id, need_hash, topic, source_type, sub_id, result, miss_rounds, ingested_count, notes) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (str(ULID()), need_hash, topic[:300], source_type, sub_id,
-                 result, miss_rounds, notes[:500]),
+                 result, miss_rounds, ingested_count, notes[:500]),
             )
     except Exception as exc:
         log.error("aii_feedback: record need failed: %s", exc)
@@ -312,17 +355,17 @@ async def _process_one_need(need: dict, user_id: str) -> None:
         log.warning("aii_feedback: G3 monthly cap reached (%d), skip", mon_c)
         return
 
-    # G1: per-need cap
-    need_c = _guardrail_need_count(nh)
-    if need_c >= MAX_PER_NEED:
-        log.info("aii_feedback: G1 per-need cap reached (%d) for topic=%r", need_c, topic[:50])
+    # G1: per-need 总入库篇数上限（历史累计）
+    already_ingested = _guardrail_need_count(nh)
+    if already_ingested >= MAX_PER_NEED:
+        log.info("aii_feedback: G1 quota full (already=%d) for topic=%r", already_ingested, topic[:50])
         return
 
-    # 映射话题 → 查询条件
-    queries = _map_topic(topic)
+    # 映射话题 → 查询条件（含 need_type 过滤）
+    queries, need_type = _map_topic(topic)
     if not queries:
         log.warning("aii_feedback: no queries mapped for topic=%r", topic[:50])
-        _record_need(nh, topic, "none", None, "error", 0, "mapping returned empty")
+        _record_need(nh, topic, "none", None, "error", 0, 0, "mapping returned empty")
         _log_to_file(UNRESOLVED_LOG, f"NO-MAPPING topic={topic!r} — 无法映射到任何数据源")
         return
 
@@ -334,14 +377,21 @@ async def _process_one_need(need: dict, user_id: str) -> None:
             log.info("aii_feedback: G4 skip non-whitelisted source=%r", source_type)
             continue
 
-        # G2/G3 re-check before each subscription (count may have grown)
+        # G2/G3 re-check
         day_c, mon_c = _guardrail_daily_monthly()
         if day_c >= MAX_PER_DAY or mon_c >= MAX_PER_MONTH:
             log.warning("aii_feedback: cap reached mid-loop, stopping")
             break
 
-        query   = q_spec.get("query", {})
-        max_r   = min(q_spec.get("max_results", MAX_PER_NEED), MAX_PER_NEED)
+        # G1: 按剩余配额分配 max_results（历史+本轮已拉累计不超上限）
+        remaining = max(0, MAX_PER_NEED - already_ingested - total_ingested)
+        if remaining <= 0:
+            log.info("aii_feedback: G1 quota exhausted (total=%d), stopping",
+                     already_ingested + total_ingested)
+            break
+        max_r = min(q_spec.get("max_results", remaining), remaining)
+
+        query    = q_spec.get("query", {})
         sub_name = f"[AII] {topic[:60]} ({source_type})"
 
         sub_id, ingested = await _create_and_run_subscription(
@@ -350,7 +400,6 @@ async def _process_one_need(need: dict, user_id: str) -> None:
         total_ingested += ingested
 
         miss_rounds = 0 if ingested > 0 else 1
-        # 累加 miss_rounds（读上次记录，使用共享连接无锁争用）
         if ingested == 0:
             try:
                 with get_conn() as _c:
@@ -362,12 +411,15 @@ async def _process_one_need(need: dict, user_id: str) -> None:
             except Exception:
                 pass
 
-        result = "ok" if ingested > 0 else ("needs_human_review" if miss_rounds >= ANTI_LOOP_ROUNDS else "ok")
-        _record_need(nh, topic, source_type, sub_id, result, miss_rounds,
-                     f"ingested={ingested} query={json.dumps(query, ensure_ascii=False)[:200]}")
+        result = "ok" if ingested > 0 else (
+            "needs_human_review" if miss_rounds >= ANTI_LOOP_ROUNDS else "ok"
+        )
+        _record_need(nh, topic, source_type, sub_id, result, miss_rounds, ingested,
+                     f"need_type={need_type} ingested={ingested} query={json.dumps(query, ensure_ascii=False)[:180]}")
 
         _log_to_file(FEEDBACK_LOG,
-            f"need={topic!r} source={source_type} sub={sub_id} ingested={ingested} result={result}")
+            f"need={topic!r} type={need_type} source={source_type} "
+            f"sub={sub_id} ingested={ingested} result={result}")
 
         if miss_rounds >= ANTI_LOOP_ROUNDS and ingested == 0:
             _log_to_file(UNRESOLVED_LOG,
