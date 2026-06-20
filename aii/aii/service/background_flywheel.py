@@ -34,7 +34,7 @@ FLYWHEEL_EVOLVE_EVERY: int = int(os.getenv("FLYWHEEL_EVOLVE_EVERY", "4"))
 FLYWHEEL_MAX_FILE_MB: float = float(os.getenv("FLYWHEEL_MAX_FILE_MB", "5"))
 
 # 标题关键词过滤: 含这些词的视为合集/套装,跳过等待 Stratum 拆分
-_COLLECTION_KEYWORDS = ("套装", "合集", "全集", "丛书", "系列", "册）", "册)", "全套")
+_COLLECTION_KEYWORDS = ("套装", "合集", "全集", "丛书", "系列", "册）", "册)", "全套", "百科全书", "百科辞典", "百科词典")
 
 
 def _is_collection(md: Path, meta: dict) -> tuple[bool, str]:
