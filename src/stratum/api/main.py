@@ -91,19 +91,31 @@ async def _source_watcher_loop() -> None:
         _l.exception("source_watcher_loop crashed")
 
 
+async def _aii_feedback_loop() -> None:
+    from stratum.services.aii_feedback_service import aii_feedback_loop
+    import logging as _log
+    _l = _log.getLogger(__name__)
+    try:
+        await aii_feedback_loop()
+    except Exception:
+        _l.exception("aii_feedback_loop crashed")
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     run_migrations()  # 启动时自动建表
     _register_providers()
-    task = asyncio.create_task(_feed_tracker_loop())
+    task    = asyncio.create_task(_feed_tracker_loop())
     fw_task = asyncio.create_task(_folder_watcher_loop())
     cw_task = asyncio.create_task(_channel_watcher_loop())
     sw_task = asyncio.create_task(_source_watcher_loop())
+    aii_task = asyncio.create_task(_aii_feedback_loop())
     yield
     task.cancel()
     fw_task.cancel()
     cw_task.cancel()
     sw_task.cancel()
+    aii_task.cancel()
 
 
 app = FastAPI(title="Stratum Service Layer", version="0.5.0", lifespan=_lifespan)
