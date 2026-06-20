@@ -16,6 +16,8 @@ provider 分流:
 """
 from __future__ import annotations
 
+import asyncio
+import functools
 import json
 import logging
 import re
@@ -27,6 +29,36 @@ from aii.service.synthesis_engine_deep import DeepSynthesisEngine
 from aii.storage.pg_backend import PgBackend
 
 logger = logging.getLogger(__name__)
+
+_SUBJECTS = ["数学", "经济学", "物理", "化学", "生物", "计算机", "文学", "哲学", "历史", "心理学", "其他"]
+
+
+async def _infer_subject_async(title: str) -> str:
+    """从书名/标题用本地 LLM (qwen2.5:7b) 推断学科，失败返回'其他'。"""
+    import requests as _req
+    subjects_str = "/".join(_SUBJECTS)
+    prompt = (
+        f"这本书或文章属于哪个学科？只从[{subjects_str}]中选一个，只回答学科名，不要其他内容：\n{title}"
+    )
+    loop = asyncio.get_event_loop()
+    try:
+        resp = await loop.run_in_executor(
+            None,
+            functools.partial(
+                _req.post,
+                "http://localhost:11434/api/generate",
+                json={"model": "qwen2.5:7b", "prompt": prompt, "stream": False},
+                timeout=30,
+            ),
+        )
+        raw = resp.json().get("response", "").strip()
+        for subj in _SUBJECTS:
+            if subj in raw:
+                return subj
+        return "其他"
+    except Exception as e:
+        logger.warning("auto_ingest: subject inference failed for '%s': %s", title[:30], e)
+        return "其他"
 
 _MEDIUM_GRADE_CAP: dict[str, str] = {
     "video": "unverified",
@@ -83,9 +115,10 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
         return -1
 
     text = _PICTURE_RE.sub("", md_path.read_text(encoding="utf-8", errors="replace")).strip()
+    subject = await _infer_subject_async(title)
     if not text:
         logger.warning("auto_ingest: empty content %s, marking done (0 KUs)", md_path.name)
-        await backend.mark_substrate_ingested(substrate_id, title, medium, 0)
+        await backend.mark_substrate_ingested(substrate_id, title, medium, 0, subject=subject)
         return 0
 
     grade_cap = _MEDIUM_GRADE_CAP.get(medium)
@@ -107,7 +140,7 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
         return -1
 
     ku_count = len(result.get("registered", []))
-    await backend.mark_substrate_ingested(substrate_id, title, medium, ku_count)
+    await backend.mark_substrate_ingested(substrate_id, title, medium, ku_count, subject=subject)
     logger.info(
         "auto_ingest: %s medium=%s provider=%s grade_cap=%s → %d KUs",
         title[:50], medium, provider, grade_cap, ku_count,

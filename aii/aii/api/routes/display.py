@@ -79,7 +79,8 @@ async def ku_list(
                 f"""
                 SELECT k.ku_id, left(k.natural_text, 300) AS natural_text,
                        k.knowledge_type, k.grade, k.substrate_id,
-                       s.title AS substrate_title, k.merge_count, k.created_at
+                       s.title AS substrate_title, s.subject AS subject,
+                       k.merge_count, k.created_at
                 FROM aii.ku k
                 LEFT JOIN aii.ingested_substrate s ON k.substrate_id = s.substrate_id
                 WHERE {where}
@@ -97,6 +98,7 @@ async def ku_list(
                 "grade": r["grade"],
                 "substrate_id": r["substrate_id"],
                 "substrate_title": r["substrate_title"],
+                "subject": r["subject"],
                 "merge_count": r["merge_count"],
                 "defeater_count": 0,
             }
@@ -410,7 +412,7 @@ async def bu_list(
                 SELECT k.ku_id, left(k.natural_text, 300) AS natural_text, k.grade,
                        k.synthesis_meta->>'book_substrate_id' AS substrate_id,
                        k.synthesis_meta->>'doc_type' AS doc_type,
-                       s.title AS book_title,
+                       s.title AS book_title, s.subject AS subject,
                        jsonb_array_length(COALESCE(k.synthesis_meta->'main_claims', '[]'::jsonb)) AS claim_count
                 FROM aii.ku k
                 LEFT JOIN aii.ingested_substrate s
@@ -429,6 +431,7 @@ async def bu_list(
                 "book_title": r["book_title"] or "",
                 "summary": r["natural_text"],
                 "grade": r["grade"],
+                "subject": r["subject"],
                 "main_claim_count": r["claim_count"] or 0,
             }
             for r in rows

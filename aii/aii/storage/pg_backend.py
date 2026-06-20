@@ -516,18 +516,41 @@ class PgBackend(StorageBackend, EpistemicStore):
             return row is not None
 
     async def mark_substrate_ingested(
-        self, substrate_id: str, title: str, medium: str, ku_count: int
+        self, substrate_id: str, title: str, medium: str, ku_count: int,
+        subject: str | None = None,
     ) -> None:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO aii.ingested_substrate (substrate_id, title, medium, ku_count)
-                VALUES ($1, $2, $3, $4)
-                ON CONFLICT (substrate_id) DO UPDATE SET ku_count = EXCLUDED.ku_count
+                INSERT INTO aii.ingested_substrate (substrate_id, title, medium, ku_count, subject)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (substrate_id) DO UPDATE SET
+                    ku_count = EXCLUDED.ku_count,
+                    subject = COALESCE(EXCLUDED.subject, aii.ingested_substrate.subject)
                 """,
-                substrate_id, title, medium, ku_count,
+                substrate_id, title, medium, ku_count, subject,
             )
+
+    def list_ingested_substrates(self) -> list[dict]:
+        async def _list():
+            pool = await self._ensure_pool()
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(
+                    "SELECT substrate_id, title, medium, ku_count, subject FROM aii.ingested_substrate ORDER BY ingested_at"
+                )
+            return [dict(r) for r in rows]
+        return asyncio.run(_list())
+
+    def update_substrate_subject(self, substrate_id: str, subject: str) -> None:
+        async def _update():
+            pool = await self._ensure_pool()
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE aii.ingested_substrate SET subject = $1 WHERE substrate_id = $2",
+                    subject, substrate_id,
+                )
+        asyncio.run(_update())
 
     async def find_nearest_ku(
         self, embedding: list[float], exclude_synthesis: bool = True

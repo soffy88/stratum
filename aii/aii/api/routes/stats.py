@@ -40,6 +40,9 @@ async def stats_overview():
             contradicts = await conn.fetchval(
                 "SELECT count(*) FROM aii.edge WHERE relation_type = 'contradicts'"
             )
+            subject_rows = await conn.fetch(
+                "SELECT subject, count(*) AS cnt FROM aii.ingested_substrate WHERE subject IS NOT NULL GROUP BY subject ORDER BY cnt DESC"
+            )
 
         return success_response({
             "ku_count": ku_row["ku_count"],
@@ -51,6 +54,7 @@ async def stats_overview():
             "dedup_saved": int(ku_row["dedup_saved"]),
             "relation_type_dist": {r["relation_type"]: r["cnt"] for r in rel_rows},
             "contradicts_count": contradicts,
+            "subject_dist": {r["subject"]: int(r["cnt"]) for r in subject_rows},
         })
     except Exception as e:
         return error_response("STATS_ERROR", str(e))
