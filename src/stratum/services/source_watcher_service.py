@@ -17,6 +17,9 @@ from stratum.services.source_subscription_store import SourceSubscriptionStore
 
 log = logging.getLogger(__name__)
 
+# D-assert 计数：bundle 衍生项不应出现在订阅入库路径
+_BUNDLE_VIA_SUBSCRIPTION_COUNT: int = 0
+
 # Per-source scan intervals (seconds)
 SCAN_INTERVALS = {
     "arxiv": 6 * 3600,
@@ -94,6 +97,15 @@ async def _ingest_item(result, user_id_hash: str, sub_id: str) -> str | None:
             with get_conn() as conn:
                 row = conn.execute("SELECT meta_json FROM substrates WHERE id=?", (sid,)).fetchone()
                 meta = json.loads(row[0] or "{}") if row else {}
+                # D-assert: bundle 衍生项不应出现在订阅入库路径（当前无此路径，仅防将来静默出现）
+                if "bundle_file_hash" in meta:
+                    global _BUNDLE_VIA_SUBSCRIPTION_COUNT
+                    _BUNDLE_VIA_SUBSCRIPTION_COUNT += 1
+                    log.warning(
+                        "D-assert: bundle-derived substrate via subscription path "
+                        "sid=%s sub=%s count=%d",
+                        sid, sub_id, _BUNDLE_VIA_SUBSCRIPTION_COUNT,
+                    )
                 meta.update(result.metadata)
                 meta["source_type"] = result.metadata.get("source_type", "unknown")
                 meta["medium"] = medium_hint
