@@ -262,10 +262,15 @@ async def _create_and_run_subscription(
     query: dict,
     name: str,
     max_results: int = 5,
+    *,
+    _runner=None,
 ) -> tuple[str | None, int]:
-    """创建订阅并立即触发扫描。返回 (sub_id, ingested_count)。"""
+    """创建订阅并立即触发扫描。返回 (sub_id, ingested_count)。
+
+    _runner: 测试注入点（keyword-only）。None→生产路径 _check_one_subscription；
+             非 None→调 _runner(sub_id, user_id, source_type, query, max_results)。
+    """
     from ulid import ULID
-    from stratum.services.source_watcher_service import _check_one_subscription
 
     sub_id = str(ULID())
     try:
@@ -282,7 +287,11 @@ async def _create_and_run_subscription(
         return None, 0
 
     try:
-        await _check_one_subscription(sub_id, user_id, source_type, query, max_results)
+        if _runner is not None:
+            await _runner(sub_id, user_id, source_type, query, max_results)
+        else:
+            from stratum.services.source_watcher_service import _check_one_subscription
+            await _check_one_subscription(sub_id, user_id, source_type, query, max_results)
     except Exception as exc:
         log.error("aii_feedback: scan failed sub=%s: %s", sub_id, exc)
 
@@ -310,6 +319,20 @@ def _log_to_file(path: Path, msg: str) -> None:
         log.warning("aii_feedback: write log failed %s: %s", path, exc)
 
 
+def _get_prev_miss_rounds(need_hash: str, source_type: str) -> int:
+    """当前 (need, source) 的连续 miss 轮数。仅读最近一行（已有 UNIQUE 保证单行）。"""
+    try:
+        with get_conn() as conn:
+            row = conn.execute(
+                "SELECT miss_rounds FROM aii_processed_needs "
+                "WHERE need_hash=? AND source_type=?",
+                (need_hash, source_type)
+            ).fetchone()
+        return row[0] if row else 0
+    except Exception:
+        return 0
+
+
 def _record_need(need_hash: str, topic: str, source_type: str, sub_id: str | None,
                  result: str, miss_rounds: int, ingested_count: int = 0,
                  notes: str = "") -> None:
@@ -334,7 +357,7 @@ def _record_need(need_hash: str, topic: str, source_type: str, sub_id: str | Non
 
 # ── 主处理逻辑 ────────────────────────────────────────────────────────────────
 
-async def _process_one_need(need: dict, user_id: str) -> None:
+async def _process_one_need(need: dict, user_id: str, *, _runner=None) -> None:
     topic  = (need.get("topic") or "").strip()
     reason = need.get("reason", "")
     if not topic:
@@ -400,21 +423,12 @@ async def _process_one_need(need: dict, user_id: str) -> None:
         sub_name = f"[AII] {topic[:60]} ({source_type})"
 
         sub_id, ingested = await _create_and_run_subscription(
-            user_id, source_type, query, sub_name, max_r
+            user_id, source_type, query, sub_name, max_r, _runner=_runner
         )
         total_ingested += ingested
 
         if ingested == 0:
-            try:
-                with get_conn() as _c:
-                    prev = _c.execute(
-                        "SELECT miss_rounds FROM aii_processed_needs "
-                        "WHERE need_hash=? AND source_type=?",
-                        (nh, source_type)
-                    ).fetchone()
-                miss_rounds = (prev[0] if prev else 0) + 1
-            except Exception:
-                miss_rounds = 1
+            miss_rounds = _get_prev_miss_rounds(nh, source_type) + 1
         else:
             miss_rounds = 0  # 只清自己源的计数
 
