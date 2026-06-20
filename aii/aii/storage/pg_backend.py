@@ -236,6 +236,38 @@ class PgBackend(StorageBackend, EpistemicStore):
                         ku_id, old_grade, new_grade, "put_ku",
                         json.dumps(ku.get("decision_trail", {})),
                     )
+
+                # 5. Save concept links from tags (concept = KU零件, 不带grade, 不当知识)
+                tags = ku.get("tags")
+                if tags and isinstance(tags, list):
+                    cleaned = list({t.strip().lower() for t in tags if t and str(t).strip()})
+                    for tag in cleaned:
+                        if not tag:
+                            continue
+                        c_row = await conn.fetchrow(
+                            """
+                            INSERT INTO aii.concept (name)
+                            VALUES ($1)
+                            ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+                            RETURNING concept_id
+                            """,
+                            tag,
+                        )
+                        if c_row:
+                            inserted = await conn.fetchrow(
+                                """
+                                INSERT INTO aii.ku_concept (ku_id, concept_id)
+                                VALUES ($1, $2)
+                                ON CONFLICT DO NOTHING
+                                RETURNING concept_id
+                                """,
+                                ku_id, c_row["concept_id"],
+                            )
+                            if inserted:
+                                await conn.execute(
+                                    "UPDATE aii.concept SET ku_count = ku_count + 1 WHERE concept_id = $1",
+                                    c_row["concept_id"],
+                                )
         finally:
             await conn.close()
 

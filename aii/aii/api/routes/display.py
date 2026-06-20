@@ -534,3 +534,103 @@ async def bu_detail(ku_id: str):
         return error_response("INVALID_ID", "ku_id must be a valid UUID")
     except Exception as e:
         return error_response("BU_DETAIL_ERROR", str(e))
+
+
+# ── Concept (KU零件索引, 不带grade, 不当知识网) ────────────────────────────────
+
+@router.get("/concepts")
+async def concept_list(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    min_ku_count: int = Query(1, ge=0),
+    q: Optional[str] = Query(None),
+):
+    """List concepts sorted by ku_count DESC.
+    Concepts are KU索引 only — no grade, no epistemic status.
+    """
+    try:
+        offset = (page - 1) * page_size
+        pool = await backend._ensure_pool()
+        async with pool.acquire() as conn:
+            conditions = ["ku_count >= $1"]
+            params: list = [min_ku_count]
+            if q:
+                params.append(f"%{q.lower()}%")
+                conditions.append(f"name LIKE ${len(params)}")
+            where = " AND ".join(conditions)
+            total = await conn.fetchval(
+                f"SELECT count(*) FROM aii.concept WHERE {where}", *params
+            )
+            params += [page_size, offset]
+            rows = await conn.fetch(
+                f"""
+                SELECT concept_id::text, name, ku_count, created_at
+                FROM aii.concept
+                WHERE {where}
+                ORDER BY ku_count DESC, name
+                LIMIT ${len(params)-1} OFFSET ${len(params)}
+                """,
+                *params,
+            )
+        items = [
+            {"id": r["concept_id"], "name": r["name"], "ku_count": r["ku_count"]}
+            for r in rows
+        ]
+        return success_response({
+            "total": total, "page": page, "page_size": page_size, "items": items,
+        })
+    except Exception as e:
+        return error_response("CONCEPT_LIST_ERROR", str(e))
+
+
+@router.get("/concepts/{name}/kus")
+async def concept_kus(
+    name: str,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+):
+    """KUs that involve this concept (by exact name, case-insensitive)."""
+    try:
+        offset = (page - 1) * page_size
+        pool = await backend._ensure_pool()
+        async with pool.acquire() as conn:
+            c_row = await conn.fetchrow(
+                "SELECT concept_id, ku_count FROM aii.concept WHERE name = $1",
+                name.strip().lower(),
+            )
+            if not c_row:
+                return error_response("NOT_FOUND", f"Concept '{name}' not found")
+
+            total = c_row["ku_count"]
+            rows = await conn.fetch(
+                """
+                SELECT k.ku_id::text, left(k.natural_text, 200) AS natural_text,
+                       k.knowledge_type, k.grade, k.substrate_id
+                FROM aii.ku_concept kc
+                JOIN aii.ku k ON k.ku_id = kc.ku_id
+                WHERE kc.concept_id = $1
+                  AND k.is_quarantined = FALSE
+                ORDER BY k.created_at DESC
+                LIMIT $2 OFFSET $3
+                """,
+                c_row["concept_id"], page_size, offset,
+            )
+        items = [
+            {
+                "id": r["ku_id"],
+                "natural_text": r["natural_text"],
+                "knowledge_type": r["knowledge_type"],
+                "grade": r["grade"],
+                "substrate_id": r["substrate_id"],
+            }
+            for r in rows
+        ]
+        return success_response({
+            "concept": name.strip().lower(),
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "items": items,
+        })
+    except Exception as e:
+        return error_response("CONCEPT_KUS_ERROR", str(e))
