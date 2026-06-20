@@ -3,9 +3,9 @@ import os
 import secrets
 import time
 from collections import deque
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 # Paths exempt from auth (health probes)
 _EXEMPT = {"/api/ping"}
@@ -24,7 +24,6 @@ def _rate_limit(bucket: str, window: int, max_req: int) -> bool:
     if bucket not in _windows:
         _windows[bucket] = deque()
     dq = _windows[bucket]
-    # Evict timestamps outside current window
     cutoff = now - window
     while dq and dq[0] <= cutoff:
         dq.popleft()
@@ -34,39 +33,57 @@ def _rate_limit(bucket: str, window: int, max_req: int) -> bool:
     return True
 
 
-def _err(status: int, code: str, message: str) -> JSONResponse:
+def _err_response(status: int, code: str, message: str):
     return JSONResponse(
         {"status": "error", "error": {"code": code, "message": message}},
         status_code=status,
     )
 
 
-class APIKeyMiddleware(BaseHTTPMiddleware):
-    """Validate X-API-Key / Bearer token; apply per-endpoint rate limits."""
+class APIKeyMiddleware:
+    """Pure-ASGI middleware: validates X-API-Key and applies rate limits.
 
-    async def dispatch(self, request: Request, call_next):
-        path = request.url.path
+    Using raw ASGI (not BaseHTTPMiddleware) avoids Starlette's anyio task-group
+    body-streaming overhead, which under heavy flywheel load causes 40-50 s delays
+    on the first response after server startup.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
 
         # Exempt paths (health probes)
         if path in _EXEMPT:
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         # Only guard /api/* routes
         if not path.startswith("/api/"):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         # --- Auth ---
         expected = os.getenv("AII_API_KEY", "")
         if not expected:
-            # Misconfigured server — refuse all rather than allow all
-            return _err(500, "server_misconfigured", "AII_API_KEY not set on server")
+            resp = _err_response(500, "server_misconfigured", "AII_API_KEY not set on server")
+            await resp(scope, receive, send)
+            return
 
+        headers = dict(scope.get("headers", []))
         provided = (
-            request.headers.get("X-API-Key")
-            or _bearer(request.headers.get("Authorization", ""))
+            headers.get(b"x-api-key", b"").decode()
+            or _bearer(headers.get(b"authorization", b"").decode())
         )
         if not provided or not secrets.compare_digest(provided, expected):
-            return _err(401, "unauthorized", "Missing or invalid API key")
+            resp = _err_response(401, "unauthorized", "Missing or invalid API key")
+            await resp(scope, receive, send)
+            return
 
         # --- Rate limiting ---
         if path.startswith("/api/chat"):
@@ -77,9 +94,11 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
             bucket = f"default:{provided[:8]}"
 
         if not _rate_limit(bucket, window, max_req):
-            return _err(429, "rate_limited", f"Too many requests — limit {max_req}/{window}s")
+            resp = _err_response(429, "rate_limited", f"Too many requests — limit {max_req}/{window}s")
+            await resp(scope, receive, send)
+            return
 
-        return await call_next(request)
+        await self.app(scope, receive, send)
 
 
 def _bearer(header: str) -> str:

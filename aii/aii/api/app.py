@@ -48,6 +48,39 @@ async def lifespan(app: FastAPI):
     await backend._ensure_pool()
     logger.info("AII Backend initialized and PG Pool started.")
 
+    # 4b. 预热 PG buffer cache (kc/list 所需的 synthesis 行)
+    try:
+        pool = await backend._ensure_pool()
+        async with pool.acquire() as conn:
+            await conn.fetch(
+                "SELECT ku_id, left(natural_text, 300), grade, "
+                "synthesis_meta->>'community_label', synthesis_meta->>'community_size' "
+                "FROM aii.ku "
+                "WHERE knowledge_type = 'synthesis' AND is_synthesis = true "
+                "ORDER BY created_at DESC LIMIT 50"
+            )
+        logger.info("AII kc/list PG buffer cache warmed.")
+    except Exception as e:
+        logger.warning("kc/list warm-up failed (non-fatal): %s", e)
+
+    # 4c. 预热 Ollama qwen2.5:7b — 冷启动加载模型需 40s，会使本地 I/O 饱和并
+    #     阻塞 PostgreSQL loopback 响应，导致第一条 kc/list 请求超过前端 10s 超时。
+    #     在 yield 之前完成热身，确保对外提供服务时模型已在 GPU。
+    try:
+        import requests as _r
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: _r.post(
+                "http://localhost:11434/api/generate",
+                json={"model": "qwen2.5:7b", "prompt": "hi", "stream": False},
+                timeout=120,
+            ),
+        )
+        logger.info("Ollama qwen2.5:7b warmed up.")
+    except Exception as e:
+        logger.warning("Ollama warm-up failed (non-fatal): %s", e)
+
     # 5. 启动后台飞轮
     from aii.service.background_flywheel import flywheel_loop
     flywheel_task = asyncio.create_task(flywheel_loop(backend), name="aii-flywheel")

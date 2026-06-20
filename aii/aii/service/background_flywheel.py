@@ -89,17 +89,29 @@ async def _collect_new_files(backend, limit: int) -> list[Path]:
     found: list[Path] = []
     skipped_collections: list[dict] = []
 
-    for md in sorted(_SHARED_DIR.glob("*.md")):
+    # 文件系统扫描放进线程: WSL2 跨文件系统下 Path.exists() 约 100ms/次,
+    # 690 个 .md 文件 → ~49s 同步阻塞事件循环. 扫描结果是 (md, meta, sid) 三元组.
+    def _scan_candidates() -> list[tuple]:
+        result = []
+        for md in sorted(_SHARED_DIR.glob("*.md")):
+            jp = md.with_suffix(".json")
+            if not jp.exists():
+                continue
+            try:
+                meta = json.loads(jp.read_text(encoding="utf-8"))
+                sid = meta.get("id", "")
+                if sid:
+                    result.append((md, meta, sid))
+            except Exception:
+                logger.warning("flywheel: bad sidecar %s, skip", jp.name)
+        return result
+
+    candidates = await asyncio.to_thread(_scan_candidates)
+
+    for md, meta, sid in candidates:
         if len(found) >= limit:
             break
-        jp = md.with_suffix(".json")
-        if not jp.exists():
-            continue
         try:
-            meta = json.loads(jp.read_text(encoding="utf-8"))
-            sid = meta.get("id", "")
-            if not sid:
-                continue
             if await backend.is_substrate_ingested(sid):
                 continue
 
@@ -123,7 +135,7 @@ async def _collect_new_files(backend, limit: int) -> list[Path]:
 
             found.append(md)
         except Exception:
-            logger.warning("flywheel: bad sidecar %s, skip", jp.name)
+            logger.warning("flywheel: error checking %s, skip", md.name)
 
     # 写合集清单供 Stratum 返工
     _write_skipped_collections(skipped_collections)

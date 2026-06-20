@@ -17,9 +17,10 @@ from aii.storage.pg_backend import PgBackend
 
 logger = logging.getLogger(__name__)
 
-# 进程池: ku_extract_pipeline 是 CPU+I/O 密集的同步函数，必须在独立进程跑
-# 以真正绕过 GIL，不阻塞 asyncio 事件循环。max_workers=1 保证单次只跑1个抽取。
-_EXTRACT_POOL = concurrent.futures.ProcessPoolExecutor(max_workers=1)
+# ku_extract_pipeline makes HTTP calls to DeepSeek/Ollama (I/O-bound), so a
+# ThreadPoolExecutor is sufficient.  ProcessPoolExecutor was causing ~52s OS-level
+# fork freezes on WSL2 after CUDA (BGE-M3) was initialised in the parent process.
+_EXTRACT_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 
 # 粗筛阈值: cosine distance (pgvector <=>), 0=完全相同, 2=完全相反
 # distance <= 0.15 (similarity >= 0.85) 才触发 LLM 精确确认
@@ -111,11 +112,8 @@ class KuIngestionEngine:
         provider: str = "default",
     ) -> dict[str, Any]:
         """Process raw text into knowledge units and store them."""
-        text = re.sub(
-            r'[^\n]*(?:picture|figure|image)[^\n]*(?:intentionally\s+)?omitted[^\n]*\n?',
-            '', text, flags=re.IGNORECASE
-        )
-        text = text.strip()
+        from aii.service.auto_ingest import _strip_omitted_lines
+        text = _strip_omitted_lines(text).strip()
 
         # 1. Extraction Pipeline — ProcessPoolExecutor (独立进程, 真正绕过 GIL)
         # functools.partial 而非 lambda — ProcessPoolExecutor 需要可 pickle 的 callable

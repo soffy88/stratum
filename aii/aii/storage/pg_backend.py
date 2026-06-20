@@ -41,7 +41,22 @@ def _run_coro(coro):
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             return executor.submit(asyncio.run, _with_pool_cleanup()).result()
     except RuntimeError:
-        return asyncio.run(coro)
+        # No running loop (plain thread context, e.g. run_in_executor callback).
+        # Apply the same pool-cleanup wrapper so that any pools created inside
+        # asyncio.run() are closed before the thread loop exits — prevents the
+        # zombie asyncpg connections that caused "too many clients" errors.
+        async def _with_pool_cleanup_sync():
+            pool_ids_before = {id(p) for p in PgPool._registry.values()}
+            try:
+                return await coro
+            finally:
+                for p in list(PgPool._registry.values()):
+                    if id(p) not in pool_ids_before:
+                        try:
+                            await p.close()
+                        except Exception:
+                            pass
+        return asyncio.run(_with_pool_cleanup_sync())
 
 
 class PgBackend(StorageBackend, EpistemicStore):
@@ -57,31 +72,47 @@ class PgBackend(StorageBackend, EpistemicStore):
             db = os.getenv("POSTGRES_DB")
             self.dsn = f"postgresql://{user}:{password}@localhost:5435/{db}"
         self._pool = None
+        self._main_loop: asyncio.AbstractEventLoop | None = None
 
     async def _ensure_pool(self) -> PgPool:
-        # Check obase registry first
-        try:
-            pool = PgPool.get(self.pool_name)
-            # Test if pool is alive and on the current loop
-            async with pool.acquire() as conn:
-                await conn.execute("SELECT 1")
-            self._pool = pool
-        except (KeyError, Exception):
-            # If not in registry or pool is dead/on closed loop, try to clean up
+        current_loop = asyncio.get_running_loop()
+
+        # ── Main event loop (FastAPI/uvicorn) ──────────────────────────────
+        # After first initialisation self._main_loop is set; subsequent calls on
+        # the same loop return the cached pool immediately — no health-check, no
+        # acquire() round-trip.  This eliminates the 31s "pool acquire hang" that
+        # occurred when a thread's asyncio.run() health-check waited indefinitely
+        # on a pool that belonged to the FastAPI loop.
+        if self._main_loop is None:
+            self._main_loop = current_loop  # first call — record the main loop
+
+        if current_loop is self._main_loop:
+            if self._pool is not None:
+                return self._pool  # fast path — no DB round-trip
+            # First time on main loop: grab from registry or create fresh
             try:
-                pool = PgPool.get(self.pool_name)
-                # We can't easily close it if the loop is closed, 
-                # but we MUST remove it from registry to recreate.
-                # Accessing private _registry to force clear if needed
-                PgPool._registry.pop(self.pool_name, None)
+                self._pool = PgPool.get(self.pool_name)
             except KeyError:
-                pass
-            
-            if not self.dsn:
-                raise ValueError("DSN must be provided to initialize PgPool")
-            self._pool = await PgPool.create(name=self.pool_name, dsn=self.dsn, enable_vector=True)
-        
-        return self._pool
+                if not self.dsn:
+                    raise ValueError("DSN must be provided to initialize PgPool")
+                self._pool = await PgPool.create(
+                    name=self.pool_name, dsn=self.dsn, enable_vector=True
+                )
+            return self._pool
+
+        # ── Thread / secondary event loop (e.g. asyncio.run() in _run_coro) ─
+        # Use a loop-specific pool name so thread pools never overwrite the main
+        # pool in the global PgPool registry.  _run_coro's cleanup wrapper closes
+        # these temporary pools after the coroutine finishes, preventing zombie
+        # connections from accumulating (was the source of the 86 idle connections).
+        thread_pool_name = f"{self.pool_name}_{id(current_loop)}"
+        try:
+            return PgPool.get(thread_pool_name)
+        except KeyError:
+            pass
+        if not self.dsn:
+            raise ValueError("DSN must be provided to initialize PgPool")
+        return await PgPool.create(name=thread_pool_name, dsn=self.dsn, enable_vector=True)
 
     # --- StorageBackend Implementation ---
 
@@ -447,11 +478,19 @@ class PgBackend(StorageBackend, EpistemicStore):
     # --- Deep Understanding methods ---
 
     async def list_kus(self) -> list[dict[str, Any]]:
-        """Return all non-quarantined KUs (detail only, not synthesis)."""
+        """Return all non-quarantined KUs without the embedding column.
+
+        Callers (synthesis_engine_deep) only need ku_id / natural_text / grade.
+        Excluding the 4 KB embedding vector per row reduces the result set from
+        ~54 MB to ~8 MB for 13 K rows and avoids a multi-second asyncio event-loop
+        stall while Python decodes the float arrays.
+        """
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT * FROM aii.ku WHERE is_quarantined = FALSE ORDER BY created_at"
+                "SELECT ku_id, natural_text, knowledge_type, grade, substrate_id, "
+                "source, is_synthesis, is_quarantined, synthesis_meta, merge_count, created_at "
+                "FROM aii.ku WHERE is_quarantined = FALSE ORDER BY created_at"
             )
             return [dict(r) for r in rows]
 

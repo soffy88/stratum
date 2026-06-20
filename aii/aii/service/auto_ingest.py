@@ -83,10 +83,24 @@ _MEDIUM_DOC_TYPE: dict[str, str] = {
     # book/article/其他 → "science" (默认; 无法仅凭medium区分数学书和文史书)
 }
 
-_PICTURE_RE = re.compile(
-    r'[^\n]*(?:picture|figure|image)[^\n]*(?:intentionally\s+)?omitted[^\n]*\n?',
-    re.IGNORECASE,
-)
+_PICTURE_KEYWORDS = frozenset(("picture", "figure", "image"))
+
+
+def _strip_omitted_lines(text: str) -> str:
+    """Remove lines that mention a visual placeholder being omitted.
+
+    The original regex `[^\n]*(?:picture|figure|image)[^\n]*omitted[^\n]*` caused
+    catastrophic backtracking (O(n²)) on files where many lines contain "figure"
+    but not "omitted" — measured at 51 s on a 241 KB economics textbook.
+    This O(n) line-by-line replacement takes < 1 ms on the same file.
+    """
+    result: list[str] = []
+    for line in text.splitlines(keepends=True):
+        ll = line.lower()
+        if any(kw in ll for kw in _PICTURE_KEYWORDS) and "omitted" in ll:
+            continue
+        result.append(line)
+    return "".join(result)
 
 
 async def ingest_one(md_path: Path, backend: PgBackend) -> int:
@@ -97,7 +111,7 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
         return -1
 
     try:
-        meta = json.loads(json_path.read_text(encoding="utf-8"))
+        meta = json.loads(await asyncio.to_thread(json_path.read_text, encoding="utf-8"))
     except Exception:
         logger.exception("auto_ingest: bad JSON %s, skip", json_path.name)
         return -1
@@ -114,7 +128,11 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
         logger.debug("auto_ingest: already ingested %s (%s)", substrate_id[:8], title[:40])
         return -1
 
-    text = _PICTURE_RE.sub("", md_path.read_text(encoding="utf-8", errors="replace")).strip()
+    def _load_text() -> str:
+        raw = md_path.read_text(encoding="utf-8", errors="replace")
+        return _strip_omitted_lines(raw).strip()
+
+    text = await asyncio.to_thread(_load_text)
     subject = await _infer_subject_async(title)
     if not text:
         logger.warning("auto_ingest: empty content %s, marking done (0 KUs)", md_path.name)
