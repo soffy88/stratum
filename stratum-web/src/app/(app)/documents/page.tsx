@@ -9,7 +9,7 @@ import { FolderIngestDialog } from '@/components/FolderIngestDialog';
 import { FeedSubscribeDialog } from '@/components/FeedSubscribeDialog';
 import { VideoIngestDialog } from '@/components/VideoIngestDialog';
 import { ChannelSubscribeDialog } from '@/components/ChannelSubscribeDialog';
-import { ArxivSubscribeDialog } from '@/components/ArxivSubscribeDialog';
+import { SourceSubscribeDialog } from '@/components/SourceSubscribeDialog';
 import { BackgroundTasksPanel } from '@/components/BackgroundTasksPanel';
 
 type SectionKey = 'original' | 'markdown' | 'translation' | 'audio' | 'illustration';
@@ -84,7 +84,7 @@ export default function DocumentsPage() {
           <button onClick={() => setShowFolder(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">文件夹</button>
           <button onClick={() => setShowVideo(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">视频 URL</button>
           <button onClick={() => setShowChannel(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">订阅频道</button>
-          <button onClick={() => setShowArxiv(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">arXiv</button>
+          <button onClick={() => setShowArxiv(true)} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">订阅资料源</button>
         </div>
       </div>
 
@@ -136,7 +136,7 @@ export default function DocumentsPage() {
       {showFeed && <FeedSubscribeDialog onClose={() => { setShowFeed(false); refresh(); }} />}
       {showVideo && <VideoIngestDialog open={showVideo} onClose={() => setShowVideo(false)} onIngested={() => { setShowVideo(false); refresh(); }} />}
       {showChannel && <ChannelSubscribeDialog open={showChannel} onClose={() => { setShowChannel(false); refresh(); }} />}
-      {showArxiv && <ArxivSubscribeDialog open={showArxiv} onClose={() => { setShowArxiv(false); refresh(); }} />}
+      {showArxiv && <SourceSubscribeDialog open={showArxiv} onClose={() => { setShowArxiv(false); refresh(); }} />}
     </div>
   );
 }

@@ -29,17 +29,17 @@ interface ChannelSub {
   current_video: string | null;
 }
 
-interface ArxivSub {
+interface SourceSub {
   id: string;
+  source_type: 'arxiv' | 'gutenberg' | 'oapen';
   name: string;
-  categories: string[];
-  keywords: string | null;
+  query: Record<string, unknown>;
   status: 'active' | 'paused';
   scan_status: 'idle' | 'scanning' | 'completed' | 'error';
   last_check: string | null;
   found_count: number;
   ingested_count: number;
-  current_paper: string | null;
+  current_item: string | null;
 }
 
 function relativeTime(ts: string | null): string {
@@ -69,31 +69,31 @@ function StatusBadge({ status }: { status: string }) {
 export function BackgroundTasksPanel({ onFolderDeleted }: { onFolderDeleted?: () => void }) {
   const [folders, setFolders] = useState<FolderWatch[]>([]);
   const [channels, setChannels] = useState<ChannelSub[]>([]);
-  const [arxivSubs, setArxivSubs] = useState<ArxivSub[]>([]);
+  const [sources, setSources] = useState<SourceSub[]>([]);
   const [collapsed, setCollapsed] = useState(false);
 
   const fetchAll = useCallback(async () => {
-    const [fw, ch, ax] = await Promise.all([
+    const [fw, ch, src] = await Promise.all([
       apiClient.get<FolderWatch[]>('/api/v1/folder-watch').then(r => r.data ?? []).catch(() => []),
       apiClient.get<ChannelSub[]>('/api/v1/channels').then(r => r.data ?? []).catch(() => []),
-      apiClient.get<ArxivSub[]>('/api/v1/arxiv').then(r => r.data ?? []).catch(() => []),
+      apiClient.get<SourceSub[]>('/api/v1/sources').then(r => r.data ?? []).catch(() => []),
     ]);
     setFolders(fw);
     setChannels(ch);
-    setArxivSubs(ax);
+    setSources(src);
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   // 有扫描中的任务时每 4s 轮询
   useEffect(() => {
-    const hasActive = [...folders, ...channels, ...arxivSubs].some(
+    const hasActive = [...folders, ...channels, ...sources].some(
       t => t.scan_status === 'scanning'
     );
     if (!hasActive) return;
     const timer = setInterval(fetchAll, 4000);
     return () => clearInterval(timer);
-  }, [folders, channels, fetchAll]);
+  }, [folders, channels, sources, fetchAll]);
 
   const pauseFolder = async (id: string) => {
     try {
@@ -139,28 +139,29 @@ export function BackgroundTasksPanel({ onFolderDeleted }: { onFolderDeleted?: ()
     } catch { toast.error('删除失败'); }
   };
 
-  const toggleArxiv = async (sub: ArxivSub) => {
+  const toggleSource = async (sub: SourceSub) => {
     const next = sub.status === 'active' ? 'paused' : 'active';
     try {
-      await apiClient.patch(`/api/v1/arxiv/${sub.id}`, { status: next });
+      await apiClient.patch(`/api/v1/sources/${sub.id}`, { status: next });
       toast.success(next === 'active' ? '已恢复订阅' : '已暂停订阅');
       fetchAll();
     } catch { toast.error('操作失败'); }
   };
 
-  const deleteArxiv = async (id: string) => {
-    if (!confirm('删除该 arXiv 订阅？')) return;
+  const deleteSource = async (sub: SourceSub) => {
+    const label = sub.name || sub.source_type;
+    if (!confirm(`删除订阅「${label}」？`)) return;
     try {
-      await apiClient.delete(`/api/v1/arxiv/${id}`);
+      await apiClient.delete(`/api/v1/sources/${sub.id}`);
       toast.success('已删除');
       fetchAll();
     } catch { toast.error('删除失败'); }
   };
 
-  const total = folders.length + channels.length + arxivSubs.length;
+  const total = folders.length + channels.length + sources.length;
   if (total === 0) return null;
 
-  const anyScanning = [...folders, ...channels, ...arxivSubs].some(t => t.scan_status === 'scanning');
+  const anyScanning = [...folders, ...channels, ...sources].some(t => t.scan_status === 'scanning');
 
   return (
     <div className="mb-5 border border-border rounded-xl overflow-hidden bg-card">
@@ -179,10 +180,10 @@ export function BackgroundTasksPanel({ onFolderDeleted }: { onFolderDeleted?: ()
           )}
           <span className="text-[11px] text-muted-foreground">
             {folders.length > 0 && `${folders.length} 个文件夹`}
-            {folders.length > 0 && (channels.length > 0 || arxivSubs.length > 0) && ' · '}
+            {folders.length > 0 && channels.length > 0 && ' · '}
             {channels.length > 0 && `${channels.length} 个频道`}
-            {channels.length > 0 && arxivSubs.length > 0 && ' · '}
-            {arxivSubs.length > 0 && `${arxivSubs.length} 个arXiv`}
+            {(folders.length > 0 || channels.length > 0) && sources.length > 0 && ' · '}
+            {sources.length > 0 && `${sources.length} 个资料源`}
           </span>
         </div>
         <span className="text-muted-foreground text-xs">{collapsed ? '▼' : '▲'}</span>
@@ -283,52 +284,65 @@ export function BackgroundTasksPanel({ onFolderDeleted }: { onFolderDeleted?: ()
             </div>
           ))}
 
-          {/* arXiv 订阅 */}
-          {arxivSubs.map(ax => (
-            <div key={ax.id} className="px-4 py-3 flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm">📰</span>
-                  <span className="text-sm font-medium truncate max-w-[260px]" title={ax.name}>
-                    {ax.name}
-                  </span>
-                  {ax.status === 'paused' && (
-                    <span className="text-[10px] px-1.5 rounded bg-muted text-muted-foreground">已暂停</span>
-                  )}
-                  <StatusBadge status={ax.scan_status} />
+          {/* 资料源订阅（arXiv / Gutenberg / OAPEN）*/}
+          {sources.map(src => {
+            const icon = src.source_type === 'arxiv' ? '📰' : src.source_type === 'gutenberg' ? '📚' : '📖';
+            const q = src.query || {};
+            const queryDesc = src.source_type === 'arxiv'
+              ? [
+                  ...((q.categories as string[] | undefined) || []).slice(0, 3),
+                  ...(q.keywords ? [`"${q.keywords}"`] : []),
+                ].join(' · ')
+              : src.source_type === 'gutenberg'
+              ? [q.topic, q.keywords, q.author].filter(Boolean).join(' · ')
+              : String(q.query || '');
+            const itemUnit = src.source_type === 'arxiv' ? '篇' : '本';
+            return (
+              <div key={src.id} className="px-4 py-3 flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm">{icon}</span>
+                    <span className="text-sm font-medium truncate max-w-[260px]" title={src.name}>
+                      {src.name}
+                    </span>
+                    <span className="text-[10px] px-1.5 rounded bg-muted/60 text-muted-foreground">{src.source_type}</span>
+                    {src.status === 'paused' && (
+                      <span className="text-[10px] px-1.5 rounded bg-muted text-muted-foreground">已暂停</span>
+                    )}
+                    <StatusBadge status={src.scan_status} />
+                  </div>
+                  <div className="text-[11px] text-muted-foreground pl-5 space-y-0.5">
+                    {src.scan_status === 'scanning' && src.current_item ? (
+                      <div className="truncate max-w-xs" title={src.current_item}>
+                        处理: {src.current_item}
+                      </div>
+                    ) : (
+                      <div>
+                        {queryDesc && <span>{queryDesc}</span>}
+                        {src.found_count > 0 && ` · 找到 ${src.found_count} ${itemUnit}`}
+                        {src.ingested_count > 0 && ` · 已入库 ${src.ingested_count}`}
+                        {src.last_check && ` · ${relativeTime(src.last_check)}`}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="text-[11px] text-muted-foreground pl-5 space-y-0.5">
-                  {ax.scan_status === 'scanning' && ax.current_paper ? (
-                    <div className="truncate max-w-xs" title={ax.current_paper}>
-                      处理: {ax.current_paper}
-                    </div>
-                  ) : (
-                    <div>
-                      {ax.categories.length > 0 && ax.categories.slice(0, 3).join(' · ')}
-                      {ax.keywords && ` · "${ax.keywords}"`}
-                      {ax.found_count > 0 && ` · 找到 ${ax.found_count} 篇`}
-                      {ax.ingested_count > 0 && ` · 已入库 ${ax.ingested_count}`}
-                      {ax.last_check && ` · ${relativeTime(ax.last_check)}`}
-                    </div>
-                  )}
+                <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                  <button
+                    onClick={() => toggleSource(src)}
+                    className="text-[11px] px-2 py-1 rounded border border-border hover:bg-muted transition-colors"
+                  >
+                    {src.status === 'active' ? '暂停' : '恢复'}
+                  </button>
+                  <button
+                    onClick={() => deleteSource(src)}
+                    className="text-[11px] px-2 py-1 rounded border border-border text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    删除
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
-                <button
-                  onClick={() => toggleArxiv(ax)}
-                  className="text-[11px] px-2 py-1 rounded border border-border hover:bg-muted transition-colors"
-                >
-                  {ax.status === 'active' ? '暂停' : '恢复'}
-                </button>
-                <button
-                  onClick={() => deleteArxiv(ax.id)}
-                  className="text-[11px] px-2 py-1 rounded border border-border text-destructive hover:bg-destructive/10 transition-colors"
-                >
-                  删除
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
