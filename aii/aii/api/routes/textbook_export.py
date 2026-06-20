@@ -19,16 +19,59 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from aii.api._dependencies import backend
 
 router = APIRouter()
+
+
+class TextbookIngestRequest(BaseModel):
+    md_path: str
+    provider: str = "default"
+
+
+@router.post("/textbook/ingest")
+async def trigger_textbook_ingest(
+    req: TextbookIngestRequest, background_tasks: BackgroundTasks
+) -> JSONResponse:
+    """Trigger textbook ingest for a local MD file (runs inside the server process)."""
+    from aii.service.textbook_ingest import ingest_one_textbook
+
+    md_path = Path(req.md_path)
+    if not md_path.exists():
+        raise HTTPException(status_code=404, detail=f"File not found: {req.md_path}")
+
+    # Run ingest as a background task so the HTTP response returns immediately
+    result_holder: dict = {}
+
+    async def _run():
+        try:
+            result = await ingest_one_textbook(md_path, backend=backend, provider=req.provider)
+            result_holder.update(result)
+        except Exception as exc:
+            result_holder["error"] = str(exc)
+
+    # For synchronous validation we want the result — run directly with timeout
+    try:
+        result = await asyncio.wait_for(
+            ingest_one_textbook(md_path, backend=backend, provider=req.provider),
+            timeout=600,
+        )
+    except asyncio.TimeoutError:
+        return JSONResponse({"status": "timeout", "md_path": req.md_path}, status_code=202)
+    except Exception as exc:
+        return JSONResponse({"status": "error", "error": str(exc)}, status_code=500)
+
+    return JSONResponse(result)
 
 
 @router.get("/textbook/{textbook_id}/export")

@@ -110,8 +110,15 @@ class KuIngestionEngine:
         substrate_id: str = "",
         grade_cap: str | None = None,
         provider: str = "default",
+        skip_reflux: bool = False,
     ) -> dict[str, Any]:
-        """Process raw text into knowledge units and store them."""
+        """Process raw text into knowledge units and store them.
+
+        skip_reflux: set True when caller will run reflux once over the full
+        batch (e.g. textbook ingest processes many chunks then refluxes once).
+        run_reflux is O(N_graph) individual DB calls so calling it per-chunk
+        on a large graph is prohibitively slow.
+        """
         from aii.service.auto_ingest import _strip_omitted_lines
         text = _strip_omitted_lines(text).strip()
 
@@ -191,12 +198,13 @@ class KuIngestionEngine:
                 results["quarantined"].append(ku_id)
 
         # 4. Trigger Reflux (omodul)
-        logger.info("Triggering knowledge reflux for graph completion")
-        reflux_config = KnowledgeRefluxConfig(backend=self.backend)
-        try:
-            _rc = reflux_config
-            await loop.run_in_executor(None, lambda: run_reflux(_rc, {}))
-        except Exception as e:
-            logger.warning(f"Knowledge reflux failed: {e}")
+        if not skip_reflux:
+            logger.info("Triggering knowledge reflux for graph completion")
+            reflux_config = KnowledgeRefluxConfig(backend=self.backend)
+            try:
+                _rc = reflux_config
+                await loop.run_in_executor(None, lambda: run_reflux(_rc, {}))
+            except Exception as e:
+                logger.warning(f"Knowledge reflux failed: {e}")
 
         return results

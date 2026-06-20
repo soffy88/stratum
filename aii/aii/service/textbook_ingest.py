@@ -94,6 +94,8 @@ async def _ingest_chunk(
     edu_meta = await _annotate_edu_meta(text, chunk["chapter"], chunk["section"])
 
     # 2. KU抽取 + 注册 (含查重/Mathlib, grade_cap=None: 数学定理该确证就确证)
+    # skip_reflux=True: reflux 是 O(N_graph) 逐 KU 查询, 每 chunk 跑一次代价太高.
+    # 调用方 (ingest_one_textbook) 在全量 chunk 完成后统一跑一次 reflux.
     engine = KuIngestionEngine(backend)
     result = await engine.ingest(
         text=text,
@@ -101,6 +103,7 @@ async def _ingest_chunk(
         substrate_id=textbook_id,
         grade_cap=None,
         provider=provider,
+        skip_reflux=True,
     )
     registered_ids = [str(kid) for kid in result.get("registered", []) if kid]
 
