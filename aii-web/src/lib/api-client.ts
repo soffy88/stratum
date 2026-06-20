@@ -196,7 +196,9 @@ export async function graphSearch(req: GraphSearchRequest): Promise<ApiResult<Gr
 
 export async function getKcList(): Promise<ApiResult<KcListItem[]>> {
   if (USE_MOCK) return mock.mockKcList();
-  return request<KcListItem[]>('/api/kc/list', { method: 'GET' });
+  const res = await request<{ total: number; page: number; page_size: number; items: KcListItem[] }>('/api/kc/list', { method: 'GET' });
+  if (!res.ok) return res as unknown as ApiResult<KcListItem[]>;
+  return { ...res, data: res.data?.items ?? [] };
 }
 export async function getKcDetail(id: string): Promise<ApiResult<KcDetail>> {
   if (USE_MOCK) return mock.mockKcDetail(id);
@@ -205,7 +207,9 @@ export async function getKcDetail(id: string): Promise<ApiResult<KcDetail>> {
 
 export async function getBuList(): Promise<ApiResult<BuListItem[]>> {
   if (USE_MOCK) return mock.mockBuList();
-  return request<BuListItem[]>('/api/bu/list', { method: 'GET' });
+  const res = await request<{ total: number; page: number; page_size: number; items: BuListItem[] }>('/api/bu/list', { method: 'GET' });
+  if (!res.ok) return res as unknown as ApiResult<BuListItem[]>;
+  return { ...res, data: res.data?.items ?? [] };
 }
 export async function getBuDetail(id: string): Promise<ApiResult<BuDetail>> {
   if (USE_MOCK) return mock.mockBuDetail(id);
