@@ -86,6 +86,8 @@ services:
       # STRATUM_DB_PATH defaults to ~/.stratum/meta.duckdb inside the container
       # because ~/.stratum is mounted as /root/.stratum and ~ resolves to /root.
       - STRATUM_DB_PATH=/root/.stratum/meta.duckdb
+      # PaddleOCR: skip network model-source check, use pre-downloaded models from volume
+      - PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
     volumes:
       # Stratum source mounted live — code changes take effect after container restart, no rebuild.
       - /home/soffy/projects/stratum/src:/app/src
@@ -107,6 +109,8 @@ services:
       - /home/soffy/books:/mnt/user/books:ro
       # Whisper model — faster-whisper base model (CPU int8)
       - /home/soffy/models/faster-whisper-base:/models/whisper:ro
+      # PaddleOCR models — pre-downloaded ONNX models, offline inference
+      - /home/soffy/models/paddlex:/root/.paddlex
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9304/api/v1/health"]
       interval: 30s
