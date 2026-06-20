@@ -1,6 +1,6 @@
 [project]
 name = "stratum"
-version = "0.0.1"
+version = "0.0.4"
 description = "Stratum — Wiki's local knowledge base system"
 requires-python = ">=3.12"
 readme = "README.md"
