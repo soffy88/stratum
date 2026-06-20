@@ -1,3 +1,6 @@
+import asyncio
+import concurrent.futures
+import functools
 import logging
 import os
 import re
@@ -13,6 +16,10 @@ from oprim import vector_encode
 from aii.storage.pg_backend import PgBackend
 
 logger = logging.getLogger(__name__)
+
+# 进程池: ku_extract_pipeline 是 CPU+I/O 密集的同步函数，必须在独立进程跑
+# 以真正绕过 GIL，不阻塞 asyncio 事件循环。max_workers=1 保证单次只跑1个抽取。
+_EXTRACT_POOL = concurrent.futures.ProcessPoolExecutor(max_workers=1)
 
 # 粗筛阈值: cosine distance (pgvector <=>), 0=完全相同, 2=完全相反
 # distance <= 0.15 (similarity >= 0.85) 才触发 LLM 精确确认
@@ -75,7 +82,8 @@ class KuIngestionEngine:
             except Exception:
                 llm = ProviderRegistry.get().llm(provider)
             caller = getattr(llm, "call_sync_plain", None) or getattr(llm, "call_sync", None) or llm
-            answer = caller(prompt).strip().upper()
+            loop = asyncio.get_event_loop()
+            answer = (await loop.run_in_executor(None, caller, prompt)).strip().upper()
             # 只有明确回答 SAME(且没有 DIFFERENT) 才合并; 其余全部新建
             import re as _re
             tokens = _re.findall(r'\b(SAME|DIFFERENT)\b', answer)
@@ -109,12 +117,13 @@ class KuIngestionEngine:
         )
         text = text.strip()
 
-        # 1. Extraction Pipeline (oskill)
+        # 1. Extraction Pipeline — ProcessPoolExecutor (独立进程, 真正绕过 GIL)
+        # functools.partial 而非 lambda — ProcessPoolExecutor 需要可 pickle 的 callable
         logger.info(f"Extracting KUs from text (length: {len(text)}) provider={provider}")
-        extracted = ku_extract_pipeline(
-            text=text,
-            project_id=project_id,
-            provider=provider,
+        loop = asyncio.get_event_loop()
+        extracted = await loop.run_in_executor(
+            _EXTRACT_POOL,
+            functools.partial(ku_extract_pipeline, text=text, project_id=project_id, provider=provider),
         )
 
         candidates = extracted.get("candidates", [])
@@ -146,7 +155,10 @@ class KuIngestionEngine:
             embed_input = f"{name}:{natural_text}"
 
             logger.info(f"Encoding vector for KU: {name}")
-            embedding = vector_encode(texts=[embed_input], provider="default")
+            _ei = embed_input
+            embedding = await loop.run_in_executor(
+                None, lambda: vector_encode(texts=[_ei], provider="default")
+            )
             cand["embedding"] = embedding[0].tolist() if isinstance(embedding, np.ndarray) else embedding[0]
 
             # ── 两级查重 ──────────────────────────────────────────────────
@@ -167,7 +179,8 @@ class KuIngestionEngine:
 
             # 不重复 → 正常注册
             try:
-                reg_res = register_ku(config, {"ku": cand})
+                _cand = cand
+                await loop.run_in_executor(None, lambda: register_ku(config, {"ku": _cand}))
                 results["registered"].append(cand.get("ku_id"))
             except Exception as e:
                 logger.error(f"Failed to register KU {name}: {e}")
@@ -183,7 +196,8 @@ class KuIngestionEngine:
         logger.info("Triggering knowledge reflux for graph completion")
         reflux_config = KnowledgeRefluxConfig(backend=self.backend)
         try:
-            run_reflux(reflux_config, {})
+            _rc = reflux_config
+            await loop.run_in_executor(None, lambda: run_reflux(_rc, {}))
         except Exception as e:
             logger.warning(f"Knowledge reflux failed: {e}")
 
