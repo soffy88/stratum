@@ -131,6 +131,8 @@ def export_all(doc_type_filter: str | None = None) -> dict:
                 meta_json = {}
         if doc_type_filter and _doc_type(mime, meta_json or {}) != doc_type_filter:
             continue
+        if (meta_json or {}).get("is_collection"):
+            continue
         targets.append(sid)
 
     exported = skipped = 0
