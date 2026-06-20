@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versioning follo
 
 ---
 
+## [0.0.4] — 2026-06-20
+
+### Fixed
+- **G5 anti-loop 根治**（SPEC-G5-v1.0）：`_anti_loop_check` 原查 `ORDER BY processed_at DESC LIMIT 1`，多源交替写入时成功源（gutenberg）可掩盖失败源（arxiv）连续 miss，G5 永不触发。
+  - Migration 041：`aii_processed_needs` 建 `UNIQUE(need_hash, source_type)` 唯一索引；历史行去重并累加 `ingested_count`，确保 G1 SUM 不丢数；可回滚（`DROP INDEX`）。
+  - `_anti_loop_check`：改为 `WHERE need_hash=? AND source_type=?`，按源独立判定。
+  - `_record_need`：INSERT → `ON CONFLICT DO UPDATE`，`ingested_count` 跨轮累加。
+  - `_process_one_need`：G5 检查移入 per-source 循环（`continue` 跳过该源），旧行为是 `return` 跳过整个 need。
+  - `_get_prev_miss_rounds`：提取为具名函数，支持测试 patch。
+  - `_create_and_run_subscription` / `_process_one_need`：新增 `_runner=None` 依赖注入点（keyword-only，生产路径向后兼容）。
+- **D断言归属纠正**：撤回 `source_watcher_service.py` 中的装饰性 bundle_file_hash 断言；真实断言位置应在 `oskill/ingest_substrate.py`（§20 Owner 管辖，挂账）。
+
+### Tests
+- `tests/services/test_g5_anti_loop_e2e.py`：真实 DuckDB E2E，两用例：
+  - 主测试：2 轮跑完后 arxiv→`needs_human_review` + UNRESOLVED_LOG 写入，gutenberg 不受影响，SUM(ingested_count)=4（O1-O4 全绿）。
+  - 对照组：patch `_get_prev_miss_rounds` 为旧 SQL，证明旧代码 arxiv 永不触发（bug 复现，根治有效）。
+
+---
+
 ## [0.7.0] — 2026-06-02
 
 Phase 15 P1: 功能补足 (alpha v0.7)
