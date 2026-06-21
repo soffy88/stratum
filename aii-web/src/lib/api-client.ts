@@ -11,7 +11,7 @@
  *   - 默认 10s timeout(AbortController)
  */
 
-import { AII_API_BASE, USE_MOCK } from './env';
+import { AII_API_BASE, AII_API_KEY, USE_MOCK } from './env';
 import type {
   ApiEnvelope,
   ApiResult,
@@ -50,7 +50,10 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<ApiResu
     const url = `${AII_API_BASE}${path}`;
     const init: RequestInit = {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers: {
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+        ...(AII_API_KEY ? { 'X-API-Key': AII_API_KEY } : {}),
+      },
       body: body ? JSON.stringify(body) : undefined,
       signal: opts.signal ?? ctrl.signal,
     };
