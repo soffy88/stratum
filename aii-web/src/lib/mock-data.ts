@@ -634,7 +634,7 @@ export async function mockBuDetail(id: string): Promise<ApiResult<BuDetail>> {
           ],
         },
       ],
-      structure: '第一卷 资本的生产过程（商品与货币、剩余价值的生产）；第二卷 资本的流通过程；第三卷 资本主义生产的总过程。',
+      structure: '第一卷 资本的生产过程\n  - 商品与货币\n  - 剩余价值的生产\n第二卷 资本的流通过程\n第三卷 资本主义生产的总过程',
       key_concepts: [
         { ku_id:'ku-00001', label:'社会必要劳动时间', grade:'proven' },
         { ku_id:'ku-00019', label:'剩余价值', grade:'low' },

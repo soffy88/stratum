@@ -150,22 +150,13 @@ function ReactFlowGraph({ data, onNodeClick, relFilter, mod }: {
 
 export default function GraphPage() {
   const [state, run] = useApi(api.getSubgraph);
-  const [centerId, setCenterId] = useState('');
+  const [centerId, setCenterId] = useState('ku-00001');
   const [hops, setHops] = useState(1);
   const [relFilter, setRelFilter] = useState<string[]>([]);
   const [q, setQ] = useState('');
   const [rfMod, setRfMod] = useState<any>(null);
   const [rfTried, setRfTried] = useState(false);
   const [searchState, runSearch] = useApi(api.graphSearch);
-
-  // 启动时取第一个真实 KU 作为初始中心节点(取代硬编码假 ID)
-  useEffect(() => {
-    api.getKuList({ page_size: 1 }).then(res => {
-      if (res.ok && res.data?.items?.length) {
-        setCenterId(res.data.items[0].id);
-      }
-    });
-  }, []);
 
   // 尝试动态加载 reactflow(没装就降级,不报错)
   useEffect(() => {
@@ -186,7 +177,6 @@ export default function GraphPage() {
   }, []);
 
   const load = useCallback(() => {
-    if (!centerId) return;
     void run({ ku_id: centerId, hops, limit: 24 });
   }, [centerId, hops, run]);
   useEffect(() => { load(); }, [load]);

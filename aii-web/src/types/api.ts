@@ -378,10 +378,14 @@ export interface ArgumentNode {
   /** 论据列表,每条 grade 独立 */
   evidence: Array<{ text: string; grade: EpistemicGrade }>;
 }
+export interface BuStructureSection {
+  title: string;
+  children?: BuStructureSection[];
+}
 export interface BuDetail extends BuListItem {
   main_claims: MainClaim[];
   argument_structure: ArgumentNode[];
-  /** 后端返回纯字符串，是书的章节骨架描述。 */
+  /** 后端返回字符串(markdown/text 格式);StructureTree 是前端实现细节。 */
   structure: string;
   /** 核心概念 KU(链到 /knowledge)。 */
   key_concepts: Array<{ ku_id: string; label: string; grade: EpistemicGrade }>;

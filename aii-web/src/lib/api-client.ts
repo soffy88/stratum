@@ -11,7 +11,7 @@
  *   - 默认 10s timeout(AbortController)
  */
 
-import { AII_API_BASE, AII_API_KEY, USE_MOCK } from './env';
+import { AII_API_BASE, USE_MOCK } from './env';
 import type {
   ApiEnvelope,
   ApiResult,
@@ -50,10 +50,7 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<ApiResu
     const url = `${AII_API_BASE}${path}`;
     const init: RequestInit = {
       method,
-      headers: {
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...(AII_API_KEY ? { 'X-API-Key': AII_API_KEY } : {}),
-      },
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
       body: body ? JSON.stringify(body) : undefined,
       signal: opts.signal ?? ctrl.signal,
     };
@@ -196,9 +193,7 @@ export async function graphSearch(req: GraphSearchRequest): Promise<ApiResult<Gr
 
 export async function getKcList(): Promise<ApiResult<KcListItem[]>> {
   if (USE_MOCK) return mock.mockKcList();
-  const res = await request<{ total: number; page: number; page_size: number; items: KcListItem[] }>('/api/kc/list', { method: 'GET' });
-  if (!res.ok) return res as unknown as ApiResult<KcListItem[]>;
-  return { ...res, data: res.data?.items ?? [] };
+  return request<KcListItem[]>('/api/kc/list', { method: 'GET' });
 }
 export async function getKcDetail(id: string): Promise<ApiResult<KcDetail>> {
   if (USE_MOCK) return mock.mockKcDetail(id);
@@ -207,9 +202,7 @@ export async function getKcDetail(id: string): Promise<ApiResult<KcDetail>> {
 
 export async function getBuList(): Promise<ApiResult<BuListItem[]>> {
   if (USE_MOCK) return mock.mockBuList();
-  const res = await request<{ total: number; page: number; page_size: number; items: BuListItem[] }>('/api/bu/list', { method: 'GET' });
-  if (!res.ok) return res as unknown as ApiResult<BuListItem[]>;
-  return { ...res, data: res.data?.items ?? [] };
+  return request<BuListItem[]>('/api/bu/list', { method: 'GET' });
 }
 export async function getBuDetail(id: string): Promise<ApiResult<BuDetail>> {
   if (USE_MOCK) return mock.mockBuDetail(id);
