@@ -2,6 +2,10 @@
 
 Replaces psycopg2 after §M3 DB merge.
 R2 (SPEC v1.1): query() pushes LIMIT into SQL — no fetchmany clipping.
+R3 (§20): singleton connection + lock — eliminates 'Conflicting lock' IOException
+  that occurs when concurrent API handlers each open a new write connection.
+  DuckDB is single-writer; one long-lived connection shared under a threading.Lock
+  is the correct concurrency model for an in-process DuckDB deployment.
 """
 
 from __future__ import annotations
@@ -9,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import threading
 from contextlib import contextmanager
 from typing import Any
 
@@ -16,23 +21,34 @@ import duckdb
 
 _PYFORMAT_RE = re.compile(r"%\((\w+)\)s")
 
+# Singleton write connection and its lock.
+# All DB access is serialized through this lock — DuckDB autocommit means
+# each execute() is atomic, so lock granularity per _conn() call is correct.
+_db_lock = threading.Lock()
+_db_conn: duckdb.DuckDBPyConnection | None = None
+
 
 def _get_db_path() -> str:
     return os.path.expanduser(os.environ.get("STRATUM_DB_PATH", "~/.stratum/meta.duckdb"))
 
 
+def _get_singleton() -> duckdb.DuckDBPyConnection:
+    global _db_conn
+    if _db_conn is None:
+        _db_conn = duckdb.connect(_get_db_path())
+    return _db_conn
+
+
 @contextmanager
 def _conn():
-    """Yield a DuckDB connection.
+    """Yield the shared DuckDB connection under a threading lock.
 
     Exported so routes can run raw DML (e.g. bulk UPDATE) directly.
     DuckDB operates in autocommit mode; each execute() is its own transaction.
+    The singleton connection is kept alive for the process lifetime — no close().
     """
-    conn = duckdb.connect(_get_db_path())
-    try:
-        yield conn
-    finally:
-        conn.close()
+    with _db_lock:
+        yield _get_singleton()
 
 
 get_conn = _conn
