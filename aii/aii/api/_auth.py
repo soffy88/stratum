@@ -69,8 +69,10 @@ class APIKeyMiddleware:
             return
 
         # --- Auth ---
-        expected = os.getenv("AII_API_KEY", "")
-        if not expected:
+        # Accepted keys: AII_API_KEY (frontend/admin) + STRATUM_API_KEY (read-only, revocable)
+        main_key    = os.getenv("AII_API_KEY", "")
+        stratum_key = os.getenv("STRATUM_API_KEY", "")
+        if not main_key:
             resp = _err_response(500, "server_misconfigured", "AII_API_KEY not set on server")
             await resp(scope, receive, send)
             return
@@ -80,7 +82,14 @@ class APIKeyMiddleware:
             headers.get(b"x-api-key", b"").decode()
             or _bearer(headers.get(b"authorization", b"").decode())
         )
-        if not provided or not secrets.compare_digest(provided, expected):
+
+        matched = False
+        if provided:
+            if secrets.compare_digest(provided, main_key):
+                matched = True
+            elif stratum_key and secrets.compare_digest(provided, stratum_key):
+                matched = True
+        if not matched:
             resp = _err_response(401, "unauthorized", "Missing or invalid API key")
             await resp(scope, receive, send)
             return

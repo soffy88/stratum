@@ -5,7 +5,7 @@ import uuid as _uuid
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Body, Query
 from oprim import vector_encode
 
 from aii.api._dependencies import backend
@@ -634,3 +634,146 @@ async def concept_kus(
         })
     except Exception as e:
         return error_response("CONCEPT_KUS_ERROR", str(e))
+
+
+# ── Stratum 反向共享端点 (只读) ─────────────────────────────────────────────────
+
+_VALID_RELATION_TYPES = {
+    "special_case_of", "prerequisite_of", "basis_of", "references", "contradicts",
+}
+
+@router.get("/graph/edges")
+async def graph_edges(
+    relation_type: Optional[str] = Query(None),
+    grade: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(100, ge=1, le=2000),
+):
+    """Paginated full edge export for Stratum reverse-sharing.
+
+    精简返回 — 不含 evidence 大字段。Stratum 要的是网结构。
+    """
+    try:
+        offset = (page - 1) * page_size
+        conditions = ["relation_type IS NOT NULL", "relation_type != ''"]
+        params: list = []
+
+        if relation_type:
+            params.append(relation_type)
+            conditions.append(f"relation_type = ${len(params)}")
+        if grade:
+            params.append(grade)
+            conditions.append(f"grade = ${len(params)}")
+
+        where = " AND ".join(conditions)
+        pool = await backend._ensure_pool()
+        async with pool.acquire() as conn:
+            total = await conn.fetchval(
+                f"SELECT count(*) FROM aii.edge WHERE {where}", *params
+            )
+            count_params = params[:]
+            params += [page_size, offset]
+            rows = await conn.fetch(
+                f"""
+                SELECT src_id::text, dst_id::text, relation_type, grade, extraction_method
+                FROM aii.edge
+                WHERE {where}
+                ORDER BY src_id, relation_type
+                LIMIT ${len(params) - 1} OFFSET ${len(params)}
+                """,
+                *params,
+            )
+        items = [
+            {
+                "src_id": r["src_id"],
+                "dst_id": r["dst_id"],
+                "relation_type": r["relation_type"],
+                "grade": r["grade"],
+                "extraction_method": r["extraction_method"] or "llm",
+            }
+            for r in rows
+        ]
+        return success_response({
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "items": items,
+        })
+    except Exception as e:
+        return error_response("GRAPH_EDGES_ERROR", str(e))
+
+
+@router.post("/ku/batch")
+async def ku_batch(
+    ids: list[str] = Body(..., embed=True, max_length=200),
+):
+    """Batch KU lookup by ID list (≤200). Returns grade/type/concepts per KU.
+
+    Stratum 用于回查 AII 对某批 KU 的标注(grade/knowledge_type/concepts)。
+    """
+    try:
+        if not ids:
+            return success_response({"items": []})
+        if len(ids) > 200:
+            return error_response("TOO_MANY_IDS", "ids list exceeds 200 limit")
+
+        valid_uuids: list[_uuid.UUID] = []
+        invalid: list[str] = []
+        for raw in ids:
+            try:
+                valid_uuids.append(_uuid.UUID(str(raw)))
+            except ValueError:
+                invalid.append(raw)
+
+        pool = await backend._ensure_pool()
+        async with pool.acquire() as conn:
+            ku_rows = await conn.fetch(
+                """
+                SELECT ku_id::text, left(natural_text, 200) AS natural_text,
+                       grade, knowledge_type, is_synthesis, substrate_id
+                FROM aii.ku
+                WHERE ku_id = ANY($1::uuid[])
+                  AND is_quarantined = FALSE
+                """,
+                valid_uuids,
+            )
+
+            # Batch fetch concepts for all returned KUs
+            if ku_rows:
+                ku_uuids = [_uuid.UUID(r["ku_id"]) for r in ku_rows]
+                concept_rows = await conn.fetch(
+                    """
+                    SELECT kc.ku_id::text, c.name
+                    FROM aii.ku_concept kc
+                    JOIN aii.concept c USING (concept_id)
+                    WHERE kc.ku_id = ANY($1::uuid[])
+                    ORDER BY kc.ku_id, c.name
+                    """,
+                    ku_uuids,
+                )
+            else:
+                concept_rows = []
+
+        # Group concepts by ku_id
+        ku_concepts: dict[str, list[str]] = {}
+        for cr in concept_rows:
+            ku_concepts.setdefault(cr["ku_id"], []).append(cr["name"])
+
+        items = [
+            {
+                "id": r["ku_id"],
+                "natural_text": r["natural_text"],
+                "grade": r["grade"],
+                "knowledge_type": r["knowledge_type"],
+                "is_synthesis": bool(r["is_synthesis"]),
+                "substrate_id": r["substrate_id"],
+                "concepts": ku_concepts.get(r["ku_id"], []),
+            }
+            for r in ku_rows
+        ]
+        result: dict = {"items": items}
+        if invalid:
+            result["invalid_ids"] = invalid
+        return success_response(result)
+    except Exception as e:
+        return error_response("KU_BATCH_ERROR", str(e))
