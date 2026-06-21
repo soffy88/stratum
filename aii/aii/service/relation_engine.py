@@ -27,10 +27,10 @@ from aii.storage.pg_backend import PgBackend
 
 logger = logging.getLogger(__name__)
 
-# confidence_signal → edge grade 映射 (规则边, 最高 medium)
+# confidence_signal → edge grade 映射 (规则边, 最高 moderate)
 _SIGNAL_GRADE: dict[str, str] = {
-    "rule_match":  "medium",
-    "symbol_dep":  "medium",
+    "rule_match":  "moderate",
+    "symbol_dep":  "moderate",
     "citation":    "low",
     "ambiguous":   "low",
 }

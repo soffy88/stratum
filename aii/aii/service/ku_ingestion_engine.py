@@ -34,7 +34,7 @@ class KuIngestionEngine:
         self.backend = backend
 
     _GRADE_RANKS: dict[str, int] = {
-        "unverified": 0, "low": 1, "medium": 2,
+        "unverified": 0, "low": 1, "moderate": 2, "medium": 2,
         "high": 3, "verified": 4, "proven": 5,
     }
 

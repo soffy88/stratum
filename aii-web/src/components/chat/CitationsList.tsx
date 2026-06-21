@@ -8,6 +8,7 @@
 'use client';
 
 import { OEpistemicBadge } from '@helios/blocks';
+import { safeGrade } from '@/lib/grade';
 import type { ChatCitation } from '@/types/api';
 
 export function CitationsList({
@@ -28,7 +29,7 @@ export function CitationsList({
         {citations.map((c) => {
           const inner = (
             <div className="flex items-start gap-2">
-              <OEpistemicBadge grade={c.grade} compact />
+              <OEpistemicBadge grade={safeGrade(c.grade)} compact />
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-mono text-[color:var(--text-secondary)] mb-0.5">
                   {c.ku_id}

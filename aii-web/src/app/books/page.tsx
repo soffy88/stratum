@@ -18,6 +18,7 @@ import {
 } from '@helios/blocks';
 import { useApiNoArg, useApi } from '@/hooks/useApi';
 import * as api from '@/lib/api-client';
+import { safeGrade } from '@/lib/grade';
 import type { BuListItem, BuDetail } from '@/types/api';
 
 function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
@@ -37,7 +38,7 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
           <>
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <OEpistemicBadge grade={d.grade} />
+                <OEpistemicBadge grade={safeGrade(d.grade)} />
                 <h3 className="text-lg font-semibold">{d.book_title}</h3>
               </div>
               <span className="text-xs px-2 py-0.5 self-start rounded-full bg-[color:var(--alert-warn-bg,#fef3c7)] text-[color:var(--alert-warn-fg,#78350f)] border border-[color:var(--alert-warn,#d97706)]/40">
@@ -54,7 +55,7 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
                 <div key={c.id} className="rounded-md border border-[color:var(--border)] p-3 flex flex-col gap-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs px-1.5 py-0.5 rounded bg-[color:var(--muted,#222)] text-[color:var(--text-secondary)]">{c.stance_marker}</span>
-                    <OEpistemicBadge grade={c.claim_grade} compact />
+                    <OEpistemicBadge grade={safeGrade(c.claim_grade)} compact />
                   </div>
                   <p className="text-sm">{c.text}</p>
                 </div>
@@ -68,13 +69,13 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
               {d.argument_structure.map(arg => (
                 <div key={arg.id} className="rounded-md border border-[color:var(--border)] p-3 flex flex-col gap-2">
                   <div className="flex items-start gap-2">
-                    <OEpistemicBadge grade={arg.thesis_grade} compact />
+                    <OEpistemicBadge grade={safeGrade(arg.thesis_grade)} compact />
                     <p className="text-sm font-medium flex-1">{arg.thesis}</p>
                   </div>
                   <ul className="flex flex-col gap-1.5 ml-2 border-l-2 border-[color:var(--border)] pl-3">
                     {arg.evidence.map((ev, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm">
-                        <OEpistemicBadge grade={ev.grade} compact />
+                        <OEpistemicBadge grade={safeGrade(ev.grade)} compact />
                         <span className="flex-1 text-[color:var(--text-secondary)]">{ev.text}</span>
                       </li>
                     ))}
@@ -98,7 +99,7 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
                 {d.key_concepts.map(kc => (
                   <a key={kc.ku_id} href={`/knowledge?ku=${kc.ku_id}`}
                     className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border border-[color:var(--border)] hover:border-[color:var(--accent,#2563eb)]/50">
-                    <OEpistemicBadge grade={kc.grade} compact />
+                    <OEpistemicBadge grade={safeGrade(kc.grade)} compact />
                     {kc.label}
                   </a>
                 ))}
@@ -136,7 +137,7 @@ export default function BooksPage() {
             <div key={bu.id} onClick={() => setDetailId(bu.id)}
               className="rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-4 flex flex-col gap-2 cursor-pointer hover:border-[color:var(--accent,#2563eb)]/50 transition-colors">
               <div className="flex items-center gap-2">
-                <OEpistemicBadge grade={bu.grade} compact />
+                <OEpistemicBadge grade={safeGrade(bu.grade)} compact />
                 <h3 className="text-sm font-medium flex-1">{bu.book_title}</h3>
                 <span className="text-xs text-[color:var(--text-tertiary,#888)]">{bu.main_claim_count} 论断</span>
               </div>

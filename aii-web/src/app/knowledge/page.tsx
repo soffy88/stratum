@@ -20,6 +20,7 @@ import {
 } from '@helios/blocks';
 import { useApi } from '@/hooks/useApi';
 import * as api from '@/lib/api-client';
+import { safeGrade } from '@/lib/grade';
 import type { KuListItem, KuDetail, KnowledgeType } from '@/types/api';
 
 const GRADE_OPTS: OFilterChipOption[] = (
@@ -49,7 +50,7 @@ function KuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
         {d && (
           <>
             <div className="flex items-center gap-2 flex-wrap">
-              <OEpistemicBadge grade={d.grade} defeaterCount={d.defeater_count} />
+              <OEpistemicBadge grade={safeGrade(d.grade)} defeaterCount={d.defeater_count} />
               <span className="text-xs px-2 py-0.5 rounded-full border border-[color:var(--border)]">{d.knowledge_type}</span>
               {d.merge_count > 1 && (
                 <span className="text-xs px-2 py-0.5 rounded-full bg-[color:var(--accent,#2563eb)]/15 text-[color:var(--accent,#2563eb)] border border-[color:var(--accent,#2563eb)]/30">
@@ -165,7 +166,7 @@ export default function KnowledgePage() {
                 className="rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-3 flex flex-col gap-2 cursor-pointer hover:border-[color:var(--accent,#2563eb)]/50 transition-colors"
               >
                 <div className="flex items-center gap-2 flex-wrap">
-                  <OEpistemicBadge grade={ku.grade} defeaterCount={ku.defeater_count} compact />
+                  <OEpistemicBadge grade={safeGrade(ku.grade)} defeaterCount={ku.defeater_count} compact />
                   <span className="text-xs px-1.5 py-0.5 rounded border border-[color:var(--border)] text-[color:var(--text-secondary)]">{ku.knowledge_type}</span>
                   {ku.merge_count > 1 && (
                     <span className="text-xs px-1.5 py-0.5 rounded-full bg-[color:var(--accent,#2563eb)]/15 text-[color:var(--accent,#2563eb)]">多书共有 ×{ku.merge_count}</span>

@@ -163,7 +163,7 @@ async def _add_sequential_prerequisites(
                 src_id=src_id,
                 relation_type="prerequisite_of",
                 dst_id=dst_id,
-                grade="medium",
+                grade="moderate",
                 evidence={"source": "textbook_section_order", "section_index": i},
                 extraction_method="textbook_order",
             )
