@@ -4,6 +4,7 @@ POST /api/v1/documents/{id}/split       → 拆分单个 EPUB 套装
 POST /api/v1/admin/bundle-split-batch   → 批量拆分
 POST /api/v1/admin/hash-backfill        → 回填 file_hash=NULL
 POST /api/v1/admin/dedup-by-hash        → 同 SHA256 去重
+POST /api/v1/admin/bulk-meta-patch      → 批量写 meta_json 字段
 """
 from __future__ import annotations
 
@@ -103,3 +104,42 @@ async def trigger_dedup(
             results.append({**res, "file_hash": fh[:16]})
 
     return {"status": "done", "groups": len(results), "results": results}
+
+
+from pydantic import BaseModel
+
+
+class BulkMetaPatchRequest(BaseModel):
+    ids: list[str]
+    patch: dict
+
+
+@router.post("/api/v1/admin/bulk-meta-patch")
+async def bulk_meta_patch(
+    body: BulkMetaPatchRequest,
+    user=Depends(get_current_user),
+):
+    """给一批 substrates 的 meta_json 合并写入指定字段（不覆盖其他字段）。
+
+    Body: {"ids": ["01K..."], "patch": {"medium": "textbook", "category": "k12"}}
+    """
+    import json as _json
+    updated = 0
+    skipped = 0
+    with get_conn() as conn:
+        for sid in body.ids:
+            row = conn.execute(
+                "SELECT meta_json FROM substrates WHERE id=?", (sid,)
+            ).fetchone()
+            if not row:
+                skipped += 1
+                continue
+            meta = _json.loads(row[0] or "{}")
+            meta.update(body.patch)
+            conn.execute(
+                "UPDATE substrates SET meta_json=?, updated_at=NOW() WHERE id=?",
+                (_json.dumps(meta, ensure_ascii=False), sid)
+            )
+            updated += 1
+    log.info("bulk_meta_patch: updated=%d skipped=%d patch=%s", updated, skipped, body.patch)
+    return {"status": "ok", "updated": updated, "skipped": skipped, "patch": body.patch}
