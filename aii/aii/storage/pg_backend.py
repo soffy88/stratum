@@ -11,6 +11,13 @@ from aii.storage.backend import StorageBackend, EpistemicStore
 
 logger = logging.getLogger(__name__)
 
+# Canonical set of valid EpistemicGrade values — must match helios-blocks EPISTEMIC_GRADE_LABEL keys.
+# Any grade value not in this set is a bug in the upstream code that produced it.
+VALID_EPISTEMIC_GRADES: frozenset[str] = frozenset({
+    "proven", "high", "moderate", "low", "very_low",
+    "unverified", "contradicted", "pending_verification",
+})
+
 
 def _run_coro(coro):
     """Run an async coroutine from sync context, even if an event loop is already running.
@@ -174,6 +181,23 @@ class PgBackend(StorageBackend, EpistemicStore):
             # Derive fingerprint from natural_text so dedup still works
             _text = ku.get("natural_text", str(ku_id))
             fingerprint = _hashlib.sha256(_text.encode()).hexdigest()[:32]
+
+        # Grade validation — reject and record before opening any connection
+        _grade_to_write = ku.get("grade", "unverified")
+        if _grade_to_write not in VALID_EPISTEMIC_GRADES:
+            await self.record_failure_lesson_async(
+                trigger_type="invalid_grade",
+                subject_ref=_grade_to_write,
+                evidence={"ku_id": str(ku_id), "grade": _grade_to_write, "context": "put_ku"},
+                lesson=(
+                    f"grade='{_grade_to_write}' is not a valid EpistemicGrade; "
+                    f"fix the upstream code that produced this value"
+                ),
+            )
+            raise ValueError(
+                f"invalid grade '{_grade_to_write}' for KU {ku_id}; "
+                f"valid grades: {sorted(VALID_EPISTEMIC_GRADES)}"
+            )
 
         conn = await _asyncpg.connect(self.dsn)
         try:
@@ -537,6 +561,24 @@ class PgBackend(StorageBackend, EpistemicStore):
         extraction_method: str = "rule",
     ) -> None:
         """Upsert a rich relation edge with grade, evidence, and extraction method."""
+        if grade not in VALID_EPISTEMIC_GRADES:
+            await self.record_failure_lesson_async(
+                trigger_type="invalid_grade",
+                subject_ref=grade,
+                evidence={
+                    "src_id": src_id, "dst_id": dst_id,
+                    "grade": grade, "relation_type": relation_type,
+                    "extraction_method": extraction_method, "context": "add_relation_edge",
+                },
+                lesson=(
+                    f"grade='{grade}' is not a valid EpistemicGrade; "
+                    f"fix the upstream code that produced this value"
+                ),
+            )
+            raise ValueError(
+                f"invalid grade '{grade}' for edge {src_id[:8]}→{dst_id[:8]}; "
+                f"valid grades: {sorted(VALID_EPISTEMIC_GRADES)}"
+            )
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             await conn.execute(
