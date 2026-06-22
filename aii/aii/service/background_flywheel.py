@@ -41,6 +41,49 @@ _purpose_text: str | None = None          # 缓存: 每次飞轮启动读一次
 _purpose_embedding: list[float] | None = None  # 缓存: 启动后算一次
 _purpose_title_scores: dict[str, float] = {}   # sid → score 跨轮缓存
 
+# P2.6+ 主动方向缺口: 基于 config/purpose.md 人工整理的核心领域,量化交易重点展开
+# ★命门: AII只声明"需要什么方向的书", 不含获取/下载/找书逻辑(Stratum的事)
+_PURPOSE_DIRECTIONS: list[dict] = [
+    {
+        "direction": "量化交易",
+        "keywords": ["量化交易", "算法交易", "高频交易", "做市", "统计套利"],
+        "subtopics": [
+            "高频交易", "做市策略", "统计套利", "市场微观结构",
+            "算法交易", "金融时间序列", "期权定价", "风险管理", "组合优化", "回测方法",
+        ],
+        "priority": "high",
+        "threshold": 500,
+    },
+    {
+        "direction": "金融工程",
+        "keywords": ["金融工程", "衍生品", "期权定价", "利率模型", "固定收益"],
+        "subtopics": ["衍生品定价", "利率模型", "信用风险", "固定收益", "随机微积分"],
+        "priority": "high",
+        "threshold": 500,
+    },
+    {
+        "direction": "机器学习",
+        "keywords": ["机器学习", "深度学习", "神经网络", "强化学习"],
+        "subtopics": ["深度学习", "强化学习", "图神经网络", "生成模型", "transformer架构"],
+        "priority": "high",
+        "threshold": 1000,
+    },
+    {
+        "direction": "概率统计",
+        "keywords": ["概率论", "统计学", "贝叶斯", "随机过程"],
+        "subtopics": ["贝叶斯统计", "随机过程", "时间序列分析", "计量经济学"],
+        "priority": "medium",
+        "threshold": 800,
+    },
+    {
+        "direction": "最优化",
+        "keywords": ["最优化", "凸优化", "线性规划", "整数规划"],
+        "subtopics": ["凸优化", "随机优化", "组合优化", "运筹学"],
+        "priority": "medium",
+        "threshold": 300,
+    },
+]
+
 
 def _read_purpose_text() -> str:
     """Read purpose.md (human-authored direction). Returns "" if missing."""
@@ -233,11 +276,54 @@ async def _collect_new_files(backend, limit: int) -> list[Path]:
     return found
 
 
-def _write_needs(gaps: dict) -> None:
+async def _compute_proactive_needs(backend) -> list[dict]:
+    """主动方向缺口感知: 按purpose核心领域查KU覆盖度, 返回覆盖不足的方向需求列表.
+
+    ★命门: 只判断"需要什么方向的书", 不含获取/下载/找书逻辑(Stratum的事).
+    """
+    needs: list[dict] = []
+    try:
+        pool = await backend._ensure_pool()
+        async with pool.acquire() as conn:
+            for d in _PURPOSE_DIRECTIONS:
+                # 参数化 LIKE 查询, 避免字符串拼接
+                params = [f"%{kw}%" for kw in d["keywords"]]
+                conditions = " OR ".join(
+                    f"natural_text LIKE ${i + 1}" for i in range(len(params))
+                )
+                sql = (
+                    f"SELECT count(*) FROM aii.ku "
+                    f"WHERE ({conditions}) AND is_synthesis IS NOT TRUE"
+                )
+                ku_count: int = (await conn.fetchval(sql, *params)) or 0
+                if ku_count < d["threshold"]:
+                    needs.append({
+                        "type": "proactive_direction",
+                        "topic": d["direction"],
+                        "subtopics": d["subtopics"],
+                        "reason": f"purpose核心方向,当前覆盖{ku_count}条KU,需补充",
+                        "ku_count": ku_count,
+                        "priority": d["priority"],
+                    })
+                    logger.info(
+                        "proactive_gap: %s → %d KU (threshold=%d) → need written",
+                        d["direction"], ku_count, d["threshold"],
+                    )
+                else:
+                    logger.info(
+                        "proactive_gap: %s → %d KU (threshold=%d) → covered",
+                        d["direction"], ku_count, d["threshold"],
+                    )
+    except Exception:
+        logger.exception("proactive_gap: compute failed (non-fatal)")
+    return needs
+
+
+def _write_needs(gaps: dict, proactive_needs: list[dict] | None = None) -> None:
     try:
         _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         high_miss = gaps.get("high_miss_topics", [])
-        needs = [
+        reactive_needs = [
             {
                 "topic": t["topic"] if isinstance(t, dict) else str(t),
                 "reason": "high_miss",
@@ -246,18 +332,23 @@ def _write_needs(gaps: dict) -> None:
             for t in high_miss
         ]
 
-        # P2.6: 对 needs 按 purpose 对齐分排序 (纯keyword，同步，无需embedding)
+        # P2.6: 对 reactive needs 按 purpose 对齐分排序 (纯keyword，同步，无需embedding)
         # 方向内缺口排前，指导人工找源时优先补方向内知识
-        if needs and _purpose_text:
+        if reactive_needs and _purpose_text:
             from oprim._purpose_alignment_score import _keyword_overlap
-            for n in needs:
+            for n in reactive_needs:
                 n["purpose_score"] = round(_keyword_overlap(_purpose_text, n["topic"]), 4)
-            needs.sort(key=lambda n: n["purpose_score"], reverse=True)
+            reactive_needs.sort(key=lambda n: n["purpose_score"], reverse=True)
             logger.info(
                 "purpose: needs sorted by purpose score, top=%s score=%.4f",
-                needs[0]["topic"][:30] if needs else "",
-                needs[0].get("purpose_score", 0) if needs else 0,
+                reactive_needs[0]["topic"][:30] if reactive_needs else "",
+                reactive_needs[0].get("purpose_score", 0) if reactive_needs else 0,
             )
+
+        # 主动方向需求排在被动缺口前面(高优先级)
+        needs = list(proactive_needs or []) + reactive_needs
+        if proactive_needs:
+            logger.info("proactive_gap: %d direction needs merged into needs.json", len(proactive_needs))
 
         payload = {
             "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -378,11 +469,13 @@ async def flywheel_loop(backend) -> None:
                     ev = EvolutionEngine(backend)
                     report = await ev.evolve()
                     gaps = report.get("gaps") or {}
-                    _write_needs(gaps)
+                    proactive_needs = await _compute_proactive_needs(backend)
+                    _write_needs(gaps, proactive_needs)
                     logger.info(
-                        "flywheel: evolve done upgraded=%d gaps=%s",
+                        "flywheel: evolve done upgraded=%d gaps=%s proactive_needs=%d",
                         len(report.get("upgraded", [])),
                         {k: v for k, v in gaps.items() if k != "grade_imbalance"},
+                        len(proactive_needs),
                     )
                 except Exception:
                     logger.exception("flywheel: evolve failed (non-fatal)")
