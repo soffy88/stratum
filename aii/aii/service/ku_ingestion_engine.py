@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import uuid as _uuid
 from typing import Any
 import numpy as np
 
@@ -37,12 +38,18 @@ def _convert_ku_candidates(ku_candidates: list[dict], substrate_id: str = "") ->
         if not natural_text:
             continue
         confidence = kc.get("confidence", "low")
+        grade = _CONFIDENCE_TO_GRADE.get(confidence, "unverified")
         result.append({
+            # Pre-assign clean UUID so register_ku uses it instead of generating "KU-{uuid}"
+            # (put_ku calls UUID(ku_id) — "KU-" prefix is not a valid hex UUID string)
+            "ku_id": str(_uuid.uuid4()),
             "name": kc.get("title", "unnamed"),
             "natural_text": natural_text,
             "knowledge_type": kc.get("type", "observation"),
-            "grade": _CONFIDENCE_TO_GRADE.get(confidence, "unverified"),
+            "grade": grade,
             "substrate_id": substrate_id,
+            # register_ku validates this field exists (not stored in DB; grade column is the store)
+            "epistemic_status": {"grade": grade, "source": None, "defeaters": [], "verified": False},
         })
     return result
 
@@ -282,14 +289,22 @@ class KuIngestionEngine:
                 continue
 
             # ── Step 2: Register new KU ────────────────────────────────────
+            # register_ku never raises (3O §5.12); check status field for failure.
             try:
                 _cand = cand
-                await loop.run_in_executor(None, lambda: register_ku(config, {"ku": _cand}))
-                new_ku_id = cand.get("ku_id")
-                results["registered"].append(new_ku_id)
+                reg_result = await loop.run_in_executor(
+                    None, lambda: register_ku(config, {"ku": _cand})
+                )
             except Exception as e:
                 logger.error("Failed to register KU %s: %s", name, e)
                 continue
+            if reg_result.get("status") != "completed":
+                logger.error(
+                    "register_ku failed for KU %s: %s", name, reg_result.get("error")
+                )
+                continue
+            new_ku_id = cand.get("ku_id")
+            results["registered"].append(new_ku_id)
 
             # ── Step 2.5: Conflict detection + contradicts edge (K-G1 P-G1) ─
             # ★ new KU registered above → conflict NEVER blocks ingestion.
