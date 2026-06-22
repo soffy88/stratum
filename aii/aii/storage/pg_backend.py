@@ -710,6 +710,49 @@ class PgBackend(StorageBackend, EpistemicStore):
                 existing_ku_id, source_entry,
             )
 
+    async def get_source_ids_for_ku(self, ku_id: str) -> list[str]:
+        """Return substrate_ids that support this KU.
+
+        Reads sources JSONB array first; falls back to substrate_id column
+        (covers 97% of historical KUs with empty sources).
+        Used by source_trace (P-G3) and cascade_delete (K-G5).
+        """
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT substrate_id, sources FROM aii.ku WHERE ku_id = $1::uuid",
+                ku_id,
+            )
+        if not row:
+            return []
+        raw = row["sources"]
+        sources: list[dict] = raw if isinstance(raw, list) else (
+            json.loads(raw) if isinstance(raw, str) and raw else []
+        )
+        result = [s["substrate_id"] for s in sources if s.get("substrate_id")]
+        if not result and row["substrate_id"]:
+            result = [str(row["substrate_id"])]
+        return list(dict.fromkeys(result))  # dedupe, preserve order
+
+    async def get_ku_ids_for_source(self, source_id: str) -> list[str]:
+        """Return ku_ids whose sources include this source_id.
+
+        Matches substrate_id column OR sources JSONB array element.
+        Used by cascade_delete (K-G5).
+        """
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT ku_id FROM aii.ku
+                WHERE substrate_id = $1
+                   OR sources @> $2::jsonb
+                """,
+                source_id,
+                json.dumps([{"substrate_id": source_id}]),
+            )
+        return [str(r["ku_id"]) for r in rows]
+
     async def mark_deep_understood(self, substrate_id: str) -> None:
         """Set deep_understood_at = NOW() for a substrate after deep understanding pipeline completes."""
         pool = await self._ensure_pool()

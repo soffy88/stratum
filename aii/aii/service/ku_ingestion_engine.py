@@ -289,6 +289,15 @@ class KuIngestionEngine:
                 continue
 
             # ── Step 2: Register new KU ────────────────────────────────────
+            # Write complete sources entry before registration so provenance is
+            # stored from first insert (命门: 溯源诚实完整).
+            from datetime import datetime, timezone as _tz
+            cand["sources"] = [{
+                "substrate_id": cand.get("substrate_id", ""),
+                "natural_text": natural_text[:200],
+                "ingested_at": datetime.now(_tz.utc).isoformat(),
+            }]
+
             # register_ku never raises (3O §5.12); check status field for failure.
             try:
                 _cand = cand

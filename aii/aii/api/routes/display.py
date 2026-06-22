@@ -777,3 +777,83 @@ async def ku_batch(
         return success_response(result)
     except Exception as e:
         return error_response("KU_BATCH_ERROR", str(e))
+
+
+# ── KU 溯源 (P-G3 source_trace) ────────────────────────────────────────────
+
+@router.get("/ku/{ku_id}/trace")
+async def ku_trace(ku_id: str):
+    """KU source provenance: which substrate(s) this KU was extracted from.
+
+    Uses source_trace (oprim P-G3) via sources JSONB adapter.
+    Falls back to substrate_id column for historical KUs with empty sources.
+    """
+    try:
+        uid = _uuid.UUID(ku_id)
+    except ValueError:
+        return error_response("INVALID_UUID", f"invalid ku_id: {ku_id}")
+
+    try:
+        from oprim._source_trace import source_trace
+
+        pool = await backend._ensure_pool()
+        async with pool.acquire() as conn:
+            ku_row = await conn.fetchrow(
+                "SELECT ku_id, natural_text, substrate_id, sources FROM aii.ku WHERE ku_id = $1",
+                uid,
+            )
+            if not ku_row:
+                return error_response("NOT_FOUND", f"KU {ku_id} not found")
+
+            # Fetch substrate titles for all source_ids
+            raw_sources = _jsonb(ku_row["sources"]) or []
+            source_ids: list[str] = [s["substrate_id"] for s in raw_sources if s.get("substrate_id")]
+            if not source_ids and ku_row["substrate_id"]:
+                source_ids = [str(ku_row["substrate_id"])]
+
+            substrate_rows = await conn.fetch(
+                "SELECT substrate_id, title, medium FROM aii.ingested_substrate WHERE substrate_id = ANY($1)",
+                source_ids,
+            ) if source_ids else []
+
+        substrate_map = {str(r["substrate_id"]): {"title": r["title"], "medium": r["medium"]} for r in substrate_rows}
+
+        # Adapter: feeds source_trace (P-G3) from sources JSONB
+        class _SourcesAdapter:
+            async def fetch(self, _sql: str, _ku_id: str) -> list[dict]:
+                result = []
+                for i, s in enumerate(raw_sources):
+                    result.append({
+                        "source_id": s.get("substrate_id", ""),
+                        "page": s.get("page"),
+                        "chunk_idx": i,
+                        "text_snippet": (s.get("natural_text") or "")[:200],
+                    })
+                if not result and ku_row["substrate_id"]:
+                    result.append({
+                        "source_id": str(ku_row["substrate_id"]),
+                        "page": None,
+                        "chunk_idx": 0,
+                        "text_snippet": "",
+                    })
+                return result
+
+        trace_result = await source_trace(ku_id=ku_id, db_conn=_SourcesAdapter())
+
+        positions_with_titles = [
+            {
+                **pos,
+                "substrate_title": substrate_map.get(pos["source_id"], {}).get("title"),
+                "medium": substrate_map.get(pos["source_id"], {}).get("medium"),
+            }
+            for pos in trace_result.source_positions
+        ]
+
+        return success_response({
+            "ku_id": ku_id,
+            "source_ids": trace_result.source_ids,
+            "trace_depth": trace_result.trace_depth,
+            "positions": positions_with_titles,
+        })
+    except Exception as e:
+        return error_response("TRACE_ERROR", str(e))
