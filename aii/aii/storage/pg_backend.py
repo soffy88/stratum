@@ -753,6 +753,20 @@ class PgBackend(StorageBackend, EpistemicStore):
             )
         return [str(r["ku_id"]) for r in rows]
 
+    async def get_kus_by_ids(self, ku_ids: list[str]) -> list[dict[str, Any]]:
+        """Batch-fetch KU rows by a list of ku_ids (non-quarantined only)."""
+        if not ku_ids:
+            return []
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT ku_id, natural_text, knowledge_type, grade, substrate_id, "
+                "is_synthesis, synthesis_meta, sources "
+                "FROM aii.ku WHERE ku_id = ANY($1) AND is_quarantined = FALSE",
+                [UUID(kid) for kid in ku_ids],
+            )
+        return [dict(r) for r in rows]
+
     async def mark_deep_understood(self, substrate_id: str) -> None:
         """Set deep_understood_at = NOW() for a substrate after deep understanding pipeline completes."""
         pool = await self._ensure_pool()

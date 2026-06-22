@@ -1,3 +1,4 @@
+import json as _json
 import logging
 from typing import Any
 
@@ -7,6 +8,45 @@ from obase import ProviderRegistry
 from aii.storage.pg_backend import PgBackend
 
 logger = logging.getLogger(__name__)
+
+
+class _GraphAdapter:
+    """Adapts pre-loaded graph data to the interface expected by graph_expand_retrieval.
+
+    P2.5 命门: 扩展不改KU grade/内容; 只做图遍历+排序.
+    """
+
+    def __init__(self, ku_data: dict[str, dict], edges: list[dict]) -> None:
+        self._ku_data = ku_data
+        self._nbrs: dict[str, list[str]] = {}
+        self._degree: dict[str, int] = {}
+        self._norm_edges: list[dict] = []
+        for e in edges:
+            s = str(e.get("src_id") or e.get("source", ""))
+            d = str(e.get("dst_id") or e.get("target", ""))
+            if not s or not d:
+                continue
+            self._nbrs.setdefault(s, []).append(d)
+            self._nbrs.setdefault(d, []).append(s)
+            self._degree[s] = self._degree.get(s, 0) + 1
+            self._degree[d] = self._degree.get(d, 0) + 1
+            self._norm_edges.append({"source": s, "target": d})
+
+    def get_neighbors(self, ku_id: str) -> list[str]:
+        return self._nbrs.get(ku_id, [])
+
+    def get_ku_data(self, ku_id: str) -> dict:
+        ku = self._ku_data.get(ku_id, {})
+        sub = ku.get("substrate_id")
+        ku_edges = [e for e in self._norm_edges
+                    if e["source"] == ku_id or e["target"] == ku_id]
+        return {
+            "sources": [str(sub)] if sub else [],
+            "type": str(ku.get("knowledge_type") or "observation"),
+            "neighbors": self._nbrs.get(ku_id, []),
+            "edges": ku_edges,
+            "neighbor_degree": self._degree,
+        }
 
 # Strong global triggers: always route to Global regardless of other keywords
 _GLOBAL_STRONG = ["什么关系", "关系是", "总结", "综述", "概括", "全书", "脉络", "体系"]
@@ -62,7 +102,7 @@ class SynthesisEngine:
         return []
 
     async def _handle_global(self, query: str) -> dict[str, Any]:
-        """Global path: search synthesis KUs + 1-hop graph expansion for relational/overview questions."""
+        """Global path: search synthesis KUs + graph_expand_retrieval (P2.5 K-G4)."""
         qv = _embed_query(query)
         if qv is None:
             return {"mode": "error", "answer": "内部错误：无法编码查询", "epistemic_confidence": 0.0}
@@ -70,27 +110,54 @@ class SynthesisEngine:
         # 1. Vector search on is_synthesis KUs
         synthesis_results = await self.backend.search_synthesis_kus(qv, limit=3)
 
-        # 2. 1-hop graph expansion from top synthesis KU's source KUs
-        extra_ku_ids: set[str] = set()
-        if synthesis_results:
-            all_edges = await self.backend.get_relation_edges()
-            top_id = str(synthesis_results[0]["ku_id"])
-            for e in all_edges:
-                if str(e["src_id"]) == top_id or str(e["dst_id"]) == top_id:
-                    extra_ku_ids.add(str(e["src_id"]))
-                    extra_ku_ids.add(str(e["dst_id"]))
-
-        # Fetch related detail KUs
+        # 2. P2.5 图扩展: graph_expand_retrieval 替换手写1-hop BFS
+        # 原BFS: get_relation_edges()→遍历17k边→synthesis KU无edge→extra_ku_ids永远为空
+        # 新策略: 从synthesis_meta.source_ku_ids出发，沿图扩展找到依赖链/关联KU
         graph_kus: list[dict] = []
-        if extra_ku_ids:
-            all_kus = await self.backend.list_kus()
-            ku_by_id = {str(ku["ku_id"]): ku for ku in all_kus}
-            graph_kus = [ku_by_id[kid] for kid in extra_ku_ids if kid in ku_by_id and not ku_by_id[kid].get("is_synthesis")]
+        if synthesis_results:
+            try:
+                from oskill._graph_expand_retrieval import graph_expand_retrieval
+                from oskill._relevance_compute import relevance_compute as _relevance_fn
+
+                # 取 source_ku_ids from top synthesis KU's synthesis_meta
+                top_syn = synthesis_results[0]
+                syn_meta = top_syn.get("synthesis_meta") or {}
+                if isinstance(syn_meta, str):
+                    try:
+                        syn_meta = _json.loads(syn_meta)
+                    except Exception:
+                        syn_meta = {}
+                seed_ids = [str(s) for s in (syn_meta.get("source_ku_ids") or [])][:5]
+                # Fallback: use synthesis KU itself as seed if no source_ku_ids
+                if not seed_ids:
+                    seed_ids = [str(top_syn["ku_id"])]
+
+                all_edges = await self.backend.get_relation_edges()
+                all_kus_list = await self.backend.list_kus()
+                ku_by_id = {str(ku["ku_id"]): ku for ku in all_kus_list}
+
+                adapter = _GraphAdapter(ku_data=ku_by_id, edges=all_edges)
+                expanded = await graph_expand_retrieval(
+                    seed_ku_ids=seed_ids,
+                    query_embedding=qv,
+                    max_hops=2,
+                    max_results=10,
+                    db_conn=adapter,
+                    relevance_fn=_relevance_fn,
+                )
+                for r in expanded:
+                    ku = ku_by_id.get(r.ku_id)
+                    if ku and not ku.get("is_synthesis"):
+                        graph_kus.append(ku)
+                logger.info("Global graph_expand: seeds=%d expanded=%d graph_kus=%d",
+                            len(seed_ids), len(expanded), len(graph_kus))
+            except Exception as _e:
+                logger.warning("Global graph_expand_retrieval failed, falling back: %s", _e)
 
         # Merge: synthesis KUs first, then graph-expanded detail KUs (dedup)
         context = list(synthesis_results)
         seen_ids = {str(r["ku_id"]) for r in context}
-        for ku in graph_kus[:3]:
+        for ku in graph_kus[:5]:
             if str(ku["ku_id"]) not in seen_ids:
                 context.append(ku)
                 seen_ids.add(str(ku["ku_id"]))
@@ -142,6 +209,62 @@ class SynthesisEngine:
 
         # Search DB (detail KUs only)
         results = await self.backend.search_ku_by_vector(qv, limit=3)
+
+        # P2.5 Local图扩展: 1-hop neighbors via graph_expand_retrieval
+        # 命门: 扩展KU保持原grade/内容不变; 扩展失败不影响主路径
+        extra_kus: list[dict] = []
+        if results:
+            try:
+                from oskill._graph_expand_retrieval import graph_expand_retrieval
+                from oskill._relevance_compute import relevance_compute as _relevance_fn
+                import asyncio as _asyncio
+
+                seed_ids = [str(r["ku_id"]) for r in results]
+                # Get edges for seeds (targeted queries, 避免拉全量17k边)
+                edge_batches = await _asyncio.gather(*[
+                    self.backend.get_relation_edges(ku_id=sid) for sid in seed_ids
+                ])
+                seed_edges = [e for batch in edge_batches for e in batch]
+
+                if seed_edges:
+                    # Collect neighbor IDs for batch pre-fetch
+                    nbr_ids = set()
+                    for e in seed_edges:
+                        nbr_ids.add(str(e["src_id"]))
+                        nbr_ids.add(str(e["dst_id"]))
+                    nbr_ids -= set(seed_ids)
+
+                    # Pre-fetch neighbor KU data in one batch query
+                    nbr_ku_data: dict[str, dict] = {}
+                    if nbr_ids:
+                        nbr_rows = await self.backend.get_kus_by_ids(list(nbr_ids))
+                        nbr_ku_data = {str(r["ku_id"]): r for r in nbr_rows}
+
+                    # Build adapter from seeds + neighbors (KU data already in memory)
+                    local_ku_data: dict[str, dict] = {str(r["ku_id"]): r for r in results}
+                    local_ku_data.update(nbr_ku_data)
+                    adapter = _GraphAdapter(ku_data=local_ku_data, edges=seed_edges)
+
+                    expanded = await graph_expand_retrieval(
+                        seed_ku_ids=seed_ids,
+                        query_embedding=qv,
+                        max_hops=1,
+                        max_results=5,
+                        db_conn=adapter,
+                        relevance_fn=_relevance_fn,
+                    )
+                    seen_vec = {str(r["ku_id"]) for r in results}
+                    for r in expanded:
+                        ku = local_ku_data.get(r.ku_id)
+                        if ku and not ku.get("is_synthesis") and r.ku_id not in seen_vec:
+                            extra_kus.append(ku)
+                    logger.info("Local graph_expand: seeds=%d edges=%d expanded=%d extra=%d",
+                                len(seed_ids), len(seed_edges), len(expanded), len(extra_kus))
+            except Exception as _e:
+                logger.warning("Local graph_expand_retrieval failed, skipping: %s", _e)
+
+        # Merge vector results + graph-expanded (vector-primary, graph補充)
+        results = list(results) + extra_kus[:3]
 
         # 2. No Knowledge Check
         # Threshold: cosine distance > 0.75 (similarity < 0.25); BGE-M3 typical semantic match ~0.65

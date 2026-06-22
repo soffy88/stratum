@@ -117,6 +117,21 @@ class DeepSynthesisEngine:
         all_kus = await self.backend.list_kus()
         ku_data: dict[str, dict] = {str(ku["ku_id"]): ku for ku in all_kus}
 
+        # P2.4: 加载图拓扑供 4信号relevance社区内排序
+        from oskill._relevance_compute import relevance_compute as _relevance_fn
+        all_edges_raw = await self.backend.get_relation_edges()
+        # Normalize edge format for direct_link_score (expects "source"/"target" keys)
+        all_edges_norm = [{"source": str(e["src_id"]), "target": str(e["dst_id"])} for e in all_edges_raw]
+        _nbrs: dict[str, list[str]] = {}
+        _degree: dict[str, int] = {}
+        for _e in all_edges_raw:
+            _s, _d = str(_e["src_id"]), str(_e["dst_id"])
+            _nbrs.setdefault(_s, []).append(_d)
+            _nbrs.setdefault(_d, []).append(_s)
+            _degree[_s] = _degree.get(_s, 0) + 1
+            _degree[_d] = _degree.get(_d, 0) + 1
+        logger.info("P2.4 graph loaded: %d edges, %d nodes with edges", len(all_edges_raw), len(_degree))
+
         synthesis_ku_ids = []
         with tempfile.TemporaryDirectory(prefix="aii_synthesis_") as tmp:
             tmp_path = Path(tmp)
@@ -125,6 +140,58 @@ class DeepSynthesisEngine:
                 comm_ku_ids = [kid for kid in comm.ku_ids if kid in ku_data]
                 if not comm_ku_ids:
                     continue
+
+                # P2.4: 4信号relevance排序+剪枝 (命门: KC仍is_synthesis，grade不变)
+                _MAX_POOL = 30   # 大社区cosine预筛上限(centroid距离)
+                _MAX_SYNTH = 20  # 送合成上限
+
+                if len(comm_ku_ids) > _MAX_POOL and comm.centroid:
+                    def _centroid_sq_dist(kid: str, _ctd: list[float] = comm.centroid) -> float:
+                        _emb = embeddings_map.get(kid)
+                        if not _emb or not _ctd:
+                            return float("inf")
+                        return sum((_a - _b) ** 2 for _a, _b in zip(_emb, _ctd))
+                    comm_ku_ids = sorted(comm_ku_ids, key=_centroid_sq_dist)[:_MAX_POOL]
+
+                if len(comm_ku_ids) > 1:
+                    _comm_set = set(comm_ku_ids)
+                    # Filter edges to community members only (speed: avoids iterating 17k edges per pair)
+                    _comm_edges = [_e for _e in all_edges_norm
+                                   if _e["source"] in _comm_set or _e["target"] in _comm_set]
+                    _weights = {"direct": 3.0, "source": 4.0, "adamic": 1.5, "type": 1.0}
+                    _avg_rel: dict[str, float] = {}
+                    for _kid in comm_ku_ids:
+                        _kd = ku_data.get(_kid, {})
+                        _scores: list[float] = []
+                        for _oid in comm_ku_ids:
+                            if _oid == _kid:
+                                continue
+                            _od = ku_data.get(_oid, {})
+                            try:
+                                _sc = _relevance_fn(
+                                    ku_id_a=_kid, ku_id_b=_oid,
+                                    edges=_comm_edges,
+                                    sources_a=[str(_kd["substrate_id"])] if _kd.get("substrate_id") else [],
+                                    sources_b=[str(_od["substrate_id"])] if _od.get("substrate_id") else [],
+                                    neighbors_a=_nbrs.get(_kid, []),
+                                    neighbors_b=_nbrs.get(_oid, []),
+                                    neighbor_degree=_degree,
+                                    type_a=str(_kd.get("knowledge_type") or "observation"),
+                                    type_b=str(_od.get("knowledge_type") or "observation"),
+                                    weights=_weights,
+                                )
+                                _scores.append(_sc)
+                            except Exception:
+                                pass
+                        _avg_rel[_kid] = sum(_scores) / len(_scores) if _scores else 0.0
+                    comm_ku_ids = sorted(
+                        comm_ku_ids, key=lambda _k: _avg_rel.get(_k, 0.0), reverse=True
+                    )[:_MAX_SYNTH]
+                    logger.debug(
+                        "P2.4 community %s: %d→%d members, top_rel=%.3f",
+                        comm.label[:20], comm.size, len(comm_ku_ids),
+                        max(_avg_rel.values()) if _avg_rel else 0.0,
+                    )
 
                 ku_texts = [str(ku_data[kid].get("natural_text") or "") for kid in comm_ku_ids]
                 source_grades = [str(ku_data[kid].get("grade") or "unverified") for kid in comm_ku_ids]
