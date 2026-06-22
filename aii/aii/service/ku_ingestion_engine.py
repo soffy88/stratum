@@ -1,14 +1,10 @@
 import asyncio
-import concurrent.futures
-import functools
 import logging
 import os
-import re
 from typing import Any
 import numpy as np
 
 from obase import ProviderRegistry
-from oskill.ku_extract_pipeline import ku_extract_pipeline
 from omodul.register_ku import register_ku, RegisterKuConfig
 from omodul.knowledge_reflux import run_reflux, KnowledgeRefluxConfig
 from oprim import vector_encode
@@ -17,14 +13,38 @@ from aii.storage.pg_backend import PgBackend
 
 logger = logging.getLogger(__name__)
 
-# ku_extract_pipeline makes HTTP calls to DeepSeek/Ollama (I/O-bound), so a
-# ThreadPoolExecutor is sufficient.  ProcessPoolExecutor was causing ~52s OS-level
-# fork freezes on WSL2 after CUDA (BGE-M3) was initialised in the parent process.
-_EXTRACT_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-
 # 粗筛阈值: cosine distance (pgvector <=>), 0=完全相同, 2=完全相反
 # distance <= 0.15 (similarity >= 0.85) 才触发 LLM 精确确认
 DEDUP_COARSE_THRESHOLD: float = float(os.getenv("DEDUP_COARSE_THRESHOLD", "0.15"))
+
+# 矛盾候选池阈值: cosine distance <= 0.4 (similarity >= 0.6) 进入矛盾检测
+CONFLICT_DISTANCE_THRESHOLD: float = float(os.getenv("CONFLICT_DISTANCE_THRESHOLD", "0.4"))
+
+# two_step_ingest confidence → EpistemicGrade mapping
+# "medium" is not a valid EpistemicGrade — map to "moderate"
+_CONFIDENCE_TO_GRADE: dict[str, str] = {
+    "high": "high",
+    "medium": "moderate",
+    "low": "low",
+}
+
+
+def _convert_ku_candidates(ku_candidates: list[dict], substrate_id: str = "") -> list[dict]:
+    """Map two_step_ingest ku_candidates format to ingestion pipeline format."""
+    result = []
+    for kc in ku_candidates:
+        natural_text = kc.get("content", "").strip()
+        if not natural_text:
+            continue
+        confidence = kc.get("confidence", "low")
+        result.append({
+            "name": kc.get("title", "unnamed"),
+            "natural_text": natural_text,
+            "knowledge_type": kc.get("type", "observation"),
+            "grade": _CONFIDENCE_TO_GRADE.get(confidence, "unverified"),
+            "substrate_id": substrate_id,
+        })
+    return result
 
 
 class KuIngestionEngine:
@@ -77,7 +97,6 @@ class KuIngestionEngine:
         )
         try:
             # 查重判断用本地模型(快/免费,SAME/DIFFERENT 够用); 失败降级到 provider
-            # call_sync_plain: 不带 format=json, 返回自然语言不受 JSON 结构干扰
             try:
                 llm = ProviderRegistry.get().llm("ollama-local")
             except Exception:
@@ -103,6 +122,66 @@ class KuIngestionEngine:
 
         return None, False  # DIFFERENT 或异常 → 新建
 
+    async def _conflict_detect_and_mark(
+        self,
+        new_ku_id: str,
+        new_ku_text: str,
+        new_ku_embedding: list[float],
+        llm,
+    ) -> None:
+        """Detect and mark contradicts edges for a newly registered KU.
+
+        Non-blocking: all exceptions caught and logged, never raises.
+        ★ Mandate: grade=unverified hardcoded (ConflictPair.__post_init__).
+        ★ Mandate: only ADDS contradicts edges — never deletes or modifies KUs.
+        ★ Mandate: called AFTER register → conflict never blocks ingestion.
+        """
+        try:
+            from oskill._conflict_resolution import conflict_resolution
+
+            nearby = await self.backend.search_ku_by_vector(new_ku_embedding, limit=5)
+            # Conflict candidate pool: same-domain KUs (cosine similarity >= 0.6)
+            # Exclude the KU itself (just registered, will appear in results)
+            pool = [
+                r for r in nearby
+                if r.get("distance", 2.0) <= CONFLICT_DISTANCE_THRESHOLD
+                and str(r["ku_id"]) != new_ku_id
+                and r.get("natural_text")
+                and r.get("embedding") is not None
+            ]
+            if not pool:
+                return
+
+            pairs = await conflict_resolution(
+                new_ku_texts=[new_ku_text],
+                new_ku_embeddings=[new_ku_embedding],
+                existing_ku_texts=[r["natural_text"] for r in pool],
+                existing_ku_embeddings=[list(r["embedding"]) for r in pool],
+                existing_ku_ids=[str(r["ku_id"]) for r in pool],
+                llm=llm,
+            )
+            for pair in pairs:
+                await self.backend.add_relation_edge(
+                    new_ku_id, "contradicts", pair.existing_ku_id,
+                    grade="unverified",
+                    evidence={
+                        "conflict_type": pair.conflict_type,
+                        "severity": pair.severity,
+                        "description": pair.description[:200],
+                    },
+                    extraction_method="conflict_detect",
+                )
+                logger.info(
+                    "conflict: %s contradicts %s (%s, severity=%s)",
+                    new_ku_id[:8], pair.existing_ku_id[:8],
+                    pair.conflict_type, pair.severity,
+                )
+        except Exception as e:
+            logger.warning(
+                "conflict_detect non-blocking failure for %s: %s",
+                new_ku_id[:8], e,
+            )
+
     async def ingest(
         self,
         text: str,
@@ -122,36 +201,49 @@ class KuIngestionEngine:
         from aii.service.auto_ingest import _strip_omitted_lines
         text = _strip_omitted_lines(text).strip()
 
-        # 1. Extraction Pipeline — ProcessPoolExecutor (独立进程, 真正绕过 GIL)
-        # functools.partial 而非 lambda — ProcessPoolExecutor 需要可 pickle 的 callable
-        logger.info(f"Extracting KUs from text (length: {len(text)}) provider={provider}")
+        # ── Step 0: Two-step CoT extraction (K-G2) ────────────────────────
+        # Replaces ku_extract_pipeline (one-shot LLM).
+        # Step 1 analysis yields conflict_candidates (耦合点 for Step 2.5).
+        # Step 2 generates ku_candidates; prompt locks "do NOT confirm conflicts".
+        logger.info(
+            "Extracting KUs via two_step_ingest (length=%d, provider=%s)",
+            len(text), provider,
+        )
         loop = asyncio.get_event_loop()
-        extracted = await loop.run_in_executor(
-            _EXTRACT_POOL,
-            functools.partial(ku_extract_pipeline, text=text, project_id=project_id, provider=provider),
+        llm = ProviderRegistry.get().llm(provider)
+
+        from oskill._two_step_ingest import two_step_ingest
+        tsi_result = await two_step_ingest(
+            source_text=text,
+            existing_ku_summaries=[],
+            llm=llm,
+        )
+        logger.debug(
+            "two_step_ingest: entities=%d concepts=%d conflict_hints=%d ku_candidates=%d",
+            len(tsi_result.analysis.get("entities", [])),
+            len(tsi_result.analysis.get("concepts", [])),
+            len(tsi_result.conflict_candidates),
+            len(tsi_result.ku_candidates),
         )
 
-        candidates = extracted.get("candidates", [])
-        rejected = extracted.get("rejected", [])
+        candidates = _convert_ku_candidates(tsi_result.ku_candidates, substrate_id)
 
-        results = {
+        results: dict[str, Any] = {
             "registered": [],
-            "merged": [],       # KU ids that were merged into existing KUs
+            "merged": [],
             "quarantined": [],
-            "chunks_processed": extracted.get("chunks_processed", 0),
+            "chunks_processed": 1,
         }
 
-        # Apply substrate_id + grade_cap before registration
+        # Apply grade_cap before registration
         cap_rank = self._GRADE_RANKS.get(grade_cap, 999) if grade_cap else 999
         for cand in candidates:
-            if substrate_id:
-                cand["substrate_id"] = substrate_id
             if grade_cap:
                 g = cand.get("grade", "unverified")
                 if self._GRADE_RANKS.get(g, 0) > cap_rank:
                     cand["grade"] = grade_cap
 
-        # 2. Register Candidates (omodul) with two-level dedup
+        # ── Step 1+2: Register candidates with dedup ──────────────────────
         config = RegisterKuConfig(backend=self.backend)
 
         for cand in candidates:
@@ -159,17 +251,18 @@ class KuIngestionEngine:
             natural_text = cand.get("natural_text", "")
             embed_input = f"{name}:{natural_text}"
 
-            logger.info(f"Encoding vector for KU: {name}")
+            logger.info("Encoding vector for KU: %s", name)
             _ei = embed_input
             embedding = await loop.run_in_executor(
                 None, lambda: vector_encode(texts=[_ei], provider="default")
             )
-            cand["embedding"] = embedding[0].tolist() if isinstance(embedding, np.ndarray) else embedding[0]
+            cand["embedding"] = (
+                embedding[0].tolist() if isinstance(embedding, np.ndarray) else embedding[0]
+            )
 
-            # ── 两级查重 ──────────────────────────────────────────────────
+            # ── Step 1: Two-level dedup ────────────────────────────────────
             existing_ku_id, is_same = await self._dedupe_check(cand, provider=provider)
             if is_same and existing_ku_id:
-                # 确认相同 → 合并: 追加来源, 不新建
                 try:
                     await self.backend.merge_ku_sources(
                         existing_ku_id,
@@ -177,27 +270,40 @@ class KuIngestionEngine:
                         natural_text=natural_text,
                     )
                     results["merged"].append(existing_ku_id)
-                    logger.info("dedup: merged KU '%s' → existing %s", name[:30], existing_ku_id[:8])
+                    logger.info(
+                        "dedup: merged KU '%s' → existing %s",
+                        name[:30], existing_ku_id[:8],
+                    )
                 except Exception as e:
-                    logger.error("dedup: merge_ku_sources failed for %s: %s", existing_ku_id[:8], e)
-                continue  # 不调 register_ku
+                    logger.error(
+                        "dedup: merge_ku_sources failed for %s: %s",
+                        existing_ku_id[:8], e,
+                    )
+                continue
 
-            # 不重复 → 正常注册
+            # ── Step 2: Register new KU ────────────────────────────────────
             try:
                 _cand = cand
                 await loop.run_in_executor(None, lambda: register_ku(config, {"ku": _cand}))
-                results["registered"].append(cand.get("ku_id"))
+                new_ku_id = cand.get("ku_id")
+                results["registered"].append(new_ku_id)
             except Exception as e:
-                logger.error(f"Failed to register KU {name}: {e}")
+                logger.error("Failed to register KU %s: %s", name, e)
+                continue
 
-        # 3. Handle Rejected (Quarantine)
-        for rej in rejected:
-            ku_id = rej.get("ku_id")
-            if ku_id:
-                await self.backend.quarantine_ku(ku_id, reason="extraction_rejected")
-                results["quarantined"].append(ku_id)
+            # ── Step 2.5: Conflict detection + contradicts edge (K-G1 P-G1) ─
+            # ★ new KU registered above → conflict NEVER blocks ingestion.
+            # ★ grade=unverified hardcoded in ConflictPair.__post_init__.
+            # ★ only adds contradicts edges, never deletes or modifies KUs.
+            if new_ku_id and natural_text:
+                await self._conflict_detect_and_mark(
+                    new_ku_id=new_ku_id,
+                    new_ku_text=natural_text,
+                    new_ku_embedding=cand["embedding"],
+                    llm=llm,
+                )
 
-        # 4. Trigger Reflux (omodul)
+        # ── Step 3: Trigger Reflux (omodul) ───────────────────────────────
         if not skip_reflux:
             logger.info("Triggering knowledge reflux for graph completion")
             reflux_config = KnowledgeRefluxConfig(backend=self.backend)
@@ -205,6 +311,6 @@ class KuIngestionEngine:
                 _rc = reflux_config
                 await loop.run_in_executor(None, lambda: run_reflux(_rc, {}))
             except Exception as e:
-                logger.warning(f"Knowledge reflux failed: {e}")
+                logger.warning("Knowledge reflux failed: %s", e)
 
         return results
