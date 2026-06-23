@@ -256,6 +256,7 @@ class KuIngestionEngine:
         for cand in candidates:
             name = cand.get("name") or cand.get("title", "unnamed")
             natural_text = cand.get("natural_text", "")
+            # ★ embedding 用英文原文算，不受翻译影响（命门）
             embed_input = f"{name}:{natural_text}"
 
             logger.info("Encoding vector for KU: %s", name)
@@ -263,6 +264,21 @@ class KuIngestionEngine:
             embedding = await loop.run_in_executor(
                 None, lambda: vector_encode(texts=[_ei], provider="default")
             )
+
+            # ── 双语翻译: 英文 KU → natural_text_zh ───────────────────────
+            # 中文 KU 跳过（natural_text_zh 留空）
+            import re as _re
+            if not _re.search(r'[一-龥]', natural_text):
+                try:
+                    from aii.service.ku_translate import translate_ku_to_zh
+                    _has_formula = bool(cand.get("symbolic_form"))
+                    _zh = await loop.run_in_executor(
+                        None, lambda: translate_ku_to_zh(natural_text, _has_formula)
+                    )
+                    if _zh:
+                        cand["natural_text_zh"] = _zh
+                except Exception as _te:
+                    logger.warning("ku_translate: skip (non-fatal): %s", _te)
             cand["embedding"] = (
                 embedding[0].tolist() if isinstance(embedding, np.ndarray) else embedding[0]
             )

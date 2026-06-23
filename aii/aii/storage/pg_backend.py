@@ -227,7 +227,7 @@ class PgBackend(StorageBackend, EpistemicStore):
                     "symbolic_form", "embedding", "grade", "source",
                     "verified", "is_quarantined", "provenance", "fingerprint",
                     "is_synthesis", "synthesis_meta", "substrate_id",
-                    "sources", "merge_count",
+                    "sources", "merge_count", "natural_text_zh",
                 }
                 row = {k: v for k, v in ku.items() if k in _allowed}
                 row["ku_id"] = ku_id
