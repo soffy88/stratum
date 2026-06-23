@@ -628,6 +628,16 @@ class PgBackend(StorageBackend, EpistemicStore):
             )
             return row is not None
 
+    async def get_substrate_id_by_title(self, title: str) -> str | None:
+        """Return existing substrate_id if this exact title was already ingested with ku_count>0."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT substrate_id FROM aii.ingested_substrate WHERE title = $1 AND ku_count > 0 LIMIT 1",
+                title,
+            )
+        return str(row["substrate_id"]) if row else None
+
     async def mark_substrate_ingested(
         self, substrate_id: str, title: str, medium: str, ku_count: int,
         subject: str | None = None,

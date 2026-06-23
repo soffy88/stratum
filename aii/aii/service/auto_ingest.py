@@ -128,6 +128,15 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
         logger.debug("auto_ingest: already ingested %s (%s)", substrate_id[:8], title[:40])
         return -1
 
+    # 书级去重: 同 title 已成功摄取 → 跳过(防止同书不同 chunk-ID 重复摄取)
+    existing = await backend.get_substrate_id_by_title(title)
+    if existing:
+        logger.info(
+            "auto_ingest: title already ingested as %s — skip duplicate %s (%s)",
+            existing[:8], substrate_id[:8], title[:40],
+        )
+        return -1
+
     def _load_text() -> str:
         raw = md_path.read_text(encoding="utf-8", errors="replace")
         return _strip_omitted_lines(raw).strip()
