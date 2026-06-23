@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 _OLLAMA_BASE = "http://localhost:11434"
 _MODEL = "qwen3.5:9b"
-_TIMEOUT = 120  # seconds
+_TIMEOUT = 300  # seconds — qwen3.5:9b cold start (model load) can take ~180s
 
 # 含中日韩字符 → 本来就是中文，不需翻译
 _CJK_RE = re.compile(r"[一-龥぀-ヿ가-힣]")
