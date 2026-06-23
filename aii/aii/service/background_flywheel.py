@@ -322,6 +322,27 @@ async def _compute_proactive_needs(backend) -> list[dict]:
 def _write_needs(gaps: dict, proactive_needs: list[dict] | None = None) -> None:
     try:
         _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        existing_path = _OUTPUT_DIR / "needs.json"
+
+        # ── 读取已有 proactive_direction 条目(持久层) ──────────────────────
+        # proactive_needs=None  → 本轮未计算(旧代码路径),保留文件里的主动需求
+        # proactive_needs=[...] → 本轮重新计算,以新值为准(含空列表=全覆盖)
+        if proactive_needs is None:
+            existing_proactive: list[dict] = []
+            if existing_path.exists():
+                try:
+                    old = json.loads(existing_path.read_text(encoding="utf-8"))
+                    existing_proactive = [
+                        n for n in old.get("needs", [])
+                        if n.get("type") == "proactive_direction"
+                    ]
+                except Exception:
+                    pass
+            merged_proactive = existing_proactive
+        else:
+            merged_proactive = proactive_needs
+
+        # ── reactive high_miss ────────────────────────────────────────────
         high_miss = gaps.get("high_miss_topics", [])
         reactive_needs = [
             {
@@ -345,16 +366,18 @@ def _write_needs(gaps: dict, proactive_needs: list[dict] | None = None) -> None:
                 reactive_needs[0].get("purpose_score", 0) if reactive_needs else 0,
             )
 
-        # 主动方向需求排在被动缺口前面(高优先级)
-        needs = list(proactive_needs or []) + reactive_needs
-        if proactive_needs:
-            logger.info("proactive_gap: %d direction needs merged into needs.json", len(proactive_needs))
+        # 主动需求排前(高优先级), reactive 跟后
+        needs = merged_proactive + reactive_needs
+        logger.info(
+            "proactive_gap: %d direction needs in needs.json (recomputed=%s)",
+            len(merged_proactive), proactive_needs is not None,
+        )
 
         payload = {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "needs": needs,
         }
-        (_OUTPUT_DIR / "needs.json").write_text(
+        existing_path.write_text(
             json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
         )
         logger.info("flywheel: wrote needs.json (%d topics)", len(needs))
