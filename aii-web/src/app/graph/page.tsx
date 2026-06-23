@@ -150,7 +150,7 @@ function ReactFlowGraph({ data, onNodeClick, relFilter, mod }: {
 
 export default function GraphPage() {
   const [state, run] = useApi(api.getSubgraph);
-  const [centerId, setCenterId] = useState('ku-00001');
+  const [centerId, setCenterId] = useState('');
   const [hops, setHops] = useState(1);
   const [relFilter, setRelFilter] = useState<string[]>([]);
   const [q, setQ] = useState('');
@@ -177,6 +177,7 @@ export default function GraphPage() {
   }, []);
 
   const load = useCallback(() => {
+    if (!centerId) return;
     void run({ ku_id: centerId, hops, limit: 24 });
   }, [centerId, hops, run]);
   useEffect(() => { load(); }, [load]);
@@ -233,9 +234,12 @@ export default function GraphPage() {
         <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full" style={{ background: '#6b7280' }} /> unverified</span>
       </div>
 
+      {!centerId && !state.loading && (
+        <OEmptyState title="请先搜索并选择一个知识节点" description="输入关键词 → 点击搜索 → 点击结果作为图谱中心" />
+      )}
       {state.loading && <OLoadingState rows={4} />}
       {state.error && <OErrorState error={state.error} onRetry={load} />}
-      {!state.loading && data && data.nodes.length === 0 && <OEmptyState title="子图为空" description="换一个中心 KU" />}
+      {!state.loading && centerId && data && data.nodes.length === 0 && <OEmptyState title="子图为空" description="换一个中心 KU" />}
 
       {data && data.nodes.length > 0 && (
         <>
