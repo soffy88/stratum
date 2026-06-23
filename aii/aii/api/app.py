@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from aii.api._provider import register_providers
 from aii.storage.pg_backend import PgBackend
 from aii.api._dependencies import backend
-from aii.api.routes import health, ingest, feed, query, chat, evolution, governance, stats, display, textbook_export
+from aii.api.routes import health, ingest, feed, query, chat, evolution, governance, stats, display, textbook_export, delete
 from aii.api._auth import APIKeyMiddleware
 
 # Configure logging
@@ -140,3 +140,4 @@ app.include_router(governance.router, prefix="/api", tags=["governance"])
 app.include_router(stats.router, prefix="/api", tags=["stats"])
 app.include_router(display.router, prefix="/api", tags=["display"])
 app.include_router(textbook_export.router, prefix="/api", tags=["textbook"])
+app.include_router(delete.router, prefix="/api", tags=["delete"])

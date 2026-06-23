@@ -802,6 +802,69 @@ class PgBackend(StorageBackend, EpistemicStore):
             )
         return [dict(r) for r in rows]
 
+    # ── P3 cascade-delete interfaces (K-G5) ────────────────────────────────
+
+    async def get_dangling_deps_count(self, ku_id: str) -> int:
+        """Count edges that have this KU as src or dst (used by cascade_delete for reporting)."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT count(*) AS cnt FROM aii.edge WHERE src_id = $1::uuid OR dst_id = $1::uuid",
+                ku_id,
+            )
+        return int(row["cnt"])
+
+    async def clear_dangling_deps(self, ku_id: str) -> None:
+        """Delete all edges where this KU is src or dst."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM aii.edge WHERE src_id = $1::uuid OR dst_id = $1::uuid",
+                ku_id,
+            )
+
+    async def delete_ku(self, ku_id: str) -> None:
+        """Delete a KU with full cascade:
+        edges (no FK) + ku_state_history (no FK) + ku (ku_concept auto-cascades) + concept.ku_count sync.
+        """
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                # 1. Capture concept_ids before deletion (ku_concept will auto-cascade)
+                concept_rows = await conn.fetch(
+                    "SELECT concept_id FROM aii.ku_concept WHERE ku_id = $1::uuid",
+                    ku_id,
+                )
+                concept_ids = [r["concept_id"] for r in concept_rows]
+
+                # 2. Delete edges (no ON DELETE CASCADE)
+                await conn.execute(
+                    "DELETE FROM aii.edge WHERE src_id = $1::uuid OR dst_id = $1::uuid",
+                    ku_id,
+                )
+                # 3. Delete state history (no ON DELETE CASCADE)
+                await conn.execute(
+                    "DELETE FROM aii.ku_state_history WHERE ku_id = $1::uuid",
+                    ku_id,
+                )
+                # 4. Delete KU (ku_concept rows auto-cascade via FK)
+                await conn.execute(
+                    "DELETE FROM aii.ku WHERE ku_id = $1::uuid",
+                    ku_id,
+                )
+                # 5. Sync concept.ku_count for affected concepts
+                if concept_ids:
+                    await conn.execute(
+                        """
+                        UPDATE aii.concept SET ku_count = (
+                            SELECT count(*) FROM aii.ku_concept WHERE concept_id = aii.concept.concept_id
+                        ) WHERE concept_id = ANY($1::uuid[])
+                        """,
+                        concept_ids,
+                    )
+
+    # ── end P3 ─────────────────────────────────────────────────────────────
+
     async def search_synthesis_kus(self, query_vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
         """Vector search restricted to synthesis (is_synthesis=true) KUs."""
         pool = await self._ensure_pool()
