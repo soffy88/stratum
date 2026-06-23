@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -39,16 +40,20 @@ class EvolutionEngine:
             "gaps": None,
         }
 
+        loop = asyncio.get_event_loop()
+
         # =====================================================================
         # Step 1: Graph Completion & Coherence (Reflux)
         # =====================================================================
         logger.info("Step 1: Graph Reflux")
         reflux_config = omodul.knowledge_reflux.KnowledgeRefluxConfig(
-            backend=self.backend, 
+            backend=self.backend,
             auto_apply_low=True # Auto-apply coherence_boost and missing_inverse
         )
         try:
-            reflux_result = omodul.knowledge_reflux.run_reflux(reflux_config, {})
+            reflux_result = await loop.run_in_executor(
+                None, lambda: omodul.knowledge_reflux.run_reflux(reflux_config, {})
+            )
             # findings is a RefluxReport dataclass object, not a dict or list
             reflux_report = reflux_result.get("findings")
             if reflux_report is not None:
@@ -170,7 +175,9 @@ class EvolutionEngine:
             if v_type:
                 logger.debug(f"Verifying empirical KU ({v_type}): {name}")
                 try:
-                    vk_result = omodul.verify_knowledge.verify_knowledge(vk_config, v_input)
+                    vk_result = await loop.run_in_executor(
+                        None, lambda vi=v_input: omodul.verify_knowledge.verify_knowledge(vk_config, vi)
+                    )
                     vk_findings = vk_result.get("findings")
                     
                     if vk_findings:
@@ -205,7 +212,9 @@ class EvolutionEngine:
         # For this skeleton, we run it with an empty payload to test orchestration.
         try:
              # Input expects episodes with success/failure signals
-             distill_res = omodul.learning_distill.learning_distill(distill_config, {"episodes": []})
+             distill_res = await loop.run_in_executor(
+                 None, lambda: omodul.learning_distill.learning_distill(distill_config, {"episodes": []})
+             )
              # report["distilled"] = len(distill_res.get("findings", {}).get("strategies_generated", []))
              report["distilled"] = 0 
         except Exception as e:
@@ -221,7 +230,9 @@ class EvolutionEngine:
             "pending_decisions": report["needs_review"]
         }
         try:
-            gov_res = omodul.governance_adjudicate.governance_adjudicate(gov_config, gov_input)
+            gov_res = await loop.run_in_executor(
+                None, lambda: omodul.governance_adjudicate.governance_adjudicate(gov_config, gov_input)
+            )
             # Governance processes them and might mark them for human review
             # We don't automatically apply high-risk changes here.
         except Exception as e:
