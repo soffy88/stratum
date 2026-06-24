@@ -15,6 +15,14 @@ provider 分流:
   汇总所有块的 KU → 正常规模 (几十-几百条/书)
   参考 textbook_ingest 的正确分块范例，不重新发明。
 
+段落级完整覆盖 (里程硃1):
+  分块降到段落级 (~1500字/块, 逐块逼 LLM 完整抽取不能跳过)
+  覆盖率质量门 (里程硃4):
+    ku_density = ku_count / (original_chars / 500)
+    < 0.3 → 报警 LOW_COVERAGE + 写 low_coverage.json (供飞轮重摄)
+    = 0 → 强制报错 ZERO_KU
+  标准: 一本书的KU合起来能复现这本书的完整知识
+
 深度理解管道 (每文件摄取后自动跑，单步失败不崩):
   1. RelationEngine.extract_relations_async  → 结网 (规则+LLM边unverified)
   2. DeepSynthesisEngine.build_overview_async → 社区聚类+大局摘要
@@ -26,6 +34,7 @@ import asyncio
 import functools
 import json
 import logging
+import os
 import re
 from pathlib import Path
 
@@ -91,10 +100,16 @@ _MEDIUM_DOC_TYPE: dict[str, str] = {
 
 _PICTURE_KEYWORDS = frozenset(("picture", "figure", "image"))
 
-# 分块参数: 每块目标字符数 (约 3000 汉字 ≈ 4500 ASCII 字符)
-# 超过此阈值的结构块会被进一步按字数切分，避免单块仍太大
-_CHUNK_TARGET_CHARS: int = 4000
-_CHUNK_MAX_CHARS: int = 8000  # 硬上限: 超过此大小强制切分
+# 段落级分块参数 (里程硃1: 降到段落级逼 LLM 不能跳过)
+# 目标 ~500-800 汉字 ≈ 1500 字符; 确保每块 ≤ 2-3 段落，LLM 必须全部抽取
+_CHUNK_TARGET_CHARS: int = 1500
+_CHUNK_MAX_CHARS: int = 2500   # 硬上限: 超过强制切分
+
+# 覆盖率质量门参数 (里程硃4)
+# ku_density = ku_count / (original_chars / 500) 表示"每500字平均KU条数"
+# 0.3 = 30%预期: 期望每500字抽出1条KU, 0.3表示实际达到30%即报警
+_QUALITY_DENSITY_ALERT: float = 0.3
+_QUALITY_OUTPUT_DIR = Path(os.getenv("FLYWHEEL_OUTPUT_DIR", "/home/soffy/shared/aii-to-stratum"))
 
 
 def _strip_omitted_lines(text: str) -> str:
@@ -115,16 +130,16 @@ def _strip_omitted_lines(text: str) -> str:
 
 
 def _split_text_into_chunks(text: str) -> list[str]:
-    """将全书文本按 H2/H3 标题结构切分成独立块，每块单独送 LLM。
+    """将全书文本按段落级切分，每块单独送 LLM，逼迫完整抽取不能跳过。
 
-    策略 (参考 textbook_parser 的正确范例):
-    1. 优先按 ## / ### 标题切分 → 每个 section 一块
-    2. 若某块超过 _CHUNK_MAX_CHARS，进一步按段落切分到 _CHUNK_TARGET_CHARS
-    3. 若全文无 ## / ### 标题，退化为按 _CHUNK_TARGET_CHARS 字数切分
-    4. 每块至少保留标题上下文 (heading 前缀) 供 LLM 理解
-    5. 过滤掉空块和纯空白块
+    策略 (段落级, 里程硃1):
+    1. 优先按 ## / ### 标题切分为 section
+    2. 小 section (<80字内容) 向后合并避免空标题chunk
+    3. 大 section (>硬上限) 按段落切分到目标大小
+    4. 无段落分隔符的连续文本按字数硬切
+    5. 目标: 1500字/块 ≈ 500-750汉字 (约2-3个段落), LLM必须全部抽取
 
-    ★ 这是修复整书全文一次塞LLM只抽7-12条KU病根的核心函数。
+    ★ 段落级切分是实现“完整覆盖能复现整本书”的核心手段。
     """
     lines = text.splitlines(keepends=True)
 
@@ -208,8 +223,104 @@ def _split_text_into_chunks(text: str) -> list[str]:
                 chunks.append(section[pos: pos + _CHUNK_TARGET_CHARS])
                 pos += _CHUNK_TARGET_CHARS
 
-    # 过滤空块
     return [c for c in chunks if c.strip()]
+
+
+def _write_quality_alert(
+    substrate_id: str,
+    title: str,
+    ku_count: int,
+    original_chars: int,
+    alert_type: str,
+    density: float = 0.0,
+) -> None:
+    """将覆盖率过低的书写入 low_coverage.json 供飞轮重摄。非致命。"""
+    import json as _json
+    from datetime import datetime, timezone
+    try:
+        _QUALITY_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        out_path = _QUALITY_OUTPUT_DIR / "low_coverage.json"
+        existing: list[dict] = []
+        if out_path.exists():
+            try:
+                existing = _json.loads(out_path.read_text(encoding="utf-8"))
+            except Exception:
+                existing = []
+        existing_ids = {e.get("substrate_id") for e in existing}
+        if substrate_id not in existing_ids:
+            existing.append({
+                "substrate_id": substrate_id,
+                "title": title[:100],
+                "ku_count": ku_count,
+                "original_chars": original_chars,
+                "ku_density": round(density, 4),
+                "alert_type": alert_type,
+                "detected_at": datetime.now(timezone.utc).isoformat(),
+            })
+            out_path.write_text(
+                _json.dumps(existing, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+    except Exception as _e:
+        logger.warning("quality_alert: write failed (non-fatal): %s", _e)
+
+async def _run_ontology_path(
+    backend: PgBackend, substrate_id: str, text: str, title: str,
+    medium: str, doc_type: str, provider: str, subject: str,
+) -> int:
+    """onto 正式路径 (USE_ONTOLOGY): 抽取→持久化→语义归一→跨块连接→KC(Louvain).
+
+    复用已验证模块, 不重新发明. 旧路径在 ingest_one 下方保留可回退.
+    """
+    from obase import ProviderRegistry
+    from oskill import ontology_extract
+    from aii.service import onto_prompts as P
+    from aii.service.onto_persist import persist_ontology_result
+    from aii.service.concept_onto_ops import vectorize_and_normalize
+    from aii.service.cross_chunk_link import gen_candidates, judge_and_link
+    from aii.service.kc_cluster import cluster_and_persist
+    import asyncpg
+
+    llm = ProviderRegistry.get().llm(provider)
+    source_credibility = "high" if doc_type == "textbook" else "medium"
+    trail_dir = Path("/tmp") / "onto_trails"
+    trail_dir.mkdir(parents=True, exist_ok=True)
+
+    # Step 1: ontology_extract (主库两遍法/六分类) + AII Layer-4 判据 prompt 注入
+    result = await ontology_extract(
+        source_text=text, llm=llm, doc_type=doc_type, source_credibility=source_credibility,
+        pass1_chunk_tmpl=P.PASS1_CHUNK_TMPL, pass1_chunk_system=P.PASS1_CHUNK_SYSTEM,
+        pass1_outline_tmpl=P.PASS1_OUTLINE_TMPL, pass1_outline_system=P.PASS1_OUTLINE_SYSTEM,
+        pass2_chunk_tmpl=P.PASS2_CHUNK_TMPL, pass2_system=P.PASS2_SYSTEM,
+    )
+    # Step 2: 持久化 (过 register_ku_ontology 校验) → ku_onto/edge_onto/concept_onto
+    pstats = await persist_ontology_result(
+        dsn=backend.dsn, substrate_id=substrate_id, result=result,
+        trail_dir=trail_dir, backend=backend)
+    ku_count = pstats.get("registered", 0)
+
+    conn = await asyncpg.connect(backend.dsn)
+    try:
+        from pgvector.asyncpg import register_vector
+        await register_vector(conn)
+        # Step 3: 概念语义归一 (向量化 + 同 discipline 内相似度归一, 方案A)
+        nstats = await vectorize_and_normalize(
+            conn, substrate_id=substrate_id, discipline=(subject or "general"), threshold=0.90)
+        # Step 4: 跨块连接 (概念/语义筛候选 → LLM 判真关系 → 连真边)
+        cands = await gen_candidates(conn, substrate_id=substrate_id, sem_threshold=0.80)
+        cstats = await judge_and_link(conn, llm, cands, substrate_id=substrate_id)
+        # Step 5: KC 聚类 (★Louvain res>=1.0, 不用 community_cluster/连通分量) → kc_onto
+        kstats = await cluster_and_persist(conn, llm, substrate_id=substrate_id, resolution=1.0)
+    finally:
+        await conn.close()
+
+    await backend.mark_substrate_ingested(substrate_id, title, medium, ku_count, subject=subject)
+    logger.info(
+        "auto_ingest[onto]: %s → KU=%d 归一=%d→%d 跨块边=%d/%d候选 KC=%d社区%s",
+        title[:40], ku_count, nstats.get("before", 0), nstats.get("after", 0),
+        cstats.get("linked", 0), cstats.get("candidates", 0),
+        kstats.get("communities", 0), kstats.get("sizes", []),
+    )
+    return ku_count
 
 
 async def ingest_one(md_path: Path, backend: PgBackend) -> int:
@@ -260,6 +371,11 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
     grade_cap = _MEDIUM_GRADE_CAP.get(medium)
     provider = _MEDIUM_PROVIDER.get(medium, "default")
     doc_type = _MEDIUM_DOC_TYPE.get(medium, "science")
+
+    # ── onto 正式路径 (USE_ONTOLOGY 开关; 下方旧路径完整保留可回退) ──────────
+    if os.getenv("USE_ONTOLOGY"):
+        return await _run_ontology_path(
+            backend, substrate_id, text, title, medium, doc_type, provider, subject)
 
     # ── Step 1: KU 抽取 (分块版，修复整书全文一次塞LLM只抽7-12条病根) ────
     chunks = _split_text_into_chunks(text)
@@ -313,8 +429,30 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
         title[:50], medium, provider, grade_cap, len(chunks), chunk_errors, ku_count,
     )
 
+    # ── 覆盖率质量门 (里程硃4) ─────────────────────────────────────────────
+    # ku_density = ku_count / (original_chars / 500)
+    # 期望: 每500字至少有 1 条 KU (完整覆盖)
+    # <0.3 = 实际不到0预期 → LOW_COVERAGE 报警; =0 → ZERO_KU 报错
+    _original_chars = len(text)
+    _expected_ku = max(_original_chars / 500, 1)
+    _density = ku_count / _expected_ku
     if ku_count == 0:
-        return 0
+        logger.error(
+            "quality_gate: ZERO_KU ★★★ %s — 摄取完全失败(LLM返回空/提供商异常)",
+            title[:50],
+        )
+        _write_quality_alert(substrate_id, title, 0, _original_chars, "zero_ku", 0.0)
+    elif _density < _QUALITY_DENSITY_ALERT:
+        logger.warning(
+            "quality_gate: LOW_COVERAGE ★★ %s — %d KU / %d字 (density=%.2f, 阈值=%.1f)",
+            title[:50], ku_count, _original_chars, _density, _QUALITY_DENSITY_ALERT,
+        )
+        _write_quality_alert(substrate_id, title, ku_count, _original_chars, "low_coverage", _density)
+    else:
+        logger.info(
+            "quality_gate: OK %s — density=%.2f (%d KU / %d字)",
+            title[:40], _density, ku_count, _original_chars,
+        )
 
     registered_ids = registered_ids_all
 
