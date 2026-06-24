@@ -156,6 +156,29 @@ def _split_text_into_chunks(text: str) -> list[str]:
         sections = [text.strip()] if text.strip() else []
 
     # ── 过大的块按字数进一步切分 ─────────────────────────────────────────────
+    # 先合并过小的 section（解决OCR/PDF转换书大量空 ## 行的问题）
+    # section 内容（去掉首行标题后）< _CHUNK_MIN_CONTENT_CHARS 则并入下一个
+    _CHUNK_MIN_CONTENT_CHARS = 80
+    if len(sections) > 1:
+        merged: list[str] = []
+        carry = ""
+        for sec in sections:
+            combined = (carry + "\n\n" + sec).strip() if carry else sec
+            # 计算"实质内容"字符数：去掉首行标题行
+            body_lines = combined.splitlines()[1:]
+            body_chars = sum(len(l) for l in body_lines)
+            if body_chars < _CHUNK_MIN_CONTENT_CHARS:
+                carry = combined  # 太小，继续往后合并
+            else:
+                merged.append(combined)
+                carry = ""
+        if carry:  # 最后一个小块追加到最后一个大块，或单独保留
+            if merged:
+                merged[-1] = merged[-1] + "\n\n" + carry
+            else:
+                merged.append(carry)
+        sections = merged
+
     chunks: list[str] = []
     for section in sections:
         if len(section) <= _CHUNK_MAX_CHARS:
