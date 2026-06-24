@@ -280,14 +280,18 @@ async def _run_ontology_path(
     from aii.service.kc_cluster import cluster_and_persist
     import asyncpg
 
-    llm = ProviderRegistry.get().llm(provider)
+    llm = ProviderRegistry.get().llm(provider)  # 默认 flash; Step4/5 固定用它(量大/容错/省钱)
+    # ★按步分模型预留: 默认全 flash(实测够用). Step1 抽取可单独切 pro:
+    #   设 STEP1_MODEL=deepseek-pro → Step1 走 pro; 不设 → 随 provider(flash). 不强制切.
+    _step1_model = os.getenv("STEP1_MODEL")
+    step1_llm = ProviderRegistry.get().llm(_step1_model) if _step1_model else llm
     source_credibility = "high" if doc_type == "textbook" else "medium"
     trail_dir = Path("/tmp") / "onto_trails"
     trail_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: ontology_extract (主库两遍法/六分类) + AII Layer-4 判据 prompt 注入
     result = await ontology_extract(
-        source_text=text, llm=llm, doc_type=doc_type, source_credibility=source_credibility,
+        source_text=text, llm=step1_llm, doc_type=doc_type, source_credibility=source_credibility,
         pass1_chunk_tmpl=P.PASS1_CHUNK_TMPL, pass1_chunk_system=P.PASS1_CHUNK_SYSTEM,
         pass1_outline_tmpl=P.PASS1_OUTLINE_TMPL, pass1_outline_system=P.PASS1_OUTLINE_SYSTEM,
         pass2_chunk_tmpl=P.PASS2_CHUNK_TMPL, pass2_system=P.PASS2_SYSTEM,
