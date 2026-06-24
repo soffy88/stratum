@@ -74,6 +74,26 @@ ACTIVE WHY-EXTRACTION (required):
 - For each key concept found, ask WHY it works / what mechanism underlies it
 - If a mechanism exists → create an explanatory KU + an 'explains' edge
 
+CONCEPT LAYER — ONLY for conceptual KUs that DEFINE a concept (else leave all four NULL):
+  defines_concept:    the core concept this KU defines (which concept it carries)
+  concept_level:      "concrete" (bound to specific objects, e.g. price elasticity, Pythagorean theorem)
+                   or "abstract" (itself abstract / cross-domain, e.g. entropy, equilibrium)
+  concept_discipline: the discipline this concept belongs to (economics/math/physics/...), or "general"
+                      if cross-domain with consistent meaning (e.g. causality, ratio).
+                      ★Judge PER-CONCEPT, not per-book — e.g. price elasticity of SUPPLY vs DEMAND
+                      are DIFFERENT concepts.
+  concept_nature:     ONLY if concept_level="abstract" AND you can identify it. The concept's intrinsic
+                      LAW / NECESSARY TENDENCY — "how it MUST behave / where it MUST tend" (道) — NOT
+                      "what it looks like" (mere appearance/相).
+                      e.g. entropy's nature = "without external force, can only increase over time,
+                      irreversible, has a direction" — NOT "a measure of disorder".
+                      Find it any way: same word across domains (thermodynamic vs information entropy →
+                      strip the domain shells, find the shared law); or different words same law (natural
+                      selection / market competition); or any insight your understanding reveals.
+                      ★Leave NULL if you genuinely cannot. NEVER fabricate a nature — NULL is correct.
+- Non-conceptual KUs (procedural/explanatory/factual/positional/metacognitive) do NOT output these
+  four fields — they reference concepts but do not define them.
+
 grade: always set to "unverified" regardless of evidence strength
 
 Output JSON with:
@@ -88,7 +108,11 @@ Output JSON with:
       "sub_type": "<sub_type or null>",
       "stance_holder": "<required for positional, else null>",
       "example": "<supporting example if demoted, else null>",
-      "concepts": ["referenced concepts"]
+      "concepts": ["referenced concepts"],
+      "defines_concept": "<conceptual KU only: the concept it defines, else null>",
+      "concept_level": "<conceptual KU only: concrete|abstract, else null>",
+      "concept_discipline": "<conceptual KU only: discipline or general, else null>",
+      "concept_nature": "<abstract concept only: intrinsic law (道), else null>"
     }}
   ],
   "edge_candidates": [
