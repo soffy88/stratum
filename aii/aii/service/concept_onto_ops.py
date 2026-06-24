@@ -30,8 +30,11 @@ def _encode(texts: list[str]) -> np.ndarray:
     return np.asarray(vector_encode(texts=texts, provider="default"))
 
 
-def _union_groups(items: list, vecs: np.ndarray, threshold: float) -> list[list[int]]:
-    """对 vecs 按余弦 >= threshold 做并查集分组, 返回 size>=2 的组(下标)."""
+def _union_groups(items: list, vecs: np.ndarray, threshold: float, forbid=None) -> list[list[int]]:
+    """对 vecs 按余弦 >= threshold 做并查集分组, 返回 size>=2 的组(下标).
+
+    forbid(i,j) -> bool: 若返回 True 则禁止 i,j 合并(如不同学科的同名概念).
+    """
     n = len(items)
     parent = list(range(n))
 
@@ -42,6 +45,8 @@ def _union_groups(items: list, vecs: np.ndarray, threshold: float) -> list[list[
         return x
 
     for i, j in combinations(range(n), 2):
+        if forbid is not None and forbid(i, j):
+            continue
         if _cos(vecs[i], vecs[j]) >= threshold:
             parent[find(i)] = find(j)
     from collections import defaultdict
@@ -74,10 +79,11 @@ async def vectorize_and_normalize(conn, *, substrate_id: str, discipline: str,
         return {"before": 0, "after": 0, "merged": 0, "groups": []}
 
     vecs = _encode(names)
-    # 填 vector + discipline (方案A: 存在 concept_onto.vector = 概念类型)
+    # 填 vector; discipline 用 COALESCE — ★保留路A的每概念 discipline, 只给没填的补书级默认
     for cid, vec in zip(cids, vecs):
         await conn.execute(
-            "UPDATE aii.concept_onto SET vector = $1, discipline = $2 WHERE concept_id = $3",
+            "UPDATE aii.concept_onto SET vector = $1, discipline = COALESCE(discipline, $2) "
+            "WHERE concept_id = $3",
             vec.tolist(), discipline, cid,
         )
 
@@ -85,7 +91,16 @@ async def vectorize_and_normalize(conn, *, substrate_id: str, discipline: str,
     link_cnt = {r["concept_id"]: r["n"] for r in await conn.fetch(
         "SELECT concept_id, count(*) n FROM aii.ku_concept_onto GROUP BY 1")}
 
-    groups = _union_groups(cids, vecs, threshold)
+    # ★每概念 discipline → 禁止跨学科同名误合 (供给弹性 vs 需求弹性)
+    disc_by_cid = {r["concept_id"]: r["discipline"] for r in await conn.fetch(
+        "SELECT concept_id, discipline FROM aii.concept_onto WHERE concept_id = ANY($1)", cids)}
+    disciplines = [disc_by_cid.get(c) for c in cids]
+
+    def _forbid(i, j):
+        a, b = disciplines[i], disciplines[j]
+        return bool(a and b and a != b)
+
+    groups = _union_groups(cids, vecs, threshold, forbid=_forbid)
     merged_total = 0
     group_report = []
     async with conn.transaction():
@@ -108,6 +123,19 @@ async def vectorize_and_normalize(conn, *, substrate_id: str, discipline: str,
                 "UPDATE aii.concept_onto SET aliases = aliases || $1::jsonb WHERE concept_id = $2",
                 json.dumps([d[1] for d in dups]), can_id,
             )
+            # ★把 dup 的 level/discipline/nature/nature_vector 带到 canonical (canonical 空才补)
+            d = await conn.fetchrow(
+                """SELECT (array_agg(level) FILTER (WHERE level IS NOT NULL))[1] level,
+                          (array_agg(discipline) FILTER (WHERE discipline IS NOT NULL))[1] discipline,
+                          (array_agg(nature) FILTER (WHERE nature IS NOT NULL))[1] nature,
+                          (array_agg(nature_vector) FILTER (WHERE nature_vector IS NOT NULL))[1] nature_vector
+                   FROM aii.concept_onto WHERE concept_id = ANY($1)""", dup_ids)
+            await conn.execute(
+                """UPDATE aii.concept_onto SET
+                     level=COALESCE(level,$2), discipline=COALESCE(discipline,$3),
+                     nature=COALESCE(nature,$4), nature_vector=COALESCE(nature_vector,$5)
+                   WHERE concept_id=$1""",
+                can_id, d["level"], d["discipline"], d["nature"], d["nature_vector"])
             await conn.execute(
                 "DELETE FROM aii.concept_onto WHERE concept_id = ANY($1)", dup_ids)
             merged_total += len(dups)
