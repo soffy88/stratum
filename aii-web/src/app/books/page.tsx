@@ -13,8 +13,21 @@ import { useEffect, useState } from 'react';
 import { OEmptyState, OLoadingState, OErrorState } from '@helios/blocks';
 import { useApiNoArg, useApi } from '@/hooks/useApi';
 import * as api from '@/lib/api-client';
-import type { BuListItem, BuDetail } from '@/types/api';
+import type { BuListItem, BuDetail, BuStructureSection } from '@/types/api';
 import { GradeDot, gradeTextClass, stanceMeta } from '@/components/GradeMarkers';
+
+function StructureTree({ nodes, depth = 0 }: { nodes: BuStructureSection[]; depth?: number }) {
+  return (
+    <ul className={depth === 0 ? 'flex flex-col gap-1.5' : 'flex flex-col gap-1.5 ml-4 mt-1.5'}>
+      {nodes.map((n, i) => (
+        <li key={i} className="text-sm leading-relaxed">
+          <span className={depth === 0 ? 'font-medium' : 'text-[color:var(--text-secondary)]'}>{n.title}</span>
+          {n.children && n.children.length > 0 && <StructureTree nodes={n.children} depth={depth + 1} />}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /** 区块标题 + 细分隔线(取代多层框) */
 function SectionHeading({ children }: { children: React.ReactNode }) {
@@ -44,19 +57,78 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
         {state.error && <OErrorState error={state.error} onRetry={() => void run(id)} />}
         {d && (
           <>
-            {/* 标题区:书名最重,grade 用小色点,综合声明一句话(不挂橙标) */}
+            {/* 标题区 */}
             <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-start gap-2.5">
                 <GradeDot grade={d.grade} size={10} />
                 <h3 className="text-2xl font-semibold leading-tight">{d.book_title}</h3>
               </div>
-              <p className="text-[15px] leading-loose text-[color:var(--foreground)]">{d.summary}</p>
+              {/* ★ 来源可信度标签 */}
+              {(d as any).source_credibility?.book_type && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs px-2 py-0.5 rounded-full border border-[color:var(--border)] text-[color:var(--text-secondary)]">
+                    {(d as any).source_credibility.book_type}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full border border-[color:var(--border)] text-[color:var(--text-secondary)]">
+                    可信度: {(d as any).source_credibility.credibility_level}
+                  </span>
+                  {(d as any).source_credibility.credibility_note && (
+                    <span className="text-xs text-[color:var(--text-tertiary,#888)]">
+                      — {(d as any).source_credibility.credibility_note}
+                    </span>
+                  )}
+                </div>
+              )}
+              {/* ★ 一句话总览 */}
+              {(d as any).overview_oneline && (
+                <p className="text-base font-medium text-[color:var(--foreground)]">{(d as any).overview_oneline}</p>
+              )}
+              <p className="text-[15px] leading-loose text-[color:var(--text-secondary)]">{d.summary}</p>
               <p className="text-xs text-[color:var(--text-tertiary,#888)]">
-                以下为 AII 综合的书级理解,非原文直接断言;论断带立场标记,论据可信度以色点表示(悬停看具体等级)。
+                以下为 AII 综合的书级理解,非原文直接断言;论断带立场标记,论据可信度以色点表示。
               </p>
             </div>
 
-            {/* 主要论断 — 命门:stance 轻量前缀+左色条,grade 小色点 */}
+            {/* ★ 核心问题 */}
+            {(d as any).problem_statement && (
+              <section className="flex flex-col gap-2">
+                <SectionHeading>核心问题 · Problem</SectionHeading>
+                <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{(d as any).problem_statement}</p>
+              </section>
+            )}
+
+            {/* ★ 学习主线 */}
+            {(d as any).learning_thread && (
+              <section className="flex flex-col gap-2">
+                <SectionHeading>学习主线 · Thread</SectionHeading>
+                <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{(d as any).learning_thread}</p>
+              </section>
+            )}
+
+            {/* ★ 核心速览 */}
+            {(d as any).core_takeaways?.length > 0 && (
+              <section className="flex flex-col gap-2">
+                <SectionHeading>核心速览 · Takeaways</SectionHeading>
+                <ul className="flex flex-col gap-1.5">
+                  {(d as any).core_takeaways.map((t: string, i: number) => (
+                    <li key={i} className="text-sm leading-relaxed flex items-start gap-2">
+                      <span className="text-[color:var(--accent,#2563eb)] font-bold shrink-0">{i + 1}.</span>
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {/* ★ 适用边界 */}
+            {(d as any).applicability && (
+              <section className="flex flex-col gap-2">
+                <SectionHeading>适用边界 · Applicability</SectionHeading>
+                <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{(d as any).applicability}</p>
+              </section>
+            )}
+
+            {/* 主要论断 */}
             <section className="flex flex-col gap-4">
               <SectionHeading>主要论断 · Main Claims</SectionHeading>
               <ul className="flex flex-col gap-5">
@@ -64,9 +136,11 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
                   const st = stanceMeta(c.stance_marker);
                   return (
                     <li key={c.id} className="flex gap-3 pl-1">
-                      {/* 左色条:stance 颜色区分 */}
                       <span className="w-0.5 shrink-0 rounded-full self-stretch" style={{ background: st.bar }} aria-hidden />
                       <div className="flex flex-col gap-1 flex-1">
+                        {(c as any).stance && (
+                          <span className="text-xs text-[color:var(--text-tertiary,#888)]">{(c as any).stance}</span>
+                        )}
                         <p className="text-[15px] leading-relaxed">
                           <span className="text-[color:var(--text-secondary)] font-medium">{st.prefix}:</span>{' '}
                           {c.text}
@@ -82,18 +156,21 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
               </ul>
             </section>
 
-            {/* 论点 → 论据 — 命门:论据 grade 小色点 + 颜色深浅;缩进表层级,无框 */}
+            {/* 论点 → 论据 */}
             <section className="flex flex-col gap-4">
               <SectionHeading>论点 → 论据 · Argument</SectionHeading>
               <ul className="flex flex-col gap-6">
                 {d.argument_structure.map(arg => (
                   <li key={arg.id} className="flex flex-col gap-2.5">
-                    {/* 论点:稍重字体 + grade 小色点 */}
                     <div className="flex items-start gap-2">
                       <GradeDot grade={arg.thesis_grade} size={9} />
                       <p className="text-[15px] font-medium leading-relaxed flex-1 -mt-0.5">{arg.thesis}</p>
                     </div>
-                    {/* 论据:缩进 + 小圆点列表,grade 小色点 + 文字颜色深浅,无框 */}
+                    {(arg as any).boundary && (
+                      <p className="text-xs text-[color:var(--text-tertiary,#888)] ml-5">
+                        边界: {(arg as any).boundary}
+                      </p>
+                    )}
                     <ul className="flex flex-col gap-2.5 ml-4 pl-3 border-l border-[color:var(--border)]">
                       {arg.evidence.map((ev, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm leading-relaxed">
@@ -108,24 +185,28 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
             </section>
 
             {/* 章节骨架 */}
-            <section className="flex flex-col gap-4">
-              <SectionHeading>章节骨架 · Structure</SectionHeading>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap text-[color:var(--text-secondary)]">{d.structure}</p>
-            </section>
+            {d.structure && Array.isArray(d.structure) && d.structure.length > 0 && (
+              <section className="flex flex-col gap-4">
+                <SectionHeading>章节骨架 · Structure</SectionHeading>
+                <StructureTree nodes={d.structure} />
+              </section>
+            )}
 
-            {/* 核心概念 → 链到 KU(轻量 chip,grade 小色点) */}
-            <section className="flex flex-col gap-4">
-              <SectionHeading>核心概念 · Key Concepts</SectionHeading>
-              <div className="flex flex-wrap gap-x-5 gap-y-2.5">
-                {d.key_concepts.map(kc => (
-                  <a key={kc.ku_id} href={`/knowledge?ku=${kc.ku_id}`}
-                    className="inline-flex items-center gap-2 text-sm text-[color:var(--foreground)] hover:text-[color:var(--accent,#2563eb)] transition-colors">
-                    <GradeDot grade={kc.grade} />
-                    {kc.label}
-                  </a>
-                ))}
-              </div>
-            </section>
+            {/* 核心概念 */}
+            {d.key_concepts.length > 0 && (
+              <section className="flex flex-col gap-4">
+                <SectionHeading>核心概念 · Key Concepts</SectionHeading>
+                <div className="flex flex-wrap gap-x-5 gap-y-2.5">
+                  {d.key_concepts.map(kc => (
+                    <a key={kc.ku_id} href={`/knowledge?ku=${kc.ku_id}`}
+                      className="inline-flex items-center gap-2 text-sm text-[color:var(--foreground)] hover:text-[color:var(--accent,#2563eb)] transition-colors">
+                      <GradeDot grade={kc.grade} />
+                      {kc.label}
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
           </>
         )}
       </div>
@@ -137,7 +218,7 @@ export default function BooksPage() {
   const [state, run] = useApiNoArg(api.getBuList);
   const [detailId, setDetailId] = useState<string | null>(null);
   useEffect(() => { void run(); }, [run]);
-  const items = (state.data ?? []) as BuListItem[];
+  const items = ((state.data as any)?.items ?? state.data ?? []) as BuListItem[];
 
   return (
     <div className="aii-page-content flex flex-col gap-5 max-w-5xl mx-auto">

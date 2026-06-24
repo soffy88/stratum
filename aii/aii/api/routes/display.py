@@ -465,25 +465,27 @@ async def bu_detail(ku_id: str):
 
         meta = _jsonb(row["synthesis_meta"]) or {}
 
-        # main_claims: add synthetic id
+        # main_claims
         raw_claims = meta.get("main_claims") or []
         main_claims = [
             {
                 "id": f"claim-{i}",
                 "text": c.get("claim", ""),
+                "stance": c.get("stance", "作者观点"),
                 "stance_marker": c.get("stance_marker", ""),
                 "claim_grade": c.get("claim_grade", "unverified"),
             }
             for i, c in enumerate(raw_claims)
         ]
 
-        # argument_structure: add synthetic ids
+        # argument_structure
         raw_args = meta.get("argument_structure") or []
         argument_structure = [
             {
                 "id": f"arg-{i}",
                 "thesis": a.get("point", ""),
                 "thesis_grade": "unverified",
+                "boundary": a.get("boundary", ""),
                 "evidence": [
                     {"text": e.get("text", ""), "grade": e.get("grade", "unverified")}
                     for e in (a.get("evidence") or [])
@@ -515,8 +517,10 @@ async def bu_detail(ku_id: str):
                         for r in kc_rows
                     ]
 
-        # structure: raw string from meta (frontend handles as opaque)
-        structure_raw = meta.get("structure") or ""
+        # structure: v2 is list[dict], v1 was string — normalise to list
+        structure_raw = meta.get("structure") or []
+        if isinstance(structure_raw, str):
+            structure_raw = [{"title": "全书结构", "summary": structure_raw, "children": []}] if structure_raw else []
 
         return success_response({
             "id": _str(row["ku_id"]),
@@ -525,6 +529,15 @@ async def bu_detail(ku_id: str):
             "summary": row["natural_text"],
             "grade": row["grade"],
             "main_claim_count": len(main_claims),
+            # v2 新字段
+            "source_credibility": meta.get("source_credibility", {}),
+            "problem_statement": meta.get("problem_statement", ""),
+            "overview_oneline": meta.get("overview_oneline", ""),
+            "learning_thread": meta.get("learning_thread", ""),
+            "knowledge_categories": meta.get("knowledge_categories", {}),
+            "applicability": meta.get("applicability", ""),
+            "core_takeaways": meta.get("core_takeaways", []),
+            # 原有字段
             "main_claims": main_claims,
             "argument_structure": argument_structure,
             "structure": structure_raw,

@@ -9,9 +9,11 @@
 接口约定 (来自实测):
   summary_synthesize 返回平铺 dict:
     status, summary_text, grade, is_synthesis, synthesis_note, source_ku_ids …
-  book_understanding_synthesize 返回平铺 dict:
+  book_understanding_synthesize 返回平铺 dict (v2):
     status, summary, is_synthesis, synthesis_note,
-    main_claims, argument_structure, key_concept_ku_ids, structure …
+    source_credibility, problem_statement, overview_oneline, learning_thread,
+    structure(list), knowledge_categories, applicability, core_takeaways,
+    main_claims, argument_structure, key_concept_ku_ids …
 """
 from __future__ import annotations
 
@@ -263,9 +265,25 @@ class DeepSynthesisEngine:
         doc_type: str = "science",
         provider: str = "default",
     ) -> dict[str, Any]:
-        # 加载 KU 数据
-        all_kus = await self.backend.list_kus()
-        ku_data: dict[str, dict] = {str(ku["ku_id"]): ku for ku in all_kus}
+        # ★ 按 ku_ids 定向查询，不全表扫描
+        if not ku_ids:
+            return {"status": "failed", "error": "no_valid_kus"}
+
+        pool = await self.backend._ensure_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT ku_id::text, natural_text, grade FROM aii.ku"
+                " WHERE ku_id = ANY($1::uuid[])",
+                [uuid.UUID(kid) for kid in ku_ids],
+            )
+            # ★ 取书名供 LLM 判断 book_type
+            title_row = await conn.fetchrow(
+                "SELECT title FROM aii.ingested_substrate WHERE substrate_id = $1",
+                book_substrate_id,
+            )
+        book_title = (title_row["title"] or "") if title_row else ""
+
+        ku_data: dict[str, dict] = {r["ku_id"]: dict(r) for r in rows}
 
         valid_ids = [kid for kid in ku_ids if kid in ku_data]
         if not valid_ids:
@@ -278,6 +296,7 @@ class DeepSynthesisEngine:
             book_substrate_id=book_substrate_id,
             doc_type=doc_type,
             llm_provider=provider,
+            book_title=book_title,
         )
         input_data = BookUnderstandingInput(
             ku_ids=valid_ids,
@@ -287,8 +306,8 @@ class DeepSynthesisEngine:
 
         with tempfile.TemporaryDirectory(prefix="aii_book_") as tmp:
             tmp_path = Path(tmp)
-            logger.info("book_understanding_synthesize: substrate=%s doc_type=%s n=%d",
-                        book_substrate_id, doc_type, len(valid_ids))
+            logger.info("book_understanding_synthesize: substrate=%s title=%r doc_type=%s n=%d",
+                        book_substrate_id, book_title[:40], doc_type, len(valid_ids))
             try:
                 result = await book_understanding_synthesize(config, input_data, tmp_path)
             except Exception as e:
@@ -298,7 +317,6 @@ class DeepSynthesisEngine:
         if result.get("status") != "completed":
             return {"status": result.get("status"), "error": result.get("error")}
 
-        # book_understanding_synthesize 返回平铺 dict (实测确认)
         summary_text = result.get("summary") or ""
         if not summary_text:
             return {"status": "failed", "error": "empty_summary"}
@@ -318,22 +336,36 @@ class DeepSynthesisEngine:
                 "synthesis_note": result.get("synthesis_note", "AII综合，非原文断言"),
                 "book_substrate_id": book_substrate_id,
                 "doc_type": doc_type,
+                # ★ v2 新字段
+                "source_credibility": result.get("source_credibility", {}),
+                "problem_statement": result.get("problem_statement", ""),
+                "overview_oneline": result.get("overview_oneline", ""),
+                "learning_thread": result.get("learning_thread", ""),
+                "structure": result.get("structure", []),        # list[dict]
+                "knowledge_categories": result.get("knowledge_categories", {}),
+                "applicability": result.get("applicability", ""),
+                "core_takeaways": result.get("core_takeaways", []),
+                # 原有字段
                 "main_claims": result.get("main_claims", []),
                 "argument_structure": result.get("argument_structure", []),
                 "key_concept_ku_ids": result.get("key_concept_ku_ids", []),
-                "structure": result.get("structure", ""),
             },
         })
 
         main_claims = result.get("main_claims", [])
         arg_struct = result.get("argument_structure", [])
-        logger.info("Stored book KU %s grade=unverified doc_type=%s claims=%d",
-                    book_ku_id[:8], doc_type, len(main_claims))
+        sc = result.get("source_credibility", {})
+        logger.info(
+            "Stored book KU %s grade=unverified doc_type=%s book_type=%s claims=%d",
+            book_ku_id[:8], doc_type, sc.get("book_type", "?"), len(main_claims),
+        )
 
         return {
             "status": "completed",
             "book_ku_id": book_ku_id,
             "doc_type": doc_type,
+            "book_type": sc.get("book_type", ""),
+            "credibility_level": sc.get("credibility_level", ""),
             "main_claims_count": len(main_claims),
             "argument_structure_count": len(arg_struct),
         }
