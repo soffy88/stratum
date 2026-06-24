@@ -9,6 +9,12 @@ provider 分流:
   video/audio/podcast → "ollama-local" (qwen2.5:7b 本地, 免费快, grade低无需精确)
   paper/book/其他     → "default"      (DeepSeek, 精确, 用于数学/科学内容)
 
+分块摄取 (修复整书全文一次塞LLM只抽7-12条KU的病根):
+  整书 text → _split_text_into_chunks() 按 H2/H3 结构或字数切块
+  每块独立调 engine.ingest() → 各自拥有完整 2048 token 输出空间
+  汇总所有块的 KU → 正常规模 (几十-几百条/书)
+  参考 textbook_ingest 的正确分块范例，不重新发明。
+
 深度理解管道 (每文件摄取后自动跑，单步失败不崩):
   1. RelationEngine.extract_relations_async  → 结网 (规则+LLM边unverified)
   2. DeepSynthesisEngine.build_overview_async → 社区聚类+大局摘要
@@ -85,6 +91,11 @@ _MEDIUM_DOC_TYPE: dict[str, str] = {
 
 _PICTURE_KEYWORDS = frozenset(("picture", "figure", "image"))
 
+# 分块参数: 每块目标字符数 (约 3000 汉字 ≈ 4500 ASCII 字符)
+# 超过此阈值的结构块会被进一步按字数切分，避免单块仍太大
+_CHUNK_TARGET_CHARS: int = 4000
+_CHUNK_MAX_CHARS: int = 8000  # 硬上限: 超过此大小强制切分
+
 
 def _strip_omitted_lines(text: str) -> str:
     """Remove lines that mention a visual placeholder being omitted.
@@ -101,6 +112,81 @@ def _strip_omitted_lines(text: str) -> str:
             continue
         result.append(line)
     return "".join(result)
+
+
+def _split_text_into_chunks(text: str) -> list[str]:
+    """将全书文本按 H2/H3 标题结构切分成独立块，每块单独送 LLM。
+
+    策略 (参考 textbook_parser 的正确范例):
+    1. 优先按 ## / ### 标题切分 → 每个 section 一块
+    2. 若某块超过 _CHUNK_MAX_CHARS，进一步按段落切分到 _CHUNK_TARGET_CHARS
+    3. 若全文无 ## / ### 标题，退化为按 _CHUNK_TARGET_CHARS 字数切分
+    4. 每块至少保留标题上下文 (heading 前缀) 供 LLM 理解
+    5. 过滤掉空块和纯空白块
+
+    ★ 这是修复整书全文一次塞LLM只抽7-12条KU病根的核心函数。
+    """
+    lines = text.splitlines(keepends=True)
+
+    # ── 尝试按 H2 / H3 结构切分 ──────────────────────────────────────────────
+    # 收集每个标题起始行的索引
+    heading_indices: list[int] = []
+    for i, line in enumerate(lines):
+        stripped = line.lstrip()
+        if stripped.startswith("## ") or stripped.startswith("### "):
+            heading_indices.append(i)
+
+    sections: list[str] = []
+    if heading_indices:
+        # 有标题结构 → 按标题分块
+        boundaries = heading_indices + [len(lines)]
+        for idx in range(len(heading_indices)):
+            start = boundaries[idx]
+            end = boundaries[idx + 1]
+            block = "".join(lines[start:end]).strip()
+            if block:
+                sections.append(block)
+        # 第一个标题之前的前言内容也纳入
+        if heading_indices[0] > 0:
+            preamble = "".join(lines[:heading_indices[0]]).strip()
+            if preamble:
+                sections.insert(0, preamble)
+    else:
+        # 无标题结构 → 整体视为一个大块，后续按字数切
+        sections = [text.strip()] if text.strip() else []
+
+    # ── 过大的块按字数进一步切分 ─────────────────────────────────────────────
+    chunks: list[str] = []
+    for section in sections:
+        if len(section) <= _CHUNK_MAX_CHARS:
+            chunks.append(section)
+            continue
+        # 先尝试按段落（双换行）切分
+        paras = re.split(r"\n{2,}", section)
+        if len(paras) > 1:
+            # 有段落分隔 → 积攒到 _CHUNK_TARGET_CHARS
+            buf: list[str] = []
+            buf_len = 0
+            for para in paras:
+                para_len = len(para)
+                if buf_len + para_len > _CHUNK_TARGET_CHARS and buf:
+                    chunks.append("\n\n".join(buf).strip())
+                    buf = [para]
+                    buf_len = para_len
+                else:
+                    buf.append(para)
+                    buf_len += para_len
+            if buf:
+                chunks.append("\n\n".join(buf).strip())
+        else:
+            # 无段落分隔（连续文本）→ 直接按 _CHUNK_TARGET_CHARS 字数硬切
+            pos = 0
+            while pos < len(section):
+                chunks.append(section[pos: pos + _CHUNK_TARGET_CHARS])
+                pos += _CHUNK_TARGET_CHARS
+
+    # 过滤空块
+    return [c for c in chunks if c.strip()]
 
 
 async def ingest_one(md_path: Path, backend: PgBackend) -> int:
@@ -152,31 +238,62 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
     provider = _MEDIUM_PROVIDER.get(medium, "default")
     doc_type = _MEDIUM_DOC_TYPE.get(medium, "science")
 
-    # ── Step 1: KU 抽取 ────────────────────────────────────────────────────
-    engine = KuIngestionEngine(backend)
-    try:
-        result = await engine.ingest(
-            text=text,
-            project_id=substrate_id,
-            substrate_id=substrate_id,
-            grade_cap=grade_cap,
-            provider=provider,
-        )
-    except Exception:
-        logger.exception("auto_ingest: ingest failed for %s", md_path.name)
-        return -1
+    # ── Step 1: KU 抽取 (分块版，修复整书全文一次塞LLM只抽7-12条病根) ────
+    chunks = _split_text_into_chunks(text)
+    logger.info(
+        "auto_ingest: %s → %d chunk(s) (total %d chars)",
+        title[:50], len(chunks), len(text),
+    )
 
-    ku_count = len(result.get("registered", []))
+    engine = KuIngestionEngine(backend)
+    registered_ids_all: list[str] = []
+    chunk_errors = 0
+
+    for chunk_idx, chunk_text in enumerate(chunks):
+        try:
+            chunk_result = await engine.ingest(
+                text=chunk_text,
+                project_id=substrate_id,
+                substrate_id=substrate_id,
+                grade_cap=grade_cap,
+                provider=provider,
+                skip_reflux=True,  # 全部 chunk 完成后统一跑一次 reflux
+            )
+            chunk_ku_ids = [str(kid) for kid in chunk_result.get("registered", []) if kid]
+            registered_ids_all.extend(chunk_ku_ids)
+            logger.info(
+                "auto_ingest: chunk %d/%d → %d KUs (title=%s)",
+                chunk_idx + 1, len(chunks), len(chunk_ku_ids), title[:30],
+            )
+        except Exception:
+            logger.exception(
+                "auto_ingest: chunk %d/%d failed for %s (non-fatal, continue)",
+                chunk_idx + 1, len(chunks), md_path.name,
+            )
+            chunk_errors += 1
+
+    # 统一跑一次 reflux (全量 KU)
+    if registered_ids_all:
+        from omodul.knowledge_reflux import run_reflux, KnowledgeRefluxConfig
+        import asyncio as _asyncio
+        loop = _asyncio.get_event_loop()
+        try:
+            _rc = KnowledgeRefluxConfig(backend=backend)
+            await loop.run_in_executor(None, lambda: run_reflux(_rc, {}))
+        except Exception as _re:
+            logger.warning("auto_ingest: reflux failed for %s (non-fatal): %s", title[:40], _re)
+
+    ku_count = len(registered_ids_all)
     await backend.mark_substrate_ingested(substrate_id, title, medium, ku_count, subject=subject)
     logger.info(
-        "auto_ingest: %s medium=%s provider=%s grade_cap=%s → %d KUs",
-        title[:50], medium, provider, grade_cap, ku_count,
+        "auto_ingest: %s medium=%s provider=%s grade_cap=%s chunks=%d chunk_errors=%d → %d KUs total",
+        title[:50], medium, provider, grade_cap, len(chunks), chunk_errors, ku_count,
     )
 
     if ku_count == 0:
         return 0
 
-    registered_ids = [str(kid) for kid in result.get("registered", []) if kid]
+    registered_ids = registered_ids_all
 
     # ── Step 2: 结网 (RelationEngine) ──────────────────────────────────────
     try:

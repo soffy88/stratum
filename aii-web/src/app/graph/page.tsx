@@ -29,7 +29,6 @@ import {
 } from '@helios/blocks';
 import { useApi } from '@/hooks/useApi';
 import * as api from '@/lib/api-client';
-import { safeGrade } from '@/lib/grade';
 import type { SubgraphResponse, GraphNode, GraphEdge, RelationType } from '@/types/api';
 
 // grade → 颜色(命门:可信度色阶)
@@ -96,7 +95,7 @@ function SvgGraph({ data, onNodeClick, relFilter }: {
         const isCenter = n.id === data.center_id;
         return (
           <g key={n.id} transform={`translate(${p.x},${p.y})`} style={{ cursor: 'pointer' }} onClick={() => onNodeClick(n.id)}>
-            <circle r={nodeR(n)} fill={GRADE_COLOR[safeGrade(n.grade)]} opacity={0.9}
+            <circle r={nodeR(n)} fill={GRADE_COLOR[n.grade]} opacity={0.9}
               stroke={isCenter ? '#fff' : 'none'} strokeWidth={isCenter ? 2 : 0} />
             <text y={nodeR(n) + 11} textAnchor="middle" fontSize="9" fill="var(--text-secondary,#aaa)">
               {n.label.slice(0, 10)}
@@ -123,7 +122,7 @@ function ReactFlowGraph({ data, onNodeClick, relFilter, mod }: {
       position: { x: 360 + Math.cos(angle) * r, y: 240 + Math.sin(angle) * r },
       data: { label: n.label.slice(0, 14) },
       style: {
-        background: GRADE_COLOR[safeGrade(n.grade)], color: '#fff', border: isCenter ? '2px solid #fff' : 'none',
+        background: GRADE_COLOR[n.grade], color: '#fff', border: isCenter ? '2px solid #fff' : 'none',
         borderRadius: 8, fontSize: 11, width: Math.min(120, 50 + n.degree * 6),
       },
     };
@@ -205,7 +204,7 @@ export default function GraphPage() {
           {(searchState.data as any).matches.map((m: { id: string; label: string; grade: EpistemicGrade }) => (
             <button key={m.id} onClick={() => { setCenterId(m.id); }}
               className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border border-[color:var(--border)] hover:border-[color:var(--accent,#2563eb)]/50">
-              <OEpistemicBadge grade={safeGrade(m.grade)} compact /> {m.label}
+              <OEpistemicBadge grade={m.grade} compact /> {m.label}
             </button>
           ))}
         </div>
@@ -234,12 +233,9 @@ export default function GraphPage() {
         <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full" style={{ background: '#6b7280' }} /> unverified</span>
       </div>
 
-      {!centerId && !state.loading && (
-        <OEmptyState title="请先搜索并选择一个知识节点" description="输入关键词 → 点击搜索 → 点击结果作为图谱中心" />
-      )}
       {state.loading && <OLoadingState rows={4} />}
       {state.error && <OErrorState error={state.error} onRetry={load} />}
-      {!state.loading && centerId && data && data.nodes.length === 0 && <OEmptyState title="子图为空" description="换一个中心 KU" />}
+      {!state.loading && data && data.nodes.length === 0 && <OEmptyState title="子图为空" description="换一个中心 KU" />}
 
       {data && data.nodes.length > 0 && (
         <>
