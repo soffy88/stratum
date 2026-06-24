@@ -70,6 +70,12 @@ async def persist_ontology_result(
     stats = {"registered": 0, "rejected": 0, "edges": 0, "concepts": 0,
              "same_as_signals": 0}
 
+    # ★ku_id 按 substrate 命名空间化 (根治跨书碰撞: ku_c0_0 每本从0重启, ku_id 是全局PK)
+    ku_temp_ids = {(k.get("id") or k.get("ku_id")) for k in ku_candidates}
+
+    def _ns(tid: str) -> str:
+        return f"{substrate_id}::{tid}"
+
     conn = await asyncpg.connect(dsn)
     try:
         from pgvector.asyncpg import register_vector
@@ -149,7 +155,7 @@ async def persist_ontology_result(
                         example=EXCLUDED.example,
                         embedding=EXCLUDED.embedding
                     """,
-                    str(ku_id), substrate_id,
+                    _ns(ku_id), substrate_id,
                     ku.get("title"), content,
                     ku.get("knowledge_type"),
                     ku.get("sub_type") or None,
@@ -171,7 +177,7 @@ async def persist_ontology_result(
                         INSERT INTO aii.ku_concept_onto(ku_id, concept_id)
                         VALUES ($1,$2) ON CONFLICT DO NOTHING
                         """,
-                        str(ku_id), cid,
+                        _ns(ku_id), cid,
                     )
 
                 # ── 写 edge_onto (same_as 跳过 = 合并信号, 非边) ─────
@@ -181,13 +187,16 @@ async def persist_ontology_result(
                         # 本次: 仅计数, 不合并不写边 (合并逻辑二期做)
                         stats["same_as_signals"] += 1
                         continue
+                    # dst 是 ku 临时 id → 命名空间化; 是概念名 → 保持原样
+                    _tgt = e.get("target", "")
+                    _dst = _ns(_tgt) if _tgt in ku_temp_ids else _tgt
                     await conn.execute(
                         """
                         INSERT INTO aii.edge_onto
                             (substrate_id, src_id, dst_id, relation_type, extraction_method)
                         VALUES ($1,$2,$3,$4,'llm')
                         """,
-                        substrate_id, str(ku_id), e.get("target", ""), rel,
+                        substrate_id, _ns(ku_id), _dst, rel,
                     )
                     stats["edges"] += 1
 
