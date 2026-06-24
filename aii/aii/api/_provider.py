@@ -9,7 +9,7 @@ from oprim import vector_encode
 logger = logging.getLogger(__name__)
 
 
-def _make_deepseek_caller(api_key: str, model: str = "deepseek-chat") -> callable:
+def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash") -> callable:
     """Return an async callable compatible with both omodul (messages/system/max_tokens kwargs)
     and the legacy synthesis_engine (single positional prompt string via executor).
 
@@ -112,9 +112,11 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
 def register_providers():
     """Register computational providers for AII (A24 Routing)."""
 
-    # 1. LLM Provider (DeepSeek) — default, for paper/book/science
+    # 1. LLM Provider (DeepSeek v4) — default=flash (实测够用且最省); pro 备用
+    #    deepseek-chat 别名 2026/07/24 下线, 已显式改 deepseek-v4-flash.
     api_key = os.getenv("DEEPSEEK_API_KEY")
-    ProviderRegistry.register("llm", "default", _make_deepseek_caller(api_key))
+    ProviderRegistry.register("llm", "default", _make_deepseek_caller(api_key, model="deepseek-v4-flash"))
+    ProviderRegistry.register("llm", "deepseek-pro", _make_deepseek_caller(api_key, model="deepseek-v4-pro"))
 
     # 2. LLM Provider (Ollama qwen2.5:7b) — for low-trust sources (video/audio/podcast)
     #    grade_cap=unverified enforced upstream; this provider is fast + free + JSON-clean
