@@ -12,9 +12,8 @@ export const AII_API_BASE: string =
 export const USE_MOCK: boolean =
   (process.env.NEXT_PUBLIC_USE_MOCK ?? 'false').toLowerCase() === 'true';
 
-/** AII API Key(随 bundle 分发,仅用于只读展示接口) */
-export const AII_API_KEY: string =
-  process.env.NEXT_PUBLIC_AII_API_KEY ?? '';
+/** AII 后端 API Key */
+export const AII_API_KEY: string = process.env.NEXT_PUBLIC_AII_API_KEY ?? '';
 
 /** 用于在 UI 上显示当前模式(供 Topbar 角标使用) */
 export const ENV_BADGE: string = USE_MOCK ? 'MOCK' : AII_API_BASE.replace(/^https?:\/\//, '');

@@ -385,8 +385,7 @@ export interface BuStructureSection {
 export interface BuDetail extends BuListItem {
   main_claims: MainClaim[];
   argument_structure: ArgumentNode[];
-  /** 后端返回字符串(markdown/text 格式);StructureTree 是前端实现细节。 */
-  structure: string;
+  structure: BuStructureSection[];
   /** 核心概念 KU(链到 /knowledge)。 */
   key_concepts: Array<{ ku_id: string; label: string; grade: EpistemicGrade }>;
 }

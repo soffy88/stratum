@@ -15,7 +15,6 @@ import {
 } from '@helios/blocks';
 import { useApiNoArg, useApi } from '@/hooks/useApi';
 import * as api from '@/lib/api-client';
-import { safeGrade } from '@/lib/grade';
 import type { KcListItem, KcDetail } from '@/types/api';
 
 function SynthesisTag() {
@@ -45,7 +44,7 @@ function KcDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
         {d && (
           <>
             <div className="flex items-center gap-2 flex-wrap">
-              <OEpistemicBadge grade={safeGrade(d.grade)} />
+              <OEpistemicBadge grade={d.grade} />
               <span className="text-xs text-[color:var(--text-secondary)]">{d.community_size} 个 KU</span>
             </div>
             <h3 className="text-base font-medium">{d.community_label}</h3>
@@ -57,7 +56,7 @@ function KcDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
               <h4 className="text-xs font-semibold text-[color:var(--text-secondary)] uppercase tracking-wide">成员 KU / Members</h4>
               {d.members.map(m => (
                 <div key={m.id} className="rounded-md border border-[color:var(--border)] p-2.5 text-sm flex items-start gap-2">
-                  <OEpistemicBadge grade={safeGrade(m.grade)} compact />
+                  <OEpistemicBadge grade={m.grade} compact />
                   <span className="flex-1">{m.natural_text}</span>
                 </div>
               ))}
@@ -74,7 +73,7 @@ export default function ClustersPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   useEffect(() => { void run(); }, [run]);
 
-  const items = (state.data ?? []) as KcListItem[];
+  const items = ((state.data as any)?.items ?? state.data ?? []) as KcListItem[];
 
   return (
     <div className="aii-page-content flex flex-col gap-4 max-w-5xl mx-auto">
@@ -98,7 +97,7 @@ export default function ClustersPage() {
               className="rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-4 flex flex-col gap-2 cursor-pointer hover:border-[color:var(--accent,#2563eb)]/50 transition-colors"
             >
               <div className="flex items-center gap-2 flex-wrap">
-                <OEpistemicBadge grade={safeGrade(kc.grade)} compact />
+                <OEpistemicBadge grade={kc.grade} compact />
                 <span className="text-xs text-[color:var(--text-tertiary,#888)] ml-auto">{kc.community_size} KU</span>
               </div>
               <h3 className="text-sm font-medium">{kc.community_label}</h3>

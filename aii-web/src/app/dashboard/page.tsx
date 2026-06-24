@@ -18,11 +18,12 @@ import {
   OErrorState,
 } from '@helios/blocks';
 import { useApiNoArg } from '@/hooks/useApi';
+import { AnimatedNumber, useStaggerReveal } from '@/components/motion/Motion';
 import * as api from '@/lib/api-client';
 
 function Card({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-4 flex flex-col gap-3">
+    <div className="dash-card rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-4 flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold">{title}</h3>
         {hint && <span className="text-xs text-[color:var(--text-tertiary,#888)]">{hint}</span>}
@@ -37,6 +38,9 @@ export default function DashboardPage() {
   const [ingestion, runIngestion] = useApiNoArg(api.getStatsIngestion);
 
   useEffect(() => { void runOverview(); void runIngestion(); }, [runOverview, runIngestion]);
+
+  // 数据到达后,区块卡片交错入场(降级安全:未装 animejs / reduced-motion 时元素本就可见)
+  useStaggerReveal('.dash-card', [overview.data], { delay: 70, translateY: 14 });
 
   const d = overview.data;
   const ing = ingestion.data;
@@ -78,7 +82,7 @@ export default function DashboardPage() {
             <Card title="矛盾发现 / Contradictions" hint="AII 发现的知识冲突">
               <div className="flex items-end gap-2">
                 <span className="text-3xl font-bold text-[color:var(--alert-error,#dc2626)] tabular-nums">
-                  {d.relation_type_dist.contradicts ?? 0}
+                  <AnimatedNumber value={d.relation_type_dist.contradicts ?? 0} duration={900} />
                 </span>
                 <span className="text-sm text-[color:var(--text-secondary)] mb-1">条 contradicts 边</span>
               </div>
@@ -91,12 +95,12 @@ export default function DashboardPage() {
             <Card title="查重成效 / Deduplication" hint="去重析出内核">
               <div className="flex gap-6">
                 <div>
-                  <div className="text-2xl font-bold tabular-nums">{d.merge_count.toLocaleString()}</div>
+                  <div className="text-2xl font-bold tabular-nums"><AnimatedNumber value={d.merge_count} /></div>
                   <div className="text-xs text-[color:var(--text-secondary)]">合并 KU 数</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold tabular-nums text-[color:var(--success,#16a34a)]">
-                    {d.dedup_saved.toLocaleString()}
+                    <AnimatedNumber value={d.dedup_saved} />
                   </div>
                   <div className="text-xs text-[color:var(--text-secondary)]">节省条数</div>
                 </div>
