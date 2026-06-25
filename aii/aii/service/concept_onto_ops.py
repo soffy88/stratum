@@ -58,14 +58,95 @@ def _union_groups(items: list, vecs: np.ndarray, threshold: float, forbid=None) 
     return [v for v in g.values() if len(v) > 1]
 
 
-async def vectorize_and_normalize(conn, *, substrate_id: str, discipline: str,
-                                  threshold: float = 0.90) -> dict:
+def _union_pairs(n: int, pairs) -> list[list[int]]:
+    """对显式 same 对集合做并查集分组, 返回 size>=2 的组(下标). 传递性由并查集处理."""
+    parent = list(range(n))
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for i, j in pairs:
+        parent[find(i)] = find(j)
+    from collections import defaultdict
+    g = defaultdict(list)
+    for i in range(n):
+        g[find(i)].append(i)
+    return [v for v in g.values() if len(v) > 1]
+
+
+_CONCEPT_JUDGE_SYS = (
+    "You judge whether two concept NAMES denote the SAME concept or DIFFERENT concepts. "
+    "★ Antonyms / opposite directions / opposite poles are DIFFERENT, even though their wording "
+    "and embeddings are nearly identical. Output valid JSON only.")
+
+_CONCEPT_JUDGE_TMPL = """\
+Concept A: "{a}"
+Concept B: "{b}"
+
+Do A and B denote the SAME single concept, or DIFFERENT concepts?
+
+SAME = mere variants of ONE concept: casing/plural/hyphenation/word-order/abbreviation, or a short
+form and its fuller name of the SAME thing (e.g. "price elasticity" ↔ "price elasticity of demand",
+"Opportunity cost" ↔ "opportunity cost", "Patents" ↔ "patent").
+
+DIFFERENT = antonyms, opposite directions/poles, or genuinely distinct ideas, even if nearly
+identically worded. Examples that are DIFFERENT:
+  microeconomics ↔ macroeconomics; price elasticity of demand ↔ price elasticity of supply;
+  income elasticity ↔ price elasticity; shift left ↔ shift right; opt-in ↔ opt-out;
+  short-run supply curve ↔ long-run supply curve; employer burden ↔ employee burden;
+  marginal product ↔ marginal revenue; imports ↔ exports.
+
+Default to DIFFERENT unless they clearly name the identical concept.
+Output JSON: {{"same": true}} or {{"same": false}}"""
+
+
+def _parse_same(resp) -> bool:
+    txt = ""
+    for blk in resp.get("content", []):
+        if isinstance(blk, dict) and blk.get("type") == "text":
+            txt += blk.get("text", "")
+    m = re.search(r'\{.*\}', txt, re.DOTALL)
+    if not m:
+        return False
+    try:
+        return bool(json.loads(m.group(0)).get("same") is True)
+    except Exception:
+        return False
+
+
+async def _judge_same_pairs(llm, names, cand, concurrency: int) -> set:
+    """对候选对 LLM 判同一; 返回判为 SAME 的 (i,j) 集合. 反义/方向相反默认 DIFFERENT."""
+    sem = asyncio.Semaphore(concurrency)
+
+    async def judge(i, j):
+        async with sem:
+            prompt = _CONCEPT_JUDGE_TMPL.format(a=names[i], b=names[j])
+            try:
+                resp = await llm(messages=[{"role": "user", "content": prompt}],
+                                 system=_CONCEPT_JUDGE_SYS, max_tokens=20)
+                return (i, j, _parse_same(resp))
+            except Exception:
+                return (i, j, False)  # 判不了就不合 (保守)
+
+    same = set()
+    for fut in asyncio.as_completed([judge(i, j) for i, j in cand]):
+        i, j, ok = await fut
+        if ok:
+            same.add((i, j))
+    return same
+
+
+async def vectorize_and_normalize(conn, llm, *, substrate_id: str, discipline: str,
+                                  screen_threshold: float = 0.85, concurrency: int = 5) -> dict:
     """里程碑3: 给 substrate 的概念算向量并填 vector/discipline, 然后语义归一.
 
-    归一规则 (★同 discipline 内才比, 同名+不同 discipline 不合):
-      - 同 discipline 内向量相似度 >= threshold → 同一概念 → 合并(保留 canonical,
-        被合并的名进 aliases, ku_concept_onto 链接改指 canonical, 删重复行).
-      - < threshold → 不同概念, 各自独立.
+    归一规则 (★向量只筛候选, LLM 判同一才合 — 复用 cross_chunk/converge 套路, 治 0.90 纯余弦反义误并):
+      ① 向量筛候选: 同 discipline 内余弦 >= screen_threshold(放低多召回) → 候选对(只筛, 不判定).
+      ② ★LLM 判: 两概念名是同一概念还是不同? 反义/方向相反(微观≠宏观/供给≠需求弹性)默认 DIFFERENT.
+      ③ 仅 LLM 判 SAME 的对进并查集 → 合并(保留 canonical, 余名进 aliases, 链接改指, 删重复行).
     返回 stats.
     """
     rows = await conn.fetch(
@@ -78,7 +159,7 @@ async def vectorize_and_normalize(conn, *, substrate_id: str, discipline: str,
     cids = [r["concept_id"] for r in rows]
     names = [r["name"] for r in rows]
     if not cids:
-        return {"before": 0, "after": 0, "merged": 0, "groups": []}
+        return {"before": 0, "after": 0, "merged": 0, "candidates": 0, "groups": []}
 
     vecs = _encode(names)
     # 填 vector; discipline 用 COALESCE — ★保留路A的每概念 discipline, 只给没填的补书级默认
@@ -102,7 +183,12 @@ async def vectorize_and_normalize(conn, *, substrate_id: str, discipline: str,
         a, b = disciplines[i], disciplines[j]
         return bool(a and b and a != b)
 
-    groups = _union_groups(cids, vecs, threshold, forbid=_forbid)
+    # ① 向量筛候选 (只筛范围, 不判定)
+    cand = [(i, j) for i, j in combinations(range(len(cids)), 2)
+            if not _forbid(i, j) and _cos(vecs[i], vecs[j]) >= screen_threshold]
+    # ② LLM 判同一 → ③ 仅 SAME 的进并查集
+    same_pairs = await _judge_same_pairs(llm, names, cand, concurrency)
+    groups = _union_pairs(len(cids), same_pairs)
     merged_total = 0
     group_report = []
     async with conn.transaction():
@@ -143,7 +229,7 @@ async def vectorize_and_normalize(conn, *, substrate_id: str, discipline: str,
             group_report.append({"canonical": can_name, "merged": [d[1] for d in dups]})
 
     return {"before": len(cids), "after": len(cids) - merged_total,
-            "merged": merged_total, "groups": group_report}
+            "merged": merged_total, "candidates": len(cand), "groups": group_report}
 
 
 _INV_JUDGE_SYS = ("You judge whether two stated invariants describe the SAME underlying intrinsic law "
