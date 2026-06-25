@@ -14,7 +14,9 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
+import re
 from itertools import combinations
 
 import numpy as np
@@ -145,24 +147,98 @@ async def vectorize_and_normalize(conn, *, substrate_id: str, discipline: str,
             "merged": merged_total, "groups": group_report}
 
 
-async def converge_invariants(conn, *, threshold: float = 0.90) -> dict:
-    """里程碑5: 本性收敛. 对有 invariant_vector 的抽象概念, 按余弦收敛:
-      - >=2 概念本性向量收敛 → 凝结 1 个 invariant_concept, 相关概念 invariant_concept_id 指向它
-        (→ 这些概念之间成立"本性同源"强联系).
-      - 单个未收敛 → 留作该概念自己的 invariant, 不进 invariant_concept 表.
-    ★本性跨学科收敛 (同源即连, 不按 discipline 隔离 — 这正是本性维度的意义).
-    空 invariant → no-op (不报错).
+_INV_JUDGE_SYS = ("You judge whether two stated invariants describe the SAME underlying intrinsic law "
+                  "(the same 道 / necessary tendency) — possibly across different domains or languages. "
+                  "You only say same=true when the intrinsic law is genuinely the same. Output valid JSON only.")
+
+_INV_JUDGE_TMPL = """\
+Two invariants (each = a concept's intrinsic LAW / necessary tendency, NOT its definition):
+
+[A] {a}
+[B] {b}
+
+Do A and B describe the SAME underlying invariant (same 道), even if worded differently, in different
+languages, or from different fields? Cross-domain sameness COUNTS — e.g. a derivative's "instantaneous
+rate of change" and marginal cost's "change from one more unit" are the SAME invariant (rate of change
+at a point). But merely sharing a topic is NOT enough — the intrinsic law itself must be the same
+(e.g. "resources are limited, forcing trade-offs" vs "a function is smooth/differentiable" → different laws → false).
+
+Output JSON: {{"same": true or false}}"""
+
+
+def _parse_same(resp) -> bool:
+    txt = ""
+    for blk in resp.get("content", []):
+        if isinstance(blk, dict) and blk.get("type") == "text":
+            txt += blk.get("text", "")
+    m = re.search(r'\{.*\}', txt, re.DOTALL)
+    if not m:
+        return False
+    try:
+        return json.loads(m.group(0)).get("same") is True
+    except Exception:
+        return False
+
+
+async def converge_invariants(conn, llm, *, candidate_threshold: float = 0.45,
+                              concurrency: int = 5) -> dict:
+    """里程碑5(升级): 本性同源 = ★向量低阈筛候选 + LLM 判同一 (复用 cross_chunk_link 套路).
+
+    纯余弦判同源对跨学科太弱 (导数↔边际仅 0.517). 改为:
+      ① invariant_vector 余弦 >= candidate_threshold(默认0.45) → 候选对 (只筛范围, 不判定).
+      ② 每候选对 LLM 判 "是不是同一个道(intrinsic law)?" — yes/no.
+      ③ LLM 判 yes 的对 → 并查集连通 → 每组凝结 1 个 invariant_concept,
+         成员概念 invariant_concept_id 指向它 (本性同源连接). LLM 判 no → 不凝结.
+    ★red line: 余弦只筛候选, LLM 判 yes 才凝结, 绝不靠余弦直接判同源.
+    跨学科收敛 (同源即连, 不按 discipline 隔离). 空 invariant → no-op.
     """
     rows = await conn.fetch(
-        """SELECT concept_id, invariant, invariant_vector FROM aii.concept_onto
+        """SELECT concept_id, name, invariant, invariant_vector FROM aii.concept_onto
            WHERE invariant_vector IS NOT NULL""")
-    if len(rows) < 2:
-        return {"invariants": len(rows), "condensed": 0, "groups": []}
+    n = len(rows)
+    if n < 2:
+        return {"invariants": n, "candidates": 0, "judged_same": 0, "condensed": 0, "groups": []}
 
     cids = [r["concept_id"] for r in rows]
-    invariants = [r["invariant"] for r in rows]
+    names = [r["name"] for r in rows]
+    invs = [r["invariant"] for r in rows]
     vecs = np.asarray([[float(x) for x in r["invariant_vector"]] for r in rows])
-    groups = _union_groups(cids, vecs, threshold)
+
+    # ① 向量低阈筛候选 (只筛范围)
+    candidates = [(i, j) for i, j in combinations(range(n), 2)
+                  if _cos(vecs[i], vecs[j]) >= candidate_threshold]
+
+    # ② LLM 判同源 (并发)
+    sem = asyncio.Semaphore(concurrency)
+
+    async def judge(i, j):
+        async with sem:
+            prompt = _INV_JUDGE_TMPL.format(a=invs[i] or "", b=invs[j] or "")
+            try:
+                resp = await llm(messages=[{"role": "user", "content": prompt}],
+                                 system=_INV_JUDGE_SYS, max_tokens=60)
+                same = _parse_same(resp)
+            except Exception:
+                same = False
+            return (i, j, same)
+
+    judged = await asyncio.gather(*[judge(i, j) for i, j in candidates]) if candidates else []
+    yes_pairs = [(i, j) for i, j, same in judged if same]
+
+    # ③ yes 对并查集 → 连通分量 → 凝结
+    parent = list(range(n))
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]; x = parent[x]
+        return x
+    for i, j in yes_pairs:
+        parent[find(i)] = find(j)
+    from collections import defaultdict
+    comp = defaultdict(list)
+    for i in range(n):
+        comp[find(i)].append(i)
+    groups = [g for g in comp.values() if len(g) > 1]
 
     condensed = 0
     report = []
@@ -170,17 +246,16 @@ async def converge_invariants(conn, *, threshold: float = 0.90) -> dict:
         for grp in groups:
             member_ids = [cids[i] for i in grp]
             centroid = np.mean(vecs[grp], axis=0)
-            statement = next((invariants[i] for i in grp if invariants[i]), "(unspecified invariant)")
+            statement = next((invs[i] for i in grp if invs[i]), "(unspecified invariant)")
             nc_id = await conn.fetchval(
                 """INSERT INTO aii.invariant_concept(statement, vector, member_concept_ids)
                    VALUES ($1, $2, $3::jsonb) RETURNING id""",
-                statement, centroid.tolist(), json.dumps([str(m) for m in member_ids]),
-            )
+                statement, centroid.tolist(), json.dumps([str(m) for m in member_ids]))
             await conn.execute(
                 "UPDATE aii.concept_onto SET invariant_concept_id = $1 WHERE concept_id = ANY($2)",
-                nc_id, member_ids,
-            )
+                nc_id, member_ids)
             condensed += 1
-            report.append({"invariant_concept": str(nc_id), "members": len(member_ids)})
+            report.append({"statement": statement[:60], "members": [names[i] for i in grp]})
 
-    return {"invariants": len(rows), "condensed": condensed, "groups": report}
+    return {"invariants": n, "candidates": len(candidates), "judged_same": len(yes_pairs),
+            "condensed": condensed, "groups": report}
