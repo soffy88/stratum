@@ -38,9 +38,6 @@ import os
 import re
 from pathlib import Path
 
-from aii.service.ku_ingestion_engine import KuIngestionEngine
-from aii.service.relation_engine import RelationEngine
-from aii.service.synthesis_engine_deep import DeepSynthesisEngine
 from aii.storage.pg_backend import PgBackend
 
 logger = logging.getLogger(__name__)
@@ -380,129 +377,7 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
     provider = _MEDIUM_PROVIDER.get(medium, "default")
     doc_type = _MEDIUM_DOC_TYPE.get(medium, "science")
 
-    # ── onto 正式路径 (USE_ONTOLOGY 开关; 下方旧路径完整保留可回退) ──────────
-    if os.getenv("USE_ONTOLOGY"):
-        return await _run_ontology_path(
-            backend, substrate_id, text, title, medium, doc_type, provider, subject)
+    # onto-only: 旧 Step1-4 链路(KuIngestionEngine/RelationEngine/DeepSynthesis)已退役删除, 统一走 onto 路径.
+    return await _run_ontology_path(
+        backend, substrate_id, text, title, medium, doc_type, provider, subject)
 
-    # ── Step 1: KU 抽取 (分块版，修复整书全文一次塞LLM只抽7-12条病根) ────
-    chunks = _split_text_into_chunks(text)
-    logger.info(
-        "auto_ingest: %s → %d chunk(s) (total %d chars)",
-        title[:50], len(chunks), len(text),
-    )
-
-    engine = KuIngestionEngine(backend)
-    registered_ids_all: list[str] = []
-    chunk_errors = 0
-
-    for chunk_idx, chunk_text in enumerate(chunks):
-        try:
-            chunk_result = await engine.ingest(
-                text=chunk_text,
-                project_id=substrate_id,
-                substrate_id=substrate_id,
-                grade_cap=grade_cap,
-                provider=provider,
-                skip_reflux=True,  # 全部 chunk 完成后统一跑一次 reflux
-            )
-            chunk_ku_ids = [str(kid) for kid in chunk_result.get("registered", []) if kid]
-            registered_ids_all.extend(chunk_ku_ids)
-            logger.info(
-                "auto_ingest: chunk %d/%d → %d KUs (title=%s)",
-                chunk_idx + 1, len(chunks), len(chunk_ku_ids), title[:30],
-            )
-        except Exception:
-            logger.exception(
-                "auto_ingest: chunk %d/%d failed for %s (non-fatal, continue)",
-                chunk_idx + 1, len(chunks), md_path.name,
-            )
-            chunk_errors += 1
-
-    # 统一跑一次 reflux (全量 KU)
-    if registered_ids_all:
-        from omodul.knowledge_reflux import run_reflux, KnowledgeRefluxConfig
-        import asyncio as _asyncio
-        loop = _asyncio.get_event_loop()
-        try:
-            _rc = KnowledgeRefluxConfig(backend=backend)
-            await loop.run_in_executor(None, lambda: run_reflux(_rc, {}))
-        except Exception as _re:
-            logger.warning("auto_ingest: reflux failed for %s (non-fatal): %s", title[:40], _re)
-
-    ku_count = len(registered_ids_all)
-    await backend.mark_substrate_ingested(substrate_id, title, medium, ku_count, subject=subject)
-    logger.info(
-        "auto_ingest: %s medium=%s provider=%s grade_cap=%s chunks=%d chunk_errors=%d → %d KUs total",
-        title[:50], medium, provider, grade_cap, len(chunks), chunk_errors, ku_count,
-    )
-
-    # ── 覆盖率质量门 (里程硃4) ─────────────────────────────────────────────
-    # ku_density = ku_count / (original_chars / 500)
-    # 期望: 每500字至少有 1 条 KU (完整覆盖)
-    # <0.3 = 实际不到0预期 → LOW_COVERAGE 报警; =0 → ZERO_KU 报错
-    _original_chars = len(text)
-    _expected_ku = max(_original_chars / 500, 1)
-    _density = ku_count / _expected_ku
-    if ku_count == 0:
-        logger.error(
-            "quality_gate: ZERO_KU ★★★ %s — 摄取完全失败(LLM返回空/提供商异常)",
-            title[:50],
-        )
-        _write_quality_alert(substrate_id, title, 0, _original_chars, "zero_ku", 0.0)
-    elif _density < _QUALITY_DENSITY_ALERT:
-        logger.warning(
-            "quality_gate: LOW_COVERAGE ★★ %s — %d KU / %d字 (density=%.2f, 阈值=%.1f)",
-            title[:50], ku_count, _original_chars, _density, _QUALITY_DENSITY_ALERT,
-        )
-        _write_quality_alert(substrate_id, title, ku_count, _original_chars, "low_coverage", _density)
-    else:
-        logger.info(
-            "quality_gate: OK %s — density=%.2f (%d KU / %d字)",
-            title[:40], _density, ku_count, _original_chars,
-        )
-
-    registered_ids = registered_ids_all
-
-    # ── Step 2: 结网 (RelationEngine) ──────────────────────────────────────
-    try:
-        rel_engine = RelationEngine(backend)
-        rel_result = await rel_engine.extract_relations_async(registered_ids, provider=provider)
-        logger.info(
-            "auto_ingest: relation %s → rule=%d llm=%d edges",
-            title[:30], rel_result.get("rule_edges", 0), rel_result.get("llm_edges", 0),
-        )
-    except Exception:
-        logger.exception("auto_ingest: RelationEngine failed for %s (non-fatal)", substrate_id[:8])
-
-    # ── Step 3: 社区聚类 + 大局摘要 (DeepSynthesisEngine.build_overview) ────
-    try:
-        deep_engine = DeepSynthesisEngine(backend)
-        ov_result = await deep_engine.build_overview_async(registered_ids, provider=provider)
-        logger.info(
-            "auto_ingest: overview %s → communities=%d synthesis=%d",
-            title[:30], ov_result.get("communities", 0), ov_result.get("synthesis_count", 0),
-        )
-    except Exception:
-        logger.exception("auto_ingest: build_overview failed for %s (non-fatal)", substrate_id[:8])
-
-    # ── Step 4: 书级理解 (DeepSynthesisEngine.build_book_understanding) ────
-    try:
-        deep_engine2 = DeepSynthesisEngine(backend)
-        bk_result = await deep_engine2.build_book_understanding_async(
-            substrate_id, registered_ids, doc_type=doc_type, provider=provider,
-        )
-        logger.info(
-            "auto_ingest: book_understanding %s → status=%s claims=%d",
-            title[:30], bk_result.get("status"), bk_result.get("main_claims_count", 0),
-        )
-    except Exception:
-        logger.exception("auto_ingest: book_understanding failed for %s (non-fatal)", substrate_id[:8])
-
-    # 标记深度理解完成 (供飞轮回填检查)
-    try:
-        await backend.mark_deep_understood(substrate_id)
-    except Exception:
-        logger.warning("auto_ingest: mark_deep_understood failed for %s (non-fatal)", substrate_id[:8])
-
-    return ku_count
