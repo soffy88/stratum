@@ -77,7 +77,8 @@ ACTIVE WHY-EXTRACTION (required):
 CONCEPT LAYER — ONLY for conceptual KUs that DEFINE a concept (else leave all four NULL):
   defines_concept:    the core concept this KU defines (which concept it carries)
   concept_level:      "concrete" (bound to specific objects, e.g. price elasticity, Pythagorean theorem)
-                   or "abstract" (itself abstract / cross-domain, e.g. entropy, equilibrium)
+                   or "abstract" (itself abstract / cross-domain, e.g. entropy, equilibrium, derivative,
+                      marginal, convexity — these recur across physics/math/economics)
   concept_discipline: the discipline this concept belongs to (economics/math/physics/...), or "general"
                       if cross-domain with consistent meaning (e.g. causality, ratio).
                       ★Judge PER-CONCEPT, not per-book — e.g. price elasticity of SUPPLY vs DEMAND
@@ -87,6 +88,10 @@ CONCEPT LAYER — ONLY for conceptual KUs that DEFINE a concept (else leave all 
                       "what it looks like" (mere appearance/相).
                       e.g. entropy's nature = "without external force, can only increase over time,
                       irreversible, has a direction" — NOT "a measure of disorder".
+                      Math example: a derivative's nature = "the instantaneous rate of change at a point —
+                      how a quantity changes at an instant" (道) — NOT "the limit of the difference
+                      quotient" (its formal definition/相). ★Mathematical/abstract concepts HAVE natures
+                      too — extract the intrinsic law/behaviour they capture, not the formal definition.
                       Find it any way: same word across domains (thermodynamic vs information entropy →
                       strip the domain shells, find the shared law); or different words same law (natural
                       selection / market competition); or any insight your understanding reveals.
