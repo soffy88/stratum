@@ -17,28 +17,26 @@ async def stats_overview():
     try:
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:
+            # ★onto: ku/kc/bu 各自独立表; ku_onto 无 is_synthesis(全是真 KU)
             ku_row = await conn.fetchrow("""
                 SELECT
-                  count(*) FILTER(WHERE is_synthesis IS NOT TRUE)                          AS ku_count,
-                  count(*) FILTER(WHERE knowledge_type = 'synthesis')                      AS kc_count,
-                  count(*) FILTER(WHERE knowledge_type = 'book_understanding')             AS bu_count,
-                  count(*) FILTER(WHERE is_synthesis IS NOT TRUE AND merge_count > 1)      AS merged_ku_count,
-                  COALESCE(sum(merge_count - 1) FILTER(
-                      WHERE is_synthesis IS NOT TRUE AND merge_count > 1), 0)              AS dedup_saved
-                FROM aii.ku
+                  count(*)                                                  AS ku_count,
+                  count(*) FILTER(WHERE merge_count > 1)                     AS merged_ku_count,
+                  COALESCE(sum(merge_count - 1) FILTER(WHERE merge_count > 1), 0) AS dedup_saved
+                FROM aii.ku_onto
             """)
+            kc_count = await conn.fetchval("SELECT count(*) FROM aii.kc_onto")
+            bu_count = await conn.fetchval("SELECT count(*) FROM aii.bu_onto")
             grade_rows = await conn.fetch("""
-                SELECT grade, count(*) AS cnt
-                FROM aii.ku WHERE is_synthesis IS NOT TRUE
-                GROUP BY grade ORDER BY cnt DESC
+                SELECT grade, count(*) AS cnt FROM aii.ku_onto GROUP BY grade ORDER BY cnt DESC
             """)
-            edge_count = await conn.fetchval("SELECT count(*) FROM aii.edge")
+            edge_count = await conn.fetchval("SELECT count(*) FROM aii.edge_onto")
             rel_rows = await conn.fetch("""
                 SELECT relation_type, count(*) AS cnt
-                FROM aii.edge GROUP BY relation_type ORDER BY cnt DESC
+                FROM aii.edge_onto GROUP BY relation_type ORDER BY cnt DESC
             """)
             contradicts = await conn.fetchval(
-                "SELECT count(*) FROM aii.edge WHERE relation_type = 'contradicts'"
+                "SELECT count(*) FROM aii.edge_onto WHERE relation_type = 'contradicts'"
             )
             subject_rows = await conn.fetch(
                 "SELECT subject, count(*) AS cnt FROM aii.ingested_substrate WHERE subject IS NOT NULL GROUP BY subject ORDER BY cnt DESC"
@@ -46,8 +44,8 @@ async def stats_overview():
 
         return success_response({
             "ku_count": ku_row["ku_count"],
-            "kc_count": ku_row["kc_count"],
-            "bu_count": ku_row["bu_count"],
+            "kc_count": kc_count,
+            "bu_count": bu_count,
             "edge_count": edge_count,
             "grade_dist": {r["grade"]: r["cnt"] for r in grade_rows},
             "merge_count": ku_row["merged_ku_count"],
