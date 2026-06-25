@@ -161,10 +161,11 @@ async def persist_ontology_result(
                     INSERT INTO aii.ku_onto
                         (ku_id, substrate_id, title, natural_text, knowledge_type,
                          sub_type, stance_holder, example, grade, grounded_by,
-                         provenance, embedding)
-                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'unverified',$9,$10,$11)
+                         provenance, embedding, natural_text_zh)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'unverified',$9,$10,$11,$12)
                     ON CONFLICT (ku_id) DO UPDATE SET
                         natural_text=EXCLUDED.natural_text,
+                        natural_text_zh=EXCLUDED.natural_text_zh,
                         knowledge_type=EXCLUDED.knowledge_type,
                         sub_type=EXCLUDED.sub_type,
                         stance_holder=EXCLUDED.stance_holder,
@@ -180,6 +181,7 @@ async def persist_ontology_result(
                     json.dumps({"method": "default"}),
                     json.dumps({"chunk": ku.get("_chunk"), "extractor": "ontology_extract"}),
                     _emb,
+                    ku.get("content_zh") or None,
                 )
                 stats["registered"] += 1
 

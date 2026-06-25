@@ -101,13 +101,22 @@ CONCEPT LAYER — ONLY for conceptual KUs that DEFINE a concept (else leave all 
 
 grade: always set to "unverified" regardless of evidence strength
 
+BILINGUAL (one-pass, required for every KU):
+- content    = the KU written in the SOURCE language of the text chunk (faithful, used as-is).
+- content_zh = a precise Chinese (中文) rendering of `content`, for Chinese readers.
+  ★ Keep all $...$ and $$...$$ LaTeX EXACTLY — never translate inside a formula.
+  ★ Domain terms must be precise; if unsure, append the English in parens, e.g. 边际成本(marginal cost).
+  ★ Do not add, drop, or embellish content — translate only.
+  ★ If `content` is already Chinese, set content_zh identical to content.
+
 Output JSON with:
 {{
   "ku_candidates": [
     {{
       "id": "temp_<n>",
       "title": "concise KU title",
-      "content": "KU content",
+      "content": "KU content (source language)",
+      "content_zh": "中文译文 (Chinese rendering of content)",
       "knowledge_type": "<one of six types>",
       "grade": "unverified",
       "sub_type": "<sub_type or null>",
