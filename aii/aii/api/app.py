@@ -82,32 +82,38 @@ async def lifespan(app: FastAPI):
         logger.warning("Ollama warm-up failed (non-fatal): %s", e)
 
     # 5. 启动后台飞轮 (管道1: 普通文档)
-    from aii.service.background_flywheel import flywheel_loop
-    flywheel_task = asyncio.create_task(flywheel_loop(backend), name="aii-flywheel")
-    app.state.flywheel_task = flywheel_task
-    logger.info("AII background flywheel started.")
+    #    ★FLYWHEEL_ENABLED=0 关闭飞轮自动摄取 (旧路径灌旧表; onto 迁移期默认停).
+    flywheel_task = None
+    textbook_flywheel_task = None
+    if os.getenv("FLYWHEEL_ENABLED", "1") != "0":
+        from aii.service.background_flywheel import flywheel_loop
+        flywheel_task = asyncio.create_task(flywheel_loop(backend), name="aii-flywheel")
+        app.state.flywheel_task = flywheel_task
+        logger.info("AII background flywheel started.")
 
-    # 5b. 启动管道2飞轮 (教材, 独立启停)
-    from aii.service.background_flywheel_textbook import textbook_flywheel_loop
-    textbook_flywheel_task = asyncio.create_task(
-        textbook_flywheel_loop(backend), name="aii-textbook-flywheel"
-    )
-    app.state.textbook_flywheel_task = textbook_flywheel_task
-    logger.info("AII textbook flywheel (Pipeline 2) started.")
+        # 5b. 启动管道2飞轮 (教材, 独立启停)
+        from aii.service.background_flywheel_textbook import textbook_flywheel_loop
+        textbook_flywheel_task = asyncio.create_task(
+            textbook_flywheel_loop(backend), name="aii-textbook-flywheel"
+        )
+        app.state.textbook_flywheel_task = textbook_flywheel_task
+        logger.info("AII textbook flywheel (Pipeline 2) started.")
+    else:
+        app.state.flywheel_task = None
+        app.state.textbook_flywheel_task = None
+        logger.warning("AII flywheels DISABLED (FLYWHEEL_ENABLED=0) — 无自动摄取.")
 
     yield
 
     # Cleanup
-    flywheel_task.cancel()
-    textbook_flywheel_task.cancel()
-    try:
-        await flywheel_task
-    except asyncio.CancelledError:
-        pass
-    try:
-        await textbook_flywheel_task
-    except asyncio.CancelledError:
-        pass
+    for _t in (flywheel_task, textbook_flywheel_task):
+        if _t is None:
+            continue
+        _t.cancel()
+        try:
+            await _t
+        except asyncio.CancelledError:
+            pass
     if backend._pool:
         await backend._pool.close()
         logger.info("AII PG Pool closed.")
