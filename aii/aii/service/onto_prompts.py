@@ -134,3 +134,77 @@ Output JSON with:
   ],
   "concept_candidates": ["new concepts discovered in this chunk"]
 }}"""
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# HQ 变体 (章节级高质量抽取测试): 六类要点边界清晰 + 闸门加严(例子数据/依赖上下文/换措辞重抽).
+# 输出结构与 PASS2_CHUNK_TMPL 完全一致(可直接喂 ontology_extract), 仅判据更严.
+# ───────────────────────────────────────────────────────────────────────────
+PASS2_SYSTEM_HQ = """You are a precise knowledge-unit extractor. Extract only self-contained, non-redundant, universally-true knowledge units, following strict per-class rules. Output valid JSON only."""
+
+PASS2_CHUNK_TMPL_HQ = """Extract high-quality knowledge units from this text chunk.
+
+Full-book outline (context):
+{outline}
+
+Text chunk:
+{chunk_text}
+
+SIX CLASSES — each has a precise boundary (apply in order, first match wins):
+1. rationale (释因/所以然): reveals WHY something holds / the MECHANISM behind it.
+   ✗ NOT a restatement of a definition. ✗ NOT "X is important because it tells us Y" (that's filler).
+   One distinct mechanism = ONE KU.
+2. procedural (程序/步骤): a how-to / algorithm / calculation procedure. One complete procedure = ONE KU.
+3. metacognitive: a learning strategy / reflection on how to study.
+4. positional: an opinion/stance with NO truth value. ⚠ MUST set stance_holder (who holds it).
+5. conceptual (概念/定义/规律): a definition OR a universal principle/law.
+   ✗ Do NOT emit the SAME concept/law twice in different wording — emit it ONCE, the most complete form.
+   sub_type (conceptual ONLY): classification | principle | theory | conditional (else NULL).
+6. factual: a verifiable, UNIVERSAL fact.
+   ✗ NOT example-specific data. "gasoline rose 33%, quantity fell 9%" / "tuition $100→$160" are EXAMPLE
+     DATA, not factual KUs — they belong in the 'example' field of the KU they illustrate.
+
+GATE (strictly enforced — drop or demote, do NOT emit as standalone KU):
+- EXAMPLE DATA (specific numbers/instances illustrating a point: "$160 × 12.5 = $2,000", "elasticity 2.27
+  for airline tickets") → put in the 'example' field of the KU it supports; NEVER a standalone KU.
+- CONTEXT/FIGURE-DEPENDENT (cannot be understood alone: "the green rectangle", "total tuition increases
+  because the reduction is insufficient" referring to a specific example) → either rewrite to be fully
+  self-contained (state the general principle), or DROP it.
+- REWORDED DUPLICATE: if a unit restates a knowledge point you already emitted from this chunk, do NOT
+  emit it again. One knowledge point = one KU (its most complete form).
+- Arguments / illustrations / anecdotes → NOT standalone KUs.
+
+ACTIVE WHY-EXTRACTION: for each key concept, if a real mechanism exists → one rationale KU (the WHY) +
+an 'explains' edge. (But a mechanism stated once is enough — do not paraphrase it into several KUs.)
+
+CONCEPT LAYER — ONLY for conceptual KUs that DEFINE a concept (else all four NULL):
+  defines_concept / concept_level (concrete|abstract) / concept_discipline (or "general") /
+  concept_invariant (abstract only: intrinsic LAW/道, NOT formal definition/相; NULL if unsure — never fabricate).
+
+grade: always "unverified".
+
+BILINGUAL (one-pass, every KU): content = source language (faithful); content_zh = precise Chinese,
+keep $...$ LaTeX exact, append English in parens for uncertain terms, translate only (no add/drop).
+
+Output JSON with:
+{{
+  "ku_candidates": [
+    {{
+      "id": "temp_<n>", "title": "concise KU title",
+      "content": "KU content (source language, self-contained, universal)",
+      "content_zh": "中文译文",
+      "knowledge_type": "<one of six>", "grade": "unverified",
+      "sub_type": "<sub_type or null>", "stance_holder": "<required for positional, else null>",
+      "example": "<demoted example DATA/instance if any, else null>",
+      "concepts": ["referenced concepts"],
+      "defines_concept": "<conceptual-defining KU only, else null>",
+      "concept_level": "<concrete|abstract, else null>",
+      "concept_discipline": "<discipline or general, else null>",
+      "concept_invariant": "<abstract concept intrinsic law, else null>"
+    }}
+  ],
+  "edge_candidates": [
+    {{"source": "<ku_id>", "target": "<ku_id or concept>", "relation_type": "<controlled type>"}}
+  ],
+  "concept_candidates": ["new concepts discovered in this chunk"]
+}}"""
