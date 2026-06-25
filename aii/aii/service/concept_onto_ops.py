@@ -183,9 +183,14 @@ async def vectorize_and_normalize(conn, llm, *, substrate_id: str, discipline: s
         a, b = disciplines[i], disciplines[j]
         return bool(a and b and a != b)
 
-    # ① 向量筛候选 (只筛范围, 不判定)
-    cand = [(i, j) for i, j in combinations(range(len(cids)), 2)
-            if not _forbid(i, j) and _cos(vecs[i], vecs[j]) >= screen_threshold]
+    # ① 向量筛候选 (只筛范围, 不判定) — 矩阵化余弦, 避免 N^2 纯 Python 循环(数千概念时致命慢)
+    E = np.asarray(vecs, dtype=np.float32)
+    En = E / (np.linalg.norm(E, axis=1, keepdims=True) + 1e-12)
+    S = En @ En.T
+    iu = np.triu_indices(len(cids), k=1)
+    hits = np.asarray(S[iu] >= screen_threshold).nonzero()[0]
+    cand = [(int(iu[0][h]), int(iu[1][h])) for h in hits
+            if not _forbid(int(iu[0][h]), int(iu[1][h]))]
     # ② LLM 判同一 → ③ 仅 SAME 的进并查集
     same_pairs = await _judge_same_pairs(llm, names, cand, concurrency)
     groups = _union_pairs(len(cids), same_pairs)

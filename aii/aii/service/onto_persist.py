@@ -54,10 +54,16 @@ from omodul.register_ku_ontology import (
 
 
 def _as_text(v):
-    """LLM 偶尔把单串字段(example/title/...)产成 list → 入 TEXT 列前归一为字符串.
-    list → '; ' 连接; None/空 → None; 其它 → str."""
+    """LLM 偶尔把单串字段(example/title/...)产成 list 或 dict → 入 TEXT 列前归一为字符串.
+    list → '; ' 连接(元素递归); dict → 值 '; ' 连接; 标量 → str; None/空 → None."""
+    if v is None:
+        return None
     if isinstance(v, list):
-        v = "; ".join(str(x) for x in v if x is not None)
+        v = "; ".join(_as_text(x) or "" for x in v)
+    elif isinstance(v, dict):
+        v = "; ".join(_as_text(x) or "" for x in v.values())
+    elif not isinstance(v, str):
+        v = str(v)
     return v or None
 
 
