@@ -179,18 +179,15 @@ def _parse_same(resp) -> bool:
         return False
 
 
-async def converge_invariants(conn, llm, *, candidate_threshold: float = 0.45,
-                              concurrency: int = 5) -> dict:
-    """里程碑5(升级): 本性同一 = ★向量低阈筛候选 + LLM 判同一 → 挂载(合并到同一本性节点).
+async def _converge_core(conn, llm, *, candidate_threshold: float, concurrency: int,
+                         restrict_new) -> dict:
+    """本性同一收敛核心: ★向量低阈筛候选 + LLM 判同一 → 并查集合并(传递性自动处理).
 
     操作对象 = 统一本性表 aii.invariant (单本性 is_concept=false + 本性概念 is_concept=true 同表).
-      ① invariant.vector 余弦 >= candidate_threshold(默认0.45) → 候选对 (只筛范围, 不判定).
-      ② 每候选对 LLM 判 "是不是同一个道(intrinsic law)?" — yes/no.
-      ③ LLM 判 yes → 挂载: 把同源本性行并成一个(member_concept_ids 合并, 相关概念 invariant_id
-         改指保留行), 合并后成员>=2 → is_concept=true(升为本性概念). LLM no → 不并.
-    ★本性同一是"概念挂到已有本性下"的自然过程(挂载), 不是特殊"凝结"事件.
-    ★red line: 余弦只筛候选, LLM 判 yes 才挂载, 绝不靠余弦直接判同源. 跨学科(不按 discipline 隔离).
-    <2 行 → no-op.
+    restrict_new=None        → 全量(所有对两两筛).
+    restrict_new=set(ids)    → 增量(候选只取"≥1 端是新"的对, 跳过存量×存量——它们已converge过).
+    ★传递性: 新 X 同时同源于存量 A、B → 并查集 {A,X,B} 同分量 → 三者合并成一个(成员全合并, 概念改指).
+    ★red line: 余弦只筛候选, LLM 判 yes 才合并, 绝不靠余弦直接判同源. 跨学科不隔离. <2 行 no-op.
     """
     rows = await conn.fetch(
         "SELECT id, statement, vector, member_concept_ids FROM aii.invariant")
@@ -207,9 +204,14 @@ async def converge_invariants(conn, llm, *, candidate_threshold: float = 0.45,
     members = [_members(r["member_concept_ids"]) for r in rows]
     vecs = np.asarray([[float(x) for x in r["vector"]] for r in rows])
 
-    # ① 向量低阈筛候选 (只筛范围)
-    candidates = [(i, j) for i, j in combinations(range(n), 2)
-                  if _cos(vecs[i], vecs[j]) >= candidate_threshold]
+    restrict = {str(x) for x in restrict_new} if restrict_new is not None else None
+    # ① 向量低阈筛候选; 增量: 至少一端是新 (跳过存量×存量, 不重算)
+    candidates: list[tuple] = []
+    for i, j in combinations(range(n), 2):
+        if restrict is not None and str(ids[i]) not in restrict and str(ids[j]) not in restrict:
+            continue
+        if _cos(vecs[i], vecs[j]) >= candidate_threshold:
+            candidates.append((i, j))
 
     # ② LLM 判同源 (并发)
     sem = asyncio.Semaphore(concurrency)
@@ -273,6 +275,24 @@ async def converge_invariants(conn, llm, *, candidate_threshold: float = 0.45,
 
     return {"invariants": n, "candidates": len(candidates), "judged_same": len(yes_pairs),
             "merged": merged, "groups": report}
+
+
+async def converge_invariants(conn, llm, *, candidate_threshold: float = 0.45,
+                              concurrency: int = 5) -> dict:
+    """全量收敛 (首次建库 / 全量重算用): 所有 invariant 两两筛候选 O(N²)."""
+    return await _converge_core(conn, llm, candidate_threshold=candidate_threshold,
+                                concurrency=concurrency, restrict_new=None)
+
+
+async def converge_invariants_incremental(conn, llm, new_invariant_ids, *,
+                                          candidate_threshold: float = 0.45,
+                                          concurrency: int = 5) -> dict:
+    """增量收敛 (飞轮摄新书用): 只比 新×全量(含新), 跳过存量×存量(已converge), O(M×N).
+    ★传递性由并查集处理: 新本性桥接两个存量本性 → 三者并查集同分量 → 合并成一个.
+    new_invariant_ids: 本批新 invariant 的 id 列表.
+    """
+    return await _converge_core(conn, llm, candidate_threshold=candidate_threshold,
+                                concurrency=concurrency, restrict_new=new_invariant_ids)
 
 
 async def query_invariant_siblings(conn, concept_name: str) -> list[dict]:
