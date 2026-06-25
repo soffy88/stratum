@@ -83,19 +83,19 @@ CONCEPT LAYER — ONLY for conceptual KUs that DEFINE a concept (else leave all 
                       if cross-domain with consistent meaning (e.g. causality, ratio).
                       ★Judge PER-CONCEPT, not per-book — e.g. price elasticity of SUPPLY vs DEMAND
                       are DIFFERENT concepts.
-  concept_nature:     ONLY if concept_level="abstract" AND you can identify it. The concept's intrinsic
+  concept_invariant:     ONLY if concept_level="abstract" AND you can identify it. The concept's intrinsic
                       LAW / NECESSARY TENDENCY — "how it MUST behave / where it MUST tend" (道) — NOT
                       "what it looks like" (mere appearance/相).
-                      e.g. entropy's nature = "without external force, can only increase over time,
+                      e.g. entropy's invariant = "without external force, can only increase over time,
                       irreversible, has a direction" — NOT "a measure of disorder".
-                      Math example: a derivative's nature = "the instantaneous rate of change at a point —
+                      Math example: a derivative's invariant = "the instantaneous rate of change at a point —
                       how a quantity changes at an instant" (道) — NOT "the limit of the difference
-                      quotient" (its formal definition/相). ★Mathematical/abstract concepts HAVE natures
+                      quotient" (its formal definition/相). ★Mathematical/abstract concepts HAVE invariants
                       too — extract the intrinsic law/behaviour they capture, not the formal definition.
                       Find it any way: same word across domains (thermodynamic vs information entropy →
                       strip the domain shells, find the shared law); or different words same law (natural
                       selection / market competition); or any insight your understanding reveals.
-                      ★Leave NULL if you genuinely cannot. NEVER fabricate a nature — NULL is correct.
+                      ★Leave NULL if you genuinely cannot. NEVER fabricate an invariant — NULL is correct.
 - Non-conceptual KUs (procedural/rationale/factual/positional/metacognitive) do NOT output these
   four fields — they reference concepts but do not define them.
 
@@ -117,7 +117,7 @@ Output JSON with:
       "defines_concept": "<conceptual KU only: the concept it defines, else null>",
       "concept_level": "<conceptual KU only: concrete|abstract, else null>",
       "concept_discipline": "<conceptual KU only: discipline or general, else null>",
-      "concept_nature": "<abstract concept only: intrinsic law (道), else null>"
+      "concept_invariant": "<abstract concept only: intrinsic law (道), else null>"
     }}
   ],
   "edge_candidates": [
