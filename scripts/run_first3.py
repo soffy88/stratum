@@ -99,6 +99,10 @@ async def main():
     from oskill import ontology_extract
 
     text = strip_frontmatter(md_path.read_text(encoding="utf-8"))
+    # ★分块前剥高置信 TOC/Index/表格行(页码族, 治本: 源头不喂进抽取)
+    from aii.service.structural_gate import strip_toc_index_lines
+    text, _stripped = strip_toc_index_lines(text)
+    print(f"[{substrate_id}] pre-chunk stripped {_stripped} TOC/Index/table lines", flush=True)
     batches = split_batches(text, batch_chars)
 
     ckpt_path = SCRATCH / f"ckpt_{substrate_id}.json"
