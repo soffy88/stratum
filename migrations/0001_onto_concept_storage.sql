@@ -255,7 +255,7 @@ CREATE TABLE aii.ku_onto (
     CONSTRAINT ck_ku_onto_grade_mandate CHECK (((grade <> 'verified'::text) OR (COALESCE((grounded_by ->> 'method'::text), 'default'::text) <> 'default'::text))),
     CONSTRAINT ck_ku_onto_positional_holder CHECK (((knowledge_type <> 'positional'::text) OR ((stance_holder IS NOT NULL) AND (stance_holder <> ''::text)))),
     CONSTRAINT ku_onto_grade_check CHECK ((grade = ANY (ARRAY['contradicted'::text, 'high'::text, 'low'::text, 'moderate'::text, 'pending'::text, 'refuted'::text, 'unverified'::text, 'verified'::text]))),
-    CONSTRAINT ku_onto_knowledge_type_check CHECK ((knowledge_type = ANY (ARRAY['conceptual'::text, 'explanatory'::text, 'factual'::text, 'metacognitive'::text, 'positional'::text, 'procedural'::text]))),
+    CONSTRAINT ku_onto_knowledge_type_check CHECK ((knowledge_type = ANY (ARRAY['conceptual'::text, 'rationale'::text, 'factual'::text, 'metacognitive'::text, 'positional'::text, 'procedural'::text]))),
     CONSTRAINT ku_onto_sub_type_check CHECK (((sub_type IS NULL) OR (sub_type = ANY (ARRAY['classification'::text, 'conditional'::text, 'principle'::text, 'self_knowledge'::text, 'skill'::text, 'strategic'::text, 'task_knowledge'::text, 'technique'::text, 'theory'::text]))))
 );
 

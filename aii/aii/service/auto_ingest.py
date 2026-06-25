@@ -290,11 +290,15 @@ async def _run_ontology_path(
     trail_dir.mkdir(parents=True, exist_ok=True)
 
     # Step 1: ontology_extract (主库两遍法/六分类) + AII Layer-4 判据 prompt 注入
+    from aii.service import onto_vocab as V
     result = await ontology_extract(
         source_text=text, llm=step1_llm, doc_type=doc_type, source_credibility=source_credibility,
         pass1_chunk_tmpl=P.PASS1_CHUNK_TMPL, pass1_chunk_system=P.PASS1_CHUNK_SYSTEM,
         pass1_outline_tmpl=P.PASS1_OUTLINE_TMPL, pass1_outline_system=P.PASS1_OUTLINE_SYSTEM,
         pass2_chunk_tmpl=P.PASS2_CHUNK_TMPL, pass2_system=P.PASS2_SYSTEM,
+        valid_knowledge_types=V.VALID_KNOWLEDGE_TYPES,  # ★注入 AII 词表(含 rationale)
+        valid_sub_types=V.VALID_SUB_TYPES,
+        valid_relation_types=V.VALID_RELATION_TYPES,
     )
     # Step 2: 持久化 (过 register_ku_ontology 校验) → ku_onto/edge_onto/concept_onto
     pstats = await persist_ontology_result(

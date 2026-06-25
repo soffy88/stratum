@@ -26,7 +26,7 @@
 ## 1.1 enum 全集（受控，不可自由扩展）
 
 ```
-knowledge_type:   factual | conceptual | positional | procedural | explanatory | metacognitive
+knowledge_type:   factual | conceptual | positional | procedural | rationale | metacognitive
 sub_type:         (conceptual)    classification | principle | theory
                   (procedural)    skill | technique | conditional
                   (metacognitive) strategic | task_knowledge | self_knowledge
@@ -164,10 +164,10 @@ ku_concept: ku_id uuid FK / concept_id uuid FK / PRIMARY KEY(ku_id, concept_id)
 ```
 每块 + 全书纲要为上下文，要求 deepseek：
  ① 准入闸门：论据/案例→降级为 example 或 supported_by 边；背景/过渡→丢弃
- ② 判六分类(判据优先级)：why→explanatory；how→procedural；学/思→metacognitive；
+ ② 判六分类(判据优先级)：why→rationale；how→procedural；学/思→metacognitive；
     是什么→ 无真值/持有者相对→positional(填stance_holder/opposing)；本质/原理→conceptual(填sub_type)；可考证→factual
  ③ 拆透：一对象有 是什么/怎么用/为什么 → 拆多个 KU，用 explains/special_case_of/prerequisite_of 连
- ④ ★主动抽 why：每个概念追问机制/原因 → explanatory KU + explains 边指向概念 KU
+ ④ ★主动抽 why：每个概念追问机制/原因 → rationale KU + explains 边指向概念 KU
  ⑤ 填字段：grade=unverified, grounded_by.method=default；intuition/insight；关联 concept
  ⑥ 跨块去重：语义重复 → 合并(merge_count++, sources 追加)
 ```
@@ -210,7 +210,7 @@ KC/BU 综合：deepseek 生成 summary/label；BU 产出 §1.6 全字段(含 cor
 
 **计数（SQL）：**
 ```
-六分类分布(无垃圾桶、explanatory≠0) / explanatory数+explains边数(深度) /
+六分类分布(无垃圾桶、rationale≠0) / rationale数+explains边数(深度) /
 case|example|observation 作独立KU数(应≈0，已降级) / 立场性都有holder /
 grade全unverified / intuition·insight填充率 / KC数·avg·max(无巨簇) /
 BU全字段非空(尤其 core_explanations)
@@ -218,7 +218,7 @@ BU全字段非空(尤其 core_explanations)
 
 **人工抽样（关键，不只看数）：**
 - 10 个 KU：六分类判得**准**吗
-- 5 个 explanatory：真是"为什么/机制"，不是复述概念
+- 5 个 rationale：真是"为什么/机制"，不是复述概念
 - BU core_explanations：真抓到全书核心 why
 - 几个 case 原文：真降级成 example/supported_by
 

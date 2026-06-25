@@ -55,7 +55,7 @@ KU:
 
   # ══ 轴 1：本体六分类（唯一的种类轴）══
   knowledge_type:     factual | conceptual | positional
-                    | procedural | explanatory | metacognitive
+                    | procedural | rationale | metacognitive
   sub_type:           # 细化用，可空
                       # conceptual:    classification | principle | theory
                       # procedural:    skill | technique | conditional
@@ -78,7 +78,7 @@ KU:
 
   # ── 深度内容（产生"回响"）──
   intuition:          直观理解 / 为什么重要 / 反直觉点
-  insight:            深层洞察（解释性与思想类尤重）
+  insight:            深层洞察（释因性与思想类尤重）
   example:            应用实例（论据降级到此）
 
   # ── 来源与去重 ──
@@ -117,11 +117,11 @@ KU:
 | **conceptual** 概念性 | "X 是什么？什么为真？" | 抽象的本质/原理/分类/理论 | 损失厌恶；勾股定理 |
 | **positional** 立场性 | "谁主张？论证是什么？" | **无确定真值、持有者相对** | 凯恩斯 vs 奥地利学派 |
 | **procedural** 程序性 | "怎么做？何时做？" | 步骤/方法，靠练习，难完全言传 | 待定系数法步骤 |
-| **explanatory** 解释性 | "为什么？机制如何？" | 因果/机制/"之所以如此" | 勾股定理为何成立 |
+| **rationale** 释因性 | "为什么？机制如何？" | 因果/机制/"之所以如此" | 勾股定理为何成立 |
 | **metacognitive** 元认知 | "怎么学/思考/反思？" | 关于认知本身的知识 | 间隔重复原理；审题先找关键词 |
 
 **判据优先级（治 proposition 垃圾桶）：**
-1. 是"为什么/机制"→ explanatory；"怎么做"→ procedural；"怎么思考/学"→ metacognitive。
+1. 是"为什么/机制"→ rationale；"怎么做"→ procedural；"怎么思考/学"→ metacognitive。
 2. 剩下的"是什么"：无确定真值/持有者相对 → positional；抽象本质/原理 → conceptual；特定可考证记录 → factual。
 3. **一个对象同时有"是什么/怎么用/为什么"→ 拆成多个 KU**，用关系边连（本体 §2.2）。这是"讲透"，不是冗余。
 
@@ -165,7 +165,7 @@ edge:
 | 支撑 | `supported_by` | A 被论据/证据 B 支撑 |
 | 跨源 | `same_as` | 跨源同一知识（触发合并，不建边） |
 
-> **explains 是本设计最重要的新增。** 解释性 KU 经 `explains` 指向被解释 KU；why 递归 = explains 边层层链下去。**这是"深度"在数据层的实现。**
+> **explains 是本设计最重要的新增。** 释因性 KU 经 `explains` 指向被解释 KU；why 递归 = explains 边层层链下去。**这是"深度"在数据层的实现。**
 
 ---
 
@@ -321,7 +321,7 @@ ku_concept         → concept   （KU 引用的概念）
 2. **通过 → 判六分类**（1.4 判据表，按优先级，治 proposition 垃圾桶）。
 3. **填本体字段**：立场性填 stance_holder/opposing；一律 grade=unverified, grounded_by.method=default；填 intuition/insight；关联 concept。
 4. **拆透**：一个对象有"是什么/怎么用/为什么"就拆多个 KU，用 explains/特例等边连。
-5. **主动抽 why**：每个概念追问是否有解释性 KU（机制/原因）尚未抽出——**深度的保证**。
+5. **主动抽 why**：每个概念追问是否有释因性 KU（机制/原因）尚未抽出——**深度的保证**。
 6. **聚 KC**（Leiden + 强本体关系加权）→ **综合 BU**（含 core_explanations 等全字段），全部标 synthesis_marker。
 
 > **判据定死了，抽取才有依据，不会再退回"挑重点 + proposition 垃圾桶 + 无 why + 论据当 KU"。**
