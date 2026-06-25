@@ -232,7 +232,9 @@ async def persist_ontology_result(
                     )
                     stats["edges"] += 1
 
-        # ── ★路A 写概念层: level/discipline/invariant + invariant_vector(接通 converge_invariants) ──
+        # ── ★路A 写概念层: level/discipline(concept_onto列) + invariant(独立统一表) ──
+        # 本性是独立节点: 写 aii.invariant 行(is_concept=false, member=[该概念]), concept.invariant_id 回链.
+        # 本性同一(挂载/升 is_concept)由 converge_invariants 负责, 此处只产单本性节点.
         for nm, m in concept_meta.items():
             cid = concept_id_by_name.get(nm)
             if cid is None:
@@ -243,21 +245,26 @@ async def persist_ontology_result(
             if m["disc_conflict"]:
                 logger.info("onto_persist[invariant]: discipline 冲突 concept=%r keep=%r others=%r",
                             nm, m["discipline"], m["disc_conflict"])
-            # 首个非空胜出 (COALESCE: 已有非空则不覆盖)
+            # level/discipline 仍是 concept_onto 列, 首个非空胜出
             await conn.execute(
                 "UPDATE aii.concept_onto SET level=COALESCE(level,$1), "
-                "discipline=COALESCE(discipline,$2), invariant=COALESCE(invariant,$3) WHERE concept_id=$4",
-                m["level"], m["discipline"], m["invariant"], cid)
+                "discipline=COALESCE(discipline,$2) WHERE concept_id=$3",
+                m["level"], m["discipline"], cid)
             stats["concept_meta"] = stats.get("concept_meta", 0) + 1
-            # 有 invariant → 算 invariant_vector(独立字段, 方案A 隔离), 接通 converge_invariants
-            cur = await conn.fetchrow(
-                "SELECT invariant, invariant_vector FROM aii.concept_onto WHERE concept_id=$1", cid)
-            if cur["invariant"] and cur["invariant_vector"] is None:
-                nv = (await loop.run_in_executor(
-                    None, lambda t=cur["invariant"]: vector_encode(texts=[t], provider="default")))[0]
-                await conn.execute(
-                    "UPDATE aii.concept_onto SET invariant_vector=$1 WHERE concept_id=$2", nv, cid)
-                stats["invariants"] = stats.get("invariants", 0) + 1
+            # 有 invariant 且该概念尚无 invariant_id → 建单本性节点(is_concept=false)并回链
+            if m["invariant"]:
+                has_inv = await conn.fetchval(
+                    "SELECT invariant_id FROM aii.concept_onto WHERE concept_id=$1", cid)
+                if has_inv is None:
+                    iv = (await loop.run_in_executor(
+                        None, lambda t=m["invariant"]: vector_encode(texts=[t], provider="default")))[0]
+                    inv_id = await conn.fetchval(
+                        """INSERT INTO aii.invariant(statement, vector, member_concept_ids, is_concept)
+                           VALUES ($1, $2, $3::jsonb, false) RETURNING id""",
+                        m["invariant"], iv, json.dumps([str(cid)]))
+                    await conn.execute(
+                        "UPDATE aii.concept_onto SET invariant_id=$1 WHERE concept_id=$2", inv_id, cid)
+                    stats["invariants"] = stats.get("invariants", 0) + 1
 
         return stats
     finally:
