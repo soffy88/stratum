@@ -30,6 +30,7 @@ import asyncpg
 from oprim import vector_encode
 
 from aii.service import onto_vocab as V
+from aii.service.structural_gate import is_structural_noise
 
 from omodul.register_ku_ontology import (
     register_ku_ontology,
@@ -125,6 +126,12 @@ async def persist_ontology_result(
         for ku in ku_candidates:
             ku_id = ku.get("id") or ku.get("ku_id")
             ku_edges = edges_by_src.get(ku_id, [])
+
+            # ★结构噪声门(纯规则0 LLM): 目录/索引/标题/表格/书本元话语 → 不是知识, 不入库
+            _noise = is_structural_noise(_as_text(ku.get("content")))
+            if _noise:
+                stats["rejected_structural"] = stats.get("rejected_structural", 0) + 1
+                continue
 
             # 组校验输入 (operad 要 grounded_by 才能过 grade 铁律)
             ku_for_validation = {
