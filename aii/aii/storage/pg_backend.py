@@ -313,7 +313,7 @@ class PgBackend(StorageBackend, EpistemicStore):
         # Since we use enable_vector=True, asyncpg handles list[float] correctly
         sql = f"""
             SELECT *, embedding <=> $1 AS distance
-            FROM aii.ku
+            FROM aii.ku_onto
             ORDER BY embedding <=> $1
             LIMIT $2
         """
