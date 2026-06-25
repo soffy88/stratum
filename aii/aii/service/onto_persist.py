@@ -53,6 +53,14 @@ from omodul.register_ku_ontology import (
 # 校验需要但 extractor 不产: grounded_by → 注入 {"method":"default"}
 
 
+def _as_text(v):
+    """LLM 偶尔把单串字段(example/title/...)产成 list → 入 TEXT 列前归一为字符串.
+    list → '; ' 连接; None/空 → None; 其它 → str."""
+    if isinstance(v, list):
+        v = "; ".join(str(x) for x in v if x is not None)
+    return v or None
+
+
 async def persist_ontology_result(
     *,
     dsn: str,
@@ -149,7 +157,7 @@ async def persist_ontology_result(
                 continue
 
             # ── embedding 入库时填 (写 ku_onto 前算, 和旧链路一致) ──────
-            content = ku.get("content", "")
+            content = _as_text(ku.get("content")) or ""
             _emb = (await loop.run_in_executor(
                 None, lambda c=content: vector_encode(texts=[c], provider="default")
             ))[0]  # (1,1024) → 取第 0 行; register_vector 后 pgvector 收 np 向量
@@ -173,15 +181,15 @@ async def persist_ontology_result(
                         embedding=EXCLUDED.embedding
                     """,
                     _ns(ku_id), substrate_id,
-                    ku.get("title"), content,
+                    _as_text(ku.get("title")), content,
                     ku.get("knowledge_type"),
                     ku.get("sub_type") or None,
-                    ku.get("stance_holder") or None,
-                    ku.get("example") or None,
+                    _as_text(ku.get("stance_holder")),
+                    _as_text(ku.get("example")),
                     json.dumps({"method": "default"}),
                     json.dumps({"chunk": ku.get("_chunk"), "extractor": "ontology_extract"}),
                     _emb,
-                    ku.get("content_zh") or None,
+                    _as_text(ku.get("content_zh")),
                 )
                 stats["registered"] += 1
 
