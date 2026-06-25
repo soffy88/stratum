@@ -1,16 +1,15 @@
 -- AII 概念存储层 + _onto 六表 schema 快照 (migration / 重建用)
 -- 守 VHDX 数据丢失教训: DDL 固化进 repo, 不依赖现库存活.
--- 来源: pg_dump --schema-only -t 'aii.*_onto' -t aii.nature_concept (2026-06-25, 已应用态快照)
--- 含: ku_onto/edge_onto/concept_onto(+6本体列)/ku_concept_onto/kc_onto/bu_onto/nature_concept
---   全部命门 CHECK(六分类/受控关系/grade/sub_type/positional/grade铁律/level) 已含.
--- 前置依赖: pgvector 扩展 (vector 类型). 重建前需 CREATE EXTENSION IF NOT EXISTS vector;
--- 注: 这是结构快照(非增量迁移), 重建空库时整体执行.
+-- 来源: pg_dump --schema-only -t 'aii.*_onto' -t aii.invariant_concept (已应用态快照)
+-- 含: ku_onto/edge_onto/concept_onto(+本体列+invariant维度)/ku_concept_onto/kc_onto/bu_onto/invariant_concept
+--   命门 CHECK(六分类含rationale/受控关系/grade/sub_type/positional/grade铁律/level) 已含.
+-- 前置依赖: pgvector 扩展. 重建前需 CREATE EXTENSION IF NOT EXISTS vector;
 
 --
 -- PostgreSQL database dump
 --
 
-\restrict mif9iogPE6D0f14rxee5GCdvv1zMO46Ux8o9B7ouftgMKhLDxEHwHtzoG6xGAoJ
+\restrict MSdwG9vlNMhjvZQezS8Hh6Ui6t6JfVjJfld37Lv5xeFJd5oaxqondRG51Vie9DD
 
 -- Dumped from database version 16.14 (Ubuntu 16.14-1.pgdg22.04+1)
 -- Dumped by pg_dump version 16.14 (Ubuntu 16.14-1.pgdg22.04+1)
@@ -95,9 +94,9 @@ CREATE TABLE aii.concept_onto (
     level text,
     discipline text,
     vector public.vector(1024),
-    nature text,
-    nature_vector public.vector(1024),
-    nature_concept_id uuid,
+    invariant text,
+    invariant_vector public.vector(1024),
+    invariant_concept_id uuid,
     CONSTRAINT concept_onto_level_check CHECK (((level IS NULL) OR (level = ANY (ARRAY['concrete'::text, 'abstract'::text]))))
 );
 
@@ -166,6 +165,21 @@ ALTER SEQUENCE aii.edge_onto_edge_id_seq OWNER TO aii;
 
 ALTER SEQUENCE aii.edge_onto_edge_id_seq OWNED BY aii.edge_onto.edge_id;
 
+
+--
+-- Name: invariant_concept; Type: TABLE; Schema: aii; Owner: aii
+--
+
+CREATE TABLE aii.invariant_concept (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    statement text NOT NULL,
+    vector public.vector(1024),
+    member_concept_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE aii.invariant_concept OWNER TO aii;
 
 --
 -- Name: kc_onto; Type: TABLE; Schema: aii; Owner: aii
@@ -263,21 +277,6 @@ CREATE TABLE aii.ku_onto (
 ALTER TABLE aii.ku_onto OWNER TO aii;
 
 --
--- Name: nature_concept; Type: TABLE; Schema: aii; Owner: aii
---
-
-CREATE TABLE aii.nature_concept (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    statement text NOT NULL,
-    vector public.vector(1024),
-    member_concept_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE aii.nature_concept OWNER TO aii;
-
---
 -- Name: bu_onto bu_id; Type: DEFAULT; Schema: aii; Owner: aii
 --
 
@@ -346,6 +345,14 @@ ALTER TABLE ONLY aii.edge_onto
 
 
 --
+-- Name: invariant_concept invariant_concept_pkey; Type: CONSTRAINT; Schema: aii; Owner: aii
+--
+
+ALTER TABLE ONLY aii.invariant_concept
+    ADD CONSTRAINT invariant_concept_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: kc_onto kc_onto_pkey; Type: CONSTRAINT; Schema: aii; Owner: aii
 --
 
@@ -367,14 +374,6 @@ ALTER TABLE ONLY aii.ku_concept_onto
 
 ALTER TABLE ONLY aii.ku_onto
     ADD CONSTRAINT ku_onto_pkey PRIMARY KEY (ku_id);
-
-
---
--- Name: nature_concept nature_concept_pkey; Type: CONSTRAINT; Schema: aii; Owner: aii
---
-
-ALTER TABLE ONLY aii.nature_concept
-    ADD CONSTRAINT nature_concept_pkey PRIMARY KEY (id);
 
 
 --
@@ -427,11 +426,11 @@ CREATE INDEX idx_ku_onto_type ON aii.ku_onto USING btree (knowledge_type);
 
 
 --
--- Name: concept_onto concept_onto_nature_concept_fk; Type: FK CONSTRAINT; Schema: aii; Owner: aii
+-- Name: concept_onto concept_onto_invariant_concept_fk; Type: FK CONSTRAINT; Schema: aii; Owner: aii
 --
 
 ALTER TABLE ONLY aii.concept_onto
-    ADD CONSTRAINT concept_onto_nature_concept_fk FOREIGN KEY (nature_concept_id) REFERENCES aii.nature_concept(id);
+    ADD CONSTRAINT concept_onto_invariant_concept_fk FOREIGN KEY (invariant_concept_id) REFERENCES aii.invariant_concept(id);
 
 
 --
@@ -478,5 +477,5 @@ ALTER TABLE ONLY aii.ku_onto
 -- PostgreSQL database dump complete
 --
 
-\unrestrict mif9iogPE6D0f14rxee5GCdvv1zMO46Ux8o9B7ouftgMKhLDxEHwHtzoG6xGAoJ
+\unrestrict MSdwG9vlNMhjvZQezS8Hh6Ui6t6JfVjJfld37Lv5xeFJd5oaxqondRG51Vie9DD
 

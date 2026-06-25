@@ -3,8 +3,8 @@
 依据 AII-CONCEPT-STORAGE-001 / AII-CONCEPT-NATURE-001.
 
 ★向量标记机制 = 方案A (硬分组), 实测结论 (m2_marker):
-  概念向量存 concept_onto.vector / 本性存 concept_onto.nature_vector(及
-  nature_concept.vector) / KU 存 ku_onto.embedding. 比相似度时 WHERE/分组
+  概念向量存 concept_onto.vector / 本性存 concept_onto.invariant_vector(及
+  invariant_concept.vector) / KU 存 ku_onto.embedding. 比相似度时 WHERE/分组
   只在同类型内比 → 跨类型永不参与计算 → 0 误判, 由构造保证, 无需调权重.
   (实测: 向量内追加标记维=实现B 需 M>=5 才拉开, 且会把同类相似度抬到 ~0.98
    摧毁语义归一所需的类内区分度 → 弃用.)
@@ -123,19 +123,19 @@ async def vectorize_and_normalize(conn, *, substrate_id: str, discipline: str,
                 "UPDATE aii.concept_onto SET aliases = aliases || $1::jsonb WHERE concept_id = $2",
                 json.dumps([d[1] for d in dups]), can_id,
             )
-            # ★把 dup 的 level/discipline/nature/nature_vector 带到 canonical (canonical 空才补)
+            # ★把 dup 的 level/discipline/invariant/invariant_vector 带到 canonical (canonical 空才补)
             d = await conn.fetchrow(
                 """SELECT (array_agg(level) FILTER (WHERE level IS NOT NULL))[1] level,
                           (array_agg(discipline) FILTER (WHERE discipline IS NOT NULL))[1] discipline,
-                          (array_agg(nature) FILTER (WHERE nature IS NOT NULL))[1] nature,
-                          (array_agg(nature_vector) FILTER (WHERE nature_vector IS NOT NULL))[1] nature_vector
+                          (array_agg(invariant) FILTER (WHERE invariant IS NOT NULL))[1] invariant,
+                          (array_agg(invariant_vector) FILTER (WHERE invariant_vector IS NOT NULL))[1] invariant_vector
                    FROM aii.concept_onto WHERE concept_id = ANY($1)""", dup_ids)
             await conn.execute(
                 """UPDATE aii.concept_onto SET
                      level=COALESCE(level,$2), discipline=COALESCE(discipline,$3),
-                     nature=COALESCE(nature,$4), nature_vector=COALESCE(nature_vector,$5)
+                     invariant=COALESCE(invariant,$4), invariant_vector=COALESCE(invariant_vector,$5)
                    WHERE concept_id=$1""",
-                can_id, d["level"], d["discipline"], d["nature"], d["nature_vector"])
+                can_id, d["level"], d["discipline"], d["invariant"], d["invariant_vector"])
             await conn.execute(
                 "DELETE FROM aii.concept_onto WHERE concept_id = ANY($1)", dup_ids)
             merged_total += len(dups)
@@ -145,23 +145,23 @@ async def vectorize_and_normalize(conn, *, substrate_id: str, discipline: str,
             "merged": merged_total, "groups": group_report}
 
 
-async def converge_natures(conn, *, threshold: float = 0.90) -> dict:
-    """里程碑5: 本性收敛. 对有 nature_vector 的抽象概念, 按余弦收敛:
-      - >=2 概念本性向量收敛 → 凝结 1 个 nature_concept, 相关概念 nature_concept_id 指向它
+async def converge_invariants(conn, *, threshold: float = 0.90) -> dict:
+    """里程碑5: 本性收敛. 对有 invariant_vector 的抽象概念, 按余弦收敛:
+      - >=2 概念本性向量收敛 → 凝结 1 个 invariant_concept, 相关概念 invariant_concept_id 指向它
         (→ 这些概念之间成立"本性同源"强联系).
-      - 单个未收敛 → 留作该概念自己的 nature, 不进 nature_concept 表.
+      - 单个未收敛 → 留作该概念自己的 invariant, 不进 invariant_concept 表.
     ★本性跨学科收敛 (同源即连, 不按 discipline 隔离 — 这正是本性维度的意义).
-    空 nature → no-op (不报错).
+    空 invariant → no-op (不报错).
     """
     rows = await conn.fetch(
-        """SELECT concept_id, nature, nature_vector FROM aii.concept_onto
-           WHERE nature_vector IS NOT NULL""")
+        """SELECT concept_id, invariant, invariant_vector FROM aii.concept_onto
+           WHERE invariant_vector IS NOT NULL""")
     if len(rows) < 2:
-        return {"natures": len(rows), "condensed": 0, "groups": []}
+        return {"invariants": len(rows), "condensed": 0, "groups": []}
 
     cids = [r["concept_id"] for r in rows]
-    natures = [r["nature"] for r in rows]
-    vecs = np.asarray([[float(x) for x in r["nature_vector"]] for r in rows])
+    invariants = [r["invariant"] for r in rows]
+    vecs = np.asarray([[float(x) for x in r["invariant_vector"]] for r in rows])
     groups = _union_groups(cids, vecs, threshold)
 
     condensed = 0
@@ -170,17 +170,17 @@ async def converge_natures(conn, *, threshold: float = 0.90) -> dict:
         for grp in groups:
             member_ids = [cids[i] for i in grp]
             centroid = np.mean(vecs[grp], axis=0)
-            statement = next((natures[i] for i in grp if natures[i]), "(unspecified nature)")
+            statement = next((invariants[i] for i in grp if invariants[i]), "(unspecified invariant)")
             nc_id = await conn.fetchval(
-                """INSERT INTO aii.nature_concept(statement, vector, member_concept_ids)
+                """INSERT INTO aii.invariant_concept(statement, vector, member_concept_ids)
                    VALUES ($1, $2, $3::jsonb) RETURNING id""",
                 statement, centroid.tolist(), json.dumps([str(m) for m in member_ids]),
             )
             await conn.execute(
-                "UPDATE aii.concept_onto SET nature_concept_id = $1 WHERE concept_id = ANY($2)",
+                "UPDATE aii.concept_onto SET invariant_concept_id = $1 WHERE concept_id = ANY($2)",
                 nc_id, member_ids,
             )
             condensed += 1
-            report.append({"nature_concept": str(nc_id), "members": len(member_ids)})
+            report.append({"invariant_concept": str(nc_id), "members": len(member_ids)})
 
-    return {"natures": len(rows), "condensed": condensed, "groups": report}
+    return {"invariants": len(rows), "condensed": condensed, "groups": report}

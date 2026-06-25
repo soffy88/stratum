@@ -81,8 +81,8 @@ async def persist_ontology_result(
     def _ns(tid: str) -> str:
         return f"{substrate_id}::{tid}"
 
-    # ★路A: conceptual KU 定义概念 → 收集其 level/discipline/nature (概念信息骑定义它的KU)
-    # concept_meta[name] = {level, discipline, nature, disc_conflict:[...]}; 首个非空胜出
+    # ★路A: conceptual KU 定义概念 → 收集其 level/discipline/invariant (概念信息骑定义它的KU)
+    # concept_meta[name] = {level, discipline, invariant, disc_conflict:[...]}; 首个非空胜出
     concept_meta: dict[str, dict] = {}
 
     conn = await asyncpg.connect(dsn)
@@ -187,11 +187,11 @@ async def persist_ontology_result(
                 if ku.get("knowledge_type") == "conceptual" and ku.get("defines_concept"):
                     nm = ku["defines_concept"]
                     m = concept_meta.setdefault(
-                        nm, {"level": None, "discipline": None, "nature": None, "disc_conflict": []})
+                        nm, {"level": None, "discipline": None, "invariant": None, "disc_conflict": []})
                     if m["level"] is None and ku.get("concept_level"):
                         m["level"] = ku["concept_level"]
-                    if m["nature"] is None and ku.get("concept_nature"):
-                        m["nature"] = ku["concept_nature"]
+                    if m["invariant"] is None and ku.get("concept_invariant"):
+                        m["invariant"] = ku["concept_invariant"]
                     d = ku.get("concept_discipline")
                     if d:
                         if m["discipline"] is None:
@@ -232,7 +232,7 @@ async def persist_ontology_result(
                     )
                     stats["edges"] += 1
 
-        # ── ★路A 写概念层: level/discipline/nature + nature_vector(接通 converge_natures) ──
+        # ── ★路A 写概念层: level/discipline/invariant + invariant_vector(接通 converge_invariants) ──
         for nm, m in concept_meta.items():
             cid = concept_id_by_name.get(nm)
             if cid is None:
@@ -241,23 +241,23 @@ async def persist_ontology_result(
                     "ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name RETURNING concept_id", nm)
                 concept_id_by_name[nm] = cid
             if m["disc_conflict"]:
-                logger.info("onto_persist[nature]: discipline 冲突 concept=%r keep=%r others=%r",
+                logger.info("onto_persist[invariant]: discipline 冲突 concept=%r keep=%r others=%r",
                             nm, m["discipline"], m["disc_conflict"])
             # 首个非空胜出 (COALESCE: 已有非空则不覆盖)
             await conn.execute(
                 "UPDATE aii.concept_onto SET level=COALESCE(level,$1), "
-                "discipline=COALESCE(discipline,$2), nature=COALESCE(nature,$3) WHERE concept_id=$4",
-                m["level"], m["discipline"], m["nature"], cid)
+                "discipline=COALESCE(discipline,$2), invariant=COALESCE(invariant,$3) WHERE concept_id=$4",
+                m["level"], m["discipline"], m["invariant"], cid)
             stats["concept_meta"] = stats.get("concept_meta", 0) + 1
-            # 有 nature → 算 nature_vector(独立字段, 方案A 隔离), 接通 converge_natures
+            # 有 invariant → 算 invariant_vector(独立字段, 方案A 隔离), 接通 converge_invariants
             cur = await conn.fetchrow(
-                "SELECT nature, nature_vector FROM aii.concept_onto WHERE concept_id=$1", cid)
-            if cur["nature"] and cur["nature_vector"] is None:
+                "SELECT invariant, invariant_vector FROM aii.concept_onto WHERE concept_id=$1", cid)
+            if cur["invariant"] and cur["invariant_vector"] is None:
                 nv = (await loop.run_in_executor(
-                    None, lambda t=cur["nature"]: vector_encode(texts=[t], provider="default")))[0]
+                    None, lambda t=cur["invariant"]: vector_encode(texts=[t], provider="default")))[0]
                 await conn.execute(
-                    "UPDATE aii.concept_onto SET nature_vector=$1 WHERE concept_id=$2", nv, cid)
-                stats["natures"] = stats.get("natures", 0) + 1
+                    "UPDATE aii.concept_onto SET invariant_vector=$1 WHERE concept_id=$2", nv, cid)
+                stats["invariants"] = stats.get("invariants", 0) + 1
 
         return stats
     finally:
