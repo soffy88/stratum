@@ -259,3 +259,30 @@ async def converge_invariants(conn, llm, *, candidate_threshold: float = 0.45,
 
     return {"invariants": n, "candidates": len(candidates), "judged_same": len(yes_pairs),
             "condensed": condensed, "groups": report}
+
+
+async def query_invariant_siblings(conn, concept_name: str) -> list[dict]:
+    """本性同一查询: 给一个概念名, 返回与它【本性同一】(invariant-identity)的其他概念.
+
+    逻辑: concept → invariant_concept_id → 同一 invariant_concept 的所有 member → 排除自己.
+    ★本性同一不单独建边/表 — 直接经 invariant_concept 成员关系查询 (成员即同一).
+    例: query("边际成本") → [导数(math), 导函数(math)] (本性同一: 瞬时变化率, 跨学科).
+    返回 [{"name":..., "discipline":..., "invariant":...}], 无同一概念则空列表.
+    """
+    return [dict(r) for r in await conn.fetch(
+        """SELECT c2.name, c2.discipline, c2.invariant
+           FROM aii.concept_onto c1
+           JOIN aii.concept_onto c2 ON c1.invariant_concept_id = c2.invariant_concept_id
+           WHERE c1.name = $1 AND c2.name <> c1.name
+                 AND c1.invariant_concept_id IS NOT NULL
+           ORDER BY c2.discipline, c2.name""",
+        concept_name)]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 决策记录: converge_invariants 暂【手动触发 + 待增量化】, 不接 auto_ingest 自动跑.
+#   原因: (1) 现仅 2 本书, 手动可控; (2) 全量 converge 是 O(N²) 候选对 + 每对一次 LLM,
+#         书多了成本爆炸. 接自动前需先设计【增量 converge】: 只比"新书 invariant ×
+#         存量 invariant", 不全量重算 (新书 invariant 数 × 存量数, 而非 (总数)²).
+#   触发点: 摄新书后, 需要时手动跑 converge_invariants; 增量版做好再接 auto_ingest.
+# ─────────────────────────────────────────────────────────────────────────────
