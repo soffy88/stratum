@@ -79,7 +79,7 @@
      - 通过的才成 KU
 
   ② 判六分类（数据设计 §1.4 判据表，按优先级）：
-     - "为什么/机制" → explanatory
+     - "为什么/机制" → rationale
      - "怎么做" → procedural
      - "怎么学/思考" → metacognitive
      - "是什么"：无确定真值/持有者相对 → positional（填 stance_holder/opposing）
@@ -91,7 +91,7 @@
      用 explains / special_case_of / prerequisite_of 边连接
 
   ④ ★主动抽 why：每个概念都追问——这个概念为什么成立/机制是什么？
-     有 → 抽成 explanatory KU，建 explains 边指向该概念KU
+     有 → 抽成 rationale KU，建 explains 边指向该概念KU
      这是深度的保证，不能漏
 
   ⑤ 填本体字段：
@@ -132,12 +132,12 @@ BU（数据设计 §四，不缩水）：
 ```sql
 -- ① 六分类分布（治 proposition 垃圾桶：不该再有一类独吞、不该有 proposition）
 SELECT knowledge_type, count(*) FROM ku WHERE substrate_id=<微观> GROUP BY 1 ORDER BY 2 DESC;
--- 期望：六类都有分布，explanatory 不为 0
+-- 期望：六类都有分布，rationale 不为 0
 
--- ② ★explanatory（why）抽出来没有——深度的关键
-SELECT count(*) FROM ku WHERE knowledge_type='explanatory' AND substrate_id=<微观>;
+-- ② ★rationale（why）抽出来没有——深度的关键
+SELECT count(*) FROM ku WHERE knowledge_type='rationale' AND substrate_id=<微观>;
 SELECT count(*) FROM edge WHERE relation_type='explains';
--- 期望：explanatory 有相当数量，explains 边把它们连到概念上（不再是之前的 3 条）
+-- 期望：rationale 有相当数量，explains 边把它们连到概念上（不再是之前的 3 条）
 
 -- ③ 论据降级没有（case/example 不该作为独立 KU）
 SELECT count(*) FROM ku WHERE knowledge_type IN('case','example','observation') AND substrate_id=<微观>;
@@ -172,7 +172,7 @@ SELECT source_credibility, problem_statement IS NOT NULL,
 
 **人工抽样核对（最关键，不只看计数）：**
 - 取 10 个 KU，看六分类**判得对不对**（不是数字对，是分类准）
-- 取 5 个 explanatory KU，看它**真是"为什么/机制"**，不是把概念复述一遍
+- 取 5 个 rationale KU，看它**真是"为什么/机制"**，不是把概念复述一遍
 - 取 BU 的 core_explanations，看它**真抓到了全书的核心"为什么"**，不是论点罗列
 - 取几个 case 原文，确认**降级成了 example/supported_by**，没当独立 KU
 
@@ -181,7 +181,7 @@ SELECT source_credibility, problem_statement IS NOT NULL,
 ## 阶段四：判定
 
 **验证成功标准（设计成立）：**
-1. 六分类分布合理，无 proposition 垃圾桶，explanatory 不为 0
+1. 六分类分布合理，无 proposition 垃圾桶，rationale 不为 0
 2. explains 边把解释链建起来了（深度有了）
 3. 论据降级生效（case 不再当 KU）
 4. 立场性都有 holder

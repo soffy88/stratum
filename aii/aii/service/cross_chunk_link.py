@@ -14,7 +14,7 @@ import json
 import re
 
 import numpy as np
-from oprim._aii_graph_types import VALID_RELATION_TYPES
+from aii.service.onto_vocab import VALID_RELATION_TYPES  # AII 单一权威词表(避免漂移)
 
 _CHUNK = re.compile(r'ku_c(\d+)_')
 

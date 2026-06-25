@@ -50,7 +50,7 @@ Text chunk:
 {chunk_text}
 
 Classification priority (apply in order — first match wins):
-1. why / mechanism / reason    → knowledge_type = "explanatory"
+1. why / mechanism / reason (揭示"所以然"/为何如此/必然机制) → knowledge_type = "rationale"
 2. how / steps / procedure     → knowledge_type = "procedural"
 3. learning strategy/reflection → knowledge_type = "metacognitive"
 4. no truth value / relative position / opinion → knowledge_type = "positional"
@@ -60,7 +60,7 @@ Classification priority (apply in order — first match wins):
    (if uncertain → leave sub_type NULL, do NOT guess)
    procedural sub_type: skill | technique | conditional
    metacognitive sub_type: strategic | task_knowledge | self_knowledge
-   factual / explanatory / positional → sub_type MUST be NULL
+   factual / rationale / positional → sub_type MUST be NULL
    ⚠ sub_type must be one of the values above for its knowledge_type, or NULL.
      NEVER invent values like "definition", "concept", "formula" — they will be rejected.
 6. verifiable fact              → knowledge_type = "factual"
@@ -72,7 +72,7 @@ GATE (strictly enforced):
 
 ACTIVE WHY-EXTRACTION (required):
 - For each key concept found, ask WHY it works / what mechanism underlies it
-- If a mechanism exists → create an explanatory KU + an 'explains' edge
+- If a mechanism exists → create a rationale KU (the WHY/所以然) + an 'explains' edge
 
 CONCEPT LAYER — ONLY for conceptual KUs that DEFINE a concept (else leave all four NULL):
   defines_concept:    the core concept this KU defines (which concept it carries)
@@ -91,7 +91,7 @@ CONCEPT LAYER — ONLY for conceptual KUs that DEFINE a concept (else leave all 
                       strip the domain shells, find the shared law); or different words same law (natural
                       selection / market competition); or any insight your understanding reveals.
                       ★Leave NULL if you genuinely cannot. NEVER fabricate a nature — NULL is correct.
-- Non-conceptual KUs (procedural/explanatory/factual/positional/metacognitive) do NOT output these
+- Non-conceptual KUs (procedural/rationale/factual/positional/metacognitive) do NOT output these
   four fields — they reference concepts but do not define them.
 
 grade: always set to "unverified" regardless of evidence strength

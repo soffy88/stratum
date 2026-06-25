@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 import asyncpg
 from oprim import vector_encode
 
+from aii.service import onto_vocab as V
+
 from omodul.register_ku_ontology import (
     register_ku_ontology,
     RegisterKuOntologyConfig,
@@ -124,8 +126,15 @@ async def persist_ontology_result(
             inp = RegisterKuOntologyInput(ku=ku_for_validation, edges=ku_edges)
 
             # register_ku_ontology 是同步 → executor 包, 不阻塞事件循环
+            # ★注入 AII 词表(含 rationale), 校验绑 AII 单一权威, 不用主库默认
             reg = await loop.run_in_executor(
-                None, lambda: register_ku_ontology(cfg, inp, trail_dir)
+                None, lambda: register_ku_ontology(
+                    cfg, inp, trail_dir,
+                    valid_knowledge_types=V.VALID_KNOWLEDGE_TYPES,
+                    valid_sub_types=V.VALID_SUB_TYPES,
+                    valid_grades=V.VALID_GRADES,
+                    valid_relation_types=V.VALID_RELATION_TYPES,
+                )
             )
 
             if reg.get("status") != "completed":
