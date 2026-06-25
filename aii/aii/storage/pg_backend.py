@@ -134,15 +134,15 @@ class PgBackend(StorageBackend, EpistemicStore):
         async def _list():
             pool = await self._ensure_pool()
             async with pool.acquire() as conn:
-                rows = await conn.fetch("SELECT ku_id FROM aii.ku")
+                rows = await conn.fetch("SELECT ku_id FROM aii.ku_onto")
                 return [str(r["ku_id"]) for r in rows]
         return _run_coro(_list())
 
     def put_edge(self, src_id: str, relation: str, dst_id: str) -> None:
         async def _put():
             pool = await self._ensure_pool()
-            row = {"src_id": UUID(src_id), "relation": relation, "dst_id": UUID(dst_id)}
-            await upsert_batch(pool=pool, table="aii.edge", rows=[row], conflict_columns=["src_id", "relation", "dst_id"])
+            row = {"src_id": src_id, "relation": relation, "dst_id": dst_id}
+            await upsert_batch(pool=pool, table="aii.edge_onto", rows=[row], conflict_columns=["src_id", "relation", "dst_id"])
         _run_coro(_put())
 
     def list_edges(self, node_id: str | None = None) -> list[dict[str, Any]]:
@@ -150,9 +150,9 @@ class PgBackend(StorageBackend, EpistemicStore):
             pool = await self._ensure_pool()
             async with pool.acquire() as conn:
                 if node_id:
-                    rows = await conn.fetch("SELECT * FROM aii.edge WHERE src_id = $1 OR dst_id = $1", UUID(node_id))
+                    rows = await conn.fetch("SELECT * FROM aii.edge_onto WHERE src_id = $1 OR dst_id = $1", node_id)
                 else:
-                    rows = await conn.fetch("SELECT * FROM aii.edge")
+                    rows = await conn.fetch("SELECT * FROM aii.edge_onto")
                 return [dict(r) for r in rows]
         return _run_coro(_list())
 
@@ -173,7 +173,7 @@ class PgBackend(StorageBackend, EpistemicStore):
         if not ku_id:
             raise ValueError("ku_id is required")
         if isinstance(ku_id, str):
-            ku_id = UUID(ku_id)
+            ku_id = ku_id
 
         import hashlib as _hashlib
         fingerprint = ku.get("fingerprint")
@@ -207,7 +207,7 @@ class PgBackend(StorageBackend, EpistemicStore):
                 # 1. Fingerprint de-duplication
                 if fingerprint:
                     existing = await conn.fetchrow(
-                        "SELECT ku_id FROM aii.ku WHERE fingerprint = $1 AND is_quarantined = FALSE",
+                        "SELECT ku_id FROM aii.ku_onto WHERE fingerprint = $1 AND is_quarantined = FALSE",
                         fingerprint
                     )
                     if existing and existing["ku_id"] != ku_id:
@@ -216,7 +216,7 @@ class PgBackend(StorageBackend, EpistemicStore):
 
                 # 2. Get old grade for audit
                 old_row = await conn.fetchrow(
-                    "SELECT grade FROM aii.ku WHERE ku_id = $1 FOR UPDATE", ku_id
+                    "SELECT grade FROM aii.ku_onto WHERE ku_id = $1 FOR UPDATE", ku_id
                 )
                 old_grade = old_row["grade"] if old_row else None
                 new_grade = ku.get("grade", "unverified")
@@ -244,7 +244,7 @@ class PgBackend(StorageBackend, EpistemicStore):
                     f"{c}=EXCLUDED.{c}" for c in cols if c != "ku_id"
                 )
                 sql = (
-                    f"INSERT INTO aii.ku ({', '.join(cols)}) VALUES ({placeholders}) "
+                    f"INSERT INTO aii.ku_onto ({', '.join(cols)}) VALUES ({placeholders}) "
                     f"ON CONFLICT (ku_id) DO UPDATE SET {updates}"
                 )
                 await conn.execute(sql, *[row[c] for c in cols])
@@ -270,7 +270,7 @@ class PgBackend(StorageBackend, EpistemicStore):
                             continue
                         c_row = await conn.fetchrow(
                             """
-                            INSERT INTO aii.concept (name)
+                            INSERT INTO aii.concept_onto (name)
                             VALUES ($1)
                             ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
                             RETURNING concept_id
@@ -280,7 +280,7 @@ class PgBackend(StorageBackend, EpistemicStore):
                         if c_row:
                             inserted = await conn.fetchrow(
                                 """
-                                INSERT INTO aii.ku_concept (ku_id, concept_id)
+                                INSERT INTO aii.ku_concept_onto (ku_id, concept_id)
                                 VALUES ($1, $2)
                                 ON CONFLICT DO NOTHING
                                 RETURNING concept_id
@@ -289,7 +289,7 @@ class PgBackend(StorageBackend, EpistemicStore):
                             )
                             if inserted:
                                 await conn.execute(
-                                    "UPDATE aii.concept SET ku_count = ku_count + 1 WHERE concept_id = $1",
+                                    "UPDATE aii.concept_onto SET ku_count = ku_count + 1 WHERE concept_id = $1",
                                     c_row["concept_id"],
                                 )
         finally:
@@ -298,13 +298,13 @@ class PgBackend(StorageBackend, EpistemicStore):
     async def get_ku(self, ku_id: str) -> dict[str, Any] | None:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
-            row = await conn.fetchrow("SELECT * FROM aii.ku WHERE ku_id = $1", UUID(ku_id))
+            row = await conn.fetchrow("SELECT * FROM aii.ku_onto WHERE ku_id = $1", ku_id)
             return dict(row) if row else None
 
     async def query_ku_by_grade(self, grade: str) -> list[dict[str, Any]]:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
-            rows = await conn.fetch("SELECT * FROM aii.ku WHERE grade = $1", grade)
+            rows = await conn.fetch("SELECT * FROM aii.ku_onto WHERE grade = $1", grade)
             return [dict(r) for r in rows]
 
     async def search_ku_by_vector(self, query_vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
@@ -324,25 +324,26 @@ class PgBackend(StorageBackend, EpistemicStore):
     async def record_state_change(self, ku_id: str, to_grade: str, reason: str | None = None, decision_trail: dict[str, Any] | None = None) -> None:
         pool = await self._ensure_pool()
         async with transaction(pool) as conn:
-            old_row = await conn.fetchrow("SELECT grade FROM aii.ku WHERE ku_id = $1 FOR UPDATE", UUID(ku_id))
+            old_row = await conn.fetchrow("SELECT grade FROM aii.ku_onto WHERE ku_id = $1 FOR UPDATE", ku_id)
             if not old_row:
                 raise ValueError(f"KU {ku_id} not found")
             
             from_grade = old_row["grade"]
-            await conn.execute("UPDATE aii.ku SET grade = $1, updated_at = CURRENT_TIMESTAMP WHERE ku_id = $2", to_grade, UUID(ku_id))
+            await conn.execute("UPDATE aii.ku_onto SET grade = $1, updated_at = CURRENT_TIMESTAMP WHERE ku_id = $2", to_grade, ku_id)
             await conn.execute(
                 """
                 INSERT INTO aii.ku_state_history (ku_id, from_grade, to_grade, trigger, decision_trail)
                 VALUES ($1, $2, $3, $4, $5)
                 """,
-                UUID(ku_id), from_grade, to_grade, reason or "manual_update", json.dumps(decision_trail or {})
+                ku_id, from_grade, to_grade, reason or "manual_update", json.dumps(decision_trail or {})
             )
 
     async def quarantine_ku(self, ku_id: str, reason: str) -> None:
         await self.record_state_change(ku_id, to_grade="quarantined", reason=f"quarantine: {reason}")
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
-            await conn.execute("UPDATE aii.ku SET is_quarantined = TRUE WHERE ku_id = $1", UUID(ku_id))
+            # onto 无 quarantine 机制(ku_onto 无 is_quarantined 列) → no-op
+            _ = ku_id
 
     # --- New Methods for Failure Lessons and Capability Gaps ---
 
@@ -435,7 +436,7 @@ class PgBackend(StorageBackend, EpistemicStore):
             pool = await self._ensure_pool()
             async with pool.acquire() as conn:
                 rows = await conn.fetch(
-                    "SELECT knowledge_type, grade, COUNT(*) as count FROM aii.ku GROUP BY knowledge_type, grade"
+                    "SELECT knowledge_type, grade, COUNT(*) as count FROM aii.ku_onto GROUP BY knowledge_type, grade"
                 )
                 res = {}
                 for r in rows:
@@ -451,7 +452,7 @@ class PgBackend(StorageBackend, EpistemicStore):
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT knowledge_type, grade, COUNT(*) as count FROM aii.ku GROUP BY knowledge_type, grade"
+                "SELECT knowledge_type, grade, COUNT(*) as count FROM aii.ku_onto GROUP BY knowledge_type, grade"
             )
             res = {}
             for r in rows:
@@ -467,7 +468,7 @@ class PgBackend(StorageBackend, EpistemicStore):
             pool = await self._ensure_pool()
             async with pool.acquire() as conn:
                 rows = await conn.fetch(
-                    "SELECT * FROM aii.ku WHERE grade = 'unverified' AND provenance IS NOT NULL AND updated_at < NOW() - $1::interval",
+                    "SELECT * FROM aii.ku_onto WHERE grade = 'unverified' AND provenance IS NOT NULL AND updated_at < NOW() - $1::interval",
                     f"{days} days"
                 )
                 return [dict(r) for r in rows]
@@ -477,7 +478,7 @@ class PgBackend(StorageBackend, EpistemicStore):
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT * FROM aii.ku WHERE grade = 'unverified' AND provenance IS NOT NULL AND updated_at < NOW() - make_interval(days => $1)",
+                "SELECT * FROM aii.ku_onto WHERE grade = 'unverified' AND provenance IS NOT NULL AND updated_at < NOW() - make_interval(days => $1)",
                 days
             )
             return [dict(r) for r in rows]
@@ -487,9 +488,9 @@ class PgBackend(StorageBackend, EpistemicStore):
             pool = await self._ensure_pool()
             async with pool.acquire() as conn:
                 sql = """
-                    SELECT ku_id FROM aii.ku
-                    WHERE ku_id NOT IN (SELECT src_id FROM aii.edge)
-                      AND ku_id NOT IN (SELECT dst_id FROM aii.edge)
+                    SELECT ku_id FROM aii.ku_onto
+                    WHERE ku_id NOT IN (SELECT src_id FROM aii.edge_onto)
+                      AND ku_id NOT IN (SELECT dst_id FROM aii.edge_onto)
                 """
                 rows = await conn.fetch(sql)
                 return [str(r["ku_id"]) for r in rows]
@@ -499,9 +500,9 @@ class PgBackend(StorageBackend, EpistemicStore):
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             sql = """
-                SELECT ku_id FROM aii.ku
-                WHERE ku_id NOT IN (SELECT src_id FROM aii.edge)
-                  AND ku_id NOT IN (SELECT dst_id FROM aii.edge)
+                SELECT ku_id FROM aii.ku_onto
+                WHERE ku_id NOT IN (SELECT src_id FROM aii.edge_onto)
+                  AND ku_id NOT IN (SELECT dst_id FROM aii.edge_onto)
             """
             rows = await conn.fetch(sql)
             return [str(r["ku_id"]) for r in rows]
@@ -546,7 +547,7 @@ class PgBackend(StorageBackend, EpistemicStore):
             rows = await conn.fetch(
                 "SELECT ku_id, natural_text, knowledge_type, grade, substrate_id, "
                 "source, is_synthesis, is_quarantined, synthesis_meta, merge_count, created_at "
-                "FROM aii.ku WHERE is_quarantined = FALSE ORDER BY created_at"
+                "FROM aii.ku_onto WHERE is_quarantined = FALSE ORDER BY created_at"
             )
             return [dict(r) for r in rows]
 
@@ -583,7 +584,7 @@ class PgBackend(StorageBackend, EpistemicStore):
         async with pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO aii.edge (src_id, relation, dst_id, relation_type, grade, evidence, extraction_method)
+                INSERT INTO aii.edge_onto (src_id, relation, dst_id, relation_type, grade, evidence, extraction_method)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT (src_id, relation, dst_id) DO UPDATE SET
                     relation_type = EXCLUDED.relation_type,
@@ -591,7 +592,7 @@ class PgBackend(StorageBackend, EpistemicStore):
                     evidence = EXCLUDED.evidence,
                     extraction_method = EXCLUDED.extraction_method
                 """,
-                UUID(src_id), relation_type, UUID(dst_id),
+                src_id, relation_type, dst_id,
                 relation_type, grade,
                 json.dumps(evidence or {}), extraction_method,
             )
@@ -602,11 +603,11 @@ class PgBackend(StorageBackend, EpistemicStore):
         async with pool.acquire() as conn:
             if ku_id:
                 rows = await conn.fetch(
-                    "SELECT * FROM aii.edge WHERE src_id = $1 OR dst_id = $1",
-                    UUID(ku_id),
+                    "SELECT * FROM aii.edge_onto WHERE src_id = $1 OR dst_id = $1",
+                    ku_id,
                 )
             else:
-                rows = await conn.fetch("SELECT * FROM aii.edge")
+                rows = await conn.fetch("SELECT * FROM aii.edge_onto")
             return [dict(r) for r in rows]
 
     async def get_ku_embeddings(self, ku_ids: list[str]) -> dict[str, list[float]]:
@@ -614,8 +615,8 @@ class PgBackend(StorageBackend, EpistemicStore):
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT ku_id, embedding FROM aii.ku WHERE ku_id = ANY($1) AND embedding IS NOT NULL",
-                [UUID(kid) for kid in ku_ids],
+                "SELECT ku_id, embedding FROM aii.ku_onto WHERE ku_id = ANY($1) AND embedding IS NOT NULL",
+                [kid for kid in ku_ids],
             )
             return {str(r["ku_id"]): list(r["embedding"]) for r in rows}
 
@@ -681,14 +682,12 @@ class PgBackend(StorageBackend, EpistemicStore):
         """Return the single nearest KU by cosine distance (pgvector <=>), or None.
         Result includes 'distance' field (0=identical, 2=opposite)."""
         pool = await self._ensure_pool()
-        clauses = ["embedding IS NOT NULL"]
-        if exclude_synthesis:
-            clauses.append("(is_synthesis IS NOT TRUE)")
+        clauses = ["embedding IS NOT NULL"]  # onto: ku_onto 全是真 KU, 无 is_synthesis
         where = " AND ".join(clauses)
         sql = f"""
             SELECT ku_id, natural_text, grade, knowledge_type,
                    (embedding <=> $1) AS distance
-            FROM aii.ku
+            FROM aii.ku_onto
             WHERE {where}
             ORDER BY embedding <=> $1
             LIMIT 1
@@ -712,10 +711,10 @@ class PgBackend(StorageBackend, EpistemicStore):
         async with pool.acquire() as conn:
             await conn.execute(
                 """
-                UPDATE aii.ku
+                UPDATE aii.ku_onto
                 SET sources = COALESCE(sources, '[]'::jsonb) || $2::jsonb,
                     merge_count = COALESCE(merge_count, 1) + 1
-                WHERE ku_id = $1::uuid
+                WHERE ku_id = $1
                 """,
                 existing_ku_id, source_entry,
             )
@@ -730,7 +729,7 @@ class PgBackend(StorageBackend, EpistemicStore):
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT substrate_id, sources FROM aii.ku WHERE ku_id = $1::uuid",
+                "SELECT substrate_id, sources FROM aii.ku_onto WHERE ku_id = $1",
                 ku_id,
             )
         if not row:
@@ -754,7 +753,7 @@ class PgBackend(StorageBackend, EpistemicStore):
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 """
-                SELECT ku_id FROM aii.ku
+                SELECT ku_id FROM aii.ku_onto
                 WHERE substrate_id = $1
                    OR sources @> $2::jsonb
                 """,
@@ -772,8 +771,8 @@ class PgBackend(StorageBackend, EpistemicStore):
             rows = await conn.fetch(
                 "SELECT ku_id, natural_text, knowledge_type, grade, substrate_id, "
                 "is_synthesis, synthesis_meta, sources "
-                "FROM aii.ku WHERE ku_id = ANY($1) AND is_quarantined = FALSE",
-                [UUID(kid) for kid in ku_ids],
+                "FROM aii.ku_onto WHERE ku_id = ANY($1) AND is_quarantined = FALSE",
+                [kid for kid in ku_ids],
             )
         return [dict(r) for r in rows]
 
@@ -809,7 +808,7 @@ class PgBackend(StorageBackend, EpistemicStore):
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT count(*) AS cnt FROM aii.edge WHERE src_id = $1::uuid OR dst_id = $1::uuid",
+                "SELECT count(*) AS cnt FROM aii.edge_onto WHERE src_id = $1 OR dst_id = $1",
                 ku_id,
             )
         return int(row["cnt"])
@@ -819,7 +818,7 @@ class PgBackend(StorageBackend, EpistemicStore):
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             await conn.execute(
-                "DELETE FROM aii.edge WHERE src_id = $1::uuid OR dst_id = $1::uuid",
+                "DELETE FROM aii.edge_onto WHERE src_id = $1 OR dst_id = $1",
                 ku_id,
             )
 
@@ -832,49 +831,31 @@ class PgBackend(StorageBackend, EpistemicStore):
             async with conn.transaction():
                 # 1. Capture concept_ids before deletion (ku_concept will auto-cascade)
                 concept_rows = await conn.fetch(
-                    "SELECT concept_id FROM aii.ku_concept WHERE ku_id = $1::uuid",
+                    "SELECT concept_id FROM aii.ku_concept_onto WHERE ku_id = $1",
                     ku_id,
                 )
                 concept_ids = [r["concept_id"] for r in concept_rows]
 
                 # 2. Delete edges (no ON DELETE CASCADE)
                 await conn.execute(
-                    "DELETE FROM aii.edge WHERE src_id = $1::uuid OR dst_id = $1::uuid",
+                    "DELETE FROM aii.edge_onto WHERE src_id = $1 OR dst_id = $1",
                     ku_id,
                 )
                 # 3. Delete state history (no ON DELETE CASCADE)
                 await conn.execute(
-                    "DELETE FROM aii.ku_state_history WHERE ku_id = $1::uuid",
+                    "DELETE FROM aii.ku_state_history WHERE ku_id = $1",
                     ku_id,
                 )
-                # 4. Delete KU (ku_concept rows auto-cascade via FK)
+                # 4. Delete KU (ku_concept_onto rows auto-cascade via FK)
                 await conn.execute(
-                    "DELETE FROM aii.ku WHERE ku_id = $1::uuid",
+                    "DELETE FROM aii.ku_onto WHERE ku_id = $1",
                     ku_id,
                 )
-                # 5. Sync concept.ku_count for affected concepts
-                if concept_ids:
-                    await conn.execute(
-                        """
-                        UPDATE aii.concept SET ku_count = (
-                            SELECT count(*) FROM aii.ku_concept WHERE concept_id = aii.concept.concept_id
-                        ) WHERE concept_id = ANY($1::uuid[])
-                        """,
-                        concept_ids,
-                    )
+                # (concept_onto 无 ku_count 列 — ku_count 由 display 实时聚合, 无需 sync)
+                _ = concept_ids
 
     # ── end P3 ─────────────────────────────────────────────────────────────
 
     async def search_synthesis_kus(self, query_vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
-        """Vector search restricted to synthesis (is_synthesis=true) KUs."""
-        pool = await self._ensure_pool()
-        sql = """
-            SELECT *, embedding <=> $1 AS distance
-            FROM aii.ku
-            WHERE is_synthesis = TRUE AND embedding IS NOT NULL
-            ORDER BY embedding <=> $1
-            LIMIT $2
-        """
-        async with pool.acquire() as conn:
-            rows = await conn.fetch(sql, query_vector, limit)
-            return [dict(r) for r in rows]
+        """onto: 综合(KC)无向量列, 不做向量检索 → 返回空; chat 回退到常规 KU 检索."""
+        return []

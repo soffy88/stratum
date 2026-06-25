@@ -94,9 +94,9 @@ class EvolutionEngine:
         # Fetch KUs that might need verification (unverified, low, moderate, high)
         pool = await self.backend._ensure_pool()
         async with pool.acquire() as conn:
-            # We don't fetch proven or quarantined
+            # onto: ku_onto 全是真 KU, 无 quarantine
             candidate_rows = await conn.fetch(
-                "SELECT * FROM aii.ku WHERE grade != 'proven' AND is_quarantined = FALSE"
+                "SELECT * FROM aii.ku_onto WHERE grade != 'proven'"
             )
         
         vk_config = omodul.verify_knowledge.VerifyKnowledgeConfig()

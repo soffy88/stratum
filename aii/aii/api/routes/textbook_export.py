@@ -43,35 +43,11 @@ class TextbookIngestRequest(BaseModel):
 async def trigger_textbook_ingest(
     req: TextbookIngestRequest, background_tasks: BackgroundTasks
 ) -> JSONResponse:
-    """Trigger textbook ingest for a local MD file (runs inside the server process)."""
-    from aii.service.textbook_ingest import ingest_one_textbook
-
-    md_path = Path(req.md_path)
-    if not md_path.exists():
-        raise HTTPException(status_code=404, detail=f"File not found: {req.md_path}")
-
-    # Run ingest as a background task so the HTTP response returns immediately
-    result_holder: dict = {}
-
-    async def _run():
-        try:
-            result = await ingest_one_textbook(md_path, backend=backend, provider=req.provider)
-            result_holder.update(result)
-        except Exception as exc:
-            result_holder["error"] = str(exc)
-
-    # For synchronous validation we want the result — run directly with timeout
-    try:
-        result = await asyncio.wait_for(
-            ingest_one_textbook(md_path, backend=backend, provider=req.provider),
-            timeout=600,
-        )
-    except asyncio.TimeoutError:
-        return JSONResponse({"status": "timeout", "md_path": req.md_path}, status_code=202)
-    except Exception as exc:
-        return JSONResponse({"status": "error", "error": str(exc)}, status_code=500)
-
-    return JSONResponse(result)
+    """旧教材摄取管道(textbook_ingest→旧表)已退役. 摄取走 onto 飞轮(USE_ONTOLOGY)."""
+    return JSONResponse(
+        {"status": "deprecated", "detail": "textbook ingest retired; use the onto flywheel"},
+        status_code=410,
+    )
 
 
 @router.get("/textbook/{textbook_id}/export")
@@ -126,7 +102,7 @@ async def export_textbook(textbook_id: str) -> JSONResponse:
         prereq_rows = await conn.fetch(
             """
             SELECT src_id::text, dst_id::text
-            FROM aii.edge
+            FROM aii.edge_onto
             WHERE relation_type = 'prerequisite_of'
               AND dst_id = ANY($1)
             """,
