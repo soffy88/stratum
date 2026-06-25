@@ -7,11 +7,8 @@ router = APIRouter()
 
 @router.get("/governance/pending")
 async def governance_pending():
-    # In this implementation, we treat quarantined KUs as pending review
-    pool = await backend._ensure_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("SELECT * FROM aii.ku WHERE is_quarantined = TRUE")
-        return success_response([dict(r) for r in rows])
+    # onto 模型无 quarantine 机制(ku_onto 无 is_quarantined 列) → 暂无待审 KU.
+    return success_response([])
 
 @router.post("/governance/adjudicate")
 async def adjudicate(

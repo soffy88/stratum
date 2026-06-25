@@ -48,16 +48,13 @@ async def lifespan(app: FastAPI):
     await backend._ensure_pool()
     logger.info("AII Backend initialized and PG Pool started.")
 
-    # 4b. 预热 PG buffer cache (kc/list 所需的 synthesis 行)
+    # 4b. 预热 PG buffer cache (kc/list 所需的 kc_onto 行)
     try:
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:
             await conn.fetch(
-                "SELECT ku_id, left(natural_text, 300), grade, "
-                "synthesis_meta->>'community_label', synthesis_meta->>'community_size' "
-                "FROM aii.ku "
-                "WHERE knowledge_type = 'synthesis' AND is_synthesis = true "
-                "ORDER BY created_at DESC LIMIT 50"
+                "SELECT kc_id, community_label, left(summary, 300), grade "
+                "FROM aii.kc_onto ORDER BY kc_id DESC LIMIT 50"
             )
         logger.info("AII kc/list PG buffer cache warmed.")
     except Exception as e:
