@@ -152,7 +152,7 @@ async def main():
             from pgvector.asyncpg import register_vector
             await register_vector(conn)
             norm = await vectorize_and_normalize(
-                conn, substrate_id=substrate_id, discipline=(subject or "general"), threshold=0.90)
+                conn, llm, substrate_id=substrate_id, discipline=(subject or "general"))
         finally:
             await conn.close()
 

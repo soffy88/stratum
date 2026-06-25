@@ -307,9 +307,9 @@ async def _run_ontology_path(
     try:
         from pgvector.asyncpg import register_vector
         await register_vector(conn)
-        # Step 3: 概念语义归一 (向量化 + 同 discipline 内相似度归一, 方案A)
+        # Step 3: 概念语义归一 (向量筛候选 + LLM 判同一才合, 治反义误并)
         nstats = await vectorize_and_normalize(
-            conn, substrate_id=substrate_id, discipline=(subject or "general"), threshold=0.90)
+            conn, llm, substrate_id=substrate_id, discipline=(subject or "general"))
         # Step 4: 跨块连接 (概念/语义筛候选 → LLM 判真关系 → 连真边)
         cands = await gen_candidates(conn, substrate_id=substrate_id, sem_threshold=0.80)
         cstats = await judge_and_link(conn, llm, cands, substrate_id=substrate_id)
