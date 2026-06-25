@@ -92,13 +92,12 @@ async def export_textbook(textbook_id: str) -> JSONResponse:
             )
 
         # ── 2. 教材 KU 全量 (含 provenance) ───────────────────────────────
+        # onto-only: 旧教材管道已退役(无 textbook_id provenance / symbolic_form) → 此查询返回空
         ku_rows = await conn.fetch(
             """
-            SELECT ku_id::text, natural_text, knowledge_type, grade,
-                   provenance, symbolic_form
-            FROM aii.ku
+            SELECT ku_id, natural_text, knowledge_type, grade, provenance
+            FROM aii.ku_onto
             WHERE provenance->>'textbook_id' = $1
-              AND is_quarantined = FALSE
             ORDER BY (provenance->>'order')::int NULLS LAST, created_at
             """,
             textbook_id,

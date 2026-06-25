@@ -16,8 +16,8 @@ async def health_graph():
         await conn.execute("SELECT 1")
         
         # KU statistics
-        total = await conn.fetchval("SELECT count(*) FROM aii.ku")
-        by_grade_rows = await conn.fetch("SELECT grade, count(*) as count FROM aii.ku GROUP BY grade")
+        total = await conn.fetchval("SELECT count(*) FROM aii.ku_onto")
+        by_grade_rows = await conn.fetch("SELECT grade, count(*) as count FROM aii.ku_onto GROUP BY grade")
         by_grade = {row["grade"]: row["count"] for row in by_grade_rows}
         
     return success_response({
