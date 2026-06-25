@@ -3,8 +3,8 @@
 依据 AII-CONCEPT-STORAGE-001 / AII-CONCEPT-NATURE-001.
 
 ★向量标记机制 = 方案A (硬分组), 实测结论 (m2_marker):
-  概念向量存 concept_onto.vector / 本性存 concept_onto.invariant_vector(及
-  invariant_concept.vector) / KU 存 ku_onto.embedding. 比相似度时 WHERE/分组
+  概念向量存 concept_onto.vector / 本性向量存统一本性表 invariant.vector /
+  KU 存 ku_onto.embedding. 比相似度时 WHERE/分组
   只在同类型内比 → 跨类型永不参与计算 → 0 误判, 由构造保证, 无需调权重.
   (实测: 向量内追加标记维=实现B 需 M>=5 才拉开, 且会把同类相似度抬到 ~0.98
    摧毁语义归一所需的类内区分度 → 弃用.)
@@ -125,19 +125,18 @@ async def vectorize_and_normalize(conn, *, substrate_id: str, discipline: str,
                 "UPDATE aii.concept_onto SET aliases = aliases || $1::jsonb WHERE concept_id = $2",
                 json.dumps([d[1] for d in dups]), can_id,
             )
-            # ★把 dup 的 level/discipline/invariant/invariant_vector 带到 canonical (canonical 空才补)
+            # ★把 dup 的 level/discipline/invariant_id 带到 canonical (canonical 空才补)
             d = await conn.fetchrow(
                 """SELECT (array_agg(level) FILTER (WHERE level IS NOT NULL))[1] level,
                           (array_agg(discipline) FILTER (WHERE discipline IS NOT NULL))[1] discipline,
-                          (array_agg(invariant) FILTER (WHERE invariant IS NOT NULL))[1] invariant,
-                          (array_agg(invariant_vector) FILTER (WHERE invariant_vector IS NOT NULL))[1] invariant_vector
+                          (array_agg(invariant_id) FILTER (WHERE invariant_id IS NOT NULL))[1] invariant_id
                    FROM aii.concept_onto WHERE concept_id = ANY($1)""", dup_ids)
             await conn.execute(
                 """UPDATE aii.concept_onto SET
                      level=COALESCE(level,$2), discipline=COALESCE(discipline,$3),
-                     invariant=COALESCE(invariant,$4), invariant_vector=COALESCE(invariant_vector,$5)
+                     invariant_id=COALESCE(invariant_id,$4)
                    WHERE concept_id=$1""",
-                can_id, d["level"], d["discipline"], d["invariant"], d["invariant_vector"])
+                can_id, d["level"], d["discipline"], d["invariant_id"])
             await conn.execute(
                 "DELETE FROM aii.concept_onto WHERE concept_id = ANY($1)", dup_ids)
             merged_total += len(dups)
@@ -182,27 +181,31 @@ def _parse_same(resp) -> bool:
 
 async def converge_invariants(conn, llm, *, candidate_threshold: float = 0.45,
                               concurrency: int = 5) -> dict:
-    """里程碑5(升级): 本性同源 = ★向量低阈筛候选 + LLM 判同一 (复用 cross_chunk_link 套路).
+    """里程碑5(升级): 本性同一 = ★向量低阈筛候选 + LLM 判同一 → 挂载(合并到同一本性节点).
 
-    纯余弦判同源对跨学科太弱 (导数↔边际仅 0.517). 改为:
-      ① invariant_vector 余弦 >= candidate_threshold(默认0.45) → 候选对 (只筛范围, 不判定).
+    操作对象 = 统一本性表 aii.invariant (单本性 is_concept=false + 本性概念 is_concept=true 同表).
+      ① invariant.vector 余弦 >= candidate_threshold(默认0.45) → 候选对 (只筛范围, 不判定).
       ② 每候选对 LLM 判 "是不是同一个道(intrinsic law)?" — yes/no.
-      ③ LLM 判 yes 的对 → 并查集连通 → 每组凝结 1 个 invariant_concept,
-         成员概念 invariant_concept_id 指向它 (本性同源连接). LLM 判 no → 不凝结.
-    ★red line: 余弦只筛候选, LLM 判 yes 才凝结, 绝不靠余弦直接判同源.
-    跨学科收敛 (同源即连, 不按 discipline 隔离). 空 invariant → no-op.
+      ③ LLM 判 yes → 挂载: 把同源本性行并成一个(member_concept_ids 合并, 相关概念 invariant_id
+         改指保留行), 合并后成员>=2 → is_concept=true(升为本性概念). LLM no → 不并.
+    ★本性同一是"概念挂到已有本性下"的自然过程(挂载), 不是特殊"凝结"事件.
+    ★red line: 余弦只筛候选, LLM 判 yes 才挂载, 绝不靠余弦直接判同源. 跨学科(不按 discipline 隔离).
+    <2 行 → no-op.
     """
     rows = await conn.fetch(
-        """SELECT concept_id, name, invariant, invariant_vector FROM aii.concept_onto
-           WHERE invariant_vector IS NOT NULL""")
+        "SELECT id, statement, vector, member_concept_ids FROM aii.invariant")
     n = len(rows)
     if n < 2:
-        return {"invariants": n, "candidates": 0, "judged_same": 0, "condensed": 0, "groups": []}
+        return {"invariants": n, "candidates": 0, "judged_same": 0, "merged": 0, "groups": []}
 
-    cids = [r["concept_id"] for r in rows]
-    names = [r["name"] for r in rows]
-    invs = [r["invariant"] for r in rows]
-    vecs = np.asarray([[float(x) for x in r["invariant_vector"]] for r in rows])
+    ids = [r["id"] for r in rows]
+    stmts = [r["statement"] for r in rows]
+
+    def _members(v):
+        v = json.loads(v) if isinstance(v, str) else (v or [])
+        return [str(x) for x in v]
+    members = [_members(r["member_concept_ids"]) for r in rows]
+    vecs = np.asarray([[float(x) for x in r["vector"]] for r in rows])
 
     # ① 向量低阈筛候选 (只筛范围)
     candidates = [(i, j) for i, j in combinations(range(n), 2)
@@ -213,7 +216,7 @@ async def converge_invariants(conn, llm, *, candidate_threshold: float = 0.45,
 
     async def judge(i, j):
         async with sem:
-            prompt = _INV_JUDGE_TMPL.format(a=invs[i] or "", b=invs[j] or "")
+            prompt = _INV_JUDGE_TMPL.format(a=stmts[i] or "", b=stmts[j] or "")
             try:
                 resp = await llm(messages=[{"role": "user", "content": prompt}],
                                  system=_INV_JUDGE_SYS, max_tokens=60)
@@ -225,7 +228,7 @@ async def converge_invariants(conn, llm, *, candidate_threshold: float = 0.45,
     judged = await asyncio.gather(*[judge(i, j) for i, j in candidates]) if candidates else []
     yes_pairs = [(i, j) for i, j, same in judged if same]
 
-    # ③ yes 对并查集 → 连通分量 → 凝结
+    # ③ yes 对并查集 → 连通分量 → 挂载合并
     parent = list(range(n))
 
     def find(x):
@@ -240,41 +243,52 @@ async def converge_invariants(conn, llm, *, candidate_threshold: float = 0.45,
         comp[find(i)].append(i)
     groups = [g for g in comp.values() if len(g) > 1]
 
-    condensed = 0
+    merged = 0
     report = []
     async with conn.transaction():
         for grp in groups:
-            member_ids = [cids[i] for i in grp]
-            centroid = np.mean(vecs[grp], axis=0)
-            statement = next((invs[i] for i in grp if invs[i]), "(unspecified invariant)")
-            nc_id = await conn.fetchval(
-                """INSERT INTO aii.invariant_concept(statement, vector, member_concept_ids)
-                   VALUES ($1, $2, $3::jsonb) RETURNING id""",
-                statement, centroid.tolist(), json.dumps([str(m) for m in member_ids]))
+            keep = max(grp, key=lambda i: len(members[i]))   # 成员最多的本性行作保留
+            drop = [i for i in grp if i != keep]
+            keep_id = ids[keep]
+            drop_ids = [ids[i] for i in drop]
+            all_members: list[str] = []
+            for i in grp:
+                for m in members[i]:
+                    if m not in all_members:
+                        all_members.append(m)
+            # 被并行的概念 invariant_id 改指保留行 + keep 行更新 member/is_concept + 删被并行
             await conn.execute(
-                "UPDATE aii.concept_onto SET invariant_concept_id = $1 WHERE concept_id = ANY($2)",
-                nc_id, member_ids)
-            condensed += 1
-            report.append({"statement": statement[:60], "members": [names[i] for i in grp]})
+                "UPDATE aii.concept_onto SET invariant_id=$1 WHERE invariant_id = ANY($2)",
+                keep_id, drop_ids)
+            await conn.execute(
+                "UPDATE aii.invariant SET member_concept_ids=$1::jsonb, is_concept=$2 WHERE id=$3",
+                json.dumps(all_members), len(all_members) >= 2, keep_id)
+            await conn.execute("DELETE FROM aii.invariant WHERE id = ANY($1)", drop_ids)
+            merged += len(drop)
+            cnames = await conn.fetch(
+                "SELECT name, discipline FROM aii.concept_onto WHERE concept_id = ANY($1)",
+                [int(m) for m in all_members])
+            report.append({"statement": stmts[keep][:55],
+                           "members": [f"{r['name']}({r['discipline']})" for r in cnames]})
 
     return {"invariants": n, "candidates": len(candidates), "judged_same": len(yes_pairs),
-            "condensed": condensed, "groups": report}
+            "merged": merged, "groups": report}
 
 
 async def query_invariant_siblings(conn, concept_name: str) -> list[dict]:
     """本性同一查询: 给一个概念名, 返回与它【本性同一】(invariant-identity)的其他概念.
 
-    逻辑: concept → invariant_concept_id → 同一 invariant_concept 的所有 member → 排除自己.
-    ★本性同一不单独建边/表 — 直接经 invariant_concept 成员关系查询 (成员即同一).
+    逻辑: concept → invariant_id → 共享同一 invariant 节点的其他概念 → 排除自己.
+    ★本性同一不单独建边/表 — 同一 invariant_id 即本性同一 (统一本性表的成员关系).
     例: query("边际成本") → [导数(math), 导函数(math)] (本性同一: 瞬时变化率, 跨学科).
-    返回 [{"name":..., "discipline":..., "invariant":...}], 无同一概念则空列表.
+    返回 [{"name":..., "discipline":...}], 无同一概念则空列表.
     """
     return [dict(r) for r in await conn.fetch(
-        """SELECT c2.name, c2.discipline, c2.invariant
+        """SELECT c2.name, c2.discipline
            FROM aii.concept_onto c1
-           JOIN aii.concept_onto c2 ON c1.invariant_concept_id = c2.invariant_concept_id
+           JOIN aii.concept_onto c2 ON c1.invariant_id = c2.invariant_id
            WHERE c1.name = $1 AND c2.name <> c1.name
-                 AND c1.invariant_concept_id IS NOT NULL
+                 AND c1.invariant_id IS NOT NULL
            ORDER BY c2.discipline, c2.name""",
         concept_name)]
 

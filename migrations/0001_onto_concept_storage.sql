@@ -1,15 +1,15 @@
--- AII 概念存储层 + _onto 六表 schema 快照 (migration / 重建用)
+-- AII 概念存储层 + _onto 六表 + 统一本性表 schema 快照 (migration / 重建用)
 -- 守 VHDX 数据丢失教训: DDL 固化进 repo, 不依赖现库存活.
--- 来源: pg_dump --schema-only -t 'aii.*_onto' -t aii.invariant_concept (已应用态快照)
--- 含: ku_onto/edge_onto/concept_onto(+本体列+invariant维度)/ku_concept_onto/kc_onto/bu_onto/invariant_concept
---   命门 CHECK(六分类含rationale/受控关系/grade/sub_type/positional/grade铁律/level) 已含.
--- 前置依赖: pgvector 扩展. 重建前需 CREATE EXTENSION IF NOT EXISTS vector;
+-- 来源: pg_dump --schema-only -t 'aii.*_onto' -t aii.invariant (已应用态快照)
+-- 含: ku_onto/edge_onto/concept_onto(本体列+invariant_id)/ku_concept_onto/kc_onto/bu_onto/invariant
+--   invariant=统一本性表(单本性 is_concept=false + 本性概念 is_concept=true 同表, 一对多member).
+-- 前置依赖: pgvector. 重建前需 CREATE EXTENSION IF NOT EXISTS vector;
 
 --
 -- PostgreSQL database dump
 --
 
-\restrict MSdwG9vlNMhjvZQezS8Hh6Ui6t6JfVjJfld37Lv5xeFJd5oaxqondRG51Vie9DD
+\restrict bnFIvOLaI3If2FaEsaZlsQaIFbe6YyXXWlb9bzqAPOQFlaRDrCLGwHJmhmB02y8
 
 -- Dumped from database version 16.14 (Ubuntu 16.14-1.pgdg22.04+1)
 -- Dumped by pg_dump version 16.14 (Ubuntu 16.14-1.pgdg22.04+1)
@@ -94,9 +94,7 @@ CREATE TABLE aii.concept_onto (
     level text,
     discipline text,
     vector public.vector(1024),
-    invariant text,
-    invariant_vector public.vector(1024),
-    invariant_concept_id uuid,
+    invariant_id uuid,
     CONSTRAINT concept_onto_level_check CHECK (((level IS NULL) OR (level = ANY (ARRAY['concrete'::text, 'abstract'::text]))))
 );
 
@@ -167,19 +165,20 @@ ALTER SEQUENCE aii.edge_onto_edge_id_seq OWNED BY aii.edge_onto.edge_id;
 
 
 --
--- Name: invariant_concept; Type: TABLE; Schema: aii; Owner: aii
+-- Name: invariant; Type: TABLE; Schema: aii; Owner: aii
 --
 
-CREATE TABLE aii.invariant_concept (
+CREATE TABLE aii.invariant (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     statement text NOT NULL,
     vector public.vector(1024),
     member_concept_ids jsonb DEFAULT '[]'::jsonb NOT NULL,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    is_concept boolean DEFAULT false
 );
 
 
-ALTER TABLE aii.invariant_concept OWNER TO aii;
+ALTER TABLE aii.invariant OWNER TO aii;
 
 --
 -- Name: kc_onto; Type: TABLE; Schema: aii; Owner: aii
@@ -345,11 +344,11 @@ ALTER TABLE ONLY aii.edge_onto
 
 
 --
--- Name: invariant_concept invariant_concept_pkey; Type: CONSTRAINT; Schema: aii; Owner: aii
+-- Name: invariant invariant_pkey; Type: CONSTRAINT; Schema: aii; Owner: aii
 --
 
-ALTER TABLE ONLY aii.invariant_concept
-    ADD CONSTRAINT invariant_concept_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY aii.invariant
+    ADD CONSTRAINT invariant_pkey PRIMARY KEY (id);
 
 
 --
@@ -426,11 +425,11 @@ CREATE INDEX idx_ku_onto_type ON aii.ku_onto USING btree (knowledge_type);
 
 
 --
--- Name: concept_onto concept_onto_invariant_concept_fk; Type: FK CONSTRAINT; Schema: aii; Owner: aii
+-- Name: concept_onto concept_onto_invariant_id_fkey; Type: FK CONSTRAINT; Schema: aii; Owner: aii
 --
 
 ALTER TABLE ONLY aii.concept_onto
-    ADD CONSTRAINT concept_onto_invariant_concept_fk FOREIGN KEY (invariant_concept_id) REFERENCES aii.invariant_concept(id);
+    ADD CONSTRAINT concept_onto_invariant_id_fkey FOREIGN KEY (invariant_id) REFERENCES aii.invariant(id);
 
 
 --
@@ -477,5 +476,5 @@ ALTER TABLE ONLY aii.ku_onto
 -- PostgreSQL database dump complete
 --
 
-\unrestrict MSdwG9vlNMhjvZQezS8Hh6Ui6t6JfVjJfld37Lv5xeFJd5oaxqondRG51Vie9DD
+\unrestrict bnFIvOLaI3If2FaEsaZlsQaIFbe6YyXXWlb9bzqAPOQFlaRDrCLGwHJmhmB02y8
 
