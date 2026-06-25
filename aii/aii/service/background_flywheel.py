@@ -292,8 +292,8 @@ async def _compute_proactive_needs(backend) -> list[dict]:
                     f"natural_text LIKE ${i + 1}" for i in range(len(params))
                 )
                 sql = (
-                    f"SELECT count(*) FROM aii.ku "
-                    f"WHERE ({conditions}) AND is_synthesis IS NOT TRUE"
+                    f"SELECT count(*) FROM aii.ku_onto "
+                    f"WHERE ({conditions})"
                 )
                 ku_count: int = (await conn.fetchval(sql, *params)) or 0
                 if ku_count < d["threshold"]:
@@ -386,53 +386,9 @@ def _write_needs(gaps: dict, proactive_needs: list[dict] | None = None) -> None:
 
 
 async def _backfill_deep_one(backend) -> bool:
-    """找 1 个已摄入但尚未做深度理解的 substrate, 跑 RelationEngine + DeepSynthesis.
-    返回 True 表示找到并处理了, False 表示没有需要回填的."""
-    from aii.service.auto_ingest import _MEDIUM_PROVIDER, _MEDIUM_DOC_TYPE
-    from aii.service.relation_engine import RelationEngine
-    from aii.service.synthesis_engine_deep import DeepSynthesisEngine
-
-    rows = await backend.list_substrates_needing_deep_understanding(limit=1)
-    if not rows:
-        return False
-
-    row = rows[0]
-    substrate_id = row["substrate_id"]
-    title = row.get("title", substrate_id[:12])
-    medium = (row.get("medium") or "").lower()
-    provider = _MEDIUM_PROVIDER.get(medium, "default")
-    doc_type = _MEDIUM_DOC_TYPE.get(medium, "science")
-
-    pool = await backend._ensure_pool()
-    async with pool.acquire() as conn:
-        ku_rows = await conn.fetch(
-            "SELECT ku_id FROM aii.ku WHERE substrate_id=$1 AND is_synthesis IS NOT TRUE",
-            substrate_id,
-        )
-    ku_ids = [str(r["ku_id"]) for r in ku_rows]
-    if not ku_ids:
-        await backend.mark_deep_understood(substrate_id)
-        return True
-
-    logger.info("backfill: deep understanding for %s (%d KUs)", title[:40], len(ku_ids))
-
-    try:
-        rel = RelationEngine(backend)
-        rel_r = await rel.extract_relations_async(ku_ids, provider=provider)
-        logger.info("backfill: relation %s → rule=%d llm=%d", title[:30],
-                    rel_r.get("rule_edges", 0), rel_r.get("llm_edges", 0))
-    except Exception:
-        logger.exception("backfill: RelationEngine failed for %s (non-fatal)", substrate_id[:8])
-
-    try:
-        deep = DeepSynthesisEngine(backend)
-        await deep.build_overview_async(ku_ids, provider=provider)
-        bk = await deep.build_book_understanding_async(
-            substrate_id, ku_ids, doc_type=doc_type, provider=provider,
-        )
-        logger.info("backfill: book_understanding %s → status=%s", title[:30], bk.get("status"))
-    except Exception:
-        logger.exception("backfill: DeepSynthesis failed for %s (non-fatal)", substrate_id[:8])
+    """已退役: 旧深度理解回填(RelationEngine/DeepSynthesis→旧表)废弃.
+    onto 路径(_run_ontology_path)摄取时已内联做 KC/BU, 无需回填. 恒返回 False."""
+    return False
 
     await backend.mark_deep_understood(substrate_id)
     return True

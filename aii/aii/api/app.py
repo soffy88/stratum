@@ -87,14 +87,7 @@ async def lifespan(app: FastAPI):
         flywheel_task = asyncio.create_task(flywheel_loop(backend), name="aii-flywheel")
         app.state.flywheel_task = flywheel_task
         logger.info("AII background flywheel started.")
-
-        # 5b. 启动管道2飞轮 (教材, 独立启停)
-        from aii.service.background_flywheel_textbook import textbook_flywheel_loop
-        textbook_flywheel_task = asyncio.create_task(
-            textbook_flywheel_loop(backend), name="aii-textbook-flywheel"
-        )
-        app.state.textbook_flywheel_task = textbook_flywheel_task
-        logger.info("AII textbook flywheel (Pipeline 2) started.")
+        # 管道2(教材)飞轮已退役删除.
     else:
         app.state.flywheel_task = None
         app.state.textbook_flywheel_task = None
