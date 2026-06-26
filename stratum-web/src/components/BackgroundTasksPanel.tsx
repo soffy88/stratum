@@ -31,7 +31,7 @@ interface ChannelSub {
 
 interface SourceSub {
   id: string;
-  source_type: 'arxiv' | 'gutenberg' | 'oapen';
+  source_type: 'arxiv' | 'gutenberg' | 'oapen' | 'openstax' | 'mit_ocw';
   name: string;
   query: Record<string, unknown>;
   status: 'active' | 'paused';
@@ -284,9 +284,13 @@ export function BackgroundTasksPanel({ onFolderDeleted }: { onFolderDeleted?: ()
             </div>
           ))}
 
-          {/* 资料源订阅（arXiv / Gutenberg / OAPEN）*/}
+          {/* 资料源订阅（arXiv / Gutenberg / OAPEN / OpenStax / MIT OCW）*/}
           {sources.map(src => {
-            const icon = src.source_type === 'arxiv' ? '📰' : src.source_type === 'gutenberg' ? '📚' : '📖';
+            const icon = src.source_type === 'arxiv' ? '📰'
+              : src.source_type === 'gutenberg' ? '📚'
+              : src.source_type === 'openstax'  ? '🔬'
+              : src.source_type === 'mit_ocw'   ? '🎓'
+              : '📖';
             const q = src.query || {};
             const queryDesc = src.source_type === 'arxiv'
               ? [
@@ -295,8 +299,14 @@ export function BackgroundTasksPanel({ onFolderDeleted }: { onFolderDeleted?: ()
                 ].join(' · ')
               : src.source_type === 'gutenberg'
               ? [q.topic, q.keywords, q.author].filter(Boolean).join(' · ')
+              : src.source_type === 'openstax'
+              ? [(q.subjects as string[] | undefined)?.join(','), q.keywords].filter(Boolean).join(' · ')
+              : src.source_type === 'mit_ocw'
+              ? [(q.departments as string[] | undefined)?.map((d: string) => `dept${d}`).join(','), q.keywords].filter(Boolean).join(' · ')
               : String(q.query || '');
-            const itemUnit = src.source_type === 'arxiv' ? '篇' : '本';
+            const itemUnit = src.source_type === 'arxiv' ? '篇'
+              : src.source_type === 'mit_ocw' ? '讲义'
+              : '本';
             return (
               <div key={src.id} className="px-4 py-3 flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1 space-y-1">
