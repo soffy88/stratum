@@ -307,18 +307,26 @@ class PgBackend(StorageBackend, EpistemicStore):
             rows = await conn.fetch("SELECT * FROM aii.ku_onto WHERE grade = $1", grade)
             return [dict(r) for r in rows]
 
-    async def search_ku_by_vector(self, query_vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
+    async def search_ku_by_vector(self, query_vector: list[float], limit: int = 5,
+                                  knowledge_type: "str | list[str] | None" = None) -> list[dict[str, Any]]:
+        """向量检索 KU. ★knowledge_type 作为一等检索维度: 传单类或多类 → 只在该六类内检索
+        (走 idx_ku_onto_type 索引). 不传 → 全类."""
         pool = await self._ensure_pool()
-        # Use direct asyncpg query with vector distance operator
-        # Since we use enable_vector=True, asyncpg handles list[float] correctly
+        params: list = [query_vector, limit]
+        where = ""
+        if knowledge_type:
+            kts = [knowledge_type] if isinstance(knowledge_type, str) else list(knowledge_type)
+            params.append(kts)
+            where = "WHERE knowledge_type = ANY($3)"
         sql = f"""
             SELECT *, embedding <=> $1 AS distance
             FROM aii.ku_onto
+            {where}
             ORDER BY embedding <=> $1
             LIMIT $2
         """
         async with pool.acquire() as conn:
-            records = await conn.fetch(sql, query_vector, limit)
+            records = await conn.fetch(sql, *params)
         return [dict(r) for r in records]
 
     async def record_state_change(self, ku_id: str, to_grade: str, reason: str | None = None, decision_trail: dict[str, Any] | None = None) -> None:
