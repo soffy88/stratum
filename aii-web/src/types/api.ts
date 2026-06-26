@@ -365,8 +365,16 @@ export interface KcListItem {
   community_size: number;
 }
 export interface KcDetail extends KcListItem {
+  summary_en?: string;
   source_ku_ids: string[];
-  members: Array<{ id: string; natural_text: string; grade: EpistemicGrade }>;
+  members: Array<{
+    id: string;
+    title?: string;
+    natural_text: string;
+    natural_text_zh?: string;
+    natural_text_en?: string;
+    grade: EpistemicGrade;
+  }>;
 }
 
 // ── 视图5:书级理解 BU GET /api/bu/list, /api/bu/{id} ──

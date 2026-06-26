@@ -353,7 +353,7 @@ async def kc_detail(kc_id: str):
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT kc_id, community_label, summary, grade, member_ku_ids "
+                "SELECT kc_id, community_label, summary, summary_en, grade, member_ku_ids "
                 "FROM aii.kc_onto WHERE kc_id = $1",
                 kc_id_int,
             )
@@ -364,19 +364,28 @@ async def kc_detail(kc_id: str):
             member_rows = []
             if source_ids:
                 member_rows = await conn.fetch(
-                    "SELECT ku_id, left(natural_text,120) AS natural_text, grade "
+                    "SELECT ku_id, title, natural_text_zh, natural_text, grade "
                     "FROM aii.ku_onto WHERE ku_id = ANY($1::text[])",
-                    [str(s) for s in source_ids[:20]],
+                    [str(s) for s in source_ids[:50]],
                 )
 
         members = [
-            {"id": r["ku_id"], "natural_text": r["natural_text"], "grade": r["grade"]}
+            {
+                "id": r["ku_id"],
+                "title": r["title"],
+                # 中文主显, 英文折叠用; 截断给列表, 全文给展开
+                "natural_text": (r["natural_text_zh"] or r["natural_text"] or "")[:140],
+                "natural_text_zh": r["natural_text_zh"] or "",
+                "natural_text_en": r["natural_text"] or "",
+                "grade": r["grade"],
+            }
             for r in member_rows
         ]
         return success_response({
             "id": _str(row["kc_id"]),
             "community_label": row["community_label"] or "",
             "summary": row["summary"] or "",
+            "summary_en": row["summary_en"] or "",
             "grade": row["grade"],
             "community_size": len(source_ids),
             "source_ku_ids": source_ids,

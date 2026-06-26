@@ -28,6 +28,51 @@ function SynthesisTag() {
   );
 }
 
+function BiText({ zh, en }: { zh: string; en?: string }) {
+  const [showEn, setShowEn] = useState(false);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-sm leading-relaxed whitespace-pre-wrap">{zh}</p>
+      {en && (
+        <>
+          <button onClick={() => setShowEn(v => !v)} className="self-start text-xs text-[color:var(--text-secondary)] hover:text-[color:var(--accent,#2563eb)]">
+            <span className="inline-block w-3">{showEn ? '▾' : '▸'}</span> 英文原文
+          </button>
+          {showEn && <p className="text-sm leading-relaxed whitespace-pre-wrap text-[color:var(--text-secondary)] border-l-2 border-[color:var(--border)] pl-2">{en}</p>}
+        </>
+      )}
+    </div>
+  );
+}
+
+function MemberRow({ m }: { m: KcDetail['members'][number] }) {
+  const [open, setOpen] = useState(false);
+  const [showEn, setShowEn] = useState(false);
+  const zh = m.natural_text_zh || m.natural_text;
+  return (
+    <div className="rounded-md border border-[color:var(--border)] p-2.5 text-sm flex flex-col gap-1.5">
+      <button onClick={() => setOpen(v => !v)} className="flex items-start gap-2 text-left w-full">
+        <OEpistemicBadge grade={m.grade} compact />
+        <span className="flex-1 min-w-0 leading-relaxed">{m.title || zh.slice(0, 50)}</span>
+        <span className="text-xs text-[color:var(--text-tertiary,#888)]">{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <div className="pl-2 border-l-2 border-[color:var(--border)] flex flex-col gap-1.5">
+          <p className="text-sm leading-relaxed whitespace-pre-wrap">{zh}</p>
+          {m.natural_text_en && (
+            <>
+              <button onClick={() => setShowEn(v => !v)} className="self-start text-xs text-[color:var(--text-secondary)] hover:text-[color:var(--accent,#2563eb)]">
+                <span className="inline-block w-3">{showEn ? '▾' : '▸'}</span> 英文原文
+              </button>
+              {showEn && <p className="text-sm leading-relaxed whitespace-pre-wrap text-[color:var(--text-secondary)]">{m.natural_text_en}</p>}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function KcDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
   const [state, run] = useApi(api.getKcDetail);
   useEffect(() => { void run(id); }, [id, run]);
@@ -50,16 +95,11 @@ function KcDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
             <h3 className="text-base font-medium">{d.community_label}</h3>
             <div className="flex flex-col gap-2">
               <SynthesisTag />
-              <p className="text-sm leading-relaxed">{d.summary}</p>
+              <BiText zh={d.summary} en={d.summary_en} />
             </div>
             <section className="flex flex-col gap-2">
-              <h4 className="text-xs font-semibold text-[color:var(--text-secondary)] uppercase tracking-wide">成员 KU / Members</h4>
-              {d.members.map(m => (
-                <div key={m.id} className="rounded-md border border-[color:var(--border)] p-2.5 text-sm flex items-start gap-2">
-                  <OEpistemicBadge grade={m.grade} compact />
-                  <span className="flex-1">{m.natural_text}</span>
-                </div>
-              ))}
+              <h4 className="text-xs font-semibold text-[color:var(--text-secondary)] uppercase tracking-wide">成员 KU / Members（点开看讲透）</h4>
+              {d.members.map(m => <MemberRow key={m.id} m={m} />)}
             </section>
           </>
         )}
