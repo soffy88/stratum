@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import asyncpg
 from chapter_ingest import slice_chapter, SM
 from chapter_synthesize import _plan, _synth, _CTX
+from clean_ku import clean, is_empty_shell
 from aii.api._provider import register_providers
 from aii.service.planning_completeness import check_completeness
 from oprim import vector_encode
@@ -52,21 +53,25 @@ async def synth_chapter(llm, n):
 async def persist(conn, n, kus):
     loop = asyncio.get_event_loop()
     for i, (name, typ, body) in enumerate(kus):
-        en, zh = _split_bilingual(body)
-        if not en and not zh:
+        en_raw, zh_raw = _split_bilingual(body)
+        # ★清洗呈现: 去脚手架/markdown/(未涉及); 来源标注剥到 provenance.citations(命门不丢)
+        en, en_cites = clean(en_raw)
+        zh, zh_cites = clean(zh_raw)
+        if is_empty_shell(zh or en):     # 全空壳(书没讲)→ 不入库
             continue
         kt = _TYPE_MAP.get(typ, "conceptual")
-        emb = (await loop.run_in_executor(None, lambda c=(en or zh)[:2000]: vector_encode(texts=[c], provider="default")))[0]
+        emb = (await loop.run_in_executor(None, lambda c=(zh or en)[:2000]: vector_encode(texts=[c], provider="default")))[0]
+        prov = {"chapter": n, "paradigm": "thorough-synthesis", "marker": "AII综合-讲透,非原文逐字",
+                "citations": sorted(set(en_cites + zh_cites))}
         await conn.execute("""
             INSERT INTO aii.ku_onto (ku_id, substrate_id, title, natural_text, natural_text_zh,
                 knowledge_type, grade, provenance, embedding)
             VALUES ($1,$2,$3,$4,$5,$6,'unverified',$7,$8)
             ON CONFLICT (ku_id) DO UPDATE SET natural_text=EXCLUDED.natural_text,
                 natural_text_zh=EXCLUDED.natural_text_zh, knowledge_type=EXCLUDED.knowledge_type,
-                embedding=EXCLUDED.embedding""",
+                provenance=EXCLUDED.provenance, embedding=EXCLUDED.embedding""",
             f"{SUB}::ch{n}_ku{i}", SUB, name[:200], en or zh, zh,
-            kt, json.dumps({"chapter": n, "paradigm": "thorough-synthesis", "marker": "AII综合-讲透,非原文逐字"}),
-            emb)
+            kt, json.dumps(prov), emb)
 
 
 async def main():
