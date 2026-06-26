@@ -40,10 +40,10 @@ async def _plan(llm, text, n):
         m = re.search(r"\{.*\}", t, re.DOTALL)
         if m:
             pts += json.loads(m.group(0)).get("points", [])
-    # dedup by name
+    # dedup by normalized name (单复数/大小写归一, 防多块规划产近重复点 如 'explicit cost'/'explicit costs')
     seen, out = set(), []
     for p in pts:
-        k = p.get("name", "").lower()[:40]
+        k = re.sub(r"s\b", "", re.sub(r"\s+", " ", p.get("name", "").strip().lower()))[:40]
         if k and k not in seen:
             seen.add(k); out.append(p)
     return out
