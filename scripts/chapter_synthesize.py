@@ -19,7 +19,8 @@ _CTX = 130000
 
 PLAN_SYS = "You identify the CORE knowledge points a textbook chapter teaches. Output valid JSON only."
 SYN_SYS = ("You synthesize ONE thorough KU by INTEGRATING the chapter's material. Use ONLY the chapter text. "
-           "Cite [Ch{n}]. If a facet is not covered write '(not covered)'. Integration not creation. Bilingual EN+中文.")
+           "Cite [Ch{n}]. If a facet is not covered write '(not covered)'. Integration not creation. Bilingual EN+中文. "
+           "★ The Chinese MUST be Simplified Chinese (简体中文) only — NEVER Traditional characters (禁止繁体字).")
 
 
 def _facets(typ):

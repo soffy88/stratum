@@ -30,6 +30,30 @@ const TYPE_OPTS: OFilterChipOption[] = (
   ['theorem','definition','concept','claim','method','observation'] as KnowledgeType[]
 ).map(t => ({ value: t, label: t }));
 
+/** 双语:中文(简体)主显 + 英文原文折叠(箭头展开)。无中文时回退英文。 */
+function BilingualText({ zh, en }: { zh?: string | null; en: string }) {
+  const [showEn, setShowEn] = useState(false);
+  const hasZh = !!zh && zh.trim().length > 0;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-sm leading-relaxed whitespace-pre-wrap">{hasZh ? zh : en}</p>
+      {hasZh && (
+        <>
+          <button
+            onClick={e => { e.stopPropagation(); setShowEn(v => !v); }}
+            className="self-start text-xs text-[color:var(--text-secondary)] hover:text-[color:var(--accent,#2563eb)] flex items-center gap-1"
+          >
+            <span className="inline-block w-3">{showEn ? '▾' : '▸'}</span> 英文原文
+          </button>
+          {showEn && (
+            <p className="text-sm leading-relaxed whitespace-pre-wrap text-[color:var(--text-secondary)] border-l-2 border-[color:var(--border)] pl-2">{en}</p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function KuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
   const [state, run] = useApi(api.getKuDetail);
   useEffect(() => { void run(id); }, [id, run]);
@@ -57,7 +81,7 @@ function KuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
                 </span>
               )}
             </div>
-            <p className="text-sm leading-relaxed">{d.natural_text}</p>
+            <BilingualText zh={d.natural_text_zh} en={d.natural_text} />
 
             <section className="flex flex-col gap-2">
               <h3 className="text-xs font-semibold text-[color:var(--text-secondary)] uppercase tracking-wide">来源表述 / Sources</h3>
@@ -172,7 +196,7 @@ export default function KnowledgePage() {
                   )}
                   <span className="text-xs text-[color:var(--text-tertiary,#888)] ml-auto">{ku.substrate_title}</span>
                 </div>
-                <p className="text-sm leading-relaxed">{ku.natural_text}</p>
+                <BilingualText zh={ku.natural_text_zh} en={ku.natural_text} />
               </li>
             ))}
           </ul>

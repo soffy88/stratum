@@ -83,6 +83,7 @@ async def ku_list(
             rows = await conn.fetch(
                 f"""
                 SELECT k.ku_id, left(k.natural_text, 300) AS natural_text,
+                       left(k.natural_text_zh, 400) AS natural_text_zh,
                        k.knowledge_type, k.grade, k.substrate_id,
                        s.title AS substrate_title, s.subject AS subject,
                        k.merge_count, k.created_at
@@ -99,6 +100,7 @@ async def ku_list(
             {
                 "id": _str(r["ku_id"]),
                 "natural_text": r["natural_text"],
+                "natural_text_zh": r["natural_text_zh"],
                 "knowledge_type": r["knowledge_type"],
                 "grade": r["grade"],
                 "substrate_id": r["substrate_id"],
@@ -127,7 +129,7 @@ async def ku_detail(ku_id: str):
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT k.ku_id, k.natural_text, k.knowledge_type, k.grade,
+                SELECT k.ku_id, k.natural_text, k.natural_text_zh, k.knowledge_type, k.grade,
                        k.substrate_id, s.title AS substrate_title,
                        k.merge_count, k.sources, k.created_at
                 FROM aii.ku_onto k
@@ -178,6 +180,7 @@ async def ku_detail(ku_id: str):
         return success_response({
             "id": _str(row["ku_id"]),
             "natural_text": row["natural_text"],
+            "natural_text_zh": row["natural_text_zh"],
             "knowledge_type": row["knowledge_type"],
             "grade": row["grade"],
             "substrate_id": row["substrate_id"],

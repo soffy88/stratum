@@ -244,6 +244,8 @@ export interface StatsIngestionResponse {
 export interface KuListItem {
   id: string;
   natural_text: string;
+  /** 中文译(简体)。中文主显,英文 natural_text 折叠。 */
+  natural_text_zh?: string | null;
   grade: EpistemicGrade;
   knowledge_type: KnowledgeType;
   /** 来源 substrate(书名)。 */

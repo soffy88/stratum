@@ -34,6 +34,7 @@ async def query_ku(
             formatted.append({
                 "ku_id": str(r["ku_id"]),
                 "natural_text": r.get("natural_text"),
+                "natural_text_zh": r.get("natural_text_zh"),
                 "knowledge_type": r.get("knowledge_type"),
                 "grade": r.get("grade"),
                 "score": 1.0 - r.get("distance", 1.0) # Similarity score
