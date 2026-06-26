@@ -523,12 +523,17 @@ def fix_r6(pdf_path: str, md: str, dry_run: bool = False) -> tuple[str, dict]:
     new_md, p2_fixed = _fix_r6_pass2(new_md)
     log.info('R6 pass2: fixed=%d additional FFFDs by content pattern', p2_fixed)
 
-    # ── Pass 3: fix low-codepoint control chars (U+0002/0003/0004) ────────────
+    # ── Pass 3: word-split rejoin + game-theory table cell cleanup ──────────────
+    new_md, p3_word_fixed = _fix_r6_pass3(new_md)
+    if p3_word_fixed:
+        log.info('R6 pass3 (words): fixed=%d word-split/table FFFDs', p3_word_fixed)
+
+    # ── Pass 4: fix low-codepoint control chars (U+0002/0003/0004) ────────────
     # pymupdf outputs chr(N) for MathPi byte-code N when ToUnicode is absent.
     # Only fix positions where context unambiguously determines the symbol.
     new_md, p3_fixed = _fix_r6_ctrl_chars(new_md)
     if p3_fixed:
-        log.info('R6 pass3: fixed=%d control-char positions', p3_fixed)
+        log.info('R6 pass4 (ctrl): fixed=%d control-char positions', p3_fixed)
 
     remaining_fffd = new_md.count(FFFD)
     log.info('R6: remaining FFFD in md: %d', remaining_fffd)
@@ -936,12 +941,22 @@ def _fix_r6_pass2(md: str) -> tuple[str, int]:
         ('yPriceElasticDemand(εd=', ')', '∞'),   # ∞ in (εd=∞)
         ('.PRICEELASTICDEMAND(εd=', ')', '∞'),   # heading version
         ('griculturalsuppliersεd=', 'WhenP', '∞'),  # ∞ in agricultural example
+        # ── Ch17: MRT chapter — spurious MathPi mid-sentence (delete = restore text) ─
+        # PDF inserts MathPi glyphs as invisible separators; deleting restores English.
+        # Offset tracking in the loop handles string-length changes from deletion.
+        ('nitofHintermsofforgone', 'wages(and,therefore,C)', ''),  # "forgone wages"
+        ('rgonehouseholdoutputs.', 'Followingthissamelogic', ''),  # para separator
+        ('’s', 'MRTwithrespecttoover', ''),  # Fred's MRT
+        ('MRTasitrelates', 'toovertimehoursequals', ''),            # "relates to overtime"
+        ('hofCtogainanadditional', 'unitofH.Thus,theopport', ''),  # "additional unit of H"
     ]
 
     fixed = 0
+    offset = 0  # tracks net char-count change from variable-length replacements
     for pos in sorted([i for i, c in enumerate(md) if c == FFFD]):
-        raw_b = md[max(0, pos - 50):pos]
-        raw_a = md[pos + 1:pos + 55]
+        adj = pos + offset  # actual position in the (possibly shrunk/grown) md
+        raw_b = md[max(0, adj - 50):adj]
+        raw_a = md[adj + 1:adj + 55]
         # Strip markdown formatting and whitespace; replace remaining FFFDs with □
         s_b = re.sub(r'[_*`\s]', '', raw_b.replace(FFFD, '□'))
         s_a = re.sub(r'[_*`\s]', '', raw_a.replace(FFFD, '□'))
@@ -953,9 +968,42 @@ def _fix_r6_pass2(md: str) -> tuple[str, int]:
                 break
 
         if matched_repl is not None:
-            md = md[:pos] + matched_repl + md[pos + 1:]
+            md = md[:adj] + matched_repl + md[adj + 1:]
+            offset += len(matched_repl) - 1  # 0 for 1-char repl, -1 for deletion
             fixed += 1
 
+    return md, fixed
+
+
+def _fix_r6_pass3(md: str) -> tuple[str, int]:
+    """Pass3: direct string replacements for patterns pass2 cannot handle.
+
+    Handles two cases:
+      - Word-split artifact: FFFD + ' ' inside a word (e.g. 'posi□ tive')
+        — replace FFFD + space with empty to rejoin the word.
+      - Game theory table cells: '<br>FFFD<br>' → '<br><br>'
+        — FFFD is an empty-cell separator, safe to delete.
+    """
+    # Each tuple: (old_str, new_str) — all replacements are literal, not regex
+    SUBS = [
+        # Word-split rejoin (PDF hyphenated line-break, MathPi glyph replaces hyphen)
+        (FFFD + ' tive,', 'tive,'),     # 'posi□ tive,' → 'positive,'
+        (FFFD + ' ers r', 'ers r'),     # 'consum□ ers r' → 'consumers r'
+        (FFFD + ' tity s', 'tity s'),   # 'quan□ tity s' → 'quantity s'
+        # Game theory payoff table: FFFD is an empty cell between <br> tags
+        ('<br>' + FFFD + '<br>', '<br><br>'),
+        # Paragraph-start markers (□ before complete English sentence — safe to delete)
+        ('\n\n' + FFFD + ' Assuming the firm', '\n\nAssuming the firm'),   # Ch19 assembly lines
+        ('\n\n' + FFFD + ' In fact, if the price', '\n\nIn fact, if the price'),  # Ch9 elasticity
+        # _P_₁ and _P_₂ subscripts: MathPi subscript-digit glyph before '1'/'2'
+        ('_P_ ' + FFFD + '1 and _P_ ' + FFFD + '2', '_P_ 1 and _P_ 2'),
+    ]
+    fixed = 0
+    for old, new in SUBS:
+        count = md.count(old)
+        if count:
+            md = md.replace(old, new)
+            fixed += old.count(FFFD) * count  # each occurrence removes that many FFFDs
     return md, fixed
 
 
