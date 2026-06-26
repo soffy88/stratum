@@ -20,7 +20,7 @@ const NAV_ITEMS: SideBarNavItem[] = [
   { id: 'knowledge',  label: '知识库', icon: '📚', href: '/knowledge' },
   { id: 'graph',      label: '图谱',   icon: '🕸️', href: '/graph' },
   { id: 'clusters',   label: '知识簇', icon: '🧩', href: '/clusters' },
-  { id: 'books',      label: '书级理解', icon: '📖', href: '/books' },
+  { id: 'books',      label: '书级理解', icon: '📖', href: '/book' },
   { id: 'chat',       label: '对话',   icon: '💬', href: '/chat' },
   { id: 'query',      label: '查询',   icon: '🔍', href: '/query' },
   { id: 'ingest',     label: '摄入',   icon: '📥', href: '/ingest' },

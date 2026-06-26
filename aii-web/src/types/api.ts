@@ -240,6 +240,22 @@ export interface StatsIngestionResponse {
   deep_understood: number;
 }
 
+// ── BU 书级理解 GET /api/book/{substrate}/bu ──
+export interface BuFacets {
+  soul: string; positioning: string; question: string;
+  skeleton: string; thinking: string; for_whom: string; boundary: string;
+}
+export interface BuData {
+  substrate_id: string;
+  facets_zh: BuFacets;
+  facets_en: BuFacets;
+  grade: EpistemicGrade;
+  synthesis_marker: string;
+  n_ku: number;
+  n_kc_chapter: number;
+  n_kc_spectral: number;
+}
+
 // ── 视图2:KU 浏览 GET /api/ku/list ──
 export interface KuListItem {
   id: string;
