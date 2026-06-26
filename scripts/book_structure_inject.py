@@ -179,12 +179,14 @@ def _search_chapter_h2(md: str, ch: ChapterInfo, search_start: int, search_end: 
       3. ## **Chapter N prefix      (同上，无冒号)
       4. ## Chapter N: prefix       (非bold，chapter前缀)
       5. ## {N} prefix / ## {N}. prefix  (数字开头, 非小节号格式)
+      6. ## **N.1 ...               (OpenStax subsection-first: 无章级H2，直接从N.1开始)
+      7. ## **TITLE (大写)          (OpenStax ALL-CAPS chapter title heading)
     """
     title_words = ch.title.split()
     chunk = md[search_start:search_end]
     ch_n = ch.ch_num
 
-    for n_words in (5, 4, 3, 2):
+    for n_words in (5, 4, 3, 2, 1):
         if n_words > len(title_words):
             continue
         prefix = ' '.join(title_words[:n_words])
@@ -204,6 +206,18 @@ def _search_chapter_h2(md: str, ch: ChapterInfo, search_start: int, search_end: 
             m = re.search(pat, chunk)
             if m:
                 return search_start + m.start()
+
+    # 5 (fallback). 大写章标题（OpenStax ALL-CAPS heading，如 ## **FUNCTIONS AND GRAPHS**）
+    if title_words:
+        esc_upper = re.escape(' '.join(title_words[:min(3, len(title_words))]).upper())
+        m = re.search(r'(?m)^## (?:\*\*)?' + esc_upper, chunk)
+        if m:
+            return search_start + m.start()
+
+    # 6 (fallback). OpenStax N.1 subsection anchor（章无 H2，从第一子节定位）
+    m = re.search(r'(?m)^## (?:\*\*)?' + re.escape(str(ch_n)) + r'\.1[^\d]', chunk)
+    if m:
+        return search_start + m.start()
 
     return None
 
@@ -238,9 +252,10 @@ def find_chapter_positions(md: str, chapters: list[ChapterInfo], total_pages: in
         md_body_total = body_end_est - ch1.md_offset
         est_offset = ch1.md_offset + int(pages_from_ch1 / pages_body_total * md_body_total)
 
-        # 搜索窗: ±10% of total md
+        # 搜索窗: 从上一个已找到章节的位置+1开始（+1防止同名前缀章节重复匹配自身）
+        # 不用 max(prev_offset, est-window) 避免后半段章节被窗口下界截掉
         window = int(len(md) * 0.10)
-        s_start = max(prev_offset, est_offset - window)
+        s_start = prev_offset + 1
         s_end   = min(len(md), est_offset + window)
 
         ch.md_offset = _search_chapter_h2(md, ch, s_start, s_end)
