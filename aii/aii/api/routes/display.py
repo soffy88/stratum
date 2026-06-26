@@ -384,6 +384,34 @@ async def kc_detail(kc_id: str):
 
 # ── BU (Book Understanding / bu_onto) ─────────────────────────────────────────
 
+@router.get("/book/{substrate_id}/bu")
+async def book_bu(substrate_id: str):
+    """书级理解 BU 七项(双语)+ 该书 KC/KU 计数。书的入口: 看 BU 决定要不要深入读。"""
+    try:
+        pool = await backend._ensure_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT facets_zh, facets_en, grade, synthesis_marker FROM aii.bu_onto WHERE substrate_id=$1",
+                substrate_id)
+            nku = await conn.fetchval("SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", substrate_id)
+            nkc_ch = await conn.fetchval(
+                "SELECT count(*) FROM aii.kc_onto WHERE substrate_id=$1 AND synthesis_marker='AII章节KC'", substrate_id)
+            nkc_sp = await conn.fetchval(
+                "SELECT count(*) FROM aii.kc_onto WHERE substrate_id=$1 AND synthesis_marker='AII谱社区KC'", substrate_id)
+        if not row or not row["facets_zh"]:
+            return error_response("NOT_FOUND", f"BU for {substrate_id} not found")
+        return success_response({
+            "substrate_id": substrate_id,
+            "facets_zh": _jsonb(row["facets_zh"]),
+            "facets_en": _jsonb(row["facets_en"]),
+            "grade": row["grade"],
+            "synthesis_marker": row["synthesis_marker"],
+            "n_ku": nku, "n_kc_chapter": nkc_ch, "n_kc_spectral": nkc_sp,
+        })
+    except Exception as e:
+        return error_response("BU_ERROR", str(e))
+
+
 @router.get("/bu/list")
 async def bu_list(
     page: int = Query(1, ge=1),

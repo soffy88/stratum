@@ -150,6 +150,7 @@ import type {
   KcDetail,
   BuListItem,
   BuDetail,
+  BuData,
 } from '@/types/api';
 
 function qs(params: Record<string, unknown>): string {
@@ -201,6 +202,9 @@ export async function getKcList(view: 'chapter' | 'spectral' = 'chapter'): Promi
 export async function getKcDetail(id: string): Promise<ApiResult<KcDetail>> {
   if (USE_MOCK) return mock.mockKcDetail(id);
   return request<KcDetail>(`/api/kc/${encodeURIComponent(id)}`, { method: 'GET' });
+}
+export async function getBookBu(substrate: string): Promise<ApiResult<BuData>> {
+  return request<BuData>(`/api/book/${encodeURIComponent(substrate)}/bu`, { method: 'GET' });
 }
 
 export async function getBuList(): Promise<ApiResult<BuListItem[]>> {
