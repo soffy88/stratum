@@ -306,21 +306,26 @@ async def graph_search(q: str = Query(..., min_length=1), limit: int = Query(20,
 async def kc_list(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    view: str = Query("chapter"),  # ★双视图: chapter(按章) | spectral(谱社区)
 ):
     try:
         offset = (page - 1) * page_size
+        marker = "AII谱社区KC" if view == "spectral" else "AII章节KC"
+        # 按章用 level(章号)排序, 谱社区用簇大小
+        order = "level NULLS LAST, kc_id" if view == "chapter" else "community_size DESC, kc_id"
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:
-            total = await conn.fetchval("SELECT count(*) FROM aii.kc_onto")
+            total = await conn.fetchval(
+                "SELECT count(*) FROM aii.kc_onto WHERE synthesis_marker=$1", marker)
             rows = await conn.fetch(
-                """
+                f"""
                 SELECT kc_id, community_label, left(summary, 300) AS summary, grade,
                        jsonb_array_length(COALESCE(member_ku_ids, '[]'::jsonb)) AS community_size
-                FROM aii.kc_onto
-                ORDER BY community_size DESC, kc_id
+                FROM aii.kc_onto WHERE synthesis_marker=$3
+                ORDER BY {order}
                 LIMIT $1 OFFSET $2
                 """,
-                page_size, offset,
+                page_size, offset, marker,
             )
 
         items = [
