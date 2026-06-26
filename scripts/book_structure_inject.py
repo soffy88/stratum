@@ -152,6 +152,8 @@ def strip_page_headers(md: str) -> str:
     # "P A R T  I/II/III/...  Title" 跑页眉（每页重复,5个 Part 共 586 次）
     # 含 ## **P A R T N** 形式（卷分隔页,## 前缀）
     md = re.sub(r'(?m)^[ \t]*(?:#+[ \t]*)?(?:\*\*)?P\s+A\s+R\s+T\s+[IVX0-9][^\n]*\n?', '', md)
+    # "## **P A R T**" 形式（Part分隔页,无罗马数字,正文在后续 ## 行）
+    md = re.sub(r'(?m)^[ \t]*##[ \t]*\*\*P\s+A\s+R\s+T\*\*[^\n]*\n?', '', md)
     # 行首粗体页码 "**N**"（独立行）
     md = re.sub(r'(?m)^[ \t]*(?:>\s*)?\*\*\d{1,3}\*\*[ \t]*\n', '\n', md)
     # 清理多余空行
