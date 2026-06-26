@@ -353,7 +353,7 @@ async def kc_detail(kc_id: str):
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT kc_id, community_label, summary, summary_en, grade, member_ku_ids "
+                "SELECT kc_id, community_label, summary, summary_en, grade, member_ku_ids, synthesis_marker "
                 "FROM aii.kc_onto WHERE kc_id = $1",
                 kc_id_int,
             )
@@ -363,21 +363,26 @@ async def kc_detail(kc_id: str):
             source_ids = _jsonb(row["member_ku_ids"]) or []
             member_rows = []
             if source_ids:
+                # ★成员带来源书(为跨书谱社区准备: 以后别的书同主题KU加入会标各自来源)
                 member_rows = await conn.fetch(
-                    "SELECT ku_id, title, natural_text_zh, natural_text, grade "
-                    "FROM aii.ku_onto WHERE ku_id = ANY($1::text[])",
+                    "SELECT k.ku_id, k.title, k.natural_text_zh, k.natural_text, k.grade, "
+                    "       k.substrate_id, s.title AS source_book "
+                    "FROM aii.ku_onto k LEFT JOIN aii.ingested_substrate s ON k.substrate_id = s.substrate_id "
+                    "WHERE k.ku_id = ANY($1::text[])",
                     [str(s) for s in source_ids[:50]],
                 )
 
+        # 区分两种 KC: 按章(书内固定) vs 谱社区(跨书增长)
+        kind = "spectral" if row["synthesis_marker"] == "AII谱社区KC" else "chapter"
         members = [
             {
                 "id": r["ku_id"],
                 "title": r["title"],
-                # 中文主显, 英文折叠用; 截断给列表, 全文给展开
                 "natural_text": (r["natural_text_zh"] or r["natural_text"] or "")[:140],
                 "natural_text_zh": r["natural_text_zh"] or "",
                 "natural_text_en": r["natural_text"] or "",
                 "grade": r["grade"],
+                "source_book": r["source_book"] or r["substrate_id"],
             }
             for r in member_rows
         ]
@@ -387,6 +392,7 @@ async def kc_detail(kc_id: str):
             "summary": row["summary"] or "",
             "summary_en": row["summary_en"] or "",
             "grade": row["grade"],
+            "kind": kind,
             "community_size": len(source_ids),
             "source_ku_ids": source_ids,
             "members": members,

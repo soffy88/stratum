@@ -45,7 +45,7 @@ function BiText({ zh, en }: { zh: string; en?: string }) {
   );
 }
 
-function MemberRow({ m }: { m: KcDetail['members'][number] }) {
+function MemberRow({ m, showSource }: { m: KcDetail['members'][number]; showSource?: boolean }) {
   const [open, setOpen] = useState(false);
   const [showEn, setShowEn] = useState(false);
   const zh = m.natural_text_zh || m.natural_text;
@@ -54,6 +54,9 @@ function MemberRow({ m }: { m: KcDetail['members'][number] }) {
       <button onClick={() => setOpen(v => !v)} className="flex items-start gap-2 text-left w-full">
         <OEpistemicBadge grade={m.grade} compact />
         <span className="flex-1 min-w-0 leading-relaxed">{m.title || zh.slice(0, 50)}</span>
+        {showSource && m.source_book && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[color:var(--accent,#2563eb)]/10 text-[color:var(--accent,#2563eb)] whitespace-nowrap">{m.source_book.split('（')[0]}</span>
+        )}
         <span className="text-xs text-[color:var(--text-tertiary,#888)]">{open ? '▾' : '▸'}</span>
       </button>
       {open && (
@@ -92,14 +95,26 @@ function KcDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
               <OEpistemicBadge grade={d.grade} />
               <span className="text-xs text-[color:var(--text-secondary)]">{d.community_size} 个 KU</span>
             </div>
-            <h3 className="text-base font-medium">{d.community_label}</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base font-medium">{d.community_label}</h3>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                d.kind === 'spectral'
+                  ? 'bg-[color:var(--accent,#7c3aed)]/15 text-[color:var(--accent,#7c3aed)]'
+                  : 'bg-[color:var(--text-tertiary,#888)]/15 text-[color:var(--text-secondary)]'
+              }`}>{d.kind === 'spectral' ? '跨书主题' : '书内章节'}</span>
+            </div>
             <div className="flex flex-col gap-2">
               <SynthesisTag />
               <BiText zh={d.summary} en={d.summary_en} />
             </div>
+            {d.kind === 'spectral' && (
+              <p className="text-xs text-[color:var(--text-tertiary,#888)] leading-relaxed">
+                跨书主题:汇集各书的同类知识,随新书加入而增长(成员标来源书)。
+              </p>
+            )}
             <section className="flex flex-col gap-2">
               <h4 className="text-xs font-semibold text-[color:var(--text-secondary)] uppercase tracking-wide">成员 KU / Members（点开看讲透）</h4>
-              {d.members.map(m => <MemberRow key={m.id} m={m} />)}
+              {d.members.map(m => <MemberRow key={m.id} m={m} showSource={d.kind === 'spectral'} />)}
             </section>
           </>
         )}
@@ -121,10 +136,13 @@ export default function ClustersPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">知识簇 / Knowledge Clusters</h1>
         <p className="text-sm text-[color:var(--text-secondary)]">
-          知识簇 KC 两种聚法。<strong>簇摘要是 AII 综合,非原文断言</strong>;簇 grade 永不超过其源 KU。
+          {view === 'chapter'
+            ? '📖 《微观经济学》· 书内章节结构,按 Ch1→Ch19 顺序(固定)。点 KC 看摘要 + 成员 KU。'
+            : '🕸 跨书主题,概念关联聚合(随新书加入而增长)。每个主题汇集各书的同类 KU(标来源书)。'}
+          <span className="ml-1"><strong>簇摘要是 AII 综合,非原文断言</strong>。</span>
         </p>
         <div className="flex gap-2 mt-1">
-          {([['chapter', '按章 (教学导航)'], ['spectral', '谱社区 (概念关联)']] as const).map(([v, label]) => (
+          {([['chapter', '按章 · 书内结构'], ['spectral', '谱社区 · 跨书主题']] as const).map(([v, label]) => (
             <button
               key={v}
               onClick={() => setView(v)}

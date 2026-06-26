@@ -366,6 +366,8 @@ export interface KcListItem {
 }
 export interface KcDetail extends KcListItem {
   summary_en?: string;
+  /** chapter=按章(书内固定) | spectral=谱社区(跨书增长) */
+  kind?: 'chapter' | 'spectral';
   source_ku_ids: string[];
   members: Array<{
     id: string;
@@ -374,6 +376,7 @@ export interface KcDetail extends KcListItem {
     natural_text_zh?: string;
     natural_text_en?: string;
     grade: EpistemicGrade;
+    source_book?: string;
   }>;
 }
 
