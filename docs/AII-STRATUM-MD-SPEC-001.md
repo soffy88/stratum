@@ -47,6 +47,23 @@
 - 在配对的 `.json`（或 md frontmatter）里附**章节清单**：`chapters: [{n, title, start_offset|start_line, sections:[{n_m, title}]}]`。
 - 有了这个，AII **零猜测**直接按 offset 分章，最稳。
 
+### R6 — 数学公式 LaTeX 保真
+- 行内公式用 `$...$`、独立公式用 `$$...$$`，**公式内不被 OCR 拆散/乱码化**。
+- 反例（当前坑）：`ε_d = (% Δq) / (% Δp)` 被 OCR 成 `e d 5 ... D q` 散字符 → 数学/经济 KU 质量崩。
+- 上下标、希腊字母、分式、求和/积分须用 LaTeX 表达，不得退化为纯文本碎符。
+
+### R7 — 图表规范占位
+- 每个图/表用规范占位：`![Figure N.M: <caption>](<asset or omitted>)`，**caption 必须保留**。
+- 反例（当前坑）：图被删后正文只剩 `the green rectangle` / `as shown above` → 产出**依赖图的死 KU**（不自足）。占位带 caption 后，AII 可把图引用降级、或据 caption 自足化。
+
+### R8 — 表格结构保真
+- 表格用 markdown 表格（`| col | col |`）**或**明确占位 `![Table N.M: <caption>]`，**不得散成残行**。
+- 反例（当前坑）：`Table 11.4 ... Taxable income is over |` 散成残片 → 产出**表格碎片死 KU**。
+
+### R9 — 剔除跑页眉/页脚
+- 跑页页眉/页脚（重复书名、`C H A P T E R N`、页码）**必须识别并剔除**，不得作为标题或正文行输出。
+- 反例（当前坑）：`C H A P T E R  9 …` 间隔字母重复 **340 次**，污染结构识别与抽取。
+
 ---
 
 ## 3. 验收标准（AII 侧可自动校验）
@@ -55,8 +72,18 @@
 2. 每章正文区不含其它章/节标题的**目录式重复**。
 3. 切出的每章 char 区间合理（无某章吞掉其余全书的"空洞"）。
 4. 跑页页眉计数 ≈ 0（不出现 `C␣H␣A␣P␣T␣E␣R` 这类间隔字母噪声）。
+5. （R6）数学密集源里 LaTeX `$...$` 存在且非乱码（不出现大段散字符公式）。
+6. （R7）图引用有 `![Figure ...]` 占位 + caption，正文无裸 `the green rectangle`/`as shown above` 悬空引用。
+7. （R8）无表格残片行（`Table N.M ... |` 散尾、孤立 `|` 行）。
+8. （R9）间隔字母页眉计数 ≈ 0。
 
-满足 1-4 即"章节结构合格"，AII 可上章节级摄取。任一不满足 → AII 标记该 md 为 `chapter_structure_unreliable`，退回 Stratum 返工。
+满足 1-4（硬结构）即"章节结构合格"，AII 可上章节级摄取；5-8（R6-R9）为内容保真项。任一硬项不满足 → AII 标记 `chapter_structure_unreliable`，退回 Stratum 返工。
+
+## 5. AII 侧自动质量门（闭环）
+AII 在**摄取入口**（飞轮 `ingest_one`）对每本 md 跑 `md_quality_check`，按上述验收标准判定：
+- **合格** → 进入抽取。
+- **不合格** → **不抽**，自动写 rework 请求到 `aii-to-stratum/md_quality_spec.json` 的 `rework_request`（标不合格项 + 证据），等 Stratum 返工。
+这是飞轮 690 本规模化的**入口质量门**：脏 md 挡在门外，不进抽取产生垃圾 KU。
 
 ---
 

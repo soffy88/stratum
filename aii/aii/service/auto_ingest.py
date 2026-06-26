@@ -377,6 +377,16 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
     provider = _MEDIUM_PROVIDER.get(medium, "default")
     doc_type = _MEDIUM_DOC_TYPE.get(medium, "science")
 
+    # ★md 交付合格性自检 (飞轮入口质量门, AII-STRATUM-MD-SPEC-001):
+    #   book 章节结构不合格 → 不抽 + 写 rework 请求 → 不标已摄(Stratum 返工后可重入).
+    from aii.service.md_quality_check import check_md_quality, write_md_rework
+    _q = check_md_quality(text, medium=medium, title=title)
+    if not _q["ok"]:
+        write_md_rework(substrate_id=substrate_id, file_name=md_path.name, title=title, result=_q)
+        logger.warning("auto_ingest: md quality gate FAILED %s (%s) → rework, skip抽取. fails=%s",
+                       substrate_id[:8], title[:40], [f["check"] for f in _q["hard_failures"]])
+        return -1
+
     # onto-only: 旧 Step1-4 链路(KuIngestionEngine/RelationEngine/DeepSynthesis)已退役删除, 统一走 onto 路径.
     return await _run_ontology_path(
         backend, substrate_id, text, title, medium, doc_type, provider, subject)
