@@ -194,9 +194,9 @@ export async function graphSearch(req: GraphSearchRequest): Promise<ApiResult<Gr
   return request<GraphSearchResponse>(`/api/graph/search${qs({ q: req.q, limit: req.limit })}`, { method: 'GET' });
 }
 
-export async function getKcList(): Promise<ApiResult<KcListItem[]>> {
+export async function getKcList(view: 'chapter' | 'spectral' = 'chapter'): Promise<ApiResult<KcListItem[]>> {
   if (USE_MOCK) return mock.mockKcList();
-  return request<KcListItem[]>('/api/kc/list', { method: 'GET' });
+  return request<KcListItem[]>(`/api/kc/list?view=${view}`, { method: 'GET' });
 }
 export async function getKcDetail(id: string): Promise<ApiResult<KcDetail>> {
   if (USE_MOCK) return mock.mockKcDetail(id);

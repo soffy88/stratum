@@ -13,7 +13,7 @@ import {
   OLoadingState,
   OErrorState,
 } from '@helios/blocks';
-import { useApiNoArg, useApi } from '@/hooks/useApi';
+import { useApi } from '@/hooks/useApi';
 import * as api from '@/lib/api-client';
 import type { KcListItem, KcDetail } from '@/types/api';
 
@@ -69,9 +69,10 @@ function KcDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
 }
 
 export default function ClustersPage() {
-  const [state, run] = useApiNoArg(api.getKcList);
+  const [state, run] = useApi(api.getKcList);
+  const [view, setView] = useState<'chapter' | 'spectral'>('chapter');
   const [detailId, setDetailId] = useState<string | null>(null);
-  useEffect(() => { void run(); }, [run]);
+  useEffect(() => { void run(view); }, [run, view]);
 
   const items = ((state.data as any)?.items ?? state.data ?? []) as KcListItem[];
 
@@ -80,12 +81,27 @@ export default function ClustersPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">知识簇 / Knowledge Clusters</h1>
         <p className="text-sm text-[color:var(--text-secondary)]">
-          社区检测聚合的主题簇。<strong>簇摘要是 AII 综合,非原文断言</strong>;簇 grade 永不超过其源 KU。
+          知识簇 KC 两种聚法。<strong>簇摘要是 AII 综合,非原文断言</strong>;簇 grade 永不超过其源 KU。
         </p>
+        <div className="flex gap-2 mt-1">
+          {([['chapter', '按章 (教学导航)'], ['spectral', '谱社区 (概念关联)']] as const).map(([v, label]) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                view === v
+                  ? 'bg-[color:var(--accent,#2563eb)]/15 text-[color:var(--accent,#2563eb)] border-[color:var(--accent,#2563eb)]/40'
+                  : 'border-[color:var(--border)] text-[color:var(--text-secondary)]'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </header>
 
       {state.loading && <OLoadingState rows={4} />}
-      {state.error && <OErrorState error={state.error} onRetry={() => void run()} />}
+      {state.error && <OErrorState error={state.error} onRetry={() => void run(view)} />}
       {!state.loading && items.length === 0 && <OEmptyState title="暂无知识簇" description="后端 /api/kc/list 待实现" />}
 
       {items.length > 0 && (

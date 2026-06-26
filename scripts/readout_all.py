@@ -22,8 +22,11 @@ async def call(cli, k, tries=3):
     return None
 async def go():
     c=await asyncpg.connect(os.getenv('DATABASE_URL'))
-    await c.execute("DELETE FROM aii.concept_readout_edge WHERE substrate_id=$1",SUB)
-    kus=await c.fetch(f"SELECT ku_id,title,natural_text FROM aii.ku_onto WHERE substrate_id='{SUB}'")
+    # ★增量: 只读尚未读出的 KU(已在 concept_readout_edge 的跳过), 省 LLM. 全删用 AII_READOUT_FULL=1
+    if os.getenv("AII_READOUT_FULL")=="1":
+        await c.execute("DELETE FROM aii.concept_readout_edge WHERE substrate_id=$1",SUB)
+    kus=await c.fetch(f"""SELECT ku_id,title,natural_text FROM aii.ku_onto WHERE substrate_id='{SUB}'
+        AND ku_id NOT IN (SELECT DISTINCT ku_id FROM aii.concept_readout_edge WHERE substrate_id='{SUB}')""")
     sem=asyncio.Semaphore(10); tot=[0]; fail=[]; done=[0]; lock=asyncio.Lock()
     async with httpx.AsyncClient(trust_env=False, timeout=55) as cli:
         async def rd(k):
