@@ -5,14 +5,26 @@ clean(text) -> (clean_text, citations:list[str]); is_empty_shell(clean_text) -> 
 from __future__ import annotations
 import re
 
-# 脚手架 header 关键词(整行 #/##/### 标题且文本是纯结构 → 删整行)
-_SCAFFOLD = (r"knowledge unit|综合阐述|知识单元|english|中文|"
+# 脚手架关键词
+_SCAFFOLD = (r"knowledge unit|综合阐述|知识单元|english|中文|concept|概念|"
              r"what|why|how|when|implication|meaning|essence|boundary|use|rationale|evidence|mechanism|"
              r"是什么|为什么|如何应用|如何|何时|推论|含义|内涵|外延|用处|用途|本质|边界|机制|"
-             r"为何成立|为何正确|为何重要|原理依据|理由|证据|应用方式|定义")
-_HDR = re.compile(rf"^\s*#{{1,6}}\s*\**\s*(?:{_SCAFFOLD})\b[^\n]*$", re.I)
-# 行/条目开头的脚手架面标签: "- **Essence**:" "**内涵**：" "**WHAT (内涵...)**:" → 剥标签留内容
-_LABEL = re.compile(rf"^\s*[-*]?\s*\**\s*(?:{_SCAFFOLD})\b[^:：\n]{{0,28}}\**\s*[:：]\s*", re.I)
+             r"为何成立|为何正确|为何重要|为何真实|原理依据|理由|证据|应用方式|定义")
+# 整行纯脚手架(可带 # / 数字编号 / (括号注解) / 冒号, 行内无实质内容)→ 删整行
+_HDR = re.compile(rf"^\s*(?:#{{1,6}}\s*)?(?:\d+[.、]\s*)?\**\s*(?:{_SCAFFOLD})\s*"
+                  rf"(?:[（(][^）)\n]*[)）])?\s*\**\s*[:：]?\s*$", re.I)
+# 行首脚手架面标签(后接同行内容): 带冒号 或 带(括号注解) → 仅剥标签留内容
+_LABEL = re.compile(rf"^\s*[-*]?\s*(?:\d+[.、]\s*)?\**\s*(?:{_SCAFFOLD})\s*"
+                    rf"(?:(?:[（(][^）)\n]*[)）])\**\s*[:：]?|\**\s*[:：])\s*", re.I)
+# 元前言/分隔符整行 → 删
+_PREAMBLE = re.compile(
+    r"(here is (?:a|an|the|one)\b.{0,70}knowledge unit|based (?:strictly )?on the\b.{0,40}(?:text|chapter)|"
+    r"这是(?:基于|针对|根据|为)\b.{0,40}(?:知识单元|阐述|KU)|以下是.{0,30}(?:知识单元|阐述|KU)|"
+    r"针对.{0,20}合成的知识单元)", re.I)
+_SEP = re.compile(r"^\s*[-=*_]{3,}\s*$")
+# 句中/行中残留脚手架标签 "。WHY（为何正确/重要） " "。如何应用：" → 句首/句末位置剥除
+_INLINE = re.compile(rf"(?:(?<=[。.！？!?；;\n])|^)\s*\**\s*(?:\d+[.、]\s*)?(?:{_SCAFFOLD})\s*"
+                     rf"(?:[（(][^）)\n]*[)）])?\**\s*[:：]?\s*", re.I)
 # 正文来源标注 [Ch3, ...] / [Ch9: "..."] / 【Ch3，第3.2节】(可含引文)
 _CITE = re.compile(r"\s*[\[【]\s*Ch\s*\d+[^\]】]*[\]】]")
 # 非覆盖语句(标记 + 解释"书没讲"的整句)→ 删: 既删"(not covered)"标记, 也删"第N章未定义X…"解释句
@@ -32,9 +44,9 @@ def clean(text: str) -> tuple[str, list[str]]:
     text = _CITE.sub("", text)
     out = []
     for line in text.split("\n"):
-        if _HDR.match(line):                      # 脚手架标题整行删
+        if _HDR.match(line) or _SEP.match(line) or _PREAMBLE.search(line):  # 脚手架/分隔/元前言整行删
             continue
-        line = _LABEL.sub("", line)               # 剥面标签留内容
+        line = _LABEL.sub("", line)               # 剥面标签留内容(带冒号或括号注解)
         line = re.sub(r"^\s*[-*]\s+", "", line)   # 去开头无序列表符
         line = line.replace("**", "").replace("__", "")  # 去 markdown 粗体标记
         line = re.sub(r"^\s*#{1,6}\s*", "", line)  # 去残留 # 标题符
@@ -48,6 +60,7 @@ def clean(text: str) -> tuple[str, list[str]]:
         if s and not _NONCOV.search(s):
             kept.append(seg)
     txt = "".join(kept)
+    txt = _INLINE.sub(lambda m: m.group(0)[0] if m.group(0)[:1] in "。.！？!?；;\n" else "", txt)  # 句中残留脚手架
     txt = re.sub(r"[ \t]*\n[ \t]*", "\n", txt)
     txt = re.sub(r"\n{3,}", "\n\n", txt).strip()
     return txt, cites
