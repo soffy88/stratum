@@ -25,7 +25,12 @@ def slice_chapter(text, n):
         raise SystemExit(f"chapter {n} not found; have {sorted(starts)}")
     s = starts[n]
     e = starts.get(n + 1, len(text))
-    return text[s:e]
+    chap = text[s:e]
+    # ★末章截掉书末 back-matter(GLOSSARY/INDEX, 可能间隔字母 'G L O S S A R Y')—— 防全书术语表误抽进末章
+    bm = re.search(r'(?im)^#{1,3}\s*\**\s*(?:g\s*l\s*o\s*s\s*s\s*a\s*r\s*y|i\s*n\s*d\s*e\s*x)\b', chap)
+    if bm:
+        chap = chap[:bm.start()]
+    return chap
 
 
 async def main():
