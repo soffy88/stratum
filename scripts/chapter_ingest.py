@@ -16,7 +16,7 @@ from aii.service.cross_chunk_link import gen_candidates, judge_and_link
 from aii.storage.pg_backend import PgBackend
 from obase import ProviderRegistry
 
-SM = Path("/home/soffy/shared/stratum-to-aii/01KVAJCXHEV751E9NTADMZ7RGV_structured.md")
+SM = Path("/home/soffy/shared/stratum-to-aii/Principles_of_Microeconomics_The_Way_We__01KVAJCX.md")
 
 
 def slice_chapter(text, n):
