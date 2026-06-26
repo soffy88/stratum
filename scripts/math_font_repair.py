@@ -45,16 +45,15 @@ MATHPI_GLYPH_UNICODE: dict[str, str] = {
     'H11022': '>',       # > (greater than)
     'H11009': '≠',  # ≠ (not equal — educated guess, verify if encountered)
     'H11350': '÷',  # ÷ (division — educated guess, verify if encountered)
-    'H9255':  'ε',  # ε (epsilon — in MathPi-Four, educated guess)
+    'H9255':  'ε',  # ε (epsilon — MathPi-One enc 3133 byte 4 / MathPi-Four enc 4538 byte 2 → chr(2/4))
+    'H11549': 'ε',  # ε (epsilon — MathPi-Four enc 4238 byte 2 → FFFD; used as Ed elasticity symbol)
     'H9251':  'α',  # α (alpha)
     'H9252':  'β',  # β (beta)
     'H11006': '≤',  # ≤ (less than or equal)
     'H11007': '≥',  # ≥ (greater than or equal)
     'H11008': '≠',  # ≠
-    'H11021': '<',
-    'H11022': '>',
-    # MathematicalPi-Three: typically contains division slash, fraction bar etc.
-    # (MathPi-Three glyphs produce FFFD but may be structural separators)
+    # MathematicalPi-Three glyphs (H20862/H20907/H20920/H20921): division/fraction operators
+    # Context: appear as '/' in C(q)/q proof lines — unfixable without ToUnicode (left as FFFD)
 }
 
 UNKNOWN_GLYPHS: set[str] = set()  # collects glyph names not in the map
@@ -534,13 +533,107 @@ def fix_r6(pdf_path: str, md: str, dry_run: bool = False) -> tuple[str, dict]:
     remaining_fffd = new_md.count(FFFD)
     log.info('R6: remaining FFFD in md: %d', remaining_fffd)
 
+    # ── R8 manual table fixes (3 tables fitz.find_tables couldn't match) ──────
+    new_md, r8_fixed = _fix_r8_manual(new_md)
+    if r8_fixed:
+        log.info('R8 manual: fixed=%d table blocks', r8_fixed)
+    br_remaining = len(__import__('re').findall(r'\|[^\n]*<br>[^\n]*', new_md))
+    log.info('R8 manual: remaining <br> table rows: %d', br_remaining)
+
     return new_md, {
         'fixed': fixed,
         'skipped': skipped,
         'total': len(all_corrections),
         'remaining_fffd': remaining_fffd,
         'pass2_fixed': p2_fixed,
+        'r8_manual_fixed': r8_fixed,
+        'r8_br_remaining': br_remaining,
     }
+
+
+def _fix_r8_manual(md: str) -> tuple[str, int]:
+    """
+    R8 manual fix for 3 tables fitz.find_tables() couldn't match:
+      1. Ch11 elasticity table source citation (Hirshleifer) — <br> in citation row
+      2. Ch14 lifetime earnings table source caption — <br> in caption row
+      3. Ch19 housing price table — city|<br>sign% cells → 2-col MD table (all −)
+    """
+    import re
+    fixed = 0
+
+    # ── Table 1: Ch11 elasticity source citation ──────────────────────────────
+    OLD1 = ('|**Source:** Jack Hirshleifer and David Hirshleifer,'
+            '_Price Theory and Applications,_6th edition, '
+            '(New Jersey: Prentice Hall),<br>1992, p.133.|||')
+    NEW1 = ('\n**Source:** Jack Hirshleifer and David Hirshleifer, '
+            '_Price Theory and Applications_, 6th edition, '
+            '(New Jersey: Prentice Hall), 1992, p.133.')
+    if OLD1 in md:
+        md = md.replace(OLD1, NEW1)
+        fixed += 1
+
+    # ── Table 2: Ch14 lifetime earnings source caption ────────────────────────
+    OLD2 = ('|Average Lifetime Earnings—Different Levels of Education.'
+            '<br>**Source:**U.S. Census Bureau, Current Population Surveys, '
+            'March 1998, 1999, and 2000<br>'
+            '(www.earnmydegree.com/online-education/learning-center/education-value.html).|||')
+    NEW2 = ('\n**Source:** U.S. Census Bureau, Current Population Surveys, '
+            'March 1998, 1999, and 2000 '
+            '(www.earnmydegree.com/online-education/learning-center/education-value.html).')
+    if OLD2 in md:
+        md = md.replace(OLD2, NEW2)
+        fixed += 1
+
+    # ── Table 3: Ch19 housing price declines table ────────────────────────────
+    # Remove broken duplicate header rows, rebuild data as proper 2-col table.
+    # Title "Housing Price Declines from Their Peak" confirms all values are
+    # NEGATIVE (declines) — fix = / + to − ; retain existing − .
+    BROKEN_HDR = (
+        '|**Table 19.1 Housing Price Declines from Their Peak '
+        '(through June, 2011)**|**Table 19.1 Housing Price Declines from Their Peak '
+        '(through June, 2011)**|\n'
+        '|---|---|\n'
+        '|**Table **|**19.1 **|\n'
+        '|||\n'
+    )
+    # Match the data block: city rows + source row
+    housing_data_re = re.compile(
+        r'(\|[A-Z][^\n]*<br>[=+−][0-9][^\n]*\|\|(?:\n\|[^\n]*\|\|)*)',
+        re.M
+    )
+    if BROKEN_HDR in md:
+        # Parse data rows into (city, pct) pairs
+        data_start = md.find(BROKEN_HDR)
+        data_end   = data_start + len(BROKEN_HDR)
+        # The data block follows immediately
+        m = housing_data_re.search(md, data_end)
+        if m and m.start() == data_end:
+            raw_rows = m.group(0).split('\n')
+            header_md  = '| City | Decline from Peak |\n|------|-------------------|\n'
+            rows_md    = ''
+            source_txt = ''
+            for row in raw_rows:
+                if not row.strip() or row == '|||':
+                    continue
+                # Source row (no <br>)
+                if '<br>' not in row and '**Source:**' in row:
+                    source_txt = '\n' + row.strip('|').strip().replace('**Source:**', '**Source:**')
+                    continue
+                # City<br>sign%  row
+                parts = row.split('<br>', 1)
+                city = parts[0].lstrip('|').strip()
+                pct_raw = parts[1].rstrip('|').strip() if len(parts) > 1 else ''
+                # Strip any sign and prepend −
+                pct_num = re.sub(r'^[=+−]', '', pct_raw)
+                rows_md += f'| {city} | −{pct_num} |\n'
+
+            replacement = header_md + rows_md
+            if source_txt:
+                replacement += source_txt
+            md = md[:data_start] + replacement + md[m.end():]
+            fixed += 1
+
+    return md, fixed
 
 
 def _fix_r6_ctrl_chars(md: str) -> tuple[str, int]:
@@ -791,6 +884,58 @@ def _fix_r6_pass2(md: str) -> tuple[str, int]:
         ('Charlotte<br>', '16.1%||', '='),
         ('Boston<br>', '15.3%||', '='),
         ('Denver<br>', '5.1%||', '='),
+        # ── Ch3/Ch9: price elasticity ε (epsilon) notation ───────────────────
+        # Pass1 misses: PDF rawdict shows empty context for isolated MathPi spans.
+        # All of ε, =, <, > remain as FFFD after pass1 for these pages.
+        # Confirmed pass2-phase md states: all sign glyphs are □ when ε is processed.
+        # Cascade order: ε first (sorted position), then sign (next), then ∞.
+
+        # Section headings: ε, =, <, > are all FFFD → □ in adjacent context
+        ('riceInelasticDemand(', 'd□0)', 'ε'),   # Perfectly Inelastic (εd=0)
+        ('RICEINELASTICDEMAND(', 'd□0)', 'ε'),   # heading: PRICE INELASTIC DEMAND
+        ('riceInelasticDemand(', 'd□1)', 'ε'),   # Price Inelastic (εd<1): < also □
+        ('RICEINELASTICDEMAND(', 'd□1)', 'ε'),   # heading version
+        ('eElasticityofDemand(', 'd□1)', 'ε'),   # Unitary Elastic (εd=1): = is □
+        ('YPRICEELASTICDEMAND(', 'd□1)', 'ε'),   # heading: UNITARY PRICE ELASTIC DEMAND
+        ('#PriceElasticDemand(', 'd□1)', 'ε'),   # Price Elastic (εd>1): > also □
+        ('.PRICEELASTICDEMAND(', 'd□1)', 'ε'),   # heading: PRICE ELASTIC DEMAND
+        ('yPriceElasticDemand(', 'd□□)', 'ε'),  # Perfectly Elastic (εd=∞): =,∞ both □
+        ('.PRICEELASTICDEMAND(', 'd□□)', 'ε'),  # heading: PERFECTLY PRICE ELASTIC DEMAND
+        # Cascade: fix sign after ε (ε now real in s_b, sign still □ in s_a):
+        # d=0 case: next FFFD is '='
+        ('riceInelasticDemand(εd', '0)', '='),    # = in εd=0
+        # d<1 case: next FFFD is '<'; note a_pre='1)' same as d=1/d>1 below,
+        # but s_b differs (riceInelasticDemand vs eElasticityofDemand/PriceElasticDemand)
+        ('riceInelasticDemand(εd', '1)', '<'),    # < in εd<1
+        ('RICEINELASTICDEMAND(εd', '1)', '<'),    # heading < in εd<1
+        # d=1 case: next FFFD is '='
+        ('eElasticityofDemand(εd', '1)', '='),    # = in εd=1
+        ('YPRICEELASTICDEMAND(εd', '1)', '='),    # heading = in εd=1
+        # d>1 case: next FFFD is '>'
+        ('#PriceElasticDemand(εd', '1)', '>'),    # > in εd>1
+        ('.PRICEELASTICDEMAND(εd', '1)', '>'),    # heading > in εd>1
+        # Note: '.PRICEELASTICDEMAND(εd' with a_pre '□)' (below) handles εd=∞ — no conflict
+        # Table column examples (WhenP — uppercase P, < and > also FFFD):
+        ('emergencymedicalcare', 'd□0WhenP', 'ε'),   # εd=0: = is □
+        ('lt,coffee,gasoline-', 'd□1WhenP', 'ε'),     # εd<1: < is □
+        ('staveraging),movies-', 'd□1WhenP', 'ε'),
+        ('rantmeals,manicures-', 'd□1WhenP', 'ε'),
+        ('griculturalsuppliers', 'd□□WhenP', 'ε'),  # εd=∞: = and ∞ both □
+        # Cascade: fix sign in table after ε:
+        ('emergencymedicalcareεd', '0WhenP', '='),    # = in insulin εd=0
+        ('lt,coffee,gasoline-εd', '1WhenP', '<'),      # < in εd<1 table rows
+        ('staveraging),movies-εd', '1WhenP', '<'),
+        ('rantmeals,manicures-εd', '1WhenP', '<'),
+        # Cross-price elasticity: CROSS-PRICE ELASTICITY OF DEMAND (εxy)
+        ('EELASTICITYOFDEMAND(', 'xy)', 'ε'),
+        # Cascade: = and ∞ in (εd=∞) sections:
+        ('yPriceElasticDemand(εd', '□)', '='),   # = in εd=∞; □=∞ still FFFD
+        ('.PRICEELASTICDEMAND(εd', '□)', '='),   # heading version
+        ('griculturalsuppliersεd', '□WhenP', '='),  # = in εd=∞ table row
+        # ∞ after = is fixed:
+        ('yPriceElasticDemand(εd=', ')', '∞'),   # ∞ in (εd=∞)
+        ('.PRICEELASTICDEMAND(εd=', ')', '∞'),   # heading version
+        ('griculturalsuppliersεd=', 'WhenP', '∞'),  # ∞ in agricultural example
     ]
 
     fixed = 0
