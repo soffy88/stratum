@@ -56,9 +56,15 @@
 - 每个图/表用规范占位：`![Figure N.M: <caption>](<asset or omitted>)`，**caption 必须保留**。
 - 反例（当前坑）：图被删后正文只剩 `the green rectangle` / `as shown above` → 产出**依赖图的死 KU**（不自足）。占位带 caption 后，AII 可把图引用降级、或据 caption 自足化。
 
-### R8 — 表格结构保真
-- 表格用 markdown 表格（`| col | col |`）**或**明确占位 `![Table N.M: <caption>]`，**不得散成残行**。
-- 反例（当前坑）：`Table 11.4 ... Taxable income is over |` 散成残片 → 产出**表格碎片死 KU**。
+### R8 — 表格结构保真（列对齐干净表，可按列 parse）
+- 表格必须转成**列对齐的干净 markdown 表**：每行列数一致、表头单行、数据**可按行×列机器解析**；或明确占位 `![Table N.M: <caption>]`。
+- **禁止**（实测踩到的烂表形态）：
+  - **整张表挤进一个单元格**用 `<br>` 分行 —— 反例 `Table 2.1`：`|Food Preparation...14.42<br>11.55<br>10.55<br>8.23<br>...<br>Women only<br>24.65<br>...|`（整表体一格，不可按列拆）。
+  - **列错位带空列** —— 反例 `Table 6A.1`：`|Food Units||Rental Housing (sq. ft.)|`、`|200||0|`、`|150||125|`（中列空、数据对不上表头）。
+  - **表头重复跨列/被拆** —— 反例 `Table 6A.1`：表头 `**Table 6A.1 ...**` 跨 3 列重复，标题拆成 `|**Table **|**6A.1 **||`。
+  - 散成残行 —— 反例 `Table 11.4 ... Taxable income is over |`（残片）。
+- **验收标准**：① 每数据行列数 == 表头列数；② 表头单行(`|---|` 分隔紧跟其后)；③ 无整表挤一格的 `<br>` 堆叠；④ AII 能把表 parse 成 `rows×cols` 结构。
+- **为何要列对齐**：涉及表格的 KU(命题)需用表的**结构化数据**完善（见 §6 后置增强）；烂表 parse 不动 → 数据吸收做不了。
 
 ### R9 — 剔除跑页眉/页脚
 - 跑页页眉/页脚（重复书名、`C H A P T E R N`、页码）**必须识别并剔除**，不得作为标题或正文行输出。
@@ -84,6 +90,16 @@ AII 在**摄取入口**（飞轮 `ingest_one`）对每本 md 跑 `md_quality_che
 - **合格** → 进入抽取。
 - **不合格** → **不抽**，自动写 rework 请求到 `aii-to-stratum/md_quality_spec.json` 的 `rework_request`（标不合格项 + 证据），等 Stratum 返工。
 这是飞轮 690 本规模化的**入口质量门**：脏 md 挡在门外，不进抽取产生垃圾 KU。
+
+## 6. 后置增强（待 Stratum 交付列对齐干净表后做，现在不做）
+
+**增强需求：表数据完善 KU。** 实证表明正文与表的关系是「**正文命题（自足）→ 表格逐行数据（量化支撑）**」（如 *Table 15.1 shows diminishing marginal returns set in with the seventh doctor*）。当前涉及表格的 KU 处理**已对**（命题进 `content`、`Table N.M shows...` 进 `example` 降级，无逐行 dump、无碎片），但**只引用、不吸收表的实际数值** → 表的量化内容未进 KU。
+
+增强方向（待干净表后）：把命题 KU 用对应表的**结构化数据 enrich** —— 或把表数据吸收进 KU、或作为 KU 的**结构化 evidence**（如实体-属性-值，可借鉴材料科学抽取 pipeline 的 entity-attribute-value，但适配 AII 的 KU/六分类体系）。
+
+**硬前提：Stratum 交付 R8 列对齐干净表。** 当前烂表（挤一格/列错位）parse 不动 → **此增强现在做不了，标记为后置依赖**。
+
+> **决策记录：** 当前表格处理（降级 example / 规律抽通则 / 无逐行 dump / 无碎片）**已正确，不动**；只在 Stratum 交付干净表后，再做"表数据吸收 KU"增强。
 
 ---
 
