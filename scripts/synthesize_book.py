@@ -96,6 +96,13 @@ async def main():
     total = await conn.fetchval("SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", SUB)
     await conn.close()
     print(f"\nDONE: {total} thorough KUs across {len(done)} chapters", flush=True)
+    # ★摄取后钩子: 图变了 → 刷新概念图 + Laplacian(持续). AII_POST_INGEST_REFRESH=1 自动跑, 否则提示.
+    if os.getenv("AII_POST_INGEST_REFRESH") == "1":
+        import subprocess
+        subprocess.run(["bash", str(ROOT / "scripts" / "refresh_graph.sh")])
+        print("post-ingest: 概念图 + Laplacian + 谱社区KC 已刷新", flush=True)
+    else:
+        print("hint: 运行 scripts/refresh_graph.sh 刷新概念图+Laplacian+谱社区KC (持续Laplacian钩子)", flush=True)
 
 
 if __name__ == "__main__":

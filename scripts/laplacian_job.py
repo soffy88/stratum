@@ -6,7 +6,7 @@ from scipy.sparse.csgraph import laplacian, connected_components
 from scipy.sparse.linalg import eigsh
 from scipy.cluster.vq import kmeans2
 from dotenv import load_dotenv; load_dotenv('aii/.env',override=True)
-SUB='microecon_en_full_v2'; K=8
+SUB="microecon_en_full_v2"; K=22
 async def go():
     c=await asyncpg.connect(os.getenv('DATABASE_URL'))
     await c.execute("""CREATE TABLE IF NOT EXISTS aii.laplacian_snapshot(
@@ -14,17 +14,24 @@ async def go():
         n_nodes int, n_edges int, n_components int, fiedler real, n_communities int, hubs jsonb);""")
     await c.execute("""CREATE TABLE IF NOT EXISTS aii.spectral_community(
         substrate_id text, community_id int, concept_name text, PRIMARY KEY(substrate_id,community_id,concept_name));""")
+    cooc=await c.fetch("""SELECT cs.name s, cd.name d, count(*) w
+        FROM aii.ku_concept_onto a JOIN aii.ku_concept_onto b ON a.concept_id<b.concept_id AND a.ku_id=b.ku_id
+        JOIN aii.ku_onto k ON a.ku_id=k.ku_id AND k.substrate_id=$1
+        JOIN aii.concept_onto cs ON a.concept_id=cs.concept_id JOIN aii.concept_onto cd ON b.concept_id=cd.concept_id
+        GROUP BY 1,2 HAVING count(*)>=2""",SUB)
     edges=await c.fetch("""SELECT cs.name s, cd.name d FROM aii.directed_edge_v2 e
         JOIN aii.concept_onto cs ON e.src_concept_id=cs.concept_id JOIN aii.concept_onto cd ON e.dst_concept_id=cd.concept_id
         WHERE e.substrate_id=$1""",SUB)
-    nodes=sorted({x for e in edges for x in (e['s'],e['d'])}); idx={n:i for i,n in enumerate(nodes)}; N=len(nodes)
+    nodes=sorted({x for e in cooc for x in (e['s'],e['d'])} | {x for e in edges for x in (e['s'],e['d'])})
+    idx={n:i for i,n in enumerate(nodes)}; N=len(nodes)
     A=sp.lil_matrix((N,N))
-    for e in edges: A[idx[e['s']],idx[e['d']]]=1; A[idx[e['d']],idx[e['s']]]=1
+    for e in cooc: A[idx[e['s']],idx[e['d']]]=e['w']; A[idx[e['d']],idx[e['s']]]=e['w']
+    for e in edges: A[idx[e['s']],idx[e['d']]]+=2; A[idx[e['d']],idx[e['s']]]+=2
     A=A.tocsr()
     ncomp,lab=connected_components(A,directed=False); sizes=np.bincount(lab)
     big=np.argmax(sizes); mask=lab==big; sub=A[mask][:,mask]; subnodes=[n for n,m in zip(nodes,mask) if m]
     L=laplacian(sub,normed=True); vals,vecs=eigsh(L,k=K+1,which='SM'); fiedler=float(vals[1])
-    cent,clab=kmeans2(vecs[:,1:K+1],K,minit='++',seed=1)
+    cent,clab=kmeans2(vecs[:,1:K+1],K,minit='++',seed=3)
     deg=np.asarray(A.sum(1)).ravel(); hubs=[{"c":nodes[i],"deg":int(deg[i])} for i in np.argsort(-deg)[:8]]
     ncomm=len(set(clab))
     # diff vs last
