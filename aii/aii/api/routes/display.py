@@ -346,12 +346,16 @@ async def kc_list(
 @router.get("/kc/{kc_id}")
 async def kc_detail(kc_id: str):
     try:
+        try:
+            kc_id_int = int(kc_id)
+        except (TypeError, ValueError):
+            return error_response("BAD_REQUEST", f"invalid kc_id: {kc_id}")
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT kc_id, community_label, summary, grade, member_ku_ids "
-                "FROM aii.kc_onto WHERE kc_id = $1::bigint",
-                kc_id,
+                "FROM aii.kc_onto WHERE kc_id = $1",
+                kc_id_int,
             )
             if not row:
                 return error_response("NOT_FOUND", f"KC {kc_id} not found")
@@ -456,6 +460,10 @@ async def bu_list(
 @router.get("/bu/{bu_id}")
 async def bu_detail(bu_id: str):
     try:
+        try:
+            bu_id_int = int(bu_id)
+        except (TypeError, ValueError):
+            return error_response("BAD_REQUEST", f"invalid bu_id: {bu_id}")
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -463,9 +471,9 @@ async def bu_detail(bu_id: str):
                 SELECT b.*, s.title AS book_title
                 FROM aii.bu_onto b
                 LEFT JOIN aii.ingested_substrate s ON s.substrate_id = b.substrate_id
-                WHERE b.bu_id = $1::bigint
+                WHERE b.bu_id = $1
                 """,
-                bu_id,
+                bu_id_int,
             )
         if not row:
             return error_response("NOT_FOUND", f"BU {bu_id} not found")
