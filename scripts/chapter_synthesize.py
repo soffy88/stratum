@@ -15,7 +15,7 @@ from aii.service.planning_completeness import check_completeness
 from obase import ProviderRegistry
 
 # LLM 上下文裕量(字符). 全章 <= 此值直接喂; 超出则分块喂规划(各块出点, 合并), ★绝不截断丢内容.
-_CTX = 48000
+_CTX = 130000
 
 PLAN_SYS = "You identify the CORE knowledge points a textbook chapter teaches. Output valid JSON only."
 SYN_SYS = ("You synthesize ONE thorough KU by INTEGRATING the chapter's material. Use ONLY the chapter text. "
