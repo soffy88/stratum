@@ -29,7 +29,9 @@ Assert a relation ONLY if a SPECIFIC, DIRECT, NON-TRIVIAL relation holds between
 Answer "none" (do NOT link) if ANY of these:
 - A and B merely share a topic/term but have no direct relation;
 - A and B say essentially the SAME thing (near-duplicate / restatement / elaboration);
-- A and B are two separate DEFINITIONS of related terms with no relation BETWEEN them;
+- A and B are two separate DEFINITIONS of related terms with no relation BETWEEN them
+  (★ if A defines term X and B defines term Y, that is NOT 'explains'/'causes' even if X and Y are
+   related — defining is not explaining; answer 'none' unless A states the actual mechanism/cause of B);
 - the relation is trivial/obvious or already fully contained in either unit alone.
 Only assert when the relation adds real structure to the knowledge graph. When in doubt → "none".
 
@@ -78,6 +80,50 @@ async def judge_pairs_v2(llm, pairs, texts, *, concurrency: int = 8) -> list:
 
     out = []
     for fut in asyncio.as_completed([judge(k1, k2) for k1, k2 in pairs]):
+        r = await fut
+        if r:
+            out.append(r)
+    return out
+
+
+async def judge_pairs_v2_voted(llm, pairs, texts, *, votes: int = 3, concurrency: int = 12) -> list:
+    """多 judge 投票消随机误杀: 每对判 votes 次, 某关系得多数(>votes/2)才连(取该关系多数方向).
+    抖动单次误判 none 的真边, 多数票救回; 单次幻觉的边, 多数票否掉. 返回 [(src,dst,rel)]."""
+    from collections import Counter
+    sem = asyncio.Semaphore(concurrency)
+
+    async def one(k1, k2):
+        async with sem:
+            prompt = JUDGE_TMPL_V2.format(a=texts.get(k1, "")[:600], b=texts.get(k2, "")[:600])
+            try:
+                resp = await llm(messages=[{"role": "user", "content": prompt}],
+                                 system=JUDGE_SYS_V2, max_tokens=80)
+                j = parse_relation(resp)
+            except Exception:
+                j = {"relation": "none"}
+            rel = (j.get("relation") or "none").strip().lower()
+            if rel in ("none", "same_as") or rel not in VALID_RELATION_TYPES:
+                return ("none", None)
+            return (rel, j.get("direction"))
+
+    async def vote(k1, k2):
+        results = await asyncio.gather(*(one(k1, k2) for _ in range(votes)))
+        rels = Counter(r for r, _ in results)
+        rel, cnt = rels.most_common(1)[0]
+        if rel == "none" or cnt <= votes // 2:        # 需严格多数(>votes/2)的非-none关系
+            # tie-break: if a single relation reaches majority among non-none votes
+            nonnone = Counter({r: c for r, c in rels.items() if r != "none"})
+            if not nonnone:
+                return None
+            rel, cnt = nonnone.most_common(1)[0]
+            if cnt <= votes // 2:
+                return None
+        direction = next((d for r, d in results if r == rel), None)
+        src, dst = (k1, k2) if direction != "BtoA" else (k2, k1)
+        return (src, dst, rel)
+
+    out = []
+    for fut in asyncio.as_completed([vote(k1, k2) for k1, k2 in pairs]):
         r = await fut
         if r:
             out.append(r)
