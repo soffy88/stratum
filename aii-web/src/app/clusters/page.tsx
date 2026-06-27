@@ -8,6 +8,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   OEpistemicBadge,
   OEmptyState,
@@ -130,14 +131,27 @@ function ClustersPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const substrate = searchParams.get('substrate') || 'microecon_en_full_v2';
+  const [bookTitle, setBookTitle] = useState('');
   useEffect(() => { void run({ view, substrate }); }, [run, view, substrate]);
+  useEffect(() => {
+    api.getBooks().then(r => {
+      if (r.ok && r.data) setBookTitle(r.data.items.find(b => b.substrate_id === substrate)?.title || '');
+    });
+  }, [substrate]);
 
   const items = ((state.data as any)?.items ?? state.data ?? []) as KcListItem[];
 
   return (
     <div className="aii-page-content flex flex-col gap-4 max-w-5xl mx-auto">
       <header className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">知识簇 / Knowledge Clusters</h1>
+        <nav className="text-xs text-[color:var(--text-secondary)] flex items-center gap-1.5 flex-wrap">
+          <Link href="/book" className="hover:text-[color:var(--accent,#2563eb)]">📚 书级理解</Link>
+          <span>›</span>
+          {bookTitle && <Link href={`/book`} className="hover:text-[color:var(--accent,#2563eb)] font-medium text-[color:var(--text-primary)]">{bookTitle}</Link>}
+          <span>›</span>
+          <span>知识簇</span>
+        </nav>
+        <h1 className="text-xl font-semibold">知识簇 / Knowledge Clusters{bookTitle && <span className="text-sm font-normal text-[color:var(--text-secondary)] ml-2">· {bookTitle}</span>}</h1>
         <p className="text-sm text-[color:var(--text-secondary)]">
           {view === 'chapter'
             ? '📖 书内章节结构,按章顺序(固定)。点 KC 看摘要 + 成员 KU。'
