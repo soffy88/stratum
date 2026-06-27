@@ -22,6 +22,25 @@ def facets(typ):
             '定理': "条件 / 结论 / 证明思路 / 适用场景 / 例子",
             '概念': "是什么 / 核心公式或方法 / 适用条件 / 应用",
             '小节': "该小节核心知识点概述"}.get(typ, "是什么 / 为什么 / 怎么用")
+
+
+def facet_check(point_name, zh):
+    """★面齐校验(防空洞): 含key_terms还不够, 该有的面要齐. 定理/法则/公式型须有证明+例子."""
+    issues = []
+    is_thm = bool(re.search(r'法则|定理|公式', point_name))
+    has_proof = bool(re.search(r'证明|推导|为什么|∵|证\s*[:(（]|证\s*\d', zh))
+    has_example = bool(re.search(r'例\s*\d|例如|例题|例\s*[:：]', zh))
+    has_formula = bool(re.search(r'\\(frac|lim|int|sum|prime|partial|sqrt|nabla)|\$.+\$', zh))
+    if is_thm:
+        if not has_proof:
+            issues.append('缺证明/推导')
+        if not has_example:
+            issues.append('缺例子')
+    if len(zh) < 350:
+        issues.append('过短(讲浅)')
+    if not has_formula:
+        issues.append('无公式(数学命门)')
+    return issues
 SYS=("你为数学教材合成一个讲透知识单元(KU), 严格只用本章内容、整合非创作。"
      "★数学公式必须完整保留(LaTeX原样, 如 \\frac \\lim), 公式残缺=不合格。"
      "中文主显(简体), 之后附English。书没讲的面直接不写(不要写'未涉及')。"
@@ -36,11 +55,17 @@ async def synth(cli, chapter, item):
             j=json.loads(r.json()["choices"][0]["message"]["content"]); return j
         except Exception: await asyncio.sleep(2)
     return None
+OUTDIR = Path("/tmp/claude-1000/-home-soffy-projects-AII/bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad/math_full")
 async def main():
     ch_n = int(sys.argv[1]) if len(sys.argv)>1 else 2
+    OUTDIR.mkdir(exist_ok=True)
+    outp = OUTDIR / f"ch{ch_n}.json"
+    # ★断点续: 已完成且非空则跳过
+    if outp.exists() and len(json.loads(outp.read_text())) > 0:
+        print(f"第{ch_n}章 已存在({len(json.loads(outp.read_text()))} KU), 跳过", flush=True); return
     chapter = slice_chapter(SM.read_text(encoding='utf-8',errors='replace'), ch_n)
     sh = extract(chapter)
-    print(f"应有清单: {len(sh)} 知识点", flush=True)
+    print(f"第{ch_n}章 应有清单: {len(sh)} 知识点", flush=True)
     sem = asyncio.Semaphore(6)
     async with httpx.AsyncClient(trust_env=False, timeout=60) as cli:
         async def one(item):
@@ -51,13 +76,23 @@ async def main():
                 has_latex = bool(re.search(r'\\(frac|lim|int|sqrt|prime|partial)|\$', zh))
                 # ★内容层校验: KU内容真含该知识点的辨识词? (堵'占位骗校验')
                 content_ok = any(kt in zh for kt in item['key_terms'])
+                # ★面齐校验(防空洞): 该有的面齐不齐
+                fissues = facet_check(item['id'], zh)
                 return {'point': item['id'], 'type': item['type'], 'label': item['label'],
                         'key_terms': item['key_terms'], 'zh': zh, 'en': en,
-                        'has_formula': has_latex, 'zh_len': len(zh), 'content_match': content_ok}
+                        'has_formula': has_latex, 'zh_len': len(zh),
+                        'content_match': content_ok, 'facet_issues': fissues}
         kus = [k for k in await asyncio.gather(*(one(it) for it in sh)) if k]
-    Path("/tmp/claude-1000/-home-soffy-projects-AII/bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad/math_ch2.json").write_text(json.dumps(kus,ensure_ascii=False,indent=1))
+    for k in kus:
+        k['chapter'] = ch_n
+    outp.write_text(json.dumps(kus, ensure_ascii=False, indent=1))
     # ★完整性校验(内容层): 不是'槽存在', 是'内容真讲了这个知识点'
     miss = [k['point'] for k in kus if not k['content_match']]
+    shallow = [(k['point'], k['facet_issues']) for k in kus if k['facet_issues']]
     print(f"讲透 {len(kus)} KU (应有{len(sh)})", flush=True)
     print(f"★内容层完整性: 内容真覆盖 {len(kus)-len(miss)}/{len(kus)}; 占位(内容不匹配)= {miss}", flush=True)
-asyncio.run(main())
+    print(f"★面齐校验(防空洞): 讲浅/缺面 {len(shallow)} 条: {shallow}", flush=True)
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

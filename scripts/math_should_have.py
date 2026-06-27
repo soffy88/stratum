@@ -19,12 +19,17 @@ def extract(chapter_text):
 
     def add(name):
         name = name.strip()
+        # ★噪音过滤(下册复杂章): 排除例题内枚举/句子片段, 不是真知识点
+        if re.search(r'(时|情形|象限|可得|称为|同样|于是|因此|例如|这样|其中|以及|个方程)$', name):
+            return
+        if re.search(r'[。.…]|\d阶', name) or name.startswith(('三两', '一象', '二象', '三象', '四象')):
+            return
         if name and name not in seen and not _SKIP.match(name) and len(name) >= 3:
             seen.add(name)
             items.append({'type': '知识点', 'id': name, 'label': name, 'key_terms': _key_terms(name)})
-    # ★命名小标题 一、二、三、X = 真知识点(最细, 有真名)
+    # ★命名小标题 一、二、三、X = 真知识点(最细, 有真名); ★行首锚定(排除句中枚举如'三象限时')
     sub_pos = [(m.start(), m.group(1).strip()) for m in
-               re.finditer(r'(?m)[一二三四五六七八九十]、\s*([^\n。，,；()（）]{3,28})', chapter_text)]
+               re.finditer(r'(?m)^\s{0,4}[一二三四五六七八九十]、\s*([^\n。，,；()（）]{3,28})', chapter_text)]
     for _, name in sub_pos:
         add(name)
     # 第N节: 只补【无子标题】的节(如 高阶导数)— 有子标题的节其子标题已是知识点(避免父子重复)
