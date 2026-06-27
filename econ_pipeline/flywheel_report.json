@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-06-27T11:56:21.413673+00:00",
+  "flywheel_run": true,
+  "dry_run": true,
+  "limit": 3,
+  "stratum_feedback_enabled": true,
+  "batch_summary": {
+    "total": 3,
+    "skipped(已入库)": 0,
+    "precheck_fail": 3,
+    "pipeline_fail": 0,
+    "alarm_quarantined": 0,
+    "pass_registered": 0
+  },
+  "stratum_feedback": {
+    "queue_file": "/home/soffy/shared/aii-to-stratum/md_rework_queue.json",
+    "total_items": 5,
+    "pending": 5
+  },
+  "flywheel_state": {
+    "quarantine": 1,
+    "precheck_fail": 5
+  }
+}

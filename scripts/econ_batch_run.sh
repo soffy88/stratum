@@ -30,6 +30,7 @@ QUARANTINE_JSON="econ_pipeline/quarantine.json"
 BATCH_REPORT="econ_pipeline/batch_report.json"
 DRY_RUN="${ECON_DRY_RUN:-0}"
 FORCE="${ECON_FORCE:-0}"
+STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"  # 1=预检失败时反馈Stratum
 
 : "${ECON_MD_LIST:?必须设置 ECON_MD_LIST (书单文件路径)}"
 if [ ! -f "$ECON_MD_LIST" ]; then
@@ -142,8 +143,14 @@ asyncio.run(chk())
     echo "  [预检] R1-R9 章节结构检查..."
     PRECHECK_RESULT=$($PY -c "
 import sys; sys.path.insert(0, 'scripts'); sys.path.insert(0, '.')
+# 内联 strip_frontmatter(避免 import run_first3 引入 omodul 依赖)
+def strip_frontmatter(text):
+    if text.startswith('---'):
+        end = text.find('\n---', 3)
+        if end != -1:
+            return text[text.find('\n', end + 1) + 1:]
+    return text
 from aii.service.md_quality_check import check_md_quality
-from run_first3 import strip_frontmatter
 import json
 try:
     text = strip_frontmatter(open('$MD_PATH', encoding='utf-8', errors='replace').read())
@@ -166,6 +173,11 @@ except Exception as e:
         N_PRECHECK_FAIL=$((N_PRECHECK_FAIL + 1))
         RESULTS[$SUBSTRATE]="PRECHECK_FAIL:$PRECHECK_RESULT"
         _quarantine_add_json "$SUBSTRATE" "$ECON_TITLE" "$MD_PATH" "precheck" "$PRECHECK_RESULT"
+        # ── 反馈 Stratum: MD 需重新输出 ──
+        if [ "$STRATUM_FEEDBACK" = "1" ]; then
+            $PY scripts/econ_stratum_feedback.py "$SUBSTRATE" "$ECON_TITLE" "$MD_PATH" "$PRECHECK_RESULT" \
+                2>/dev/null && echo "  📤 已反馈 Stratum(md_rework_queue.json)" || true
+        fi
         continue
     fi
     echo "  ✅ 预检通过($PRECHECK_RESULT)"
