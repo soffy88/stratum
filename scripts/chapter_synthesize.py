@@ -1,10 +1,10 @@
 """新范式章节合成(讲透 + 防漏): 按章切 → 规划知识点 → 每点讲透合成(双语+溯源) → 完整性校验防漏 → 补漏.
 ★规划喂全章(不截断), 合成改定向窗口+程序骨架混合:
-  - 有教材定义框(**TERM** def / **EXAMPLE** 块): 程序提取WHAT骨架(0 token)
-    → LLM只看WHY后段窗口(跳过已提取的定义段); 节省~51%/call
-  - 无定义框: 标准定向窗口 intro[:1000]+section[pos-WIN_PRE:pos+WIN_POST]
-  对齐数学管道已验证的 section-windowing 方式.
-★防漏: 用 planning_completeness(确定性, 不靠LLM)对照"应有黑体术语/小节"查漏, 漏的补抽.
+  - 程序骨架(多策略): 格式定义框→is/means句式→首次出现句; 例子: EXAMPLE块+数字句+for example
+  - 窗口按章节边界截断(治本防污染): 跳过近距离同主题小节, 在第一个≥4000chars的节边界或章末截断
+  - LLM只看WHY窗口; 节省~49%/call
+  - 无骨架: 标准定向窗口 intro[:1000]+section[pos-WIN_PRE:pos+WIN_POST]
+★防漏: 用 planning_completeness(确定性)对照"应有黑体术语/小节"查漏, 漏的补抽.
 Usage: chapter_synthesize.py <chapter_n>
 """
 import asyncio, json, re, sys
@@ -37,24 +37,139 @@ SYN_SYS = ("You synthesize ONE thorough KU by INTEGRATING the chapter's material
            "★ The Chinese MUST be Simplified Chinese (简体中文) only — NEVER Traditional characters (禁止繁体字).")
 
 
+# ── 章节边界检测(模块级编译, 治本防污染) ──
+_HARD_BOUNDARY_RE = re.compile(
+    r'(?mi)^(?:#{1,4}\s+)?(?:\*\*)?'
+    r'(?:KEY\s+TERMS?|WHAT\s+YOU\s+SHOULD|QUESTIONS?\s+AND\s+PROBLEMS?'
+    r'|REVIEW\s+QUESTIONS?|EXERCISES?|APPENDIX'
+    r'|习题|练习题|本章小结|思考题|复习题|关键术语)'
+    r'(?:\*\*)?\b'
+)
+_SOFT_BOUNDARY_RE = re.compile(r'(?m)^#{1,4}\s+')
+
+
+def _section_end(text: str, after: int, min_dist: int = 4000) -> int:
+    """after 之后的实质性节边界(用于截断WHY窗口).
+    ★策略: 跳过 <min_dist 的近距离节头(同主题小节); 找第一个 ≥min_dist 的## 或硬边界.
+    硬边界(习题/小结等)无视距离直接截断."""
+    # 硬边界: 章末/习题区, 无论距离
+    mh = _HARD_BOUNDARY_RE.search(text, after + 50)
+    hard = mh.start() if mh else len(text)
+    # 软边界: 第一个距离 ≥ min_dist 的 ## 标题
+    search_from = after + 100
+    soft = len(text)
+    while True:
+        ms = _SOFT_BOUNDARY_RE.search(text, search_from)
+        if not ms:
+            break
+        if ms.start() - after >= min_dist:
+            soft = ms.start()
+            break
+        search_from = ms.end()
+    return min(hard, soft)
+
+
+def _name_variants(name: str) -> list:
+    """生成知识点名称的匹配变体: 大写/Title/原始 × 单/复数形式."""
+    u, t = name.upper(), name.title()
+    out = []
+    for base in [u, t, name]:
+        out.append(base)
+        if not base.rstrip("sS").endswith("s"):  # 如果原始不以s结尾则加复数
+            pass
+        # 单复数互补
+        if base.endswith("S") or base.endswith("s"):
+            out.append(base[:-1])  # Cost ← Costs
+        else:
+            out.append(base + "s")  # Costs ← Cost
+    return list(dict.fromkeys(out))  # 去重保序
+
+
 def _extract_skeleton(text: str, name: str, pos: int):
-    """程序提取WHAT骨架: 教材定义框(**TERM** def) + **EXAMPLE** 块.
-    搜索窗 pos-200:pos+3500 (覆盖"先叙事后定义"的教材格式, 如 Transaction Costs 定义在 pos+2697).
-    单复数形式都试(如 Cost vs Costs).
-    返回: (bold_def_str, [example_str, ...]) — 均为原文片段."""
+    """★升级版程序骨架(多策略):
+    定义: A.格式定义框(**TERM** ...) → B.is/means/we mean句式 → C.首次出现句(fallback)
+    例子: A.**EXAMPLE**块 → B.含数字计算句 → C.for example/e.g./比如句
+    窗口: pos-200:pos+3500 (不依赖边界, 搜定义用小窗已够)
+    返回: (def_str, [example_str, ...]) — 均为原文片段."""
     win = text[max(0, pos - 200): min(len(text), pos + 3500)]
-    # 1. 教材定义框: **TERM** sentence (大写/Title/原始形式, 单数+复数都试)
+    variants = _name_variants(name)
+
+    # ── 定义抽取 ──
     bold_def = ""
-    name_u = name.upper(); name_t = name.title()
-    candidates = [name_u, name_u + "S", name_t, name_t + "s", name]
-    for term in candidates:
+
+    # A: 格式定义框 **TERM** sentence (原有,最可信)
+    for term in variants:
         m = re.search(rf'\*\*{re.escape(term)}\*\*\s+[^\n*]{{5,150}}', win, re.I)
         if m:
             bold_def = m.group(0).strip()
             break
-    # 2. **EXAMPLE** 块(搜索窗内, 最多3个)
-    examples = re.findall(r'\*\*EXAMPLE\*\*\s*([^\n*]{20,280})', win)
-    return bold_def, examples[:3]
+
+    # B: "TERM is/are/means/refers to/we mean/is defined as" 句式
+    if not bold_def:
+        for term in variants[:4]:
+            m = re.search(
+                rf'\b{re.escape(term)}\b[^.!?\n]{{0,80}}'
+                rf'\b(?:is|are|means?|refers?\s+to|we\s+mean|is\s+defined\s+as|represent)\b'
+                rf'[^.!?\n]{{10,200}}[.!?]',
+                win, re.I)
+            if m:
+                sent = m.group(0).strip()
+                if 25 < len(sent) < 420:
+                    bold_def = sent
+                    break
+
+    # C: 位置策略 — 含术语的首个非标题短句(fallback)
+    if not bold_def:
+        name_lo = name.lower()
+        for s in re.split(r'(?<=[.!?])\s+|\n\n', win):
+            s = s.strip()
+            if (name_lo in s.lower()
+                    and not s.startswith('#')
+                    and 20 < len(s) < 450):
+                bold_def = s
+                break
+
+    # ── 例子抽取 (多策略) ──
+    seen, examples = set(), []
+
+    def _norm_key(s: str) -> str:
+        return re.sub(r'\*\*\w[\w\s]*\*\*\s*', '', s).strip()[:60]
+
+    def _add(frag: str, pri: int):
+        frag = re.sub(r'^\*\*[A-Z]+\*\*\s*', '', frag).strip()  # 去掉 **EXAMPLE** 前缀
+        key = _norm_key(frag)
+        if key not in seen and len(frag) > 20:
+            examples.append((pri, frag[:280]))
+            seen.add(key)
+
+    # A: **EXAMPLE** 块(最可信)
+    for m in re.finditer(r'\*\*EXAMPLE\*\*\s*([^\n*]{20,280})', win):
+        _add(m.group(1), 0)
+
+    # B: 含百分比/货币/小数的计算句(抓原文数字例子, 如 0.27/-1.32)
+    # ★ (?<=[.!?\n ]) 保证从句首开始, 避免匹配 **EXAMPLE** 块内的 [A-Z]
+    for m in re.finditer(
+        r'(?:(?<=[.!?\n])\s*)([A-Z][^.!?\n*]{8,}'
+        r'(?:\d[\d,]*\.?\d*\s*(?:%|percent)|'
+        r'\$\s*[\d,]+(?:\.\d+)?|\bε[a-z]?\s*=\s*[\d.]+|equals?\s+[\d.]+)'
+        r'[^.!?\n*]{5,150}[.!?])',
+        win, re.M):
+        frag = m.group(1)
+        if re.search(r'\b[a-zA-Z]{4,}\b', frag):  # 过滤纯数字/公式噪音
+            _add(frag, 1)
+
+    # C: for example / for instance / 比如 / 例如 (不含 e.g. — 常嵌在公式中产生噪音)
+    for m in re.finditer(
+        r'(?:for example|for instance|比如|例如)[,\s：]+([A-Z가-힣][^.!?\n]{25,250}[.!?])',
+        win, re.I):
+        frag = m.group(1)
+        if re.search(r'\b[a-zA-Z]{4,}\b', frag):
+            _add(frag, 2)
+
+    ordered = ([e for p, e in examples if p == 0][:3]
+             + [e for p, e in examples if p == 1][:2]
+             + [e for p, e in examples if p == 2][:1])
+    return bold_def, ordered[:5]
 
 
 def _facets(typ):
@@ -120,9 +235,10 @@ async def _synth(llm, text, n, name, typ, pos: int = 0):
     if pos > 0 and has_skeleton:
         # ── HYBRID路径: 程序已提取WHAT, LLM只看WHY后段 ──
         intro = text[:500]                                          # 短intro(约束/记号)
-        # 定义区之后的WHY段(程序已覆盖定义区,跳过避免重复喂)
+        # ★ WHY窗口按章节边界截断(治本防污染): 不超过下一个实质性节边界
+        boundary  = _section_end(text, pos)
         why_start = min(len(text), pos + _WIN_SKEL_DEF)
-        why_end   = min(len(text), why_start + _WIN_POST_HYBRID)
+        why_end   = min(len(text), why_start + _WIN_POST_HYBRID, boundary)
         why_section = text[why_start:why_end]
         # 骨架提示(直接放进 prompt, 不多余)
         skel = ""
