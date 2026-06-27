@@ -48,6 +48,13 @@ def extract(chapter_text):
         has_sub = any(pos < sp < end for sp, _ in sub_pos)
         if not has_sub:
             add(title, pos)
+    # § N 节名: 华东师大数分等用 § 分节格式(无 第N节/一二三 时补入)
+    if not items:
+        sec_marks2 = [(m.start(), m.group(1).strip()) for m in
+                      re.finditer(r'(?m)^§\s*\d+\s+([^\n|…]{3,30})', chapter_text)
+                      if '…' not in m.group(1)]
+        for pos, title in sec_marks2:
+            add(title, pos)
     return items
 
 

@@ -63,15 +63,17 @@ async def synth(cli, chapter, item):
             j=json.loads(r.json()["choices"][0]["message"]["content"]); return j
         except Exception: await asyncio.sleep(2)
     return None
-OUTDIR = Path("/tmp/claude-1000/-home-soffy-projects-AII/bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad/math_full")
+OUTDIR = Path("/tmp/claude-1000/-home-soffy-projects-AII/b59675af-3e38-4d3d-9fd3-e5fd9f2f3a03/scratchpad/math_full")
+# 支持 AII_MD_FILE env 覆盖(华东师大数分: 上册/下册)
+_MD = Path(os.getenv("AII_MD_FILE", str(SM)))
 async def main():
     ch_n = int(sys.argv[1]) if len(sys.argv)>1 else 2
-    OUTDIR.mkdir(exist_ok=True)
+    OUTDIR.mkdir(parents=True, exist_ok=True)
     outp = OUTDIR / f"ch{ch_n}.json"
     # ★断点续: 已完成且非空则跳过
     if outp.exists() and len(json.loads(outp.read_text())) > 0:
         print(f"第{ch_n}章 已存在({len(json.loads(outp.read_text()))} KU), 跳过", flush=True); return
-    chapter = slice_chapter(SM.read_text(encoding='utf-8',errors='replace'), ch_n)
+    chapter = slice_chapter(_MD.read_text(encoding='utf-8',errors='replace'), ch_n)
     sh = extract(chapter)
     print(f"第{ch_n}章 应有清单: {len(sh)} 知识点", flush=True)
     sem = asyncio.Semaphore(6)
