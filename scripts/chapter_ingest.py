@@ -10,7 +10,7 @@ import asyncpg
 from aii.api._provider import register_providers
 from aii.service import onto_prompts as P
 from aii.service import onto_vocab as V
-from aii.service.onto_persist import persist_ontology_result
+# persist_ontology_result 只在 ingest_chapter() 里用,懒加载避免 omodul 依赖在 import 时触发
 from aii.service.concept_onto_ops import vectorize_and_normalize
 from aii.service.cross_chunk_link import gen_candidates, judge_and_link
 from aii.storage.pg_backend import PgBackend
@@ -98,6 +98,7 @@ async def main():
     print(f"  extracted {len(r.ku_candidates)} KU candidates", flush=True)
 
     # 2. 持久化
+    from aii.service.onto_persist import persist_ontology_result  # 懒加载(omodul依赖在运行时才需要)
     trail = Path("/tmp/onto_trails"); trail.mkdir(parents=True, exist_ok=True)
     ps = await persist_ontology_result(dsn=backend.dsn, substrate_id=sub, result=r, trail_dir=trail, backend=backend)
     print(f"  persisted registered={ps.get('registered')} rejected={ps.get('rejected')} rej_struct={ps.get('rejected_structural',0)}", flush=True)
