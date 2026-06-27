@@ -29,9 +29,32 @@ def _is_spaced_noise(t: str) -> bool:
     return len(toks) >= 4 and sum(1 for x in toks if len(x) == 1) >= len(toks) - 1
 
 
+# 中文数学教材结构信号: 第N节 标题 + 定义N/定理N(替代 **TERM**)
+_ZH_SECTION = re.compile(r"(?m)^第[一二三四五六七八九十]+节\s+([^\n…]{1,28})")
+_MATH_SIGNAL = re.compile(r"定义\s*\d|定理\s*\d")
+_ZH_SPLIT = re.compile(r"[与和、，及的]")
+
+
+def _zh_math_should_have(chapter_text: str) -> dict:
+    """数学模式: 第N节 标题=知识区(跳页眉重复取首现). 每节标题作 should-have."""
+    secs, seen = [], set()
+    for m in _ZH_SECTION.finditer(chapter_text):
+        t = m.group(1).strip()
+        if "…" in t or re.search(r"\d\s*$", t) or t in seen:
+            continue
+        seen.add(t)
+        secs.append(t)
+    return {"sections": [{"num": str(i + 1), "title": t, "terms": [t]} for i, t in enumerate(secs)],
+            "bold_terms": secs}
+
+
 def identify_should_have(chapter_text: str) -> dict:
-    """确定性识别章节应有知识点: 黑体定义术语(权威)+ 小节(各挂其内黑体术语). 不调 LLM."""
+    """确定性识别章节应有知识点: 黑体定义术语(权威)+ 小节(各挂其内黑体术语). 不调 LLM.
+    ★数学书无 **TERM** 但有 定义N/定理N → 转数学模式(第N节 标题作 should-have)."""
     # 黑体术语 + 位置
+    # ★数学书: 无 **TERM** 黑体但有 定义/定理 → 数学模式(第N节)
+    if not _BOLD_TERM.search(chapter_text) and _MATH_SIGNAL.search(chapter_text):
+        return _zh_math_should_have(chapter_text)
     term_pos: list[tuple[int, str]] = []
     seen = set()
     for m in _BOLD_TERM.finditer(chapter_text):
@@ -62,6 +85,13 @@ def check_completeness(chapter_text: str, extracted_ku_names: list[str]) -> dict
         nt = _norm(label)
         if nt and nt in blob:
             return True
+        # 中文(无空格): 子概念整体 或 任一 2-字窗 在 blob → 覆盖(模糊主题匹配)
+        if re.search(r"[一-鿿]", nt):
+            parts = [p for p in _ZH_SPLIT.split(nt) if len(p) >= 2]
+            if any(p in blob for p in parts):
+                return True
+            grams = {nt[i:i + 2] for i in range(len(nt) - 1) if re.match(r"[一-鿿]{2}", nt[i:i + 2])}
+            return any(g in blob for g in grams)
         words = [w for w in nt.split() if len(w) > 3]
         return bool(words) and all(w in blob for w in words)
 

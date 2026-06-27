@@ -1,12 +1,13 @@
 import asyncio, asyncpg, os, json, httpx
 from dotenv import load_dotenv; load_dotenv('aii/.env',override=True)
-SUB='microecon_en_full_v2'; KEY=os.getenv('DEEPSEEK_API_KEY')
+SUB=os.getenv('SUBSTRATE','microecon_en_full_v2'); KEY=os.getenv('DEEPSEEK_API_KEY')
 async def go():
     c=await asyncpg.connect(os.getenv('DATABASE_URL'))
     kcs=await c.fetch("SELECT community_label FROM aii.kc_onto WHERE substrate_id=$1 AND synthesis_marker='AII章节KC' ORDER BY level",SUB)
     hubs=await c.fetch("""SELECT cc.name, count(*) d FROM aii.ku_concept_onto kc JOIN aii.concept_onto cc ON kc.concept_id=cc.concept_id
         JOIN aii.ku_onto k ON kc.ku_id=k.ku_id WHERE k.substrate_id=$1 GROUP BY 1 ORDER BY 2 DESC LIMIT 12""",SUB)
     # sample KU essences (titles span breadth)
+    booktitle=await c.fetchval("SELECT title FROM aii.ingested_substrate WHERE substrate_id=$1",SUB) or SUB
     samp=await c.fetch(f"SELECT title FROM aii.ku_onto WHERE substrate_id='{SUB}' ORDER BY random() LIMIT 30")
     await c.close()
     topics="\n".join("- "+k['community_label'] for k in kcs)
@@ -19,8 +20,8 @@ async def go():
          "知识骨架 MUST use the data-computed hub concepts given. Output JSON with 7 fields (简体中文): "
          '{"soul":"一句话灵魂","positioning":"背景定位","question":"根本问题","skeleton":"知识骨架(用枢纽概念)",'
          '"thinking":"思维方式","for_whom":"适合谁能干什么","boundary":"诚实边界(不讲什么)"}.')
-    body=(f"Book: Principles of Microeconomics: The Way We Live\n\n"
-          f"21 主题KC(知识结构):\n{topics}\n\n"
+    body=(f"Book: {booktitle}\n\n"
+          f"主题KC(知识结构):\n{topics}\n\n"
           f"★数据算出的枢纽概念(度中心, 括号=涉及KU数)= 知识骨架支柱:\n{hubtxt}\n\n"
           f"KU样本(覆盖广度): {samptxt}")
     r=httpx.post("https://api.deepseek.com/chat/completions",headers={"Authorization":"Bearer "+KEY},

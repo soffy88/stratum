@@ -1,7 +1,7 @@
 import asyncio, asyncpg, os, json, httpx
 from pathlib import Path
 from dotenv import load_dotenv; load_dotenv("/home/soffy/projects/AII/aii/.env", override=True)
-SUB='microecon_en_full_v2'; KEY=os.getenv('DEEPSEEK_API_KEY')
+SUB=os.getenv('SUBSTRATE','microecon_en_full_v2'); KEY=os.getenv('DEEPSEEK_API_KEY')
 async def go():
     bu=json.loads(Path("/tmp/claude-1000/-home-soffy-projects-AII/bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad/bu.json").read_text())
     bu['boundary']="不涉及宏观经济学（GDP、通胀、失业等总量问题），不涉及金融市场的资产定价，不做复杂的数学证明（以直观逻辑为主）。"

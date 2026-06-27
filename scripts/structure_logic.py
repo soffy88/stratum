@@ -1,7 +1,7 @@
 import asyncio, asyncpg, os, json
 from collections import defaultdict
 from dotenv import load_dotenv; load_dotenv('aii/.env',override=True)
-SUB='microecon_en_full_v2'
+SUB=os.getenv('SUBSTRATE','microecon_en_full_v2')
 def extract_chains(edges):
     adj=defaultdict(list); indeg=defaultdict(int); nodes=set()
     for s,d in edges:

@@ -1,6 +1,6 @@
 import asyncio, asyncpg, os, json, httpx
 from dotenv import load_dotenv; load_dotenv('aii/.env',override=True)
-SUB='microecon_en_full_v2'; KEY=os.getenv('DEEPSEEK_API_KEY')
+SUB=os.getenv('SUBSTRATE','microecon_en_full_v2'); KEY=os.getenv('DEEPSEEK_API_KEY')
 SYS=("Read out ONLY the directed relations this knowledge unit's text EXPLICITLY expresses "
      "(text directly describes them; exclude quoted/inferred). Types: "
      "prerequisite (A must be understood/exist before B), subsumes (A includes B as part/type), "

@@ -1,6 +1,6 @@
 import asyncio, asyncpg, os, re
 from dotenv import load_dotenv; load_dotenv('aii/.env',override=True)
-SUB='microecon_en_full_v2'
+SUB=os.getenv('SUBSTRATE','microecon_en_full_v2')
 def norm(t):
     t=re.sub(r'\([^)]*\)','',t).lower().strip()           # 去 (Concept)/(PPF)
     t=re.sub(r'[^a-z0-9\s/&-]','',t); t=re.sub(r'\s+',' ',t).strip()
@@ -24,12 +24,12 @@ async def go():
         for n,rx in phrases:
             if n!=own and rx.search(body): inv.add(n)
         ku_concepts[k['ku_id']]=inv
-    # 3. 物化概念 + ku_concept 链接 (concept_onto 全局, ON CONFLICT name 复用; discipline 标 microecon_v2 可识别)
+    # 3. 物化概念 + ku_concept 链接 (concept_onto 全局, ON CONFLICT name 复用; discipline 标 SUBSTRATE 可识别)
     await c.execute("DELETE FROM aii.ku_concept_onto WHERE ku_id LIKE $1", SUB+'::%')
     cid={}
     for n,name in canon.items():
-        row=await c.fetchrow("INSERT INTO aii.concept_onto(name,discipline) VALUES($1,'microecon_v2') "
-                             "ON CONFLICT(name) DO UPDATE SET name=EXCLUDED.name RETURNING concept_id", name)
+        row=await c.fetchrow("INSERT INTO aii.concept_onto(name,discipline) VALUES($1,$2) "
+                             "ON CONFLICT(name) DO UPDATE SET name=EXCLUDED.name RETURNING concept_id", name, SUB)
         cid[n]=row['concept_id']
     links=0
     for kid,inv in ku_concepts.items():
