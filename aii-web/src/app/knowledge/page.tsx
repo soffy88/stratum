@@ -7,7 +7,8 @@
  */
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   OEpistemicBadge,
   OFilterChip,
@@ -127,7 +128,7 @@ function KuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
   );
 }
 
-export default function KnowledgePage() {
+function KnowledgePage() {
   const [state, run] = useApi(api.getKuList);
   const [grade, setGrade] = useState<string[]>([]);
   const [type, setType] = useState<string[]>([]);
@@ -135,7 +136,8 @@ export default function KnowledgePage() {
   const [page, setPage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
 
-  const substrate = (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('substrate')) || undefined;
+  const searchParams = useSearchParams();
+  const substrate = searchParams.get('substrate') || undefined;
   const load = useCallback(() => {
     void run({
       grade: (grade[0] as EpistemicGrade) || undefined,
@@ -216,5 +218,13 @@ export default function KnowledgePage() {
 
       {detailId && <KuDetailPanel id={detailId} onClose={() => setDetailId(null)} />}
     </div>
+  );
+}
+
+export default function KnowledgePageWrapper() {
+  return (
+    <Suspense fallback={null}>
+      <KnowledgePage />
+    </Suspense>
   );
 }
