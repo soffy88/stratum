@@ -59,6 +59,16 @@
       "ts": "2026-06-27T11:56:21.271680+00:00",
       "qual_json": "econ_pipeline/qual/01KVA3QDYZWC582JFVFP76VD43.json",
       "status": "pending_review"
+    },
+    {
+      "substrate_id": "01KVABDEXD2V985Q9GZWFWPERW",
+      "title": "Mathematics for Economics and Business (Ian Jacques)",
+      "md_path": "/home/soffy/shared/stratum-to-aii/Mathematics for Economics and Business_structured.md",
+      "reason_type": "pipeline_error",
+      "reason_detail": "管道步骤失败(exit 2)",
+      "ts": "2026-06-27T14:02:50.918316+00:00",
+      "qual_json": "econ_pipeline/qual/01KVABDEXD2V985Q9GZWFWPERW.json",
+      "status": "pending_review"
     }
   ]
 }
