@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 sys.path.insert(0, str(ROOT / "scripts"))
 import asyncpg
-from chapter_ingest import slice_chapter, SM
+from chapter_ingest import slice_chapter, SM, chapter_numbers
 from chapter_synthesize import _plan, _synth, _CTX
 from clean_ku import clean, is_empty_shell
 from aii.api._provider import register_providers
@@ -16,7 +16,7 @@ from aii.service.planning_completeness import check_completeness
 from oprim import vector_encode
 from obase import ProviderRegistry
 
-SUB = "microecon_en_full_v2"
+SUB=os.getenv('SUBSTRATE','microecon_en_full_v2')
 SC = Path("/tmp/claude-1000/-home-soffy-projects-AII/bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad")
 CKPT = SC / f"ckpt_{SUB}.json"
 _TYPE_MAP = {"concept": "conceptual", "principle": "rationale", "method": "procedural"}
@@ -76,12 +76,13 @@ async def persist(conn, n, kus):
 
 async def main():
     register_providers(); llm = ProviderRegistry.get().llm("default")
+    chapters = chapter_numbers(SM.read_text(encoding="utf-8", errors="replace"))  # 实际章数(英/中)
     done = set(json.loads(CKPT.read_text())["done"]) if CKPT.exists() else set()
-    print(f"[{SUB}] {len(done)}/19 chapters already done: {sorted(done)}", flush=True)
+    print(f"[{SUB}] {len(done)}/{len(chapters)} chapters done; book has {chapters}", flush=True)
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
     from pgvector.asyncpg import register_vector
     await register_vector(conn)
-    for n in range(1, 20):
+    for n in chapters:
         if n in done:
             continue
         try:
@@ -90,7 +91,7 @@ async def main():
             done.add(n)
             CKPT.write_text(json.dumps({"done": sorted(done)}))
             print(f"  ch{n}: {len(kus)} KU persisted; complete={comp['complete']} "
-                  f"missing={comp['missing_bold_terms']} [{len(done)}/19]", flush=True)
+                  f"missing={comp['missing_bold_terms']} [{len(done)}/{len(chapters)}]", flush=True)
         except Exception as e:
             print(f"  ch{n} FAILED: {e}", flush=True)
     total = await conn.fetchval("SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", SUB)

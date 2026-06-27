@@ -1,7 +1,7 @@
 import asyncio, asyncpg, os, json, re
 from collections import defaultdict
 from dotenv import load_dotenv; load_dotenv('aii/.env',override=True)
-SUB='microecon_en_full_v2'
+SUB=os.getenv('SUBSTRATE','microecon_en_full_v2')
 STOP=set("the a an of in to for and or with on at by from as is are be its their this that which when then due will can may shift change increase decrease higher lower more less".split())
 def toks(s): return frozenset(w for w in re.sub(r'[^a-z0-9 ]',' ',s.lower()).split() if w not in STOP and len(w)>1)
 def cmap_for(nodes):

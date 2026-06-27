@@ -1,6 +1,6 @@
 import asyncio, asyncpg, os, re
 from dotenv import load_dotenv; load_dotenv('aii/.env',override=True)
-SUB='microecon_en_full_v2'
+SUB=os.getenv('SUBSTRATE','microecon_en_full_v2')
 def norm(t):
     t=re.sub(r'\([^)]*\)','',t).lower().strip(); t=re.sub(r'[^a-z0-9\s/&-]','',t)
     return re.sub(r's\b','',re.sub(r'\s+',' ',t).strip())

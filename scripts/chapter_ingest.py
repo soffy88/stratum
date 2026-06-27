@@ -48,10 +48,20 @@ def _zh_chapter_starts(text):
     return starts
 
 
-def slice_chapter(text, n):
+def chapter_starts(text):
+    """章起始位置(英文 # Chapter N: 或中文 第N章). 自动判格式."""
     starts = {int(m.group(1)): m.start() for m in re.finditer(r'(?m)^#\s+Chapter\s+(\d+):', text)}
-    if not starts:                                          # 无英文章标 → 试中文 第N章
+    if not starts:
         starts = _zh_chapter_starts(text)
+    return starts
+
+
+def chapter_numbers(text):
+    return sorted(chapter_starts(text).keys())
+
+
+def slice_chapter(text, n):
+    starts = chapter_starts(text)
     if n not in starts:
         raise SystemExit(f"chapter {n} not found; have {sorted(starts)}")
     s = starts[n]

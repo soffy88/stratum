@@ -1,6 +1,6 @@
 import asyncio, asyncpg, os, json, httpx
 from dotenv import load_dotenv; load_dotenv("/home/soffy/projects/AII/aii/.env", override=True)
-SUB='microecon_en_full_v2'; KEY=os.getenv('DEEPSEEK_API_KEY')
+SUB=os.getenv('SUBSTRATE','microecon_en_full_v2'); KEY=os.getenv('DEEPSEEK_API_KEY')
 SYS=("Given a knowledge cluster's member KU titles, write a 1-2 sentence cluster summary (这个主题讲什么) "
      "STRICTLY from the members (no fabrication). Output JSON {\"zh\":\"<简体中文>\",\"en\":\"<English>\"}.")
 async def go():
