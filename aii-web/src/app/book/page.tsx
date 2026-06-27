@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { OLoadingState, OErrorState } from '@helios/blocks';
 import { useApi } from '@/hooks/useApi';
 import * as api from '@/lib/api-client';
+import { MathText } from '@/components/MathText';
 import type { BuData, BuFacets, BookInfo } from '@/types/api';
 
 const FACETS: { key: keyof BuFacets; label: string; icon: string }[] = [
@@ -29,7 +30,7 @@ function Facet({ label, icon, zh, en }: { label: string; icon: string; zh: strin
         <span className="text-[color:var(--accent,#2563eb)] text-base">{icon}</span>
         <h3 className="text-sm font-semibold">{label}</h3>
       </div>
-      <p className="text-sm leading-relaxed whitespace-pre-wrap">{zh}</p>
+      <MathText text={zh} className="text-sm leading-relaxed" />
       {en && (
         <>
           <button
@@ -39,7 +40,7 @@ function Facet({ label, icon, zh, en }: { label: string; icon: string; zh: strin
             <span className="inline-block w-3">{showEn ? '▾' : '▸'}</span> 英文原文
           </button>
           {showEn && (
-            <p className="text-sm leading-relaxed whitespace-pre-wrap text-[color:var(--text-secondary)] border-l-2 border-[color:var(--border)] pl-2">{en}</p>
+            <MathText text={en} className="text-sm leading-relaxed text-[color:var(--text-secondary)] border-l-2 border-[color:var(--border)] pl-2" />
           )}
         </>
       )}

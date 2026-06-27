@@ -17,6 +17,7 @@ import {
 } from '@helios/blocks';
 import { useApi } from '@/hooks/useApi';
 import * as api from '@/lib/api-client';
+import { MathText } from '@/components/MathText';
 import type { KcListItem, KcDetail } from '@/types/api';
 
 function SynthesisTag() {
@@ -34,13 +35,13 @@ function BiText({ zh, en }: { zh: string; en?: string }) {
   const [showEn, setShowEn] = useState(false);
   return (
     <div className="flex flex-col gap-1.5">
-      <p className="text-sm leading-relaxed whitespace-pre-wrap">{zh}</p>
+      <MathText text={zh} className="text-sm leading-relaxed" />
       {en && (
         <>
           <button onClick={() => setShowEn(v => !v)} className="self-start text-xs text-[color:var(--text-secondary)] hover:text-[color:var(--accent,#2563eb)]">
             <span className="inline-block w-3">{showEn ? '▾' : '▸'}</span> 英文原文
           </button>
-          {showEn && <p className="text-sm leading-relaxed whitespace-pre-wrap text-[color:var(--text-secondary)] border-l-2 border-[color:var(--border)] pl-2">{en}</p>}
+          {showEn && <MathText text={en} className="text-sm leading-relaxed text-[color:var(--text-secondary)] border-l-2 border-[color:var(--border)] pl-2" />}
         </>
       )}
     </div>
@@ -63,13 +64,13 @@ function MemberRow({ m, showSource }: { m: KcDetail['members'][number]; showSour
       </button>
       {open && (
         <div className="pl-2 border-l-2 border-[color:var(--border)] flex flex-col gap-1.5">
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{zh}</p>
+          <MathText text={zh} className="text-sm leading-relaxed" />
           {m.natural_text_en && (
             <>
               <button onClick={() => setShowEn(v => !v)} className="self-start text-xs text-[color:var(--text-secondary)] hover:text-[color:var(--accent,#2563eb)]">
                 <span className="inline-block w-3">{showEn ? '▾' : '▸'}</span> 英文原文
               </button>
-              {showEn && <p className="text-sm leading-relaxed whitespace-pre-wrap text-[color:var(--text-secondary)]">{m.natural_text_en}</p>}
+              {showEn && <MathText text={m.natural_text_en} className="text-sm leading-relaxed text-[color:var(--text-secondary)]" />}
             </>
           )}
         </div>

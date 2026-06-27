@@ -22,6 +22,7 @@ import {
 } from '@helios/blocks';
 import { useApi } from '@/hooks/useApi';
 import * as api from '@/lib/api-client';
+import { MathText } from '@/components/MathText';
 import type { KuListItem, KuDetail, KnowledgeType } from '@/types/api';
 
 const GRADE_OPTS: OFilterChipOption[] = (
@@ -38,7 +39,7 @@ function BilingualText({ zh, en }: { zh?: string | null; en: string }) {
   const hasZh = !!zh && zh.trim().length > 0;
   return (
     <div className="flex flex-col gap-1.5">
-      <p className="text-sm leading-relaxed whitespace-pre-wrap">{hasZh ? zh : en}</p>
+      <MathText text={hasZh ? (zh as string) : en} className="text-sm leading-relaxed" />
       {hasZh && (
         <>
           <button
@@ -48,7 +49,7 @@ function BilingualText({ zh, en }: { zh?: string | null; en: string }) {
             <span className="inline-block w-3">{showEn ? '▾' : '▸'}</span> 英文原文
           </button>
           {showEn && (
-            <p className="text-sm leading-relaxed whitespace-pre-wrap text-[color:var(--text-secondary)] border-l-2 border-[color:var(--border)] pl-2">{en}</p>
+            <MathText text={en} className="text-sm leading-relaxed text-[color:var(--text-secondary)] border-l-2 border-[color:var(--border)] pl-2" />
           )}
         </>
       )}
