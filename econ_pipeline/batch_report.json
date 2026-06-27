@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-06-27T10:53:07.945933+00:00",
+  "book_list": "econ_pipeline/test_books.txt",
+  "dry_run": true,
+  "summary": {
+    "total": 3,
+    "skipped(已入库)": 1,
+    "precheck_fail": 1,
+    "pipeline_fail": 0,
+    "alarm_quarantined": 0,
+    "pass_registered": 0
+  },
+  "quarantine_file": "econ_pipeline/quarantine.json",
+  "qual_dir": "econ_pipeline/qual"
+}

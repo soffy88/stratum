@@ -17,7 +17,9 @@ from oprim import vector_encode
 from obase import ProviderRegistry
 
 SUB=os.getenv('SUBSTRATE','microecon_en_full_v2')
-SC = Path("/tmp/claude-1000/-home-soffy-projects-AII/bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad")
+SC = Path(os.getenv("PIPELINE_CKPT_DIR",
+    "/tmp/claude-1000/-home-soffy-projects-AII/bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad"))
+SC.mkdir(parents=True, exist_ok=True)
 CKPT = SC / f"ckpt_{SUB}.json"
 _TYPE_MAP = {"concept": "conceptual", "principle": "rationale", "method": "procedural"}
 _CJK = re.compile(r"[一-鿿]")

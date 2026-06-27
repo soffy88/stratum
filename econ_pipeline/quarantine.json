@@ -1,0 +1,24 @@
+{
+  "quarantined": [
+    {
+      "substrate_id": "micro_clean",
+      "title": "Micro Clean (测试坏书)",
+      "md_path": "(无MD,仅DB数据)",
+      "reason_type": "quality_gate",
+      "reason_detail": "双语率0%<99% | 有向边0<28 | BU未生成 | 完整率0%",
+      "ts": "2026-06-27T10:50:23.317680+00:00",
+      "qual_json": "econ_pipeline/qual/micro_clean.json",
+      "status": "pending_review"
+    },
+    {
+      "substrate_id": "01KVA3P4Q8E529K1GQBSNHTM67",
+      "title": "经济学原理第7版 宏观经济学分册 曼昆(坏书测试)",
+      "md_path": "/home/soffy/shared/stratum-to-aii/01KVA3P4Q8E529K1GQBSNHTM67.md",
+      "reason_type": "precheck",
+      "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+      "ts": "2026-06-27T10:53:07.914131+00:00",
+      "qual_json": "econ_pipeline/qual/01KVA3P4Q8E529K1GQBSNHTM67.json",
+      "status": "pending_review"
+    }
+  ]
+}
