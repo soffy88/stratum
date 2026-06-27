@@ -8,10 +8,11 @@ _STOP = re.compile(r'[的与和及、，,；。()（）]')
 
 
 def _key_terms(name):
-    """从知识点真名抽辨识词(内容层校验): 去后缀停用, 取 ≥2 字具体子词."""
-    parts = [p for p in _STOP.split(re.sub(r'(法则|公式|定义|的关系|概念)$', '', name)) if len(p) >= 2]
-    specific = [p for p in parts if p not in ('导数', '函数', '微分', '关系')]
-    return specific or parts or [name[:3]]
+    """从知识点真名抽辨识词(内容层校验): 去后缀+非辨识词, 取 ≥2 字具体子词, 空格也切."""
+    core = re.sub(r'(举例|问题|的概念|及其计算法?|及其应用|的应用|的定义|的性质|的运算|的求法|及其导数|公式|法则|定理|的关系|概念)$', '', name).strip()
+    parts = [p for p in re.split(r'[的与和及、，,；。()（）\s]+', core) if len(p) >= 2]
+    specific = [p for p in parts if p not in ('导数', '函数', '微分', '关系', '应用', '计算', '方法')]
+    return specific or parts or [core[:3] or name[:3]]
 
 
 def extract(chapter_text):
