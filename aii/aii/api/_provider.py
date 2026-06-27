@@ -92,7 +92,7 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
         return resp.json()["response"]
 
     async def _call_async(messages=None, *, system: str = "", max_tokens: int = 4096, **_):
-        """Async wrapper for synthesis (plain text, not JSON mode)."""
+        """Async wrapper. Uses JSON mode when system prompt requests structured JSON output."""
         parts: list[str] = []
         if system:
             parts.append(system)
@@ -100,9 +100,12 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
             if isinstance(msg, dict) and msg.get("role") == "user":
                 parts.append(msg.get("content", ""))
         combined = "\n\n".join(p for p in parts if p)
+        # Use JSON mode for planning/extraction; plain text for synthesis
+        wants_json = "output valid json" in system.lower() or "output json" in system.lower()
+        caller = _call_sync if wants_json else _call_sync_plain
         loop = asyncio.get_event_loop()
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-            answer = await loop.run_in_executor(ex, _call_sync_plain, combined)
+            answer = await loop.run_in_executor(ex, caller, combined)
         return {"content": [{"type": "text", "text": answer}]}
 
     _call_async.call_sync = _call_sync          # extraction: JSON mode
