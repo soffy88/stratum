@@ -6,7 +6,8 @@
  */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   OEpistemicBadge,
   OEmptyState,
@@ -123,11 +124,12 @@ function KcDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
   );
 }
 
-export default function ClustersPage() {
+function ClustersPage() {
   const [state, run] = useApi(api.getKcList);
   const [view, setView] = useState<'chapter' | 'spectral'>('chapter');
   const [detailId, setDetailId] = useState<string | null>(null);
-  const substrate = (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('substrate')) || 'microecon_en_full_v2';
+  const searchParams = useSearchParams();
+  const substrate = searchParams.get('substrate') || 'microecon_en_full_v2';
   useEffect(() => { void run({ view, substrate }); }, [run, view, substrate]);
 
   const items = ((state.data as any)?.items ?? state.data ?? []) as KcListItem[];
@@ -138,7 +140,7 @@ export default function ClustersPage() {
         <h1 className="text-xl font-semibold">知识簇 / Knowledge Clusters</h1>
         <p className="text-sm text-[color:var(--text-secondary)]">
           {view === 'chapter'
-            ? '📖 《微观经济学》· 书内章节结构,按 Ch1→Ch19 顺序(固定)。点 KC 看摘要 + 成员 KU。'
+            ? '📖 书内章节结构,按章顺序(固定)。点 KC 看摘要 + 成员 KU。'
             : '🕸 跨书主题,概念关联聚合(随新书加入而增长)。每个主题汇集各书的同类 KU(标来源书)。'}
           <span className="ml-1"><strong>簇摘要是 AII 综合,非原文断言</strong>。</span>
         </p>
@@ -185,5 +187,13 @@ export default function ClustersPage() {
 
       {detailId && <KcDetailPanel id={detailId} onClose={() => setDetailId(null)} />}
     </div>
+  );
+}
+
+export default function ClustersPageWrapper() {
+  return (
+    <Suspense fallback={<div className="aii-page-content"><OLoadingState rows={4} /></div>}>
+      <ClustersPage />
+    </Suspense>
   );
 }
