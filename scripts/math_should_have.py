@@ -61,9 +61,12 @@ def _extract_theorem_layer(chapter_text):
     sect_bounds = _sect_boundaries(chapter_text)
     sect_seen = {}             # (sect_start, kind+num) → True (节内去重)
 
+    # ★括号名模式: 支持一层嵌套括号, 如 (罗尔(Rolle)中值定理)
+    _PNAME_PAT = r'([（(](?:[^（()））]|\([^()]*\))*[）)])?'
+
     # A. 章前缀项: 定理N.M / 定义N.M / 推论N.M / 命题N.M (章内全局唯一)
     for m in re.finditer(
-        r'(?m)^(定义|定理|推论|命题|引理)\s*(\d+\.\d+[\d\'\"\.]*)\s*([（(][^）)\n]{1,35}[）)])?',
+        r'(?m)^(定义|定理|推论|命题|引理)\s*(\d+\.\d+[\d\'\"\.]*)\s*' + _PNAME_PAT,
         chapter_text
     ):
         kind = m.group(1)
@@ -86,7 +89,7 @@ def _extract_theorem_layer(chapter_text):
     #    - 不同节同号: 都取 (不同定义)
     #    - 引用行过滤: "定义1 常称为..." → 跳过
     for m in re.finditer(
-        r'(?m)^(定义|定理|推论|命题)\s*(\d+[\'\"]*)\s*([（(][^）)\n]{1,25}[）)])?(?=\s+\S)',
+        r'(?m)^(定义|定理|推论|命题)\s*(\d+[\'\"]*)\s*' + _PNAME_PAT + r'(?=\s+\S)',
         chapter_text
     ):
         kind = m.group(1)
