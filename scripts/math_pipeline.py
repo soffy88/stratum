@@ -1,11 +1,46 @@
-"""数学专门管道(试 Ch2): 应有清单(定义/定理/概念)驱动讲透→数学打磨→完整性自检→质量门. 不入正式库, 出实物.
+"""数学专门管道: 应有清单(定义/定理/概念)驱动讲透→数学打磨→完整性自检→质量门. 不入正式库, 出实物.
 ★关键: 讲透由确定性应有清单驱动(每知识点一KU), 不靠LLM规划(那会漏). 公式完整=命门."""
 import asyncio, os, json, re, sys, httpx
 from pathlib import Path
-from dotenv import load_dotenv
-ROOT = Path(__file__).resolve().parents[1]; load_dotenv(ROOT/"aii"/".env", override=True)
-sys.path.insert(0, str(ROOT/"scripts"))
-from chapter_ingest import slice_chapter, SM
+
+# ★内联章节切割(避免从chapter_ingest传递导入aii重链路依赖)
+ROOT = Path(__file__).resolve().parents[1]
+# 加载 .env
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / "aii" / ".env", override=True)
+except ImportError:
+    pass
+sys.path.insert(0, str(ROOT / "scripts"))
+
+_CN = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10}
+def _cn2int(s):
+    if s in _CN: return _CN[s]
+    if s.startswith('十'): return 10 + (_CN.get(s[1:], 0))
+    if '十' in s:
+        a, _, b = s.partition('十'); return _CN[a] * 10 + (_CN.get(b, 0) if b else 0)
+    return _CN.get(s, 0)
+
+def slice_chapter(text, n):
+    starts = {}
+    for m in re.finditer(r'(?m)^第([一二三四五六七八九十]+)章', text):
+        line = text[m.start(): text.find('\n', m.start()) if text.find('\n', m.start()) > 0 else m.start()+40]
+        if '…' in line or re.search(r'\s\d+\s*$', line): continue
+        num = _cn2int(m.group(1))
+        if num and num not in starts: starts[num] = m.start()
+    # 英文格式 fallback
+    if not starts:
+        for m in re.finditer(r'(?m)^#\s+Chapter\s+(\d+):', text):
+            starts[int(m.group(1))] = m.start()
+    if n not in starts:
+        raise SystemExit(f"chapter {n} not found; have {sorted(starts)}")
+    s = starts[n]; e = starts.get(n+1, len(text))
+    return text[s:e]
+
+# 默认MD文件(可被AII_MD_FILE env覆盖)
+SM = Path(os.getenv("AII_MD_FILE",
+    "/home/soffy/shared/stratum-to-aii/Principles_of_Microeconomics_The_Way_We__01KVAJCX.md"))
+
 from math_should_have import extract
 KEY = os.getenv('DEEPSEEK_API_KEY')
 # 数学杂乱词(打磨): 含这些的句删
@@ -63,7 +98,7 @@ async def synth(cli, chapter, item):
             j=json.loads(r.json()["choices"][0]["message"]["content"]); return j
         except Exception: await asyncio.sleep(2)
     return None
-OUTDIR = Path("/tmp/claude-1000/-home-soffy-projects-AII/b59675af-3e38-4d3d-9fd3-e5fd9f2f3a03/scratchpad/math_full")
+OUTDIR = Path(os.getenv("MATH_OUTDIR", str(ROOT / "scripts" / "_staging" / "math_full")))
 # 支持 AII_MD_FILE env 覆盖(华东师大数分: 上册/下册)
 _MD = Path(os.getenv("AII_MD_FILE", str(SM)))
 async def main():
