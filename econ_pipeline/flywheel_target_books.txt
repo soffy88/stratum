@@ -1,2 +1,2 @@
 # 实跑：只跑已过R1-R9的那本
-/home/soffy/shared/stratum-to-aii/Mathematics_for_Economics_and_Business_(_structured.md|01KVABDEXD2V985Q9GZWFWPERW|Mathematics for Economics and Business (Ian Jacques)
+/home/soffy/shared/stratum-to-aii/Mathematics for Economics and Business.md|01KVABDEXD2V985Q9GZWFWPERW|Mathematics for Economics and Business (Ian Jacques)

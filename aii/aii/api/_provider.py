@@ -71,7 +71,7 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
     _call_async (synthesis path): plain text, no format=json, 8 k char limit.
     call_sync (extraction path, llm_extract_ku): format=json for clean JSON output.
     """
-    _client = httpx.Client(trust_env=False, timeout=300)  # local models can be slow
+    _client = httpx.Client(trust_env=False, timeout=600)  # local models: 8 concurrent × ~60s each
 
     def _call_sync(prompt: str) -> str:
         """KU 抽取用: format=json 强制结构化输出."""
