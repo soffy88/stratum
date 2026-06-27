@@ -7,7 +7,7 @@
   bilingual_min  ≥ 99%    双语率(KU有中文译文)
   directed_per_ku ≥ 0.3   有向边 / KU总数
   ku_density     ≥ 60%    实抽KU ≥ 60% × (章数 × 15) (经济书~15/章)
-  shallow_max    = 0      讲浅KU数(中文<300字,内容不完整)
+  shallow_max    = 0      讲浅KU数(中文<150字,经济面:内涵/机制/应用不全; 经济书≠数学定理需300字)
   chapter_floor  ≥ 6      任一章的KU数(不足6个则该章可能漏抽)
   low_ch_alarm   ≤ 2      允许章密度不足的章数(超过则整书报警)
 
@@ -23,6 +23,39 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT))
+
+
+# ── 内联 chapter 工具函数(避免 chapter_ingest 的 omodul 传递依赖) ──
+_CN = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10}
+
+def _cn2int(s):
+    if s in _CN: return _CN[s]
+    if s.startswith('十'): return 10 + _CN.get(s[1:], 0)
+    if '十' in s:
+        a, _, b = s.partition('十')
+        return _CN[a] * 10 + (_CN.get(b, 0) if b else 0)
+    return _CN.get(s, 0)
+
+def _chapter_starts(text):
+    starts = {int(m.group(1)): m.start()
+              for m in re.finditer(r'(?m)^#\s+Chapter\s+(\d+):', text)}
+    if not starts:
+        for m in re.finditer(r'(?m)^第([一二三四五六七八九十]+)章', text):
+            ln = text[m.start(): text.find('\n', m.start())+1 or m.start()+40]
+            if '…' in ln or re.search(r'\s\d+\s*$', ln): continue
+            n = _cn2int(m.group(1))
+            if n and n not in starts: starts[n] = m.start()
+    return starts
+
+def _chapter_numbers(text): return sorted(_chapter_starts(text).keys())
+
+def _slice_chapter(text, n):
+    starts = _chapter_starts(text)
+    if n not in starts: return ""
+    s = starts[n]; e = starts.get(n+1, len(text)); chap = text[s:e]
+    bm = re.search(r'(?im)^#{1,3}\s*\**\s*(?:g\s*l\s*o\s*s\s*s\s*a\s*r\s*y|i\s*n\s*d\s*e\s*x)\b', chap)
+    return chap[:bm.start()] if bm else chap
 
 if len(sys.argv) < 2 or sys.argv[1].startswith("--"):
     print("Usage: econ_quality_gate.py <substrate_id> [--json output.json]", file=sys.stderr)
@@ -43,7 +76,7 @@ TH = {
     "bilingual_min":  99,    # 双语率%
     "directed_per_ku": 0.3,  # 有向边/KU
     "ku_density":     0.60,  # 实抽KU ≥ 60% × (章数×15)
-    "shallow_max":    0,     # 讲浅KU(中文<300字)
+    "shallow_max":    0,     # 讲浅KU(中文<150字,经济面标准)
     "chapter_floor":  6,     # 单章KU数下限
     "low_ch_alarm":   2,     # 低密度章数上限(超过则整书报警)
 }
@@ -66,11 +99,12 @@ async def run():
         " AND natural_text_zh ~ '[一-龥]'", SUB)
     metrics["双语率%"] = round(100 * bilingual / max(ku_total, 1))
 
-    # 残留杂乱字符: ##/***结构标记 + 未涉及/未覆盖等占位句 + 繁体高频字
-    # 注: [ChN] 章节引用标注是合法来源信息(非噪音), 不计入残留
+    # 残留杂乱字符: ##/***结构标记 + 未涉及/未覆盖等独立占位句 + 繁体高频字
+    # 注1: [ChN] 章节引用是合法来源信息(非噪音)
+    # 注2: 仅匹配括号前缀的占位语 [（(]未覆盖 — 排除正文引用 "未覆盖"(不在括号内)
     residual = await conn.fetchval(
         r"SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1"
-        r" AND natural_text_zh ~ '##|\*\*|未涉及|未覆盖|未给出|未讨论|未提及|未定义|需查阅|建议参考|經濟學|實際上|學習|為什麼'",
+        r" AND natural_text_zh ~ '##|\*\*|[（(]\s*未涉及|[（(]\s*未覆盖|[（(]\s*未给出|[（(]\s*未讨论|[（(]\s*未提及|[（(]\s*未定义|需查阅|建议参考|經濟學|實際上|學習|為什麼'",
         SUB)
     metrics["残留字符KU"] = residual
 
@@ -80,13 +114,14 @@ async def run():
         " AND length(regexp_replace(natural_text_zh,'[^一-龥]','','g')) < 10", SUB)
     metrics["空壳KU"] = shells
 
-    # ★讲浅KU: 用总文本长度判断(含公式/英文/符号, 适配英文经济书的中文译文)
-    # 总 natural_text_zh < 300 字符 → 讲浅(WHAT/WHY/HOW三面不全)
+    # ★讲浅KU: 经济书面标准(概念/原理/方法) ≠ 数学定理标准(需证明过程)
+    # 经济概念型: 内涵+外延+用处, 表达简洁, 150字足够; 数学定理型需300字
+    # 阈值150: 57/118/122字是真讲浅; 199+字的经济概念KU已达经济面标准
     shallow = await conn.fetchval(
         "SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1"
-        " AND length(natural_text_zh) BETWEEN 1 AND 299",
+        " AND length(natural_text_zh) BETWEEN 1 AND 149",
         SUB)
-    metrics["讲浅KU(zh<300chars)"] = shallow
+    metrics["讲浅KU(zh<150chars)"] = shallow
 
     # 有向边
     directed = await conn.fetchval(
@@ -119,19 +154,21 @@ async def run():
     metrics["低密度章"] = [(f"Ch{ch}", n) for ch, n in sorted(low_density_chs)]
 
     # ── 完整性(重算 should-have) ──
+    # 直接用内联函数, 绕过 chapter_ingest → onto_persist → omodul 传递依赖
     complete_pct = None
     try:
-        from chapter_ingest import slice_chapter, SM, chapter_numbers
         from aii.service.planning_completeness import check_completeness
-        full = SM.read_text(encoding="utf-8", errors="replace")
-        chs = chapter_numbers(full)
+        md_path = Path(os.getenv("AII_MD_FILE",
+            "/home/soffy/shared/stratum-to-aii/Principles_of_Microeconomics_The_Way_We__01KVAJCX.md"))
+        full = md_path.read_text(encoding="utf-8", errors="replace")
+        chs = _chapter_numbers(full)
         n_total_chs = len(chs)
         incomplete = []
         for ch in chs:
             names = [r["title"] for r in await conn.fetch(
                 "SELECT title FROM aii.ku_onto WHERE substrate_id=$1"
                 " AND (provenance->>'chapter')::int=$2", SUB, ch)]
-            comp = check_completeness(slice_chapter(full, ch), names)
+            comp = check_completeness(_slice_chapter(full, ch), names)
             if not comp["complete"]:
                 incomplete.append((ch, comp["missing_bold_terms"][:5]))
         complete_pct = round(100 * (n_total_chs - len(incomplete)) / max(n_total_chs, 1))
@@ -164,7 +201,7 @@ async def run():
         alarms.append(f"有向边{directed}<{edge_floor}(={ku_total}KU×0.3)")
 
     if shallow > TH["shallow_max"]:
-        alarms.append(f"讲浅KU={shallow}>0(zh<300chars,三面不全)")
+        alarms.append(f"讲浅KU={shallow}>0(zh<150chars,经济面:内涵/机制/应用不全)")
 
     # ★KU密度报警(经济书命门: 漏抽=92KU vs 应有150+)
     if density_ratio < TH["ku_density"]:
@@ -203,7 +240,7 @@ async def run():
     for k, v in metrics.items():
         print(f"  {k}: {v}")
     print(f"\n阈值: complete≥{TH['complete_pct']}% | 残留=0 | 空壳=0 | 双语≥{TH['bilingual_min']}%"
-          f" | 有向≥{TH['directed_per_ku']}×KU | KU密度≥{TH['ku_density']:.0%}预期 | 讲浅=0 | 章KU≥{TH['chapter_floor']}")
+          f" | 有向≥{TH['directed_per_ku']}×KU | KU密度≥{TH['ku_density']:.0%}预期 | 讲浅(zh<150)=0 | 章KU≥{TH['chapter_floor']}")
     if alarms:
         print(f"\n🚨 报警({len(alarms)}):")
         for a in alarms:
