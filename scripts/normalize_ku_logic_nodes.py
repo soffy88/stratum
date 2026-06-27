@@ -56,6 +56,7 @@ async def go():
         prereq=[[s,d] for s,d,t in norm if t=='prerequisite']
         await c.execute("UPDATE aii.ku_logic_structure SET causal_chains=$3,decomposition=$4,prerequisites=$5 WHERE substrate_id=$1 AND ku_id=$2",
             SUB,ku,json.dumps(chs,ensure_ascii=False),json.dumps(decomp,ensure_ascii=False),json.dumps(prereq,ensure_ascii=False))
-    print(f"node norm: distinct nodes {nb}->{na} (-{nb-na}, {100*(nb-na)//nb}%); chains {ch0}->{ch1}",flush=True)
+    pct = f"{100*(nb-na)//nb}%" if nb else "n/a"
+    print(f"node norm: distinct nodes {nb}->{na} (-{nb-na}, {pct}); chains {ch0}->{ch1}",flush=True)
     await c.close()
 asyncio.run(go())
