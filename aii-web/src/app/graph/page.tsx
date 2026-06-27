@@ -162,7 +162,6 @@ export default function GraphPage() {
     let alive = true;
     (async () => {
       try {
-        // @ts-expect-error 可选依赖,项目侧安装后才存在
         const mod = await import('reactflow');
         // reactflow 需要其样式;消费项目装了会自带,这里容错
         if (alive) setRfMod(mod);
