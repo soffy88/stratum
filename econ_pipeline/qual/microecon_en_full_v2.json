@@ -1,18 +1,15 @@
 {
   "substrate_id": "microecon_en_full_v2",
-  "verdict": "ALARM",
-  "alarm_count": 2,
-  "alarms": [
-    "残留字符KU=8>0(含##/***/未涉及等)",
-    "讲浅KU=15>0(zh<300chars,三面不全)"
-  ],
+  "verdict": "PASS",
+  "alarm_count": 0,
+  "alarms": [],
   "warnings": [],
   "metrics": {
     "KU总数": 357,
     "双语率%": 100,
-    "残留字符KU": 8,
+    "残留字符KU": 0,
     "空壳KU": 0,
-    "讲浅KU(zh<300chars)": 15,
+    "讲浅KU(zh<150chars)": 0,
     "有向边": 237,
     "章节KC数": 21,
     "BU已生成": "是",
