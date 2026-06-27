@@ -20,7 +20,8 @@ _LABEL = re.compile(rf"^\s*[-*]?\s*(?:\d+[.、]\s*)?\**\s*(?:{_SCAFFOLD})\s*"
 _PREAMBLE = re.compile(
     r"(here is (?:a|an|the|one)\b.{0,70}knowledge unit|based (?:strictly )?on the\b.{0,40}(?:text|chapter)|"
     r"这是(?:基于|针对|根据|为)\b.{0,40}(?:知识单元|阐述|KU)|以下是.{0,30}(?:知识单元|阐述|KU)|"
-    r"针对.{0,20}合成的知识单元|^\s*KU\s*[:：]|^\s*知识单元\s*[:：])", re.I)
+    r"针对.{0,20}合成的知识单元|^\s*KU\s*[:：]|^\s*知识单元\s*[:：]|"
+    r"英文.{0,4}简体中文如上|简体中文如上|英文\+简体|english\s*\+\s*(?:simplified\s*)?chinese)", re.I)
 _SEP = re.compile(r"^\s*[-=*_]{3,}\s*$")
 # 句中/行中残留脚手架标签 "。WHY（为何正确/重要） " "。如何应用：" → 句首/句末位置剥除
 _INLINE = re.compile(rf"(?:(?<=[。.！？!?；;\n])|^)\s*\**\s*(?:\d+[.、]\s*)?(?:{_SCAFFOLD})\s*"
@@ -31,7 +32,12 @@ _CITE = re.compile(r"\s*[\[【]\s*Ch\s*\d+[^\]】]*[\]】]")
 _NONCOV = re.compile(
     r"(未涉及|未提及|未定义|未讨论|未阐述|未提供|未明确|未被提及|未解释|未具体|未单独|不涉及|"
     r"未覆盖|未涵盖|未出现|未包含|未给出|未介绍|未描述|"
-    r"没有(?:讨论|涉及|定义|提及|阐述|覆盖|涵盖|介绍)|"
+    r"未得到实质性涵盖|未得到实质性覆盖|未实质性涵盖|未实质性覆盖|未实质涵盖|未实质覆盖|"
+    r"没有.{0,12}(?:讨论|涉及|定义|提及|阐述|覆盖|涵盖|介绍)|"
+    r"并未.{0,20}进行(?:定义|解释|涵盖|讨论|阐述|运用)|"
+    r"无法.{0,40}(?:综合出|合成).{0,20}(?:知识单元|KU)|"
+    r"无法从.{0,30}(?:材料|文本|内容).{0,30}(?:综合|合成)|"
+    r"不进行.{0,8}编造|此处不提供.{0,6}KU|都将是创造(?:，而非整合)?|"
     r"not covered|does not (?:define|discuss|mention|provide|cover|"
     r"address|elaborate|specify|explicitly)|is not (?:covered|discussed|defined|mentioned|addressed))", re.I)
 
