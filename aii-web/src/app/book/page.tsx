@@ -9,9 +9,7 @@ import Link from 'next/link';
 import { OLoadingState, OErrorState } from '@helios/blocks';
 import { useApi } from '@/hooks/useApi';
 import * as api from '@/lib/api-client';
-import type { BuData, BuFacets } from '@/types/api';
-
-const SUBSTRATE = 'microecon_en_full_v2';
+import type { BuData, BuFacets, BookInfo } from '@/types/api';
 
 const FACETS: { key: keyof BuFacets; label: string; icon: string }[] = [
   { key: 'soul', label: '一句话灵魂', icon: '◎' },
@@ -51,7 +49,10 @@ function Facet({ label, icon, zh, en }: { label: string; icon: string; zh: strin
 
 export default function BookPage() {
   const [state, run] = useApi(api.getBookBu);
-  useEffect(() => { void run(SUBSTRATE); }, [run]);
+  const [books, setBooks] = useState<BookInfo[]>([]);
+  const [substrate, setSubstrate] = useState('microecon_en_full_v2');
+  useEffect(() => { api.getBooks().then(r => { if (r.ok && r.data) setBooks(r.data.items); }); }, []);
+  useEffect(() => { void run(substrate); }, [run, substrate]);
   const bu = state.data as BuData | null;
 
   return (
@@ -59,13 +60,26 @@ export default function BookPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">书级理解 / Book Understanding</h1>
         <p className="text-sm text-[color:var(--text-secondary)]">
-          先看 BU 懂这本书是什么、值不值得读 → 再选 KC 主题 → 读 KU 讲透知识。
+          先选书 → 看 BU 懂这本书是什么、值不值得读 → 再选 KC 主题 → 读 KU 讲透知识。
           <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-[color:var(--alert-warn-bg,#fef3c7)] text-[color:var(--alert-warn-fg,#78350f)] border border-[color:var(--alert-warn,#d97706)]/40">AII 综合 · 非原文断言</span>
         </p>
+        {books.length > 0 && (
+          <div className="flex gap-2 mt-1 flex-wrap">
+            {books.map(b => (
+              <button key={b.substrate_id} onClick={() => setSubstrate(b.substrate_id)}
+                className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                  substrate === b.substrate_id
+                    ? 'bg-[color:var(--accent,#2563eb)]/15 text-[color:var(--accent,#2563eb)] border-[color:var(--accent,#2563eb)]/40'
+                    : 'border-[color:var(--border)] text-[color:var(--text-secondary)]'}`}>
+                {b.title} · {b.ku_count} KU
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       {state.loading && <OLoadingState rows={5} />}
-      {state.error && <OErrorState error={state.error} onRetry={() => void run(SUBSTRATE)} />}
+      {state.error && <OErrorState error={state.error} onRetry={() => void run(substrate)} />}
 
       {bu && (
         <>
@@ -77,8 +91,8 @@ export default function BookPage() {
               <span>{bu.n_kc_spectral} 谱社区 KC</span>
             </div>
             <div className="flex gap-2 mt-3">
-              <Link href="/clusters" className="text-xs px-3 py-1 rounded-full border border-[color:var(--border)] hover:border-[color:var(--accent,#2563eb)]/50">→ 看主题 KC</Link>
-              <Link href="/knowledge" className="text-xs px-3 py-1 rounded-full border border-[color:var(--border)] hover:border-[color:var(--accent,#2563eb)]/50">→ 读讲透 KU</Link>
+              <Link href={`/clusters?substrate=${substrate}`} className="text-xs px-3 py-1 rounded-full border border-[color:var(--border)] hover:border-[color:var(--accent,#2563eb)]/50">→ 看主题 KC</Link>
+              <Link href={`/knowledge?substrate=${substrate}`} className="text-xs px-3 py-1 rounded-full border border-[color:var(--border)] hover:border-[color:var(--accent,#2563eb)]/50">→ 读讲透 KU</Link>
             </div>
           </div>
 

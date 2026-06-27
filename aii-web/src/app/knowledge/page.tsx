@@ -135,15 +135,17 @@ export default function KnowledgePage() {
   const [page, setPage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
 
+  const substrate = (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('substrate')) || undefined;
   const load = useCallback(() => {
     void run({
       grade: (grade[0] as EpistemicGrade) || undefined,
       type: (type[0] as KnowledgeType) || undefined,
       merged_only: mergedOnly || undefined,
+      substrate: substrate || undefined,
       page,
       page_size: 20,
     });
-  }, [grade, type, mergedOnly, page, run]);
+  }, [grade, type, mergedOnly, substrate, page, run]);
 
   useEffect(() => { load(); }, [load]);
 

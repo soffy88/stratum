@@ -240,6 +240,14 @@ export interface StatsIngestionResponse {
   deep_understood: number;
 }
 
+// ── 书清单 GET /api/books ──
+export interface BookInfo {
+  substrate_id: string;
+  title: string;
+  subject?: string;
+  ku_count: number;
+}
+
 // ── BU 书级理解 GET /api/book/{substrate}/bu ──
 export interface BuFacets {
   soul: string; positioning: string; question: string;
