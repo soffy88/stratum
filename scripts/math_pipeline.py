@@ -30,7 +30,8 @@ def facet_check(point_name, zh):
     is_thm = bool(re.search(r'法则|定理|公式', point_name))
     has_proof = bool(re.search(r'证明|推导|为什么|∵|证\s*[:(（]|证\s*\d', zh))
     has_example = bool(re.search(r'例\s*\d|例如|例题|例\s*[:：]', zh))
-    has_formula = bool(re.search(r'\\(frac|lim|int|sum|prime|partial|sqrt|nabla)|\$.+\$', zh))
+    # 宽: 任意 LaTeX 命令/定界符(上册frac/lim, 下册iint/oint/vec/boldsymbol/mathbf/rightarrow 都算)
+    has_formula = bool(re.search(r'\\[a-zA-Z]{2,}|\$.+|\\\[|\\\(', zh)) and len(zh) > 0
     if is_thm:
         if not has_proof:
             issues.append('缺证明/推导')
