@@ -3,7 +3,7 @@ from dotenv import load_dotenv; load_dotenv('aii/.env',override=True)
 SUB=os.getenv('SUBSTRATE','microecon_en_full_v2')
 def norm(t):
     t=re.sub(r'\([^)]*\)','',t).lower().strip()           # 去 (Concept)/(PPF)
-    t=re.sub(r'[^a-z0-9\s/&-]','',t); t=re.sub(r'\s+',' ',t).strip()
+    t=re.sub(r'[^a-z0-9一-鿿\s/&-]','',t); t=re.sub(r'\s+',' ',t).strip()  # 保留中文
     return re.sub(r's\b','',t)                              # 单复数归一
 async def go():
     c=await asyncpg.connect(os.getenv('DATABASE_URL'))
@@ -16,7 +16,9 @@ async def go():
         if n and n not in canon: canon[n]=re.sub(r'\s*\([^)]*\)','',k['title']).strip()
     print(f"unique concepts (from titles): {len(canon)}", flush=True)
     # 2. 确定性概念抽取: 每KU涉及 = 自身概念 ∪ 正文里出现的其他概念(短语≥6字, 词边界)
-    phrases=[(n,re.compile(r'(?<![a-z])'+re.escape(n)+r'(?:e?s)?(?![a-z])',re.I)) for n in canon if len(n)>=6]
+    # 概念短语匹配: 英文≥6字符; 中文≥3字(中文概念短, 映射/导数/极限)
+    phrases=[(n,re.compile(r'(?<![a-z])'+re.escape(n)+r'(?:e?s)?(?![a-z])',re.I)) for n in canon
+             if len(n)>=6 or (re.search(r'[一-鿿]',n) and len(n)>=3)]
     ku_concepts={}
     for k in kus:
         body=(k['natural_text'] or '').lower(); own=norm(k['title'])

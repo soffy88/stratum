@@ -4,7 +4,7 @@ from dotenv import load_dotenv; load_dotenv("/home/soffy/projects/AII/aii/.env",
 SUB=os.getenv('SUBSTRATE','microecon_en_full_v2'); KEY=os.getenv('DEEPSEEK_API_KEY')
 async def go():
     bu=json.loads(Path("/tmp/claude-1000/-home-soffy-projects-AII/bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad/bu.json").read_text())
-    bu['boundary']="不涉及宏观经济学（GDP、通胀、失业等总量问题），不涉及金融市场的资产定价，不做复杂的数学证明（以直观逻辑为主）。"
+    # 边界用生成版(忠实校验在 generate 阶段做; 不再硬编码 microecon 边界)
     zh={k:bu[k] for k in ['soul','positioning','question','skeleton','thinking','for_whom','boundary']}
     SYS="Translate each JSON value to concise English. Output JSON same keys, English values only."
     r=httpx.post("https://api.deepseek.com/chat/completions",headers={"Authorization":"Bearer "+KEY},
