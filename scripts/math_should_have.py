@@ -155,6 +155,7 @@ def extract(chapter_text):
     def _clean(name):
         name = re.sub(r'[*#]', ' ', name)
         name = re.split(r'\\[(\[a-zA-Z]', name)[0]
+        name = re.sub(r'\s*\\+\s*$', '', name)  # ★去末尾残留反斜杠(截断LaTeX遗留)
         return re.sub(r'\s+', ' ', name).strip(' ·*-')
 
     def add_item(it):
