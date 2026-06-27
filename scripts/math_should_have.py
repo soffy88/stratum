@@ -1,40 +1,50 @@
-"""数学章节'应有清单'(确定性, 不靠LLM): 定义N + 定理N(去重取首现statement) + 第N节 + 关键公式概念.
-★比'只第N节'细(含每个定理/定义)→ 漏一个定理能被查出; 这是数学完整性校验的基础."""
+"""数学章节'应有清单'(确定性, 不靠LLM): 命名小标题 一、二、三、X = 真知识点(有真名, 非截断陈述).
+★根因修1: 用真名(复合函数的求导法则/链式法则), 不是截断'如果函数\\'→合成能对准.
+★每个知识点带 key_terms(内容层校验用): KU内容须含这些词才算真覆盖(堵'占位骗校验')."""
 import re
+
+_SKIP = re.compile(r'^(例\s*\d|解\b|证\b|注\b|定理\s*\d|设\b|即\b|故\b|这\b)')
+_STOP = re.compile(r'[的与和及、，,；。()（）]')
+
+
+def _key_terms(name):
+    """从知识点真名抽辨识词(内容层校验): 去后缀停用, 取 ≥2 字具体子词."""
+    parts = [p for p in _STOP.split(re.sub(r'(法则|公式|定义|的关系|概念)$', '', name)) if len(p) >= 2]
+    specific = [p for p in parts if p not in ('导数', '函数', '微分', '关系')]
+    return specific or parts or [name[:3]]
+
+
 def extract(chapter_text):
-    t = chapter_text
-    items = []
-    # 1. 定义N / 定理N — 去重取首现, 抽其后短statement(到首个句号/换行)
-    for kind in ['定义', '定理']:
-        seen = set()
-        for m in re.finditer(rf'{kind}\s*(\d+)', t):
-            num = m.group(1)
-            if num in seen: continue
-            seen.add(num)
-            tail = t[m.end():m.end()+60]
-            label = re.split(r'[，。\n（(]', tail.strip(), 1)[0][:40]
-            items.append({'type': kind, 'id': f'{kind}{num}', 'label': label.strip()})
-    # 2. 第N节 标题(知识区)
-    for m in re.finditer(r'(?m)^第[一二三四五六七八九十]+节\s+([^\n…]{1,28})', t):
-        ti = m.group(1).strip()
-        if '…' not in ti and not re.search(r'\d\s*$', ti):
-            items.append({'type': '小节', 'id': ti, 'label': ti})
-    # 3. 关键公式/方法概念(导数公式/微分/高阶/链式/隐函数...)— 命名知识点
-    for kw in ['导数公式', '微分', '高阶导数', '链式法则', '隐函数', '参数方程', '反函数', '单侧导数', '导函数', '微分中值', '洛必达']:
-        if kw in t:
-            items.append({'type': '概念', 'id': kw, 'label': kw})
-    # 去重(label)
-    seen, out = set(), []
-    for it in items:
-        k = it['label']
-        if k and k not in seen:
-            seen.add(k); out.append(it)
-    return out
+    items, seen = [], set()
+
+    def add(name):
+        name = name.strip()
+        if name and name not in seen and not _SKIP.match(name) and len(name) >= 3:
+            seen.add(name)
+            items.append({'type': '知识点', 'id': name, 'label': name, 'key_terms': _key_terms(name)})
+    # ★命名小标题 一、二、三、X = 真知识点(最细, 有真名)
+    sub_pos = [(m.start(), m.group(1).strip()) for m in
+               re.finditer(r'(?m)[一二三四五六七八九十]、\s*([^\n。，,；()（）]{3,28})', chapter_text)]
+    for _, name in sub_pos:
+        add(name)
+    # 第N节: 只补【无子标题】的节(如 高阶导数)— 有子标题的节其子标题已是知识点(避免父子重复)
+    sec_marks = [(m.start(), m.group(1).strip()) for m in
+                 re.finditer(r'(?m)^第[一二三四五六七八九十]+节\s+([^\n…]{1,28})', chapter_text)
+                 if '…' not in m.group(1) and not re.search(r'\d\s*$', m.group(1))]
+    for i, (pos, title) in enumerate(sec_marks):
+        end = sec_marks[i + 1][0] if i + 1 < len(sec_marks) else len(chapter_text)
+        has_sub = any(pos < sp < end for sp, _ in sub_pos)
+        if not has_sub:
+            add(title)
+    return items
+
+
 if __name__ == '__main__':
-    import sys; sys.path.insert(0, 'scripts')
+    import sys
+    sys.path.insert(0, 'scripts')
     from chapter_ingest import slice_chapter, SM
-    ch = slice_chapter(SM.read_text(encoding='utf-8', errors='replace'), int(sys.argv[1]) if len(sys.argv)>1 else 2)
+    ch = slice_chapter(SM.read_text(encoding='utf-8', errors='replace'), int(sys.argv[1]) if len(sys.argv) > 1 else 2)
     items = extract(ch)
-    from collections import Counter
-    print(f"应有清单 {len(items)} 项, 分布: {dict(Counter(i['type'] for i in items))}")
-    for i in items: print(f"  [{i['type']}] {i['id']}: {i['label']}")
+    print(f"应有清单 {len(items)} 知识点(真名):")
+    for i in items:
+        print(f"  • {i['id']}  [校验词: {i['key_terms']}]")

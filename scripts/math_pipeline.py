@@ -49,10 +49,15 @@ async def main():
                 if not j: return None
                 zh = clean_math(j.get('zh','')); en = clean_math(j.get('en',''))
                 has_latex = bool(re.search(r'\\(frac|lim|int|sqrt|prime|partial)|\$', zh))
+                # ★内容层校验: KU内容真含该知识点的辨识词? (堵'占位骗校验')
+                content_ok = any(kt in zh for kt in item['key_terms'])
                 return {'point': item['id'], 'type': item['type'], 'label': item['label'],
-                        'zh': zh, 'en': en, 'has_formula': has_latex, 'zh_len': len(zh)}
+                        'key_terms': item['key_terms'], 'zh': zh, 'en': en,
+                        'has_formula': has_latex, 'zh_len': len(zh), 'content_match': content_ok}
         kus = [k for k in await asyncio.gather(*(one(it) for it in sh)) if k]
-    Path(f"{ROOT}/../tmp_math_ch{ch_n}.json").write_text(json.dumps(kus, ensure_ascii=False, indent=1))
     Path("/tmp/claude-1000/-home-soffy-projects-AII/bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad/math_ch2.json").write_text(json.dumps(kus,ensure_ascii=False,indent=1))
+    # ★完整性校验(内容层): 不是'槽存在', 是'内容真讲了这个知识点'
+    miss = [k['point'] for k in kus if not k['content_match']]
     print(f"讲透 {len(kus)} KU (应有{len(sh)})", flush=True)
+    print(f"★内容层完整性: 内容真覆盖 {len(kus)-len(miss)}/{len(kus)}; 占位(内容不匹配)= {miss}", flush=True)
 asyncio.run(main())
