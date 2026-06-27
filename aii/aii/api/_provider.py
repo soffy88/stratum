@@ -72,12 +72,14 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
     call_sync (extraction path, llm_extract_ku): format=json for clean JSON output.
     """
     _client = httpx.Client(trust_env=False, timeout=600)  # local models: 8 concurrent × ~60s each
+    # 提示字符上限: qwen2.5:7b 默认 8000 够; 大context模型(gemma 128K)可经 env 调大避免裁掉WHY窗口/规划全章
+    _max_chars = int(os.getenv("OLLAMA_PROMPT_CHARS", "8000"))
 
     def _call_sync(prompt: str) -> str:
         """KU 抽取用: format=json 强制结构化输出."""
         resp = _client.post(
             f"{base_url}/api/generate",
-            json={"model": model, "prompt": prompt[:8000], "stream": False, "format": "json"},
+            json={"model": model, "prompt": prompt[:_max_chars], "stream": False, "format": "json"},
         )
         resp.raise_for_status()
         return resp.json()["response"]
@@ -86,7 +88,7 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
         """合成/纯文本用: 不加 format=json, 直接返回自然语言."""
         resp = _client.post(
             f"{base_url}/api/generate",
-            json={"model": model, "prompt": prompt[:8000], "stream": False},
+            json={"model": model, "prompt": prompt[:_max_chars], "stream": False},
         )
         resp.raise_for_status()
         return resp.json()["response"]

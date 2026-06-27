@@ -38,14 +38,29 @@ SYN_SYS = ("You synthesize ONE thorough KU by INTEGRATING the chapter's material
 
 
 # ── 章节边界检测(模块级编译, 治本防污染) ──
+# 章末/习题/小结/案例栏等区块: 这些都是污染源(混进WHY窗口), 命中即硬截断.
 _HARD_BOUNDARY_RE = re.compile(
     r'(?mi)^(?:#{1,4}\s+)?(?:\*\*)?'
     r'(?:KEY\s+TERMS?|WHAT\s+YOU\s+SHOULD|QUESTIONS?\s+AND\s+PROBLEMS?'
-    r'|REVIEW\s+QUESTIONS?|EXERCISES?|APPENDIX'
-    r'|习题|练习题|本章小结|思考题|复习题|关键术语)'
+    r'|REVIEW\s+QUESTIONS?|EXERCISES?|APPENDIX|FURTHER\s+READING'
+    r'|(?:CHAPTER\s+)?SUMMARY|CONCLUSIONS?|(?:CHAPTER\s+)?REVIEW\b'
+    r'|习题|练习题|本章小结|本章要点|思考题|复习题|关键术语|延伸阅读|阅读材料|案例分析|专栏)'
     r'(?:\*\*)?\b'
 )
 _SOFT_BOUNDARY_RE = re.compile(r'(?m)^#{1,4}\s+')
+
+# ── 窗口噪音清洗(页内污染源: 图片占位/页眉页脚) ──
+# OCR管道留下的图片占位符(每章15~31个)纯噪音; 喂给LLM前清掉, 让WHY窗口更干净.
+_PIC_NOISE_RE  = re.compile(r'\*\*\s*==>.*?omitted.*?<==\s*\*\*', re.I | re.S)
+_IMG_TAG_RE    = re.compile(r'!\[[^\]]*\]\([^)]*\)')   # markdown 图片标签(alt文本非定义, 易误当def)
+_BLANKS_RE     = re.compile(r'\n{3,}')
+
+
+def _clean_window(s: str) -> str:
+    """清洗喂给LLM的窗口: 去图片占位符/图片标签等纯噪音, 收敛多余空行."""
+    s = _PIC_NOISE_RE.sub("", s)
+    s = _IMG_TAG_RE.sub("", s)
+    return _BLANKS_RE.sub("\n\n", s).strip()
 
 
 def _section_end(text: str, after: int, min_dist: int = 4000) -> int:
@@ -88,10 +103,12 @@ def _name_variants(name: str) -> list:
 def _extract_skeleton(text: str, name: str, pos: int):
     """★升级版程序骨架(多策略):
     定义: A.格式定义框(**TERM** ...) → B.is/means/we mean句式 → C.首次出现句(fallback)
-    例子: A.**EXAMPLE**块 → B.含数字计算句 → C.for example/e.g./比如句
+    例子: A.**EXAMPLE**块 → B.含数字计算句 → C.for example/e.g./比如句 (去重+按代表性排序)
+    其它WHAT: 公式(X = ...)、图表标题(Table/Figure N.N) — 程序能抓的WHAT就抓, 减LLM负担.
     窗口: pos-200:pos+3500 (不依赖边界, 搜定义用小窗已够)
-    返回: (def_str, [example_str, ...]) — 均为原文片段."""
-    win = text[max(0, pos - 200): min(len(text), pos + 3500)]
+    返回: (def_str, [example_str, ...], [extra_str, ...]) — 均为原文片段."""
+    win = _clean_window(text[max(0, pos - 200): min(len(text), pos + 3500)])
+    name_lo = name.lower()
     variants = _name_variants(name)
 
     # ── 定义抽取 ──
@@ -120,7 +137,6 @@ def _extract_skeleton(text: str, name: str, pos: int):
 
     # C: 位置策略 — 含术语的首个非标题短句(fallback)
     if not bold_def:
-        name_lo = name.lower()
         for s in re.split(r'(?<=[.!?])\s+|\n\n', win):
             s = s.strip()
             if (name_lo in s.lower()
@@ -129,11 +145,13 @@ def _extract_skeleton(text: str, name: str, pos: int):
                 bold_def = s
                 break
 
-    # ── 例子抽取 (多策略) ──
+    # ── 例子抽取 (多策略 + 去重 + 按代表性排序) ──
     seen, examples = set(), []
 
     def _norm_key(s: str) -> str:
-        return re.sub(r'\*\*\w[\w\s]*\*\*\s*', '', s).strip()[:60]
+        # 归一: 去**标注 → 小写 → 收敛空白 → 取前50字符 (跨策略命中同一例子时可去重)
+        s = re.sub(r'\*\*\w[\w\s]*\*\*\s*', '', s)
+        return re.sub(r'\s+', ' ', s).strip().lower()[:50]
 
     def _add(frag: str, pri: int):
         frag = re.sub(r'^\*\*[A-Z]+\*\*\s*', '', frag).strip()  # 去掉 **EXAMPLE** 前缀
@@ -166,10 +184,29 @@ def _extract_skeleton(text: str, name: str, pos: int):
         if re.search(r'\b[a-zA-Z]{4,}\b', frag):
             _add(frag, 2)
 
-    ordered = ([e for p, e in examples if p == 0][:3]
-             + [e for p, e in examples if p == 1][:2]
-             + [e for p, e in examples if p == 2][:1])
-    return bold_def, ordered[:5]
+    # ★代表性排序: 来源可信(EXAMPLE块>数字句>for example) + 含数字(具体) + 含术语词(对题); 取前4
+    last_word = name_lo.split()[-1] if name_lo.split() else name_lo
+    def _rep(pe):
+        pri, frag = pe; f = frag.lower()
+        return -pri * 10 + (3 if re.search(r'\d', frag) else 0) + (2 if last_word in f else 0)
+    ordered = [e for _, e in sorted(examples, key=_rep, reverse=True)][:4]
+
+    # ── 其它WHAT骨架: 图表标题 + 关键公式 (程序能抓的WHAT就抓, 减LLM负担) ──
+    extras, eseen = [], set()
+    def _add_extra(frag: str):
+        frag = re.sub(r'\s+', ' ', frag).strip().rstrip('*').strip()
+        k = frag.lower()[:50]
+        if frag and k not in eseen and 6 < len(frag) < 180:
+            extras.append(frag); eseen.add(k)
+    # 图表标题(告诉LLM本节有哪些数据/图表): **Table 11.1 ...** / Figure 9.2 ...
+    for m in re.finditer(r'(?:Table|Figure|Exhibit)\s+\d+[.\d]*\s+([A-Z][^\n*|]{6,90})', win):
+        _add_extra(f"{m.group(0).split()[0]} {m.group(0).split()[1]}: {m.group(1)}")
+    # 关键公式: 文本中的命名等式 "<名称> = <表达式>"(图片公式抓不到→不抓, 不造噪音)
+    for m in re.finditer(r'(?m)^\s*([A-Za-z][A-Za-z %()/_-]{4,40}=\s*[^=\n]{2,45})\s*$', win):
+        frag = m.group(1).strip()
+        if re.search(r'[\d%ε]', frag):
+            _add_extra("Formula: " + frag)
+    return bold_def, ordered, extras[:3]
 
 
 def _facets(typ):
@@ -178,19 +215,81 @@ def _facets(typ):
             "method": "WHAT, WHEN, HOW(steps), WHY"}.get(typ, "WHAT, WHY, HOW")
 
 
-def _find_pos(text_lo: str, name: str) -> int:
-    """在小写章文本中定位知识点名称的首次出现位置. 未找到返回 -1."""
-    # 先搜全名(前30字符)
-    pos = text_lo.find(name.lower()[:30])
-    if pos >= 0:
-        return pos
-    # 搜最长有意义词(>4字符), 按长度降序
+def _find_pos(text: str, name: str) -> int:
+    """★定位知识点的*定义性*出现(不是顺带提一句的那处). 未找到返回 -1.
+    优先级(治本: 定位准→骨架窗口/WHY窗口/边界都准):
+      1. 全大写定义框 **TERM** (教材定义框约定, 如 **EXPLICIT COST**) — 最权威
+      2. 任意加粗 **term**
+      3. 含该词的小节标题 (## ... TERM ...)
+      4. 'TERM is/are/means/refers to/defined as' 定义句式
+      5. 首次出现(原行为, 词边界兜底)
+    ★全程用 \\b 词边界, 杜绝 'elastic' 误命中 'inelastic' 这类子串错位."""
+    variants = _name_variants(name)
+    # 1. 全大写定义框(原文大小写敏感): **EXPLICIT COST** 优先于运行文里的 **explicit cost**
+    for v in dict.fromkeys(x.upper() for x in variants):
+        m = re.search(rf'\*\*\s*{re.escape(v)}\s*\*\*', text)
+        if m:
+            return m.start()
+    tl = text.lower()
+    # 2. 任意加粗 **term** (**...** 定界天然防子串错位)
+    for v in dict.fromkeys(x.lower() for x in variants):
+        m = re.search(rf'\*\*\s*{re.escape(v)}\s*\*\*', tl)
+        if m:
+            return m.start()
+    # 3. 含该词的小节标题(跳过章标题 "# Chapter N:" — 那不是定义节)
+    for v in dict.fromkeys(x.lower() for x in variants):
+        for m in re.finditer(rf'(?m)^#{{1,4}}\s+[^\n]*\b{re.escape(v)}\b', tl):
+            line = tl[m.start(): tl.find("\n", m.start())]
+            if re.match(r'#\s+chapter\s+\d', line):
+                continue
+            return m.start()
+    # 4. 'TERM is/are/means/refers to/defined as' 定义句
+    for v in list(dict.fromkeys(x.lower() for x in variants))[:4]:
+        m = re.search(
+            rf'\b{re.escape(v)}\b[^.\n]{{0,40}}\b(?:is|are|means?|refers?\s+to|is\s+defined\s+as)\b', tl)
+        if m:
+            return m.start()
+    # 5. 兜底: 首次出现(词边界)— 全名前30字符, 再退最长有意义词
+    m = re.search(rf'\b{re.escape(name.lower()[:30])}', tl)
+    if m:
+        return m.start()
     for word in sorted(name.split(), key=len, reverse=True):
         if len(word) > 4:
-            pos = text_lo.find(word.lower())
-            if pos >= 0:
-                return pos
+            mm = re.search(rf'\b{re.escape(word.lower())}', tl)
+            if mm:
+                return mm.start()
     return -1
+
+
+def _parse_points(t: str) -> list:
+    """从LLM返回稳健提取知识点列表.
+    标准: {"points":[{"name","type"}]} (DeepSeek遵守). 兜底: 本地模型(gemma)常自拟schema
+    (如 {"analysis":{"key_concepts":[{"concept":..}]}}) → 递归找含 name/concept/term 的对象."""
+    m = re.search(r"\{.*\}", t, re.DOTALL)
+    if not m:
+        return []
+    try:
+        data = json.loads(m.group(0))
+    except Exception:
+        return []
+    pts = data.get("points") if isinstance(data, dict) else None
+    if pts:  # 标准 schema, 原样返回(保持 DeepSeek 路径行为不变)
+        return pts
+    # 兜底: 递归扫描自拟schema, 取 name/concept/term 字段
+    out = []
+    def _walk(o):
+        if isinstance(o, dict):
+            nm = (o.get("name") or o.get("concept") or o.get("term")
+                  or o.get("point") or o.get("title") or o.get("topic"))
+            if isinstance(nm, str) and nm.strip():
+                out.append({"name": nm.strip(), "type": o.get("type", "concept")})
+            for v in o.values():
+                _walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                _walk(v)
+    _walk(data)
+    return out
 
 
 async def _plan(llm, text, n):
@@ -207,19 +306,16 @@ async def _plan(llm, text, n):
             'JSON: {"points":[{"name":"..","type":"concept|principle|method"}]}'}],
             system=PLAN_SYS, max_tokens=700)
         t = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
-        m = re.search(r"\{.*\}", t, re.DOTALL)
-        if m:
-            pts += json.loads(m.group(0)).get("points", [])
+        pts += _parse_points(t)
     # dedup by normalized name (单复数/大小写归一)
     seen, out = set(), []
     for p in pts:
         k = re.sub(r"s\b", "", re.sub(r"\s+", " ", p.get("name", "").strip().lower()))[:40]
         if k and k not in seen:
             seen.add(k); out.append(p)
-    # ★为每个知识点定位 pos (供 _synth 定向窗口用)
-    text_lo = text.lower()
+    # ★为每个知识点定位 pos (供 _synth 定向窗口用) — 定位到定义性出现
     for p in out:
-        found = _find_pos(text_lo, p.get("name", ""))
+        found = _find_pos(text, p.get("name", ""))
         p["pos"] = found if found >= 0 else 0
     return out
 
@@ -229,8 +325,8 @@ async def _synth(llm, text, n, name, typ, pos: int = 0):
     pos>0 且程序能提取定义框/例子 → hybrid: 程序WHAT骨架 + LLM只看WHY后段(小窗口)
     pos>0 无骨架 → 标准定向窗口
     pos=0 → fallback 章首40K"""
-    bold_def, examples = _extract_skeleton(text, name, pos) if pos > 0 else ("", [])
-    has_skeleton = bool(bold_def or examples)
+    bold_def, examples, extras = _extract_skeleton(text, name, pos) if pos > 0 else ("", [], [])
+    has_skeleton = bool(bold_def or examples or extras)
 
     if pos > 0 and has_skeleton:
         # ── HYBRID路径: 程序已提取WHAT, LLM只看WHY后段 ──
@@ -239,11 +335,12 @@ async def _synth(llm, text, n, name, typ, pos: int = 0):
         boundary  = _section_end(text, pos)
         why_start = min(len(text), pos + _WIN_SKEL_DEF)
         why_end   = min(len(text), why_start + _WIN_POST_HYBRID, boundary)
-        why_section = text[why_start:why_end]
+        why_section = _clean_window(text[why_start:why_end])        # 去图片占位等页内噪音
         # 骨架提示(直接放进 prompt, 不多余)
         skel = ""
         if bold_def:  skel += f"Extracted definition: {bold_def}\n"
-        if examples:  skel += "Extracted examples:\n" + "\n".join(f"• {e[:200]}" for e in examples)
+        if examples:  skel += "Extracted examples:\n" + "\n".join(f"• {e[:200]}" for e in examples) + "\n"
+        if extras:    skel += "Extracted facts (formulas/figures/tables):\n" + "\n".join(f"• {x}" for x in extras)
         context = (f"Chapter {n} opening:\n\n{intro}\n\n"
                    f"Programmatic skeleton for \"{name}\":\n{skel}\n\n"
                    f"Section text (after definition):\n\n{why_section}")
@@ -259,7 +356,7 @@ async def _synth(llm, text, n, name, typ, pos: int = 0):
     elif pos > 0:
         # ── 标准定向窗口 (无骨架) ──
         intro   = text[:1000]
-        section = text[max(0, pos - _WIN_PRE): pos + _WIN_POST]
+        section = _clean_window(text[max(0, pos - _WIN_PRE): pos + _WIN_POST])
         context = f"Chapter {n} opening (notation/context):\n\n{intro}\n\nRelevant section:\n\n{section}"
         r = await llm(messages=[{"role": "user", "content":
             f"{context}\n\nSynthesize ONE thorough KU for: \"{name}\" (type={typ}). "
@@ -268,7 +365,7 @@ async def _synth(llm, text, n, name, typ, pos: int = 0):
 
     else:
         # ── Fallback: pos未找到, 章首40K ──
-        context = f"Chapter {n} text (opening):\n\n{text[:_WIN_FALLBACK]}"
+        context = f"Chapter {n} text (opening):\n\n{_clean_window(text[:_WIN_FALLBACK])}"
         r = await llm(messages=[{"role": "user", "content":
             f"{context}\n\nSynthesize ONE thorough KU for: \"{name}\" (type={typ}). "
             f"Facets: {_facets(typ)}. Each [Ch{n}]-cited; skip absent facets. English then 中文."}],
@@ -299,10 +396,9 @@ async def main():
           f"complete={comp['complete']} missing={comp['missing_bold_terms']}", flush=True)
     # 补漏: 搜 pos 后再调 _synth
     if comp["missing_bold_terms"]:
-        text_lo = text.lower()
         fill_pts = []
         for t in comp["missing_bold_terms"]:
-            pos = _find_pos(text_lo, t)
+            pos = _find_pos(text, t)
             fill_pts.append({"name": t.title(), "type": "concept", "pos": max(0, pos) if pos >= 0 else 0})
         fill = await asyncio.gather(*(s(p) for p in fill_pts))
         kus = list(kus) + list(fill)
