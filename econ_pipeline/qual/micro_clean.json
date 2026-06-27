@@ -1,0 +1,70 @@
+{
+  "substrate_id": "micro_clean",
+  "verdict": "ALARM",
+  "alarm_count": 4,
+  "alarms": [
+    "完整率0%<100%(漏知识点: [(1, ['TRADE-OFFS', 'SCARCITY', 'WELL-BEING', 'ECONOMIC GOOD', 'HUMAN CAPITAL']), (2, ['PREFERENCES', 'ECONOMIC BENEFIT', 'UTILITY', 'OPPORTUNITY COST', 'ECONOMIC COST']), (3, ['EXPLICIT COST', 'IMPLICIT COST', 'ACCOUNTING COSTS', 'ACCOUNTING PROFIT', 'ECONOMIC PROFIT'])])",
+    "双语率0%<99%",
+    "有向边0<28(=93KU×0.3)",
+    "BU未生成(书级理解缺失)"
+  ],
+  "warnings": [],
+  "metrics": {
+    "KU总数": 93,
+    "双语率%": 0,
+    "残留字符KU": 0,
+    "空壳KU": 0,
+    "讲浅KU(zh<300chars)": 0,
+    "有向边": 0,
+    "章节KC数": 0,
+    "BU已生成": "否",
+    "章数(含KU)": 0,
+    "低密度章": [],
+    "完整率%": 0,
+    "漏知识点章(前3)": [
+      [
+        1,
+        [
+          "TRADE-OFFS",
+          "SCARCITY",
+          "WELL-BEING",
+          "ECONOMIC GOOD",
+          "HUMAN CAPITAL"
+        ]
+      ],
+      [
+        2,
+        [
+          "PREFERENCES",
+          "ECONOMIC BENEFIT",
+          "UTILITY",
+          "OPPORTUNITY COST",
+          "ECONOMIC COST"
+        ]
+      ],
+      [
+        3,
+        [
+          "EXPLICIT COST",
+          "IMPLICIT COST",
+          "ACCOUNTING COSTS",
+          "ACCOUNTING PROFIT",
+          "ECONOMIC PROFIT"
+        ]
+      ]
+    ],
+    "KU密度": "93/12=775%"
+  },
+  "thresholds": {
+    "complete_pct": 100,
+    "residual_max": 0,
+    "shell_max": 0,
+    "bilingual_min": 99,
+    "directed_per_ku": 0.3,
+    "ku_density": 0.6,
+    "shallow_max": 0,
+    "chapter_floor": 6,
+    "low_ch_alarm": 2
+  },
+  "note": "KU忠实率/有向精度需LLM抽检(deterministic无法全自动) → 建议事后随机抽样5%KU人工核查"
+}
