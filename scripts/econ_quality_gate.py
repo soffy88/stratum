@@ -7,7 +7,7 @@
   bilingual_min  ≥ 99%    双语率(KU有中文译文)
   directed_per_ku ≥ 0.3   有向边 / KU总数
   ku_density     ≥ 60%    实抽KU ≥ 60% × (章数 × 15) (经济书~15/章)
-  shallow_max    = 0      讲浅KU数(中文<150字,经济面:内涵/机制/应用不全; 经济书≠数学定理需300字)
+  shallow_max    = 0      讲浅KU数(★主靠面齐:内涵/机制/应用; 字数仅辅助分层; 面齐=合格哪怕字少, 面缺=讲浅哪怕字多)
   chapter_floor  ≥ 6      任一章的KU数(不足6个则该章可能漏抽)
   low_ch_alarm   ≤ 2      允许章密度不足的章数(超过则整书报警)
 
@@ -24,6 +24,49 @@ ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT))
+
+
+# ── ★讲浅面检测: 主靠"该有的面齐不齐"(非字数) ──
+# 经济书三面: 内涵(WHAT) / 机制(WHY) / 应用(HOW)
+# 面齐=合格(哪怕字少); 面缺=讲浅(哪怕字多)
+#
+# 阈值规则(字数仅辅助分层, 不作主判据):
+#   < 80字:    极短 → 直接讲浅(字数辅助信号: 近乎空壳)
+#   80-199字:  需≥2面 → 缺面报讲浅
+#   200-399字: 需≥1面 → 全面缺才报讲浅(中长KU更宽松)
+#   ≥ 400字:  不检查(字量充足,基本不可能全面缺)
+
+PAT_WHAT = re.compile(          # 内涵/WHAT: 显式定义性语言(不含宽泛"X是Y的"防误触例子句)
+    r'内涵[：:]|定义[：:]|是指[一-龥]|指的是|是一种[一-龥]|所谓[一-龥]'
+)
+PAT_WHY = re.compile(           # 机制/WHY: 因果性语言
+    r'因为|由于|之所以|原因|导致[一-龥]|机制|来自|源于|是因为|'
+    r'取决于|推动|驱动|影响[一-龥]|反映了'
+)
+PAT_HOW = re.compile(           # 应用/HOW: 操作性语言
+    r'用于[一-龥]|用来[一-龥]|如何[一-龥]|步骤|识别[一-龥]|分析[一-龥]|'
+    r'判断[一-龥]|预测[一-龥]|通过[一-龥]|帮助[一-龥]|计算[一-龥]|有助于|'
+    r'应用[（(：:]'
+)
+
+
+def _facet_check(text: str, ku_type: str = "conceptual") -> tuple[bool, str]:
+    """判讲浅(主): 面齐否. 返回 (is_shallow, detail_msg)."""
+    n = len(text) if text else 0
+    if n < 80:
+        return True, f"极短({n}字,近乎空壳)"
+
+    has_what = bool(PAT_WHAT.search(text))
+    has_why  = bool(PAT_WHY.search(text))
+    has_how  = bool(PAT_HOW.search(text))
+    present  = sum([has_what, has_why, has_how])
+    missing  = [k for k, v in [("内涵", has_what), ("机制", has_why), ("应用", has_how)] if not v]
+
+    if n < 200 and present < 2:
+        return True, f"缺{'·'.join(missing)}({n}字,短文本需≥2面)"
+    if n < 400 and present < 1:
+        return True, f"全面缺({n}字,仅例子?)"
+    return False, ""
 
 
 # ── 内联 chapter 工具函数(避免 chapter_ingest 的 omodul 传递依赖) ──
@@ -57,16 +100,9 @@ def _slice_chapter(text, n):
     bm = re.search(r'(?im)^#{1,3}\s*\**\s*(?:g\s*l\s*o\s*s\s*s\s*a\s*r\s*y|i\s*n\s*d\s*e\s*x)\b', chap)
     return chap[:bm.start()] if bm else chap
 
-if len(sys.argv) < 2 or sys.argv[1].startswith("--"):
-    print("Usage: econ_quality_gate.py <substrate_id> [--json output.json]", file=sys.stderr)
-    sys.exit(2)
-
-SUB = sys.argv[1]
+# SUB / JSON_OUT 仅在 __main__ 时解析(允许作为模块 import _facet_check 不报错)
+SUB = None
 JSON_OUT = None
-args = sys.argv[2:]
-if "--json" in args:
-    idx = args.index("--json")
-    JSON_OUT = args[idx + 1] if idx + 1 < len(args) else None
 
 # ★经济书固化阈值
 TH = {
@@ -76,7 +112,7 @@ TH = {
     "bilingual_min":  99,    # 双语率%
     "directed_per_ku": 0.3,  # 有向边/KU
     "ku_density":     0.60,  # 实抽KU ≥ 60% × (章数×15)
-    "shallow_max":    0,     # 讲浅KU(中文<150字,经济面标准)
+    "shallow_max":    0,     # 讲浅KU(主靠面齐:内涵/机制/应用; 字数仅辅助分层)
     "chapter_floor":  6,     # 单章KU数下限
     "low_ch_alarm":   2,     # 低密度章数上限(超过则整书报警)
 }
@@ -114,14 +150,19 @@ async def run():
         " AND length(regexp_replace(natural_text_zh,'[^一-龥]','','g')) < 10", SUB)
     metrics["空壳KU"] = shells
 
-    # ★讲浅KU: 经济书面标准(概念/原理/方法) ≠ 数学定理标准(需证明过程)
-    # 经济概念型: 内涵+外延+用处, 表达简洁, 150字足够; 数学定理型需300字
-    # 阈值150: 57/118/122字是真讲浅; 199+字的经济概念KU已达经济面标准
-    shallow = await conn.fetchval(
-        "SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1"
-        " AND length(natural_text_zh) BETWEEN 1 AND 149",
-        SUB)
-    metrics["讲浅KU(zh<150chars)"] = shallow
+    # ★讲浅KU: 主靠"面齐不齐"(内涵/机制/应用), 字数仅辅助分层
+    # 面齐=合格(哪怕字少); 面缺=讲浅(哪怕字多)
+    ku_facet_rows = await conn.fetch(
+        "SELECT ku_id, knowledge_type, natural_text_zh FROM aii.ku_onto WHERE substrate_id=$1", SUB)
+    shallow_list = []
+    for row in ku_facet_rows:
+        is_sh, detail = _facet_check(row["natural_text_zh"] or "", row["knowledge_type"] or "conceptual")
+        if is_sh:
+            shallow_list.append({"ku_id": row["ku_id"], "detail": detail})
+    shallow = len(shallow_list)
+    metrics["讲浅KU(面缺)"] = shallow
+    if shallow > 0:
+        metrics["讲浅样本(前3)"] = [f"{s['ku_id'].split('::')[1]}:{s['detail']}" for s in shallow_list[:3]]
 
     # 有向边
     directed = await conn.fetchval(
@@ -201,7 +242,8 @@ async def run():
         alarms.append(f"有向边{directed}<{edge_floor}(={ku_total}KU×0.3)")
 
     if shallow > TH["shallow_max"]:
-        alarms.append(f"讲浅KU={shallow}>0(zh<150chars,经济面:内涵/机制/应用不全)")
+        sample = metrics.get("讲浅样本(前3)", [])[:2]
+        alarms.append(f"讲浅KU={shallow}>0(面缺,非字数): {'; '.join(sample)}")
 
     # ★KU密度报警(经济书命门: 漏抽=92KU vs 应有150+)
     if density_ratio < TH["ku_density"]:
@@ -240,7 +282,7 @@ async def run():
     for k, v in metrics.items():
         print(f"  {k}: {v}")
     print(f"\n阈值: complete≥{TH['complete_pct']}% | 残留=0 | 空壳=0 | 双语≥{TH['bilingual_min']}%"
-          f" | 有向≥{TH['directed_per_ku']}×KU | KU密度≥{TH['ku_density']:.0%}预期 | 讲浅(zh<150)=0 | 章KU≥{TH['chapter_floor']}")
+          f" | 有向≥{TH['directed_per_ku']}×KU | KU密度≥{TH['ku_density']:.0%}预期 | 讲浅(面缺)=0 | 章KU≥{TH['chapter_floor']}")
     if alarms:
         print(f"\n🚨 报警({len(alarms)}):")
         for a in alarms:
@@ -262,4 +304,12 @@ async def run():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2 or sys.argv[1].startswith("--"):
+        print("Usage: econ_quality_gate.py <substrate_id> [--json output.json]", file=sys.stderr)
+        sys.exit(2)
+    SUB = sys.argv[1]
+    _args = sys.argv[2:]
+    if "--json" in _args:
+        _idx = _args.index("--json")
+        JSON_OUT = _args[_idx + 1] if _idx + 1 < len(_args) else None
     sys.exit(asyncio.run(run()))
