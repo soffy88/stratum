@@ -66,33 +66,33 @@ def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash") -> cal
 
 
 def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://localhost:11434") -> callable:
-    """Return a caller backed by local Ollama (format=json guaranteed clean JSON output).
+    """Return a caller backed by local Ollama.
 
-    Used as provider="ollama-local" for low-trust sources (video/audio/podcast).
-    grade_cap=unverified is enforced upstream in auto_ingest; this caller just does extraction.
+    _call_async (synthesis path): plain text, no format=json, 8 k char limit.
+    call_sync (extraction path, llm_extract_ku): format=json for clean JSON output.
     """
-    _client = httpx.Client(trust_env=False, timeout=120)  # 120s covers cold model load
+    _client = httpx.Client(trust_env=False, timeout=300)  # local models can be slow
 
     def _call_sync(prompt: str) -> str:
         """KU 抽取用: format=json 强制结构化输出."""
         resp = _client.post(
             f"{base_url}/api/generate",
-            json={"model": model, "prompt": prompt[:3000], "stream": False, "format": "json"},
+            json={"model": model, "prompt": prompt[:8000], "stream": False, "format": "json"},
         )
         resp.raise_for_status()
         return resp.json()["response"]
 
     def _call_sync_plain(prompt: str) -> str:
-        """纯文本用 (查重 SAME/DIFFERENT 等): 不加 format=json, 直接返回自然语言."""
+        """合成/纯文本用: 不加 format=json, 直接返回自然语言."""
         resp = _client.post(
             f"{base_url}/api/generate",
-            json={"model": model, "prompt": prompt[:3000], "stream": False},
+            json={"model": model, "prompt": prompt[:8000], "stream": False},
         )
         resp.raise_for_status()
         return resp.json()["response"]
 
     async def _call_async(messages=None, *, system: str = "", max_tokens: int = 4096, **_):
-        """Async wrapper (for omodul compatibility; extraction uses call_sync directly)."""
+        """Async wrapper for synthesis (plain text, not JSON mode)."""
         parts: list[str] = []
         if system:
             parts.append(system)
@@ -102,31 +102,44 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
         combined = "\n\n".join(p for p in parts if p)
         loop = asyncio.get_event_loop()
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-            answer = await loop.run_in_executor(ex, _call_sync, combined)
+            answer = await loop.run_in_executor(ex, _call_sync_plain, combined)
         return {"content": [{"type": "text", "text": answer}]}
 
     _call_async.call_sync = _call_sync          # extraction: JSON mode
-    _call_async.call_sync_plain = _call_sync_plain  # dedup/plain-text: no JSON mode
+    _call_async.call_sync_plain = _call_sync_plain  # dedup/plain-text
     return _call_async
 
 def register_providers():
-    """Register computational providers for AII (A24 Routing)."""
+    """Register computational providers for AII (A24 Routing).
+
+    ECON_LLM_PROVIDER=ollama  → Ollama becomes the "default" provider (for local testing).
+    OLLAMA_MODEL env var selects the model (default: qwen2.5:7b).
+    """
+    ollama_base = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    ollama_model = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+    use_ollama_as_default = os.getenv("ECON_LLM_PROVIDER", "").lower() == "ollama"
 
     # 1. LLM Provider (DeepSeek v4) — default=flash (实测够用且最省); pro 备用
     #    deepseek-chat 别名 2026/07/24 下线, 已显式改 deepseek-v4-flash.
     api_key = os.getenv("DEEPSEEK_API_KEY")
-    ProviderRegistry.register("llm", "default", _make_deepseek_caller(api_key, model="deepseek-v4-flash"))
+    ProviderRegistry.register("llm", "deepseek-flash", _make_deepseek_caller(api_key, model="deepseek-v4-flash"))
     ProviderRegistry.register("llm", "deepseek-pro", _make_deepseek_caller(api_key, model="deepseek-v4-pro"))
+    if not use_ollama_as_default:
+        ProviderRegistry.register("llm", "default", _make_deepseek_caller(api_key, model="deepseek-v4-flash"))
 
-    # 2. LLM Provider (Ollama qwen2.5:7b) — for low-trust sources (video/audio/podcast)
-    #    grade_cap=unverified enforced upstream; this provider is fast + free + JSON-clean
-    ollama_base = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    ollama_model = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+    # 2. LLM Provider (Ollama) — low-trust sources OR local testing (ECON_LLM_PROVIDER=ollama)
     try:
-        ProviderRegistry.register("llm", "ollama-local", _make_ollama_caller(ollama_model, ollama_base))
-        logger.info("Ollama-local provider registered: %s @ %s", ollama_model, ollama_base)
+        ollama_caller = _make_ollama_caller(ollama_model, ollama_base)
+        ProviderRegistry.register("llm", "ollama-local", ollama_caller)
+        if use_ollama_as_default:
+            ProviderRegistry.register("llm", "default", ollama_caller)
+            logger.info("Ollama-local registered as DEFAULT: %s @ %s", ollama_model, ollama_base)
+        else:
+            logger.info("Ollama-local provider registered: %s @ %s", ollama_model, ollama_base)
     except Exception as e:
         logger.warning("Ollama-local registration failed (non-fatal): %s", e)
+        if use_ollama_as_default:
+            raise RuntimeError(f"ECON_LLM_PROVIDER=ollama but Ollama unavailable: {e}") from e
 
     # 3. Embedding Provider (Real BGE-M3)
     from oprim.embedding.bge_m3 import BgeM3Embedder
@@ -137,7 +150,8 @@ def register_providers():
     except Exception as e:
         logger.error(f"Failed to load REAL BGE-M3: {e}")
 
-    logger.info("AII Providers registered: llm/default(DeepSeek), llm/ollama-local(qwen2.5:7b), embedding/default")
+    default_lbl = f"Ollama({ollama_model})" if use_ollama_as_default else "DeepSeek"
+    logger.info("AII Providers registered: llm/default(%s), embedding/default", default_lbl)
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
