@@ -9,7 +9,7 @@ import re
 _SCAFFOLD = (r"knowledge unit|综合阐述|知识单元|english|中文|concept|概念|"
              r"what|why|how|when|implication|meaning|essence|boundary|use|rationale|evidence|mechanism|"
              r"是什么|为什么|如何应用|如何|何时|推论|含义|内涵|外延|用处|用途|本质|边界|机制|"
-             r"为何成立|为何正确|为何重要|为何真实|原理依据|理由|证据|应用方式|定义")
+             r"为何成立|为何正确|为何重要|为何真实|原理依据|理由|证据|应用方式|定义|类型|ku")
 # 整行纯脚手架(可带 # / 数字编号 / (括号注解) / 冒号, 行内无实质内容)→ 删整行
 _HDR = re.compile(rf"^\s*(?:#{{1,6}}\s*)?(?:\d+[.、]\s*)?\**\s*(?:{_SCAFFOLD})\s*"
                   rf"(?:[（(][^）)\n]*[)）])?\s*\**\s*[:：]?\s*$", re.I)
@@ -20,7 +20,7 @@ _LABEL = re.compile(rf"^\s*[-*]?\s*(?:\d+[.、]\s*)?\**\s*(?:{_SCAFFOLD})\s*"
 _PREAMBLE = re.compile(
     r"(here is (?:a|an|the|one)\b.{0,70}knowledge unit|based (?:strictly )?on the\b.{0,40}(?:text|chapter)|"
     r"这是(?:基于|针对|根据|为)\b.{0,40}(?:知识单元|阐述|KU)|以下是.{0,30}(?:知识单元|阐述|KU)|"
-    r"针对.{0,20}合成的知识单元)", re.I)
+    r"针对.{0,20}合成的知识单元|^\s*KU\s*[:：]|^\s*知识单元\s*[:：])", re.I)
 _SEP = re.compile(r"^\s*[-=*_]{3,}\s*$")
 # 句中/行中残留脚手架标签 "。WHY（为何正确/重要） " "。如何应用：" → 句首/句末位置剥除
 _INLINE = re.compile(rf"(?:(?<=[。.！？!?；;\n])|^)\s*\**\s*(?:\d+[.、]\s*)?(?:{_SCAFFOLD})\s*"

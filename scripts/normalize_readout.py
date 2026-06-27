@@ -2,7 +2,7 @@ import asyncio, asyncpg, os, re
 from dotenv import load_dotenv; load_dotenv('aii/.env',override=True)
 SUB=os.getenv('SUBSTRATE','microecon_en_full_v2')
 def norm(t):
-    t=re.sub(r'\([^)]*\)','',t).lower().strip(); t=re.sub(r'[^a-z0-9\s/&-]','',t)
+    t=re.sub(r'\([^)]*\)','',t).lower().strip(); t=re.sub(r'[^a-z0-9一-鿿\s/&-]','',t)
     return re.sub(r's\b','',re.sub(r'\s+',' ',t).strip())
 async def go():
     c=await asyncpg.connect(os.getenv('DATABASE_URL'))
@@ -19,9 +19,15 @@ async def go():
         n=norm(name)
         if not n: return None
         if n in cb: return cb[n]
+        cjk=bool(re.search(r'[一-鿿]',n))
         best=None
         for cn in cb:
-            if len(cn)>=6 and (n==cn or n.endswith(' '+cn)) and (best is None or len(cn)>len(best)): best=cn
+            # 英文: 后缀整词匹配; 中文: 子串互含(≥2字, 映射↔映射与函数)
+            if cjk:
+                ok = len(n)>=2 and (n in cn or (len(cn)>=2 and cn in n))
+            else:
+                ok = len(cn)>=6 and (n==cn or n.endswith(' '+cn))
+            if ok and (best is None or len(cn)>len(best)): best=cn
         return cb.get(best) if best else None
     # tables
     await c.execute("""CREATE TABLE IF NOT EXISTS aii.directed_edge_v2(

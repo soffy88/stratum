@@ -22,10 +22,10 @@ async def go():
     R['BU入库']='是' if await c.fetchval(f"SELECT count(*) FROM aii.bu_onto WHERE substrate_id='{SUB}'") else '否'
     # 完整性(重算: 各章应有黑体术语 vs 抽出)
     try:
-        from chapter_ingest import slice_chapter, SM
+        from chapter_ingest import slice_chapter, SM, chapter_numbers
         from aii.service.planning_completeness import check_completeness
         full=SM.read_text(encoding='utf-8',errors='replace')
-        chs=sorted({int(m.group(1)) for m in re.finditer(r'(?m)^#\s+Chapter\s+(\d+):',full)})
+        chs=chapter_numbers(full)  # 英文 # Chapter 或中文 第N章 自动
         incomplete=[]
         for ch in chs:
             names=[r['title'] for r in await c.fetch(f"SELECT title FROM aii.ku_onto WHERE substrate_id='{SUB}' AND (provenance->>'chapter')::int=$1",ch)]
