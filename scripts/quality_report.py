@@ -7,7 +7,7 @@ ROOT=Path(__file__).resolve().parents[1]; load_dotenv(ROOT/"aii"/".env", overrid
 sys.path.insert(0,str(ROOT/"scripts"))
 SUB=sys.argv[1] if len(sys.argv)>1 else "microecon_en_full_v2"
 # 报警阈值(规范)
-TH={"complete":100,"residual_max":0,"shell_max":0,"bilingual_min":99,"directed_min":150}
+TH={"complete":100,"residual_max":0,"shell_max":0,"bilingual_min":99,"directed_min_per_ku":0.3}
 async def go():
     c=await asyncpg.connect(os.getenv('DATABASE_URL'))
     R={}; alarms=[]
@@ -40,7 +40,8 @@ async def go():
     if R['残留字符KU']>TH['residual_max']: alarms.append(f"残留字符{R['残留字符KU']}>0")
     if R['空壳KU']>TH['shell_max']: alarms.append(f"空壳{R['空壳KU']}>0")
     if R['双语率%']<TH['bilingual_min']: alarms.append(f"双语{R['双语率%']}%<99")
-    if R['有向边']<TH['directed_min']: alarms.append(f"有向边{R['有向边']}<150")
+    edge_floor = max(15, round(R['KU总数'] * TH['directed_min_per_ku']))  # 按书规模缩放
+    if R['有向边'] < edge_floor: alarms.append(f"有向边{R['有向边']}<{edge_floor}(={R['KU总数']}KU×0.3)")
     print(f"\n{'='*50}\n质量自检报告: {SUB}\n{'='*50}")
     for k,v in R.items(): print(f"  {k}: {v}")
     print(f"\n报警({len(alarms)}): {alarms if alarms else '✅ 全部达标, 可人工确认入正式库'}")
