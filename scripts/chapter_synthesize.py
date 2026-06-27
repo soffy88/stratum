@@ -1,5 +1,7 @@
 """新范式章节合成(讲透 + 防漏): 按章切 → 规划知识点 → 每点讲透合成(双语+溯源) → 完整性校验防漏 → 补漏.
-★铁律: 喂规划/合成的章节文本【全章, 绝不截断】(截断=系统性漏知识); 超 LLM 上下文则分块喂, 不丢内容.
+★规划喂全章(不截断), 合成改定向窗口: intro[:1000] + section[pos-WIN_PRE:pos+WIN_POST].
+  对齐数学管道已验证的 section-windowing 方式, 削减 ~78% _synth input token.
+  窗口够覆盖: WIN_POST=20000 chars ≈ 3-4x 知识点平均展开长度; pos 找不到则 fallback 40K.
 ★防漏: 用 planning_completeness(确定性, 不靠LLM)对照"应有黑体术语/小节"查漏, 漏的补抽.
 Usage: chapter_synthesize.py <chapter_n>
 """
@@ -14,8 +16,12 @@ from aii.api._provider import register_providers
 from aii.service.planning_completeness import check_completeness
 from obase import ProviderRegistry
 
-# LLM 上下文裕量(字符). 全章 <= 此值直接喂; 超出则分块喂规划(各块出点, 合并), ★绝不截断丢内容.
+# _plan 仍用全章分块喂(规划不截断, 不影响 token).
 _CTX = 130000
+# ★定向窗口参数 — 每个 KU 合成只喂知识点所在小节, 不喂整章.
+_WIN_PRE      = 500    # 知识点 pos 前的 chars(捕获定义/段落引入)
+_WIN_POST     = 20000  # 知识点 pos 后的 chars(覆盖完整展开; 经济教材典型KU展开 3-8K chars)
+_WIN_FALLBACK = 40000  # pos 未找到时的 fallback 窗口大小(章首)
 
 PLAN_SYS = ("You identify the knowledge points a textbook chapter DIRECTLY AND SUBSTANTIVELY teaches. "
             "Output valid JSON only.")
@@ -31,8 +37,23 @@ def _facets(typ):
             "method": "WHAT, WHEN, HOW(steps), WHY"}.get(typ, "WHAT, WHY, HOW")
 
 
+def _find_pos(text_lo: str, name: str) -> int:
+    """在小写章文本中定位知识点名称的首次出现位置. 未找到返回 -1."""
+    # 先搜全名(前30字符)
+    pos = text_lo.find(name.lower()[:30])
+    if pos >= 0:
+        return pos
+    # 搜最长有意义词(>4字符), 按长度降序
+    for word in sorted(name.split(), key=len, reverse=True):
+        if len(word) > 4:
+            pos = text_lo.find(word.lower())
+            if pos >= 0:
+                return pos
+    return -1
+
+
 async def _plan(llm, text, n):
-    # 全章; 超 _CTX 分块喂各出点再合并(不截断)
+    """规划仍喂全章(不截断); 额外为每个知识点定位 pos 供 _synth 用."""
     chunks = [text] if len(text) <= _CTX else [text[i:i + _CTX] for i in range(0, len(text), _CTX)]
     pts = []
     for ck in chunks:
@@ -48,18 +69,32 @@ async def _plan(llm, text, n):
         m = re.search(r"\{.*\}", t, re.DOTALL)
         if m:
             pts += json.loads(m.group(0)).get("points", [])
-    # dedup by normalized name (单复数/大小写归一, 防多块规划产近重复点 如 'explicit cost'/'explicit costs')
+    # dedup by normalized name (单复数/大小写归一)
     seen, out = set(), []
     for p in pts:
         k = re.sub(r"s\b", "", re.sub(r"\s+", " ", p.get("name", "").strip().lower()))[:40]
         if k and k not in seen:
             seen.add(k); out.append(p)
+    # ★为每个知识点定位 pos (供 _synth 定向窗口用)
+    text_lo = text.lower()
+    for p in out:
+        found = _find_pos(text_lo, p.get("name", ""))
+        p["pos"] = found if found >= 0 else 0
     return out
 
 
-async def _synth(llm, text, n, name, typ):
+async def _synth(llm, text, n, name, typ, pos: int = 0):
+    """★定向窗口合成: intro[:1000] + section[pos-WIN_PRE:pos+WIN_POST].
+    pos 未找到(=0且非章首): fallback 到章首 40K chars."""
+    if pos > 0:
+        intro   = text[:1000]                                      # 章首记号/约定上下文
+        section = text[max(0, pos - _WIN_PRE): pos + _WIN_POST]   # 定向窗口
+        context = f"Chapter {n} opening (notation/context):\n\n{intro}\n\nRelevant section:\n\n{section}"
+    else:
+        # pos 未定位: 用章首 fallback(覆盖最密集的引入段落)
+        context = f"Chapter {n} text (opening):\n\n{text[:_WIN_FALLBACK]}"
     r = await llm(messages=[{"role": "user", "content":
-        f"Chapter {n} text:\n\n{text[:_CTX]}\n\nSynthesize ONE thorough KU for: \"{name}\" (type={typ}). "
+        f"{context}\n\nSynthesize ONE thorough KU for: \"{name}\" (type={typ}). "
         f"Facets: {_facets(typ)}. Each [Ch{n}]-cited; skip absent facets (do not write 'not covered'). English then 中文."}],
         system=SYN_SYS.format(n=n), max_tokens=1100)
     return name, "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
@@ -68,28 +103,35 @@ async def _synth(llm, text, n, name, typ):
 async def main():
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 3
     register_providers(); llm = ProviderRegistry.get().llm("default")
-    text = slice_chapter(SM.read_text(encoding="utf-8", errors="replace"), n)  # 全章, 不截断
-    print(f"chapter {n}: {len(text)} chars (fed in full, no truncation)", flush=True)
+    text = slice_chapter(SM.read_text(encoding="utf-8", errors="replace"), n)
+    print(f"chapter {n}: {len(text)} chars", flush=True)
     points = await _plan(llm, text, n)
     print(f"planned {len(points)} knowledge points", flush=True)
+    for p in points:
+        print(f"  {p['name']}: pos={p.get('pos', 0)}", flush=True)
     sem = asyncio.Semaphore(8)
 
     async def s(p):
         async with sem:
-            return await _synth(llm, text, n, p["name"], p.get("type", "concept"))
+            return await _synth(llm, text, n, p["name"], p.get("type", "concept"), p.get("pos", 0))
     kus = await asyncio.gather(*(s(p) for p in points))
     names = [k for k, _ in kus]
     # ★防漏: 完整性校验
     comp = check_completeness(text, names)
     print(f"completeness: {comp['covered_terms']}/{comp['total_terms']} terms; "
           f"complete={comp['complete']} missing={comp['missing_bold_terms']}", flush=True)
-    # 补漏
+    # 补漏: 搜 pos 后再调 _synth
     if comp["missing_bold_terms"]:
-        fill = await asyncio.gather(*(s({"name": t.title(), "type": "concept"}) for t in comp["missing_bold_terms"]))
+        text_lo = text.lower()
+        fill_pts = []
+        for t in comp["missing_bold_terms"]:
+            pos = _find_pos(text_lo, t)
+            fill_pts.append({"name": t.title(), "type": "concept", "pos": max(0, pos) if pos >= 0 else 0})
+        fill = await asyncio.gather(*(s(p) for p in fill_pts))
         kus = list(kus) + list(fill)
         print(f"backfilled {len(fill)} missing → total {len(kus)} KUs", flush=True)
-    Path("/tmp/claude-1000/-home-soffy-projects-AII/bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad"
-         f"/ch{n}_synth.md").write_text(
+    import os
+    Path(os.getenv("PIPELINE_CKPT_DIR", "/tmp") + f"/ch{n}_synth.md").write_text(
         "\n\n".join(f"### {nm}\n{body}" for nm, body in kus), encoding="utf-8")
     print(f"DONE: {len(kus)} thorough KUs (complete after backfill)", flush=True)
 

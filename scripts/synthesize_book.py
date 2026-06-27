@@ -9,7 +9,7 @@ load_dotenv(ROOT / "aii" / ".env", override=True)
 sys.path.insert(0, str(ROOT / "scripts"))
 import asyncpg
 from chapter_ingest import slice_chapter, SM, chapter_numbers
-from chapter_synthesize import _plan, _synth, _CTX
+from chapter_synthesize import _plan, _synth, _CTX, _find_pos
 from clean_ku import clean, is_empty_shell
 from aii.api._provider import register_providers
 from aii.service.planning_completeness import check_completeness
@@ -34,19 +34,24 @@ def _split_bilingual(body: str):
 
 
 async def synth_chapter(llm, n):
-    text = slice_chapter(SM.read_text(encoding="utf-8", errors="replace"), n)  # 全章不截断
-    points = await _plan(llm, text, n)
+    text = slice_chapter(SM.read_text(encoding="utf-8", errors="replace"), n)
+    points = await _plan(llm, text, n)   # ★ _plan 现在已含 pos 字段
     sem = asyncio.Semaphore(8)
 
-    async def s(name, typ):
+    async def s(name, typ, pos=0):
         async with sem:
-            _, body = await _synth(llm, text, n, name, typ)
+            _, body = await _synth(llm, text, n, name, typ, pos)
             return name, typ, body
-    kus = await asyncio.gather(*(s(p["name"], p.get("type", "concept")) for p in points))
+    kus = await asyncio.gather(*(s(p["name"], p.get("type", "concept"), p.get("pos", 0)) for p in points))
     names = [k for k, _, _ in kus]
     comp = check_completeness(text, names)
     if comp["missing_bold_terms"]:
-        fill = await asyncio.gather(*(s(t.title(), "concept") for t in comp["missing_bold_terms"]))
+        text_lo = text.lower()
+        fill_pts = []
+        for t in comp["missing_bold_terms"]:
+            pos = _find_pos(text_lo, t)
+            fill_pts.append((t.title(), "concept", max(0, pos) if pos >= 0 else 0))
+        fill = await asyncio.gather(*(s(name, typ, pos) for name, typ, pos in fill_pts))
         kus = list(kus) + list(fill)
         comp = check_completeness(text, [k for k, _, _ in kus])
     return text, kus, comp
