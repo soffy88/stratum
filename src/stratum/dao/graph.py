@@ -5,11 +5,16 @@ from stratum.common import generate_ulid
 
 def upsert_entity(user_id: str, name: str, entity_type: str,
                   description: str | None, substrate_id: str) -> str:
-    """Insert or merge entity. Returns entity id."""
+    """Insert or merge entity. Returns entity id.
+
+    Matching is case- and whitespace-insensitive so "Deep Learning",
+    "deep learning" and " deep learning " collapse onto one node. Cross-lingual
+    aliases (中/英) still split — that needs embedding-based merge (follow-up).
+    """
     with get_conn() as conn:
         existing = conn.execute(
             "SELECT id, mention_count, source_substrate_ids FROM graph_entities "
-            "WHERE user_id=? AND name=?",
+            "WHERE user_id=? AND LOWER(TRIM(name))=LOWER(TRIM(?))",
             (user_id, name)
         ).fetchone()
         if existing:
