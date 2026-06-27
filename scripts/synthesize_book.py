@@ -46,10 +46,9 @@ async def synth_chapter(llm, n):
     names = [k for k, _, _ in kus]
     comp = check_completeness(text, names)
     if comp["missing_bold_terms"]:
-        text_lo = text.lower()
         fill_pts = []
         for t in comp["missing_bold_terms"]:
-            pos = _find_pos(text_lo, t)
+            pos = _find_pos(text, t)
             fill_pts.append((t.title(), "concept", max(0, pos) if pos >= 0 else 0))
         fill = await asyncio.gather(*(s(name, typ, pos) for name, typ, pos in fill_pts))
         kus = list(kus) + list(fill)
