@@ -16,11 +16,42 @@ from aii.service.cross_chunk_link import gen_candidates, judge_and_link
 from aii.storage.pg_backend import PgBackend
 from obase import ProviderRegistry
 
-SM = Path("/home/soffy/shared/stratum-to-aii/Principles_of_Microeconomics_The_Way_We__01KVAJCX.md")
+# ★md 文件可 env 覆盖(给第二本书=数学书用), 默认微观经济学
+SM = Path(os.getenv("AII_MD_FILE",
+    "/home/soffy/shared/stratum-to-aii/Principles_of_Microeconomics_The_Way_We__01KVAJCX.md"))
+
+_CN = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10}
+
+
+def _cn2int(s):
+    # 一..九 / 十 / 十一..十九 / 二十..
+    if s in _CN:
+        return _CN[s]
+    if s.startswith('十'):
+        return 10 + (_CN.get(s[1:], 0))
+    if '十' in s:  # 二十/二十一..
+        a, _, b = s.partition('十')
+        return _CN[a] * 10 + (_CN.get(b, 0) if b else 0)
+    return _CN.get(s, 0)
+
+
+def _zh_chapter_starts(text):
+    """中文教材 第N章: 跳 TOC(含…… 或 末尾页码), 每章取首个正文出现(页眉重复取第一个)."""
+    starts = {}
+    for m in re.finditer(r'(?m)^第([一二三四五六七八九十]+)章', text):
+        line = text[m.start(): text.find('\n', m.start()) if text.find('\n', m.start()) > 0 else m.start() + 40]
+        if '…' in line or re.search(r'\s\d+\s*$', line):   # TOC 条目(…… 页码)→ 跳
+            continue
+        num = _cn2int(m.group(1))
+        if num and num not in starts:                       # 每章首个正文出现(后续页眉重复忽略)
+            starts[num] = m.start()
+    return starts
 
 
 def slice_chapter(text, n):
     starts = {int(m.group(1)): m.start() for m in re.finditer(r'(?m)^#\s+Chapter\s+(\d+):', text)}
+    if not starts:                                          # 无英文章标 → 试中文 第N章
+        starts = _zh_chapter_starts(text)
     if n not in starts:
         raise SystemExit(f"chapter {n} not found; have {sorted(starts)}")
     s = starts[n]
