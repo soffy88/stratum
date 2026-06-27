@@ -10,15 +10,25 @@ from chapter_ingest import SM, chapter_starts
 SUB = os.getenv('SUBSTRATE', 'microecon_en_full_v2')
 
 
+_CNM = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10}
+
+
 def _titles(text):
     out = {}
+    # 英文 # Chapter N: Title
     for n, pos in chapter_starts(text).items():
         nl = text.find('\n', pos)
         line = text[pos: nl if nl > 0 else pos + 50]
-        t = re.sub(r'^#\s*Chapter\s*\d+:\s*', '', line)
-        t = re.sub(r'^第[一二三四五六七八九十]+章\s*', '', t).strip()
-        zh = bool(re.search(r'[一-鿿]', line))
-        out[n] = (f"第{n}章·{t[:40]}" if zh else f"Ch{n}: {t[:40]}")
+        if re.search(r'[一-鿿]', line):
+            continue
+        out[n] = f"Ch{n}: {re.sub(r'^#\\s*Chapter\\s*\\d+:\\s*', '', line).strip()[:40]}"
+    # 中文 第N章 <非空标题>(跳页眉重复的裸"第N章"+TOC页码)→ 取每章首个带标题
+    if not out:
+        for m in re.finditer(r'第([一二三四五六七八九十]+)章\s+([^\n…\d]{2,30})', text):
+            n = _CNM.get(m.group(1))
+            t = m.group(2).strip()
+            if n and t and n not in out:
+                out[n] = f"第{n}章·{t}"
     return out
 
 
