@@ -57,7 +57,7 @@ def facet_check(point_name, zh):
     is_thm = bool(re.search(r'法则|定理|公式', point_name)) and not is_summary
     has_proof = bool(re.search(r'证明|推导|为什么|∵|证\s*[:(（]|证\s*\d', zh)) or \
                 bool(re.search(r'^\s*证\s', zh, re.MULTILINE))
-    has_example = bool(re.search(r'例\s*\d|例如|例题|例\s*[:：]', zh))
+    has_example = bool(re.search(r'例\s*\d|例如|例题|例\s*[:：]|例子', zh))
     has_formula = len(zh) > 0 and bool(re.search(
         r'\\[a-zA-Z]{2,}|\$.+|\\\[|\\\(|[∫∬∭∮∑∏√∂∇∈∉⊂⊆≤≥≠≈≡∞±·×÷→πθλμφψΦΔΩΣαβγ]|[a-zA-Z]\^|\|[a-zA-Z]\|', zh))
     if is_thm:
