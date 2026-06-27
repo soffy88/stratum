@@ -17,9 +17,11 @@ from obase import ProviderRegistry
 # LLM 上下文裕量(字符). 全章 <= 此值直接喂; 超出则分块喂规划(各块出点, 合并), ★绝不截断丢内容.
 _CTX = 130000
 
-PLAN_SYS = "You identify the CORE knowledge points a textbook chapter teaches. Output valid JSON only."
+PLAN_SYS = ("You identify the knowledge points a textbook chapter DIRECTLY AND SUBSTANTIVELY teaches. "
+            "Output valid JSON only.")
 SYN_SYS = ("You synthesize ONE thorough KU by INTEGRATING the chapter's material. Use ONLY the chapter text. "
-           "Cite [Ch{n}]. If a facet is not covered write '(not covered)'. Integration not creation. Bilingual EN+中文. "
+           "Cite [Ch{n}]. Write ONLY what IS substantively covered — skip any facet absent from this chapter "
+           "(do NOT write placeholder text like 'not covered'). Integration not creation. Bilingual EN+中文. "
            "★ The Chinese MUST be Simplified Chinese (简体中文) only — NEVER Traditional characters (禁止繁体字).")
 
 
@@ -35,8 +37,13 @@ async def _plan(llm, text, n):
     pts = []
     for ck in chunks:
         r = await llm(messages=[{"role": "user", "content":
-            f"Chapter {n} text (part):\n\n{ck}\n\nList the CORE knowledge points taught (each: name + type concept|principle|method). "
-            'JSON: {"points":[{"name":"..","type":".."}]}'}], system=PLAN_SYS, max_tokens=700)
+            f"Chapter {n} text (part):\n\n{ck}\n\n"
+            f"List ONLY the concepts this chapter DIRECTLY AND SUBSTANTIVELY teaches — "
+            f"concepts with their own definition or ≥2 paragraphs of explanation. "
+            f"EXCLUDE concepts merely mentioned in passing, used as 1-sentence examples, "
+            f"or previewed/introduced for a later chapter. "
+            'JSON: {"points":[{"name":"..","type":"concept|principle|method"}]}'}],
+            system=PLAN_SYS, max_tokens=700)
         t = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
         m = re.search(r"\{.*\}", t, re.DOTALL)
         if m:
@@ -53,7 +60,7 @@ async def _plan(llm, text, n):
 async def _synth(llm, text, n, name, typ):
     r = await llm(messages=[{"role": "user", "content":
         f"Chapter {n} text:\n\n{text[:_CTX]}\n\nSynthesize ONE thorough KU for: \"{name}\" (type={typ}). "
-        f"Facets: {_facets(typ)}. Each [Ch{n}]-cited; mark '(not covered)' if absent. English then 中文."}],
+        f"Facets: {_facets(typ)}. Each [Ch{n}]-cited; skip absent facets (do not write 'not covered'). English then 中文."}],
         system=SYN_SYS.format(n=n), max_tokens=1100)
     return name, "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
 

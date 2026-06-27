@@ -30,7 +30,9 @@ _CITE = re.compile(r"\s*[\[【]\s*Ch\s*\d+[^\]】]*[\]】]")
 # 非覆盖语句(标记 + 解释"书没讲"的整句)→ 删: 既删"(not covered)"标记, 也删"第N章未定义X…"解释句
 _NONCOV = re.compile(
     r"(未涉及|未提及|未定义|未讨论|未阐述|未提供|未明确|未被提及|未解释|未具体|未单独|不涉及|"
-    r"没有(?:讨论|涉及|定义|提及|阐述)|not covered|does not (?:define|discuss|mention|provide|cover|"
+    r"未覆盖|未涵盖|未出现|未包含|未给出|未介绍|未描述|"
+    r"没有(?:讨论|涉及|定义|提及|阐述|覆盖|涵盖|介绍)|"
+    r"not covered|does not (?:define|discuss|mention|provide|cover|"
     r"address|elaborate|specify|explicitly)|is not (?:covered|discussed|defined|mentioned|addressed))", re.I)
 
 
