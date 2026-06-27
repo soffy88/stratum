@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   OEpistemicBadge,
   OFilterChip,
@@ -138,6 +139,13 @@ function KnowledgePage() {
 
   const searchParams = useSearchParams();
   const substrate = searchParams.get('substrate') || undefined;
+  const [bookTitle, setBookTitle] = useState('');
+  useEffect(() => {
+    if (!substrate) { setBookTitle(''); return; }
+    api.getBooks().then(r => {
+      if (r.ok && r.data) setBookTitle(r.data.items.find(b => b.substrate_id === substrate)?.title || '');
+    });
+  }, [substrate]);
   const load = useCallback(() => {
     void run({
       grade: (grade[0] as EpistemicGrade) || undefined,
@@ -158,7 +166,16 @@ function KnowledgePage() {
   return (
     <div className="aii-page-content flex flex-col gap-4 max-w-5xl mx-auto">
       <header className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">知识库 / Knowledge Units</h1>
+        {bookTitle && (
+          <nav className="text-xs text-[color:var(--text-secondary)] flex items-center gap-1.5 flex-wrap">
+            <Link href="/book" className="hover:text-[color:var(--accent,#2563eb)]">📚 书级理解</Link>
+            <span>›</span>
+            <span className="font-medium text-[color:var(--text-primary)]">{bookTitle}</span>
+            <span>›</span>
+            <span>讲透 KU</span>
+          </nav>
+        )}
+        <h1 className="text-xl font-semibold">知识库 / Knowledge Units{bookTitle && <span className="text-sm font-normal text-[color:var(--text-secondary)] ml-2">· {bookTitle}</span>}</h1>
         <p className="text-sm text-[color:var(--text-secondary)]">
           浏览 KU。<strong>每条标注可信度 grade</strong>;<strong>多书共有</strong>的 KU 体现跨书去重。
         </p>
