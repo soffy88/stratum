@@ -307,25 +307,26 @@ async def kc_list(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     view: str = Query("chapter"),  # ★双视图: chapter(按章) | spectral(谱社区)
+    substrate: str = Query("microecon_en_full_v2"),  # ★按书过滤
 ):
     try:
         offset = (page - 1) * page_size
         marker = "AII谱社区KC" if view == "spectral" else "AII章节KC"
-        # 按章用 level(章号)排序, 谱社区用簇大小
         order = "level NULLS LAST, kc_id" if view == "chapter" else "community_size DESC, kc_id"
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:
             total = await conn.fetchval(
-                "SELECT count(*) FROM aii.kc_onto WHERE synthesis_marker=$1", marker)
+                "SELECT count(*) FROM aii.kc_onto WHERE synthesis_marker=$1 AND substrate_id=$2",
+                marker, substrate)
             rows = await conn.fetch(
                 f"""
                 SELECT kc_id, community_label, left(summary, 300) AS summary, grade,
                        jsonb_array_length(COALESCE(member_ku_ids, '[]'::jsonb)) AS community_size
-                FROM aii.kc_onto WHERE synthesis_marker=$3
+                FROM aii.kc_onto WHERE synthesis_marker=$3 AND substrate_id=$4
                 ORDER BY {order}
                 LIMIT $1 OFFSET $2
                 """,
-                page_size, offset, marker,
+                page_size, offset, marker, substrate,
             )
 
         items = [
@@ -402,6 +403,27 @@ async def kc_detail(kc_id: str):
 
 
 # ── BU (Book Understanding / bu_onto) ─────────────────────────────────────────
+
+@router.get("/books")
+async def books_list():
+    """有 BU 的书清单(供前端选书)。"""
+    try:
+        pool = await backend._ensure_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT s.substrate_id, s.title, s.subject,
+                       (SELECT count(*) FROM aii.ku_onto k WHERE k.substrate_id=s.substrate_id) AS ku_count
+                FROM aii.ingested_substrate s
+                WHERE EXISTS (SELECT 1 FROM aii.bu_onto b WHERE b.substrate_id=s.substrate_id)
+                ORDER BY ku_count DESC
+                """)
+        return success_response({"items": [
+            {"substrate_id": r["substrate_id"], "title": r["title"] or r["substrate_id"],
+             "subject": r["subject"], "ku_count": r["ku_count"]} for r in rows]})
+    except Exception as e:
+        return error_response("BOOKS_ERROR", str(e))
+
 
 @router.get("/book/{substrate_id}/bu")
 async def book_bu(substrate_id: str):

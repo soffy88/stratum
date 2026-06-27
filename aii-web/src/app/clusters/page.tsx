@@ -127,7 +127,8 @@ export default function ClustersPage() {
   const [state, run] = useApi(api.getKcList);
   const [view, setView] = useState<'chapter' | 'spectral'>('chapter');
   const [detailId, setDetailId] = useState<string | null>(null);
-  useEffect(() => { void run(view); }, [run, view]);
+  const substrate = (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('substrate')) || 'microecon_en_full_v2';
+  useEffect(() => { void run({ view, substrate }); }, [run, view, substrate]);
 
   const items = ((state.data as any)?.items ?? state.data ?? []) as KcListItem[];
 
@@ -159,7 +160,7 @@ export default function ClustersPage() {
       </header>
 
       {state.loading && <OLoadingState rows={4} />}
-      {state.error && <OErrorState error={state.error} onRetry={() => void run(view)} />}
+      {state.error && <OErrorState error={state.error} onRetry={() => void run({ view, substrate })} />}
       {!state.loading && items.length === 0 && <OEmptyState title="暂无知识簇" description="后端 /api/kc/list 待实现" />}
 
       {items.length > 0 && (
