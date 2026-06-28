@@ -151,3 +151,27 @@ async def trigger_aii_tick(
 
     background_tasks.add_task(_do_tick)
     return {"status": "started", "message": "aii_feedback _tick() 已在后台触发"}
+
+
+@router.post("/md-export-one")
+async def export_one_substrate(
+    body: dict,
+    background_tasks: BackgroundTasks,
+    _user: str = Depends(jwt_auth),
+):
+    """触发单个 substrate 的 md_export（写 AII 共享目录）。body: {substrate_id: "..."}"""
+    sid = body.get("substrate_id", "")
+    if not sid:
+        from fastapi import HTTPException
+        raise HTTPException(400, "substrate_id required")
+
+    async def _do_export():
+        from stratum.services.md_export_service import export_one
+        try:
+            result = await asyncio.to_thread(export_one, sid)
+            log.info("md_export_one: %s → %s", sid[:12], result)
+        except Exception:
+            log.exception("md_export_one: failed for %s", sid[:12])
+
+    background_tasks.add_task(_do_export)
+    return {"status": "started", "substrate_id": sid}

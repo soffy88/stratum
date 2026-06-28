@@ -1,0 +1,14 @@
+[
+  {
+    "query": "什么是注意力机制",
+    "relevant_substrate_ids": ["REPLACE_WITH_REAL_SUBSTRATE_ID"]
+  },
+  {
+    "query": "高等数学中导数的定义",
+    "relevant_substrate_ids": ["REPLACE_WITH_REAL_SUBSTRATE_ID"]
+  },
+  {
+    "query": "economics supply and demand",
+    "relevant_substrate_ids": ["REPLACE_WITH_REAL_SUBSTRATE_ID"]
+  }
+]
