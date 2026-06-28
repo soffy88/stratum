@@ -11,6 +11,11 @@ const apiBase =
 const slBase =
   process.env.STRATUM_SL_BASE ??
   `http://localhost:${process.env.STRATUM_SL_PORT ?? "9304"}`;
+// AII merge P3.2: ported AII pages call the AII backend (epistemic knowledge engine)
+// via the same-origin /api/aii/* proxy → AII FastAPI (:8101 dev / aii-api.uex.hk prod).
+const aiiBase =
+  process.env.AII_API_BASE ??
+  `http://localhost:${process.env.AII_API_PORT ?? "8101"}`;
 
 const config: NextConfig = {
   reactStrictMode: true,
@@ -23,6 +28,8 @@ const config: NextConfig = {
   transpilePackages: ["@helios/blocks", "@helios/oui"],
   async rewrites() {
     return [
+      // AII epistemic-engine backend — must come before the catch-alls below.
+      { source: "/api/aii/:path*", destination: `${aiiBase}/api/:path*` },
       // Service layer (v1 routes) — must come before the catch-all below.
       { source: "/api/v1/:path*", destination: `${slBase}/api/v1/:path*` },
       // Legacy DuckDB API (auth, substrates, legacy notes/search, etc.)
