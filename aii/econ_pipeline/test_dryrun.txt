@@ -1,0 +1,2 @@
+# 测试: DRY_RUN预检书单
+/home/soffy/shared/stratum-to-aii/Principles_of_Microeconomics_The_Way_We__01KVAJCX.md|microecon_en_full_v2|微观经济学(Principles of Microeconomics)
