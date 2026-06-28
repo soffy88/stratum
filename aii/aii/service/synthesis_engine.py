@@ -102,12 +102,40 @@ class SynthesisEngine:
         return []
 
     async def _handle_global(self, query: str) -> dict[str, Any]:
-        """Global path: search synthesis KUs + graph_expand_retrieval (P2.5 K-G4)."""
+        """Global path: 检索社区/知识簇(KC)摘要回答'综述/体系'问题(GraphRAG global search).
+        KC 摘要是 AII 综合(synthesis_marker), 比拼凑细节 KU 更适合全局问题."""
         qv = _embed_query(query)
         if qv is None:
             return {"mode": "error", "answer": "内部错误：无法编码查询", "epistemic_confidence": 0.0}
 
-        # 1. Vector search on is_synthesis KUs
+        # 1. ★检索 KC 社区摘要(替代恒空的 search_synthesis_kus)
+        kcs = await self.backend.search_kc_by_vector(qv, limit=4)
+        if kcs:
+            kc_ctx = [{
+                "ku_id": f"KC:{kc['kc_id']}",
+                "natural_text": (kc.get("summary_en") or kc.get("summary") or ""),
+                "grade": kc.get("grade", "unverified"),
+                "is_synthesis": True,
+                "community_label": kc.get("community_label"),
+            } for kc in kcs if (kc.get("summary_en") or kc.get("summary"))]
+            grades = [k["grade"] for k in kc_ctx]
+            try:
+                confidence = ecc_fn(grades=grades)
+            except Exception:
+                confidence = 0.3
+            answer = await self._call_deepseek(query, kc_ctx)
+            return {
+                "mode": "global",
+                "answer": answer,
+                "epistemic_confidence": confidence,
+                "citations": [{"ku_id": k["ku_id"], "grade": k["grade"],
+                               "is_synthesis": True,
+                               "snippet": (k["natural_text"] or "")[:100]} for k in kc_ctx],
+                "confidence_basis": f"社区摘要(KC)检索，共 {len(kc_ctx)} 个知识簇",
+                "disclaimer": "本回答基于 AII 综合摘要(非原文断言)，仅供参考。",
+            }
+
+        # 2. 回退: 无 KC 向量(未补 embedding) → 旧 synthesis KU 路径(恒空) + 图扩展
         synthesis_results = await self.backend.search_synthesis_kus(qv, limit=3)
 
         # 2. P2.5 图扩展: graph_expand_retrieval 替换手写1-hop BFS
@@ -207,8 +235,24 @@ class SynthesisEngine:
                 "epistemic_confidence": 0.0,
             }
 
-        # Search DB (detail KUs only)
-        results = await self.backend.search_ku_by_vector(qv, limit=3)
+        # ★混合检索(dense+lexical RRF)召回候选 → LLM 重排精排到 top-k
+        # 治 dense-only 召回弱; 重排治融合稀释(评测: hybrid+rerank ≥ dense). 失败逐级降级.
+        import os as _os
+        try:
+            candidates = await self.backend.search_ku_hybrid(qv, query, limit=15)
+        except Exception as _e:
+            logger.warning("hybrid search failed, fallback to dense: %s", _e)
+            candidates = await self.backend.search_ku_by_vector(qv, limit=15)
+        # 无知识阈值用"召回候选里最近的 dense 距离"判定(重排会打乱距离序, 故在重排前取)
+        best_dist = min((c.get("distance", 1.0) for c in candidates), default=1.0)
+        if _os.getenv("AII_RERANK", "1") == "1" and len(candidates) > 1:
+            try:
+                from aii.service.retrieval import llm_rerank
+                _llm = ProviderRegistry.get().llm("default")
+                candidates = await llm_rerank(_llm, query, candidates, top_k=5)
+            except Exception as _e:
+                logger.warning("rerank failed, using fusion order: %s", _e)
+        results = candidates[:3]
 
         # P2.5 Local图扩展: 1-hop neighbors via graph_expand_retrieval
         # 命门: 扩展KU保持原grade/内容不变; 扩展失败不影响主路径
@@ -268,8 +312,9 @@ class SynthesisEngine:
 
         # 2. No Knowledge Check
         # Threshold: cosine distance > 0.75 (similarity < 0.25); BGE-M3 typical semantic match ~0.65
-        if not results or results[0].get("distance", 1.0) > 0.75:
-            logger.info(f"No grounding found. Top distance: {results[0].get('distance') if results else 'N/A'}")
+        # ★用召回候选最近距离(best_dist), 不用 results[0](重排后非距离序)
+        if not results or best_dist > 0.75:
+            logger.info(f"No grounding found. Best distance: {best_dist if results else 'N/A'}")
             # 记 retrieval_miss，供缺口感知 step5 聚合（旁路，不改 grade）
             try:
                 fl = failure_lesson_extract(

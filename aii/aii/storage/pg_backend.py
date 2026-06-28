@@ -329,6 +329,49 @@ class PgBackend(StorageBackend, EpistemicStore):
             records = await conn.fetch(sql, *params)
         return [dict(r) for r in records]
 
+    async def search_ku_hybrid(self, query_vector: list[float], query_text: str,
+                               limit: int = 5, channel_depth: int = 40, rrf_k: int = 60,
+                               knowledge_type: "str | list[str] | None" = None) -> list[dict[str, Any]]:
+        """★混合检索: dense(pgvector) + lexical(内建FTS) → RRF 融合(治 dense-only 召回弱).
+        - dense 通道: embedding <=> query_vector (语义)
+        - lexical 通道: ts_rank_cd(fts, websearch_to_tsquery) (专名/精确术语)
+        - 融合: Reciprocal Rank Fusion, score = Σ 1/(rrf_k + rank); 比线性加权更稳(无需归一)
+        query_text 为空或无词法命中 → 自动退化为 dense-only. 返回含 distance(供无知识阈值)与 rrf_score."""
+        pool = await self._ensure_pool()
+        kt_filter = ""
+        params: list = [query_vector, query_text or "", channel_depth, rrf_k, limit]
+        if knowledge_type:
+            kts = [knowledge_type] if isinstance(knowledge_type, str) else list(knowledge_type)
+            params.append(kts)
+            kt_filter = "AND knowledge_type = ANY($6)"
+        sql = f"""
+            WITH dense AS (
+                SELECT ku_id, row_number() OVER (ORDER BY embedding <=> $1) AS rnk
+                FROM aii.ku_onto
+                WHERE embedding IS NOT NULL {kt_filter}
+                ORDER BY embedding <=> $1 LIMIT $3
+            ),
+            lex AS (
+                SELECT ku_id, row_number() OVER (ORDER BY ts_rank_cd(fts, q) DESC) AS rnk
+                FROM aii.ku_onto, websearch_to_tsquery('english', $2) q
+                WHERE fts @@ q {kt_filter}
+                ORDER BY ts_rank_cd(fts, q) DESC LIMIT $3
+            ),
+            fused AS (
+                SELECT ku_id, sum(1.0 / ($4 + rnk)) AS score
+                FROM (SELECT ku_id, rnk FROM dense
+                      UNION ALL
+                      SELECT ku_id, rnk FROM lex) u
+                GROUP BY ku_id
+            )
+            SELECT k.*, f.score AS rrf_score, (k.embedding <=> $1) AS distance
+            FROM fused f JOIN aii.ku_onto k USING (ku_id)
+            ORDER BY f.score DESC LIMIT $5
+        """
+        async with pool.acquire() as conn:
+            records = await conn.fetch(sql, *params)
+        return [dict(r) for r in records]
+
     async def record_state_change(self, ku_id: str, to_grade: str, reason: str | None = None, decision_trail: dict[str, Any] | None = None) -> None:
         pool = await self._ensure_pool()
         async with transaction(pool) as conn:
@@ -865,5 +908,23 @@ class PgBackend(StorageBackend, EpistemicStore):
     # ── end P3 ─────────────────────────────────────────────────────────────
 
     async def search_synthesis_kus(self, query_vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
-        """onto: 综合(KC)无向量列, 不做向量检索 → 返回空; chat 回退到常规 KU 检索."""
+        """onto: 综合(KC)无向量列, 不做向量检索 → 返回空; chat 回退到常规 KU 检索.
+        ★已被 search_kc_by_vector 取代(KC 0004 迁移加了向量列). 保留兼容旧调用."""
         return []
+
+    async def search_kc_by_vector(self, query_vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
+        """★社区/知识簇(KC)摘要向量检索 — global '综述/体系' 问题的正解(GraphRAG global search).
+        需先 0004 迁移 + embed_kc_summaries.py 补向量. 无向量的 KC 不参与检索."""
+        pool = await self._ensure_pool()
+        sql = """
+            SELECT kc_id, substrate_id, level, community_label, summary, summary_en,
+                   member_ku_ids, core_concept_id, grade, synthesis_marker,
+                   embedding <=> $1 AS distance
+            FROM aii.kc_onto
+            WHERE embedding IS NOT NULL
+            ORDER BY embedding <=> $1
+            LIMIT $2
+        """
+        async with pool.acquire() as conn:
+            records = await conn.fetch(sql, query_vector, limit)
+        return [dict(r) for r in records]
