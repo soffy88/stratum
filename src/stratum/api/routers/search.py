@@ -36,25 +36,59 @@ async def search(req: SearchRequest, user_id: str = Depends(jwt_auth)):
         return {"results": [], "citations": [], "search_time_ms": 0, "scope_hits": {}}
 
     from stratum.api.search_utils import get_tantivy_mgr, get_lancedb_mgr
-    
-    result = await asyncio.to_thread(
-        cross_layer_search,
-        query=req.query,
-        mode=req.mode,
-        top_k=req.top_k,
-        pinned_boost=req.pinned_boost,
-        medium_filter=req.medium_filter,
-        domain_filter=req.domain_filter,
-        date_range=req.date_range,
-        lancedb_mgr=get_lancedb_mgr(),
-        tantivy_mgr=get_tantivy_mgr(),
-        pgvector_mgr=None,
-    )
+
+    lancedb_mgr = get_lancedb_mgr()
+    tantivy_mgr = get_tantivy_mgr()
+
+    async def _run(q: str):
+        return await asyncio.to_thread(
+            cross_layer_search,
+            query=q,
+            mode=req.mode,
+            top_k=req.top_k,
+            pinned_boost=req.pinned_boost,
+            medium_filter=req.medium_filter,
+            domain_filter=req.domain_filter,
+            date_range=req.date_range,
+            lancedb_mgr=lancedb_mgr,
+            tantivy_mgr=tantivy_mgr,
+            pgvector_mgr=None,
+        )
+
+    # Multi-query retrieval: when expand=True, fan out over LLM query variants and
+    # union results (best score per id). The first run keeps citations/scope_hits.
+    if req.expand:
+        from stratum.service.rerank import expand_query
+
+        queries = await asyncio.to_thread(expand_query, req.query, num_variants=3)
+        first = await _run(queries[0])
+        merged: dict[str, object] = {r.id: r for r in first.results}
+        for q in queries[1:]:
+            extra = await _run(q)
+            for r in extra.results:
+                prev = merged.get(r.id)
+                if prev is None or getattr(r, "score", 0) > getattr(prev, "score", 0):
+                    merged[r.id] = r
+        result = first
+        pool = sorted(
+            merged.values(), key=lambda r: getattr(r, "score", 0), reverse=True
+        )
+    else:
+        result = await _run(req.query)
+        pool = list(result.results)
 
     # Defensive post-filter: when a result carries user_id (set by user-scoped
     # backends), reject rows that don't belong to the authenticated user.
     # Rows without user_id pass through — isolation is then the manager's job.
-    own = [r for r in result.results if getattr(r, "user_id", None) in (None, user_id)]
+    own = [r for r in pool if getattr(r, "user_id", None) in (None, user_id)]
+
+    # LLM-judge rerank (opt-in). Runs on the candidate pool before truncation.
+    if req.rerank and own:
+        from stratum.service.rerank import rerank_results
+
+        own = await asyncio.to_thread(
+            rerank_results, req.query, own, top_k=req.top_k
+        )
 
     return {
         "results": [

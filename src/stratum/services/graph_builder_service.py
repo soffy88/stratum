@@ -10,6 +10,7 @@ GraphRAG Stage A: 入库后从 derivative.content 抽实体+关系写入 graph_e
 import asyncio
 import json
 import logging
+import os
 from stratum.db import get_conn
 from stratum.dao.graph import upsert_entity, upsert_relation
 
@@ -32,6 +33,9 @@ _EXTRACT_PROMPT = """从以下文本中抽取实体和关系。
 
 _MAX_CHUNK_CHARS = 2000
 _MAX_ENTITIES_PER_SUBSTRATE = 30
+# Per-substrate chunk budget for entity extraction. Raised from a hard 5 so long
+# books are not severely under-sampled; still bounded to cap LLM cost. Tunable.
+_MAX_CHUNKS = int(os.environ.get("STRATUM_GRAPH_MAX_CHUNKS", "20"))
 
 
 async def build_graph_from_substrate(substrate_id: str, user_id_hash: str) -> dict:
@@ -76,8 +80,9 @@ async def build_graph_from_substrate(substrate_id: str, user_id_hash: str) -> di
 
     # 3. 每 chunk LLM 抽取（通过 ProviderRegistry 走已注册的 caller，run in thread）
     from obase import ProviderRegistry as _PR
-    _llm_caller = _PR.get().llm("qwen3_dashscope")
-    for chunk_text in chunks[:5]:
+    # Local Ollama provider (registered in main.py); DashScope path is in arrears.
+    _llm_caller = _PR.get().llm("qwen3")
+    for chunk_text in chunks[:_MAX_CHUNKS]:
         try:
             raw = await asyncio.to_thread(
                 _llm_caller,
