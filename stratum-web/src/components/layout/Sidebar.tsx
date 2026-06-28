@@ -7,6 +7,7 @@ import {
   Search, Compass, FileText, Rss, Clock, Network, StickyNote,
   Highlighter, LayoutGrid, Share2, Sparkles, CheckSquare, User, Shield, Settings,
   Menu, PanelLeftClose, Brain, Layers, TrendingUp, ShieldCheck, Gauge, Sun, Moon,
+  Library,
 } from 'lucide-react';
 import { create } from 'zustand';
 import { getTheme, setTheme, type Theme } from '@/lib/theme';
@@ -83,6 +84,7 @@ const NAV: NavGroup[] = [
   ] },
   { title: 'AII 认知引擎', items: [
     { href: '/dashboard', label: '认知看板', icon: Gauge },
+    { href: '/books', label: '书单元', icon: Library },
     { href: '/knowledge', label: '知识单元', icon: Brain },
     { href: '/clusters', label: '知识簇', icon: Layers },
     { href: '/evolution', label: '演化', icon: TrendingUp },

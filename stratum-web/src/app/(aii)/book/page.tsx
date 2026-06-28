@@ -62,7 +62,6 @@ export default function BookPage() {
         <h1 className="text-xl font-semibold">书级理解 / Book Understanding</h1>
         <p className="text-sm text-[color:var(--text-secondary)]">
           先选书 → 看 BU 懂这本书是什么、值不值得读 → 再选 KC 主题 → 读 KU 讲透知识。
-          <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-[color:var(--alert-warn-bg,#fef3c7)] text-[color:var(--alert-warn-fg,#78350f)] border border-[color:var(--alert-warn,#d97706)]/40">AII 综合 · 非原文断言</span>
         </p>
         {books.length > 0 && (
           <div className="flex gap-2 mt-1 flex-wrap">
