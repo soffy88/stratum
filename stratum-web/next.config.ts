@@ -32,6 +32,13 @@ const config: NextConfig = {
   // (vendored tarballs) instead of the local stub. These ship ESM/TS and must
   // be transpiled by Next.
   transpilePackages: ["@helios/blocks", "@helios/oui"],
+  async redirects() {
+    return [
+      // 这两个页面不存在(导航已指向 /profile、/jobs);兜底旧链接/书签不再 404。
+      { source: "/my", destination: "/profile", permanent: false },
+      { source: "/tasks", destination: "/jobs", permanent: false },
+    ];
+  },
   async rewrites() {
     return [
       // AII epistemic-engine backend — must come before the catch-alls below.
