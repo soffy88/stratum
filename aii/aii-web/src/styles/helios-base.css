@@ -1,0 +1,474 @@
+/* =============================================================================
+   @helios/blocks — base.css
+   2026 现代 CSS 基础层
+   ─────────────────────────────────────────────────────────────────────────────
+   包含:
+   • 全局 CSS 变量 (动效 / 间距 / 字体 / 响应式 token)
+   • @layer base 重置
+   • container query 工具
+   • @starting-style 入场动画
+   • reduced-motion 兜底
+   ============================================================================= */
+
+/* ─────────────────────────────────────────────
+   全局 token — 所有主题都继承这些基础值
+   各主题可覆盖,但不能减少
+   ───────────────────────────────────────────── */
+/* cascade layer 顺序声明 — 必须在所有 @layer block 之前 */
+@layer helios-tokens, helios-base, helios-components, helios-utilities;
+
+:root {
+
+  /* ── 动效 token ────────────────────────────
+     使用方:
+       transition: opacity var(--duration-fast) var(--ease-out);
+       animation: slide-in var(--duration-base) var(--ease-spring);
+  */
+  --duration-instant: 50ms;
+  --duration-fast:    100ms;
+  --duration-base:    160ms;
+  --duration-slow:    280ms;
+  --duration-enter:   240ms;
+  --duration-exit:    180ms;
+
+  /* CSS Easing — 命名比 cubic-bezier 数字更可读 */
+  --ease-linear:  linear;
+  --ease-in:      cubic-bezier(0.32, 0, 1, 1);
+  --ease-out:     cubic-bezier(0, 0, 0.58, 1);
+  --ease-in-out:  cubic-bezier(0.42, 0, 0.58, 1);
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);   /* 弹性 */
+  --ease-bounce:  cubic-bezier(0.34, 1.30, 0.64, 1);   /* 轻弹 */
+  --ease-snappy:  cubic-bezier(0.23, 1, 0.32, 1);      /* 快进慢出 */
+
+  /* ── 间距 token ────────────────────────────
+     基于 4px grid。命名对应 Tailwind scale。
+  */
+  --space-0:   0px;
+  --space-px:  1px;
+  --space-0-5: 2px;
+  --space-1:   4px;
+  --space-1-5: 6px;
+  --space-2:   8px;
+  --space-2-5: 10px;
+  --space-3:   12px;
+  --space-3-5: 14px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-7:   28px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-20:  80px;
+
+  /* ── 字体 token ─────────────────────────────
+     text-* 用于 font-size,lh-* 用于 line-height。
+     支持 fluid typography (clamp)。
+  */
+  --text-xs:   0.6875rem;  /* 11px */
+  --text-sm:   0.8125rem;  /* 13px */
+  --text-base: 0.9375rem;  /* 15px */
+  --text-md:   1rem;       /* 16px */
+  --text-lg:   1.125rem;   /* 18px */
+  --text-xl:   1.25rem;    /* 20px */
+  --text-2xl:  1.5rem;     /* 24px */
+  --text-3xl:  1.875rem;   /* 30px */
+  --text-4xl:  2.25rem;    /* 36px */
+  /* fluid headline: 从 20px (375px屏) 到 36px (1280px屏) */
+  --text-display: clamp(1.25rem, 1rem + 2.5vw, 2.25rem);
+
+  --lh-tight:   1.2;
+  --lh-snug:    1.375;
+  --lh-normal:  1.5;
+  --lh-relaxed: 1.625;
+  --lh-loose:   2;
+
+  --fw-normal:  400;
+  --fw-medium:  500;
+  --fw-semibold:600;
+  --fw-bold:    700;
+  --fw-black:   900;
+
+  --ls-tight:   -0.04em;
+  --ls-snug:    -0.02em;
+  --ls-normal:  0;
+  --ls-wide:    0.04em;
+  --ls-wider:   0.08em;
+  --ls-caps:    0.06em;   /* 全大写字母间距 */
+
+  /* ── 响应式 viewport token ──────────────────
+     用 svh/dvh/lvh 替代 100vh (解决移动端浏览器 chrome bar 问题)
+  */
+  --vh-small:    100svh;   /* 小视口 (浏览器栏展开时) */
+  --vh-dynamic:  100dvh;   /* 动态视口 (随滚动变化) */
+  --vh-large:    100lvh;   /* 大视口 (浏览器栏收起时) */
+
+  /* ── 模糊 / 玻璃效果 token ──────────────────*/
+  --blur-xs:  4px;
+  --blur-sm:  8px;
+  --blur-md:  12px;
+  --blur-lg:  20px;
+  --blur-xl:  40px;
+
+  /* ── Z-index 层级 token ─────────────────────*/
+  --z-hide:     -1;
+  --z-base:      0;
+  --z-raised:   10;
+  --z-dropdown: 100;
+  --z-sticky:   200;
+  --z-overlay:  300;
+  --z-modal:    400;
+  --z-popover:  500;
+  --z-toast:    600;
+  --z-tooltip:  700;
+}
+
+/* ─────────────────────────────────────────────
+   @layer base — 现代 CSS 重置
+   ───────────────────────────────────────────── */
+@layer helios-base {
+
+  /* box-sizing 全局 */
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  /* 根元素 — 开启 subpixel antialiasing */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    tab-size: 2;
+    /* 字体渲染 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* 滚动行为 */
+    scroll-behavior: smooth;
+    /* 防止内容溢出时出现横向滚动 */
+    overflow-x: clip;
+  }
+
+  body {
+    line-height: var(--lh-normal);
+    font-size: var(--text-base);
+    /* 防止孤行/寡行 */
+    orphans: 2;
+    widows: 2;
+  }
+
+  /* 标题 — text-wrap: balance 让换行均匀 */
+  h1, h2, h3, h4, h5, h6 {
+    text-wrap: balance;
+    letter-spacing: var(--ls-snug);
+    line-height: var(--lh-tight);
+  }
+
+  /* 正文段落 — text-wrap: pretty 避免孤字 */
+  p {
+    text-wrap: pretty;
+  }
+
+  /* 图片 — 防止图片溢出容器 */
+  img, video, svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* 交互元素 — 统一光标 */
+  button, [role="button"], [type="button"], [type="submit"] {
+    cursor: pointer;
+  }
+
+  /* 禁用状态 */
+  [disabled], [aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  /* focus-visible — 只在键盘导航时显示 */
+  :focus-visible {
+    outline: 2px solid var(--ring, var(--primary, #3b82f6));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* 去掉点击时的高亮 (用 CSS 动效代替) */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 减少动画 (accessibility) */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+/* ─────────────────────────────────────────────
+   Container query 工具
+   设置 container-type 让子组件用 @container
+   ───────────────────────────────────────────── */
+.o-container {
+  container-type: inline-size;
+  container-name: block-container;
+}
+
+.o-container-size {
+  container-type: size;
+}
+
+/* ─────────────────────────────────────────────
+   入场动画 — 使用 @starting-style (Chrome 117+)
+   配合 CSS transitions 不需要 JS
+   ───────────────────────────────────────────── */
+.o-animate-fade-in {
+  opacity: 1;
+  transition: opacity var(--duration-enter) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+.o-animate-slide-up {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity var(--duration-enter) var(--ease-out),
+    transform var(--duration-enter) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.o-animate-scale-in {
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity var(--duration-fast) var(--ease-spring),
+    transform var(--duration-fast) var(--ease-spring);
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* ─────────────────────────────────────────────
+   交互 utility — 所有项目复用
+   ───────────────────────────────────────────── */
+
+/* 可点击元素统一 press 动效 */
+.o-interactive {
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+  user-select: none;
+}
+.o-interactive:hover  { opacity: 0.92; }
+.o-interactive:active { transform: scale(0.97); opacity: 0.85; }
+
+/* 卡片 hover lift */
+.o-lift {
+  transition:
+    transform var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out);
+}
+.o-lift:hover  {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg, 0 8px 24px oklch(0 0 0 / 0.12));
+}
+.o-lift:active {
+  transform: translateY(0) scale(0.99);
+  box-shadow: var(--shadow-sm, 0 1px 4px oklch(0 0 0 / 0.08));
+  transition-duration: var(--duration-fast);
+}
+
+/* ─────────────────────────────────────────────
+   Scroll-driven fade-in (Chrome 115+)
+   在支持的浏览器里自动触发,不支持的直接显示
+   ───────────────────────────────────────────── */
+@supports (animation-timeline: scroll()) {
+  .o-scroll-reveal {
+    animation: o-reveal-fade linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 25%;
+  }
+
+  @keyframes o-reveal-fade {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: none; }
+  }
+}
+
+/* ─────────────────────────────────────────────
+   @property — 注册可动画 CSS 变量 (P1-5 修复)
+   没有 @property 注册的变量不能被 transition 插值。
+   注册后: transition: --pct 0.5s ease → 圆环平滑动画
+   ───────────────────────────────────────────── */
+
+@property --pct {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --ring-pct {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+
+/* 置信度颜色插值 — 0→100% 时颜色从红到绿平滑变化 */
+@property --confidence-hue {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 25;  /* 红 */
+}
+
+/* ─────────────────────────────────────────────
+   cascade layers 完整体系 (P2-9 修复)
+   消费方: @layer utilities { ... } 可无痛覆盖
+   ───────────────────────────────────────────── */
+
+
+/* ─────────────────────────────────────────────
+   light-dark() 自动深浅色 (P1-5 修复)
+   配合 color-scheme 实现系统级暗色感知。
+   各主题可覆盖 color-scheme。
+   ───────────────────────────────────────────── */
+@layer helios-utilities {
+
+  /* 工具类: 让元素跟随系统色系 */
+  .o-color-adaptive {
+    color-scheme: light dark;
+  }
+
+  /* 让可读文字自动深浅 */
+  .o-text-adaptive {
+    color: light-dark(var(--foreground), var(--foreground));
+  }
+
+  /* ─────────────────────────────────────────────
+     View Transitions helper (P1-5 修复)
+     ───────────────────────────────────────────── */
+
+  /* 页面切换 — 渐变淡入淡出 */
+  ::view-transition-old(root) {
+    animation: o-vt-fade-out var(--duration-exit, 180ms) var(--ease-in) forwards;
+  }
+  ::view-transition-new(root) {
+    animation: o-vt-fade-in var(--duration-enter, 240ms) var(--ease-out) forwards;
+  }
+
+  @keyframes o-vt-fade-out {
+    to { opacity: 0; }
+  }
+  @keyframes o-vt-fade-in {
+    from { opacity: 0; }
+  }
+
+  /* 局部元素切换 — 命名 view transition */
+  .o-vt-card {
+    view-transition-name: var(--vt-name, none);
+  }
+
+  /* reduced-motion: 跳过动画 */
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation: none;
+    }
+  }
+
+  /* ─────────────────────────────────────────────
+     content-visibility 长列表优化 (P2-7 修复)
+     ───────────────────────────────────────────── */
+
+  /* 用于长列表行 — 跳过屏外渲染 */
+  .o-cv-auto {
+    content-visibility: auto;
+    /* 估算高度 — 避免滚动条跳动 */
+    contain-intrinsic-size: auto 48px;
+  }
+
+  .o-cv-row-sm  { content-visibility: auto; contain-intrinsic-size: auto 32px; }
+  .o-cv-row-md  { content-visibility: auto; contain-intrinsic-size: auto 48px; }
+  .o-cv-row-lg  { content-visibility: auto; contain-intrinsic-size: auto 80px; }
+  .o-cv-card    { content-visibility: auto; contain-intrinsic-size: auto 120px; }
+
+  /* ─────────────────────────────────────────────
+     Popover API utility (P1-5 修复)
+     ───────────────────────────────────────────── */
+
+  /* Popover 基础样式 — 配合 HTML popover 属性使用 */
+  [popover] {
+    /* 重置浏览器 <dialog> / popover 默认 */
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    /* 从 top-layer 弹出 */
+    position: fixed;
+    inset: unset;
+  }
+
+  .o-popover {
+    background: var(--popover);
+    color: var(--popover-foreground);
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 0.5rem);
+    box-shadow: var(--shadow-lg);
+    padding: var(--space-1, 4px);
+    min-width: 8rem;
+    /* 入场 */
+    transition:
+      opacity var(--duration-fast, 100ms) var(--ease-out),
+      transform var(--duration-fast, 100ms) var(--ease-out),
+      display var(--duration-fast, 100ms) allow-discrete,
+      overlay var(--duration-fast, 100ms) allow-discrete;
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  @starting-style {
+    .o-popover:popover-open {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+
+  .o-popover:not(:popover-open) {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  /* ─────────────────────────────────────────────
+     字体 CLS 防护 (P2-8 修复)
+     ───────────────────────────────────────────── */
+
+  /* Inter fallback metrics — 防止 Inter 加载前后跳版 */
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;  /* 先用系统字,Inter 加载后切换 */
+    src: local('Inter');  /* 占位,实际 Inter 由消费方 CDN 加载 */
+    /* size-adjust 让 fallback 字体尺寸匹配 Inter */
+    size-adjust: 100%;
+    ascent-override: 90%;
+    descent-override: 22%;
+    line-gap-override: 0%;
+  }
+
+} /* end @layer helios-utilities */

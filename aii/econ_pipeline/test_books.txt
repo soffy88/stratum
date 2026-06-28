@@ -1,0 +1,14 @@
+# ★经济学管道小批测试书单
+# 格式: md绝对路径|substrate_id|书名
+# (substrate_id 若留空自动从 sidecar JSON 读)
+#
+# ── 好书1: 第一本验证过的(357KU+BU, 应被skip=已完整入库) ──
+/home/soffy/shared/stratum-to-aii/Principles_of_Microeconomics_The_Way_We__01KVAJCX.md|microecon_en_full_v2|微观经济学(Principles of Microeconomics)
+#
+# ── 好书2: Principles of Microeconomics The Way We Live(19章,规范格式,未flywheel) ──
+# 注: 此书走全管道需约30-60min LLM调用; 先 DRY_RUN 预检通过再实跑
+/home/soffy/shared/stratum-to-aii/Principles_of_Microeconomics_The_Way_We__01KVAJCX.md|01KVAJCXHEV751E9NTADMZ7RGV|Principles of Microeconomics The Way We Live
+#
+# ── 坏书(故意放质量有问题的): 曼昆宏观(中文, 无标准章节格式) ──
+# 预检应失败(章节检测<3章) → 不进管道, 直接拦截
+/home/soffy/shared/stratum-to-aii/01KVA3P4Q8E529K1GQBSNHTM67.md|01KVA3P4Q8E529K1GQBSNHTM67|经济学原理第7版 宏观经济学分册 曼昆(坏书测试)
