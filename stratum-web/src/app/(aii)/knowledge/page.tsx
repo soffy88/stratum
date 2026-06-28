@@ -29,9 +29,21 @@ const GRADE_OPTS: OFilterChipOption[] = (
   ['proven','high','moderate','low','unverified','contradicted'] as EpistemicGrade[]
 ).map(g => ({ value: g, label: EPISTEMIC_GRADE_LABEL[g].zh }));
 
+/** KU 类型 → 中文标签。覆盖 AII 后端词表(onto_vocab VALID_KNOWLEDGE_TYPES）
+ *  + 兼容旧 mock 值。未知值回退原文。 */
+const KNOWLEDGE_TYPE_LABEL: Record<string, string> = {
+  conceptual: '概念', rationale: '原理', factual: '事实', metacognitive: '元认知',
+  positional: '立场', procedural: '方法', classification: '分类', conditional: '条件',
+  principle: '原则', self_knowledge: '自我认知', skill: '技能', strategic: '策略',
+  task_knowledge: '任务', technique: '技巧', theory: '理论',
+  theorem: '定理', definition: '定义', concept: '概念', claim: '论断',
+  method: '方法', observation: '观察', example: '示例',
+};
+const ktLabel = (t?: string | null) => (t ? (KNOWLEDGE_TYPE_LABEL[t] ?? t) : '');
+
 const TYPE_OPTS: OFilterChipOption[] = (
-  ['theorem','definition','concept','claim','method','observation'] as KnowledgeType[]
-).map(t => ({ value: t, label: t }));
+  ['conceptual','rationale','factual','procedural','metacognitive','positional'] as unknown as KnowledgeType[]
+).map(t => ({ value: t, label: ktLabel(t) }));
 
 /** 双语:中文(简体)主显 + 英文原文折叠(箭头展开)。无中文时回退英文。 */
 function BilingualText({ zh, en }: { zh?: string | null; en: string }) {
@@ -77,7 +89,7 @@ function KuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
           <>
             <div className="flex items-center gap-2 flex-wrap">
               <OEpistemicBadge grade={d.grade} defeaterCount={d.defeater_count} />
-              <span className="text-xs px-2 py-0.5 rounded-full border border-[color:var(--border)]">{d.knowledge_type}</span>
+              <span className="text-xs px-2 py-0.5 rounded-full border border-[color:var(--border)]">{ktLabel(d.knowledge_type)}</span>
               {d.merge_count > 1 && (
                 <span className="text-xs px-2 py-0.5 rounded-full bg-[color:var(--accent,#2563eb)]/15 text-[color:var(--accent,#2563eb)] border border-[color:var(--accent,#2563eb)]/30">
                   多书共有 ×{d.merge_count}
@@ -211,8 +223,7 @@ function KnowledgePage() {
                 className="rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-3 flex flex-col gap-2 cursor-pointer hover:border-[color:var(--accent,#2563eb)]/50 transition-colors"
               >
                 <div className="flex items-center gap-2 flex-wrap">
-                  <OEpistemicBadge grade={ku.grade} defeaterCount={ku.defeater_count} compact />
-                  <span className="text-xs px-1.5 py-0.5 rounded border border-[color:var(--border)] text-[color:var(--text-secondary)]">{ku.knowledge_type}</span>
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-[color:var(--muted,#f3f4f6)] text-[color:var(--text-secondary)]">{ktLabel(ku.knowledge_type)}</span>
                   {ku.merge_count > 1 && (
                     <span className="text-xs px-1.5 py-0.5 rounded-full bg-[color:var(--accent,#2563eb)]/15 text-[color:var(--accent,#2563eb)]">多书共有 ×{ku.merge_count}</span>
                   )}
