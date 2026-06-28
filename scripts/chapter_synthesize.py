@@ -206,7 +206,23 @@ def _extract_skeleton(text: str, name: str, pos: int):
         frag = m.group(1).strip()
         if re.search(r'[\d%ε]', frag):
             _add_extra("Formula: " + frag)
-    return bold_def, ordered, extras[:3]
+    # ★表格数据(不只标题): 从 pipe 表抽"标签=数值"数据行(经济书数据表的实质内容)
+    # OCR 表多空格列/分隔/标题行; 严格留"文字标签 + 真数值"行, 跳过 Table/Figure 标题行
+    tbl = []
+    for line in win.split("\n"):
+        if line.count("|") < 2:
+            continue
+        cells = [c.strip(" *") for c in line.strip().strip("|").split("|")]
+        cells = [c for c in cells if c and not re.fullmatch(r'-{2,}', c)]
+        if len(cells) < 2 or any(re.search(r'\b(Table|Figure|Exhibit)\b', c, re.I) for c in cells):
+            continue
+        labels = [c for c in cells if re.search(r'[A-Za-z一-鿿]{3,}', c)]
+        nums = [c for c in cells if re.fullmatch(r'[-+]?\$?\d[\d,]*\.?\d*\s*%?', c.strip())]
+        if labels and nums:
+            tbl.append(f"{labels[0]} = {nums[0]}")
+    for row in list(dict.fromkeys(tbl))[:4]:
+        _add_extra("Data: " + row)
+    return bold_def, ordered, extras[:5]
 
 
 def _facets(typ):
