@@ -80,6 +80,27 @@ async def unsubscribe(sub_id: str, user_id: str = Depends(jwt_auth)):
     with get_conn() as conn:
         conn.execute("DELETE FROM channel_subscriptions WHERE id = ? AND user_id = ?", (sub_id, uh))
 
+@router.post("/api/v1/channels/{sub_id}/mark-processed")
+async def mark_videos_processed(sub_id: str, body: dict, user_id: str = Depends(jwt_auth)):
+    uh = hash_user_id(user_id)
+    video_ids: list[str] = body.get("video_ids", [])
+    if not video_ids:
+        return {"ok": True, "inserted": 0}
+    with get_conn() as conn:
+        # verify ownership
+        row = conn.execute(
+            "SELECT id FROM channel_subscriptions WHERE id=? AND user_id=?", (sub_id, uh)
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Subscription not found")
+        for vid in video_ids:
+            conn.execute(
+                "INSERT INTO channel_processed_videos (subscription_id, video_id) "
+                "VALUES (?, ?) ON CONFLICT DO NOTHING",
+                (sub_id, vid)
+            )
+    return {"ok": True, "inserted": len(video_ids)}
+
 @router.patch("/api/v1/channels/{sub_id}")
 async def toggle_channel(sub_id: str, body: dict, user_id: str = Depends(jwt_auth)):
     uh = hash_user_id(user_id)
