@@ -1,18 +1,11 @@
-@import "tailwindcss";
+/* Tailwind is already loaded globally by the root layout's globals.css — do NOT
+   re-import it here (double Tailwind + AII's global html/body override leaked into
+   Stratum pages and broke the responsive Sidebar). Keep only the @helios component
+   styles + the AII-scoped .aii-* utilities below. */
 @import "@helios/blocks/styles.css";
 @import "@helios/blocks/themes/base.css";
 @import "@helios/blocks/themes/professional.css";
 @import "@helios/oui/oui.css";
-
-/* ── AII 全局覆盖 ── */
-html, body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans, system-ui, sans-serif);
-  font-size: var(--text-base, 0.9375rem);
-  line-height: var(--lh-normal, 1.5);
-}
-body { min-width: 0; }   /* 允许窄屏,让 OAppShell grid 接管 */
 
 /* ── sidebar 宽度覆盖:REQ-004 要求 240px ── */
 :root {
