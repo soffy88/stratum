@@ -80,14 +80,21 @@ class SynthesisEngine:
         self.backend = backend
 
     async def chat(self, message: str) -> dict[str, Any]:
-        """Process a user message. Routes to Local (detail KU) or Global (synthesis KU) path."""
-        has_strong_global = any(kw in message for kw in _GLOBAL_STRONG)
-        has_weak_global = any(kw in message for kw in _GLOBAL_WEAK)
-        has_local = any(kw in message for kw in _LOCAL_KW)
-        is_global = has_strong_global or (has_weak_global and not has_local)
-        if is_global:
+        """Process a user message. Routes via LLM intent(global/grounded/chitchat); 关键词兜底."""
+        import os as _os
+        intent = None
+        if _os.getenv("AII_LLM_ROUTER", "1") == "1":
+            try:
+                from aii.service.query_understanding import route_intent
+                intent = await route_intent(ProviderRegistry.get().llm("default"), message)
+            except Exception as e:
+                logger.warning("LLM router failed, keyword fallback: %s", e)
+        if intent is None:
+            from aii.service.query_understanding import _keyword_route
+            intent = _keyword_route(message)
+        if intent == "global":
             return await self._handle_global(message)
-        if has_local or any(kw in message for kw in ["靠谱吗", "？", "?", "建议"]):
+        if intent == "grounded":
             return await self._handle_grounded(message)
         return await self._handle_chitchat(message)
 
@@ -118,6 +125,18 @@ class SynthesisEngine:
                 "is_synthesis": True,
                 "community_label": kc.get("community_label"),
             } for kc in kcs if (kc.get("summary_en") or kc.get("summary"))]
+            # ★GraphRAG 社区→细节下钻: 取最相关 KC 的少量成员 KU 作具体支撑(摘要+实证)
+            try:
+                top_members = (kcs[0].get("member_ku_ids") or [])
+                if isinstance(top_members, str):
+                    top_members = _json.loads(top_members)
+                if top_members:
+                    detail = await self.backend.get_kus_by_ids([str(m) for m in top_members[:3]])
+                    for d in detail:
+                        kc_ctx.append({"ku_id": str(d["ku_id"]), "natural_text": d.get("natural_text", ""),
+                                       "grade": d.get("grade", "unverified"), "is_synthesis": False})
+            except Exception as _e:
+                logger.warning("KC member drilldown failed: %s", _e)
             grades = [k["grade"] for k in kc_ctx]
             try:
                 confidence = ecc_fn(grades=grades)
@@ -309,6 +328,21 @@ class SynthesisEngine:
 
         # Merge vector results + graph-expanded (vector-primary, graph補充)
         results = list(results) + extra_kus[:3]
+
+        # ★HyDE 回退: 低召回时用假设答案重新编码再检索一次(缩小问答语义差)再判无知识
+        if (not results or best_dist > 0.75) and _os.getenv("AII_HYDE", "1") == "1":
+            try:
+                from aii.service.query_understanding import hyde_embed
+                _embed_fn = ProviderRegistry.get()._generic.get("embedding", {}).get("default")
+                hv = await hyde_embed(ProviderRegistry.get().llm("default"), _embed_fn, query)
+                if hv:
+                    hres = await self.backend.search_ku_hybrid(hv, query, limit=15)
+                    hbest = min((c.get("distance", 1.0) for c in hres), default=1.0)
+                    if hbest < best_dist:
+                        logger.info("HyDE improved recall: %.3f -> %.3f", best_dist, hbest)
+                        results, best_dist = hres[:3], hbest
+            except Exception as _e:
+                logger.warning("HyDE fallback failed: %s", _e)
 
         # 2. No Knowledge Check
         # Threshold: cosine distance > 0.75 (similarity < 0.25); BGE-M3 typical semantic match ~0.65
