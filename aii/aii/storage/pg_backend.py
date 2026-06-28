@@ -313,11 +313,11 @@ class PgBackend(StorageBackend, EpistemicStore):
         (走 idx_ku_onto_type 索引). 不传 → 全类."""
         pool = await self._ensure_pool()
         params: list = [query_vector, limit]
-        where = ""
+        where = "WHERE valid_until IS NULL"  # 只检索当前版本(被 supersede 的旧版排除)
         if knowledge_type:
             kts = [knowledge_type] if isinstance(knowledge_type, str) else list(knowledge_type)
             params.append(kts)
-            where = "WHERE knowledge_type = ANY($3)"
+            where += " AND knowledge_type = ANY($3)"
         sql = f"""
             SELECT *, embedding <=> $1 AS distance
             FROM aii.ku_onto
@@ -348,13 +348,13 @@ class PgBackend(StorageBackend, EpistemicStore):
             WITH dense AS (
                 SELECT ku_id, row_number() OVER (ORDER BY embedding <=> $1) AS rnk
                 FROM aii.ku_onto
-                WHERE embedding IS NOT NULL {kt_filter}
+                WHERE embedding IS NOT NULL AND valid_until IS NULL {kt_filter}
                 ORDER BY embedding <=> $1 LIMIT $3
             ),
             lex AS (
                 SELECT ku_id, row_number() OVER (ORDER BY ts_rank_cd(fts, q) DESC) AS rnk
                 FROM aii.ku_onto, websearch_to_tsquery('english', $2) q
-                WHERE fts @@ q {kt_filter}
+                WHERE fts @@ q AND valid_until IS NULL {kt_filter}
                 ORDER BY ts_rank_cd(fts, q) DESC LIMIT $3
             ),
             fused AS (
@@ -371,6 +371,18 @@ class PgBackend(StorageBackend, EpistemicStore):
         async with pool.acquire() as conn:
             records = await conn.fetch(sql, *params)
         return [dict(r) for r in records]
+
+    async def supersede_ku(self, old_ku_id: str, new_ku_id: str | None = None) -> None:
+        """★时序版本: 把旧 KU 标记为被取代(valid_until=now, superseded_by=new), 而非硬删.
+        保留历史、可回溯; 检索默认只返回 valid_until IS NULL 的当前版本.
+        re-ingest 应调本方法替代'删旧行', 让知识演化留痕."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE aii.ku_onto SET valid_until = now(), superseded_by = $2, updated_at = now() "
+                "WHERE ku_id = $1 AND valid_until IS NULL",
+                old_ku_id, new_ku_id,
+            )
 
     async def record_state_change(self, ku_id: str, to_grade: str, reason: str | None = None, decision_trail: dict[str, Any] | None = None) -> None:
         pool = await self._ensure_pool()
