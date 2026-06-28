@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf 
 COPY src/ /app/src/
 COPY pyproject.toml /app/
 
-RUN pip install --no-cache-dir fastapi uvicorn duckdb argon2-cffi pyjwt python-ulid pydantic[email]
+RUN pip install --no-cache-dir fastapi uvicorn duckdb psycopg2-binary argon2-cffi pyjwt python-ulid pydantic[email]
 
 ENV PYTHONPATH=/app/src
 EXPOSE 9302
