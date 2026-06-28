@@ -13,7 +13,10 @@ from datetime import datetime, timezone
 router = APIRouter()
 
 def get_db():
-    db_path = os.path.expanduser("~/.stratum/meta.duckdb")
+    # auth.duckdb is stratum-api's exclusive file (users + sessions).
+    # meta.duckdb is owned by stratum-sl's singleton; sharing it across
+    # containers causes DuckDB write-lock conflicts → 500 on login.
+    db_path = os.path.expanduser("~/.stratum/auth.duckdb")
     conn = duckdb.connect(db_path)
     try: yield conn
     finally: conn.close()
