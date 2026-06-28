@@ -20,17 +20,6 @@ import * as api from '@/aii/lib/api-client';
 import { MathText } from '@/aii/components/MathText';
 import type { KcListItem, KcDetail } from '@/aii/types/api';
 
-function SynthesisTag() {
-  return (
-    <span
-      className="text-xs px-2 py-0.5 rounded-full bg-[color:var(--alert-warn-bg,#fef3c7)] text-[color:var(--alert-warn-fg,#78350f)] border border-[color:var(--alert-warn,#d97706)]/40"
-      title="此摘要由 AII 综合生成,不是原文的直接断言"
-    >
-      AII 综合 · 非原文断言
-    </span>
-  );
-}
-
 function BiText({ zh, en }: { zh: string; en?: string }) {
   const [showEn, setShowEn] = useState(false);
   return (
@@ -54,9 +43,7 @@ function MemberRow({ m, showSource }: { m: KcDetail['members'][number]; showSour
   const zh = m.natural_text_zh || m.natural_text;
   return (
     <div className="rounded-md border border-[color:var(--border)] p-2.5 text-sm flex flex-col gap-1.5">
-      <button onClick={() => setOpen(v => !v)} className="flex items-start gap-2 text-left w-full">
-        <OEpistemicBadge grade={m.grade} compact />
-        <span className="flex-1 min-w-0 leading-relaxed">{m.title || zh.slice(0, 50)}</span>
+      <button onClick={() => setOpen(v => !v)} className="flex items-start gap-2 text-left w-full">        <span className="flex-1 min-w-0 leading-relaxed">{m.title || zh.slice(0, 50)}</span>
         {showSource && m.source_book && (
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[color:var(--accent,#2563eb)]/10 text-[color:var(--accent,#2563eb)] whitespace-nowrap">{m.source_book.split('（')[0]}</span>
         )}
@@ -95,7 +82,6 @@ function KcDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
         {d && (
           <>
             <div className="flex items-center gap-2 flex-wrap">
-              <OEpistemicBadge grade={d.grade} />
               <span className="text-xs text-[color:var(--text-secondary)]">{d.community_size} 个 KU</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -106,9 +92,7 @@ function KcDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
                   : 'bg-[color:var(--text-tertiary,#888)]/15 text-[color:var(--text-secondary)]'
               }`}>{d.kind === 'spectral' ? '跨书主题' : '书内章节'}</span>
             </div>
-            <div className="flex flex-col gap-2">
-              <SynthesisTag />
-              <BiText zh={d.summary} en={d.summary_en} />
+            <div className="flex flex-col gap-2">              <BiText zh={d.summary} en={d.summary_en} />
             </div>
             {d.kind === 'spectral' && (
               <p className="text-xs text-[color:var(--text-tertiary,#888)] leading-relaxed">
@@ -157,7 +141,6 @@ function ClustersPage() {
           {view === 'chapter'
             ? '📖 书内章节结构,按章顺序(固定)。点 KC 看摘要 + 成员 KU。'
             : '🕸 跨书主题,概念关联聚合(随新书加入而增长)。每个主题汇集各书的同类 KU(标来源书)。'}
-          <span className="ml-1"><strong>簇摘要是 AII 综合,非原文断言</strong>。</span>
         </p>
         <div className="flex gap-2 mt-1">
           {([['chapter', '按章 · 书内结构'], ['spectral', '谱社区 · 跨书主题']] as const).map(([v, label]) => (
@@ -189,12 +172,9 @@ function ClustersPage() {
               className="rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-4 flex flex-col gap-2 cursor-pointer hover:border-[color:var(--accent,#2563eb)]/50 transition-colors"
             >
               <div className="flex items-center gap-2 flex-wrap">
-                <OEpistemicBadge grade={kc.grade} compact />
                 <span className="text-xs text-[color:var(--text-tertiary,#888)] ml-auto">{kc.community_size} KU</span>
               </div>
-              <h3 className="text-sm font-medium">{kc.community_label}</h3>
-              <SynthesisTag />
-              <p className="text-xs text-[color:var(--text-secondary)] leading-relaxed line-clamp-3">{kc.summary}</p>
+              <h3 className="text-sm font-medium">{kc.community_label}</h3>              <p className="text-xs text-[color:var(--text-secondary)] leading-relaxed line-clamp-3">{kc.summary}</p>
             </div>
           ))}
         </div>

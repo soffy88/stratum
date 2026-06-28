@@ -84,9 +84,6 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
                 <p className="text-base font-medium text-[color:var(--foreground)]">{(d as any).overview_oneline}</p>
               )}
               <p className="text-[15px] leading-loose text-[color:var(--text-secondary)]">{d.summary}</p>
-              <p className="text-xs text-[color:var(--text-tertiary,#888)]">
-                以下为 AII 综合的书级理解,非原文直接断言;论断带立场标记,论据可信度以色点表示。
-              </p>
             </div>
 
             {/* ★ 核心问题 */}
@@ -235,8 +232,6 @@ export default function BooksPage() {
 
       {items.length > 0 && (
         <>
-          {/* 综合声明:整区顶部一句,不每卡挂橙标 */}
-          <p className="text-xs text-[color:var(--text-tertiary,#888)] -mt-2">以下为 AII 综合的书级理解,非原文直接断言。</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
             {items.map(bu => (
               <div key={bu.id} onClick={() => setDetailId(bu.id)}

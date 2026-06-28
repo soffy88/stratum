@@ -91,7 +91,6 @@ function KuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
         {d && (
           <>
             <div className="flex items-center gap-2 flex-wrap">
-              <OEpistemicBadge grade={d.grade} defeaterCount={d.defeater_count} />
               <span className="text-xs px-2 py-0.5 rounded-full border border-[color:var(--border)]">{ktLabel(d.knowledge_type)}</span>
               {d.merge_count > 1 && (
                 <span className="text-xs px-2 py-0.5 rounded-full bg-[color:var(--accent,#2563eb)]/15 text-[color:var(--accent,#2563eb)] border border-[color:var(--accent,#2563eb)]/30">
