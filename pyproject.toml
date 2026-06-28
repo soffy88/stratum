@@ -14,6 +14,7 @@ dependencies = [
     "structlog>=24.0",
     "tenacity>=8.0",
     "rich>=13.0",
+    "psycopg2-binary>=2.9",  # AII merge P1.5: service-layer store on PostgreSQL (aii-postgres)
 ]
 
 [project.optional-dependencies]
