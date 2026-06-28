@@ -1,26 +1,40 @@
+'use client';
+
 /**
- * (aii) route-group layout — wraps the ported AII pages in the Helios design
- * system (OAppProviders + LangProvider + AppShell). This is a NESTED layout:
- * the <html>/<body> live in the app root layout, so they are NOT repeated here
- * (the original AII root layout had them; removed during the merge).
+ * (aii) route-group layout — the ported AII pages now live INSIDE Stratum's app
+ * shell (same Sidebar + auth as the (app) group), wrapped in the Helios providers
+ * the @helios/blocks components need. This makes AII a set of modules within the
+ * Stratum frontend rather than a separate site.
  */
-import type { Metadata } from 'next';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/stores/auth';
+import { Sidebar } from '@/components/layout/Sidebar';
 import { OAppProviders } from '@helios/oui';
 import { LangProvider } from '@helios/blocks';
-import { AppShell } from '@/aii/components/AppShell';
 import './globals.css';
 
-export const metadata: Metadata = {
-  title: 'AII · 认识论知识图谱 / Epistemic Knowledge Graph',
-  description:
-    'AII — query / ingest / health / diagnose / evolution / governance.',
-};
-
 export default function AiiLayout({ children }: { children: React.ReactNode }) {
+  const { user, isLoading, loadCurrentUser } = useAuthStore();
+  const router = useRouter();
+
+  useEffect(() => { loadCurrentUser(); }, [loadCurrentUser]);
+
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  }
+  if (!user) {
+    router.replace('/login');
+    return null;
+  }
+
   return (
     <OAppProviders theme="professional">
       <LangProvider lang="zh-en">
-        <AppShell>{children}</AppShell>
+        <div className="flex flex-col md:flex-row h-screen">
+          <Sidebar />
+          <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
+        </div>
       </LangProvider>
     </OAppProviders>
   );
