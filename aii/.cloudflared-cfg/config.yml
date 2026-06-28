@@ -1,0 +1,7 @@
+tunnel: 24b59c9e-b7e0-483d-9b13-52d68582cf38
+ingress:
+  - hostname: aii-api.uex.hk
+    service: http://localhost:8101
+  - hostname: aii.uex.hk
+    service: http://localhost:3101
+  - service: http_status:404

@@ -1,0 +1,166 @@
+import asyncio
+import concurrent.futures
+import os
+import logging
+import httpx
+from obase import ProviderRegistry
+from oprim import vector_encode
+
+logger = logging.getLogger(__name__)
+
+
+def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash") -> callable:
+    """Return an async callable compatible with both omodul (messages/system/max_tokens kwargs)
+    and the legacy synthesis_engine (single positional prompt string via executor).
+
+    Signature: async (messages=None, *, system='', max_tokens=4096, **_) -> dict
+    The returned dict has the Anthropic shape: {"content": [{"type": "text", "text": "..."}]}
+    Legacy callers may also call the inner _call_sync_json(prompt: str) -> str directly.
+    _call_sync_json uses response_format=json_object to fix ~70% retry rate in llm_extract_ku.
+    _call_sync (used internally by _call_async for synthesis) does NOT force JSON mode.
+    """
+    _client = httpx.Client(trust_env=False, timeout=120)
+
+    def _call_sync(prompt: str) -> str:
+        """Synchronous DeepSeek call for synthesis (plain text, no JSON mode)."""
+        resp = _client.post(
+            "https://api.deepseek.com/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={"model": model, "messages": [{"role": "user", "content": prompt}]},
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
+
+    def _call_sync_json(prompt: str) -> str:
+        """Synchronous DeepSeek call for extraction (JSON mode → eliminates markdown fence retries)."""
+        resp = _client.post(
+            "https://api.deepseek.com/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "response_format": {"type": "json_object"},
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
+
+    async def _call_async(messages=None, *, system: str = "", max_tokens: int = 4096, **_):
+        """Async omodul-compatible LLM caller (Anthropic message format → Anthropic response dict).
+        Uses plain-text _call_sync (not JSON mode) for synthesis compatibility."""
+        parts: list[str] = []
+        if system:
+            parts.append(system)
+        for msg in (messages or []):
+            if isinstance(msg, dict) and msg.get("role") == "user":
+                parts.append(msg.get("content", ""))
+        combined = "\n\n".join(p for p in parts if p)
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            answer = await loop.run_in_executor(ex, _call_sync, combined)
+        return {"content": [{"type": "text", "text": answer}]}
+
+    # Extraction callers (llm_extract_ku) use call_sync → JSON mode
+    _call_async.call_sync = _call_sync_json
+    return _call_async
+
+
+def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://localhost:11434") -> callable:
+    """Return a caller backed by local Ollama.
+
+    _call_async (synthesis path): plain text, no format=json, 8 k char limit.
+    call_sync (extraction path, llm_extract_ku): format=json for clean JSON output.
+    """
+    _client = httpx.Client(trust_env=False, timeout=600)  # local models: 8 concurrent × ~60s each
+    # 提示字符上限: qwen2.5:7b 默认 8000 够; 大context模型(gemma 128K)可经 env 调大避免裁掉WHY窗口/规划全章
+    _max_chars = int(os.getenv("OLLAMA_PROMPT_CHARS", "8000"))
+
+    def _call_sync(prompt: str) -> str:
+        """KU 抽取用: format=json 强制结构化输出."""
+        resp = _client.post(
+            f"{base_url}/api/generate",
+            json={"model": model, "prompt": prompt[:_max_chars], "stream": False, "format": "json"},
+        )
+        resp.raise_for_status()
+        return resp.json()["response"]
+
+    def _call_sync_plain(prompt: str) -> str:
+        """合成/纯文本用: 不加 format=json, 直接返回自然语言."""
+        resp = _client.post(
+            f"{base_url}/api/generate",
+            json={"model": model, "prompt": prompt[:_max_chars], "stream": False},
+        )
+        resp.raise_for_status()
+        return resp.json()["response"]
+
+    async def _call_async(messages=None, *, system: str = "", max_tokens: int = 4096, **_):
+        """Async wrapper. Uses JSON mode when system prompt requests structured JSON output."""
+        parts: list[str] = []
+        if system:
+            parts.append(system)
+        for msg in (messages or []):
+            if isinstance(msg, dict) and msg.get("role") == "user":
+                parts.append(msg.get("content", ""))
+        combined = "\n\n".join(p for p in parts if p)
+        # Use JSON mode for planning/extraction; plain text for synthesis
+        wants_json = "output valid json" in system.lower() or "output json" in system.lower()
+        caller = _call_sync if wants_json else _call_sync_plain
+        loop = asyncio.get_event_loop()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            answer = await loop.run_in_executor(ex, caller, combined)
+        return {"content": [{"type": "text", "text": answer}]}
+
+    _call_async.call_sync = _call_sync          # extraction: JSON mode
+    _call_async.call_sync_plain = _call_sync_plain  # dedup/plain-text
+    return _call_async
+
+def register_providers():
+    """Register computational providers for AII (A24 Routing).
+
+    ECON_LLM_PROVIDER=ollama  → Ollama becomes the "default" provider (for local testing).
+    OLLAMA_MODEL env var selects the model (default: qwen2.5:7b).
+    """
+    ollama_base = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    ollama_model = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+    use_ollama_as_default = os.getenv("ECON_LLM_PROVIDER", "").lower() == "ollama"
+
+    # 1. LLM Provider (DeepSeek v4) — default=flash (实测够用且最省); pro 备用
+    #    deepseek-chat 别名 2026/07/24 下线, 已显式改 deepseek-v4-flash.
+    api_key = os.getenv("DEEPSEEK_API_KEY")
+    ProviderRegistry.register("llm", "deepseek-flash", _make_deepseek_caller(api_key, model="deepseek-v4-flash"))
+    ProviderRegistry.register("llm", "deepseek-pro", _make_deepseek_caller(api_key, model="deepseek-v4-pro"))
+    if not use_ollama_as_default:
+        ProviderRegistry.register("llm", "default", _make_deepseek_caller(api_key, model="deepseek-v4-flash"))
+
+    # 2. LLM Provider (Ollama) — low-trust sources OR local testing (ECON_LLM_PROVIDER=ollama)
+    try:
+        ollama_caller = _make_ollama_caller(ollama_model, ollama_base)
+        ProviderRegistry.register("llm", "ollama-local", ollama_caller)
+        if use_ollama_as_default:
+            ProviderRegistry.register("llm", "default", ollama_caller)
+            logger.info("Ollama-local registered as DEFAULT: %s @ %s", ollama_model, ollama_base)
+        else:
+            logger.info("Ollama-local provider registered: %s @ %s", ollama_model, ollama_base)
+    except Exception as e:
+        logger.warning("Ollama-local registration failed (non-fatal): %s", e)
+        if use_ollama_as_default:
+            raise RuntimeError(f"ECON_LLM_PROVIDER=ollama but Ollama unavailable: {e}") from e
+
+    # 3. Embedding Provider (Real BGE-M3)
+    from oprim.embedding.bge_m3 import BgeM3Embedder
+    try:
+        embedder = BgeM3Embedder()
+        ProviderRegistry.register("embedding", "default", embedder.embed)
+        logger.info("REAL BGE-M3 Provider registered.")
+    except Exception as e:
+        logger.error(f"Failed to load REAL BGE-M3: {e}")
+
+    default_lbl = f"Ollama({ollama_model})" if use_ollama_as_default else "DeepSeek"
+    logger.info("AII Providers registered: llm/default(%s), embedding/default", default_lbl)
+
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv()
+    register_providers()
+    print(f"LLM default registered: {ProviderRegistry.has('llm', 'default')}")
+    print(f"Embedding default registered: {ProviderRegistry.has('embedding', 'default')}")

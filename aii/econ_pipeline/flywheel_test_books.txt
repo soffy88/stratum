@@ -1,0 +1,5 @@
+# 飞轮小批测试书单
+# 书1: 曼昆宏观 - 预检失败(无章节结构) → 反馈Stratum
+/home/soffy/shared/stratum-to-aii/01KVA3P4Q8E529K1GQBSNHTM67.md|01KVA3P4Q8E529K1GQBSNHTM67|经济学原理第7版 宏观经济学分册 曼昆(坏书-预检应失败)
+# 书2: Mathematics for Economics - _structured.md预检应过 → DRY_RUN停在管道前
+/home/soffy/shared/stratum-to-aii/01KVABDEXD2V985Q9GZWFWPERW_structured.md|01KVABDEXD2V985Q9GZWFWPERW|Mathematics for Economics and Business (Ian Jacques)(好书-预检应过)
