@@ -17,9 +17,18 @@ concurrent connections (one of the reasons for moving off DuckDB).
 from __future__ import annotations
 
 import os
+import re
 import threading
 from contextlib import contextmanager
 from typing import Any
+
+# DuckDB named params `$name` → psycopg2 pyformat `%(name)s`. Some routers/DAOs
+# pass DuckDB-style SQL directly to query()/execute(); translate so both styles work.
+_DOLLAR_RE = re.compile(r"\$(\w+)")
+
+
+def _to_pyformat(sql: str) -> str:
+    return _DOLLAR_RE.sub(r"%(\1)s", sql)
 
 import psycopg2
 import psycopg2.extras
@@ -73,8 +82,12 @@ class _ConnWrapper:
         self._raw = raw
 
     def execute(self, sql: str, params: Any = None) -> Any:
+        # `?` → `%s` (positional); `$name` → `%(name)s` (named). A query uses one
+        # style, matching whether params is a tuple/list or a dict.
         if params is not None and "?" in sql:
             sql = sql.replace("?", "%s")
+        elif "$" in sql:
+            sql = _to_pyformat(sql)
         cur = self._raw.cursor()
         cur.execute(sql, params)
         return cur
@@ -157,8 +170,10 @@ def query(
 ) -> list[dict[str, Any]]:
     """Execute a SELECT and return a list of dicts. Appends LIMIT when absent.
 
-    Router SQL is already psycopg2 `%(name)s` pyformat, so no conversion is needed.
+    Accepts both `%(name)s` pyformat and DuckDB `$name` (translated).
     """
+    if "$" in sql:
+        sql = _to_pyformat(sql)
     if limit and "limit" not in sql.lower():
         sql = sql.rstrip(" ;") + f" LIMIT {limit}"
     with _cursor() as cur:
@@ -209,5 +224,7 @@ def soft_delete(table: str, rid: str, deleted_at_column: str = "deleted_at") -> 
 
 def execute(sql: str, params: dict[str, Any] | None = None) -> None:
     """Run a raw DML statement (UPDATE/DELETE) with no return value."""
+    if "$" in sql:
+        sql = _to_pyformat(sql)
     with _cursor() as cur:
         cur.execute(sql, params)
