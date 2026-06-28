@@ -55,6 +55,36 @@ services:
       retries: 3
       start_period: 15s
 
+  # AII merge P3.5: merged frontend (Stratum base + AII pages) serving aii.uex.hk.
+  # Self-contained image baked from the Next standalone build (deploy/Dockerfile.aii-web).
+  # cloudflared (host net) routes aii.uex.hk → 127.0.0.1:3101, aii-api.uex.hk → :8101.
+  aii-web:
+    image: aii-web:latest
+    container_name: aii-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3101:3101"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - PORT=3101
+      # Stratum backends (same docker network, by service name).
+      - STRATUM_SL_BASE=http://stratum-sl:9304
+      - STRATUM_API_BASE=http://stratum-api:9302
+      # AII epistemic-engine backend runs on the host (uvicorn :8101) → via gateway.
+      - AII_API_BASE=http://172.19.0.1:8101
+      # Injected server-side into /api/aii/* by middleware; passed at `up` time, not committed.
+      - AII_API_KEY=${AII_API_KEY}
+    depends_on:
+      - stratum-api
+      - stratum-sl
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3101/',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
   stratum-nginx:
     image: nginx:1.27-alpine
     container_name: stratum-nginx
