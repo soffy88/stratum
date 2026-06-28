@@ -1,114 +1,57 @@
 [
-  {
-    "query": "Explain the fundamental principle behind using differentials for approximating function values near a known point $x_0$. Your explanation must address:",
-    "gold_ku_id": "advmath_tongji_full::ch2_ku13",
-    "substrate_id": "advmath_tongji_full",
-    "knowledge_type": "procedural",
-    "gold_title": "微分在近似计算中的应用"
-  },
-  {
-    "query": "Calculate the differential $\\mathrm{d}y$ for the following three functions:",
-    "gold_ku_id": "advmath_tongji_full::ch2_ku12",
-    "substrate_id": "advmath_tongji_full",
-    "knowledge_type": "rationale",
-    "gold_title": "基本初等函数的微分公式与微分运算法则"
-  },
-  {
-    "query": "假设我们给定了一个函数$f(x)$和它定义域$D$的一个子集$X$，请问如何用数轴上的常量来形式化描述、$f(x)$在$X$上有上界、下界以及有界的精确数学条件？",
-    "gold_ku_id": "math_calculus::ku_c6_86",
-    "substrate_id": "math_calculus",
-    "knowledge_type": "conceptual",
-    "gold_title": "函数的有界性 (Boundedness of Functions)"
-  },
-  {
-    "query": "证明一个函数 $f(x)$ 的反函数 $f^{-1}(y)$ 存在的前提条件是什么？同时，请利用单调性的定义和假设与矛盾法，系统地论证当 $f$ 在某区间上具有一定单调性时，$f^{-1}$ 是否保持了相同或相反的单调性。在证明过程中需明确阐述如何通过对比输入值和输出值来确定反函数的单调递增/单调递减性质。",
-    "gold_ku_id": "math_calculus::ku_c8_95",
-    "substrate_id": "math_calculus",
-    "knowledge_type": "rationale",
-    "gold_title": "单调函数反函数存在的机制"
-  },
-  {
-    "query": "If $y = e^{f(x)}$, how can we find $\\frac{dy}{dx}$ using the chain rule, and what special property does $e^x$ exhibit regarding its derivative?",
-    "gold_ku_id": "math_calculus_ch2::ku_c6_26",
-    "substrate_id": "math_calculus_ch2",
-    "knowledge_type": "conceptual",
-    "gold_title": "Derivative of natural exponential function equals itself"
-  },
-  {
-    "query": "Given the function $f(x) = |x|$, how can we formally prove that $f'(0)$ does not exist by analyzing the limits of the derivative from both the left and right sides?",
-    "gold_ku_id": "math_calculus_ch2::ku_c6_30",
-    "substrate_id": "math_calculus_ch2",
-    "knowledge_type": "factual",
-    "gold_title": "Absolute value function is not differentiable at zero"
-  },
-  {
-    "query": "Find the equation of the line tangent to the curve $y = x^2 + 1$ that passes through the external point $(-3, 6)$.",
-    "gold_ku_id": "math_calculus_ch2::ku_c8_44",
-    "substrate_id": "math_calculus_ch2",
-    "knowledge_type": "procedural",
-    "gold_title": "Finding tangent line to a curve through an external point"
-  },
-  {
-    "query": "If we are given that a function $y=f(x)$ has an existing derivative at a point $x=a$, how can we rigorously prove, using the definitions of limits and derivatives, that this guarantees the continuity of $f(x)$ at that same point?",
-    "gold_ku_id": "math_calculus_ch2::ku_c8_41",
-    "substrate_id": "math_calculus_ch2",
-    "knowledge_type": "rationale",
-    "gold_title": "Differentiability implies continuity (mechanism)"
-  },
-  {
-    "query": "Explain how changes in input prices (such as wages or raw materials) affect a firm's cost of production and describe the resulting shift in the overall market supply curve.",
-    "gold_ku_id": "micro_clean::ku_c6_75",
-    "substrate_id": "micro_clean",
-    "knowledge_type": "conceptual",
-    "gold_title": "Changes in Input Prices as a Supply Shifter"
-  },
-  {
-    "query": "What are the primary areas of research and professional expertise of R.W. Hafer, including his current academic title and notable previous roles in financial institutions?",
-    "gold_ku_id": "micro_clean::ku_c0_1",
-    "substrate_id": "micro_clean",
-    "knowledge_type": "factual",
-    "gold_title": "R.W. Hafer's expertise in monetary policy and financial markets"
-  },
-  {
-    "query": "How is indifference curve analysis used to graphically determine a consumer's equilibrium choice between multiple goods given their budgetary constraints?",
-    "gold_ku_id": "micro_clean::ku_c5_67",
-    "substrate_id": "micro_clean",
-    "knowledge_type": "procedural",
-    "gold_title": "Indifference Curve Analysis of Consumer Choice"
-  },
-  {
-    "query": "If coffee and cream are considered complementary goods, explain in detail how a significant increase in the price of cream would affect the overall market demand for coffee.",
-    "gold_ku_id": "micro_clean::ku_c5_62",
-    "substrate_id": "micro_clean",
-    "knowledge_type": "rationale",
-    "gold_title": "Why the Price of a Complementary Good Can Shift a Demand Curve"
-  },
-  {
-    "query": "To what extent does measuring income elasticity of demand provide utility across disparate fields, such as macro-level public policy design, international nutritional development, and micro-level corporate investment strategy?",
-    "gold_ku_id": "microecon_en_full_v2::ch11_ku9",
-    "substrate_id": "microecon_en_full_v2",
-    "knowledge_type": "conceptual",
-    "gold_title": "Income elasticity of demand"
-  },
-  {
-    "query": "State Rolle's Mean Value Theorem and clearly outline the necessary conditions required for a function $f$ defined on an interval $[a, b]$ to guarantee the existence of at least one point $\\xi$ in $(a, b)$ where the derivative is zero. What is the geometric interpretation of this theorem?",
-    "gold_ku_id": "shufen_huadong_full::6::罗尔定理与拉格朗日定理",
-    "substrate_id": "shufen_huadong_full",
-    "knowledge_type": "conceptual",
-    "gold_title": "罗尔定理与拉格朗日定理"
-  },
-  {
-    "query": "How can I use Stokes' theorem to simplify a complex surface integral that is difficult to evaluate, especially by converting it into an easier line integral around the boundary curve?",
-    "gold_ku_id": "advmath_tongji_full::11::斯托克斯公式 · 环流量与旋度",
-    "substrate_id": "advmath_tongji_full",
-    "knowledge_type": "conceptual",
-    "gold_title": "斯托克斯公式 · 环流量与旋度"
-  },
-  {
-    "query": "If we are given a function $y = f(x)$, what mathematical conditions must be satisfied for the function to be defined as strictly increasing, strictly decreasing, and generally as a monotonic function over a specified interval $I$?",
-    "gold_ku_id": "math_calculus::ku_c7_89",
-    "substrate_id": "math_calculus",
-    "knowledge_type": "conceptual",
-    "gold_title": "函数的单调性定义"
-  }
+ {"query": "How is the definite integral defined as the limit of Riemann sums of a curvilinear trapezoid's area?", "gold_ku_id": "advmath_tongji_full::5::定积分的概念与性质", "substrate_id": "advmath_tongji_full", "knowledge_type": "conceptual"},
+ {"query": "What is the epsilon-X definition of the limit of a function f(x) as x tends to infinity?", "gold_ku_id": "advmath_tongji_full::1::定义2_s16", "substrate_id": "advmath_tongji_full", "knowledge_type": "conceptual"},
+ {"query": "What does Green's theorem state about converting a line integral over a boundary into a double integral over the region?", "gold_ku_id": "advmath_tongji_full::11::格林公式及其应用", "substrate_id": "advmath_tongji_full", "knowledge_type": "conceptual"},
+ {"query": "What is an antiderivative and what are the basic properties of the indefinite integral?", "gold_ku_id": "advmath_tongji_full::ch4_ku7", "substrate_id": "advmath_tongji_full", "knowledge_type": "conceptual"},
+ {"query": "How do you use the differential dy = f'(x0)Δx to approximate the increment of a function for small Δx?", "gold_ku_id": "advmath_tongji_full::ch2_ku13", "substrate_id": "advmath_tongji_full", "knowledge_type": "procedural"},
+ {"query": "How is the definite integral applied to compute areas of plane figures, volumes, and arc lengths using the element method?", "gold_ku_id": "advmath_tongji_full::ch6_ku5", "substrate_id": "advmath_tongji_full", "knowledge_type": "procedural"},
+ {"query": "How are definite integrals used in physics to compute work done by a variable force and water pressure?", "gold_ku_id": "advmath_tongji_full::ch6_ku6", "substrate_id": "advmath_tongji_full", "knowledge_type": "procedural"},
+ {"query": "How does the second derivative test determine whether a critical point with f'(x0)=0 is a local max or min?", "gold_ku_id": "advmath_tongji_full::3::定理3", "substrate_id": "advmath_tongji_full", "knowledge_type": "rationale"},
+ {"query": "Why can a power series be differentiated term by term, and does the differentiated series keep the same radius of convergence?", "gold_ku_id": "advmath_tongji_full::12::定理5_s31", "substrate_id": "advmath_tongji_full", "knowledge_type": "rationale"},
+ {"query": "What is the limit form of the comparison test for convergence of nonnegative-term series?", "gold_ku_id": "advmath_tongji_full::12::定理3", "substrate_id": "advmath_tongji_full", "knowledge_type": "rationale"},
+ {"query": "Under what condition is Pdx+Qdy+Rdz the total differential of some function u in a simply connected space region?", "gold_ku_id": "advmath_tongji_full::11::定理3_s35", "substrate_id": "advmath_tongji_full", "knowledge_type": "rationale"},
+ {"query": "什么是函数的有界性？如何用上界、下界来定义函数在某数集上有界？", "gold_ku_id": "math_calculus::ku_c6_86", "substrate_id": "math_calculus", "knowledge_type": "conceptual"},
+ {"query": "如何用待定系数法求解常系数非齐次线性微分方程？", "gold_ku_id": "math_calculus::ku_c0_53", "substrate_id": "math_calculus", "knowledge_type": "procedural"},
+ {"query": "在变速直线运动中，位置函数和速度函数之间是什么关系，这如何引出微积分基本定理？", "gold_ku_id": "math_calculus::ku_c0_26", "substrate_id": "math_calculus", "knowledge_type": "rationale"},
+ {"query": "函数在某一点x0处的导数是如何用极限定义的？", "gold_ku_id": "math_calculus_ch2::ku_c2_8", "substrate_id": "math_calculus_ch2", "knowledge_type": "conceptual"},
+ {"query": "Why is the slope of the normal line to a curve the negative reciprocal of the tangent slope?", "gold_ku_id": "math_calculus_ch2::ku_c8_45", "substrate_id": "math_calculus_ch2", "knowledge_type": "conceptual"},
+ {"query": "How is the power rule (x^μ)' = μx^{μ-1} interpreted at x=0 for different values of μ?", "gold_ku_id": "math_calculus_ch2::ku_c5_19", "substrate_id": "math_calculus_ch2", "knowledge_type": "conceptual"},
+ {"query": "Does differentiability imply continuity, and is the converse true?", "gold_ku_id": "math_calculus_ch2::ku_c8_42", "substrate_id": "math_calculus_ch2", "knowledge_type": "conceptual"},
+ {"query": "Why is the absolute value function f(x)=|x| not differentiable at x=0 in terms of its one-sided derivatives?", "gold_ku_id": "math_calculus_ch2::ku_c6_30", "substrate_id": "math_calculus_ch2", "knowledge_type": "factual"},
+ {"query": "How do you find the equation of a tangent line to a curve that passes through an external point not on the curve?", "gold_ku_id": "math_calculus_ch2::ku_c8_44", "substrate_id": "math_calculus_ch2", "knowledge_type": "procedural"},
+ {"query": "How do you find the tangent line to a curve y=f(x) at a given point on the curve?", "gold_ku_id": "math_calculus_ch2::ku_c8_43", "substrate_id": "math_calculus_ch2", "knowledge_type": "procedural"},
+ {"query": "Why is the derivative of log_a(x) equal to 1/(x ln a)?", "gold_ku_id": "math_calculus_ch2::ku_c6_28", "substrate_id": "math_calculus_ch2", "knowledge_type": "rationale"},
+ {"query": "How is the derivative of sin x derived from the definition to show that (sin x)' = cos x?", "gold_ku_id": "math_calculus_ch2::ku_c5_20", "substrate_id": "math_calculus_ch2", "knowledge_type": "rationale"},
+ {"query": "Why does the limit of |h|/h fail to exist, making |x| non-differentiable at zero?", "gold_ku_id": "math_calculus_ch2::ku_c6_31", "substrate_id": "math_calculus_ch2", "knowledge_type": "rationale"},
+ {"query": "Why is e^x its own derivative?", "gold_ku_id": "math_calculus_ch2::ku_c6_25", "substrate_id": "math_calculus_ch2", "knowledge_type": "rationale"},
+ {"query": "What is consumer surplus and how does it measure the net benefit consumers receive in a market?", "gold_ku_id": "micro_clean::ku_c6_83", "substrate_id": "micro_clean", "knowledge_type": "conceptual"},
+ {"query": "How do market prices act as signals of the opportunity cost of a good?", "gold_ku_id": "micro_clean::ku_c3_37", "substrate_id": "micro_clean", "knowledge_type": "conceptual"},
+ {"query": "Why should sunk costs be ignored in rational decision-making about the future?", "gold_ku_id": "micro_clean::ku_c3_35", "substrate_id": "micro_clean", "knowledge_type": "conceptual"},
+ {"query": "Why does the opportunity cost of producing a good tend to increase as production expands?", "gold_ku_id": "micro_clean::ku_c6_68", "substrate_id": "micro_clean", "knowledge_type": "conceptual"},
+ {"query": "Who is Susan K. Feigenbaum and what are her areas of economic research?", "gold_ku_id": "micro_clean::ku_c0_0", "substrate_id": "micro_clean", "knowledge_type": "factual"},
+ {"query": "Who is R.W. Hafer and what is his research focus in economics and finance?", "gold_ku_id": "micro_clean::ku_c0_1", "substrate_id": "micro_clean", "knowledge_type": "factual"},
+ {"query": "How is an individual's demand curve derived from their willingness to pay for successive units?", "gold_ku_id": "micro_clean::ku_c5_55", "substrate_id": "micro_clean", "knowledge_type": "procedural"},
+ {"query": "How do you obtain the market supply curve from individual producers' supply curves?", "gold_ku_id": "micro_clean::ku_c6_78", "substrate_id": "micro_clean", "knowledge_type": "procedural"},
+ {"query": "What mechanisms are used to enforce price controls in a market?", "gold_ku_id": "micro_clean::ku_c6_92", "substrate_id": "micro_clean", "knowledge_type": "procedural"},
+ {"query": "What methods can the government use to internalize externalities?", "gold_ku_id": "micro_clean::ku_c4_44", "substrate_id": "micro_clean", "knowledge_type": "procedural"},
+ {"query": "Why does a change in the price of a complementary good shift the demand curve for the original good?", "gold_ku_id": "micro_clean::ku_c5_62", "substrate_id": "micro_clean", "knowledge_type": "rationale"},
+ {"query": "Why does a change in consumer income shift the demand curve, and how does it differ for normal versus inferior goods?", "gold_ku_id": "micro_clean::ku_c5_57", "substrate_id": "micro_clean", "knowledge_type": "rationale"},
+ {"query": "What is the economic impact of legalizing a previously illegal market on prices, quantity, and government revenue?", "gold_ku_id": "micro_clean::ku_c4_49", "substrate_id": "micro_clean", "knowledge_type": "rationale"},
+ {"query": "Why does a rise in the price of a substitute good shift demand for the original good to the right?", "gold_ku_id": "micro_clean::ku_c5_61", "substrate_id": "micro_clean", "knowledge_type": "rationale"},
+ {"query": "What is an income elastic good and how is it defined by its income elasticity of demand?", "gold_ku_id": "microecon_en_full_v2::ch11_ku12", "substrate_id": "microecon_en_full_v2", "knowledge_type": "conceptual"},
+ {"query": "What is eminent domain and what compensation does the Fifth Amendment require for it?", "gold_ku_id": "microecon_en_full_v2::ch4_ku5", "substrate_id": "microecon_en_full_v2", "knowledge_type": "conceptual"},
+ {"query": "What does 'too big to fail' mean and why do governments bail out large firms?", "gold_ku_id": "microecon_en_full_v2::ch19_ku7", "substrate_id": "microecon_en_full_v2", "knowledge_type": "conceptual"},
+ {"query": "What is comparative advantage and how does it differ from absolute advantage in terms of opportunity cost?", "gold_ku_id": "microecon_en_full_v2::ch10_ku5", "substrate_id": "microecon_en_full_v2", "knowledge_type": "conceptual"},
+ {"query": "How does a simple monopoly maximize profit using the MR = MC rule?", "gold_ku_id": "microecon_en_full_v2::ch17_ku4", "substrate_id": "microecon_en_full_v2", "knowledge_type": "procedural"},
+ {"query": "What is microcredit and how does it serve as a market-based tool for poverty alleviation?", "gold_ku_id": "microecon_en_full_v2::ch19_ku20", "substrate_id": "microecon_en_full_v2", "knowledge_type": "procedural"},
+ {"query": "How do you use a discount rate and net present value to compare investments with different payoff timing?", "gold_ku_id": "microecon_en_full_v2::ch13_ku28", "substrate_id": "microecon_en_full_v2", "knowledge_type": "procedural"},
+ {"query": "How do government subsidies and taxes internalize positive and negative externalities by shifting the private marginal cost curve?", "gold_ku_id": "microecon_en_full_v2::ch5_ku9", "substrate_id": "microecon_en_full_v2", "knowledge_type": "procedural"},
+ {"query": "What are the main determinants of the price elasticity of supply?", "gold_ku_id": "microecon_en_full_v2::ch9_ku13", "substrate_id": "microecon_en_full_v2", "knowledge_type": "rationale"},
+ {"query": "What is the Nash bargaining solution in household decision-making and why does it reach the utility possibilities frontier?", "gold_ku_id": "microecon_en_full_v2::ch11_ku6", "substrate_id": "microecon_en_full_v2", "knowledge_type": "rationale"},
+ {"query": "How does a technological breakthrough lower marginal cost and shift the supply curve?", "gold_ku_id": "microecon_en_full_v2::ch7_ku10", "substrate_id": "microecon_en_full_v2", "knowledge_type": "rationale"},
+ {"query": "Why does a higher-risk investment require a higher expected return, known as the risk premium?", "gold_ku_id": "microecon_en_full_v2::ch13_ku18", "substrate_id": "microecon_en_full_v2", "knowledge_type": "rationale"},
+ {"query": "How do you systematically sketch a function's graph using derivatives, extrema, convexity, and asymptotes?", "gold_ku_id": "shufen_huadong_full::6::函数图像的讨论", "substrate_id": "shufen_huadong_full", "knowledge_type": "conceptual"},
+ {"query": "What does it mean for a function to be continuous at a point, and what are the equivalent definitions of continuity?", "gold_ku_id": "shufen_huadong_full::4::函数在一点的连续性", "substrate_id": "shufen_huadong_full", "knowledge_type": "conceptual"},
+ {"query": "What are the operational rules for differentials of sums, products, quotients, and composite functions?", "gold_ku_id": "shufen_huadong_full::5::微分的运算法则", "substrate_id": "shufen_huadong_full", "knowledge_type": "conceptual"},
+ {"query": "What is the trapezoidal rule for numerically approximating a definite integral, and why is it more accurate than the rectangular rule?", "gold_ku_id": "shufen_huadong_full::11::梯形法", "substrate_id": "shufen_huadong_full", "knowledge_type": "conceptual"}
 ]

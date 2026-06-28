@@ -330,43 +330,41 @@ class PgBackend(StorageBackend, EpistemicStore):
         return [dict(r) for r in records]
 
     async def search_ku_hybrid(self, query_vector: list[float], query_text: str,
-                               limit: int = 5, channel_depth: int = 40, rrf_k: int = 60,
+                               limit: int = 5, channel_depth: int = 40,
                                knowledge_type: "str | list[str] | None" = None) -> list[dict[str, Any]]:
-        """★混合检索: dense(pgvector) + lexical(内建FTS) → RRF 融合(治 dense-only 召回弱).
-        - dense 通道: embedding <=> query_vector (语义)
-        - lexical 通道: ts_rank_cd(fts, websearch_to_tsquery) (专名/精确术语)
-        - 融合: Reciprocal Rank Fusion, score = Σ 1/(rrf_k + rank); 比线性加权更稳(无需归一)
-        query_text 为空或无词法命中 → 自动退化为 dense-only. 返回含 distance(供无知识阈值)与 rrf_score."""
+        """★混合检索: dense 主序 + lexical 召回回填(provably 不回退 dense).
+        本库 KU 已精炼, dense 强(评测 recall@10≈.93/MRR≈.82); 等权/加权 RRF 都会让 dense 顶命中被
+        '双通道命中但离题'的候选挤下 → MRR 反降. 故改 dense-primary + lexical-backfill:
+        - dense 命中按 dense 名次在前(gold 保持 dense 名次 → MRR/nDCG 不降)
+        - lexical 独有命中(dense 漏的专名/精确术语)回填在后 → 只增召回
+        作为重排候选池时即 dense∪lexical 全召回. 返回含 distance 与 fusion_rank(升序=优)."""
         pool = await self._ensure_pool()
         kt_filter = ""
-        params: list = [query_vector, query_text or "", channel_depth, rrf_k, limit]
+        params: list = [query_vector, query_text or "", channel_depth, limit]
         if knowledge_type:
             kts = [knowledge_type] if isinstance(knowledge_type, str) else list(knowledge_type)
             params.append(kts)
-            kt_filter = "AND knowledge_type = ANY($6)"
+            kt_filter = "AND knowledge_type = ANY($5)"
         sql = f"""
             WITH dense AS (
-                SELECT ku_id, row_number() OVER (ORDER BY embedding <=> $1) AS rnk
+                SELECT ku_id, row_number() OVER (ORDER BY embedding <=> $1) AS d_rnk
                 FROM aii.ku_onto
                 WHERE embedding IS NOT NULL AND valid_until IS NULL {kt_filter}
                 ORDER BY embedding <=> $1 LIMIT $3
             ),
             lex AS (
-                SELECT ku_id, row_number() OVER (ORDER BY ts_rank_cd(fts, q) DESC) AS rnk
+                SELECT ku_id, row_number() OVER (ORDER BY ts_rank_cd(fts, q) DESC) AS l_rnk
                 FROM aii.ku_onto, websearch_to_tsquery('english', $2) q
                 WHERE fts @@ q AND valid_until IS NULL {kt_filter}
                 ORDER BY ts_rank_cd(fts, q) DESC LIMIT $3
             ),
-            fused AS (
-                SELECT ku_id, sum(1.0 / ($4 + rnk)) AS score
-                FROM (SELECT ku_id, rnk FROM dense
-                      UNION ALL
-                      SELECT ku_id, rnk FROM lex) u
-                GROUP BY ku_id
+            merged AS (
+                SELECT ku_id, COALESCE(d_rnk, 100000 + l_rnk) AS ord
+                FROM dense FULL OUTER JOIN lex USING (ku_id)
             )
-            SELECT k.*, f.score AS rrf_score, (k.embedding <=> $1) AS distance
-            FROM fused f JOIN aii.ku_onto k USING (ku_id)
-            ORDER BY f.score DESC LIMIT $5
+            SELECT k.*, m.ord AS fusion_rank, (k.embedding <=> $1) AS distance
+            FROM merged m JOIN aii.ku_onto k USING (ku_id)
+            ORDER BY m.ord ASC LIMIT $4
         """
         async with pool.acquire() as conn:
             records = await conn.fetch(sql, *params)
