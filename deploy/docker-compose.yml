@@ -16,6 +16,12 @@ services:
     environment:
       - STRATUM_ENV=production
       - DATABASE_PATH=/data/stratum/meta.duckdb
+      # AII merge P1.5: service-layer store moved DuckDB → aii-postgres stratum schema.
+      - STRATUM_PG_HOST=172.19.0.1
+      - STRATUM_PG_PORT=5435
+      - STRATUM_PG_USER=aii
+      - STRATUM_PG_DB=aii_kg
+      - STRATUM_PG_PASSWORD=${STRATUM_PG_PASSWORD}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9302/health"]
       interval: 30s
@@ -88,6 +94,12 @@ services:
       # §merge-2026-06-27: switched to .bak as primary (personal library + all repairs merged in).
       # meta.duckdb.live_backup_20260627 holds the pre-merge live snapshot.
       - STRATUM_DB_PATH=/root/.stratum/meta.duckdb.bak
+      # AII merge P1.5: service-layer store moved DuckDB → aii-postgres stratum schema.
+      - STRATUM_PG_HOST=172.19.0.1
+      - STRATUM_PG_PORT=5435
+      - STRATUM_PG_USER=aii
+      - STRATUM_PG_DB=aii_kg
+      - STRATUM_PG_PASSWORD=${STRATUM_PG_PASSWORD}
       # Outbound proxy for YouTube/media ingest (Windows Clash via WSL2 bridge — may change on WSL restart)
       - STRATUM_OUTBOUND_PROXY=http://172.23.224.1:20809
       # PaddleOCR: skip network model-source check, use pre-downloaded models from volume
