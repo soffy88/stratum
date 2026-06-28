@@ -42,8 +42,8 @@ const NAV: NavGroup[] = [
     { href: '/governance', label: '治理', icon: ShieldCheck },
   ] },
   { title: '系统', items: [
-    { href: '/tasks', label: '任务', icon: CheckSquare },
-    { href: '/my', label: '我的', icon: User },
+    { href: '/jobs', label: '定时任务', icon: CheckSquare },
+    { href: '/profile', label: '我的', icon: User },
     { href: '/admin', label: '管理', icon: Shield },
     { href: '/settings', label: '设置', icon: Settings },
   ] },
