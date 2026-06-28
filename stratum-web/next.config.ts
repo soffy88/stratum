@@ -35,7 +35,9 @@ const config: NextConfig = {
   async rewrites() {
     return [
       // AII epistemic-engine backend — must come before the catch-alls below.
-      { source: "/api/aii/:path*", destination: `${aiiBase}/api/:path*` },
+      // AII's api-client paths already include the `/api` prefix (e.g.
+      // /api/stats/overview), so forward verbatim — do NOT add another /api.
+      { source: "/api/aii/:path*", destination: `${aiiBase}/:path*` },
       // Service layer (v1 routes) — must come before the catch-all below.
       { source: "/api/v1/:path*", destination: `${slBase}/api/v1/:path*` },
       // Legacy DuckDB API (auth, substrates, legacy notes/search, etc.)
