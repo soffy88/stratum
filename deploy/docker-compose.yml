@@ -9,6 +9,8 @@ services:
       - "127.0.0.1:9309:9302"
     volumes:
       - ~/.stratum:/root/.stratum
+      # Live source mount — auth.py path change takes effect without image rebuild
+      - /home/soffy/projects/stratum/src:/app/src
     env_file:
       - /home/soffy/.config/keys/.env
     environment:
@@ -83,11 +85,16 @@ services:
     environment:
       # §M3 DB merge: stratum-sl now uses DuckDB (~/.stratum/meta.duckdb).
       # STRATUM_DATABASE_DSN (PG) is no longer used — removed.
-      # STRATUM_DB_PATH defaults to ~/.stratum/meta.duckdb inside the container
-      # because ~/.stratum is mounted as /root/.stratum and ~ resolves to /root.
-      - STRATUM_DB_PATH=/root/.stratum/meta.duckdb
+      # §merge-2026-06-27: switched to .bak as primary (personal library + all repairs merged in).
+      # meta.duckdb.live_backup_20260627 holds the pre-merge live snapshot.
+      - STRATUM_DB_PATH=/root/.stratum/meta.duckdb.bak
+      # Outbound proxy for YouTube/media ingest (Windows Clash via WSL2 bridge — may change on WSL restart)
+      - STRATUM_OUTBOUND_PROXY=http://172.23.224.1:20809
       # PaddleOCR: skip network model-source check, use pre-downloaded models from volume
       - PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
+      # Local embedding via Ollama qwen3-embedding:0.6b (1024-dim, matches DashScope text-embedding-v3)
+      - EMBEDDING_PROVIDER=qwen3_local
+      - OLLAMA_BASE_URL=http://172.19.0.1:11434
     volumes:
       # Stratum source mounted live — code changes take effect after container restart, no rebuild.
       - /home/soffy/projects/stratum/src:/app/src
@@ -104,6 +111,8 @@ services:
       - ~/.stratum:/root/.stratum
       # AII shared export volume — Wave 4
       - /home/soffy/shared/stratum-to-aii:/data/shared/stratum-to-aii:rw
+      # AII → Stratum needs (ro: AII writes, Stratum reads)
+      - /home/soffy/shared/aii-to-stratum:/data/shared/aii-to-stratum:ro
       # Textbook export volume — middle/primary school textbooks
       - /home/soffy/shared/textbook-to-aii:/data/shared/textbook-to-aii:rw
       # User file folders for folder_watcher_service
