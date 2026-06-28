@@ -1,14 +1,8 @@
 /**
- * root layout — providers + shell。
- *
- * 装配顺序(由外到内):
- *   1. <OAppProviders theme="professional" />  — ThemeProvider + 全套 Helios Providers
- *   2. <LangProvider lang="zh-en" />            — Wiki 拍板,中英并列默认
- *   3. <AppShell />                              — topbar + sidebar + content
- *   4. children                                  — Page 内容
- *
- * 注意:OAppProviders 已经包含 ThemeProvider;不要再嵌套 ThemeProvider。
- * LangProvider 是 v1.9.0 新加的,跟 ThemeProvider 平行,需要显式包一层。
+ * (aii) route-group layout — wraps the ported AII pages in the Helios design
+ * system (OAppProviders + LangProvider + AppShell). This is a NESTED layout:
+ * the <html>/<body> live in the app root layout, so they are NOT repeated here
+ * (the original AII root layout had them; removed during the merge).
  */
 import type { Metadata } from 'next';
 import { OAppProviders } from '@helios/oui';
@@ -19,20 +13,15 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'AII · 认识论知识图谱 / Epistemic Knowledge Graph',
   description:
-    'AII web — query / ingest / health / diagnose / evolution / governance. Frontend by Helios.',
-  viewport: 'width=device-width, initial-scale=1, viewport-fit=cover',
+    'AII — query / ingest / health / diagnose / evolution / governance.',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function AiiLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-CN">
-      <body>
-        <OAppProviders theme="professional">
-          <LangProvider lang="zh-en">
-            <AppShell>{children}</AppShell>
-          </LangProvider>
-        </OAppProviders>
-      </body>
-    </html>
+    <OAppProviders theme="professional">
+      <LangProvider lang="zh-en">
+        <AppShell>{children}</AppShell>
+      </LangProvider>
+    </OAppProviders>
   );
 }
