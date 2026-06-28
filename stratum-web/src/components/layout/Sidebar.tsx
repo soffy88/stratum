@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   Search, Compass, FileText, Rss, Clock, Network, StickyNote,
   Highlighter, LayoutGrid, Share2, Sparkles, CheckSquare, User, Shield, Settings,
-  Menu, X,
+  Menu, X, Brain, Layers, TrendingUp, ShieldCheck, Gauge,
 } from 'lucide-react';
 
 interface NavItem { href: string; label: string; icon: React.ComponentType<{ className?: string }>; }
@@ -33,6 +33,13 @@ const NAV: NavGroup[] = [
   ] },
   { title: 'AI', items: [
     { href: '/ai', label: 'AI 助手', icon: Sparkles },
+  ] },
+  { title: 'AII 认知引擎', items: [
+    { href: '/dashboard', label: '认知看板', icon: Gauge },
+    { href: '/knowledge', label: '知识单元', icon: Brain },
+    { href: '/clusters', label: '知识簇', icon: Layers },
+    { href: '/evolution', label: '演化', icon: TrendingUp },
+    { href: '/governance', label: '治理', icon: ShieldCheck },
   ] },
   { title: '系统', items: [
     { href: '/tasks', label: '任务', icon: CheckSquare },
