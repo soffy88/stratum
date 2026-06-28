@@ -22,6 +22,8 @@ SCAN_INTERVALS = {
     "arxiv": 6 * 3600,
     "gutenberg": 30 * 86400,
     "oapen": 30 * 86400,
+    "openstax": 30 * 86400,
+    "mit_ocw": 30 * 86400,
 }
 SOURCE_WATCHER_TICK = 3600  # check every hour which subscriptions are due
 
@@ -55,6 +57,20 @@ async def _ingest_item(result, user_id_hash: str, sub_id: str) -> str | None:
 
         with open(file_path, "rb") as f:
             checksum = hashlib.sha256(f.read()).hexdigest()
+
+        # If the same file was already ingested (e.g. watcher retry after DuckDB crash),
+        # return the existing sid so mark_processed is called and the retry loop stops.
+        try:
+            with get_conn() as conn:
+                dup = conn.execute(
+                    "SELECT id FROM substrates WHERE user_id=? AND file_hash=? LIMIT 1",
+                    (user_id_hash, checksum),
+                ).fetchone()
+            if dup:
+                log.info("source_watcher: already ingested ext_id=%s sid=%s", result.external_id, dup[0])
+                return dup[0]
+        except Exception:
+            pass  # if DB is unavailable, let process_inbox_substrate handle it
 
         config = InboxConfig(
             file_path=file_path,
@@ -104,6 +120,11 @@ async def _ingest_item(result, user_id_hash: str, sub_id: str) -> str | None:
         except Exception as exc:
             log.warning("source_watcher: meta patch failed sid=%s: %s", sid, exc)
 
+        try:
+            from stratum.lib.quality.ingest_quality_gate import run_quality_gate
+            run_quality_gate(sid)
+        except Exception as exc:
+            log.warning("source_watcher: quality gate failed sid=%s: %s", sid, exc)
         try:
             from stratum.services.md_export_service import export_one
             export_one(sid)
@@ -168,13 +189,33 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, source_type: s
                 rate_limit_sleep=1.0,
             )
         elif source_type == "oapen":
-            from oprim import oapen_search
+            from stratum.services.oapen_direct_search import oapen_direct_search
             results = await asyncio.to_thread(
-                oapen_search,
+                oapen_direct_search,
                 query=query.get("query") or "",
                 language=query.get("language"),
                 max_results=max_results,
                 rate_limit_sleep=2.0,
+            )
+        elif source_type == "openstax":
+            from stratum.services.openstax_search import openstax_search
+            results = await asyncio.to_thread(
+                openstax_search,
+                subjects=query.get("subjects"),
+                keywords=query.get("keywords"),
+                max_results=max_results,
+                max_pdf_mb=float(query.get("max_pdf_mb", 0.0)),
+                rate_limit_sleep=1.0,
+            )
+        elif source_type == "mit_ocw":
+            from stratum.services.mit_ocw_search import mit_ocw_search
+            results = await asyncio.to_thread(
+                mit_ocw_search,
+                departments=query.get("departments"),
+                keywords=query.get("keywords"),
+                max_courses=query.get("max_courses", 20),
+                max_pdfs_per_course=query.get("max_pdfs_per_course", 8),
+                rate_limit_sleep=1.5,
             )
         else:
             log.error("source_watcher: unknown source_type=%s", source_type)

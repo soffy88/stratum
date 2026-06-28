@@ -36,6 +36,12 @@ def _get_singleton() -> duckdb.DuckDBPyConnection:
     global _db_conn
     if _db_conn is None:
         _db_conn = duckdb.connect(_get_db_path())
+        # Compact WAL on startup — reclaims disk space accumulated from MVCC
+        # versions that were never checkpointed during the previous run.
+        try:
+            _db_conn.execute("CHECKPOINT")
+        except Exception:
+            pass
     return _db_conn
 
 
