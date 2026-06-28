@@ -12,6 +12,7 @@ export interface Substrate {
   created_at: string;
   is_pinned: boolean;
   parse_quality?: string | null;
+  meta_json?: Record<string, unknown> | null;
 }
 
 export interface DocumentListResult {
@@ -22,6 +23,7 @@ export interface DocumentListResult {
 export type DerivativeKind = 'markdown' | 'translation' | 'audio' | 'illustration';
 export interface Derivative {
   kind: DerivativeKind;
+  content?: string | null;
 }
 
 export const listDocuments = (params?: {

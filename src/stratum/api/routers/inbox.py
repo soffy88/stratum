@@ -254,8 +254,11 @@ async def inbox_submit(
             )
         if findings:
             _fill_derivative_content(substrate_id, findings)
+            from stratum.lib.quality.ingest_quality_gate import run_quality_gate
             from stratum.services.md_export_service import export_one
-            for _sid in (getattr(findings, "substrate_ids", None) or [substrate_id]):
+            sub_ids = getattr(findings, "substrate_ids", None) or [substrate_id]
+            for _sid in sub_ids:
+                run_quality_gate(_sid)
                 export_one(_sid)
         if substrate_id and _HAS_GRAPH:
             background_tasks.add_task(
@@ -427,8 +430,11 @@ async def inbox_webclip(
             )
         if findings:
             _fill_derivative_content(substrate_id, findings)
+            from stratum.lib.quality.ingest_quality_gate import run_quality_gate
             from stratum.services.md_export_service import export_one
-            for _sid in (getattr(findings, "substrate_ids", None) or [substrate_id]):
+            sub_ids = getattr(findings, "substrate_ids", None) or [substrate_id]
+            for _sid in sub_ids:
+                run_quality_gate(_sid)
                 export_one(_sid)
         if substrate_id and _HAS_GRAPH:
             background_tasks.add_task(

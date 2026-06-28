@@ -95,7 +95,12 @@ async def _ingest_paper(paper, user_id_hash: str, sub_id: str) -> str | None:
         except Exception as exc:
             log.warning("arxiv_ingest: meta patch failed sid=%s: %s", sid, exc)
 
-        # Export markdown for AII
+        # Quality gate then export
+        try:
+            from stratum.lib.quality.ingest_quality_gate import run_quality_gate
+            run_quality_gate(sid)
+        except Exception as exc:
+            log.warning("arxiv_ingest: quality gate failed sid=%s: %s", sid, exc)
         try:
             from stratum.services.md_export_service import export_one
             export_one(sid)

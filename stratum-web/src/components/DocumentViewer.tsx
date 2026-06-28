@@ -19,19 +19,20 @@ interface Props {
   medium: string;
   title: string;
   byteSize?: number;
+  fullHeight?: boolean;
 }
 
 const MB = 1024 * 1024;
 
-export default function DocumentViewer({ documentId, mime, medium, title, byteSize }: Props) {
+export default function DocumentViewer({ documentId, mime, medium, title, byteSize, fullHeight }: Props) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [buffer, setBuffer] = useState<ArrayBuffer | null>(null);
   const [loading, setLoading] = useState(true);
   const [pct, setPct] = useState(0);
   const [error, setError] = useState(false);
 
-  const isPdf = mime?.includes('pdf') || medium === 'pdf';
-  const isEpub = mime?.includes('epub') || medium === 'epub' || medium === 'book';
+  const isPdf = mime?.includes('pdf') || medium === 'pdf' || medium === 'paper';
+  const isEpub = !isPdf && (mime?.includes('epub') || medium === 'epub' || medium === 'book');
   const tooLarge = (byteSize ?? 0) > 200 * MB;
 
   useEffect(() => {
@@ -96,8 +97,8 @@ export default function DocumentViewer({ documentId, mime, medium, title, byteSi
     );
   }
 
-  if (isPdf && blobUrl) return <PdfReader blobUrl={blobUrl} documentId={documentId} />;
-  if (isEpub && buffer) return <EpubReader buffer={buffer} documentId={documentId} title={title} />;
+  if (isPdf && blobUrl) return <PdfReader blobUrl={blobUrl} documentId={documentId} fullHeight={fullHeight} />;
+  if (isEpub && buffer) return <EpubReader buffer={buffer} documentId={documentId} title={title} fullHeight={fullHeight} />;
 
   // 其他类型
   return (

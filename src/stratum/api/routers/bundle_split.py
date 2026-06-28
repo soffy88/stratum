@@ -5,6 +5,7 @@ POST /api/v1/admin/bundle-split-batch   → 批量拆分
 POST /api/v1/admin/hash-backfill        → 回填 file_hash=NULL
 POST /api/v1/admin/dedup-by-hash        → 同 SHA256 去重
 POST /api/v1/admin/bulk-meta-patch      → 批量写 meta_json 字段
+POST /api/v1/admin/bulk-delete          → 批量删除 substrates + derivatives
 """
 from __future__ import annotations
 
@@ -143,3 +144,38 @@ async def bulk_meta_patch(
             updated += 1
     log.info("bulk_meta_patch: updated=%d skipped=%d patch=%s", updated, skipped, body.patch)
     return {"status": "ok", "updated": updated, "skipped": skipped, "patch": body.patch}
+
+
+class BulkDeleteRequest(BaseModel):
+    ids: list[str]
+
+
+@router.post("/api/v1/admin/bulk-delete")
+async def bulk_delete(
+    body: BulkDeleteRequest,
+    user=Depends(get_current_user),
+):
+    """删除一批 substrates 及其所有 derivative 记录。不删磁盘源文件。
+
+    Body: {"ids": ["01K...", ...]}
+    """
+    deleted = 0
+    skipped = 0
+    deriv_deleted = 0
+    with get_conn() as conn:
+        for sid in body.ids:
+            exists = conn.execute(
+                "SELECT id FROM substrates WHERE id=?", (sid,)
+            ).fetchone()
+            if not exists:
+                skipped += 1
+                continue
+            d = conn.execute(
+                "SELECT COUNT(*) FROM derivative WHERE substrate_id=?", (sid,)
+            ).fetchone()[0]
+            conn.execute("DELETE FROM derivative WHERE substrate_id=?", (sid,))
+            conn.execute("DELETE FROM substrates WHERE id=?", (sid,))
+            deleted += 1
+            deriv_deleted += d
+    log.info("bulk_delete: deleted=%d deriv=%d skipped=%d", deleted, deriv_deleted, skipped)
+    return {"status": "ok", "deleted": deleted, "derivatives_deleted": deriv_deleted, "skipped": skipped}

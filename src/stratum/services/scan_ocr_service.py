@@ -3,18 +3,19 @@
 触发条件:
   substrates.parse_quality IN ('scanned', 'empty', 'garbled')
 
-流程:
-  1. 读 substrate.source_path → PDF
-  2. PPStructureV3(engine='onnxruntime', use_formula_recognition=False) → per-page markdown
-  3. 数学书（is_math=True）→ LLM 公式归一化
-  4. UPDATE substrates: parse_quality='ocr_ok', parser='paddleocr-v6', updated_at
+流程（双轨）:
+  is_math=True  → Unlimited-OCR（宿主机 GPU 服务，端到端 LaTeX）
+  is_math=False → PPStructureV3（容器内 CPU ONNX）
+
+  公共尾部:
+  4. UPDATE substrates: parse_quality='ocr_ok', parser=..., updated_at
   5. UPSERT derivative kind='markdown' with OCR content
   6. md_export_service.export_one() → 写 AII 共享目录
 
 约束:
-  - use_formula_recognition=False: PP-FormulaNet_plus-L 无 ONNX 版本
+  - Unlimited-OCR server: http://172.19.0.1:8765 (宿主机，Wan2GP venv)
+  - PPStructureV3: use_formula_recognition=False (ONNX 无公式版)
   - PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True (docker-compose env)
-  - CPU batch 主路径；GPU 可选（需容器 GPU 直通 + onnxruntime-gpu）
 """
 from __future__ import annotations
 
@@ -41,6 +42,94 @@ _MATH_KEYWORDS = (
 
 # 每次批量的最大页数（避免OOM，超大书分批）
 _PAGE_BATCH = 50
+
+# ── Unlimited-OCR 宿主机服务 ─────────────────────────────────────────────────
+_UNLIMITED_OCR_URL = "http://172.19.0.1:8766/ocr"
+_UNLIMITED_OCR_HEALTH = "http://172.19.0.1:8766/health"
+_MATH_PHYSICS_KEYWORDS = (
+    "数学", "物理", "分析", "微积分", "泛函", "拓扑", "代数", "概率",
+    "统计", "线性", "力学", "量子", "电磁", "光学",
+    "calculus", "analysis", "mathematics", "physics", "stochastic",
+    "topology", "algebra", "mechanics", "optics", "quantum",
+)
+
+
+def _is_math_physics_book(title: str | None, meta_json: dict | None) -> bool:
+    title_lower = (title or "").lower()
+    meta = meta_json or {}
+    subjects = " ".join(str(v) for v in meta.values()).lower()
+    return any(kw in title_lower or kw in subjects for kw in _MATH_PHYSICS_KEYWORDS)
+
+
+def _unlimited_ocr_available() -> bool:
+    """Check if the Unlimited-OCR server on the host is reachable."""
+    try:
+        import urllib.request
+        with urllib.request.urlopen(_UNLIMITED_OCR_HEALTH, timeout=3) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+def _unlimited_ocr_det_to_md(raw: str) -> str:
+    """Convert Unlimited-OCR tagged output to clean Markdown.
+
+    Input format: <|det|>TYPE [x1,y1,x2,y2]<|/det|>CONTENT
+    """
+    import re
+    lines = []
+    # Match: <|det|>type [coords]<|/det|>content
+    pattern = re.compile(
+        r'<\|det\|>\s*(\w+)\s*\[[^\]]*\]\s*<\|/det\|>(.*?)(?=<\|det\|>|$)',
+        re.DOTALL,
+    )
+    for m in pattern.finditer(raw):
+        det_type = m.group(1).strip()
+        content = m.group(2).strip()
+        if not content:
+            continue
+        if det_type in ("page_number", "footer", "image"):
+            continue
+        if det_type in ("header", "title"):
+            lines.append(f"## {content}")
+        elif det_type == "image_caption":
+            lines.append(f"*{content}*")
+        else:
+            # text, equation, table — output as-is
+            lines.append(content)
+    return "\n\n".join(lines) if lines else raw
+
+
+def _unlimited_ocr_page(img_path: str) -> str:
+    """OCR a single page image via the Unlimited-OCR host service.
+
+    Falls back to empty string on connection/server errors.
+    """
+    import urllib.request, urllib.error, json
+    try:
+        with open(img_path, "rb") as f:
+            data = f.read()
+        boundary = b"----OCRBoundary"
+        body = (
+            b"--" + boundary + b"\r\n"
+            b'Content-Disposition: form-data; name="file"; filename="page.png"\r\n'
+            b"Content-Type: image/png\r\n\r\n"
+            + data + b"\r\n"
+            b"--" + boundary + b"--\r\n"
+        )
+        req = urllib.request.Request(
+            _UNLIMITED_OCR_URL,
+            data=body,
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary.decode()}"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=600) as resp:
+            result = json.loads(resp.read())
+        raw = result.get("markdown", "")
+        return _unlimited_ocr_det_to_md(raw)
+    except Exception as exc:
+        log.warning("unlimited_ocr: request failed: %s", exc)
+        return ""
 
 
 def _is_math_book(title: str | None, meta_json: dict | None) -> bool:
@@ -81,16 +170,37 @@ def _pdf_page_to_png(pdf_path: str, page_idx: int, dpi: int = 150) -> bytes:
     return pix.tobytes("png")
 
 
-def _ocr_pdf_pages(pdf_path: str, page_indices: list[int], tmp_dir: str) -> list[str]:
-    """OCR 一批页面，返回每页 markdown 字符串列表（顺序与 page_indices 一致）。"""
-    engine = _ocr_engine()
+def _ocr_pdf_pages(
+    pdf_path: str,
+    page_indices: list[int],
+    tmp_dir: str,
+    *,
+    use_unlimited_ocr: bool = False,
+) -> list[str]:
+    """OCR 一批页面，返回每页 markdown 字符串列表（顺序与 page_indices 一致）。
+
+    use_unlimited_ocr=True → Unlimited-OCR host service (数理书，LaTeX公式)
+    use_unlimited_ocr=False → PPStructureV3 (普通扫描, CPU ONNX)
+    """
+    if not use_unlimited_ocr:
+        engine = _ocr_engine()
     results: list[str] = []
     doc = fitz.open(pdf_path)
+    # 两路都用 150 DPI：model 内部 resize 到 image_size=1024，更高 DPI 不提质量只增耗时
+    dpi = 150
     for i, pg_idx in enumerate(page_indices):
         img_path = os.path.join(tmp_dir, f"page_{pg_idx:04d}.png")
-        pix = doc[pg_idx].get_pixmap(dpi=150)
+        pix = doc[pg_idx].get_pixmap(dpi=dpi)
         pix.save(img_path)
 
+        if use_unlimited_ocr:
+            # ── Unlimited-OCR 路径 ──────────────────────────────────────────
+            log.info("scan_ocr: unlimited_ocr page %d/%d", pg_idx + 1, max(page_indices) + 1)
+            md = _unlimited_ocr_page(img_path)
+            results.append(md)
+            continue
+
+        # ── PP-StructureV3 路径 ─────────────────────────────────────────────
         try:
             result = list(engine.predict(img_path))
         except Exception as exc:
@@ -121,10 +231,8 @@ def _ocr_pdf_pages(pdf_path: str, page_indices: list[int], tmp_dir: str) -> list
             try:
                 md_obj = r.get("markdown", {}) if isinstance(r, dict) else getattr(r, "markdown", {})
                 if isinstance(md_obj, dict):
-                    # PaddleX 3.x 可能用 markdown_texts 或 content 键
                     md = (md_obj.get("markdown_texts") or md_obj.get("content") or "")
                     if not md:
-                        # 尝试直接从 dict values 拼接
                         md = "\n".join(str(v) for v in md_obj.values() if isinstance(v, str) and len(str(v)) > 20)
                 elif isinstance(md_obj, str):
                     md = md_obj
@@ -226,9 +334,16 @@ def ocr_one(substrate_id: str, *, force: bool = False) -> dict:
 
     import json
     meta = json.loads(meta_json or "{}")
-    is_math = _is_math_book(title, meta)
+    is_math = _is_math_physics_book(title, meta)
 
-    log.info("scan_ocr: starting OCR %s (title=%r, is_math=%s)", sid[:12], (title or "")[:40], is_math)
+    # 决定 OCR 引擎：数理书 → Unlimited-OCR（如服务可用），否则 PPStructureV3
+    use_unlimited = is_math and _unlimited_ocr_available()
+    parser_tag = "unlimited-ocr" if use_unlimited else "paddleocr-v6"
+
+    log.info(
+        "scan_ocr: starting OCR %s (title=%r, is_math=%s, engine=%s)",
+        sid[:12], (title or "")[:40], is_math, parser_tag,
+    )
 
     doc = fitz.open(source_path)
     page_count = len(doc)
@@ -240,7 +355,10 @@ def ocr_one(substrate_id: str, *, force: bool = False) -> dict:
             batch_end = min(batch_start + _PAGE_BATCH, page_count)
             page_indices = list(range(batch_start, batch_end))
             log.info("scan_ocr: OCR pages %d-%d / %d", batch_start + 1, batch_end, page_count)
-            batch_mds = _ocr_pdf_pages(source_path, page_indices, tmp_dir)
+            batch_mds = _ocr_pdf_pages(
+                source_path, page_indices, tmp_dir,
+                use_unlimited_ocr=use_unlimited,
+            )
             all_pages_md.extend(batch_mds)
 
     full_md = "\n\n---\n\n".join(p for p in all_pages_md if p.strip())
@@ -254,9 +372,9 @@ def ocr_one(substrate_id: str, *, force: bool = False) -> dict:
 
     with get_conn() as conn:
         conn.execute(
-            "UPDATE substrates SET parse_quality='ocr_ok', parser='paddleocr-v6',"
+            "UPDATE substrates SET parse_quality='ocr_ok', parser=?,"
             " updated_at=NOW() WHERE id=?",
-            (sid,)
+            (parser_tag, sid)
         )
         _upsert_derivative_markdown(conn, sid, full_md)
 
@@ -276,6 +394,7 @@ def ocr_one(substrate_id: str, *, force: bool = False) -> dict:
         "title": title,
         "page_count": page_count,
         "is_math": is_math,
+        "engine": parser_tag,
         "elapsed_s": elapsed,
         "parse_quality": "ocr_ok",
         "md_chars": len(full_md),

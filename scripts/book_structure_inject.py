@@ -22,6 +22,52 @@ from __future__ import annotations
 import re, json, sys, logging, argparse, pathlib
 from dataclasses import dataclass, field
 
+# ── Chinese chapter-numeral helpers ──────────────────────────────────────────
+_CN_DIGIT = {'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,
+             '六':6,'七':7,'八':8,'九':9,'〇':0}
+
+def _cn_to_int(s: str) -> int | None:
+    """Convert Chinese numeral string OR Arabic digit string to int (supports 0-99)."""
+    s = s.strip()
+    if s.isdigit():
+        return int(s)
+    # 十 must be checked before single-char path: 十 alone = 10, 十一 = 11, 二十三 = 23
+    if '十' in s:
+        lo, _, hi = s.partition('十')
+        tens = (_CN_DIGIT.get(lo, 0) if lo else 1)
+        ones = (_CN_DIGIT.get(hi, 0) if hi else 0)
+        return tens * 10 + ones
+    if len(s) == 1:
+        return _CN_DIGIT.get(s)
+    return None
+
+def _int_to_cn(n: int) -> str | None:
+    """Int → Chinese numeral string (1-99)."""
+    if n <= 0 or n >= 100:
+        return None
+    singles = ['', '一','二','三','四','五','六','七','八','九']
+    if n < 10:
+        return singles[n]
+    tens, ones = divmod(n, 10)
+    t = ('' if tens == 1 else singles[tens]) + '十'
+    return t + (singles[ones] if ones else '')
+
+# Matches: 第N章, 第一章, 第一节, 第2 章  (capturing numeral and trailing title; \s* before 章)
+_CN_CH_RE = re.compile(
+    r'^第([零一二三四五六七八九十百\d]+)\s*[章节][\s\:\：、，]*\s*(.*)',
+    re.DOTALL
+)
+
+def _parse_cn_chapter(title: str, page: int) -> 'ChapterInfo | None':
+    m = _CN_CH_RE.match(title.strip())
+    if not m:
+        return None
+    num = _cn_to_int(m.group(1))
+    if num is None:
+        return None
+    ch_title = m.group(2).strip()
+    return ChapterInfo(ch_num=num, title=ch_title, pdf_page=page)
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)-8s %(message)s')
 log = logging.getLogger(__name__)
 
@@ -103,6 +149,15 @@ def load_chapters_from_pdf(pdf_path: pathlib.Path) -> tuple[list[ChapterInfo], i
             if level != 1:
                 continue
             ch = _parse_chapter(title, page)
+            if ch and ch.title:
+                chapters.append(ch)
+
+    # Fallback: Chinese chapter bookmarks (第N章 / 第一章, any case, lv1 or lv2)
+    if not chapters:
+        for level, title, page in toc:
+            if level not in (1, 2):
+                continue
+            ch = _parse_cn_chapter(title, page)
             if ch and ch.title:
                 chapters.append(ch)
 
@@ -219,6 +274,51 @@ def _search_chapter_h2(md: str, ch: ChapterInfo, search_start: int, search_end: 
     if m:
         return search_start + m.start()
 
+    # 7. Chinese chapter H2: ## 第N章/第一章 [prefix] (both numeric and word-numeral forms)
+    if title_words:
+        cn_forms = [str(ch_n)]
+        cn_word = _int_to_cn(ch_n)
+        if cn_word:
+            cn_forms.append(cn_word)
+        for cn_n in cn_forms:
+            for n_words in (3, 2, 1):
+                if n_words > len(title_words):
+                    continue
+                esc = re.escape(' '.join(title_words[:n_words]))
+                m = re.search(r'(?m)^## (?:\*\*)?第' + re.escape(cn_n) + r'[章节][^\n]*' + esc, chunk)
+                if m:
+                    return search_start + m.start()
+        # 8. Fallback: chapter number match alone (第N章 heading, any title)
+        for cn_n in cn_forms:
+            m = re.search(r'(?m)^## (?:\*\*)?第' + re.escape(cn_n) + r'[章节]', chunk)
+            if m:
+                return search_start + m.start()
+
+        # 10. Plain-text fallback: bare 第N章 line, no ## marker (OCR books / running headers).
+        # Uses $ to avoid matching TOC entries like "第N章 title …… 1".
+        for cn_n in cn_forms:
+            for n_words in (3, 2, 1):
+                if n_words > len(title_words):
+                    continue
+                esc = re.escape(' '.join(title_words[:n_words]))
+                m = re.search(r'(?m)^第' + re.escape(cn_n) + r'章\s*' + esc + r'\s*$', chunk)
+                if m:
+                    return search_start + m.start()
+        # Bare chapter-number-only line (第N章 with no title on same line)
+        for cn_n in cn_forms:
+            m = re.search(r'(?m)^第' + re.escape(cn_n) + r'章\s*$', chunk)
+            if m:
+                return search_start + m.start()
+
+    # 9. Loose fallback: title appears anywhere within the H2 line (garbled headings like "一 第 章 title")
+    for n_words in (3, 2, 1):
+        if n_words > len(title_words):
+            continue
+        esc = re.escape(' '.join(title_words[:n_words]))
+        m = re.search(r'(?m)^## [^\n]*' + esc, chunk)
+        if m:
+            return search_start + m.start()
+
     return None
 
 
@@ -227,9 +327,9 @@ def find_chapter_positions(md: str, chapters: list[ChapterInfo], total_pages: in
     if not chapters:
         return
 
-    # 章1: 宽搜（前5%~30% 之间）
+    # 章1: 宽搜（前1%~30%）。下界不硬设 20k：对短书（<200k）过保守，中文书章1可在 1k 内出现。
     ch1 = chapters[0]
-    body_start_lo = max(20_000, int(len(md) * 0.01))
+    body_start_lo = max(1_000, int(len(md) * 0.01))
     body_start_hi = int(len(md) * 0.30)
     ch1.md_offset = _search_chapter_h2(md, ch1, body_start_lo, body_start_hi)
 
@@ -676,6 +776,11 @@ def inject_structure_inplace(
         ch_marks = [t for t in toc
                     if t[0] in (1, 2) and re.match(r'CHAPTER\s+\d+', t[1], re.I)
                     and not re.match(r'CHAPTER\s+\d+\s*$', t[1], re.I)]  # 要有标题文本
+        # Also accept Chinese chapter bookmarks (第N章/第一章 with title text)
+        if len(ch_marks) < 2:
+            ch_marks = [t for t in toc
+                        if t[0] in (1, 2) and _CN_CH_RE.match(t[1].strip())
+                        and _CN_CH_RE.match(t[1].strip()).group(2).strip()]
         if len(ch_marks) < 2:
             return None  # 书签不足或无标题，跳过
     except Exception as e:

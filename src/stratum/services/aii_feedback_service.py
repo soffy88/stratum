@@ -38,7 +38,7 @@ FEEDBACK_LOG = Path("/data/logs/aii_feedback.log")
 UNRESOLVED_LOG = Path("/data/logs/aii_unresolved.log")
 
 LOOP_INTERVAL   = 3600   # 1h
-ALLOWED_SOURCES = {"arxiv", "gutenberg"}   # oapen 待网络修复
+ALLOWED_SOURCES = {"arxiv", "gutenberg", "oapen", "openstax", "mit_ocw"}
 
 MAX_PER_NEED    = 5   # 一个 need 实际入库总篇数上限
 MAX_PER_DAY     = 20
@@ -72,6 +72,17 @@ def _classify_need_type(topic: str) -> str:
 # ── 话题→查询 映射表（无需 LLM 的快速路径）────────────────────────────────
 
 _TOPIC_MAP: list[tuple[list[str], list[dict]]] = [
+    # ── 量化金融（优先于「统计」规则，防止「统计套利」被子串误命中概率规则） ──
+    (
+        ["量化交易", "统计套利", "套利", "高频交易", "做市", "对冲基金",
+         "量化投资", "因子投资", "配对交易", "alpha策略",
+         "arbitrage", "quantitative trading", "pairs trading",
+         "market making", "high frequency trading", "algorithmic trading", "factor investing"],
+        [
+            {"source_type": "arxiv",    "query": {"categories": ["q-fin.ST", "q-fin.TR", "q-fin.PM"], "keywords": "statistical arbitrage quantitative finance"}},
+        ],
+    ),
+    # ── 对冲/宏观金融（宽泛的"金融"落到 econ 规则，这里只管量化层） ──
     (
         ["概率", "probability", "随机", "stochastic", "统计", "统计学"],
         [
@@ -487,7 +498,7 @@ async def _tick() -> None:
         log.warning("aii_feedback: failed to read needs.json: %s", exc)
         return
 
-    needs = data if isinstance(data, list) else [data]
+    needs = data.get("needs", []) if isinstance(data, dict) else (data if isinstance(data, list) else [data])
     if not needs:
         return
 
