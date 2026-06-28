@@ -63,3 +63,4 @@ _hub/audit/diffs/
 # 批次指令书和外部文件 (不属于仓库)
 STRATUM_BATCH*_CC_INSTRUCTIONS.md
 HEVI_REVISION_REQUEST.md
+deploy/aii-secrets.conf
