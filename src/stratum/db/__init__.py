@@ -25,6 +25,12 @@ import psycopg2
 import psycopg2.extras
 import psycopg2.pool
 
+# Return JSON/JSONB columns as RAW STRINGS, matching DuckDB's behaviour, so the
+# many callers that do `json.loads(col)` (DAOs, dao.graph, …) work unchanged.
+# Without this psycopg2 auto-parses jsonb into dict/list → json.loads() would fail.
+psycopg2.extras.register_default_jsonb(globally=True, loads=lambda x: x)
+psycopg2.extras.register_default_json(globally=True, loads=lambda x: x)
+
 _pool: psycopg2.pool.ThreadedConnectionPool | None = None
 _pool_lock = threading.Lock()
 

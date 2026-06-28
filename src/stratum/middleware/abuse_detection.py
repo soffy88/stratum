@@ -61,16 +61,20 @@ def _is_blocked(ip: str) -> bool:
 def _block_ip(ip: str, hours: int, reason: str):
     expires = time.time() + hours * 3600
     _blocked_cache[ip] = expires
-    # Persist to DuckDB (best-effort)
+    # Persist to PG (best-effort). PG upsert via ON CONFLICT (was DuckDB INSERT OR REPLACE).
     try:
-        db_path = os.environ.get("DATABASE_PATH", os.path.expanduser("~/.stratum/meta.duckdb"))
-        conn = duckdb.connect(db_path)
+        from stratum.db import get_conn
         expires_at = datetime.now(timezone.utc) + timedelta(hours=hours)
-        conn.execute("""
-            INSERT OR REPLACE INTO blocked_ips (ip_address, reason, blocked_at, expires_at, blocked_count)
-            VALUES (?, ?, CURRENT_TIMESTAMP, ?, COALESCE((SELECT blocked_count FROM blocked_ips WHERE ip_address = ?), 0) + 1)
-        """, (ip, reason, expires_at, ip))
-        conn.close()
+        with get_conn() as conn:
+            conn.execute("""
+                INSERT INTO blocked_ips (ip_address, reason, blocked_at, expires_at, blocked_count)
+                VALUES (?, ?, CURRENT_TIMESTAMP, ?, 1)
+                ON CONFLICT (ip_address) DO UPDATE SET
+                    reason = EXCLUDED.reason,
+                    blocked_at = CURRENT_TIMESTAMP,
+                    expires_at = EXCLUDED.expires_at,
+                    blocked_count = blocked_ips.blocked_count + 1
+            """, (ip, reason, expires_at))
     except Exception:
         pass  # Non-critical; in-memory block still active
 
