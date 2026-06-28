@@ -17,13 +17,10 @@ const config: NextConfig = {
   // Standalone output for Docker — produces .next/standalone/server.js
   // with minimal node_modules (~40MB vs full node_modules ~500MB).
   output: "standalone",
-  turbopack: {
-    resolveAlias: {
-      // @helios/blocks is a private package; stub with local placeholders
-      // so the build succeeds without the tarball.
-      "@helios/blocks": "./src/stubs/helios-blocks",
-    },
-  },
+  // AII merge P3.1: adopt the real @helios/blocks + @helios/oui design system
+  // (vendored tarballs) instead of the local stub. These ship ESM/TS and must
+  // be transpiled by Next.
+  transpilePackages: ["@helios/blocks", "@helios/oui"],
   async rewrites() {
     return [
       // Service layer (v1 routes) — must come before the catch-all below.
