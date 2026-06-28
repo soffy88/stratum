@@ -1,12 +1,14 @@
 'use client';
 
 /**
- * (aii) route-group layout — the ported AII pages now live INSIDE Stratum's app
- * shell (same Sidebar + auth as the (app) group), wrapped in the Helios providers
- * the @helios/blocks components need. This makes AII a set of modules within the
- * Stratum frontend rather than a separate site.
+ * (aii) route-group layout — AII pages inside Stratum's app shell (Sidebar + auth)
+ * with the Helios providers @helios/blocks needs.
+ *
+ * Theme unification: the @helios theme follows Stratum's `data-theme` so the AII
+ * pages are light/dark in sync with the rest of the app (no more black-AII /
+ * white-Stratum split). Stratum dark → @helios "professional"; otherwise "zen".
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -14,11 +16,26 @@ import { OAppProviders } from '@helios/oui';
 import { LangProvider } from '@helios/blocks';
 import './globals.css';
 
+function heliosTheme(dataTheme: string | null): string {
+  return dataTheme === 'dark' ? 'professional' : 'zen';
+}
+
 export default function AiiLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading, loadCurrentUser } = useAuthStore();
   const router = useRouter();
+  const [theme, setTheme] = useState('zen');
 
   useEffect(() => { loadCurrentUser(); }, [loadCurrentUser]);
+
+  // Mirror Stratum's data-theme onto the @helios theme, reactively.
+  useEffect(() => {
+    const el = document.documentElement;
+    const sync = () => setTheme(heliosTheme(el.getAttribute('data-theme')));
+    sync();
+    const obs = new MutationObserver(sync);
+    obs.observe(el, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => obs.disconnect();
+  }, []);
 
   if (isLoading) {
     return <div className="flex h-screen items-center justify-center">Loading...</div>;
@@ -29,7 +46,7 @@ export default function AiiLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <OAppProviders theme="professional">
+    <OAppProviders theme={theme}>
       <LangProvider lang="zh-en">
         <div className="flex flex-col md:flex-row h-screen">
           <Sidebar />

@@ -1,13 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Search, Compass, FileText, Rss, Clock, Network, StickyNote,
   Highlighter, LayoutGrid, Share2, Sparkles, CheckSquare, User, Shield, Settings,
-  Menu, X, Brain, Layers, TrendingUp, ShieldCheck, Gauge,
+  Menu, X, Brain, Layers, TrendingUp, ShieldCheck, Gauge, Sun, Moon,
 } from 'lucide-react';
+import { getTheme, setTheme, type Theme } from '@/lib/theme';
+
+function ThemeToggle() {
+  const [theme, setThemeState] = useState<Theme>('zen');
+  useEffect(() => { setThemeState(getTheme()); }, []);
+  const isDark = theme === 'dark';
+  const toggle = () => {
+    const next: Theme = isDark ? 'light' : 'dark';
+    setTheme(next);
+    setThemeState(next);
+  };
+  return (
+    <button onClick={toggle}
+      className="flex items-center gap-3 px-3 rounded-lg text-sm min-h-11 w-full text-foreground hover:bg-muted">
+      {isDark ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
+      {isDark ? '亮色模式' : '暗色模式'}
+    </button>
+  );
+}
 
 interface NavItem { href: string; label: string; icon: React.ComponentType<{ className?: string }>; }
 interface NavGroup { title?: string; items: NavItem[]; }
@@ -96,6 +115,7 @@ export function Sidebar() {
       <aside className="hidden md:block w-60 shrink-0 border-r bg-card overflow-y-auto h-dvh">
         <div className="px-5 py-4 font-bold text-lg">Stratum</div>
         <NavLinks />
+        <div className="px-3 pb-4"><ThemeToggle /></div>
       </aside>
 
       {/* 移动端 drawer */}
@@ -110,6 +130,7 @@ export function Sidebar() {
               </button>
             </div>
             <NavLinks onNavigate={() => setMobileOpen(false)} />
+            <div className="px-3 pb-4"><ThemeToggle /></div>
           </aside>
         </div>
       )}

@@ -4,7 +4,8 @@
    styles + the AII-scoped .aii-* utilities below. */
 @import "@helios/blocks/styles.css";
 @import "@helios/blocks/themes/base.css";
-@import "@helios/blocks/themes/professional.css";
+@import "@helios/blocks/themes/zen.css";          /* light — matches Stratum light */
+@import "@helios/blocks/themes/professional.css"; /* dark  — matches Stratum dark */
 @import "@helios/oui/oui.css";
 
 /* ── sidebar 宽度覆盖:REQ-004 要求 240px ── */
