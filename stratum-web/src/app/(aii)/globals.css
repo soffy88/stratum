@@ -8,6 +8,18 @@
 @import "@helios/blocks/themes/professional.css"; /* dark  — matches Stratum dark */
 @import "@helios/oui/oui.css";
 
+/* @helios's oui.css sets `body { display:flex; flex-direction:column; gap:40px }`
+   and styles.css sets `* { margin-bottom: … }` GLOBALLY. Once an AII page loads
+   these, they pollute the whole document and break Stratum's app shell (the
+   Sidebar/drawer/fixed positioning all go wrong). Neutralize them — Stratum owns
+   the body layout; @helios components style themselves via their own classes. */
+body {
+  display: block !important;
+  flex-direction: initial !important;
+  gap: initial !important;
+}
+* { margin-bottom: 0; }
+
 /* ── sidebar 宽度覆盖:REQ-004 要求 240px ── */
 :root {
   --oui-sidebar-width:          240px;
