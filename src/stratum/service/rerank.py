@@ -21,30 +21,32 @@ from typing import Callable, Optional
 
 logger = logging.getLogger(__name__)
 
-_PROVIDER = os.environ.get("STRATUM_LLM_PROVIDER", "qwen3_dashscope")
-_MODEL = os.environ.get("STRATUM_LLM_MODEL", "qwen-plus")
+# Use the obase ProviderRegistry "qwen3" provider, which main.py registers at
+# startup and points at the LOCAL Ollama (OLLAMA_BASE_URL). This deliberately
+# avoids oprim's DashScope dispatch (account in arrears → HTTP 400 Arrearage).
+_PROVIDER = os.environ.get("STRATUM_LLM_PROVIDER", "qwen3")
 
 
 def _default_llm() -> Optional[Callable]:
     """Build a messages-style LLM caller -> {"content": str}.
 
-    Mirrors agents._make_oprim_llm_adapter. Returns None if oprim.llm is
-    unavailable so callers degrade to no-op.
+    Wraps the ProviderRegistry provider (which returns a bare string) into the
+    dict shape that oprim.llm_judge_rerank / the inline expander expect. Returns
+    None if the provider is not registered so callers degrade to a no-op.
     """
     try:
-        from oprim.llm.llm_call import llm_call
-    except Exception as e:  # pragma: no cover - env without oprim
-        logger.warning("rerank: oprim llm_call unavailable: %s", e)
+        from obase import ProviderRegistry
+
+        pr_caller = ProviderRegistry.get().llm(_PROVIDER)
+    except Exception as e:
+        logger.warning("rerank: LLM provider '%s' unavailable: %s", _PROVIDER, e)
         return None
 
     def _caller(*, messages: list, max_tokens: int = 1024, **_) -> dict:
-        prompt = "\n".join(
-            m.get("content", "") for m in messages if m.get("role") == "user"
-        )
-        result = llm_call(
-            prompt=prompt, provider=_PROVIDER, model=_MODEL, max_tokens=max_tokens
-        )
-        return {"content": result.text}
+        out = pr_caller(messages=messages)
+        if isinstance(out, dict):
+            return {"content": out.get("content", "")}
+        return {"content": out if isinstance(out, str) else str(out)}
 
     return _caller
 

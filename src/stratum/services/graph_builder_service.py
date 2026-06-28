@@ -80,7 +80,8 @@ async def build_graph_from_substrate(substrate_id: str, user_id_hash: str) -> di
 
     # 3. 每 chunk LLM 抽取（通过 ProviderRegistry 走已注册的 caller，run in thread）
     from obase import ProviderRegistry as _PR
-    _llm_caller = _PR.get().llm("qwen3_dashscope")
+    # Local Ollama provider (registered in main.py); DashScope path is in arrears.
+    _llm_caller = _PR.get().llm("qwen3")
     for chunk_text in chunks[:_MAX_CHUNKS]:
         try:
             raw = await asyncio.to_thread(
