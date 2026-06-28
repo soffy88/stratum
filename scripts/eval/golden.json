@@ -1,0 +1,114 @@
+[
+  {
+    "query": "Explain the fundamental principle behind using differentials for approximating function values near a known point $x_0$. Your explanation must address:",
+    "gold_ku_id": "advmath_tongji_full::ch2_ku13",
+    "substrate_id": "advmath_tongji_full",
+    "knowledge_type": "procedural",
+    "gold_title": "微分在近似计算中的应用"
+  },
+  {
+    "query": "Calculate the differential $\\mathrm{d}y$ for the following three functions:",
+    "gold_ku_id": "advmath_tongji_full::ch2_ku12",
+    "substrate_id": "advmath_tongji_full",
+    "knowledge_type": "rationale",
+    "gold_title": "基本初等函数的微分公式与微分运算法则"
+  },
+  {
+    "query": "假设我们给定了一个函数$f(x)$和它定义域$D$的一个子集$X$，请问如何用数轴上的常量来形式化描述、$f(x)$在$X$上有上界、下界以及有界的精确数学条件？",
+    "gold_ku_id": "math_calculus::ku_c6_86",
+    "substrate_id": "math_calculus",
+    "knowledge_type": "conceptual",
+    "gold_title": "函数的有界性 (Boundedness of Functions)"
+  },
+  {
+    "query": "证明一个函数 $f(x)$ 的反函数 $f^{-1}(y)$ 存在的前提条件是什么？同时，请利用单调性的定义和假设与矛盾法，系统地论证当 $f$ 在某区间上具有一定单调性时，$f^{-1}$ 是否保持了相同或相反的单调性。在证明过程中需明确阐述如何通过对比输入值和输出值来确定反函数的单调递增/单调递减性质。",
+    "gold_ku_id": "math_calculus::ku_c8_95",
+    "substrate_id": "math_calculus",
+    "knowledge_type": "rationale",
+    "gold_title": "单调函数反函数存在的机制"
+  },
+  {
+    "query": "If $y = e^{f(x)}$, how can we find $\\frac{dy}{dx}$ using the chain rule, and what special property does $e^x$ exhibit regarding its derivative?",
+    "gold_ku_id": "math_calculus_ch2::ku_c6_26",
+    "substrate_id": "math_calculus_ch2",
+    "knowledge_type": "conceptual",
+    "gold_title": "Derivative of natural exponential function equals itself"
+  },
+  {
+    "query": "Given the function $f(x) = |x|$, how can we formally prove that $f'(0)$ does not exist by analyzing the limits of the derivative from both the left and right sides?",
+    "gold_ku_id": "math_calculus_ch2::ku_c6_30",
+    "substrate_id": "math_calculus_ch2",
+    "knowledge_type": "factual",
+    "gold_title": "Absolute value function is not differentiable at zero"
+  },
+  {
+    "query": "Find the equation of the line tangent to the curve $y = x^2 + 1$ that passes through the external point $(-3, 6)$.",
+    "gold_ku_id": "math_calculus_ch2::ku_c8_44",
+    "substrate_id": "math_calculus_ch2",
+    "knowledge_type": "procedural",
+    "gold_title": "Finding tangent line to a curve through an external point"
+  },
+  {
+    "query": "If we are given that a function $y=f(x)$ has an existing derivative at a point $x=a$, how can we rigorously prove, using the definitions of limits and derivatives, that this guarantees the continuity of $f(x)$ at that same point?",
+    "gold_ku_id": "math_calculus_ch2::ku_c8_41",
+    "substrate_id": "math_calculus_ch2",
+    "knowledge_type": "rationale",
+    "gold_title": "Differentiability implies continuity (mechanism)"
+  },
+  {
+    "query": "Explain how changes in input prices (such as wages or raw materials) affect a firm's cost of production and describe the resulting shift in the overall market supply curve.",
+    "gold_ku_id": "micro_clean::ku_c6_75",
+    "substrate_id": "micro_clean",
+    "knowledge_type": "conceptual",
+    "gold_title": "Changes in Input Prices as a Supply Shifter"
+  },
+  {
+    "query": "What are the primary areas of research and professional expertise of R.W. Hafer, including his current academic title and notable previous roles in financial institutions?",
+    "gold_ku_id": "micro_clean::ku_c0_1",
+    "substrate_id": "micro_clean",
+    "knowledge_type": "factual",
+    "gold_title": "R.W. Hafer's expertise in monetary policy and financial markets"
+  },
+  {
+    "query": "How is indifference curve analysis used to graphically determine a consumer's equilibrium choice between multiple goods given their budgetary constraints?",
+    "gold_ku_id": "micro_clean::ku_c5_67",
+    "substrate_id": "micro_clean",
+    "knowledge_type": "procedural",
+    "gold_title": "Indifference Curve Analysis of Consumer Choice"
+  },
+  {
+    "query": "If coffee and cream are considered complementary goods, explain in detail how a significant increase in the price of cream would affect the overall market demand for coffee.",
+    "gold_ku_id": "micro_clean::ku_c5_62",
+    "substrate_id": "micro_clean",
+    "knowledge_type": "rationale",
+    "gold_title": "Why the Price of a Complementary Good Can Shift a Demand Curve"
+  },
+  {
+    "query": "To what extent does measuring income elasticity of demand provide utility across disparate fields, such as macro-level public policy design, international nutritional development, and micro-level corporate investment strategy?",
+    "gold_ku_id": "microecon_en_full_v2::ch11_ku9",
+    "substrate_id": "microecon_en_full_v2",
+    "knowledge_type": "conceptual",
+    "gold_title": "Income elasticity of demand"
+  },
+  {
+    "query": "State Rolle's Mean Value Theorem and clearly outline the necessary conditions required for a function $f$ defined on an interval $[a, b]$ to guarantee the existence of at least one point $\\xi$ in $(a, b)$ where the derivative is zero. What is the geometric interpretation of this theorem?",
+    "gold_ku_id": "shufen_huadong_full::6::罗尔定理与拉格朗日定理",
+    "substrate_id": "shufen_huadong_full",
+    "knowledge_type": "conceptual",
+    "gold_title": "罗尔定理与拉格朗日定理"
+  },
+  {
+    "query": "How can I use Stokes' theorem to simplify a complex surface integral that is difficult to evaluate, especially by converting it into an easier line integral around the boundary curve?",
+    "gold_ku_id": "advmath_tongji_full::11::斯托克斯公式 · 环流量与旋度",
+    "substrate_id": "advmath_tongji_full",
+    "knowledge_type": "conceptual",
+    "gold_title": "斯托克斯公式 · 环流量与旋度"
+  },
+  {
+    "query": "If we are given a function $y = f(x)$, what mathematical conditions must be satisfied for the function to be defined as strictly increasing, strictly decreasing, and generally as a monotonic function over a specified interval $I$?",
+    "gold_ku_id": "math_calculus::ku_c7_89",
+    "substrate_id": "math_calculus",
+    "knowledge_type": "conceptual",
+    "gold_title": "函数的单调性定义"
+  }
+]
