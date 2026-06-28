@@ -13,6 +13,7 @@ services:
       - /home/soffy/projects/stratum/src:/app/src
     env_file:
       - /home/soffy/.config/keys/.env
+      - ./aii-secrets.conf
     environment:
       - STRATUM_ENV=production
       - DATABASE_PATH=/data/stratum/meta.duckdb
@@ -21,7 +22,6 @@ services:
       - STRATUM_PG_PORT=5435
       - STRATUM_PG_USER=aii
       - STRATUM_PG_DB=aii_kg
-      - STRATUM_PG_PASSWORD=${STRATUM_PG_PASSWORD}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9302/health"]
       interval: 30s
@@ -73,8 +73,8 @@ services:
       - STRATUM_API_BASE=http://stratum-api:9302
       # AII epistemic-engine backend runs on the host (uvicorn :8101) → via gateway.
       - AII_API_BASE=http://172.19.0.1:8101
-      # Injected server-side into /api/aii/* by middleware; passed at `up` time, not committed.
-      - AII_API_KEY=${AII_API_KEY}
+    env_file:
+      - ./aii-secrets.conf
     depends_on:
       - stratum-api
       - stratum-sl
@@ -104,6 +104,7 @@ services:
     command: tunnel --no-autoupdate run --token ${STRATUM_TUNNEL_TOKEN}
     env_file:
       - /home/soffy/.config/keys/.env
+      - ./aii-secrets.conf
     profiles:
       - public
 
@@ -118,6 +119,7 @@ services:
       - "127.0.0.1:9304:9304"
     env_file:
       - /home/soffy/.config/keys/.env
+      - ./aii-secrets.conf
     environment:
       # §M3 DB merge: stratum-sl now uses DuckDB (~/.stratum/meta.duckdb).
       # STRATUM_DATABASE_DSN (PG) is no longer used — removed.
@@ -129,7 +131,6 @@ services:
       - STRATUM_PG_PORT=5435
       - STRATUM_PG_USER=aii
       - STRATUM_PG_DB=aii_kg
-      - STRATUM_PG_PASSWORD=${STRATUM_PG_PASSWORD}
       # Outbound proxy for YouTube/media ingest (Windows Clash via WSL2 bridge — may change on WSL restart)
       - STRATUM_OUTBOUND_PROXY=http://172.23.224.1:20809
       # PaddleOCR: skip network model-source check, use pre-downloaded models from volume
