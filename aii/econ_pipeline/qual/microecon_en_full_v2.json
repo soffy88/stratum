@@ -1,0 +1,34 @@
+{
+  "substrate_id": "microecon_en_full_v2",
+  "verdict": "PASS",
+  "alarm_count": 0,
+  "alarms": [],
+  "warnings": [],
+  "metrics": {
+    "KU总数": 357,
+    "双语率%": 100,
+    "残留字符KU": 0,
+    "空壳KU": 0,
+    "讲浅KU(zh<150chars)": 0,
+    "有向边": 237,
+    "章节KC数": 21,
+    "BU已生成": "是",
+    "章数(含KU)": 19,
+    "低密度章": [],
+    "完整率%": 100,
+    "漏知识点章(前3)": [],
+    "KU密度": "357/285=125%"
+  },
+  "thresholds": {
+    "complete_pct": 100,
+    "residual_max": 0,
+    "shell_max": 0,
+    "bilingual_min": 99,
+    "directed_per_ku": 0.3,
+    "ku_density": 0.6,
+    "shallow_max": 0,
+    "chapter_floor": 6,
+    "low_ch_alarm": 2
+  },
+  "note": "KU忠实率/有向精度需LLM抽检(deterministic无法全自动) → 建议事后随机抽样5%KU人工核查"
+}

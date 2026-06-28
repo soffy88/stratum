@@ -1,0 +1,153 @@
+{
+  "spec_id": "AII-STRATUM-MD-SPEC-001",
+  "from": "AII",
+  "to": "Stratum",
+  "type": "md_quality_requirement",
+  "title": "交付 md 必须章节结构可机器分段",
+  "priority": "high",
+  "summary": "AII 需按章节组织知识(章内建边/KU 打 chapter_id/跨章共现),前置是 md 能被机器可靠切出章节边界。当前 Stratum 交付的 md 丢失/污染了章节结构(近纯文本 OCR,丢了 PDF 的大纲/字号/页码结构),AII 无法可靠分章。治本在 Stratum 转换质量。",
+  "evidence": {
+    "sample_file": "Principles_of_Microeconomics_The_Way_We__01KVAJCX.md",
+    "substrate_id": "01KVAJCXHEV751E9NTADMZ7RGV",
+    "source_type": "PDF textbook, 19 chapters",
+    "failure_modes": [
+      "清晰章首标记 '## **CHAPTER N**' 共 14 个全在 0-1% 位置(目录区),正文无此标记",
+      "节标题 '## **9.1 ...**' 在目录块和正文各一份且都无页码,无法区分;朴素首次出现全落书首目录",
+      "OCR 跑页眉 'C H A P T E R N'(间隔字母)重复 340 次,远多于 19 章",
+      "图表引用 'Figure 9.1' 含节号,与章节锚混淆",
+      "结果: AII 任何朴素分段规则都切错(19 章只识别 9 章,ch9-17 落进百万字符空洞)"
+    ],
+    "table_mangling": [
+      "Table 2.1: 整张表体挤进一个单元格,14.42<br>11.55<br>... 用<br>分行,不可按列拆",
+      "Table 6A.1: 表头跨3列重复+被拆'|**Table **|**6A.1 **||',数据列错位带空列 '|200||0|'、'|150||125|'",
+      "结论: 有 pipe 语法但列结构烂(数据在,行×列不可解析)→ AII 无法吸收表数据"
+    ]
+  },
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "章/节用规范 markdown 标题层级(正文非目录): 每章正文起点唯一 '# Chapter N: <Title>'(H1,每书每章恰好一次);节 '## N.M <Title>'。正文标题与目录条目可区分。"
+    },
+    {
+      "id": "R2",
+      "text": "TOC 分离不复制进正文流: 目录不得逐字复制章/节标题进正文 markdown。二选一: 剥除 TOC(正文标题只出现一次),或把 TOC 包进显式 '<!-- TOC START -->...<!-- TOC END -->' 标记。"
+    },
+    {
+      "id": "R3",
+      "text": "章节锚点机器可定位: 章节起止可由单一规范规则定位(如 split on '^# Chapter \\d+:'),不依赖'看后面是不是散文'的脆弱启发式。"
+    },
+    {
+      "id": "R4",
+      "text": "OCR 书恢复结构: 用 PDF 大纲/书签树+标题字号层级+页码恢复章节层级,而非仅扁平 OCR;跑页页眉/页脚(重复 'C H A P T E R N'/书名/页码)识别并剔除,不当标题或正文输出。"
+    },
+    {
+      "id": "R5",
+      "text": "(建议)章节清单 sidecar: 配对 .json 或 frontmatter 附 chapters: [{n,title,start_offset|start_line,sections:[{n_m,title}]}], AII 可零猜测按 offset 分章。"
+    },
+    {
+      "id": "R6",
+      "text": "数学公式LaTeX保真: 行内$...$/独立$$...$$,公式内不被OCR拆散乱码;上下标/希腊字母/分式/求和积分用LaTeX,不退化为纯文本碎符。"
+    },
+    {
+      "id": "R7",
+      "text": "图表规范占位带caption: ![Figure N.M: <caption>](asset or omitted),caption必留;正文不得只剩 'the green rectangle'/'as shown above' 悬空引用(致依赖图死KU)。"
+    },
+    {
+      "id": "R8",
+      "text": "表格列对齐干净表(可按列parse): 每行列数一致、表头单行、数据可按行×列机器解析,或明确占位 ![Table N.M: caption]。禁止: 整张表挤进一个单元格用<br>分行(Table 2.1)、列错位带空列(Table 6A.1 '|200||0|')、表头重复跨列/被拆、散成残行。验收: 每数据行列数==表头列数、表头单行、无整表<br>堆叠、AII能parse成rows×cols。"
+    },
+    {
+      "id": "R9",
+      "text": "剔除跑页眉/页脚: 重复书名/'C H A P T E R N'间隔字母/页码必须识别并剔除,不当标题或正文行输出(实测重复340次)。"
+    }
+  ],
+  "acceptance_criteria": [
+    "re.findall(r'^# Chapter (\\d+):', md, re.M) 得连续 1..N 且每章恰好 1 次(无重复无缺号)",
+    "每章正文区不含其它章/节标题的目录式重复",
+    "切出每章 char 区间合理(无某章吞掉其余全书的空洞)",
+    "跑页页眉计数≈0(无 'C␣H␣A␣P␣T␣E␣R' 间隔字母噪声)",
+    "(R8)表可按 rows×cols parse: 每数据行列数==表头列数、无整表<br>挤一格"
+  ],
+  "scope": "所有 doc_type=book 且有章节结构的源(教材/专著优先);文章/论文不适用。",
+  "non_blocking": "Stratum 升级前 AII 继续用降级路径(50k 批+全书共现)摄取,不等待。",
+  "rework_request": [
+    {
+      "id": "01KVAJCXHEV751E9NTADMZ7RGV",
+      "file": "Principles_of_Microeconomics_The_Way_We__01KVAJCX.md",
+      "title": "Principles of Microeconomics The Way We Live",
+      "source_type": "PDF textbook, 19 chapters",
+      "status": [
+        "chapter_structure_unreliable",
+        "toc_contaminated_body",
+        "table_structure_broken",
+        "no_latex_formulas",
+        "figures_without_caption",
+        "running_header_noise"
+      ],
+      "summary": "一次性返工: 该书 md 违反 AII-STRATUM-MD-SPEC R1-R9 全部硬项, 请按规格重新从源 PDF 输出(用 PDF 大纲/字号/页码结构, 非近纯文本 OCR)。",
+      "violations": [
+        {
+          "req": "R1",
+          "issue": "无正文规范章首; '## **CHAPTER N**' 仅在目录",
+          "evidence": "14 个 CHAPTER 标记全在 0-1% 位置(目录区); 正文无 '# Chapter N:'"
+        },
+        {
+          "req": "R2",
+          "issue": "TOC 复制节标题进正文流且无页码, 与正文章首无法区分(分章根源)",
+          "evidence": "'## **9.1 Price Elasticity...**' 在目录块和正文各一份, 都无页码; 朴素首次出现全落书首目录"
+        },
+        {
+          "req": "R3",
+          "issue": "无机器可定位章节锚点",
+          "evidence": "AII 任何朴素分段规则只识别 9/19 章, ch9-17 落进 ~100 万字符空洞"
+        },
+        {
+          "req": "R4",
+          "issue": "近纯文本 OCR, 丢 PDF 结构 + 跑页眉未剔",
+          "evidence": "间隔字母 'C H A P T E R N' 重复 340 次; 924 处 'picture [WxH] intentionally omitted'; OCR 替换符 '�'"
+        },
+        {
+          "req": "R5",
+          "issue": "无章节清单 sidecar",
+          "evidence": "配对 .json 无 chapters:[{n,title,start_offset,sections}]"
+        },
+        {
+          "req": "R6",
+          "issue": "无真 LaTeX, 公式退化为乱码纯文本",
+          "evidence": "'$' 全是货币($2.00/$30/$399)非公式; 'percentage change in quantity demanded____' 下划线; '_P_ 2 � $' 含替换符"
+        },
+        {
+          "req": "R7",
+          "issue": "图被删但占位无 caption → 致依赖图死 KU",
+          "evidence": "924 'picture [WxH] intentionally omitted' 无 caption; 0 个 '![Figure N.M: caption]'; 17 处 'the green rectangle'/'as shown above' 悬空引用"
+        },
+        {
+          "req": "R8",
+          "issue": "表有 pipe 语法但列结构烂, 不可按列 parse",
+          "evidence": "Table 2.1 整表挤一格 '14.42<br>11.55<br>...'; Table 6A.1 列错位空列 '|200||0|' + 表头跨3列重复被拆; 142 pipe 行不可 rows×cols 解析"
+        },
+        {
+          "req": "R9",
+          "issue": "跑页眉/页脚未剔, 当噪声输出",
+          "evidence": "'C H A P T E R N' 间隔字母 x340; 924 picture 占位行混入正文"
+        }
+      ],
+      "required_redelivery": "按 R1-R9 全部重新输出 md(章节规范标题/TOC分离/锚点/OCR用PDF结构恢复+剔页眉/章节清单sidecar/公式LaTeX/图占位带caption/表格列对齐可parse)",
+      "acceptance_after_redelivery": [
+        "R1-R3: re.findall(r'^# Chapter (\\d+):', md) 得连续 1..19 每章恰好 1 次, 每章正文区无目录式重复, 每章 char 区间合理无空洞",
+        "R4/R9: 间隔字母页眉计数≈0, 无 '�' 替换符堆叠",
+        "R6: 数学密集段有真 $...$ LaTeX(非货币$), 无散字符公式",
+        "R7: 图引用有 '![Figure N.M: caption]' 占位+caption, 正文无悬空 'the X rectangle'",
+        "R8: 表可 parse 成 rows×cols(每数据行列数==表头列数, 无整表<br>挤一格)"
+      ]
+    }
+  ],
+  "full_spec_doc": "AII repo: docs/AII-STRATUM-MD-SPEC-001.md",
+  "deferred_enhancement": {
+    "name": "表数据完善KU",
+    "desc": "正文命题KU(自足)→用对应表的结构化数据enrich(吸收进KU或作结构化evidence,可借鉴实体-属性-值)",
+    "depends_on": "Stratum交付R8列对齐干净表(烂表parse不动,现在做不了)",
+    "status": "deferred",
+    "note": "当前表格处理已对(降级example/规律抽通则/无逐行dump/无碎片),不动;只等干净表后做数据吸收增强"
+  }
+}
