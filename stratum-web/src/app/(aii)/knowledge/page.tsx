@@ -41,6 +41,9 @@ const KNOWLEDGE_TYPE_LABEL: Record<string, string> = {
 };
 const ktLabel = (t?: string | null) => (t ? (KNOWLEDGE_TYPE_LABEL[t] ?? t) : '');
 
+/** KU 名称 = id 末段(AII 编码为 `{substrate}::{chapter}::{名称}`,如 `…::机会成本`)。 */
+const kuName = (id: string) => id.split('::').pop() || id;
+
 const TYPE_OPTS: OFilterChipOption[] = (
   ['conceptual','rationale','factual','procedural','metacognitive','positional'] as unknown as KnowledgeType[]
 ).map(t => ({ value: t, label: ktLabel(t) }));
@@ -80,7 +83,7 @@ function KuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-2">
-          <h2 className="text-base font-semibold">KU 详情</h2>
+          <h2 className="text-base font-semibold">{kuName(id)}</h2>
           <button onClick={onClose} className="text-[color:var(--text-secondary)] text-sm" aria-label="关闭">✕</button>
         </div>
         {state.loading && <OLoadingState rows={3} />}
@@ -223,7 +226,7 @@ function KnowledgePage() {
                 className="rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-3 flex flex-col gap-2 cursor-pointer hover:border-[color:var(--accent,#2563eb)]/50 transition-colors"
               >
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs px-1.5 py-0.5 rounded bg-[color:var(--muted,#f3f4f6)] text-[color:var(--text-secondary)]">{ktLabel(ku.knowledge_type)}</span>
+                  <span className="text-sm font-semibold text-[color:var(--text-primary)]">{kuName(ku.id)}</span>
                   {ku.merge_count > 1 && (
                     <span className="text-xs px-1.5 py-0.5 rounded-full bg-[color:var(--accent,#2563eb)]/15 text-[color:var(--accent,#2563eb)]">多书共有 ×{ku.merge_count}</span>
                   )}
