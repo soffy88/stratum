@@ -118,7 +118,9 @@ def facet_check(point_name, zh):
 SYS=("你为数学教材合成一个讲透知识单元(KU), 严格只用本章内容、整合非创作。"
      "★数学公式必须完整保留(LaTeX原样, 如 \\frac \\lim), 公式残缺=不合格。"
      "中文主显(简体), 之后附English。书没讲的面直接不写(不要写'未涉及')。"
-     'Output JSON {"zh":"<中文讲透,含完整LaTeX公式>","en":"<English>"}.')
+     "★name=该知识点的简洁中文概念名(≤12字, 如「数列极限的定义」「罗尔中值定理」「二重积分换元」), "
+     "★绝不要用「定义1」「定理2」这种编号当name(要概念实名)。"
+     'Output JSON {"name":"<简洁概念名>","zh":"<中文讲透,含完整LaTeX公式>","en":"<English>"}.')
 async def synth(cli, chapter, item):
     # ★分块: 喂该知识点所在小节(由pos定位), 不喂整章[:75000]→长章(Ch11/12 12万/18万字)章尾知识点不再被截断成空
     intro = chapter[:1000]  # 章首记号/约定上下文
@@ -154,12 +156,18 @@ async def main():
                 j = await synth(cli, chapter, item)
                 if not j: return None
                 zh = clean_math(j.get('zh','')); en = clean_math(j.get('en',''))
+                # ★过滤空泛章节摘要(讲浅): KU应是定义/定理/概念, 非'本节主要介绍…'概览
+                if re.match(r'^\s*本(节|章|部分|小节)(主要)?(介绍|讲|讨论|内容)|^\s*这一?(节|章)', zh):
+                    return None
                 has_latex = bool(re.search(r'\\(frac|lim|int|sqrt|prime|partial)|\$', zh))
                 # ★内容层校验: KU内容真含该知识点的辨识词? (堵'占位骗校验')
                 content_ok = any(kt in zh for kt in item['key_terms'])
                 # ★面齐校验(防空洞): 该有的面齐不齐
                 fissues = facet_check(item['id'], zh)
-                return {'point': item['id'], 'type': item['type'], 'label': item['label'],
+                # ★LLM 概念实名(回退 should_have 标题): 防 '定义1' 这种编号标题
+                nm = (j.get('name') or '').strip()
+                lbl = nm if (nm and not re.match(r'^(定义|定理|推论|命题|引理)\d', nm)) else item['label']
+                return {'point': item['id'], 'type': item['type'], 'label': lbl,
                         'key_terms': item['key_terms'], 'zh': zh, 'en': en,
                         'has_formula': has_latex, 'zh_len': len(zh),
                         'content_match': content_ok, 'facet_issues': fissues}

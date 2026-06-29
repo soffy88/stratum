@@ -260,6 +260,8 @@ PYEOF
         echo "  ✅ 质量门通过 → 自动入库..."
         $PY scripts/math_register.py "$SUBSTRATE" "$MATH_TITLE" \
             --staging "$STAGING_DIR" --subject 数学
+        # ★书内去重(防同概念跨章重抽: 同title+余弦>0.80 留最长; 同名不同内容不动)
+        $PY scripts/dedup_within_book.py "$SUBSTRATE" 2>/dev/null || echo "  ⚠ 书内去重跳过(非致命)"
         N_PASS=$((N_PASS + 1))
         echo "  ✅ 已入正式库: $SUBSTRATE"
     else
