@@ -37,6 +37,9 @@ MATH_LIMIT="${MATH_LIMIT:-10}"
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('math_zh',''))" 2>/dev/null)"
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
 export CUDA_VISIBLE_DEVICES=""
+# ★忠实模式: KU只忠实呈现原书内容(定义/定理+公式原样), 少靠LLM判断, 不过度why/how → 快10×+忠实
+export MATH_FAITHFUL=1
+export MATH_SECTION_CHARS=8000
 
 mkdir -p math_pipeline
 
