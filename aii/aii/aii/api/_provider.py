@@ -27,7 +27,7 @@ def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash",
     _call_sync_json uses response_format=json_object to fix ~70% retry rate in llm_extract_ku.
     _call_sync (used internally by _call_async for synthesis) does NOT force JSON mode.
     """
-    _client = httpx.Client(trust_env=False, timeout=120)
+    _client = httpx.Client(trust_env=False, timeout=240)
 
     # ★全局限流: NVIDIA NIM 免费层 40 req/min. rpm>0 时所有并发调用排队, 间隔 60/rpm 秒,
     #   防 readout(无限并发)等步骤爆 429. 给每个调用分配一个时间槽, 锁外 sleep.
