@@ -246,9 +246,10 @@ async def run():
 
     # ★A仓瘦身: 去掉有向边密度报警(directed_edge_v2=B仓产物, A仓不产有向边)
 
-    if shallow > TH["shallow_max"]:
+    # ★讲浅KU: 只检测/标记, 不作隔离依据(用户决定: 讲浅只判断和标记, 不做限制)
+    if shallow > 0:
         sample = metrics.get("讲浅样本(前3)", [])[:2]
-        alarms.append(f"讲浅KU={shallow}>0(面缺,非字数): {'; '.join(sample)}")
+        warnings.append(f"讲浅KU={shallow}(面缺,仅标记不拦截): {'; '.join(sample)}")
 
     # ★KU密度报警(经济书命门: 漏抽=92KU vs 应有150+)
     if density_ratio < TH["ku_density"]:
@@ -293,7 +294,7 @@ async def run():
     for k, v in metrics.items():
         print(f"  {k}: {v}")
     print(f"\n阈值[A仓]: complete≥{TH['complete_pct']}% | 残留=0 | 空壳=0 | 双语≥{TH['bilingual_min']}%"
-          f" | KU密度≥{TH['ku_density']:.0%}预期 | 讲浅(面缺)=0 | 章KU≥{TH['chapter_floor']}"
+          f" | KU密度≥{TH['ku_density']:.0%}预期 | 讲浅(面缺)仅标记不拦截 | 章KU≥{TH['chapter_floor']}"
           f" | ★rationale≠0+单类<95%(六分类是A仓)  (有向边/explains=B仓, A仓不查)")
     if alarms:
         print(f"\n🚨 报警({len(alarms)}):")
@@ -301,6 +302,10 @@ async def run():
             print(f"  • {a}")
     else:
         print("\n✅ 全部达标 → 可自动入库")
+    if warnings:
+        print(f"\n⚠️ 标记({len(warnings)}, 不拦截):")
+        for w in warnings:
+            print(f"  • {w}")
     if warnings:
         print(f"\n⚠️ 提示: {warnings}")
     print(f"\n{result['note']}")

@@ -7,7 +7,7 @@
 ★防漏: 用 planning_completeness(确定性)对照"应有黑体术语/小节"查漏, 漏的补抽.
 Usage: chapter_synthesize.py <chapter_n>
 """
-import asyncio, json, re, sys
+import asyncio, json, os, re, sys
 from pathlib import Path
 from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[1]
@@ -477,7 +477,7 @@ async def main():
     print(f"planned {len(points)} knowledge points", flush=True)
     for p in points:
         print(f"  {p['name']}: pos={p.get('pos', 0)}", flush=True)
-    sem = asyncio.Semaphore(8)
+    sem = asyncio.Semaphore(int(os.getenv("AII_SYNTH_CONCURRENCY", "1")))   # ★并发度由飞轮env控制(测3/4/5/6); 默认1=串行
 
     async def s(p):
         async with sem:
