@@ -22,6 +22,10 @@ from obase import ProviderRegistry
 _CTX = 130000
 # ★定向窗口参数 — 每个 KU 合成只喂知识点所在小节, 不喂整章.
 _WIN_PRE        = 500    # 知识点 pos 前的 chars(标准路径)
+# ★★ 固化标识: 经济学管道程序端标准版本(随 econ_pipeline.sh econ-std-v1.1) ★★
+# v1.1: A定位优先真定义框+跳目录 / B窗口清脚注·URL·页码 / C-D WHAT骨架+例子去重(成熟)
+PIPELINE_VERSION = "econ-A仓-v1.3"  # 固化: A仓标准(六类+主动抽why+准入+两约束; plan14K小块; 瘦身5步)
+
 _WIN_POST       = 20000  # 知识点 pos 后的 chars(标准路径)
 _WIN_FALLBACK   = 40000  # pos 未找到时 fallback
 # ★混合路径参数 — 程序提取了WHAT骨架后, LLM看WHY窗口
@@ -29,8 +33,12 @@ _WIN_FALLBACK   = 40000  # pos 未找到时 fallback
 _WIN_SKEL_DEF   = 0      # 从 pos 开始读(不跳过定义区, 防止"Let bygones"等引入段丢失)
 _WIN_POST_HYBRID = 9000  # 从 pos 起读 9K chars(比标准 20K 更小)
 
-PLAN_SYS = ("You identify the knowledge points a textbook chapter DIRECTLY AND SUBSTANTIVELY teaches. "
-            "Output valid JSON only.")
+PLAN_SYS = ("You identify the knowledge points a textbook chapter DIRECTLY AND SUBSTANTIVELY teaches, "
+            "classified by ontological type (conceptual / rationale / procedural / positional / factual). "
+            "★FAITHFUL TO THE TEXT (命门): for rationale, give ONLY the causal mechanism the text actually "
+            "states — never invent causation the text doesn't say. For positional, mark ONLY genuine disputes "
+            "the text presents — never turn a consensus principle into a 'dispute'. "
+            "Types reflect what the book really is — never force a type that isn't there. Output valid JSON only.")
 SYN_SYS = ("You synthesize ONE thorough KU by INTEGRATING the chapter's material. Use ONLY the chapter text. "
            "Cite [Ch{n}]. Write ONLY what IS substantively covered — skip any facet absent from this chapter "
            "(do NOT write placeholder text like 'not covered'). Integration not creation. Bilingual EN+中文. "
@@ -49,17 +57,26 @@ _HARD_BOUNDARY_RE = re.compile(
 )
 _SOFT_BOUNDARY_RE = re.compile(r'(?m)^#{1,4}\s+')
 
-# ── 窗口噪音清洗(页内污染源: 图片占位/页眉页脚) ──
+# ── 窗口噪音清洗(页内污染源: 图片占位/脚注/引文/页码/URL) ──
 # OCR管道留下的图片占位符(每章15~31个)纯噪音; 喂给LLM前清掉, 让WHY窗口更干净.
 _PIC_NOISE_RE  = re.compile(r'\*\*\s*==>.*?omitted.*?<==\s*\*\*', re.I | re.S)
 _IMG_TAG_RE    = re.compile(r'!\[[^\]]*\]\([^)]*\)')   # markdown 图片标签(alt文本非定义, 易误当def)
+# 脚注行: OCR 常把脚注号与作者/引文粘连成行首("23Stephen Coate, ..."); 数字紧跟大写/引号(无空格)= 脚注.
+# (真列表项是 "23. " 或 "23 " 带分隔符, 不会被误伤)
+_FOOTNOTE_RE   = re.compile(r'(?m)^\s*>?\s*\d{1,3}(?=[A-Z“‘"\'])[^\n]{0,240}$')
+_URL_LINE_RE   = re.compile(r'(?m)^[^\n]*(?:https?://|www\.)\S[^\n]*$')   # URL/引文出处行
+_PAGENUM_RE    = re.compile(r'(?m)^\s*\d{1,4}\s*$')                        # 孤立页码行(OCR 页眉页脚)
 _BLANKS_RE     = re.compile(r'\n{3,}')
 
 
 def _clean_window(s: str) -> str:
-    """清洗喂给LLM的窗口: 去图片占位符/图片标签等纯噪音, 收敛多余空行."""
+    """清洗喂给LLM的窗口: 去图片占位/图片标签/脚注/URL引文/孤立页码等页内污染, 收敛多余空行.
+    ★边界全覆盖: 这些混进窗口会污染定义抽取与 WHY 窗口, 治本在喂 LLM 前清掉."""
     s = _PIC_NOISE_RE.sub("", s)
     s = _IMG_TAG_RE.sub("", s)
+    s = _FOOTNOTE_RE.sub("", s)
+    s = _URL_LINE_RE.sub("", s)
+    s = _PAGENUM_RE.sub("", s)
     return _BLANKS_RE.sub("\n\n", s).strip()
 
 
@@ -226,9 +243,28 @@ def _extract_skeleton(text: str, name: str, pos: int):
 
 
 def _facets(typ):
-    return {"concept": "WHAT(内涵essence/外延boundary/用处use), WHY(why true/important), HOW(how applied)",
-            "principle": "WHAT(meaning), WHY(rationale/evidence), IMPLICATION(what follows)",
-            "method": "WHAT, WHEN, HOW(steps), WHY"}.get(typ, "WHAT, WHY, HOW")
+    return {
+        # ── 六类各自的"面" ──
+        "conceptual": "WHAT(内涵essence/外延boundary/用处use), WHY(why true/important), HOW(how applied)",
+        "rationale":  "the MECHANISM / causal chain: WHY-it-is-so and HOW the causation works. "
+                      "★ONLY the causation the text EXPLICITLY states — never invent causation the text doesn't say.",
+        "procedural": "WHAT, WHEN(applicable conditions), HOW(steps), WHY",
+        "positional": "the CLAIM, its ARGUMENT, the OPPOSING stance(s). "
+                      "★ONLY a genuine dispute the text presents — never present a consensus principle as a dispute.",
+        "factual":    "the 5W: when / where / who / what happened / significance",
+        # ── 旧类型 back-compat(防历史调用) ──
+        "concept": "WHAT(内涵essence/外延boundary/用处use), WHY(why true/important), HOW(how applied)",
+        "principle": "WHAT(meaning), WHY(rationale/evidence), IMPLICATION(what follows)",
+        "method": "WHAT, WHEN, HOW(steps), WHY",
+    }.get(typ, "WHAT, WHY, HOW")
+
+
+def _not_toc(tl: str, start: int) -> bool:
+    """该位置所在行是否*不是*目录条目(目录行尾是裸页码, 如 '… Demand 263**')."""
+    le = tl.find("\n", start)
+    ls = tl.rfind("\n", 0, start) + 1
+    line = tl[ls: le if le >= 0 else len(tl)]
+    return not re.search(r'\d{2,4}\s*\*{0,2}\s*$', line)
 
 
 def _find_pos(text: str, name: str) -> int:
@@ -241,8 +277,17 @@ def _find_pos(text: str, name: str) -> int:
       5. 首次出现(原行为, 词边界兜底)
     ★全程用 \\b 词边界, 杜绝 'elastic' 误命中 'inelastic' 这类子串错位."""
     variants = _name_variants(name)
-    # 1. 全大写定义框(原文大小写敏感): **EXPLICIT COST** 优先于运行文里的 **explicit cost**
-    for v in dict.fromkeys(x.upper() for x in variants):
+    upper_vs = list(dict.fromkeys(x.upper() for x in variants))
+    # 1a. 全大写定义框 + 后接定义句(The/A/An/"大写词 is/are/refers/means") — 教材定义框最权威,
+    #     优先于"小节内顺带加粗"或"列表里点名"的那处(治本: 定位到真讲它的地方).
+    for v in upper_vs:
+        m = re.search(
+            rf'\*\*\s*{re.escape(v)}\s*\*\*\s+(?:The\b|An?\b|[A-Z][a-z]+\s+(?:is|are|means?|refers?))',
+            text)
+        if m:
+            return m.start()
+    # 1b. 任意全大写定义框 **TERM**(兜底): **EXPLICIT COST** 优先于运行文里的 **explicit cost**
+    for v in upper_vs:
         m = re.search(rf'\*\*\s*{re.escape(v)}\s*\*\*', text)
         if m:
             return m.start()
@@ -258,22 +303,25 @@ def _find_pos(text: str, name: str) -> int:
             line = tl[m.start(): tl.find("\n", m.start())]
             if re.match(r'#\s+chapter\s+\d', line):
                 continue
+            if re.search(r'\d{2,4}\s*\*{0,2}\s*$', line):  # 目录条目: 行尾带页码 → 跳过(非真定义节)
+                continue
             return m.start()
-    # 4. 'TERM is/are/means/refers to/defined as' 定义句
+    # 4. 'TERM is/are/means/refers to/defined as' 定义句(跳过目录条目)
     for v in list(dict.fromkeys(x.lower() for x in variants))[:4]:
-        m = re.search(
-            rf'\b{re.escape(v)}\b[^.\n]{{0,40}}\b(?:is|are|means?|refers?\s+to|is\s+defined\s+as)\b', tl)
-        if m:
+        for m in re.finditer(
+            rf'\b{re.escape(v)}\b[^.\n]{{0,40}}\b(?:is|are|means?|refers?\s+to|is\s+defined\s+as|measures?|calculated)\b', tl):
+            if _not_toc(tl, m.start()):
+                return m.start()
+    # 5. 兜底: 首次出现(词边界, 跳过目录)— 全名前30字符, 再退最长有意义词
+    for m in re.finditer(rf'\b{re.escape(name.lower()[:30])}', tl):
+        if _not_toc(tl, m.start()):
             return m.start()
-    # 5. 兜底: 首次出现(词边界)— 全名前30字符, 再退最长有意义词
-    m = re.search(rf'\b{re.escape(name.lower()[:30])}', tl)
-    if m:
-        return m.start()
     for word in sorted(name.split(), key=len, reverse=True):
         if len(word) > 4:
-            mm = re.search(rf'\b{re.escape(word.lower())}', tl)
-            if mm:
-                return mm.start()
+            for mm in re.finditer(rf'\b{re.escape(word.lower())}', tl):
+                if _not_toc(tl, mm.start()):
+                    return mm.start()
+            break
     return -1
 
 
@@ -309,18 +357,38 @@ def _parse_points(t: str) -> list:
 
 
 async def _plan(llm, text, n):
-    """规划仍喂全章(不截断); 额外为每个知识点定位 pos 供 _synth 用."""
-    chunks = [text] if len(text) <= _CTX else [text[i:i + _CTX] for i in range(0, len(text), _CTX)]
+    """规划分块喂(块大小适配 LLM prompt 上限); 额外为每个知识点定位 pos 供 _synth 用.
+    ★块大小=min(_CTX, OLLAMA_PROMPT_CHARS-余量): 本地模型(Ollama)按 OLLAMA_PROMPT_CHARS 截断,
+      若块>上限会被截断、且指令在文本后→指令被切掉→空规划. 故块要 fit 上限, 指令放最前."""
+    import os
+    _lim = int(os.getenv("OLLAMA_PROMPT_CHARS", str(_CTX)))
+    # ★plan 用较小块(默认14K): 密度大的章若整章塞1次调用, LLM会"摘要"成~10个主概念而漏抽;
+    #   小块→每块都granular抽概念→合并后覆盖更全. Ollama 上限更小则取更小.
+    _ck = min(_CTX, max(8000, _lim - 2500), int(os.getenv("PLAN_CHUNK_CHARS", "14000")))
+    chunks = [text] if len(text) <= _ck else [text[i:i + _ck] for i in range(0, len(text), _ck)]
     pts = []
     for ck in chunks:
         r = await llm(messages=[{"role": "user", "content":
-            f"Chapter {n} text (part):\n\n{ck}\n\n"
-            f"List ONLY the concepts this chapter DIRECTLY AND SUBSTANTIVELY teaches — "
-            f"concepts with their own definition or ≥2 paragraphs of explanation. "
-            f"EXCLUDE concepts merely mentioned in passing, used as 1-sentence examples, "
-            f"or previewed/introduced for a later chapter. "
-            'JSON: {"points":[{"name":"..","type":"concept|principle|method"}]}'}],
-            system=PLAN_SYS, max_tokens=700)
+            # ★指令在前(防 Ollama 截断切掉指令), 章节文本在后
+            "List the knowledge points this chapter text DIRECTLY AND SUBSTANTIVELY teaches "
+            "(each with its own definition or ≥2 paragraphs), classified by TYPE:\n"
+            "• conceptual: a concept / principle / law (what X is, what holds) — e.g. price elasticity, law of demand\n"
+            "• rationale: a WHY / mechanism the text EXPLICITLY explains (why something holds, the causal chain). "
+            "★Only the causation the text actually states — DO NOT invent causation the text doesn't say.\n"
+            "• procedural: a method / how-to (steps to do/compute something)\n"
+            "• positional: a CONTESTED claim with no settled truth (schools disagree) — give the holder. "
+            "★Only genuine disputes the text presents — DO NOT turn a consensus principle into a 'dispute'.\n"
+            "• factual: a specific verifiable fact (only if the text really states one)\n\n"
+            "★MAIN WHY (深度): for EACH conceptual point, IF the text explains why it holds / its mechanism, "
+            'ALSO add a rationale point with "explains":<that concept name>.\n'
+            "★ADMISSION GATE: cases / experiments / stories / examples are NOT points (they SUPPORT a point) — exclude them.\n"
+            "★TYPES REFLECT THE BOOK: a normal econ textbook is mostly conceptual/rationale/procedural; "
+            "positional/factual may be few or NONE — that is correct, NEVER force them.\n\n"
+            'Output JSON: {"points":[{"name":"..","type":"conceptual|rationale|procedural|positional|factual",'
+            '"explains":"<concept name — ONLY if type=rationale>",'
+            '"stance_holder":"<who holds it — ONLY if positional>","opposing":"<opposing stance — ONLY if positional>"}]}\n\n'
+            f"Chapter {n} text:\n\n{ck}"}],
+            system=PLAN_SYS, max_tokens=1200)
         t = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
         pts += _parse_points(t)
     # dedup by normalized name (单复数/大小写归一)

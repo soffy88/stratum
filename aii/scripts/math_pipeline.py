@@ -1,5 +1,9 @@
 """数学专门管道: 应有清单(定义/定理/概念)驱动讲透→数学打磨→完整性自检→质量门. 不入正式库, 出实物.
-★关键: 讲透由确定性应有清单驱动(每知识点一KU), 不靠LLM规划(那会漏). 公式完整=命门."""
+★关键: 讲透由确定性应有清单驱动(每知识点一KU), 不靠LLM规划(那会漏). 公式完整=命门.
+★★固化标识: 数学 A仓 KU 抽取标准 math-A仓-v1(2026-06-29) — 双仓A仓=纯抽取(should_have确定性
+   定义/定理/公式驱动→逐章讲透→质量门content_match/公式≥80%/facet). 本就无readout/KC/BU(已A仓).
+   MATH_LANG=en→英文应有清单. slice_chapter支持 第N章 与 # Chapter N(冒号可选)."""
+MATH_PIPELINE_VERSION = "math-A仓-v1"
 import asyncio, os, json, re, sys, httpx
 from pathlib import Path
 
@@ -28,9 +32,9 @@ def slice_chapter(text, n):
         if '…' in line or re.search(r'\s\d+\s*$', line): continue
         num = _cn2int(m.group(1))
         if num and num not in starts: starts[num] = m.start()
-    # 英文格式 fallback
+    # 英文格式 fallback(冒号可选: '# Chapter 1:' 或 '# Chapter 1')
     if not starts:
-        for m in re.finditer(r'(?m)^#\s+Chapter\s+(\d+):', text):
+        for m in re.finditer(r'(?m)^#\s+Chapter\s+(\d+):?\s*$', text):
             starts[int(m.group(1))] = m.start()
     if n not in starts:
         raise SystemExit(f"chapter {n} not found; have {sorted(starts)}")
@@ -41,8 +45,38 @@ def slice_chapter(text, n):
 SM = Path(os.getenv("AII_MD_FILE",
     "/home/soffy/shared/stratum-to-aii/Principles_of_Microeconomics_The_Way_We__01KVAJCX.md"))
 
-from math_should_have import extract
+# ★语言通道: MATH_LANG=en → 英文数学书专用应有清单(Definition/Theorem 等); 否则中文版.
+if os.getenv('MATH_LANG', '').lower() == 'en':
+    from math_should_have_en import extract
+else:
+    from math_should_have import extract
 KEY = os.getenv('DEEPSEEK_API_KEY')
+
+# ★LLM 端点: 设 NVIDIA_NIM_API_KEY → 用 NIM(云端OpenAI兼容, 快+可并发); 否则 DeepSeek.
+import time as _time
+_NIM_KEY = os.getenv('NVIDIA_NIM_API_KEY')
+if _NIM_KEY:
+    _LLM_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
+    _LLM_KEY = _NIM_KEY
+    _LLM_MODEL = os.getenv('NIM_MODEL', 'meta/llama-3.3-70b-instruct')
+    _LLM_RPM = float(os.getenv('NIM_RPM', '36'))   # NIM 免费层 40/min, 留余量
+else:
+    _LLM_URL = "https://api.deepseek.com/chat/completions"
+    _LLM_KEY = KEY
+    _LLM_MODEL = "deepseek-v4-flash"
+    _LLM_RPM = 0
+# ★全局 async 限流(时间槽节流, 防爆 NIM 40/min)
+_RL = {"next": 0.0}
+_RL_LOCK = asyncio.Lock()
+async def _throttle():
+    if not _LLM_RPM:
+        return
+    async with _RL_LOCK:
+        start = max(_time.monotonic(), _RL["next"])
+        _RL["next"] = start + 60.0 / _LLM_RPM
+    w = start - _time.monotonic()
+    if w > 0:
+        await asyncio.sleep(w)
 # 数学杂乱词(打磨): 含这些的句删
 _MATHNONCOV = re.compile(r"未涉及|未覆盖|未出现|未给出|未提及|未定义|未讨论|需查阅|其他资料|建议参考|不在本(章|节)|超出本(章|节)")
 def clean_math(t):
@@ -93,8 +127,9 @@ async def synth(cli, chapter, item):
     prompt=f"本章开头(记号约定):\n{intro}\n\n该知识点所在小节:\n{section}\n\n为知识点「{item['label'] or item['id']}」({item['type']}型)合成讲透KU。\n面: {facets(item['type'])}\n中文讲透(公式完整)+English。"
     for _ in range(3):
         try:
-            r=await cli.post("https://api.deepseek.com/chat/completions",headers={"Authorization":"Bearer "+KEY},
-                json={"model":"deepseek-v4-flash","response_format":{"type":"json_object"},
+            await _throttle()
+            r=await cli.post(_LLM_URL,headers={"Authorization":"Bearer "+_LLM_KEY},
+                json={"model":_LLM_MODEL,"response_format":{"type":"json_object"},
                       "messages":[{"role":"system","content":SYS},{"role":"user","content":prompt}]})
             j=json.loads(r.json()["choices"][0]["message"]["content"]); return j
         except Exception: await asyncio.sleep(2)
