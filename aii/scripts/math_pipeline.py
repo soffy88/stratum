@@ -178,6 +178,10 @@ async def main():
                             nm = j2['name'].strip()
                 if tries:
                     print(f"    ↻讲透重试 {item['id']}: {tries}次→{len(zh)}字, 剩缺面{fissues or '无'}", flush=True)
+                # ★B仓只收高质量: 重试后仍太薄(<250字且缺面)= 源材料就一句话/无法讲透 → 丢弃(质量优先于不漏)
+                if fissues and len(zh) < 250:
+                    print(f"    ✗弃薄KU {item['id']}: {len(zh)}字仍缺{fissues}(源材料不足无法讲透)", flush=True)
+                    return None
                 has_latex = bool(re.search(r'\\(frac|lim|int|sqrt|prime|partial)|\$', zh))
                 # ★内容层校验: KU内容真含该知识点的辨识词? (堵'占位骗校验')
                 content_ok = any(kt in zh for kt in item['key_terms'])
