@@ -201,7 +201,7 @@ async def main():
                     print(f"    ⚑待补 {item['id']}: {len(zh)}字 缺{fissues}(保留不漏, 记录待补)", flush=True)
                 has_latex = bool(re.search(r'\\(frac|lim|int|sqrt|prime|partial)|\$', zh))
                 # ★内容层校验: KU内容真含该知识点的辨识词? (堵'占位骗校验')
-                content_ok = any(kt in zh for kt in item['key_terms'])
+                content_ok = any(kt in zh or kt in en for kt in item['key_terms'])  # 查zh+en(英文书术语在en)
                 # ★LLM 概念实名(回退 should_have 标题): 防 '定义1' 这种编号标题
                 lbl = nm if (nm and not re.match(r'^(定义|定理|推论|命题|引理)\d', nm)) else item['label']
                 return {'point': item['id'], 'type': item['type'], 'label': lbl,
