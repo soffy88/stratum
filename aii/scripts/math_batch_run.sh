@@ -187,11 +187,13 @@ def _cn2int(s):
     return _CN.get(s, 0)
 text = open(os.environ['_MATH_MD'], encoding='utf-8', errors='replace').read()
 chapters = {}
-for m in re.finditer(r'(?m)^第([一二三四五六七八九十]+)章', text):
+for m in re.finditer(r'(?m)^#{0,4}\s*第([一二三四五六七八九十]+)章', text):   # 允许 markdown 前导 #
     line = text[m.start(): m.start()+80]
     if '…' in line or re.search(r'\s\d+\s*$', line): continue
     n = _cn2int(m.group(1))
     if n: chapters[n] = m.start()
+for m in re.finditer(r'(?m)^#\s+Chapter\s+(\d+):?\s*$', text):   # 英文章节
+    chapters[int(m.group(1))] = m.start()
 print(' '.join(str(c) for c in sorted(chapters.keys())))
 PYEOF
 )
