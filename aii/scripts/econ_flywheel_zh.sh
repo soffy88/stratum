@@ -36,6 +36,8 @@ STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"   # 中文书来自本地文件�
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('econ_zh',''))" 2>/dev/null)"
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:***REMOVED***@localhost:5435/aii_kg}"
 export CUDA_VISIBLE_DEVICES=""
+# ★忠实模式: KU只忠实呈现原书内容(概念定义/含义), 少靠LLM判断, 不过度why/how → 快+忠实
+export ECON_FAITHFUL=1
 
 mkdir -p econ_pipeline
 
