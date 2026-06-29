@@ -45,8 +45,10 @@ SYN_SYS = ("You synthesize ONE thorough KU by INTEGRATING the chapter's material
            "★ The Chinese MUST be Simplified Chinese (简体中文) only — NEVER Traditional characters (禁止繁体字).")
 # ★忠实模式(ECON_FAITHFUL=1): KU只忠实呈现原书内容, 少靠LLM判断, 不过度why/how → 快+忠实
 ECON_FAITHFUL = os.getenv('ECON_FAITHFUL') == '1'
-SYN_SYS_FAITHFUL = ("忠实呈现该知识点在本章的原书内容: 准确给出概念的定义/含义(按原书所述)+原书给的关键要点. "
-                    "★不发挥、不写长篇why/how、不编原书没有的内容、不过度判断. 忠实+简洁第一. 仅用本章内容. "
+SYN_SYS_FAITHFUL = ("忠实呈现该知识点在本章的原书内容: "
+                    "概念→给定义/含义(按原书); 论断/观点→给主张+原书给的依据/理由(按原书所述, 不自行推断或扩展). "
+                    "原书讲的关键要点都呈现, 主要内容不漏. "
+                    "★不发挥、不写长篇why/how、不编原书没有的内容、不替原书下判断. 忠实+完整+简洁. 仅用本章内容. "
                     "English then 中文(必须简体中文, 禁繁体).")
 
 
