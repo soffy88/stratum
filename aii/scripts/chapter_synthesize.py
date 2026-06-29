@@ -43,6 +43,11 @@ SYN_SYS = ("You synthesize ONE thorough KU by INTEGRATING the chapter's material
            "Cite [Ch{n}]. Write ONLY what IS substantively covered — skip any facet absent from this chapter "
            "(do NOT write placeholder text like 'not covered'). Integration not creation. Bilingual EN+中文. "
            "★ The Chinese MUST be Simplified Chinese (简体中文) only — NEVER Traditional characters (禁止繁体字).")
+# ★忠实模式(ECON_FAITHFUL=1): KU只忠实呈现原书内容, 少靠LLM判断, 不过度why/how → 快+忠实
+ECON_FAITHFUL = os.getenv('ECON_FAITHFUL') == '1'
+SYN_SYS_FAITHFUL = ("忠实呈现该知识点在本章的原书内容: 准确给出概念的定义/含义(按原书所述)+原书给的关键要点. "
+                    "★不发挥、不写长篇why/how、不编原书没有的内容、不过度判断. 忠实+简洁第一. 仅用本章内容. "
+                    "English then 中文(必须简体中文, 禁繁体).")
 
 
 # ── 章节边界检测(模块级编译, 治本防污染) ──
@@ -435,7 +440,8 @@ async def _synth(llm, text, n, name, typ, pos: int = 0):
             f"Focus on WHY (importance/rationale — integrate from section, "
             f"SKIP unrelated paragraphs and end-of-chapter questions). "
             f"Facets: {_facets(typ)}. Each [Ch{n}]-cited; skip absent facets. English then 中文."}],
-            system=SYN_SYS.format(n=n), max_tokens=1100)
+            system=(SYN_SYS_FAITHFUL if ECON_FAITHFUL else SYN_SYS).format(n=n),
+            max_tokens=550 if ECON_FAITHFUL else 1100)
 
     elif pos > 0:
         # ── 标准定向窗口 (无骨架) ──
@@ -445,7 +451,8 @@ async def _synth(llm, text, n, name, typ, pos: int = 0):
         r = await llm(messages=[{"role": "user", "content":
             f"{context}\n\nSynthesize ONE thorough KU for: \"{name}\" (type={typ}). "
             f"Facets: {_facets(typ)}. Each [Ch{n}]-cited; skip absent facets. English then 中文."}],
-            system=SYN_SYS.format(n=n), max_tokens=1100)
+            system=(SYN_SYS_FAITHFUL if ECON_FAITHFUL else SYN_SYS).format(n=n),
+            max_tokens=550 if ECON_FAITHFUL else 1100)
 
     else:
         # ── Fallback: pos未找到, 章首40K ──
@@ -453,7 +460,8 @@ async def _synth(llm, text, n, name, typ, pos: int = 0):
         r = await llm(messages=[{"role": "user", "content":
             f"{context}\n\nSynthesize ONE thorough KU for: \"{name}\" (type={typ}). "
             f"Facets: {_facets(typ)}. Each [Ch{n}]-cited; skip absent facets. English then 中文."}],
-            system=SYN_SYS.format(n=n), max_tokens=1100)
+            system=(SYN_SYS_FAITHFUL if ECON_FAITHFUL else SYN_SYS).format(n=n),
+            max_tokens=550 if ECON_FAITHFUL else 1100)
 
     return name, "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
 
