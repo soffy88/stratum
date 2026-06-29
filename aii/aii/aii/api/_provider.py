@@ -2,14 +2,22 @@ import asyncio
 import concurrent.futures
 import os
 import logging
+import threading
 import httpx
 from obase import ProviderRegistry
 from oprim import vector_encode
 
+# ★全局 Ollama 串行锁: 本地单 GPU 一次只能可靠跑 1 个 gemma 请求; 并发请求会让 gemma4
+# 输出垃圾(如 '{"'). 管道多处 gather/Semaphore(synth=8, readout=∞, cross=5)对云端
+# DeepSeek 没事, 但对本地 Ollama 必须串行. 在 caller 层加锁, 不必改各步骤并发参数.
+_OLLAMA_CALL_LOCK = threading.Lock()
+
 logger = logging.getLogger(__name__)
 
 
-def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash") -> callable:
+def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash",
+                          base_url: str = "https://api.deepseek.com/chat/completions",
+                          rpm: float = 0) -> callable:
     """Return an async callable compatible with both omodul (messages/system/max_tokens kwargs)
     and the legacy synthesis_engine (single positional prompt string via executor).
 
@@ -21,10 +29,28 @@ def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash") -> cal
     """
     _client = httpx.Client(trust_env=False, timeout=120)
 
+    # ★全局限流: NVIDIA NIM 免费层 40 req/min. rpm>0 时所有并发调用排队, 间隔 60/rpm 秒,
+    #   防 readout(无限并发)等步骤爆 429. 给每个调用分配一个时间槽, 锁外 sleep.
+    _min_int = (60.0 / rpm) if rpm else 0.0
+    _rl_lock = threading.Lock()
+    _rl_next = [0.0]
+
+    def _throttle() -> None:
+        if not _min_int:
+            return
+        import time as _t
+        with _rl_lock:
+            start = max(_t.monotonic(), _rl_next[0])
+            _rl_next[0] = start + _min_int
+        w = start - _t.monotonic()
+        if w > 0:
+            _t.sleep(w)
+
     def _call_sync(prompt: str) -> str:
         """Synchronous DeepSeek call for synthesis (plain text, no JSON mode)."""
+        _throttle()
         resp = _client.post(
-            "https://api.deepseek.com/chat/completions",
+            base_url,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={"model": model, "messages": [{"role": "user", "content": prompt}]},
         )
@@ -33,8 +59,9 @@ def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash") -> cal
 
     def _call_sync_json(prompt: str) -> str:
         """Synchronous DeepSeek call for extraction (JSON mode → eliminates markdown fence retries)."""
+        _throttle()
         resp = _client.post(
-            "https://api.deepseek.com/chat/completions",
+            base_url,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
                 "model": model,
@@ -77,19 +104,21 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
 
     def _call_sync(prompt: str) -> str:
         """KU 抽取用: format=json 强制结构化输出."""
-        resp = _client.post(
-            f"{base_url}/api/generate",
-            json={"model": model, "prompt": prompt[:_max_chars], "stream": False, "format": "json"},
-        )
+        with _OLLAMA_CALL_LOCK:  # ★串行: 单 GPU 并发会让 gemma 输出垃圾
+            resp = _client.post(
+                f"{base_url}/api/generate",
+                json={"model": model, "prompt": prompt[:_max_chars], "stream": False, "format": "json"},
+            )
         resp.raise_for_status()
         return resp.json()["response"]
 
     def _call_sync_plain(prompt: str) -> str:
         """合成/纯文本用: 不加 format=json, 直接返回自然语言."""
-        resp = _client.post(
-            f"{base_url}/api/generate",
-            json={"model": model, "prompt": prompt[:_max_chars], "stream": False},
-        )
+        with _OLLAMA_CALL_LOCK:  # ★串行: 单 GPU 并发会让 gemma 输出垃圾
+            resp = _client.post(
+                f"{base_url}/api/generate",
+                json={"model": model, "prompt": prompt[:_max_chars], "stream": False},
+            )
         resp.raise_for_status()
         return resp.json()["response"]
 
@@ -129,7 +158,22 @@ def register_providers():
     api_key = os.getenv("DEEPSEEK_API_KEY")
     ProviderRegistry.register("llm", "deepseek-flash", _make_deepseek_caller(api_key, model="deepseek-v4-flash"))
     ProviderRegistry.register("llm", "deepseek-pro", _make_deepseek_caller(api_key, model="deepseek-v4-pro"))
-    if not use_ollama_as_default:
+
+    # ★NVIDIA NIM (云端 OpenAI 兼容; 快 + 可并发, 避开本地单 GPU 串行瓶颈, 无需 DeepSeek 余额).
+    #   设 NVIDIA_NIM_API_KEY 即作 default(优先于 DeepSeek); 模型经 NIM_MODEL 选(默认 llama-3.3-70b).
+    nim_key = os.getenv("NVIDIA_NIM_API_KEY")
+    use_nim = bool(nim_key) and not use_ollama_as_default
+    if nim_key:
+        nim_model = os.getenv("NIM_MODEL", "meta/llama-3.3-70b-instruct")
+        nim_rpm = float(os.getenv("NIM_RPM", "36"))  # NIM 免费层 40/min, 留余量
+        nim_caller = _make_deepseek_caller(nim_key, model=nim_model,
+                                           base_url="https://integrate.api.nvidia.com/v1/chat/completions",
+                                           rpm=nim_rpm)
+        ProviderRegistry.register("llm", "nim", nim_caller)
+        if use_nim:
+            ProviderRegistry.register("llm", "default", nim_caller)
+            logger.info("NVIDIA NIM registered as DEFAULT: %s", nim_model)
+    if not use_ollama_as_default and not use_nim:
         ProviderRegistry.register("llm", "default", _make_deepseek_caller(api_key, model="deepseek-v4-flash"))
 
     # 2. LLM Provider (Ollama) — low-trust sources OR local testing (ECON_LLM_PROVIDER=ollama)
