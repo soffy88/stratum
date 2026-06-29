@@ -182,7 +182,7 @@ async def main():
     chapter = slice_chapter(_MD.read_text(encoding='utf-8',errors='replace'), ch_n)
     sh = extract(chapter)
     print(f"第{ch_n}章 应有清单: {len(sh)} 知识点", flush=True)
-    sem = asyncio.Semaphore(6)
+    sem = asyncio.Semaphore(int(os.getenv("AII_SYNTH_CONCURRENCY", "1")))   # ★并发度由飞轮env控制(测3/4/5/6); 默认1=串行
     async with httpx.AsyncClient(trust_env=False, timeout=120) as cli:
         async def one(item):
             async with sem:

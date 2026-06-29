@@ -39,7 +39,7 @@ def _split_bilingual(body: str):
 async def synth_chapter(llm, n):
     text = slice_chapter(SM.read_text(encoding="utf-8", errors="replace"), n)
     points = await _plan(llm, text, n)   # ★ _plan 含 pos + type + explains/stance(positional)
-    sem = asyncio.Semaphore(8)
+    sem = asyncio.Semaphore(int(os.getenv("AII_SYNTH_CONCURRENCY", "1")))   # ★并发度由飞轮env控制(测3/4/5/6); 默认1=串行
 
     async def s(p):
         async with sem:
@@ -70,7 +70,8 @@ async def persist(conn, n, kus):
         # ★清洗呈现: 去脚手架/markdown/(未涉及); 来源标注剥到 provenance.citations(命门不丢)
         en, en_cites = clean(en_raw)
         zh, zh_cites = clean(zh_raw)
-        if is_empty_shell(zh or en):     # 全空壳(书没讲)→ 不入库
+        # 全空壳(书没讲)→ 不入库; 中文<10字也丢弃(对齐质量门空壳判定: 有英文无中文也算空壳)
+        if is_empty_shell(zh or en) or len(re.findall(r'[一-龥]', zh or '')) < 10:
             continue
         kt = _TYPE_MAP.get(typ, "conceptual")
         is_pos = (kt == "positional")

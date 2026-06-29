@@ -464,7 +464,11 @@ async def bu_list(
         offset = (page - 1) * page_size
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:
-            total = await conn.fetchval("SELECT count(*) FROM aii.bu_onto")
+            # 只列已登记书(ingested_substrate)的 BU。飞轮隔离/空跑会把 BU 写进库但不登记
+            # substrate, 用 INNER JOIN 过滤掉这些残留, 与 /api/books 约定一致。
+            total = await conn.fetchval(
+                "SELECT count(*) FROM aii.bu_onto b "
+                "JOIN aii.ingested_substrate s ON s.substrate_id = b.substrate_id")
             rows = await conn.fetch(
                 """
                 SELECT b.bu_id, b.substrate_id, b.doc_type, b.grade,
@@ -472,7 +476,7 @@ async def bu_list(
                        s.title AS book_title, s.subject AS subject,
                        jsonb_array_length(COALESCE(b.main_claims, '[]'::jsonb)) AS claim_count
                 FROM aii.bu_onto b
-                LEFT JOIN aii.ingested_substrate s ON s.substrate_id = b.substrate_id
+                JOIN aii.ingested_substrate s ON s.substrate_id = b.substrate_id
                 ORDER BY b.created_at DESC
                 LIMIT $1 OFFSET $2
                 """,
