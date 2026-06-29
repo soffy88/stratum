@@ -152,7 +152,7 @@ async def main():
     sh = extract(chapter)
     print(f"第{ch_n}章 应有清单: {len(sh)} 知识点", flush=True)
     sem = asyncio.Semaphore(6)
-    async with httpx.AsyncClient(trust_env=False, timeout=60) as cli:
+    async with httpx.AsyncClient(trust_env=False, timeout=120) as cli:
         async def one(item):
             async with sem:
                 j = await synth(cli, chapter, item)
