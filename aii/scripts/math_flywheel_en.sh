@@ -34,6 +34,8 @@ MATH_LIMIT="${MATH_LIMIT:-10}"
 
 # ★英文应有清单(Definition/Theorem) + NIM key(math_en,免费) + DB + BGE-M3跑CPU(不抢GPU)
 export MATH_LANG=en
+# ★忠实模式(同中文版): 只忠实呈现原书内容, 不过度LLM判断/why-how; 但 section 保持默认13000(英文研究书证明远→多上下文)
+export MATH_FAITHFUL=1
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('math_en',''))" 2>/dev/null)"
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
 export CUDA_VISIBLE_DEVICES=""
