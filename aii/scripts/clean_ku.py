@@ -19,7 +19,7 @@ _LABEL = re.compile(rf"^\s*[-*]?\s*(?:\d+[.、]\s*)?\**\s*(?:{_SCAFFOLD})\s*"
 # 元前言/分隔符整行 → 删
 _PREAMBLE = re.compile(
     r"(here is (?:a|an|the|one)\b.{0,70}knowledge unit|here'?s?\b.{0,70}\bku\b|"
-    r"^\s*synthesized knowledge unit\b.{0,60}[:：]|^\s*synthesized ku\b.{0,60}[:：]|"
+    r"^\s*synthesized (?:knowledge unit|ku)\b|"
     r"based (?:strictly )?on the\b.{0,40}(?:text|chapter)|"
     r"这是(?:基于|针对|根据|为)\b.{0,40}(?:知识单元|阐述|KU)|以下是.{0,30}(?:知识单元|阐述|KU)|"
     r"针对.{0,20}合成的知识单元|^\s*KU\s*[:：]|^\s*知识单元\s*[:：]|"
