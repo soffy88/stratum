@@ -79,8 +79,14 @@ async def _throttle():
         await asyncio.sleep(w)
 # 数学杂乱词(打磨): 含这些的句删
 _MATHNONCOV = re.compile(r"未涉及|未覆盖|未出现|未给出|未提及|未定义|未讨论|需查阅|其他资料|建议参考|不在本(章|节)|超出本(章|节)")
+def _repair_latex(t):
+    """★修复LaTeX转义损坏: LLM的LaTeX单反斜杠进JSON, json解码把 \\t→制表符 \\f→换页 \\r→回车 \\b→退格
+    (\\frac→\x0crac, \\text→\\t+ext, \\times \\to \\tau \\theta \\rho \\rightarrow \\beta 等) → 还原反斜杠.
+    这些控制符在LLM正文里几乎不会合法出现, 还原安全. \\n(换行)是真换行不动(\\nabla等少见, 不还原)."""
+    return t.replace('\t', '\\t').replace('\x0c', '\\f').replace('\r', '\\r').replace('\x08', '\\b')
 def clean_math(t):
     if not t: return ""
+    t = _repair_latex(t)
     t = re.sub(r"\s*[\[【]\s*第?\s*\d+[-–]?\d*\s*页\s*[\]】]", "", t)  # 去页码溯源
     t = re.sub(r"^\s*(KU|知识单元|类型|概念)\s*[:：].*$", "", t, flags=re.M)  # 去元标记行
     t = t.replace("**", "").replace("##", "")
