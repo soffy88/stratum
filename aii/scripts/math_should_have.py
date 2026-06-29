@@ -16,6 +16,12 @@ _STOP = re.compile(r'[的与和及、，,；。()（）]')
 _IS_REF = re.compile(r'^\s*(常称为|的结论|中的|给出|即称|简称|又称|见(上面|前面)?定义|以上|所满足|对应)')
 
 
+def _defined_term(after: str) -> str:
+    """从定义正文提取被定义概念(给无括号名的 '定义1' 起描述性标题): 称…为X / 记作X / 叫做X / 定义为X."""
+    m = re.search(r'(?:称[^，。；\s]{0,8}为|记(?:作|为)|叫做|定义为|称为)\s*[“"]?([一-鿿]{2,12}?)(?:[”"]|[，。；、的（(]|$)', after[:200])
+    return m.group(1) if m else ''
+
+
 def _key_terms(name):
     """从知识点真名抽辨识词(内容层校验): 去后缀+非辨识词, 取 ≥2 字具体子词."""
     core = re.sub(r'(举例|问题|的概念|及其计算法?|及其应用|的应用|的定义|的性质|的运算|的求法|及其导数|公式|法则|定理|的关系|概念)$', '', name).strip()
@@ -77,10 +83,10 @@ def _extract_theorem_layer(chapter_text):
         seen_uids.add(uid)
 
         pname = _pname_zh(m.group(3))
-        label = pname if pname else uid
+        label = pname or _defined_term(chapter_text[m.end():m.end()+200]) or uid
         items.append({
             'type': kind, 'id': uid, 'label': label,
-            'key_terms': _key_terms(label) if pname else [num],
+            'key_terms': _key_terms(label) if label != uid else [num],
             'pos': m.start()
         })
 
@@ -116,12 +122,12 @@ def _extract_theorem_layer(chapter_text):
 
         pname = _pname_zh(m.group(3))
         short = kind + re.sub(r"['\"]", '', num)
-        label = pname if pname else short
+        label = pname or _defined_term(chapter_text[m.end():m.end()+200]) or short
         items.append({
             'type': kind,
             'id': uid,     # ★用完整uid(含节序后缀)作id, 防不同节同号被去重
             'label': label,
-            'key_terms': _key_terms(label) if pname else [re.sub(r"['\"]", '', num)],
+            'key_terms': _key_terms(label) if label != short else [re.sub(r"['\"]", '', num)],
             'pos': m.start()
         })
 
