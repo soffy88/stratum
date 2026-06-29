@@ -98,7 +98,7 @@ def facet_check(point_name, zh):
     issues = []
     # 公式汇总/表型(基本导数公式/积分表): 汇总他处已证的公式, 不需单独证明/例题, 只需公式
     is_summary = bool(re.search(r'基本.*公式|基本.*法则|导数公式|微分公式|积分表|公式表|汇总', point_name))
-    is_thm = bool(re.search(r'法则|定理|公式', point_name)) and not is_summary
+    is_thm = bool(re.search(r'法则|定理|公式|theorem|lemma|proposition|corollary|rule', point_name, re.I)) and not is_summary
     has_proof = bool(re.search(r'证明|推导|为什么|∵|证\s*[:(（]|证\s*\d', zh)) or \
                 bool(re.search(r'^\s*证\s', zh, re.MULTILINE))
     has_example = bool(re.search(r'例\s*\d|例如|例题|例\s*[:：]|例子', zh))
@@ -176,6 +176,8 @@ async def main():
                         zh, en, fissues = zh2, en2, f2
                         if j2.get('name'):
                             nm = j2['name'].strip()
+                if tries:
+                    print(f"    ↻讲透重试 {item['id']}: {tries}次→{len(zh)}字, 剩缺面{fissues or '无'}", flush=True)
                 has_latex = bool(re.search(r'\\(frac|lim|int|sqrt|prime|partial)|\$', zh))
                 # ★内容层校验: KU内容真含该知识点的辨识词? (堵'占位骗校验')
                 content_ok = any(kt in zh for kt in item['key_terms'])
