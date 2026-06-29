@@ -30,15 +30,18 @@ _KNOWN = {
 CHANNELS = {
     "econ":    {"name": "程序化英文经济学", "folder": "经济学", "lang": "en", "key_id": "econ",
                 "runner": "econ_flywheel_en_run.sh", "prefix": "econ_en",
+                "known": ["mankiw_principles_econ_10e", "microecon_en_full_v2"],
                 "log": ROOT / "econ_pipeline/flywheel_en.log"},
     "econ_zh": {"name": "程序化中文经济学", "folder": "经济学", "lang": "zh", "key_id": "econ_zh",
-                "runner": "econ_flywheel_zh_run.sh", "prefix": "econ_zh",
+                "runner": "econ_flywheel_zh_run.sh", "prefix": "econ_zh", "known": [],
                 "log": ROOT / "econ_pipeline/flywheel_zh.log"},
     "math_en": {"name": "程序化英文数学", "folder": "英文数学", "lang": "en", "key_id": "math_en",
                 "runner": "math_flywheel_en_run.sh", "prefix": "math_en",
+                "known": ["openstax_calculus_v1"],
                 "log": ROOT / "math_pipeline/flywheel_en.log"},
     "math_zh": {"name": "程序化中文数学", "folder": "中文数学", "lang": "zh", "key_id": "math_zh",
                 "runner": "math_flywheel_zh_run.sh", "prefix": "math_zh",
+                "known": ["shida_mathanalysis_v5_vol1"],
                 "log": ROOT / "math_pipeline/flywheel_zh.log"},
 }
 
@@ -97,7 +100,11 @@ async def list_pipelines():
         out = []
         for cid, c in CHANNELS.items():
             folder = MD_BASE / c["folder"]
-            books, total_ku = [], 0
+            books = []
+            # 频道总KU: 按 substrate prefix + 已知自定义名(稳, 不受文件名→md5 漂移影响)
+            total_ku = await conn.fetchval(
+                "SELECT count(*) FROM aii.ku_onto WHERE substrate_id LIKE $1 OR substrate_id = ANY($2::text[])",
+                c["prefix"] + "%", c.get("known", [])) or 0
             for md in sorted(glob.glob(str(folder / "*.md"))):
                 stem = Path(md).stem
                 try:
@@ -109,7 +116,6 @@ async def list_pipelines():
                 sub = _resolve(c["prefix"], stem)
                 ku = await conn.fetchval(
                     "SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", sub) or 0
-                total_ku += ku
                 books.append({"title": stem, "substrate": sub, "ku": ku, "in_db": ku > 0, "done": ku > 0})
             out.append({
                 "id": cid, "name": c["name"], "folder": str(folder),
