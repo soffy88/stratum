@@ -267,6 +267,8 @@ export interface BuData {
 // ── 视图2:KU 浏览 GET /api/ku/list ──
 export interface KuListItem {
   id: string;
+  /** KU 名称(概念名/定理名)。显示用,缺失时回退 id 尾段。 */
+  title?: string | null;
   natural_text: string;
   /** 中文译(简体)。中文主显,英文 natural_text 折叠。 */
   natural_text_zh?: string | null;
