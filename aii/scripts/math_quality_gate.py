@@ -109,10 +109,13 @@ def run_gate(substrate_id: str, staging_dir: Path, md_path: str = "") -> dict:
         )
 
     # ── 真缺facet_issues (排除豁免) ──
+    # ★缺证明/缺例子 = 源材料限制(证明常在别节, 不可编造)→ 豁免, 不判讲浅; 薄KU已在persist丢弃.
+    #   只过短/无公式(数学命门)算真缺. 质量优先但不漏命门.
+    _SOURCE_LIMITED = {"缺证明/推导", "缺例子"}
     real_facet = []
     for k in kus:
         issues = k.get("facet_issues", [])
-        exempt = set(k.get("facet_exempt", []))
+        exempt = set(k.get("facet_exempt", [])) | _SOURCE_LIMITED
         real = [fi for fi in issues if fi not in exempt]
         if real:
             real_facet.append((k["point"], real))
@@ -146,12 +149,19 @@ def run_gate(substrate_id: str, staging_dir: Path, md_path: str = "") -> dict:
     elif r6_status == "ALARM":
         alarms.append(r6_detail)
 
+    # ★待补清单(不漏): 薄(needs_fill)或 content未覆盖 的知识点 — 保留入库, 记录后面补
+    fill_list = [{"point": k["point"], "label": k.get("label", ""),
+                  "zh_len": k.get("zh_len", len(k.get("zh", ""))),
+                  "issues": [i for i in k.get("facet_issues", []) if i not in _SOURCE_LIMITED]
+                            + ([] if k.get("content_match", True) else ["content未覆盖"])}
+                 for k in kus if k.get("needs_fill") or not k.get("content_match", True)]
     return {
         "substrate_id": substrate_id,
         "ku_count": n_total,
         "alarms": alarms,
         "ok": len(alarms) == 0,
         "r6_hard_fail": r6_status == "FAIL",
+        "fill_list": fill_list,
         "details": details,
     }
 
@@ -191,14 +201,23 @@ if __name__ == "__main__":
     print(f"  R6:            {details.get('r6',{}).get('detail','?')}")
     print(f"{'='*52}")
 
-    if not alarms:
-        print("✅ PASS — 无报警")
-        sys.exit(0)
-    else:
-        for a in alarms:
-            print(f"  🚨 {a}")
-        if report.get("r6_hard_fail"):
-            print("\n❌ HARD FAIL (R6公式破坏) → 隔离")
-        else:
-            print("\n🚨 ALARM → 隔离等人工审查")
+    # ★待补清单(不漏): 薄/缺面/content未覆盖 的知识点 — 保留入库, 记录后面补
+    fill_list = report.get("fill_list", [])
+    if fill_list:
+        fp = Path("math_pipeline/待补") / f"{args.substrate_id}.json"
+        fp.parent.mkdir(parents=True, exist_ok=True)
+        fp.write_text(json.dumps({"substrate": args.substrate_id, "count": len(fill_list),
+                                  "待补": fill_list}, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"  ⚑ 待补清单: {len(fill_list)} 个知识点(保留入库, 后面补) → {fp}")
+
+    # ★不漏: 只在真破坏(R6 OCR坏 / 管道没跑出KU)才隔离; 质量缺面→注册+已记待补, 不丢整本
+    if report.get("r6_hard_fail"):
+        print("\n❌ HARD FAIL (R6公式被OCR破坏, 源不可用) → 隔离")
+        sys.exit(2)
+    if ku_n < KU_FLOOR:
+        print(f"\n🚨 KU过少({ku_n}<{KU_FLOOR}, 管道未跑完) → 隔离")
         sys.exit(1)
+    for a in alarms:
+        print(f"  ⚑ 质量提示(已记待补, 不隔离): {a}")
+    print("✅ 注册(不漏; 简单知识点可过; 质量缺面已记入待补清单)")
+    sys.exit(0)

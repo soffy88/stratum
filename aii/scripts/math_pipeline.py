@@ -178,10 +178,10 @@ async def main():
                             nm = j2['name'].strip()
                 if tries:
                     print(f"    ↻讲透重试 {item['id']}: {tries}次→{len(zh)}字, 剩缺面{fissues or '无'}", flush=True)
-                # ★B仓只收高质量: 重试后仍太薄(<250字且缺面)= 源材料就一句话/无法讲透 → 丢弃(质量优先于不漏)
-                if fissues and len(zh) < 250:
-                    print(f"    ✗弃薄KU {item['id']}: {len(zh)}字仍缺{fissues}(源材料不足无法讲透)", flush=True)
-                    return None
+                # ★不漏: 重试后仍薄的KU也保留(简单知识点可过); 标记 needs_fill 进待补清单, 后面补.
+                needs_fill = bool(fissues) and len(zh) < 250
+                if needs_fill:
+                    print(f"    ⚑待补 {item['id']}: {len(zh)}字 缺{fissues}(保留不漏, 记录待补)", flush=True)
                 has_latex = bool(re.search(r'\\(frac|lim|int|sqrt|prime|partial)|\$', zh))
                 # ★内容层校验: KU内容真含该知识点的辨识词? (堵'占位骗校验')
                 content_ok = any(kt in zh for kt in item['key_terms'])
@@ -190,7 +190,8 @@ async def main():
                 return {'point': item['id'], 'type': item['type'], 'label': lbl,
                         'key_terms': item['key_terms'], 'zh': zh, 'en': en,
                         'has_formula': has_latex, 'zh_len': len(zh),
-                        'content_match': content_ok, 'facet_issues': fissues}
+                        'content_match': content_ok, 'facet_issues': fissues,
+                        'needs_fill': needs_fill}
         kus = [k for k in await asyncio.gather(*(one(it) for it in sh)) if k]
     for k in kus:
         k['chapter'] = ch_n
