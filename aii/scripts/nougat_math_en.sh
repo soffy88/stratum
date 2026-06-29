@@ -16,6 +16,8 @@ for pdf in "$@"; do
   .nougat-venv/bin/nougat "$pdf" -o "$TMP" --batchsize 2 --no-skipping >/dev/null 2>&1 || { echo "  ✗ Nougat失败"; continue; }
   if [ -f "$TMP/$stem.mmd" ]; then
     mv "$TMP/$stem.mmd" "$OUT/$clean.md"
+    # ★归一章节头: Nougat 的 '## Chapter N Title' → '# Chapter N:'(管道/发现器认这个)
+    sed -i -E 's/^#{1,6}[[:space:]]+Chapter[[:space:]]+([0-9]+).*/# Chapter \1:/' "$OUT/$clean.md"
     lx=$(grep -oE '\\\(|\\\[' "$OUT/$clean.md" 2>/dev/null | wc -l)
     echo "  ✓ → $clean.md ($(($(wc -c <"$OUT/$clean.md")/1024))KB, LaTeX $lx)"
   else echo "  ✗ 无 mmd 输出"; fi
