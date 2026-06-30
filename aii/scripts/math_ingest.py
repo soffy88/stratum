@@ -28,7 +28,13 @@ def _ku_type(t):
 async def main(substrate: str, staging_dir: Path, dry_run: bool = False):
     kus_all = []
     for chf in sorted(staging_dir.glob('ch*.json')):
-        kus = json.loads(chf.read_text())
+        txt = chf.read_text().strip()
+        if not txt:                       # 空 staging 文件 → 跳过(不让整本崩)
+            print(f'  ⚠ 跳过空文件 {chf.name}', flush=True); continue
+        try:
+            kus = json.loads(txt)
+        except json.JSONDecodeError as e:  # 损坏 JSON → 跳过该章
+            print(f'  ⚠ 跳过损坏 {chf.name}: {e}', flush=True); continue
         kus_all.extend(kus)
     print(f'★ 准备入库: substrate={substrate}, KU数={len(kus_all)}', flush=True)
 
