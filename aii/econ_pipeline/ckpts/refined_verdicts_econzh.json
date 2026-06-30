@@ -1,0 +1,202 @@
+[
+ {
+  "a_id": "econ_zh_9ea2a19eac::ch4_ku3",
+  "b_id": "econ_zh_df1f5d7fef::ch7_ku2",
+  "a_title": "报酬递减规律在不同生产阶段的应用",
+  "b_title": "Law of Diminishing Returns",
+  "sim": 0.894,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "econ_zh_df1f5d7fef::ch7_ku0",
+  "b_id": "econ_zh_9ea2a19eac::ch5_ku1",
+  "a_title": "Malthusian Population Theory",
+  "b_title": "马尔萨斯人口增长理论",
+  "sim": 0.881,
+  "verdict": "SAME",
+  "why": "同一概念",
+  "gate": false
+ },
+ {
+  "a_id": "econ_zh_df1f5d7fef::ch1_ku2",
+  "b_id": "econ_zh_9ea2a19eac::ch14_ku3",
+  "a_title": "Calculating Price Elasticity of Demand",
+  "b_title": "需求弹性对价值的影响",
+  "sim": 0.879,
+  "verdict": "DIFFERENT",
+  "why": "type闸 procedural≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "econ_zh_df1f5d7fef::ch7_ku0",
+  "b_id": "econ_zh_9ea2a19eac::ch5_ku2",
+  "a_title": "Malthusian Population Theory",
+  "b_title": "马尔萨斯人口增长理论的机制",
+  "sim": 0.866,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "econ_zh_9ea2a19eac::ch4_ku4",
+  "b_id": "econ_zh_df1f5d7fef::ch7_ku2",
+  "a_title": "报酬递减规律对生产决策的影响",
+  "b_title": "Law of Diminishing Returns",
+  "sim": 0.853,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "econ_zh_9ea2a19eac::ch4_ku0",
+  "b_id": "econ_zh_df1f5d7fef::ch7_ku2",
+  "a_title": "报酬递减规律",
+  "b_title": "Law of Diminishing Returns",
+  "sim": 0.852,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "econ_zh_df1f5d7fef::ch7_ku4",
+  "b_id": "econ_zh_9ea2a19eac::ch5_ku0",
+  "a_title": "Calculating population growth rate",
+  "b_title": "人口的增长",
+  "sim": 0.845,
+  "verdict": "DIFFERENT",
+  "why": "type闸 procedural≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "econ_zh_131d7dbd3b::ch3_ku28",
+  "b_id": "econ_zh_9ea2a19eac::ch19_ku0",
+  "a_title": "利息的产生和发展",
+  "b_title": "利息",
+  "sim": 0.831,
+  "verdict": "SAME",
+  "why": "同概念",
+  "gate": false
+ },
+ {
+  "a_id": "econ_zh_9ea2a19eac::ch2_ku5",
+  "b_id": "econ_zh_df1f5d7fef::ch7_ku2",
+  "a_title": "生产要素的边际产量递减规律",
+  "b_title": "Law of Diminishing Returns",
+  "sim": 0.83,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "econ_zh_9ea2a19eac::ch4_ku1",
+  "b_id": "econ_zh_df1f5d7fef::ch7_ku2",
+  "a_title": "报酬递减规律的成因",
+  "b_title": "Law of Diminishing Returns",
+  "sim": 0.826,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "econ_zh_131d7dbd3b::ch3_ku28",
+  "b_id": "econ_zh_9ea2a19eac::ch19_ku1",
+  "a_title": "利息的产生和发展",
+  "b_title": "利息的形成机制",
+  "sim": 0.813,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "econ_zh_9ea2a19eac::ch19_ku4",
+  "b_id": "econ_zh_131d7dbd3b::ch3_ku28",
+  "a_title": "利息率的决定",
+  "b_title": "利息的产生和发展",
+  "sim": 0.811,
+  "verdict": "DIFFERENT",
+  "why": "一个是利息率决定，一个是利息产生和发展",
+  "gate": false
+ },
+ {
+  "a_id": "econ_zh_9ea2a19eac::ch10_ku0",
+  "b_id": "econ_zh_df1f5d7fef::ch1_ku0",
+  "a_title": "需求定理",
+  "b_title": "Law of Demand",
+  "sim": 0.804,
+  "verdict": "SAME",
+  "why": "同概念",
+  "gate": false
+ },
+ {
+  "a_id": "econ_zh_9ea2a19eac::ch2_ku6",
+  "b_id": "econ_zh_df1f5d7fef::ch7_ku2",
+  "a_title": "生产要素的边际产量递减规律的原因",
+  "b_title": "Law of Diminishing Returns",
+  "sim": 0.799,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "econ_zh_9ea2a19eac::ch5_ku0",
+  "b_id": "econ_zh_df1f5d7fef::ch7_ku5",
+  "a_title": "人口的增长",
+  "b_title": "Impact of population growth on economic development",
+  "sim": 0.795,
+  "verdict": "DIFFERENT",
+  "why": "一个是人口增长概念，另一个是人口增长对经济发展的影响",
+  "gate": false
+ },
+ {
+  "a_id": "econ_zh_df1f5d7fef::ch7_ku5",
+  "b_id": "econ_zh_9ea2a19eac::ch5_ku1",
+  "a_title": "Impact of population growth on economic development",
+  "b_title": "马尔萨斯人口增长理论",
+  "sim": 0.791,
+  "verdict": "SAME",
+  "why": "同人口增长对经济影响",
+  "gate": false
+ },
+ {
+  "a_id": "econ_zh_df1f5d7fef::ch1_ku0",
+  "b_id": "econ_zh_9ea2a19eac::ch10_ku4",
+  "a_title": "Law of Demand",
+  "b_title": "需求定理的应用原因",
+  "sim": 0.79,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "econ_zh_df1f5d7fef::ch7_ku3",
+  "b_id": "econ_zh_9ea2a19eac::ch4_ku1",
+  "a_title": "Why law of diminishing returns applies to agriculture",
+  "b_title": "报酬递减规律的成因",
+  "sim": 0.783,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "econ_zh_9ea2a19eac::ch10_ku3",
+  "b_id": "econ_zh_df1f5d7fef::ch1_ku0",
+  "a_title": "需求定理在不同市场中的应用",
+  "b_title": "Law of Demand",
+  "sim": 0.783,
+  "verdict": "SAME",
+  "why": "同定义需求定理",
+  "gate": false
+ },
+ {
+  "a_id": "econ_zh_9ea2a19eac::ch10_ku1",
+  "b_id": "econ_zh_df1f5d7fef::ch1_ku1",
+  "a_title": "需求定理的成立原因",
+  "b_title": "Why Demand Curve Slopes Downward",
+  "sim": 0.783,
+  "verdict": "SAME",
+  "why": "需求定理",
+  "gate": false
+ }
+]

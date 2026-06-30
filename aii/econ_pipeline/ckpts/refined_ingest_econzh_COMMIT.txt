@@ -1,0 +1,11 @@
+== B仓步骤3 灌入 dry_run [tag=econzh] ==  [COMMIT]
+书=['econ_zh_9ea2a19eac', 'econ_zh_131d7dbd3b', 'econ_zh_df1f5d7fef', 'econ_zh_621c6b96b0']  A仓KU=332
+  [--no-dedup] 跳过跨书判同, 全部按单条灌入(宁冗余不误删)
+
+SAME边=0(并入0, 跳held_apart0)  held_apart记录=5
+→ refined_ku 预计 332 条 (合并簇0 + 单条332)  压缩 332→332 (省0)
+NIM key 池: 4 key 轮转并发
+
+[COMMIT] 并发组装 332 条(轮转4key)...
+[COMMIT] 文本就绪, 批量 BGE-M3 嵌入 ...
+[COMMIT] 完成: 插入 refined_ku 332 条 (来自 332 A仓KU)
