@@ -59,9 +59,9 @@ def _has_zh(s: str) -> bool:
 
 
 # ---- 判同(复用), 带缓存 + ku_id ----
-async def _verdicts(aconn, books, sim, mx, rejudge):
-    if VERDICT_CACHE.exists() and not rejudge:
-        return json.loads(VERDICT_CACHE.read_text())
+async def _verdicts(aconn, books, sim, mx, rejudge, cache):
+    if cache.exists() and not rejudge:
+        return json.loads(cache.read_text())
     register_providers()
     llm = ProviderRegistry.get().llm("default")
     cands = await _pairs(aconn, books, sim, mx)
@@ -70,7 +70,7 @@ async def _verdicts(aconn, books, sim, mx, rejudge):
     out = [{"a_id": j["a_id"], "b_id": j["b_id"], "a_title": j["a_title"],
             "b_title": j["b_title"], "sim": float(j["sim"]), "verdict": j["verdict"],
             "why": j.get("why", ""), "gate": j.get("gate", False)} for j in judged]
-    VERDICT_CACHE.write_text(json.dumps(out, ensure_ascii=False, indent=1))
+    cache.write_text(json.dumps(out, ensure_ascii=False, indent=1))
     return out
 
 
@@ -146,20 +146,27 @@ async def main():
     rejudge = "--rejudge" in sys.argv
     sim = float(arg("--sim", "0.78"))
     sample = int(arg("--sample", "6"))
-    books = DEFAULT_BOOKS
+    tag = arg("--tag", "econ")            # 批次标识(缓存+id前缀); econ/math/econzh...
+    books = arg("--books", ",".join(DEFAULT_BOOKS)).split(",")
+    cache = ROOT / "econ_pipeline" / "ckpts" / f"refined_verdicts_{tag}.json"
 
     aconn = await asyncpg.connect(A_DSN); await register_vector(aconn)
     bconn = await asyncpg.connect(B_DSN); await register_vector(bconn)
 
-    # 1) 取三书全部 KU
+    # 1) 取本批书全部 KU
     rows = await aconn.fetch(
         f"SELECT {','.join(KU_COLS)} FROM aii.ku_onto WHERE substrate_id = ANY($1)", books)
     kus = {r["ku_id"]: dict(r) for r in rows}
-    print(f"== B仓步骤3 灌入 dry_run =={'  [COMMIT]' if commit else '  (dry-run, 不落库)'}", flush=True)
+    print(f"== B仓步骤3 灌入 dry_run [tag={tag}] =={'  [COMMIT]' if commit else '  (dry-run, 不落库)'}", flush=True)
     print(f"书={books}  A仓KU={len(kus)}", flush=True)
 
     # 2) 判同 verdicts + 读 held_apart
-    verdicts = await _verdicts(aconn, books, sim, 200, rejudge)
+    #    --no-dedup: 跳过判同(全部单条), 用于通用/数字标题书(如数学"定义1/定理4"判同不可靠, 命门宁冗余不误删)
+    if "--no-dedup" in sys.argv:
+        verdicts = []
+        print("  [--no-dedup] 跳过跨书判同, 全部按单条灌入(宁冗余不误删)", flush=True)
+    else:
+        verdicts = await _verdicts(aconn, books, sim, 200, rejudge, cache)
     same = [v for v in verdicts if v["verdict"] == "SAME"]
     held = await bconn.fetch("SELECT raw_ku_a, raw_ku_b FROM rf.dedup_decision WHERE verdict='held_apart'")
     held_set = {frozenset((r["raw_ku_a"], r["raw_ku_b"])) for r in held}
@@ -188,6 +195,7 @@ async def main():
     from oprim.embedding.bge_m3 import BgeM3Embedder
     embedder = BgeM3Embedder()
     sem = asyncio.Semaphore(len(pool))   # 并发=key数, round-robin 每item一key
+    no_title_trans = "--no-title-trans" in sys.argv   # 跳过标题翻译(如数学782个通用标题, NIM贵且低值, 留原文)
 
     # 簇列表(members 已按 natural_text 长度降序: [0]=最长=base/回退基底)
     cluster_list = [sorted((kus[i] for i in ids), key=lambda m: -len(m.get("natural_text") or ""))
@@ -207,7 +215,7 @@ async def main():
             # 单条 或 跨语言簇: 不融合, 留最长成员原文(sources 已记全部成员可回查)
             ntext, title = base["natural_text"], base["title"]
             is_frag = False
-        if _has_zh(title):                          # 标题保证英文(为核对); 正文不动
+        if _has_zh(title) and not no_title_trans:   # 标题翻英(为核对); 正文不动; --no-title-trans则留原标题
             title = await _translate(llm, sem, title)
         return {"base": base, "members": members, "title": title, "ntext": ntext, "is_frag": is_frag}
 
@@ -244,7 +252,7 @@ async def main():
     inserted = 0
     for p, vec in zip(prepped, vecs):
         base, members = p["base"], p["members"]
-        fp = _fingerprint(p["ntext"]); new_id = f"rf_econ_{fp}"
+        fp = _fingerprint(p["ntext"]); new_id = f"rf_{tag}_{fp}"
         await bconn.execute(
             """INSERT INTO rf.refined_ku
                (ku_id,title,natural_text,natural_text_zh,knowledge_type,sub_type,

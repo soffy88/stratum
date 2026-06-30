@@ -1,0 +1,11 @@
+== B仓步骤3 灌入 dry_run [tag=math] ==  [COMMIT]
+书=['advmath_tongji_full', 'math_en_d8fa481c5f', 'math_zh_7f821e3fba', 'math_zh_a55c5ec7ac', 'openstax_calculus_v1', 'math_zh_edf801aadc']  A仓KU=1129
+  [--no-dedup] 跳过跨书判同, 全部按单条灌入(宁冗余不误删)
+
+SAME边=0(并入0, 跳held_apart0)  held_apart记录=5
+→ refined_ku 预计 1129 条 (合并簇0 + 单条1129)  压缩 1129→1129 (省0)
+NIM key 池: 4 key 轮转并发
+
+[COMMIT] 并发组装 1129 条(轮转4key)...
+[COMMIT] 文本就绪, 批量 BGE-M3 嵌入 ...
+[COMMIT] 完成: 插入 refined_ku 1129 条 (来自 1129 A仓KU)
