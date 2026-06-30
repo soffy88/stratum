@@ -1,9 +1,40 @@
-import os, re, glob, sys, shutil
+import os, re, glob, sys, shutil, subprocess
 from pathlib import Path
 
 SRC = "/home/soffy/shared/stratum-to-aii"
 DST = "/home/soffy/books/MD"
 DO = "--do" in sys.argv  # 默认 dry-run
+
+def _norm(s):  # 归一标题查重(同 econ/math_convert)
+    s = re.sub(r'\(z-lib[^)]*\)|\(z-library[^)]*\)|\([^)]*1lib[^)]*\)', '', s, flags=re.I)
+    s = re.sub(r'\.(pdf|epub|md)$', '', s, flags=re.I)
+    s = re.sub(r'[\s_\-（）()【】\[\]·,，.。、:：;；]+', '', s)
+    return s.lower()
+
+def _done_norms():
+    """已完成清单(不再搬入,否则文件名不同→重复入库): 已有MD名 ∪ 已入库标题."""
+    done = set()
+    for f in glob.glob(f"{DST}/**/*.md", recursive=True):
+        done.add(_norm(Path(f).stem))
+    try:
+        out = subprocess.run(
+            ["docker", "exec", "aii-postgres", "psql", "-U", "aii", "-d", "aii_kg", "-tAc",
+             "SELECT title FROM aii.ingested_substrate WHERE title IS NOT NULL"],
+            capture_output=True, text=True, timeout=20).stdout
+        for t in out.splitlines():
+            if t.strip():
+                done.add(_norm(t))
+    except Exception as e:
+        print(f"  ⚠ 取已入库清单失败(只按MD去重): {e}", file=sys.stderr)
+    return done
+
+_DONE = _done_norms()
+
+def _is_done(name):
+    ns = _norm(Path(name).stem)
+    if ns in _DONE:
+        return True
+    return any(len(e) >= 6 and (e in ns or ns in e) for e in _DONE)
 
 ECON = ['经济','市场','需求','供给','价格','成本','货币','资本','利润','通货','宏观','微观','贸易',
         '金融','投资','边际','弹性','需求曲线','gdp','demand','supply','market','price','cost','profit',
@@ -70,8 +101,8 @@ if DO:
         os.makedirs(tgt, exist_ok=True)
         for name, _ in items:
             src = f"{SRC}/{name}"; dst = f"{tgt}/{name}"
-            if os.path.exists(dst):
+            if os.path.exists(dst) or _is_done(name):  # 已存在 或 已转/已入库 → 不搬(防重复入库)
                 skipped += 1
             else:
                 shutil.move(src, dst); moved += 1
-    print(f"✓ 移动 {moved} 个, 跳过(已存在){skipped} 个. 低质留在 {SRC}")
+    print(f"✓ 移动 {moved} 个, 跳过(已存在/已入库){skipped} 个. 低质留在 {SRC}")
