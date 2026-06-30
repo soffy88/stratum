@@ -163,7 +163,14 @@ async def main():
         g = "硬闸" if j.get("gate") else "LLM"
         print(f"  {j['sim']:.3f} [{j['ad'][:4]}] {_s(j,'a')[:30]}  ≠  {_s(j,'b')[:30]}  ({g}:{j['why']})")
 
-    print(f"\nDONE (dry-run, 无写库). 人工核: SAME 是否全真同一(无错合)? CANDIDATE 是否该停? 假朋友是否全DIFFERENT?", flush=True)
+    # 持久化裁决(带concept_id, 供M0落库确定性应用; 不落库本身)
+    dump = [{"ai": j["ai"], "bi": j["bi"], "an": j["an"], "bn": j["bn"],
+             "ad": j["ad"], "sim": float(j["sim"]), "verdict": j["verdict"],
+             "why": j.get("why", ""), "gate": j.get("gate", False)} for j in judged]
+    (ROOT / "econ_pipeline" / "ckpts" / "refined_concept_verdicts_econ.json").write_text(
+        json.dumps(dump, ensure_ascii=False, indent=1))
+    print(f"\nDONE (dry-run, 无写库). 裁决已存 refined_concept_verdicts_econ.json(带concept_id)。"
+          f"人工核: SAME无错合? CANDIDATE该停? 假朋友全DIFFERENT?", flush=True)
     await conn.close()
 
 
