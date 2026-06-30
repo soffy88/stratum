@@ -2,7 +2,7 @@
 用法: math_convert.py          # 分析报告(不转)
       math_convert.py --do     # 转换可转的(文字层+章节)并入文件夹
 """
-import os, re, sys, glob, unicodedata
+import os, re, sys, glob, unicodedata, subprocess
 import fitz  # pymupdf
 from pathlib import Path
 
@@ -17,16 +17,32 @@ def norm(s):  # 归一标题(去 z-lib/作者括号/空格标点)用于匹配
     s = re.sub(r'[\s_\-（）()【】\[\]·,，.。、:：;；]+', '', s)
     return s.lower()
 
-# 已有 MD 的归一标题
+def _ingested_titles():
+    """权威已完成清单: aii.ingested_substrate 书名(已入库的不能再转, 否则文件名不同→重复入库)."""
+    try:
+        out = subprocess.run(
+            ["docker", "exec", "aii-postgres", "psql", "-U", "aii", "-d", "aii_kg", "-tAc",
+             "SELECT title FROM aii.ingested_substrate WHERE title IS NOT NULL"],
+            capture_output=True, text=True, timeout=20).stdout
+        return [l for l in out.splitlines() if l.strip()]
+    except Exception as e:
+        print(f"  ⚠ 取已入库清单失败(只按MD去重): {e}", file=sys.stderr)
+        return []
+
+# 已完成的归一标题: 已有MD(中英数学+MD根) ∪ 已入库标题
 existing = set()
 for d in (MD_ZH, MD_EN, "/home/soffy/books/MD"):
     for f in glob.glob(f"{d}/*.md"):
         existing.add(norm(Path(f).stem))
+for t in _ingested_titles():
+    existing.add(norm(t))
 
 def matched(stem):
     ns = norm(stem)
+    if ns in existing:           # 精确(短标题也算)
+        return True
     for e in existing:
-        if len(e) >= 6 and (e in ns or ns in e):
+        if len(e) >= 6 and (e in ns or ns in e):  # 子串含
             return True
     return False
 
@@ -118,9 +134,12 @@ if DO:
         tgt = (MD_ZH if lang == '中文数学' else MD_EN)
         # 清理文件名里的 z-lib 噪音
         clean = re.sub(r'\s*\(z-lib[^)]*\)|\s*\(z-library[^)]*\)', '', stem).strip()
+        if matched(clean):       # 同轮稍早已转/已入库的近似书 → 不重复
+            print(f"  – 重复(已转/已入库), 跳过: {clean[:40]}"); continue
         dst = f"{tgt}/{clean}.md"
         if os.path.exists(dst):
             print(f"  – 已存在, 跳过: {clean[:40]}"); continue
         open(dst, 'w', encoding='utf-8').write(text)
+        existing.add(norm(clean))    # 记入, 防同轮后续重复
         print(f"  ✓ [{lang}] {clean[:45]} ({len(text)//1024}KB)")
     print("✓ 完成. 需OCR/无章节 的未处理(见上).")
