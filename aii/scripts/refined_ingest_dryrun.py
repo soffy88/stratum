@@ -87,7 +87,7 @@ async def _merge_cluster(llm, sem, members):
         async with sem:
             r = await asyncio.wait_for(llm(
                 messages=[{"role": "user", "content": f"待整合KU:\n{body}\n\n整合成一条更厚的英文知识。"}],
-                system=INTEG_SYS, max_tokens=900), timeout=90)
+                system=INTEG_SYS, max_tokens=900), timeout=180)
         t = "".join(x.get("text", "") for x in r.get("content", []) if x.get("type") == "text")
         m = re.search(r"\{.*\}", t, re.DOTALL)
         return json.loads(m.group(0)) if m else {}
@@ -101,14 +101,17 @@ TRANS_SYS = ("把下面经济学知识文本忠实翻译成英文(换语言, 不
 
 
 async def _translate(llm, sem, text):
-    try:
-        async with sem:
-            r = await asyncio.wait_for(llm(messages=[{"role": "user", "content": text[:1500]}],
-                          system=TRANS_SYS, max_tokens=700), timeout=90)
-        out = "".join(x.get("text", "") for x in r.get("content", []) if x.get("type") == "text").strip()
-        return out or text  # 空回退原文
-    except Exception:
-        return text  # 失败回退原文(不丢知识; --commit 可后续补译)
+    for _ in range(2):  # 重试一次(NIM负载下首次易超时)
+        try:
+            async with sem:
+                r = await asyncio.wait_for(llm(messages=[{"role": "user", "content": text[:1500]}],
+                              system=TRANS_SYS, max_tokens=700), timeout=180)
+            out = "".join(x.get("text", "") for x in r.get("content", []) if x.get("type") == "text").strip()
+            if out and not _has_zh(out):   # 译文须无中文; 残留中文=翻译失败→重试
+                return out
+        except Exception:
+            pass
+    return text  # 两次失败回退原文(不丢知识; 标记待补译)
 
 
 def _fingerprint(text: str) -> str:
@@ -118,6 +121,18 @@ def _fingerprint(text: str) -> str:
 def _build_sources(members):
     return [{"book_id": m["substrate_id"], "raw_ku_id": m["ku_id"],
              "chapter": _chapter_of(m["ku_id"]), "contributed": "full"} for m in members]
+
+
+# ---- NIM key 池: 4 key 各自限流, 轮转并发 ~4x 吞吐 ----
+def _build_nim_pool():
+    from aii.api._provider import _make_deepseek_caller
+    keys = json.loads((ROOT / ".pipeline_keys.json").read_text())
+    pool = [_make_deepseek_caller(
+                k, model=os.getenv("NIM_MODEL", "meta/llama-3.3-70b-instruct"),
+                base_url="https://integrate.api.nvidia.com/v1/chat/completions", rpm=36)
+            for k in keys.values()]
+    print(f"NIM key 池: {len(pool)} key 轮转并发", flush=True)
+    return pool
 
 
 async def main():
@@ -165,63 +180,65 @@ async def main():
     print(f"→ refined_ku 预计 {len(clusters)} 条 (合并簇{len(multi)} + 单条{len(singles)})  "
           f"压缩 {len(kus)}→{len(clusters)} (省{len(kus)-len(clusters)})", flush=True)
 
-    register_providers()
-    llm = ProviderRegistry.get().llm("default")
+    pool = _build_nim_pool()
     from oprim.embedding.bge_m3 import BgeM3Embedder
     embedder = BgeM3Embedder()
-    sem = asyncio.Semaphore(4)
+    sem = asyncio.Semaphore(len(pool))   # 并发=key数, round-robin 每item一key
 
-    # ---- 演示样本(dry-run): 多成员簇前 sample 个 + 翻译案例 ----
-    if not commit:
-        demo_roots = sorted(multi, key=lambda r: -len(multi[r]))[:sample]
-        print(f"\n── 多成员簇整合样本(前{len(demo_roots)}) ──────────────", flush=True)
-        for root in demo_roots:
-            members = sorted((kus[i] for i in multi[root]),
-                             key=lambda m: -len(m.get("natural_text") or ""))
-            srcs = _build_sources(members)
+    # 簇列表(members 已按 natural_text 长度降序: [0]=最长=base/回退基底)
+    cluster_list = [sorted((kus[i] for i in ids), key=lambda m: -len(m.get("natural_text") or ""))
+                    for ids in {**multi, **singles}.values()]
+
+    async def _prep(idx, members):
+        """并发组装一条 refined_ku 的文本(整合/翻译, 轮转用第 idx%len 个key)。"""
+        llm = pool[idx % len(pool)]
+        base = members[0]
+        if len(members) > 1:
             merged = await _merge_cluster(llm, sem, members)
-            vec = embedder.embed([merged.get("natural_text", "")])[0]
-            print(f"\n  ▸ 簇({len(members)}条) 来源: {[m['ku_id'].split('::')[0][:6]+'::'+m['ku_id'].split('::')[1] for m in members]}")
-            print(f"    类型: {members[0]['knowledge_type']}  向量dim={len(vec)}  fingerprint={_fingerprint(merged.get('natural_text',''))}")
-            print(f"    整合title: {merged.get('title','')[:70]}")
-            print(f"    整合正文: {(merged.get('natural_text','') or '')[:240]}")
-            print(f"    sources : {json.dumps(srcs, ensure_ascii=False)[:200]}")
-        # 翻译案例: 混中文的 natural_text
-        zh_kus = [k for k in singles for k in [singles[k][0]] if _has_zh(kus[k]["natural_text"])][:3]
-        if zh_kus:
-            print(f"\n── 翻译案例(natural_text混中文→NIM英译, 共{sum(1 for k in kus if _has_zh(kus[k]['natural_text']))}条) ──", flush=True)
-            for k in zh_kus:
-                en = await _translate(llm, sem, kus[k]["natural_text"])
-                print(f"\n  ▸ {k}")
-                print(f"    原: {kus[k]['natural_text'][:120]}")
-                print(f"    译: {en[:120]}")
+            title = merged.get("title") or base["title"]
+            ntext = merged.get("natural_text") or base["natural_text"]   # 失败回退最长成员
+            is_frag = True
+        else:
+            title, ntext = base["title"], base["natural_text"]
+            if _has_zh(ntext):
+                ntext = await _translate(llm, sem, ntext)               # 失败回退原文
+            is_frag = False
+        return {"base": base, "members": members, "title": title, "ntext": ntext, "is_frag": is_frag}
+
+    # ---- 演示样本(dry-run): sample 个多成员簇 + 3 个混中文翻译, 并发 ----
+    if not commit:
+        demo = sorted((m for m in cluster_list if len(m) > 1), key=lambda m: -len(m))[:sample]
+        zh_demo = [m for m in cluster_list if len(m) == 1 and _has_zh(m[0]["natural_text"])][:3]
+        picks = demo + zh_demo
+        prepped = await asyncio.gather(*(_prep(i, m) for i, m in enumerate(picks)))
+        vecs = embedder.embed([p["ntext"] for p in prepped])
+        print(f"\n── 多成员簇整合样本(前{len(demo)}) ──────────────", flush=True)
+        for p, vec in list(zip(prepped, vecs))[:len(demo)]:
+            ms = p["members"]
+            print(f"\n  ▸ 簇({len(ms)}条) 来源: {[m['ku_id'].split('::')[0][:6]+'::'+m['ku_id'].split('::')[1] for m in ms]}")
+            print(f"    类型: {ms[0]['knowledge_type']}  向量dim={len(vec)}  fingerprint={_fingerprint(p['ntext'])}")
+            print(f"    整合title: {(p['title'] or '')[:70]}")
+            print(f"    整合正文: {(p['ntext'] or '')[:240]}")
+            print(f"    sources : {json.dumps(_build_sources(ms), ensure_ascii=False)[:200]}")
+        zh_cnt = sum(1 for k in kus if _has_zh(kus[k]['natural_text']))
+        if zh_demo:
+            print(f"\n── 翻译案例(natural_text混中文→NIM英译, 共{zh_cnt}条) ──", flush=True)
+            for p in prepped[len(demo):]:
+                print(f"\n  ▸ {p['base']['ku_id']}")
+                print(f"    原: {p['base']['natural_text'][:120]}")
+                print(f"    译: {(p['ntext'] or '')[:120]}")
         print(f"\nDONE (dry-run, 无写库). 人工核: 整合是否忠实越读越厚? 翻译是否失真? sources是否全溯源?", flush=True)
         await aconn.close(); await bconn.close(); return
 
-    # ---- COMMIT: 全量处理并插入 ----
-    print("\n[COMMIT] 开始全量处理并插入 rf.refined_ku ...", flush=True)
+    # ---- COMMIT: 全量并发组装 → 批量嵌入 → 插入 ----
+    print(f"\n[COMMIT] 并发组装 {len(cluster_list)} 条(轮转{len(pool)}key)...", flush=True)
+    prepped = await asyncio.gather(*(_prep(i, m) for i, m in enumerate(cluster_list)))
+    print(f"[COMMIT] 文本就绪, 批量 BGE-M3 嵌入 ...", flush=True)
+    vecs = embedder.embed([p["ntext"] for p in prepped])
     inserted = 0
-    # 多成员簇
-    for root, ids in {**multi, **singles}.items():
-        members = sorted((kus[i] for i in ids),
-                         key=lambda m: -len(m.get("natural_text") or ""))
-        if len(members) > 1:
-            merged = await _merge_cluster(llm, sem, members)
-            title = merged.get("title") or members[0]["title"]
-            ntext = merged.get("natural_text") or members[0]["natural_text"]
-            is_frag = True
-        else:
-            m0 = members[0]
-            title, ntext = m0["title"], m0["natural_text"]
-            if _has_zh(ntext):
-                ntext = await _translate(llm, sem, ntext)
-            is_frag = False
-        base = members[0]
-        vec = embedder.embed([ntext])[0]
-        fp = _fingerprint(ntext)
-        new_id = f"rf_econ_{fp}"
-        srcs = _build_sources(members)
-        ntext_zh = base.get("natural_text_zh")
+    for p, vec in zip(prepped, vecs):
+        base, members = p["base"], p["members"]
+        fp = _fingerprint(p["ntext"]); new_id = f"rf_econ_{fp}"
         await bconn.execute(
             """INSERT INTO rf.refined_ku
                (ku_id,title,natural_text,natural_text_zh,knowledge_type,sub_type,
@@ -229,13 +246,12 @@ async def main():
                 embedding,sources,is_fragmented,merge_count,fingerprint)
                VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
                ON CONFLICT (ku_id) DO NOTHING""",
-            new_id, title, ntext, ntext_zh, base["knowledge_type"], base["sub_type"],
-            base["stance_holder"], base["opposing_stance"], "unverified",
-            base["grounded_by"], base["intuition"], base["insight"], base["example"],
-            vec, json.dumps(srcs, ensure_ascii=False), is_frag, len(members), fp)
+            new_id, p["title"], p["ntext"], base.get("natural_text_zh"),
+            base["knowledge_type"], base["sub_type"], base["stance_holder"],
+            base["opposing_stance"], "unverified", base["grounded_by"], base["intuition"],
+            base["insight"], base["example"], vec,
+            json.dumps(_build_sources(members), ensure_ascii=False), p["is_frag"], len(members), fp)
         inserted += 1
-        if inserted % 100 == 0:
-            print(f"  ... 已插 {inserted}/{len(clusters)}", flush=True)
     print(f"[COMMIT] 完成: 插入 refined_ku {inserted} 条 (来自 {len(kus)} A仓KU)", flush=True)
     await aconn.close(); await bconn.close()
 
