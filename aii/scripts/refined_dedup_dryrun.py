@@ -37,6 +37,7 @@ _DISC_FAMILIES = [
 _DISC_QUALIFIERS = [
     "increasing", "decreasing", "perfectly", "unitary", "cross",
     "marginal", "inferior", "complement", "substitute", "递增", "递减", "边际",
+    "inelastic", "diminishing",   # M0发现: elastic↔inelastic互斥; X↔diminishing X上下位
 ]
 
 
