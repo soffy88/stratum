@@ -1,0 +1,10 @@
+== B仓步骤3 灌入 dry_run ==  [COMMIT]
+书=['mankiw_principles_econ_10e', 'microecon_en_full_v2', 'micro_clean']  A仓KU=1222
+
+SAME边=49(并入45, 跳held_apart4)  held_apart记录=5
+→ refined_ku 预计 1182 条 (合并簇29 + 单条1153)  压缩 1222→1182 (省40)
+NIM key 池: 4 key 轮转并发
+
+[COMMIT] 并发组装 1182 条(轮转4key)...
+[COMMIT] 文本就绪, 批量 BGE-M3 嵌入 ...
+[COMMIT] 完成: 插入 refined_ku 1182 条 (来自 1222 A仓KU)
