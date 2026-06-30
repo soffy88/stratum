@@ -1,0 +1,116 @@
+Failed to load REAL BGE-M3: We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.
+Checkout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.
+== B仓步骤2 KU判同 dry_run ==
+书=['mankiw_principles_econ_10e', 'microecon_en_full_v2', 'micro_clean']  sim≥0.78  候选对=147  (只算+打印, 不落库)
+
+裁决: SAME=49  DIFFERENT=97(其中硬闸67)  UNCERTAIN=1
+
+── SAME (会合并/整合, 越读越厚) ──────────────────────────
+  0.887 [microe]Movement Along vs. Shift of Supply  ≡  [micro_]Movements along a Supply Curve ver  (同解释供给曲线变化)
+  0.878 [micro_]Derived Demand  ≡  [mankiw]Derived Demand  (同定义衍生需求)
+  0.862 [micro_]Derived Demand  ≡  [microe]Derived Demand  (定义同一个概念)
+  0.859 [mankiw]Scarcity  ≡  [microe]Scarcity  (同概念)
+  0.858 [micro_]Consumer Surplus  ≡  [mankiw]Consumer Surplus  (同定义)
+  0.856 [micro_]Eminent Domain  ≡  [microe]Eminent Domain  (定义同一个概念)
+  0.853 [microe]Monopolistic competition and produ  ≡  [mankiw]Monopolistic Competition  (都讲单一性竞争)
+  0.851 [microe]Derived Demand  ≡  [mankiw]Derived Demand  (定义同一个概念)
+  0.850 [microe]Consumer Surplus  ≡  [micro_]Consumer Surplus  (定义同一个概念)
+  0.849 [microe]Transaction Cost  ≡  [micro_]Transaction costs impede exchanges  (同定义交易成本)
+  0.848 [mankiw]Scarcity  ≡  [micro_]Scarcity as the fundamental econom  (同概念)
+  0.848 [microe]Price Floor  ≡  [micro_]Price Floors  (同定义价格地板)
+  0.845 [micro_]Consumer Surplus  ≡  [mankiw]What Consumer Surplus Measures  (同定义消费者剩余)
+  0.841 [mankiw]What Consumer Surplus Measures  ≡  [microe]Consumer Surplus  (定义消费者剩余)
+  0.840 [microe]Supply of Labor  ≡  [micro_]The Supply of Labor  (同定义劳动供给)
+  0.840 [micro_]Price Takers in a One-Price Market  ≡  [microe]Price Taker  (定义price taker)
+  0.833 [micro_]Producer Surplus  ≡  [mankiw]Producer Surplus  (同定义生产者剩余)
+  0.832 [microe]Oligopoly  ≡  [mankiw]Oligopoly  (同定义)
+  0.825 [microe]Price Ceiling  ≡  [micro_]Price Ceilings  (同定义)
+  0.823 [microe]Production Possibilities Frontier   ≡  [mankiw]The shape and position of the prod  (同概念)
+  0.822 [mankiw]Consumer Surplus  ≡  [microe]Consumer Surplus  (定义相同)
+  0.822 [micro_]From Individual to Market Supply C  ≡  [microe]Market Supply Curve Derivation (Ho  (描述市场供给曲线的推导过程)
+  0.818 [microe]Equilibrium Price  ≡  [micro_]Market Supply and Demand Together   (均讲均衡价)
+  0.818 [mankiw]Producer Surplus  ≡  [micro_]Producer Surplus  (同定义生产者剩余)
+  0.816 [microe]Property Rights  ≡  [micro_]Property Rights Definition  (同定义)
+  0.815 [microe]Long-run market equilibrium  ≡  [mankiw]Long-Run Equilibrium in a Competit  (同一概念)
+  0.814 [mankiw]Price Takers  ≡  [micro_]Price Takers in a One-Price Market  (同定义价格接受者)
+  0.812 [micro_]Scarcity as the fundamental econom  ≡  [microe]Scarcity  (同概念)
+  0.812 [microe]Transaction Costs  ≡  [micro_]Transaction costs impede exchanges  (同定义交易成本)
+  0.812 [mankiw]Game theory  ≡  [microe]Game theory  (同概念)
+  0.811 [mankiw]Willingness to Pay  ≡  [micro_]Willingness to Pay  (同定义)
+  0.810 [microe]Marginal analysis  ≡  [micro_]Marginal analysis as a decision-ma  (同一个概念)
+  0.810 [microe]Factors That Shift Supply (Summary  ≡  [micro_]Factors that Shift a Supply Curve   (同解释供给曲线移位)
+  0.809 [mankiw]Price Takers  ≡  [microe]Price Taker  (定义相同)
+  0.807 [mankiw]Normal Goods vs. Inferior Goods  ≡  [micro_]Normal versus Inferior Goods  (同概念)
+  0.802 [mankiw]Opportunity Cost  ≡  [microe]Opportunity cost  (同定义)
+  0.801 [mankiw]Price Controls and Market Outcomes  ≡  [microe]Price Controls  (同定义价格管制)
+  0.798 [micro_]Property rights as the foundation   ≡  [microe]Property Rights  (同定义产权概念)
+  0.797 [microe]Absolute Advantage  ≡  [mankiw]Absolute Advantage  (同定义绝对优势)
+  0.797 [microe]Principle of Diminishing Marginal   ≡  [micro_]Diminishing Marginal Benefit Expla  (同解释边际效益递减)
+  0.796 [microe]Tax incidence  ≡  [mankiw]Equivalence of taxes on sellers an  (同讲税负分担)
+  0.791 [microe]Opportunity cost  ≡  [mankiw]Opportunity Costs  (同概念)
+  0.787 [microe]Illegal Markets and Legalization (  ≡  [micro_]Impact of Legalizing Illegal Marke  (同解释法律化对市场影响)
+  0.787 [microe]Horizontal Summation of Individual  ≡  [micro_]From Individual to Market Demand C  (同为水平求和)
+  0.787 [mankiw]Consumer Surplus  ≡  [micro_]Consumer Surplus  (定义消费者剩余)
+  0.786 [micro_]Economics defined  ≡  [microe]Economics as the study of trade-of  (定义经济学概念)
+  0.786 [microe]Market-Clearing Price  ≡  [mankiw]Market equilibrium  (均指市场均衡价)
+  0.785 [mankiw]Difference between a change in dem  ≡  [micro_]Movements along the Demand Curve v  (同讲需求曲线变化)
+  0.783 [microe]Normative analysis  ≡  [micro_]Distinction between positive and n  (同一概念)
+
+── UNCERTAIN (命门: 保留两份不合) ───────────────────────
+  0.781 [mankiw]Opportunity Cost  ?  [microe]Economic cost  (2票不一致(机会成本≠经济成本))
+
+── DIFFERENT (含假朋友, 应被挡) ─ 抽样前20 ──────────────
+  0.867 [micro_]Movements along the Demand Curve v  ≠  [microe]Demand Curve  (LLM:范围不同)
+  0.858 [microe]Factors That Shift Demand (Income,  ≠  [micro_]Why a Change in Income Shifts the   (硬闸:判别词闸)
+  0.848 [micro_]Why a Change in Income Shifts the   ≠  [microe]Shift in the Demand Curve  (硬闸:type闸 rationale≠conceptual)
+  0.847 [micro_]Opportunity Cost of Production: In  ≠  [microe]Increasing Marginal Cost  (硬闸:type闸 conceptual≠rationale)
+  0.846 [micro_]Market Disturbances and Reaching N  ≠  [microe]Market Disturbances and Shifts in   (硬闸:type闸 conceptual≠rationale)
+  0.841 [mankiw]Measuring Consumer Surplus with th  ≠  [micro_]Consumer Surplus  (硬闸:type闸 procedural≠conceptual)
+  0.840 [micro_]Factors That Shift the Market Dema  ≠  [microe]Demand Curve  (硬闸:type闸 rationale≠conceptual)
+  0.839 [micro_]Opportunity Cost of Production: In  ≠  [microe]Principle of increasing marginal c  (硬闸:type闸 conceptual≠rationale)
+  0.836 [microe]Deadweight loss from taxes  ≠  [mankiw]Effect of Elasticities on Deadweig  (LLM:一个定义概念，另一个解释影响因素)
+  0.835 [mankiw]Derived Demand  ≠  [microe]Derived Demand for Labor  (LLM:一般概念vs特例)
+  0.834 [micro_]Factors That Shift the Market Dema  ≠  [microe]Factors That Shift Demand (Income,  (硬闸:判别词闸)
+  0.833 [microe]Law of Supply  ≠  [micro_]The Law of Supply  (硬闸:type闸 rationale≠conceptual)
+  0.830 [microe]Factors That Shift Demand (Income,  ≠  [micro_]Movements along the Demand Curve v  (硬闸:type闸 rationale≠conceptual)
+  0.830 [micro_]Price Floors  ≠  [microe]Effects of Price Floors (Surpluses  (硬闸:type闸 conceptual≠rationale)
+  0.828 [mankiw]Calculating Producer Surplus  ≠  [micro_]Producer Surplus  (硬闸:type闸 procedural≠conceptual)
+  0.828 [microe]Movement Along vs. Shift of Supply  ≠  [micro_]Movements along the Demand Curve v  (硬闸:判别词闸)
+  0.827 [micro_]From Individual to Market Supply C  ≠  [microe]Number of Suppliers and Market Sup  (硬闸:type闸 procedural≠conceptual)
+  0.827 [micro_]Movements along a Supply Curve ver  ≠  [microe]Factors That Shift Supply (Summary  (LLM:范围不同)
+  0.824 [mankiw]Measuring Consumer Surplus with th  ≠  [microe]Consumer Surplus  (硬闸:type闸 procedural≠conceptual)
+  0.822 [microe]Determinants of Consumer and Produ  ≠  [micro_]Determinants of Surplus: Slopes of  (硬闸:type闸 rationale≠conceptual)
+
+── ③片段整合示例(前6对 SAME, 各自独有贡献) ──────────────
+
+  ▸ Movement Along vs. Shift of Supply ≡ Movements along a Supply Curve ver (sim=0.887)
+    共有 : Movement Along vs. Shift of Supply Curve
+    A独有: The distinction applies only to supply curves, not demand. The movement is along the same curve; the curve itself remains unchanged. Shifts 
+    B独有: Understanding this distinction is crucial for analyzing market responses.
+
+  ▸ Derived Demand ≡ Derived Demand (sim=0.878)
+    共有 : Derived demand is the demand for a factor of production that arises from the demand for the final good it helps produce
+    A独有: indirect and depends on the demand for the final product
+    B独有: which is derived from the decision to supply a good in another market, such as labor, is dependent on the demand for the good or service tha
+
+  ▸ Derived Demand ≡ Derived Demand (sim=0.862)
+    共有 : Derived demand is the demand for a factor of production that arises from the demand for the final good it helps produce
+    A独有: (无)
+    B独有: It applies strictly to inputs into production and does not refer to the demand for final consumer goods themselves. The quantity of an input
+
+  ▸ Scarcity ≡ Scarcity (sim=0.859)
+    共有 : Scarcity 是由于个人和社会的需求和欲望是无限的，而满足这些需求和欲望的资源是有限的，导致资源分配的选择和机会成本的考虑
+    A独有: Scarcity 对经济效率、增长和发展有重大影响
+    B独有: 信息本身也是一个稀缺的资源，时间、注意力等也是稀缺资源
+
+  ▸ Consumer Surplus ≡ Consumer Surplus (sim=0.858)
+    共有 : Consumer surplus measures the benefit consumers receive from participating in the market, calculated as the difference between what consumer
+    A独有: their reservation price
+    B独有: The concept of consumer surplus is closely related to the demand curve for a product, where the height of the demand curve reflects the buye
+
+  ▸ Eminent Domain ≡ Eminent Domain (sim=0.856)
+    共有 : Eminent domain is the government's power/right to take private property for public use
+    A独有: with just compensation, as part of its sovereign powers. It is an involuntary relinquishment of private property rights
+    B独有: even without the owner's consent. It is defined as “the right of the government to take private property for public use”. This right is an e
+
+DONE (dry-run, 无写库). 人工核查: 真同点是否全在 SAME? 假朋友是否全在 DIFFERENT? 模糊是否落 UNCERTAIN?

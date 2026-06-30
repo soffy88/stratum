@@ -1,0 +1,94 @@
+Failed to load REAL BGE-M3: We couldn't connect to 'https://huggingface.co' to load the files, and couldn't find them in the cached files.
+Checkout your internet connection or see how to run the library in offline mode at 'https://huggingface.co/docs/transformers/installation#offline-mode'.
+== B仓步骤2 KU判同 dry_run ==
+书=['mankiw_principles_econ_10e', 'microecon_en_full_v2', 'micro_clean']  sim≥0.78  候选对=50  (只算+打印, 不落库)
+
+裁决: SAME=28  DIFFERENT=22(其中硬闸17)  UNCERTAIN=0
+
+── SAME (会合并/整合, 越读越厚) ──────────────────────────
+  0.887 [microe]Movement Along vs. Shift of Supply  ≡  [micro_]Movements along a Supply Curve ver  (同概念)
+  0.878 [micro_]Derived Demand  ≡  [mankiw]Derived Demand  (同定义)
+  0.867 [micro_]Movements along the Demand Curve v  ≡  [microe]Demand Curve  (同解释需求曲线)
+  0.862 [micro_]Derived Demand  ≡  [microe]Derived Demand  (同概念)
+  0.859 [mankiw]Scarcity  ≡  [microe]Scarcity  (同概念)
+  0.858 [micro_]Consumer Surplus  ≡  [mankiw]Consumer Surplus  (同定义)
+  0.856 [micro_]Eminent Domain  ≡  [microe]Eminent Domain  (定义同一个概念)
+  0.853 [microe]Monopolistic competition and produ  ≡  [mankiw]Monopolistic Competition  (同讲单一竞争)
+  0.851 [microe]Derived Demand  ≡  [mankiw]Derived Demand  (同定义)
+  0.850 [microe]Consumer Surplus  ≡  [micro_]Consumer Surplus  (定义同一个概念)
+  0.849 [microe]Transaction Cost  ≡  [micro_]Transaction costs impede exchanges  (同定义交易成本)
+  0.848 [mankiw]Scarcity  ≡  [micro_]Scarcity as the fundamental econom  (同概念)
+  0.848 [microe]Price Floor  ≡  [micro_]Price Floors  (同定义)
+  0.845 [micro_]Consumer Surplus  ≡  [mankiw]What Consumer Surplus Measures  (定义消费者剩余)
+  0.841 [mankiw]What Consumer Surplus Measures  ≡  [microe]Consumer Surplus  (定义消费者剩余)
+  0.840 [microe]Supply of Labor  ≡  [micro_]The Supply of Labor  (同定义劳动供给)
+  0.840 [micro_]Price Takers in a One-Price Market  ≡  [microe]Price Taker  (定义price taker)
+  0.835 [mankiw]Derived Demand  ≡  [microe]Derived Demand for Labor  (同为衍生需求)
+  0.833 [micro_]Producer Surplus  ≡  [mankiw]Producer Surplus  (同定义生产者剩余)
+  0.832 [microe]Oligopoly  ≡  [mankiw]Oligopoly  (定义同一个概念)
+  0.827 [micro_]Movements along a Supply Curve ver  ≡  [microe]Factors That Shift Supply (Summary  (同解释供曲变化)
+  0.825 [microe]Price Ceiling  ≡  [micro_]Price Ceilings  (同定义)
+  0.823 [microe]Production Possibilities Frontier   ≡  [mankiw]The shape and position of the prod  (同讲PPF概念)
+  0.822 [mankiw]Consumer Surplus  ≡  [microe]Consumer Surplus  (定义消费者剩余)
+  0.822 [micro_]From Individual to Market Supply C  ≡  [microe]Market Supply Curve Derivation (Ho  (都讲市场供给曲线的得来)
+  0.818 [microe]Equilibrium Price  ≡  [micro_]Market Supply and Demand Together   (同概念)
+  0.818 [mankiw]Producer Surplus  ≡  [micro_]Producer Surplus  (同定义生产者剩余)
+  0.816 [microe]Property Rights  ≡  [micro_]Property Rights Definition  (定义相同)
+
+── UNCERTAIN (命门: 保留两份不合) ───────────────────────
+
+── DIFFERENT (含假朋友, 应被挡) ─ 抽样前20 ──────────────
+  0.858 [microe]Factors That Shift Demand (Income,  ≠  [micro_]Why a Change in Income Shifts the   (硬闸:判别词闸)
+  0.848 [micro_]Why a Change in Income Shifts the   ≠  [microe]Shift in the Demand Curve  (硬闸:type闸 rationale≠conceptual)
+  0.847 [micro_]Opportunity Cost of Production: In  ≠  [microe]Increasing Marginal Cost  (硬闸:type闸 conceptual≠rationale)
+  0.846 [micro_]Market Disturbances and Reaching N  ≠  [microe]Market Disturbances and Shifts in   (硬闸:type闸 conceptual≠rationale)
+  0.841 [mankiw]Measuring Consumer Surplus with th  ≠  [micro_]Consumer Surplus  (硬闸:type闸 procedural≠conceptual)
+  0.840 [micro_]Factors That Shift the Market Dema  ≠  [microe]Demand Curve  (硬闸:type闸 rationale≠conceptual)
+  0.839 [micro_]Opportunity Cost of Production: In  ≠  [microe]Principle of increasing marginal c  (硬闸:type闸 conceptual≠rationale)
+  0.836 [microe]Deadweight loss from taxes  ≠  [mankiw]Effect of Elasticities on Deadweig  (LLM:一个定义deadweight loss，一个讨论其与elas)
+  0.834 [micro_]Factors That Shift the Market Dema  ≠  [microe]Factors That Shift Demand (Income,  (硬闸:判别词闸)
+  0.833 [microe]Law of Supply  ≠  [micro_]The Law of Supply  (硬闸:type闸 rationale≠conceptual)
+  0.830 [microe]Factors That Shift Demand (Income,  ≠  [micro_]Movements along the Demand Curve v  (硬闸:type闸 rationale≠conceptual)
+  0.830 [micro_]Price Floors  ≠  [microe]Effects of Price Floors (Surpluses  (硬闸:type闸 conceptual≠rationale)
+  0.828 [mankiw]Calculating Producer Surplus  ≠  [micro_]Producer Surplus  (硬闸:type闸 procedural≠conceptual)
+  0.828 [microe]Movement Along vs. Shift of Supply  ≠  [micro_]Movements along the Demand Curve v  (硬闸:判别词闸)
+  0.827 [micro_]From Individual to Market Supply C  ≠  [microe]Number of Suppliers and Market Sup  (硬闸:type闸 procedural≠conceptual)
+  0.824 [mankiw]Measuring Consumer Surplus with th  ≠  [microe]Consumer Surplus  (硬闸:type闸 procedural≠conceptual)
+  0.822 [microe]Determinants of Consumer and Produ  ≠  [micro_]Determinants of Surplus: Slopes of  (硬闸:type闸 rationale≠conceptual)
+  0.822 [micro_]Derived Demand  ≠  [microe]Derived Demand for Labor  (LLM:范围不同)
+  0.821 [micro_]Why the Price of a Substitute Good  ≠  [mankiw]Why Demand is More Elastic if Clos  (LLM:不同主题)
+  0.820 [mankiw]Why Income Elasticity of Demand Ma  ≠  [microe]Income inelastic good  (硬闸:type闸 rationale≠conceptual)
+
+── ③片段整合示例(前6对 SAME, 各自独有贡献) ──────────────
+
+  ▸ Movement Along vs. Shift of Supply ≡ Movements along a Supply Curve ver (sim=0.887)
+    共有 :  Movement Along vs. Shift of Supply Curve，沿着供给曲线的移动和供给曲线的偏移
+    A独有: 机会成本，曲线本身不变，仅适用于供给曲线，不适用于需求曲线
+    B独有: 市场反应分析
+
+  ▸ Derived Demand ≡ Derived Demand (sim=0.878)
+    共有 : Derived demand is the demand for a factor of production (e.g., labor, capital) that arises from the demand for the final good it helps produ
+    A独有: It is indirect and depends on the demand for the final product.
+    B独有: The concept of Derived Demand refers to the demand for a factor of production, which is derived from the decision to supply a good in anothe
+
+  ▸ Movements along the Demand Curve v ≡ Demand Curve (sim=0.867)
+    共有 : 移动沿着需求曲线（需求量的变化）和需求曲线的转移（需求的变化）
+    A独有: 当非价格因素（如收入、偏好或相关商品的价格）变化时，需求曲线会转移
+    B独有: 市场需求曲线是通过对个体需求曲线在每个价格水平上的需求量进行水平求和得到的，政策和商业分析中用于预测关税（如对进口牛仔裤的关税）对国内商品需求的影响
+
+  ▸ Derived Demand ≡ Derived Demand (sim=0.862)
+    共有 : Derived demand is the demand for a factor of production that arises from the demand for the final good it helps produce
+    A独有: indirect and depends on the demand for the final product
+    B独有: The textbook states: “The demand for an input, which is dependent upon the demand for the good(s) that it is used to produce.” It applies st
+
+  ▸ Scarcity ≡ Scarcity (sim=0.859)
+    共有 : Scarcity 是由于个人和社会的需求和欲望是无限的，而资源是有限的，从而导致资源的稀缺和配置问题，个人和社会需要做出选择来分配资源，这对经济效率、增长和发展有着重要的影响
+    A独有: 机会成本的概念被用来评估资源配置中的权衡取舍，资源配置需要考虑机会成本
+    B独有: 信息本身也是一个稀缺资源，时间、注意力等也是稀缺资源，个人需要优先考虑自己的欲望，以便将稀缺的资源用在能够带来最大的幸福或满足的方面
+
+  ▸ Consumer Surplus ≡ Consumer Surplus (sim=0.858)
+    共有 : 
+    A独有: (无)
+    B独有: (无)
+
+DONE (dry-run, 无写库). 人工核查: 真同点是否全在 SAME? 假朋友是否全在 DIFFERENT? 模糊是否落 UNCERTAIN?

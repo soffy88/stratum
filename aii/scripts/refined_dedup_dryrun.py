@@ -30,7 +30,9 @@ _DISC_FAMILIES = [
     {"price", "income"}, {"supply", "demand"}, {"import", "export"},
     {"short-run", "long-run"}, {"short run", "long run"}, {"nominal", "real"},
     {"gross", "net"}, {"micro", "macro"}, {"buyer", "seller"}, {"employer", "employee"},
+    {"consumer", "producer"},                                   # 首跑错合: 生产者剩余↔消费者剩余
     {"供给", "需求"}, {"价格", "收入"}, {"短期", "长期"}, {"进口", "出口"},
+    {"消费者", "生产者"},
 ]
 _DISC_QUALIFIERS = [
     "increasing", "decreasing", "perfectly", "unitary", "cross",
@@ -86,16 +88,23 @@ async def _pairs(conn, books, sim, limit):
 JUDGE_SYS = (
     "你判断两条知识单元(KU)是否在讲【同一个知识点】(为跨书去重)。"
     "同一个点 = 定义同一个概念 / 解释同一个机制 / 陈述同一个事实(措辞、深度、语言可不同)。"
-    "不是同一个点 = 一个定义X而另一个用X去解释Y / 不同概念 / 上下位 / 一般vs特例。"
+    "不是同一个点(判DIFFERENT) = 一个定义X而另一个用X去解释别的 / 不同概念 / "
+    "上下位或整体-部分(如『消费者与生产者剩余』⊋『消费者剩余』) / 一般vs特例 / 近义但非同一(机会成本≠经济成本)。"
     "★命门: 误判SAME会删掉真知识(不可逆), 冗余只是可逆代价 → 宁可判DIFFERENT, 拿不准一律判UNCERTAIN。"
+    "判例(务必照此判): "
+    "(1)『经济成本分类:显性/隐性/经济成本』vs『隐性成本』→ DIFFERENT(分类是整体⊋单项, 整体-部分不是同一点)。"
+    "(2)『为什么市场决定价格』vs『比较优势』→ DIFFERENT(不同主题, 仅措辞相关≠同一点)。"
+    "(3)『税负归宿(概念)』vs『卖方买方征税等价(具体结论)』→ DIFFERENT(一般概念vs具体命题)。"
+    "(4)『稀缺性(数分书)』vs『Scarcity(曼昆)』同讲资源有限欲望无限 → SAME(同概念跨书, 措辞/语言不同)。"
+    "(5)『衍生需求 Derived Demand(一般)』vs『劳动的衍生需求 Derived Demand for Labor』→ DIFFERENT(『X』⊋『X for Y』, 一般概念范围大于特定要素, 上下位非同一点)。"
+    "(6)『沿需求曲线移动 Movement along the Demand Curve』vs『需求曲线 Demand Curve』→ DIFFERENT(前者是曲线上的子现象, 后者是曲线概念本身, 整体-部分非同一点)。"
+    "★规则: 只有两者讲的核心是【同一个】东西才SAME; 一个比另一个范围更大/是其分类/是其下位/只是相关 → 一律DIFFERENT。"
+    "★限定词检查(范围闸): 若一方标题/内容带具体化限定(for X / 某要素 / Labor / Market / 某子类), 另一方是无此限定的一般概念 → 范围不同 → 判 DIFFERENT(宁碎片不错合)。"
     "只输出 JSON: {\"verdict\":\"SAME|DIFFERENT|UNCERTAIN\",\"why\":\"≤20字\"}。"
 )
 
 
-async def _judge(llm, sem, p):
-    # 硬闸: 标题判别词矛盾 → 确定性 DIFFERENT
-    if _forced_different(p["a_title"], p["b_title"]):
-        return {**p, "verdict": "DIFFERENT", "why": "判别词硬闸", "gate": True}
+async def _one_vote(llm, sem, p):
     a = f"标题:{p['a_title']} | 类型:{p['a_kt']}\n{(p['a_tx'] or '')[:600]}"
     b = f"标题:{p['b_title']} | 类型:{p['b_kt']}\n{(p['b_tx'] or '')[:600]}"
     async with sem:
@@ -106,14 +115,32 @@ async def _judge(llm, sem, p):
             t = "".join(x.get("text", "") for x in r.get("content", []) if x.get("type") == "text")
             m = re.search(r"\{.*\}", t, re.DOTALL)
             if not m:
-                return {**p, "verdict": "UNCERTAIN", "why": "无JSON输出", "gate": False}
+                return "UNCERTAIN", "无JSON输出"
             j = json.loads(m.group(0))
             v = (j.get("verdict") or "UNCERTAIN").upper()
             if v not in ("SAME", "DIFFERENT", "UNCERTAIN"):
                 v = "UNCERTAIN"
-            return {**p, "verdict": v, "why": (j.get("why") or "")[:30], "gate": False}
+            return v, (j.get("why") or "")[:30]
         except Exception as e:
-            return {**p, "verdict": "UNCERTAIN", "why": f"err:{type(e).__name__}", "gate": False}
+            return "UNCERTAIN", f"err:{type(e).__name__}"
+
+
+async def _judge(llm, sem, p):
+    # 硬闸①: knowledge_type 失配(经理人裁决) → 确定性 DIFFERENT, 不进 LLM
+    if (p["a_kt"] or "") != (p["b_kt"] or ""):
+        return {**p, "verdict": "DIFFERENT", "why": f"type闸 {p['a_kt']}≠{p['b_kt']}", "gate": True}
+    # 硬闸②: 标题判别词矛盾(含 consumer/producer) → 确定性 DIFFERENT
+    if _forced_different(p["a_title"], p["b_title"]):
+        return {**p, "verdict": "DIFFERENT", "why": "判别词闸", "gate": True}
+    # LLM 第1票
+    v1, why1 = await _one_vote(llm, sem, p)
+    if v1 != "SAME":
+        return {**p, "verdict": v1, "why": why1, "gate": False}
+    # ★自一致性: 只对判SAME的二次确认(误合才危险); 不一致 → UNCERTAIN(保留)
+    v2, why2 = await _one_vote(llm, sem, p)
+    if v2 == "SAME":
+        return {**p, "verdict": "SAME", "why": why1, "gate": False}
+    return {**p, "verdict": "UNCERTAIN", "why": f"2票不一致({why2})", "gate": False}
 
 
 # ---- ③ 片段整合(只对 SAME): 各自独有贡献 = 越读越厚 --------------------------
