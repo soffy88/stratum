@@ -1,0 +1,29 @@
+# AII B仓（精炼仓 aii_refined）独立容器
+# 决策(2026-06-30, AII-REFINED-REPO-HANDOFF-001 + 用户拍板「独立容器」):
+#   B仓 = 全新独立 PG 容器(进程级+卷级隔离), 与 A仓 aii-postgres 物理不可跨库JOIN。
+#   镜像 = 干净的 pg16+pgvector(不背 timescaledb: B仓无时序, SCHEMA-001 §6.4 砍掉 temporal)。
+#   A→B 单向流走应用层 ETL(127.0.0.1:5436), 严禁 dblink/FDW(否则隔离破功)。
+# 端口: 5432=hevi 5433=mneme 5434=platform 5435=A仓aii-postgres → B仓取 5436。
+# 独立 compose 项目名(隔离: 不与 A仓的 aii 项目混, 防 down --remove-orphans 误删 A仓)。
+name: aii-refined
+services:
+  aii-refined-postgres:
+    image: pgvector/pgvector:pg16
+    container_name: aii-refined-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${REFINED_PG_USER:-aii}
+      POSTGRES_PASSWORD: ${REFINED_PG_PASSWORD:-aii_safe_pass}
+      POSTGRES_DB: ${REFINED_PG_DB:-aii_refined}
+    ports:
+      - "127.0.0.1:5436:5432"
+    volumes:
+      - aii_refined_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${REFINED_PG_USER:-aii} -d ${REFINED_PG_DB:-aii_refined}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  aii_refined_pg_data:
