@@ -1,10 +1,12 @@
 """B仓步骤3 · A仓去重KU → 灌入 rf.refined_ku  dry_run(默认不落库, --commit 才插).
 
 AII-REFINED-REPO-MASTER-001 §5.1。经济三书首跑(已验证判同+人工签核)。
+★语言策略(经理人2026-06-30拍板, 覆盖"英文统一"): **正文 natural_text 存原语言(不翻译, 免失真+免NIM瓶颈),
+  仅 title 翻英文(为跨语言核对)**。BGE-M3 跨语言→原语言向量仍对齐。
 流程: ②判同(复用 refined_dedup_dryrun, 缓存verdicts) → 读 rf.dedup_decision 跳 held_apart
-      → union-find 成簇 → ③整合(多成员簇: 英文natural_text拼"越读越厚") → 翻译(仅混中文的~24条, NIM)
-      → BGE-M3 1024维(英文natural_text) → refined_ku(sources jsonb 溯源A仓)。
-命门: 宁冗余不误删(held_apart保留两份, 不并簇); 翻译忠实不失真; embedding对齐A仓BGE-M3。
+      → union-find 成簇 → ③整合(★同语言簇: 原语言"越读越厚"; ★跨语言簇: 不融合, 留最长成员+sources记全)
+      → title 翻英文 → BGE-M3 1024维(原语言natural_text) → refined_ku(sources jsonb 溯源A仓)。
+命门: 宁冗余不误删(held_apart保留两份, 不并簇); 正文不译免失真; embedding对齐A仓BGE-M3。
 红线: dry_run 默认不落库; 先经济三书; 看裸真相(打印样本人工核)。
 
 用法: cd aii; NVIDIA_NIM_API_KEY=<econ key> .venv/bin/python scripts/refined_ingest_dryrun.py
@@ -72,11 +74,13 @@ async def _verdicts(aconn, books, sim, mx, rejudge):
     return out
 
 
-# ---- ③ 多成员簇整合: 英文 natural_text 拼"越读越厚"(忠实, 不臆造) ----
+# ---- ③ 同语言簇整合: 原语言 natural_text 拼"越读越厚"(忠实, 不臆造) + 英文标题 ----
 INTEG_SYS = (
-    "你把多条讲【同一个知识点】的KU整合成一条更厚的英文知识(越读越厚, for a refined repo)。"
-    "要求: 忠实合并各条的实质内容(定义+各自独有的侧面/条件/例子), 不增不减不臆造, 不重复。"
-    "输出统一英文。只输出 JSON: {\"title\":\"\",\"natural_text\":\"\"}。"
+    "你把多条讲【同一个知识点】的KU整合成一条更厚的知识(越读越厚, for a refined repo)。"
+    "★正文 natural_text 保持这些KU的原语言(不翻译成其他语言), 忠实合并各条实质内容"
+    "(定义+各自独有的侧面/条件/例子), 不增不减不臆造, 不重复。"
+    "★另给一个简短【英文】标题 title_en(仅标题用英文, 为跨语言核对)。"
+    "只输出 JSON: {\"title_en\":\"\",\"natural_text\":\"\"}。"
 )
 
 
@@ -95,9 +99,9 @@ async def _merge_cluster(llm, sem, members):
         return {}  # 失败回退: caller 用最长成员原文(不丢知识)
 
 
-# ---- 翻译(仅混中文的 natural_text, 忠实) ----
-TRANS_SYS = ("把下面经济学知识文本忠实翻译成英文(换语言, 不重述/不增减/不曲解; 经济学术语用标准英文)。"
-             "只输出译文, 不加说明。")
+# ---- 标题翻英(仅 title, 为跨语言核对; 正文不译) ----
+TRANS_SYS = ("把下面经济学知识点的【标题】忠实翻译成英文(简短, 术语用标准英文)。"
+             "只输出英文标题, 不加说明/不加引号。")
 
 
 async def _translate(llm, sem, text):
@@ -190,19 +194,21 @@ async def main():
                     for ids in {**multi, **singles}.values()]
 
     async def _prep(idx, members):
-        """并发组装一条 refined_ku 的文本(整合/翻译, 轮转用第 idx%len 个key)。"""
+        """并发组装一条 refined_ku(轮转第 idx%len 个key)。正文存原语言, 仅标题翻英。"""
         llm = pool[idx % len(pool)]
-        base = members[0]
-        if len(members) > 1:
+        base = members[0]  # 已按 natural_text 长度降序 → [0]=最长
+        if len(members) > 1 and len({_has_zh(m["natural_text"]) for m in members}) == 1:
+            # 同语言簇: 原语言整合"越读越厚" + 英文标题
             merged = await _merge_cluster(llm, sem, members)
-            title = merged.get("title") or base["title"]
             ntext = merged.get("natural_text") or base["natural_text"]   # 失败回退最长成员
-            is_frag = True
+            title = merged.get("title_en") or base["title"]
+            is_frag = bool(merged.get("natural_text"))                   # 真融合才算片段化
         else:
-            title, ntext = base["title"], base["natural_text"]
-            if _has_zh(ntext):
-                ntext = await _translate(llm, sem, ntext)               # 失败回退原文
+            # 单条 或 跨语言簇: 不融合, 留最长成员原文(sources 已记全部成员可回查)
+            ntext, title = base["natural_text"], base["title"]
             is_frag = False
+        if _has_zh(title):                          # 标题保证英文(为核对); 正文不动
+            title = await _translate(llm, sem, title)
         return {"base": base, "members": members, "title": title, "ntext": ntext, "is_frag": is_frag}
 
     # ---- 演示样本(dry-run): sample 个多成员簇 + 3 个混中文翻译, 并发 ----
@@ -222,11 +228,11 @@ async def main():
             print(f"    sources : {json.dumps(_build_sources(ms), ensure_ascii=False)[:200]}")
         zh_cnt = sum(1 for k in kus if _has_zh(kus[k]['natural_text']))
         if zh_demo:
-            print(f"\n── 翻译案例(natural_text混中文→NIM英译, 共{zh_cnt}条) ──", flush=True)
+            print(f"\n── 原语言保留案例(正文存原语言不译, 仅title翻英; 中文体共{zh_cnt}条) ──", flush=True)
             for p in prepped[len(demo):]:
                 print(f"\n  ▸ {p['base']['ku_id']}")
-                print(f"    原: {p['base']['natural_text'][:120]}")
-                print(f"    译: {(p['ntext'] or '')[:120]}")
+                print(f"    原标题: {(p['base']['title'] or '')[:55]}  →  英文title: {(p['title'] or '')[:55]}")
+                print(f"    正文(原语言,存原): {(p['ntext'] or '')[:110]}")
         print(f"\nDONE (dry-run, 无写库). 人工核: 整合是否忠实越读越厚? 翻译是否失真? sources是否全溯源?", flush=True)
         await aconn.close(); await bconn.close(); return
 
