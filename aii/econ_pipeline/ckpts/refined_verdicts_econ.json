@@ -1,0 +1,1472 @@
+[
+ {
+  "a_id": "microecon_en_full_v2::ch7_ku8",
+  "b_id": "micro_clean::ku_c6_73",
+  "a_title": "Movement Along vs. Shift of Supply Curve",
+  "b_title": "Movements along a Supply Curve versus Shifts in the Supply Curve",
+  "sim": 0.887,
+  "verdict": "SAME",
+  "why": "同解释供给曲线移动与转移",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c5_66",
+  "b_id": "mankiw_principles_econ_10e::ch18_ku53",
+  "a_title": "Derived Demand",
+  "b_title": "Derived Demand",
+  "sim": 0.878,
+  "verdict": "SAME",
+  "why": "同定义",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c5_56",
+  "b_id": "microecon_en_full_v2::ch6_ku7",
+  "a_title": "Movements along the Demand Curve versus Shifts in the Curve",
+  "b_title": "Demand Curve",
+  "sim": 0.867,
+  "verdict": "DIFFERENT",
+  "why": "曲线子现象vs曲线概念",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c5_66",
+  "b_id": "microecon_en_full_v2::ch6_ku18",
+  "a_title": "Derived Demand",
+  "b_title": "Derived Demand",
+  "sim": 0.862,
+  "verdict": "SAME",
+  "why": "同定义衍生需求",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch1_ku34",
+  "b_id": "microecon_en_full_v2::ch2_ku0",
+  "a_title": "Scarcity",
+  "b_title": "Scarcity",
+  "sim": 0.859,
+  "verdict": "SAME",
+  "why": "同概念",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch6_ku19",
+  "b_id": "micro_clean::ku_c5_57",
+  "a_title": "Factors That Shift Demand (Income, Preferences, Prices of Substitutes/Complements, Property Rights, Number of Buyers)",
+  "b_title": "Why a Change in Income Shifts the Demand Curve",
+  "sim": 0.858,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c6_83",
+  "b_id": "mankiw_principles_econ_10e::ch7_ku0",
+  "a_title": "Consumer Surplus",
+  "b_title": "Consumer Surplus",
+  "sim": 0.858,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c4_47",
+  "b_id": "microecon_en_full_v2::ch4_ku5",
+  "a_title": "Eminent Domain",
+  "b_title": "Eminent Domain",
+  "sim": 0.856,
+  "verdict": "SAME",
+  "why": "定义同一个概念",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch17_ku13",
+  "b_id": "mankiw_principles_econ_10e::ch17_ku0",
+  "a_title": "Monopolistic competition and product differentiation",
+  "b_title": "Monopolistic Competition",
+  "sim": 0.853,
+  "verdict": "SAME",
+  "why": "同概念",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch6_ku18",
+  "b_id": "mankiw_principles_econ_10e::ch18_ku53",
+  "a_title": "Derived Demand",
+  "b_title": "Derived Demand",
+  "sim": 0.851,
+  "verdict": "SAME",
+  "why": "同定义衍生需求",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch8_ku9",
+  "b_id": "micro_clean::ku_c6_83",
+  "a_title": "Consumer Surplus",
+  "b_title": "Consumer Surplus",
+  "sim": 0.85,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch3_ku12",
+  "b_id": "micro_clean::ku_c3_38",
+  "a_title": "Transaction Cost",
+  "b_title": "Transaction costs impede exchanges",
+  "sim": 0.849,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch1_ku34",
+  "b_id": "micro_clean::ku_c3_27",
+  "a_title": "Scarcity",
+  "b_title": "Scarcity as the fundamental economic problem",
+  "sim": 0.848,
+  "verdict": "SAME",
+  "why": "同概念",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c5_57",
+  "b_id": "microecon_en_full_v2::ch6_ku10",
+  "a_title": "Why a Change in Income Shifts the Demand Curve",
+  "b_title": "Shift in the Demand Curve",
+  "sim": 0.848,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch8_ku17",
+  "b_id": "micro_clean::ku_c6_90",
+  "a_title": "Price Floor",
+  "b_title": "Price Floors",
+  "sim": 0.848,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c6_68",
+  "b_id": "microecon_en_full_v2::ch7_ku3",
+  "a_title": "Opportunity Cost of Production: Increasing Marginal Cost",
+  "b_title": "Increasing Marginal Cost",
+  "sim": 0.847,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c6_86",
+  "b_id": "microecon_en_full_v2::ch8_ku12",
+  "a_title": "Market Disturbances and Reaching New Equilibrium",
+  "b_title": "Market Disturbances and Shifts in Demand or Supply",
+  "sim": 0.846,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c6_83",
+  "b_id": "mankiw_principles_econ_10e::ch7_ku5",
+  "a_title": "Consumer Surplus",
+  "b_title": "What Consumer Surplus Measures",
+  "sim": 0.845,
+  "verdict": "SAME",
+  "why": "定义同一个概念",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch7_ku2",
+  "b_id": "micro_clean::ku_c6_83",
+  "a_title": "Measuring Consumer Surplus with the Demand Curve",
+  "b_title": "Consumer Surplus",
+  "sim": 0.841,
+  "verdict": "DIFFERENT",
+  "why": "type闸 procedural≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch7_ku5",
+  "b_id": "microecon_en_full_v2::ch8_ku9",
+  "a_title": "What Consumer Surplus Measures",
+  "b_title": "Consumer Surplus",
+  "sim": 0.841,
+  "verdict": "SAME",
+  "why": "定义同一个概念",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch7_ku16",
+  "b_id": "micro_clean::ku_c6_71",
+  "a_title": "Supply of Labor",
+  "b_title": "The Supply of Labor",
+  "sim": 0.84,
+  "verdict": "SAME",
+  "why": "同定义劳动供给",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c6_82",
+  "b_id": "microecon_en_full_v2::ch8_ku7",
+  "a_title": "Price Takers in a One-Price Market",
+  "b_title": "Price Taker",
+  "sim": 0.84,
+  "verdict": "SAME",
+  "why": "定义同一个概念",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c5_64",
+  "b_id": "microecon_en_full_v2::ch6_ku7",
+  "a_title": "Factors That Shift the Market Demand Curve",
+  "b_title": "Demand Curve",
+  "sim": 0.84,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c6_68",
+  "b_id": "microecon_en_full_v2::ch2_ku14",
+  "a_title": "Opportunity Cost of Production: Increasing Marginal Cost",
+  "b_title": "Principle of increasing marginal cost",
+  "sim": 0.839,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch12_ku9",
+  "b_id": "mankiw_principles_econ_10e::ch8_ku7",
+  "a_title": "Deadweight loss from taxes",
+  "b_title": "Effect of Elasticities on Deadweight Loss",
+  "sim": 0.836,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch18_ku53",
+  "b_id": "microecon_en_full_v2::ch14_ku10",
+  "a_title": "Derived Demand",
+  "b_title": "Derived Demand for Labor",
+  "sim": 0.835,
+  "verdict": "DIFFERENT",
+  "why": "KU-A是总体概念，KU-B是特例",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c5_64",
+  "b_id": "microecon_en_full_v2::ch6_ku19",
+  "a_title": "Factors That Shift the Market Demand Curve",
+  "b_title": "Factors That Shift Demand (Income, Preferences, Prices of Substitutes/Complements, Property Rights, Number of Buyers)",
+  "sim": 0.834,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch7_ku0",
+  "b_id": "micro_clean::ku_c6_69",
+  "a_title": "Law of Supply",
+  "b_title": "The Law of Supply",
+  "sim": 0.833,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c6_84",
+  "b_id": "mankiw_principles_econ_10e::ch7_ku7",
+  "a_title": "Producer Surplus",
+  "b_title": "Producer Surplus",
+  "sim": 0.833,
+  "verdict": "SAME",
+  "why": "定义生产者剩余",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch18_ku0",
+  "b_id": "mankiw_principles_econ_10e::ch16_ku68",
+  "a_title": "Oligopoly",
+  "b_title": "Oligopoly",
+  "sim": 0.832,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch6_ku19",
+  "b_id": "micro_clean::ku_c5_56",
+  "a_title": "Factors That Shift Demand (Income, Preferences, Prices of Substitutes/Complements, Property Rights, Number of Buyers)",
+  "b_title": "Movements along the Demand Curve versus Shifts in the Curve",
+  "sim": 0.83,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c6_90",
+  "b_id": "microecon_en_full_v2::ch8_ku19",
+  "a_title": "Price Floors",
+  "b_title": "Effects of Price Floors (Surpluses, Underemployment)",
+  "sim": 0.83,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch7_ku44",
+  "b_id": "micro_clean::ku_c6_84",
+  "a_title": "Calculating Producer Surplus",
+  "b_title": "Producer Surplus",
+  "sim": 0.828,
+  "verdict": "DIFFERENT",
+  "why": "type闸 procedural≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch7_ku8",
+  "b_id": "micro_clean::ku_c5_56",
+  "a_title": "Movement Along vs. Shift of Supply Curve",
+  "b_title": "Movements along the Demand Curve versus Shifts in the Curve",
+  "sim": 0.828,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c6_78",
+  "b_id": "microecon_en_full_v2::ch7_ku14",
+  "a_title": "From Individual to Market Supply Curves",
+  "b_title": "Number of Suppliers and Market Supply",
+  "sim": 0.827,
+  "verdict": "DIFFERENT",
+  "why": "type闸 procedural≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c6_73",
+  "b_id": "microecon_en_full_v2::ch7_ku18",
+  "a_title": "Movements along a Supply Curve versus Shifts in the Supply Curve",
+  "b_title": "Factors That Shift Supply (Summary)",
+  "sim": 0.827,
+  "verdict": "DIFFERENT",
+  "why": "整体-部分",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch8_ku16",
+  "b_id": "micro_clean::ku_c6_89",
+  "a_title": "Price Ceiling",
+  "b_title": "Price Ceilings",
+  "sim": 0.825,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch7_ku2",
+  "b_id": "microecon_en_full_v2::ch8_ku9",
+  "a_title": "Measuring Consumer Surplus with the Demand Curve",
+  "b_title": "Consumer Surplus",
+  "sim": 0.824,
+  "verdict": "DIFFERENT",
+  "why": "type闸 procedural≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch10_ku2",
+  "b_id": "mankiw_principles_econ_10e::ch2_ku42",
+  "a_title": "Production Possibilities Frontier (PPF)",
+  "b_title": "The shape and position of the production possibilities frontier",
+  "sim": 0.823,
+  "verdict": "SAME",
+  "why": "同为生产可能性边界",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch8_ku11",
+  "b_id": "micro_clean::ku_c6_85",
+  "a_title": "Determinants of Consumer and Producer Surplus (Slopes of Curves)",
+  "b_title": "Determinants of Surplus: Slopes of Supply and Demand",
+  "sim": 0.822,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c5_66",
+  "b_id": "microecon_en_full_v2::ch14_ku10",
+  "a_title": "Derived Demand",
+  "b_title": "Derived Demand for Labor",
+  "sim": 0.822,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch7_ku0",
+  "b_id": "microecon_en_full_v2::ch8_ku9",
+  "a_title": "Consumer Surplus",
+  "b_title": "Consumer Surplus",
+  "sim": 0.822,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c6_78",
+  "b_id": "microecon_en_full_v2::ch7_ku13",
+  "a_title": "From Individual to Market Supply Curves",
+  "b_title": "Market Supply Curve Derivation (Horizontal Summation)",
+  "sim": 0.822,
+  "verdict": "SAME",
+  "why": "同为市场供给曲线推导",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c5_61",
+  "b_id": "mankiw_principles_econ_10e::ch5_ku31",
+  "a_title": "Why the Price of a Substitute Good Can Shift a Demand Curve",
+  "b_title": "Why Demand is More Elastic if Close Substitutes are Available",
+  "sim": 0.821,
+  "verdict": "DIFFERENT",
+  "why": "不同主题",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch5_ku40",
+  "b_id": "microecon_en_full_v2::ch11_ku13",
+  "a_title": "Why Income Elasticity of Demand Matters",
+  "b_title": "Income inelastic good",
+  "sim": 0.82,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c3_34",
+  "b_id": "microecon_en_full_v2::ch3_ku2",
+  "a_title": "Classification of economic costs: explicit vs implicit",
+  "b_title": "Implicit Cost",
+  "sim": 0.82,
+  "verdict": "DIFFERENT",
+  "why": "整体-部分",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch4_ku13",
+  "b_id": "micro_clean::ku_c5_56",
+  "a_title": "Movement along the demand curve",
+  "b_title": "Movements along the Demand Curve versus Shifts in the Curve",
+  "sim": 0.82,
+  "verdict": "DIFFERENT",
+  "why": "一个是子现象，一个是对比",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch8_ku1",
+  "b_id": "micro_clean::ku_c6_81",
+  "a_title": "Equilibrium Price",
+  "b_title": "Market Supply and Demand Together (Equilibrium)",
+  "sim": 0.818,
+  "verdict": "SAME",
+  "why": "均为均衡价格概念",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch9_ku53",
+  "b_id": "micro_clean::ku_c6_84",
+  "a_title": "Producer Surplus",
+  "b_title": "Producer Surplus",
+  "sim": 0.818,
+  "verdict": "SAME",
+  "why": "同定义生产者剩余",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch4_ku0",
+  "b_id": "micro_clean::ku_c4_40",
+  "a_title": "Property Rights",
+  "b_title": "Property Rights Definition",
+  "sim": 0.816,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch16_ku71",
+  "b_id": "microecon_en_full_v2::ch17_ku13",
+  "a_title": "Difference between Monopolistic Competition and Oligopoly",
+  "b_title": "Monopolistic competition and product differentiation",
+  "sim": 0.816,
+  "verdict": "DIFFERENT",
+  "why": "不同市场结构",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch18_ku0",
+  "b_id": "mankiw_principles_econ_10e::ch16_ku71",
+  "a_title": "Oligopoly",
+  "b_title": "Difference between Monopolistic Competition and Oligopoly",
+  "sim": 0.816,
+  "verdict": "DIFFERENT",
+  "why": "不同概念",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch16_ku11",
+  "b_id": "mankiw_principles_econ_10e::ch15_ku35",
+  "a_title": "Long-run market equilibrium",
+  "b_title": "Long-Run Equilibrium in a Competitive Market",
+  "sim": 0.815,
+  "verdict": "SAME",
+  "why": "同一概念",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c6_73",
+  "b_id": "microecon_en_full_v2::ch6_ku7",
+  "a_title": "Movements along a Supply Curve versus Shifts in the Supply Curve",
+  "b_title": "Demand Curve",
+  "sim": 0.815,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch4_ku13",
+  "b_id": "microecon_en_full_v2::ch6_ku7",
+  "a_title": "Movement along the demand curve",
+  "b_title": "Demand Curve",
+  "sim": 0.814,
+  "verdict": "DIFFERENT",
+  "why": "一个是曲线上的子现象",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c5_61",
+  "b_id": "microecon_en_full_v2::ch6_ku14",
+  "a_title": "Why the Price of a Substitute Good Can Shift a Demand Curve",
+  "b_title": "Substitute Goods",
+  "sim": 0.814,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch3_ku33",
+  "b_id": "micro_clean::ku_c6_82",
+  "a_title": "Price Takers",
+  "b_title": "Price Takers in a One-Price Market",
+  "sim": 0.814,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch11_ku12",
+  "b_id": "mankiw_principles_econ_10e::ch5_ku40",
+  "a_title": "Income elastic good",
+  "b_title": "Why Income Elasticity of Demand Matters",
+  "sim": 0.814,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch2_ku55",
+  "b_id": "microecon_en_full_v2::ch6_ku17",
+  "a_title": "Demand Curve",
+  "b_title": "Market Demand Curve",
+  "sim": 0.814,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch7_ku33",
+  "b_id": "micro_clean::ku_c6_83",
+  "a_title": "The concept of consumer and producer surplus",
+  "b_title": "Consumer Surplus",
+  "sim": 0.814,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch7_ku42",
+  "b_id": "micro_clean::ku_c6_83",
+  "a_title": "Why Efficiency Occurs",
+  "b_title": "Consumer Surplus",
+  "sim": 0.814,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c6_68",
+  "b_id": "microecon_en_full_v2::ch10_ku10",
+  "a_title": "Opportunity Cost of Production: Increasing Marginal Cost",
+  "b_title": "Principle of Increasing Marginal Cost",
+  "sim": 0.813,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch3_ku14",
+  "b_id": "microecon_en_full_v2::ch19_ku22",
+  "a_title": "Applying Comparative Advantage to Real-World Scenarios",
+  "b_title": "Comparative advantage in global labor markets",
+  "sim": 0.813,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c3_27",
+  "b_id": "microecon_en_full_v2::ch2_ku0",
+  "a_title": "Scarcity as the fundamental economic problem",
+  "b_title": "Scarcity",
+  "sim": 0.812,
+  "verdict": "SAME",
+  "why": "同概念",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch5_ku1",
+  "b_id": "micro_clean::ku_c5_65",
+  "a_title": "Why demand tends to be more elastic over longer periods of time",
+  "b_title": "Short-Run versus Long-Run Changes in Individual and Market Demand",
+  "sim": 0.812,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch10_ku1",
+  "b_id": "micro_clean::ku_c3_38",
+  "a_title": "Transaction Costs",
+  "b_title": "Transaction costs impede exchanges",
+  "sim": 0.812,
+  "verdict": "SAME",
+  "why": "同定义交易成本",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch17_ku31",
+  "b_id": "microecon_en_full_v2::ch18_ku2",
+  "a_title": "Game theory",
+  "b_title": "Game theory",
+  "sim": 0.812,
+  "verdict": "SAME",
+  "why": "同为博弈论概念",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c5_55",
+  "b_id": "microecon_en_full_v2::ch6_ku17",
+  "a_title": "Deriving a Person's Demand Curve",
+  "b_title": "Market Demand Curve",
+  "sim": 0.811,
+  "verdict": "DIFFERENT",
+  "why": "type闸 procedural≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch6_ku43",
+  "b_id": "micro_clean::ku_c5_51",
+  "a_title": "Willingness to Pay",
+  "b_title": "Willingness to Pay",
+  "sim": 0.811,
+  "verdict": "SAME",
+  "why": "同定义概念",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c5_57",
+  "b_id": "microecon_en_full_v2::ch6_ku7",
+  "a_title": "Why a Change in Income Shifts the Demand Curve",
+  "b_title": "Demand Curve",
+  "sim": 0.81,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch2_ku9",
+  "b_id": "micro_clean::ku_c3_32",
+  "a_title": "Marginal analysis",
+  "b_title": "Marginal analysis as a decision-making technique",
+  "sim": 0.81,
+  "verdict": "SAME",
+  "why": "同一个概念",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch7_ku18",
+  "b_id": "micro_clean::ku_c6_74",
+  "a_title": "Factors That Shift Supply (Summary)",
+  "b_title": "Factors that Shift a Supply Curve (Overview)",
+  "sim": 0.81,
+  "verdict": "SAME",
+  "why": "同解释供给曲线移动",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c5_63",
+  "b_id": "mankiw_principles_econ_10e::ch4_ku4",
+  "a_title": "From Individual to Market Demand Curves",
+  "b_title": "Market Demand",
+  "sim": 0.809,
+  "verdict": "DIFFERENT",
+  "why": "type闸 procedural≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch3_ku33",
+  "b_id": "microecon_en_full_v2::ch8_ku7",
+  "a_title": "Price Takers",
+  "b_title": "Price Taker",
+  "sim": 0.809,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch8_ku18",
+  "b_id": "micro_clean::ku_c6_89",
+  "a_title": "Effects of Price Ceilings (Shortages, Winners and Losers)",
+  "b_title": "Price Ceilings",
+  "sim": 0.808,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch7_ku42",
+  "b_id": "microecon_en_full_v2::ch8_ku9",
+  "a_title": "Why Efficiency Occurs",
+  "b_title": "Consumer Surplus",
+  "sim": 0.808,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch5_ku18",
+  "b_id": "micro_clean::ku_c5_58",
+  "a_title": "Normal Goods vs. Inferior Goods",
+  "b_title": "Normal versus Inferior Goods",
+  "sim": 0.807,
+  "verdict": "SAME",
+  "why": "同概念",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch6_ku8",
+  "b_id": "mankiw_principles_econ_10e::ch4_ku0",
+  "a_title": "Law of Demand",
+  "b_title": "Law of Demand",
+  "sim": 0.806,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c3_34",
+  "b_id": "microecon_en_full_v2::ch3_ku3",
+  "a_title": "Classification of economic costs: explicit vs implicit",
+  "b_title": "Economic Cost",
+  "sim": 0.806,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c5_55",
+  "b_id": "mankiw_principles_econ_10e::ch2_ku55",
+  "a_title": "Deriving a Person's Demand Curve",
+  "b_title": "Demand Curve",
+  "sim": 0.806,
+  "verdict": "DIFFERENT",
+  "why": "type闸 procedural≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch3_ku9",
+  "b_id": "microecon_en_full_v2::ch2_ku4",
+  "a_title": "Calculating Opportunity Costs",
+  "b_title": "Opportunity cost",
+  "sim": 0.805,
+  "verdict": "DIFFERENT",
+  "why": "type闸 procedural≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch11_ku13",
+  "b_id": "micro_clean::ku_c5_58",
+  "a_title": "Income inelastic good",
+  "b_title": "Normal versus Inferior Goods",
+  "sim": 0.802,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch1_ku3",
+  "b_id": "microecon_en_full_v2::ch2_ku4",
+  "a_title": "Opportunity Cost",
+  "b_title": "Opportunity cost",
+  "sim": 0.802,
+  "verdict": "SAME",
+  "why": "同定义",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch5_ku41",
+  "b_id": "microecon_en_full_v2::ch8_ku15",
+  "a_title": "Price Controls and Market Outcomes",
+  "b_title": "Price Controls",
+  "sim": 0.801,
+  "verdict": "SAME",
+  "why": "定义同一个概念",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch3_ku8",
+  "b_id": "micro_clean::ku_c3_35",
+  "a_title": "Sunk Cost Irrelevance",
+  "b_title": "Sunk costs are irrelevant for future decisions",
+  "sim": 0.8,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch2_ku71",
+  "b_id": "microecon_en_full_v2::ch19_ku22",
+  "a_title": "Specialization and Comparative Advantage",
+  "b_title": "Comparative advantage in global labor markets",
+  "sim": 0.8,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch19_ku22",
+  "b_id": "mankiw_principles_econ_10e::ch9_ku0",
+  "a_title": "Comparative advantage in global labor markets",
+  "b_title": "Comparative Advantage",
+  "sim": 0.8,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch12_ku9",
+  "b_id": "mankiw_principles_econ_10e::ch8_ku6",
+  "a_title": "Deadweight loss from taxes",
+  "b_title": "Determinants of Deadweight Loss",
+  "sim": 0.798,
+  "verdict": "DIFFERENT",
+  "why": "一个定义概念，另一个解释影响因素",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch7_ku8",
+  "b_id": "micro_clean::ku_c6_83",
+  "a_title": "Why Producer Surplus Occurs",
+  "b_title": "Consumer Surplus",
+  "sim": 0.798,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c3_39",
+  "b_id": "microecon_en_full_v2::ch4_ku0",
+  "a_title": "Property rights as the foundation of economic costs and benefits",
+  "b_title": "Property Rights",
+  "sim": 0.798,
+  "verdict": "SAME",
+  "why": "同定义产权概念",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c6_76",
+  "b_id": "microecon_en_full_v2::ch7_ku10",
+  "a_title": "Technology (Knowledge) and Production Costs as a Supply Shifter",
+  "b_title": "Technology and Supply",
+  "sim": 0.797,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch10_ku4",
+  "b_id": "mankiw_principles_econ_10e::ch3_ku5",
+  "a_title": "Absolute Advantage",
+  "b_title": "Absolute Advantage",
+  "sim": 0.797,
+  "verdict": "SAME",
+  "why": "同定义",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch6_ku3",
+  "b_id": "micro_clean::ku_c5_53",
+  "a_title": "Principle of Diminishing Marginal Benefit",
+  "b_title": "Diminishing Marginal Benefit Explains Declining Willingness to Pay",
+  "sim": 0.797,
+  "verdict": "SAME",
+  "why": "同一概念",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch7_ku15",
+  "b_id": "micro_clean::ku_c6_83",
+  "a_title": "Effect of Higher Price on Producer Surplus",
+  "b_title": "Consumer Surplus",
+  "sim": 0.797,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch9_ku7",
+  "b_id": "micro_clean::ku_c5_65",
+  "a_title": "Factors affecting price elasticity of demand",
+  "b_title": "Short-Run versus Long-Run Changes in Individual and Market Demand",
+  "sim": 0.797,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch3_ku7",
+  "b_id": "microecon_en_full_v2::ch19_ku22",
+  "a_title": "Comparative Advantage",
+  "b_title": "Comparative advantage in global labor markets",
+  "sim": 0.796,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch12_ku7",
+  "b_id": "mankiw_principles_econ_10e::ch6_ku29",
+  "a_title": "Tax incidence",
+  "b_title": "Equivalence of taxes on sellers and buyers",
+  "sim": 0.796,
+  "verdict": "UNCERTAIN",
+  "why": "2票不一致(一般概念vs具体命题)",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch6_ku10",
+  "b_id": "micro_clean::ku_c5_56",
+  "a_title": "Shift in the Demand Curve",
+  "b_title": "Movements along the Demand Curve versus Shifts in the Curve",
+  "sim": 0.796,
+  "verdict": "DIFFERENT",
+  "why": "一个是曲线移动原因，一个是移动与平移区别",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch14_ku15",
+  "b_id": "mankiw_principles_econ_10e::ch6_ku19",
+  "a_title": "Minimum Wage and Income Inequality",
+  "b_title": "Debate on Minimum Wage",
+  "sim": 0.795,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠positional",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch4_ku6",
+  "b_id": "micro_clean::ku_c5_64",
+  "a_title": "Shifts in the Demand Curve",
+  "b_title": "Factors That Shift the Market Demand Curve",
+  "sim": 0.795,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch3_ku24",
+  "b_id": "microecon_en_full_v2::ch10_ku5",
+  "a_title": "Difference between absolute and comparative advantage",
+  "b_title": "Comparative Advantage",
+  "sim": 0.795,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch2_ku55",
+  "b_id": "micro_clean::ku_c5_56",
+  "a_title": "Demand Curve",
+  "b_title": "Movements along the Demand Curve versus Shifts in the Curve",
+  "sim": 0.795,
+  "verdict": "DIFFERENT",
+  "why": "整体-部分",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch6_ku17",
+  "b_id": "micro_clean::ku_c5_64",
+  "a_title": "Market Demand Curve",
+  "b_title": "Factors That Shift the Market Demand Curve",
+  "sim": 0.794,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch11_ku12",
+  "b_id": "mankiw_principles_econ_10e::ch5_ku13",
+  "a_title": "Income elastic good",
+  "b_title": "Income Elasticity of Demand",
+  "sim": 0.793,
+  "verdict": "DIFFERENT",
+  "why": "一个定义概念，另一个解释指标",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch5_ku40",
+  "b_id": "microecon_en_full_v2::ch11_ku9",
+  "a_title": "Why Income Elasticity of Demand Matters",
+  "b_title": "Income elasticity of demand",
+  "sim": 0.793,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch7_ku8",
+  "b_id": "micro_clean::ku_c6_74",
+  "a_title": "Movement Along vs. Shift of Supply Curve",
+  "b_title": "Factors that Shift a Supply Curve (Overview)",
+  "sim": 0.792,
+  "verdict": "DIFFERENT",
+  "why": "一个是概念解释，另一个是影响因素",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch6_ku10",
+  "b_id": "micro_clean::ku_c5_64",
+  "a_title": "Shift in the Demand Curve",
+  "b_title": "Factors That Shift the Market Demand Curve",
+  "sim": 0.792,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c5_58",
+  "b_id": "microecon_en_full_v2::ch11_ku12",
+  "a_title": "Normal versus Inferior Goods",
+  "b_title": "Income elastic good",
+  "sim": 0.791,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch3_ku9",
+  "b_id": "microecon_en_full_v2::ch7_ku4",
+  "a_title": "Calculating Opportunity Costs",
+  "b_title": "Opportunity Cost of Production",
+  "sim": 0.791,
+  "verdict": "DIFFERENT",
+  "why": "type闸 procedural≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch2_ku4",
+  "b_id": "mankiw_principles_econ_10e::ch13_ku61",
+  "a_title": "Opportunity cost",
+  "b_title": "Opportunity Costs",
+  "sim": 0.791,
+  "verdict": "SAME",
+  "why": "同概念",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch4_ku6",
+  "b_id": "micro_clean::ku_c5_56",
+  "a_title": "Shifts in the Demand Curve",
+  "b_title": "Movements along the Demand Curve versus Shifts in the Curve",
+  "sim": 0.79,
+  "verdict": "DIFFERENT",
+  "why": "曲线移动与曲线平移",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch7_ku14",
+  "b_id": "micro_clean::ku_c6_73",
+  "a_title": "Number of Suppliers and Market Supply",
+  "b_title": "Movements along a Supply Curve versus Shifts in the Supply Curve",
+  "sim": 0.789,
+  "verdict": "DIFFERENT",
+  "why": "不同概念",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch6_ku9",
+  "b_id": "micro_clean::ku_c5_56",
+  "a_title": "Movement along the Demand Curve",
+  "b_title": "Movements along the Demand Curve versus Shifts in the Curve",
+  "sim": 0.789,
+  "verdict": "DIFFERENT",
+  "why": "一个是概念解释，一个是子现象",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch6_ku11",
+  "b_id": "micro_clean::ku_c5_58",
+  "a_title": "Normal Good",
+  "b_title": "Normal versus Inferior Goods",
+  "sim": 0.788,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch6_ku8",
+  "b_id": "mankiw_principles_econ_10e::ch9_ku50",
+  "a_title": "Law of Demand",
+  "b_title": "Law of Demand",
+  "sim": 0.788,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch3_ku0",
+  "b_id": "mankiw_principles_econ_10e::ch1_ku3",
+  "a_title": "Opportunity Cost",
+  "b_title": "Opportunity Cost",
+  "sim": 0.788,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch4_ku15",
+  "b_id": "micro_clean::ku_c4_49",
+  "a_title": "Illegal Markets and Legalization (Effect on MB/MC)",
+  "b_title": "Impact of Legalizing Illegal Markets",
+  "sim": 0.787,
+  "verdict": "SAME",
+  "why": "同讲合法化对市场影响",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch6_ku20",
+  "b_id": "micro_clean::ku_c5_63",
+  "a_title": "Horizontal Summation of Individual Demand Curves",
+  "b_title": "From Individual to Market Demand Curves",
+  "sim": 0.787,
+  "verdict": "SAME",
+  "why": "同一概念",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch6_ku5",
+  "b_id": "micro_clean::ku_c5_56",
+  "a_title": "Demand",
+  "b_title": "Movements along the Demand Curve versus Shifts in the Curve",
+  "sim": 0.787,
+  "verdict": "DIFFERENT",
+  "why": "一个是概念本身，另一个是曲线上的变化",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch4_ku7",
+  "b_id": "microecon_en_full_v2::ch6_ku19",
+  "a_title": "Why Shifts in the Demand Curve occur",
+  "b_title": "Factors That Shift Demand (Income, Preferences, Prices of Substitutes/Complements, Property Rights, Number of Buyers)",
+  "sim": 0.787,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch6_ku44",
+  "b_id": "micro_clean::ku_c6_83",
+  "a_title": "Consumer Surplus",
+  "b_title": "Consumer Surplus",
+  "sim": 0.787,
+  "verdict": "SAME",
+  "why": "同定义消费者剩余",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch7_ku1",
+  "b_id": "microecon_en_full_v2::ch8_ku9",
+  "a_title": "Why Consumer Surplus Occurs",
+  "b_title": "Consumer Surplus",
+  "sim": 0.787,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch7_ku33",
+  "b_id": "microecon_en_full_v2::ch8_ku9",
+  "a_title": "The concept of consumer and producer surplus",
+  "b_title": "Consumer Surplus",
+  "sim": 0.787,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "micro_clean::ku_c3_26",
+  "b_id": "microecon_en_full_v2::ch1_ku0",
+  "a_title": "Economics defined",
+  "b_title": "Economics as the study of trade-offs",
+  "sim": 0.786,
+  "verdict": "SAME",
+  "why": "定义经济学",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch14_ku15",
+  "b_id": "mankiw_principles_econ_10e::ch6_ku13",
+  "a_title": "Minimum Wage and Income Inequality",
+  "b_title": "Effect of Minimum Wage on Labor Market",
+  "sim": 0.786,
+  "verdict": "DIFFERENT",
+  "why": "不同主题",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch8_ku3",
+  "b_id": "mankiw_principles_econ_10e::ch4_ku35",
+  "a_title": "Market-Clearing Price",
+  "b_title": "Market equilibrium",
+  "sim": 0.786,
+  "verdict": "SAME",
+  "why": "均指市场均衡",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch3_ku27",
+  "b_id": "microecon_en_full_v2::ch19_ku22",
+  "a_title": "The principle of comparative advantage applies to countries as well as individuals",
+  "b_title": "Comparative advantage in global labor markets",
+  "sim": 0.785,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch3_ku24",
+  "b_id": "microecon_en_full_v2::ch19_ku22",
+  "a_title": "Difference between absolute and comparative advantage",
+  "b_title": "Comparative advantage in global labor markets",
+  "sim": 0.785,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch4_ku27",
+  "b_id": "micro_clean::ku_c5_56",
+  "a_title": "Difference between a change in demand and a change in the quantity demanded",
+  "b_title": "Movements along the Demand Curve versus Shifts in the Curve",
+  "sim": 0.785,
+  "verdict": "SAME",
+  "why": "同解需求曲线变化",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch8_ku23",
+  "b_id": "microecon_en_full_v2::ch12_ku9",
+  "a_title": "Elasticities of supply and demand affect the deadweight loss of a tax",
+  "b_title": "Deadweight loss from taxes",
+  "sim": 0.785,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch5_ku13",
+  "b_id": "microecon_en_full_v2::ch11_ku13",
+  "a_title": "Income Elasticity of Demand",
+  "b_title": "Income inelastic good",
+  "sim": 0.785,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "micro_clean::ku_c6_74",
+  "b_id": "microecon_en_full_v2::ch6_ku19",
+  "a_title": "Factors that Shift a Supply Curve (Overview)",
+  "b_title": "Factors That Shift Demand (Income, Preferences, Prices of Substitutes/Complements, Property Rights, Number of Buyers)",
+  "sim": 0.785,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch16_ku55",
+  "b_id": "microecon_en_full_v2::ch17_ku14",
+  "a_title": "Deadweight losses caused by monopoly",
+  "b_title": "Deadweight loss from monopoly",
+  "sim": 0.784,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch1_ku12",
+  "b_id": "micro_clean::ku_c3_30",
+  "a_title": "Normative analysis",
+  "b_title": "Distinction between positive and normative analysis",
+  "sim": 0.783,
+  "verdict": "SAME",
+  "why": "同讲正/范分析",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch7_ku9",
+  "b_id": "micro_clean::ku_c6_75",
+  "a_title": "Input Prices and Supply",
+  "b_title": "Changes in Input Prices as a Supply Shifter",
+  "sim": 0.783,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch3_ku34",
+  "b_id": "microecon_en_full_v2::ch19_ku22",
+  "a_title": "Why Markets Determine Prices",
+  "b_title": "Comparative advantage in global labor markets",
+  "sim": 0.782,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch6_ku16",
+  "b_id": "micro_clean::ku_c5_64",
+  "a_title": "Market",
+  "b_title": "Factors That Shift the Market Demand Curve",
+  "sim": 0.782,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch7_ku8",
+  "b_id": "microecon_en_full_v2::ch8_ku9",
+  "a_title": "Why Producer Surplus Occurs",
+  "b_title": "Consumer Surplus",
+  "sim": 0.782,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch3_ku9",
+  "b_id": "microecon_en_full_v2::ch3_ku0",
+  "a_title": "Calculating Opportunity Costs",
+  "b_title": "Opportunity Cost",
+  "sim": 0.782,
+  "verdict": "DIFFERENT",
+  "why": "type闸 procedural≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch8_ku15",
+  "b_id": "micro_clean::ku_c6_88",
+  "a_title": "Price Controls",
+  "b_title": "Government Policies Preventing Market Equilibrium",
+  "sim": 0.781,
+  "verdict": "SAME",
+  "why": "同讲市场价格干预",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch3_ku19",
+  "b_id": "microecon_en_full_v2::ch19_ku22",
+  "a_title": "The Principle of Comparative Advantage in International Trade",
+  "b_title": "Comparative advantage in global labor markets",
+  "sim": 0.781,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch17_ku13",
+  "b_id": "mankiw_principles_econ_10e::ch16_ku7",
+  "a_title": "Monopolistic competition and product differentiation",
+  "b_title": "The difference between a competitive firm and a monopoly",
+  "sim": 0.781,
+  "verdict": "DIFFERENT",
+  "why": "不同市场结构",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch1_ku3",
+  "b_id": "microecon_en_full_v2::ch2_ku5",
+  "a_title": "Opportunity Cost",
+  "b_title": "Economic cost",
+  "sim": 0.781,
+  "verdict": "DIFFERENT",
+  "why": "机会成本≠经济成本",
+  "gate": false
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch7_ku1",
+  "b_id": "micro_clean::ku_c6_83",
+  "a_title": "Why Consumer Surplus Occurs",
+  "b_title": "Consumer Surplus",
+  "sim": 0.781,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "mankiw_principles_econ_10e::ch4_ku4",
+  "b_id": "microecon_en_full_v2::ch6_ku17",
+  "a_title": "Market Demand",
+  "b_title": "Market Demand Curve",
+  "sim": 0.78,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch8_ku12",
+  "b_id": "micro_clean::ku_c6_73",
+  "a_title": "Market Disturbances and Shifts in Demand or Supply",
+  "b_title": "Movements along a Supply Curve versus Shifts in the Supply Curve",
+  "sim": 0.78,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "microecon_en_full_v2::ch2_ku5",
+  "b_id": "mankiw_principles_econ_10e::ch3_ku9",
+  "a_title": "Economic cost",
+  "b_title": "Calculating Opportunity Costs",
+  "sim": 0.78,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠procedural",
+  "gate": true
+ }
+]
