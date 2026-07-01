@@ -4,7 +4,6 @@ import json
 from typing import Optional
 from datetime import datetime, timezone
 
-import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 

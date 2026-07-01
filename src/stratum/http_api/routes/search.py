@@ -3,7 +3,6 @@
 import os
 from typing import Optional, Literal
 
-import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
