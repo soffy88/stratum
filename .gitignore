@@ -80,3 +80,15 @@ e2e_pdf_path.txt
 # temp (临时产物)
 _schema_dump.json
 tmp_pdfjs/
+
+# AII pipeline 生成产物 (可重建)
+aii/*_pipeline/batch_report.json
+aii/*_pipeline/quarantine.json
+aii/*_pipeline/flywheel_*
+aii/*_pipeline/booklist_*.txt
+aii/*_pipeline/run_log.jsonl
+aii/*_pipeline/qual/
+aii/*_pipeline/staging/
+aii/*_pipeline/待补/
+deploy/logs/*.log
+scripts/*.log
