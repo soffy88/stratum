@@ -4,6 +4,7 @@ import json
 import os
 from typing import Any, Optional
 
+import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
