@@ -5,7 +5,6 @@ from ...dao.sessions import SessionDAO
 from ...auth.password import hash_password, verify_password, validate_password_strength
 from ...auth.jwt_handler import encode_access, decode_access
 from ...auth.refresh_handler import create_refresh
-import duckdb
 import os
 import hashlib
 from datetime import datetime, timezone

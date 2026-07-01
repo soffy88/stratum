@@ -4,7 +4,6 @@ import re
 from datetime import datetime, timezone
 from typing import Optional
 
-import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
