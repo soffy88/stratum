@@ -138,6 +138,9 @@ services:
       # Local embedding via Ollama qwen3-embedding:0.6b (1024-dim, matches DashScope text-embedding-v3)
       - EMBEDDING_PROVIDER=qwen3_local
       - OLLAMA_BASE_URL=http://172.19.0.1:11434
+      # P1.4b: user-substrate vector search embeds queries via the shared BGE-M3
+      # endpoint (AII backend) so query space matches substrate_chunk (BGE-M3).
+      - STRATUM_EMBED_URL=http://172.19.0.1:8101/internal/embed
     volumes:
       # Stratum source mounted live — code changes take effect after container restart, no rebuild.
       - /home/soffy/projects/stratum/src:/app/src
