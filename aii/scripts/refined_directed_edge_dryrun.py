@@ -5,7 +5,13 @@ derives/subsumes/prerequisite)。**确定性语言信号法**(港自legacy direc
 全三书): 句内 概念A [信号词] 概念B → 有向边; 否定前缀过滤; 证据计数=strength。
 全局聚合(跨书canonical, 非per-book)。grade=unverified(后续M2/验证再升级)。
 命门: 边是骨架, 默认unverified + strength加权 + 证据可回查; 宁少毋噪(NEG过滤+邻近55字+len≥6)。
-用法: cd aii; .venv/bin/python scripts/refined_directed_edge_dryrun.py [--commit]   (无需NIM)
+用法(建边, NIM-free): cd aii; .venv/bin/python scripts/refined_directed_edge_dryrun.py [--commit] [--min-ev 2]
+用法(item10 · LLM验证已落的边, 需NIM): cd aii; NVIDIA_NIM_API_KEY=<key> .venv/bin/python \
+        scripts/refined_directed_edge_dryrun.py --verify [--commit] [--limit N]
+  --verify  读 rf.refined_directed_edge 里 grade='unverified' 的边, NIM 逐边判向
+            (CONFIRM/REJECT/UNCERTAIN); dry-run 存裁决 refined_edge_verify_verdicts.json;
+            --commit 才升级 grade(CONFIRM→verified, REJECT→low, UNCERTAIN→不动)。
+            命门: 拿不准→UNCERTAIN不升级; 方向反/共现噪声→REJECT。
 """
 import asyncio, os, re, json, sys
 from collections import Counter, defaultdict
@@ -32,8 +38,89 @@ def norm(t):
     return re.sub(r's\b', '', re.sub(r'\s+', ' ', t).strip())
 
 
+VERIFY_SYS = (
+    "你判断一条【有向知识关系】是否真实成立且方向正确(为知识图谱骨架验证, 命门宁缺毋附会)。"
+    "关系类型: derives(源A 导致/推出 目标B) / subsumes(源A 包含/涵盖子类 目标B) / "
+    "prerequisite(源A 是 目标B 的前提, 即先掌握A才能理解B)。"
+    "给你 源概念、目标概念、关系类型、及证据句。判断该【有向】关系是否成立且方向无误。"
+    "★命门: 拿不准/证据弱→UNCERTAIN(不升级); 明显共现噪声或方向相反→REJECT; 证据确凿且方向对→CONFIRM。"
+    "只输出JSON: {\"verdict\":\"CONFIRM|REJECT|UNCERTAIN\",\"why\":\"≤20字\"}。"
+)
+
+
+async def _verify_edges(commit, limit):
+    """item10: NIM 逐边验证已落的 unverified 有向边, 升级 grade。"""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from refined_ingest_dryrun import _build_nim_pool
+    b = await asyncpg.connect(B_DSN)
+    rows = await b.fetch("""
+        SELECT e.edge_id, e.relation_type, e.strength, e.evidence,
+               s.name src_name, d.name dst_name
+        FROM rf.refined_directed_edge e
+        JOIN rf.refined_concept s ON s.concept_id = e.src_concept
+        JOIN rf.refined_concept d ON d.concept_id = e.dst_concept
+        WHERE e.grade = 'unverified'
+        ORDER BY e.strength DESC""" + (f" LIMIT {int(limit)}" if limit else ""))
+    print(f"== item10 有向边 LLM 验证 =={'  [COMMIT]' if commit else '  (dry-run, 不改grade)'}")
+    print(f"待验 unverified 边 = {len(rows)}\n", flush=True)
+    if not rows:
+        await b.close(); return
+
+    pool = _build_nim_pool()
+    sem = asyncio.Semaphore(len(pool))
+
+    async def _vote(idx, r):
+        ev = r["evidence"]
+        ev = ev if isinstance(ev, dict) else json.loads(ev or "{}")
+        samples = "; ".join(s.get("sent", "") for s in ev.get("samples", [])[:3])
+        prompt = (f"源概念: {r['src_name']}\n目标概念: {r['dst_name']}\n关系类型: {r['relation_type']}\n"
+                  f"证据句: {samples}\n\n该有向关系是否成立且方向正确? 只输出JSON。")
+        async with sem:
+            try:
+                resp = await asyncio.wait_for(pool[idx % len(pool)](
+                    messages=[{"role": "user", "content": prompt}],
+                    system=VERIFY_SYS, max_tokens=80), timeout=120)
+                t = "".join(x.get("text", "") for x in resp.get("content", []) if x.get("type") == "text")
+                m = re.search(r"\{.*\}", t, re.DOTALL)
+                j = json.loads(m.group(0)) if m else {}
+                v = (j.get("verdict") or "UNCERTAIN").upper()
+                return {"edge_id": r["edge_id"], "rel": r["relation_type"],
+                        "src": r["src_name"], "dst": r["dst_name"],
+                        "verdict": v if v in ("CONFIRM", "REJECT", "UNCERTAIN") else "UNCERTAIN",
+                        "why": (j.get("why") or "")[:30]}
+            except Exception as e:
+                return {"edge_id": r["edge_id"], "rel": r["relation_type"], "src": r["src_name"],
+                        "dst": r["dst_name"], "verdict": "UNCERTAIN", "why": f"err:{type(e).__name__}"}
+
+    verdicts = await asyncio.gather(*(_vote(i, r) for i, r in enumerate(rows)))
+    conf = [v for v in verdicts if v["verdict"] == "CONFIRM"]
+    rej = [v for v in verdicts if v["verdict"] == "REJECT"]
+    unc = [v for v in verdicts if v["verdict"] == "UNCERTAIN"]
+    print(f"裁决: CONFIRM={len(conf)}(→verified)  REJECT={len(rej)}(→low)  UNCERTAIN={len(unc)}(不动)\n")
+    for v in verdicts:
+        mark = {"CONFIRM": "✓", "REJECT": "✗", "UNCERTAIN": "?"}[v["verdict"]]
+        print(f"  {mark} {v['src'][:26]:26s} --{v['rel'][:5]}--> {v['dst'][:26]:26s} ({v['why']})")
+
+    (ROOT / "econ_pipeline" / "ckpts" / "refined_edge_verify_verdicts.json").write_text(
+        json.dumps(verdicts, ensure_ascii=False, indent=1))
+    if not commit:
+        print(f"\nDONE (dry-run). 裁决存 refined_edge_verify_verdicts.json。--commit 才升级 grade。")
+        await b.close(); return
+
+    for v in conf:
+        await b.execute("UPDATE rf.refined_directed_edge SET grade='verified' WHERE edge_id=$1", v["edge_id"])
+    for v in rej:
+        await b.execute("UPDATE rf.refined_directed_edge SET grade='low' WHERE edge_id=$1", v["edge_id"])
+    print(f"\n[COMMIT] 升级: {len(conf)} 边→verified, {len(rej)} 边→low; {len(unc)} 保持 unverified。")
+    await b.close()
+
+
 async def main():
     commit = "--commit" in sys.argv
+    if "--verify" in sys.argv:      # item10: LLM 逐边验证模式
+        limit = int(sys.argv[sys.argv.index("--limit") + 1]) if "--limit" in sys.argv else 0
+        await _verify_edges(commit, limit)
+        return
     b = await asyncpg.connect(B_DSN)
 
     # 1) canonical 概念 → 短语词表(name + aliases, 归一, len≥6, 映射到concept_id)
