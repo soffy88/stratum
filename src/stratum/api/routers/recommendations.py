@@ -56,7 +56,7 @@ async def get_recommendations(user_id: str = Depends(jwt_auth)):
     )
 
     candidates_raw = query(
-        "SELECT id, title, domain, tags, related_concepts, published_at "
+        "SELECT id, title, domain, tags, related_concept_ids, published_at "
         "FROM platform_content WHERE deleted_at IS NULL "
         "ORDER BY published_at DESC",
         limit=100,
@@ -67,7 +67,7 @@ async def get_recommendations(user_id: str = Depends(jwt_auth)):
             title=c["title"],
             domain=c.get("domain") or [],
             tags=c.get("tags") or [],
-            related_concept_ids=c.get("related_concepts") or [],
+            related_concept_ids=c.get("related_concept_ids") or [],
             published_at=_parse_dt(c["published_at"]),
         )
         for c in candidates_raw

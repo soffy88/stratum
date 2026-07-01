@@ -80,7 +80,6 @@ class _ConnWrapper:
 
     def __init__(self, raw: Any) -> None:
         self._raw = raw
-        self._cur: Any = None
 
     def execute(self, sql: str, params: Any = None) -> Any:
         # `?` → `%s` (positional); `$name` → `%(name)s` (named). A query uses one
@@ -89,21 +88,9 @@ class _ConnWrapper:
             sql = sql.replace("?", "%s")
         elif "$" in sql:
             sql = _to_pyformat(sql)
-        self._cur = self._raw.cursor()
-        self._cur.execute(sql, params)
-        # Return self (not the cursor) so DuckDB-style callers that chain
-        # .fetchone()/.fetchall() AND separately read conn.description both work.
-        return self
-
-    def fetchone(self) -> Any:
-        return self._cur.fetchone()
-
-    def fetchall(self) -> Any:
-        return self._cur.fetchall()
-
-    @property
-    def description(self) -> Any:
-        return self._cur.description if self._cur is not None else None
+        cur = self._raw.cursor()
+        cur.execute(sql, params)
+        return cur
 
 
 @contextmanager

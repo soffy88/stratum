@@ -51,15 +51,13 @@ async def content_detail(content_id: str, user_id: str = Depends(jwt_auth)):
 
     related_user: list = []
     if _HAS_SEARCH:
-        from stratum.api.search_utils import get_tantivy_mgr, get_pgvector_user_mgr
-
         result = await asyncio.to_thread(
             cross_layer_search,
             query=content["title"],
             scope=["user_substrate", "user_notes"],
             top_k=5,
-            lancedb_mgr=get_pgvector_user_mgr(user_id),
-            tantivy_mgr=get_tantivy_mgr(),
+            lancedb_mgr=None,
+            tantivy_mgr=None,
             pgvector_mgr=None,
         )
         # Defensive post-filter: only include rows that belong to this user
@@ -71,7 +69,7 @@ async def content_detail(content_id: str, user_id: str = Depends(jwt_auth)):
         {"uid": user_id, "cid": content_id},
     )
     user_notes = query(
-        "SELECT id, title FROM notes_sl "
+        "SELECT id, title FROM notes "
         "WHERE $cid = ANY(content_refs) AND user_id = $uid AND deleted_at IS NULL",
         {"cid": content_id, "uid": user_id},
     )
