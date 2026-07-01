@@ -88,17 +88,24 @@ def test_search_returns_results(app_client, users):
     )
     from unittest.mock import patch, AsyncMock
     from types import SimpleNamespace
+    from contextlib import contextmanager
 
     mock_results = [
         SimpleNamespace(
             type="substrate", id="s1", title="Machine Learning Intro", score=0.9, highlight=None
         )
     ]
+
+    # stratum_search post-filters via stratum.db.get_conn (PG in prod); point it
+    # at the in-memory test DB so the SubstrateDAO isolation check runs on our rows.
+    @contextmanager
+    def _test_conn():
+        yield db
+
     with patch(
         "stratum.service.search.hybrid_search", new_callable=AsyncMock, return_value=mock_results
     ):
-        with patch("stratum.service.search.duckdb") as mock_ddb:
-            mock_ddb.connect.return_value = db
+        with patch("stratum.db.get_conn", _test_conn):
             r = client.post("/api/search", json={"query": "Machine"}, headers=_h(a))
     assert r.status_code == 200
     assert len(r.json()["results"]) >= 1
