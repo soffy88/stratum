@@ -33,14 +33,12 @@ async def search_knowledge(query_text: str, top_k: int = 10) -> dict:
     user_id = _require_user()
     try:
         from oskill.cross_layer_search import cross_layer_search
-        from stratum.api.search_utils import get_tantivy_mgr, get_pgvector_user_mgr
 
         result = cross_layer_search(
             query=query_text,
-            scope=["user_substrate", "user_notes"],
             top_k=top_k,
-            lancedb_mgr=get_pgvector_user_mgr(user_id),
-            tantivy_mgr=get_tantivy_mgr(),
+            lancedb_mgr=None,
+            tantivy_mgr=None,
             pgvector_mgr=None,
         )
         return {
@@ -75,7 +73,7 @@ async def list_recent_notes(limit: int = 20) -> list[dict]:
     """List the user's most recently updated notes."""
     user_id = _require_user()
     return query(
-        "SELECT id, title, updated_at FROM notes_sl "
+        "SELECT id, title, updated_at FROM notes "
         "WHERE user_id = %(uid)s AND deleted_at IS NULL "
         "ORDER BY updated_at DESC",
         {"uid": user_id},

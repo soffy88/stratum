@@ -3,6 +3,7 @@
 import hmac
 import os
 
+import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Header
 from starlette.responses import PlainTextResponse
 from typing import Optional
