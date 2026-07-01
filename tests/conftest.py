@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS substrates (
     is_scanned BOOLEAN, is_pinned BOOLEAN DEFAULT FALSE, pinned_at TIMESTAMP,
     pin_priority INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, meta_json JSON DEFAULT '{}',
-    source VARCHAR, published_at TIMESTAMP, parse_quality VARCHAR
+    source VARCHAR, published_at TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS user_saved_views (
     id           VARCHAR PRIMARY KEY,

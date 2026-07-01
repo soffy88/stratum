@@ -5,6 +5,7 @@ from ...dao.sessions import SessionDAO
 from ...auth.password import hash_password, verify_password, validate_password_strength
 from ...auth.jwt_handler import encode_access, decode_access
 from ...auth.refresh_handler import create_refresh
+import duckdb
 import os
 import hashlib
 from datetime import datetime, timezone
@@ -43,12 +44,7 @@ async def refresh(request: Request, db=Depends(get_db)):
     if not token_str: raise HTTPException(401, "Missing refresh token")
     refresh_hash = hashlib.sha256(token_str.encode()).hexdigest()
     session = SessionDAO(db).get_session_by_refresh_hash(refresh_hash)
-    if not session: raise HTTPException(401, "Invalid or expired session")
-    # PG returns tz-aware datetimes (timestamptz); DuckDB returned naive. Normalize
-    # to naive-UTC so the comparison never mixes aware/naive (TypeError otherwise).
-    expires_at = session.expires_at
-    if expires_at.tzinfo is not None: expires_at = expires_at.astimezone(timezone.utc).replace(tzinfo=None)
-    if expires_at < datetime.now(timezone.utc).replace(tzinfo=None): raise HTTPException(401, "Invalid or expired session")
+    if not session or session.expires_at < datetime.now(timezone.utc).replace(tzinfo=None): raise HTTPException(401, "Invalid or expired session")
     user = UserDAO(db).get_user_by_id(session.user_id)
     if not user: raise HTTPException(401, "User not found")
     return RefreshResponse(access_token=encode_access(user.email, user.corpus_id))
