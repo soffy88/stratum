@@ -73,7 +73,7 @@ async def list_recent_notes(limit: int = 20) -> list[dict]:
     """List the user's most recently updated notes."""
     user_id = _require_user()
     return query(
-        "SELECT id, title, updated_at FROM notes "
+        "SELECT id, title, updated_at FROM notes_sl "
         "WHERE user_id = %(uid)s AND deleted_at IS NULL "
         "ORDER BY updated_at DESC",
         {"uid": user_id},

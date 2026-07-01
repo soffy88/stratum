@@ -69,7 +69,7 @@ async def content_detail(content_id: str, user_id: str = Depends(jwt_auth)):
         {"uid": user_id, "cid": content_id},
     )
     user_notes = query(
-        "SELECT id, title FROM notes "
+        "SELECT id, title FROM notes_sl "
         "WHERE $cid = ANY(content_refs) AND user_id = $uid AND deleted_at IS NULL",
         {"cid": content_id, "uid": user_id},
     )
