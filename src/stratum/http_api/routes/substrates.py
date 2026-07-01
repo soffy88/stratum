@@ -4,7 +4,6 @@ import os
 from typing import Optional
 from datetime import datetime
 
-import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
