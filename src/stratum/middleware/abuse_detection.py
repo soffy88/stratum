@@ -13,6 +13,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from fastapi import Request, HTTPException
+import duckdb
 import ulid as ulid_mod
 
 

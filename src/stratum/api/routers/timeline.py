@@ -29,7 +29,7 @@ async def get_timeline(
         params["medium_pat"] = f"%{medium}%"
 
     substrates = query(
-        f"SELECT id, title, mime, created_at, to_char(created_at, 'YYYY-MM') AS month "
+        f"SELECT id, title, mime, created_at, strftime(created_at, '%Y-%m') AS month "
         f"FROM substrates "
         f"WHERE user_id = %(user_id)s "
         f"AND created_at >= %(from_date)s AND created_at <= %(to_date)s "
@@ -39,8 +39,8 @@ async def get_timeline(
     )
 
     notes = query(
-        "SELECT id, title, created_at, to_char(created_at, 'YYYY-MM') AS month "
-        "FROM notes_sl "
+        "SELECT id, title, created_at, strftime(created_at, '%Y-%m') AS month "
+        "FROM notes "
         "WHERE user_id = %(user_id)s "
         "AND deleted_at IS NULL "
         "AND created_at >= %(from_date)s AND created_at <= %(to_date)s "
@@ -50,7 +50,7 @@ async def get_timeline(
 
     highlights = query(
         "SELECT id, text_excerpt, substrate_id, created_at, "
-        "to_char(created_at, 'YYYY-MM') AS month "
+        "strftime(created_at, '%Y-%m') AS month "
         "FROM highlights "
         "WHERE user_id = %(user_id)s "
         "AND created_at >= %(from_date)s AND created_at <= %(to_date)s "

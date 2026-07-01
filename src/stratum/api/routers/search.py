@@ -35,11 +35,9 @@ async def search(req: SearchRequest, user_id: str = Depends(jwt_auth)):
     if not _HAS_SEARCH:
         return {"results": [], "citations": [], "search_time_ms": 0, "scope_hits": {}}
 
-    from stratum.api.search_utils import get_tantivy_mgr, get_pgvector_user_mgr
+    from stratum.api.search_utils import get_tantivy_mgr, get_lancedb_mgr
 
-    # P1.4b: user vector search now goes through pgvector (substrate_chunk, BGE-M3),
-    # user-isolated, replacing legacy LanceDB. Passed in oskill's lancedb_mgr slot.
-    lancedb_mgr = get_pgvector_user_mgr(user_id)
+    lancedb_mgr = get_lancedb_mgr()
     tantivy_mgr = get_tantivy_mgr()
 
     async def _run(q: str):

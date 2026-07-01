@@ -173,23 +173,16 @@ async def test_user_A_cannot_search_user_B_content(two_users):
 
     from unittest.mock import patch, AsyncMock
     from types import SimpleNamespace
-    from contextlib import contextmanager
 
     mock_results = [
         SimpleNamespace(type="substrate", id=sid_a, title="A", score=0.9, highlight=None),
         SimpleNamespace(type="substrate", id=sid_b, title="B", score=0.8, highlight=None),
     ]
-
-    # stratum_search post-filters via stratum.db.get_conn (PG in prod); point it
-    # at the in-memory test DB so the SubstrateDAO isolation check runs on our rows.
-    @contextmanager
-    def _test_conn():
-        yield db
-
     with patch(
         "stratum.service.search.hybrid_search", new_callable=AsyncMock, return_value=mock_results
     ):
-        with patch("stratum.db.get_conn", _test_conn):
+        with patch("stratum.service.search.duckdb") as mock_duckdb:
+            mock_duckdb.connect.return_value = db
             from stratum.service.search import stratum_search
 
             results = await stratum_search(query="test", corpus_id=uA.corpus_id, user_id=uA.id)
