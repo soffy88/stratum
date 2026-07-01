@@ -11,7 +11,34 @@ logger = logging.getLogger(__name__)
 from stratum.db import get_conn
 
 import json
+import os
 import re
+import urllib.request
+
+
+def _embed_query(text: str) -> list[float] | None:
+    """Embed a query in the SAME space as substrate_chunk (BGE-M3, 1024-dim).
+
+    substrate_chunk was embedded with BGE-M3 (pg_reembed). This slim API image
+    carries no torch/BGE-M3, so we call the shared embedding endpoint exposed by
+    the AII backend (which keeps a single BGE-M3 loaded). Returns None on failure
+    so callers degrade gracefully to full-text search.
+    """
+    url = os.environ.get("STRATUM_EMBED_URL")
+    if not url:
+        return None
+    try:
+        body = json.dumps({"text": text}).encode()
+        req = urllib.request.Request(
+            url, data=body, headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+        vec = data.get("embedding")
+        return vec if vec and len(vec) == 1024 else None
+    except Exception as e:
+        logger.warning(f"query embed via {url} failed: {e}")
+        return None
 
 _SNIPPET_CHARS = 400  # snippet length fed to rerank + shown as preview
 
@@ -108,6 +135,65 @@ def get_tantivy_mgr():
             logger.error(traceback.format_exc())
             return []
     return tantivy_mgr
+
+def get_pgvector_user_mgr(user_id: str):
+    """User-substrate vector search over stratum.substrate_chunk (pgvector, BGE-M3).
+
+    P1.4b: replaces the legacy LanceDB user vector store. Embeds the query with
+    the shared BGE-M3 endpoint (same space as ingest-time chunk vectors), then
+    cosine-ranks chunks owned by ``user_id``. User isolation is enforced HERE:
+    FusedResult drops user_id, so the router's post-filter cannot do it.
+
+    Matches the oskill LanceDBMgr protocol: (*, query_embedding, query, top_k,
+    filters) -> list[dict]. Returns [] on any failure so search degrades to
+    full-text (tantivy) rather than erroring.
+    """
+
+    def pgvector_user_mgr(
+        *,
+        query_embedding: list[float] | None,
+        query: str,
+        top_k: int,
+        filters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        qvec = query_embedding or _embed_query(query)
+        if not qvec:
+            logger.warning("pgvector_user_mgr: no query embedding; skipping vector search")
+            return []
+        vec_literal = "[" + ",".join(f"{float(x):.8f}" for x in qvec) + "]"
+        try:
+            with get_conn() as conn:
+                rows = conn.execute(
+                    "SELECT s.id AS id, s.title AS title, s.user_id AS user_id, "
+                    "  s.is_pinned AS is_pinned, "
+                    "  MIN(sc.embedding OPERATOR(public.<=>) ?::public.vector) AS dist, "
+                    "  (array_agg(sc.text ORDER BY sc.embedding OPERATOR(public.<=>) ?::public.vector))[1] AS excerpt "
+                    "FROM substrate_chunk sc JOIN substrates s ON s.id = sc.substrate_id "
+                    "WHERE s.user_id = ? "
+                    "GROUP BY s.id, s.title, s.user_id, s.is_pinned "
+                    "ORDER BY dist ASC LIMIT ?",
+                    [vec_literal, vec_literal, user_id, max(top_k * 3, 30)],
+                ).fetchall()
+        except Exception as e:
+            logger.error(f"pgvector_user_mgr query failed: {e}")
+            return []
+        hits: list[dict[str, Any]] = []
+        for sid, title, uid, is_pinned, _dist, excerpt in rows:
+            hits.append(
+                {
+                    "id": sid,
+                    "type": "user_substrate",
+                    "title": title or sid,
+                    "highlight": _clean_snippet(excerpt or "")[:_SNIPPET_CHARS],
+                    "is_pinned": bool(is_pinned),
+                    "user_id": uid,
+                }
+            )
+        logger.info(f"pgvector_user_mgr '{query}' → {len(hits)} substrate hits")
+        return hits
+
+    return pgvector_user_mgr
+
 
 def get_lancedb_mgr():
     def lancedb_mgr(*, query_embedding: list[float] | None, query: str, top_k: int, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
