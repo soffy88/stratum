@@ -4,7 +4,9 @@
 /* Zen theme base variables — substituting for @helios/blocks/themes/zen.css.
  * TECHNICAL_DEBT: remove when @helios/blocks is available from private registry.
  */
-[data-theme='zen'] {
+/* Light theme (zen is the historical name; 'light' is an alias). */
+[data-theme='zen'],
+[data-theme='light'] {
   --background: #ffffff;
   --card: #ffffff;
   --popover: #ffffff;
@@ -24,6 +26,36 @@
   --destructive-foreground: #ffffff;
 
   /* --color-* aliases: bridge existing hand-written UI to helios zen vars. */
+  --color-background: var(--background);
+  --color-foreground: var(--text-primary);
+  --color-primary: var(--primary);
+  --color-muted: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+}
+
+/* Dark theme — was previously undefined (settings offered 'dark' but no vars,
+   so dark mode silently fell back to broken/transparent). AII pages match this
+   via @helios's professional theme (driven by the (aii) layout). */
+[data-theme='dark'] {
+  --background: #0f172a;
+  --card: #1e293b;
+  --popover: #1e293b;
+  --text-primary: #f1f5f9;
+  --primary: #818cf8;
+  --primary-foreground: #0f172a;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --border: #334155;
+  --input: #334155;
+  --ring: #818cf8;
+  --accent: #1e293b;
+  --accent-foreground: #f1f5f9;
+  --secondary: #1e293b;
+  --secondary-foreground: #cbd5e1;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
   --color-background: var(--background);
   --color-foreground: var(--text-primary);
   --color-primary: var(--primary);

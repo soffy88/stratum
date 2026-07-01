@@ -38,6 +38,8 @@
   ],
   "exclude": [
     "node_modules",
-    "stratum-frontend-deliverables"
+    "stratum-frontend-deliverables",
+    "src/app/(aii)",
+    "src/aii"
   ]
 }

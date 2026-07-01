@@ -1,0 +1,1322 @@
+[
+ {
+  "a_id": "math_zh_7f821e3fba::5::定理5.5",
+  "b_id": "math_en_d8fa481c5f::5::theorem_5.2",
+  "a_title": "定理5.5",
+  "b_title": "Theorem 5.2.2",
+  "sim": 0.867,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::11::定理10",
+  "b_id": "math_en_d8fa481c5f::8::theorem_9.11",
+  "a_title": "定理10",
+  "b_title": "Theorem 9.11.10",
+  "sim": 0.859,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::1::函数的定义",
+  "b_id": "advmath_tongji_full::1::定义2",
+  "a_title": "函数的定义",
+  "b_title": "定义2",
+  "sim": 0.854,
+  "verdict": "SAME",
+  "why": "定义函数",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::1::奇函数和偶函数",
+  "b_id": "openstax_calculus_v1::1::definition_3",
+  "a_title": "奇函数和偶函数",
+  "b_title": "even function",
+  "sim": 0.854,
+  "verdict": "DIFFERENT",
+  "why": "KU-A定义奇偶函数，KU-B仅定义偶函数",
+  "gate": false
+ },
+ {
+  "a_id": "math_en_d8fa481c5f::8::theorem_9.11",
+  "b_id": "math_zh_7f821e3fba::3::定理3.10",
+  "a_title": "Theorem 9.11.10",
+  "b_title": "定理3.10",
+  "sim": 0.853,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "openstax_calculus_v1::1::definition_6",
+  "b_id": "math_zh_7f821e3fba::1::反函数",
+  "a_title": "inverse function",
+  "b_title": "反函数",
+  "sim": 0.853,
+  "verdict": "SAME",
+  "why": "定义同一个概念",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::6::定义2",
+  "b_id": "openstax_calculus_v1::4::definition_4",
+  "a_title": "定义2",
+  "b_title": "inflection point",
+  "sim": 0.852,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "math_en_d8fa481c5f::5::theorem_5.2",
+  "b_id": "math_zh_7f821e3fba::1::定理1.2",
+  "a_title": "Theorem 5.2.2",
+  "b_title": "定理1.2",
+  "sim": 0.851,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::11::定义1",
+  "b_id": "advmath_tongji_full::5::定义1",
+  "a_title": "定义1",
+  "b_title": "定义1",
+  "sim": 0.848,
+  "verdict": "SAME",
+  "why": "定义相似",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::10::曲面的面积",
+  "b_id": "math_zh_a55c5ec7ac::21::曲面的面积",
+  "a_title": "曲面的面积",
+  "b_title": "曲面的面积",
+  "sim": 0.846,
+  "verdict": "SAME",
+  "why": "同概念",
+  "gate": false
+ },
+ {
+  "a_id": "math_en_d8fa481c5f::5::theorem_5.2",
+  "b_id": "math_zh_7f821e3fba::5::定理5.7",
+  "a_title": "Theorem 5.2.2",
+  "b_title": "定理5.7",
+  "sim": 0.843,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::13::函数项级数及其一致收敛性",
+  "b_id": "advmath_tongji_full::12::函数项级数的一致收敛性",
+  "a_title": "函数项级数及其一致收敛性",
+  "b_title": "函数项级数的一致收敛性",
+  "sim": 0.842,
+  "verdict": "SAME",
+  "why": "一致收敛定义",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::5::无穷限的反常积分",
+  "b_id": "math_zh_7f821e3fba::11::定义1",
+  "a_title": "无穷限的反常积分",
+  "b_title": "定义1",
+  "sim": 0.841,
+  "verdict": "SAME",
+  "why": "定义无穷限的反常积分",
+  "gate": false
+ },
+ {
+  "a_id": "math_en_d8fa481c5f::5::theorem_5.10",
+  "b_id": "math_zh_7f821e3fba::1::定理1.2",
+  "a_title": "Theorem 5.10.2",
+  "b_title": "定理1.2",
+  "sim": 0.841,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::5::定理5.5",
+  "b_id": "math_en_d8fa481c5f::5::theorem_5.10",
+  "a_title": "定理5.5",
+  "b_title": "Theorem 5.10.2",
+  "sim": 0.84,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::12::绝对收敛级数及其性质",
+  "b_id": "advmath_tongji_full::12::绝对收敛级数的性质",
+  "a_title": "绝对收敛级数及其性质",
+  "b_title": "绝对收敛级数的性质",
+  "sim": 0.839,
+  "verdict": "SAME",
+  "why": "同讲绝对收敛级数性质",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::4::定义2_s6",
+  "b_id": "math_zh_a55c5ec7ac::23::定理23.6",
+  "a_title": "一致连续性定义",
+  "b_title": "定理23.6",
+  "sim": 0.839,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "openstax_calculus_v1::2::definition_4",
+  "b_id": "advmath_tongji_full::1::定义2_s16",
+  "a_title": "infinite limits",
+  "b_title": "定义2",
+  "sim": 0.836,
+  "verdict": "DIFFERENT",
+  "why": "定义不同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::1::定义4",
+  "b_id": "openstax_calculus_v1::1::definition_3",
+  "a_title": "奇偶函数",
+  "b_title": "even function",
+  "sim": 0.836,
+  "verdict": "DIFFERENT",
+  "why": "KU-A定义奇偶函数，KU-B定义偶函数",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::1::定理2",
+  "b_id": "math_zh_7f821e3fba::2::定理2.3",
+  "a_title": "收敛数列的有界性",
+  "b_title": "有界性",
+  "sim": 0.835,
+  "verdict": "SAME",
+  "why": "同一概念",
+  "gate": false
+ },
+ {
+  "a_id": "openstax_calculus_v1::1::definition_1",
+  "b_id": "math_zh_7f821e3fba::1::定义3_s11",
+  "a_title": "increasing on the interval",
+  "b_title": "单调函数",
+  "sim": 0.834,
+  "verdict": "DIFFERENT",
+  "why": "判别词闸",
+  "gate": true
+ },
+ {
+  "a_id": "advmath_tongji_full::9::定义1_s25",
+  "b_id": "math_zh_a55c5ec7ac::22::定义1_s14",
+  "a_title": "定义1",
+  "b_title": "定义1",
+  "sim": 0.834,
+  "verdict": "DIFFERENT",
+  "why": "定义域范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "openstax_calculus_v1::5::definition_3",
+  "b_id": "math_zh_7f821e3fba::9::问题提出",
+  "a_title": "definite integral",
+  "b_title": "定积分概念",
+  "sim": 0.834,
+  "verdict": "SAME",
+  "why": "同定义定积分",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::5::定理5.6",
+  "b_id": "math_en_d8fa481c5f::5::theorem_5.2",
+  "a_title": "定理5.6",
+  "b_title": "Theorem 5.2.2",
+  "sim": 0.833,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::5::定义1_s15",
+  "b_id": "math_zh_a55c5ec7ac::17::定义1",
+  "a_title": "定义1",
+  "b_title": "定义1",
+  "sim": 0.832,
+  "verdict": "DIFFERENT",
+  "why": "定义不同",
+  "gate": false
+ },
+ {
+  "a_id": "openstax_calculus_v1::5::definition_3",
+  "b_id": "advmath_tongji_full::5::定积分的概念与性质",
+  "a_title": "definite integral",
+  "b_title": "定积分的概念与性质",
+  "sim": 0.831,
+  "verdict": "SAME",
+  "why": "定义定积分",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::12::定理4_s30",
+  "b_id": "math_zh_a55c5ec7ac::14::定理14.4",
+  "a_title": "定理4",
+  "b_title": "定理14.4",
+  "sim": 0.831,
+  "verdict": "SAME",
+  "why": "同一统一收敛定理",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::8::定理8.3",
+  "b_id": "math_en_d8fa481c5f::8::theorem_8.3",
+  "a_title": "定理8.3",
+  "b_title": "Theorem 8.3.3 (Jensen)",
+  "sim": 0.829,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::8::定理8.2",
+  "b_id": "math_en_d8fa481c5f::5::theorem_5.2",
+  "a_title": "定理8.2",
+  "b_title": "Theorem 5.2.2",
+  "sim": 0.827,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "advmath_tongji_full::1::定义1_s15",
+  "b_id": "math_zh_7f821e3fba::3::定义2",
+  "a_title": "定义1",
+  "b_title": "函数极限的ε-δ定义",
+  "sim": 0.826,
+  "verdict": "SAME",
+  "why": "同定义",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::22::定理22.1",
+  "b_id": "advmath_tongji_full::11::对面积的曲面积分的计算法",
+  "a_title": "定理22.1",
+  "b_title": "对面积的曲面积分的计算法",
+  "sim": 0.825,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "advmath_tongji_full::12::函数项级数的概念",
+  "b_id": "math_zh_a55c5ec7ac::13::函数项级数及其一致收敛性",
+  "a_title": "函数项级数的概念",
+  "b_title": "函数项级数及其一致收敛性",
+  "sim": 0.822,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::11::定理1_s28",
+  "b_id": "math_zh_a55c5ec7ac::22::定理22.5",
+  "a_title": "定理1",
+  "b_title": "定理22.5",
+  "sim": 0.82,
+  "verdict": "SAME",
+  "why": "同一个定理",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::3::定理3.9",
+  "b_id": "math_en_d8fa481c5f::8::theorem_9.11",
+  "a_title": "定理3.9",
+  "b_title": "Theorem 9.11.10",
+  "sim": 0.82,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "advmath_tongji_full::1::定义1_s15",
+  "b_id": "openstax_calculus_v1::2::definition_10",
+  "a_title": "定义1",
+  "b_title": "SECTION 2.5 EXERCISES",
+  "sim": 0.819,
+  "verdict": "SAME",
+  "why": "定义极限",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::6::罗尔定理与拉格朗日定理",
+  "b_id": "advmath_tongji_full::3::罗尔定理",
+  "a_title": "罗尔定理与拉格朗日定理",
+  "b_title": "罗尔定理",
+  "sim": 0.819,
+  "verdict": "SAME",
+  "why": "同一个概念",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::3::定理3.10",
+  "b_id": "math_en_d8fa481c5f::5::theorem_5.2",
+  "a_title": "定理3.10",
+  "b_title": "Theorem 5.2.2",
+  "sim": 0.819,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "advmath_tongji_full::9::曲面的切平面与法线",
+  "b_id": "math_zh_a55c5ec7ac::18::曲面的切平面与法线",
+  "a_title": "曲面的切平面与法线",
+  "b_title": "曲面的切平面与法线",
+  "sim": 0.816,
+  "verdict": "SAME",
+  "why": "同概念",
+  "gate": false
+ },
+ {
+  "a_id": "openstax_calculus_v1::4::definition_1",
+  "b_id": "advmath_tongji_full::3::函数的极值及其求法",
+  "a_title": "local maximum",
+  "b_title": "函数的极值及其求法",
+  "sim": 0.816,
+  "verdict": "SAME",
+  "why": "同解释极值概念",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::23::反函数定理",
+  "b_id": "openstax_calculus_v1::1::definition_6",
+  "a_title": "反函数定理",
+  "b_title": "inverse function",
+  "sim": 0.815,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::22::曲面的侧",
+  "b_id": "advmath_tongji_full::11::对坐标的曲面积分的概念与性质",
+  "a_title": "曲面的侧",
+  "b_title": "对坐标的曲面积分的概念与性质",
+  "sim": 0.814,
+  "verdict": "DIFFERENT",
+  "why": "曲面的侧与曲面积分概念不同",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::11::对坐标的曲面积分的计算法",
+  "b_id": "math_zh_a55c5ec7ac::22::第二型曲面积分的计算",
+  "a_title": "对坐标的曲面积分的计算法",
+  "b_title": "第二型曲面积分的计算",
+  "sim": 0.812,
+  "verdict": "SAME",
+  "why": "同为第二型曲面积分",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::13::函数项级数及其一致收敛性",
+  "b_id": "advmath_tongji_full::12::函数项级数的一致收敛性及一致收敛级数的基本性质",
+  "a_title": "函数项级数及其一致收敛性",
+  "b_title": "函数项级数的一致收敛性及一致收敛级数的基本性质",
+  "sim": 0.812,
+  "verdict": "SAME",
+  "why": "同一概念",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::10::二重积分的换元法",
+  "b_id": "math_zh_a55c5ec7ac::21::二重积分的变量变换公式",
+  "a_title": "二重积分的换元法",
+  "b_title": "二重积分的变量变换公式",
+  "sim": 0.811,
+  "verdict": "SAME",
+  "why": "换元法与变量变换公式描述同一概念",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::1::定义2_s19",
+  "b_id": "openstax_calculus_v1::2::definition_4",
+  "a_title": "定义2",
+  "b_title": "infinite limits",
+  "sim": 0.809,
+  "verdict": "SAME",
+  "why": "定义无穷极限",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::1::函数极限的定义",
+  "b_id": "math_zh_7f821e3fba::3::定义2",
+  "a_title": "函数极限的定义",
+  "b_title": "函数极限的ε-δ定义",
+  "sim": 0.809,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::22::曲面的侧",
+  "b_id": "advmath_tongji_full::11::对坐标的曲面积分的计算法",
+  "a_title": "曲面的侧",
+  "b_title": "对坐标的曲面积分的计算法",
+  "sim": 0.808,
+  "verdict": "DIFFERENT",
+  "why": "曲面侧与曲面积分计算法不同",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::5::定积分的定义",
+  "b_id": "openstax_calculus_v1::5::definition_3",
+  "a_title": "定积分的定义",
+  "b_title": "definite integral",
+  "sim": 0.808,
+  "verdict": "SAME",
+  "why": "定义定积分",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::2::定理2.11",
+  "b_id": "math_zh_a55c5ec7ac::12::定理12.1",
+  "a_title": "柯西收敛准则",
+  "b_title": "级数收敛的柯西准则",
+  "sim": 0.807,
+  "verdict": "DIFFERENT",
+  "why": "序列与级数",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::5::反常积分",
+  "b_id": "math_zh_7f821e3fba::11::定义1",
+  "a_title": "反常积分",
+  "b_title": "定义1",
+  "sim": 0.807,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::17::定理17.2",
+  "b_id": "advmath_tongji_full::9::定理2",
+  "a_title": "可微的充分条件",
+  "b_title": "充分条件",
+  "sim": 0.807,
+  "verdict": "SAME",
+  "why": "同一充分条件",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::20::定义1_s4",
+  "b_id": "advmath_tongji_full::11::对坐标的曲线积分",
+  "a_title": "定义1",
+  "b_title": "对坐标的曲线积分",
+  "sim": 0.806,
+  "verdict": "SAME",
+  "why": "定义曲线积分",
+  "gate": false
+ },
+ {
+  "a_id": "openstax_calculus_v1::1::definition_0",
+  "b_id": "advmath_tongji_full::1::定义2",
+  "a_title": "function",
+  "b_title": "定义2",
+  "sim": 0.806,
+  "verdict": "SAME",
+  "why": "定义函数",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::9::方向导数",
+  "b_id": "math_zh_a55c5ec7ac::17::定义2_s12",
+  "a_title": "方向导数",
+  "b_title": "定义2",
+  "sim": 0.805,
+  "verdict": "DIFFERENT",
+  "why": "方向导数与梯度定义不同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::4::定理4.9",
+  "b_id": "advmath_tongji_full::1::定理4_s42",
+  "a_title": "一致连续性定理",
+  "b_title": "一致连续性定理",
+  "sim": 0.805,
+  "verdict": "SAME",
+  "why": "同一概念",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::11::对弧长的曲线积分的概念与性质",
+  "b_id": "math_zh_a55c5ec7ac::20::定义1",
+  "a_title": "对弧长的曲线积分的概念与性质",
+  "b_title": "定义1",
+  "sim": 0.804,
+  "verdict": "SAME",
+  "why": "曲线积分定义",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::12::函数项级数的概念",
+  "b_id": "math_zh_a55c5ec7ac::13::定理13.2",
+  "a_title": "函数项级数的概念",
+  "b_title": "定理13.2",
+  "sim": 0.803,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "advmath_tongji_full::12::函数项级数的一致收敛性",
+  "b_id": "math_zh_a55c5ec7ac::13::定义1",
+  "a_title": "函数项级数的一致收敛性",
+  "b_title": "定义1",
+  "sim": 0.803,
+  "verdict": "SAME",
+  "why": "统一收敛定义",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::13::定理13.7",
+  "b_id": "advmath_tongji_full::12::函数项级数的概念",
+  "a_title": "狄利克雷判别法",
+  "b_title": "函数项级数的概念",
+  "sim": 0.803,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "math_en_d8fa481c5f::2::definition_3.6",
+  "b_id": "math_zh_7f821e3fba::1::定义1_s4",
+  "a_title": "Definition 3.6",
+  "b_title": "定义1",
+  "sim": 0.803,
+  "verdict": "UNCERTAIN",
+  "why": "信息不足",
+  "gate": false
+ },
+ {
+  "a_id": "math_en_d8fa481c5f::5::theorem_5.10",
+  "b_id": "math_zh_7f821e3fba::5::定理5.6",
+  "a_title": "Theorem 5.10.2",
+  "b_title": "定理5.6",
+  "sim": 0.803,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::23::反函数定理",
+  "b_id": "openstax_calculus_v1::1::definition_7",
+  "a_title": "反函数定理",
+  "b_title": "one-to-one function",
+  "sim": 0.803,
+  "verdict": "DIFFERENT",
+  "why": "一个是反函数定理，另一个是一一函数",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::9::定义4",
+  "b_id": "math_zh_7f821e3fba::4::定义3",
+  "a_title": "定义4",
+  "b_title": "定义3",
+  "sim": 0.802,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::11::对面积的曲面积分的计算法",
+  "b_id": "math_zh_a55c5ec7ac::22::第一型曲面积分的计算",
+  "a_title": "对面积的曲面积分的计算法",
+  "b_title": "第一型曲面积分的计算",
+  "sim": 0.801,
+  "verdict": "SAME",
+  "why": "同一计算法",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::12::定理12.1",
+  "b_id": "advmath_tongji_full::12::柯西审敛原理",
+  "a_title": "级数收敛的柯西准则",
+  "b_title": "柯西审敛原理",
+  "sim": 0.801,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::3::定理3.7",
+  "b_id": "advmath_tongji_full::1::定理3'",
+  "a_title": "四则运算法则",
+  "b_title": "定理3",
+  "sim": 0.801,
+  "verdict": "SAME",
+  "why": "同一极限法则",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::17::定理17.1",
+  "b_id": "advmath_tongji_full::9::定理1",
+  "a_title": "可微的必要条件",
+  "b_title": "必要条件",
+  "sim": 0.8,
+  "verdict": "SAME",
+  "why": "都讲可微的必要条件",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::8::定理8.3",
+  "b_id": "math_en_d8fa481c5f::11::theorem_11.4",
+  "a_title": "定理8.3",
+  "b_title": "Theorem 11.4.3",
+  "sim": 0.8,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "advmath_tongji_full::1::无穷小与无穷大",
+  "b_id": "openstax_calculus_v1::2::definition_4",
+  "a_title": "无穷小与无穷大",
+  "b_title": "infinite limits",
+  "sim": 0.8,
+  "verdict": "DIFFERENT",
+  "why": "无穷小与无穷大概念不同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::5::定理5.7",
+  "b_id": "math_en_d8fa481c5f::5::theorem_5.10",
+  "a_title": "定理5.7",
+  "b_title": "Theorem 5.10.2",
+  "sim": 0.8,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "openstax_calculus_v1::4::definition_1",
+  "b_id": "advmath_tongji_full::3::函数的极值与最大值最小值",
+  "a_title": "local maximum",
+  "b_title": "函数的极值与最大值最小值",
+  "sim": 0.799,
+  "verdict": "SAME",
+  "why": "都定义了局部极值",
+  "gate": false
+ },
+ {
+  "a_id": "openstax_calculus_v1::2::definition_10",
+  "b_id": "math_zh_7f821e3fba::3::定义2",
+  "a_title": "SECTION 2.5 EXERCISES",
+  "b_title": "函数极限的ε-δ定义",
+  "sim": 0.799,
+  "verdict": "SAME",
+  "why": "定义相同",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::1::函数极限的定义",
+  "b_id": "openstax_calculus_v1::2::definition_4",
+  "a_title": "函数极限的定义",
+  "b_title": "infinite limits",
+  "sim": 0.798,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::13::定理13.12",
+  "b_id": "advmath_tongji_full::12::定理1_s29",
+  "a_title": "连续性",
+  "b_title": "定理1",
+  "sim": 0.798,
+  "verdict": "SAME",
+  "why": "连续性定理",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::20::第一型曲线积分的定义",
+  "b_id": "advmath_tongji_full::11::对弧长的曲线积分的概念与性质",
+  "a_title": "第一型曲线积分的定义",
+  "b_title": "对弧长的曲线积分的概念与性质",
+  "sim": 0.798,
+  "verdict": "SAME",
+  "why": "定义同一个概念",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::3::定理3.13",
+  "b_id": "math_en_d8fa481c5f::5::theorem_5.2",
+  "a_title": "定理3.13",
+  "b_title": "Theorem 5.2.2",
+  "sim": 0.798,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "advmath_tongji_full::12::绝对收敛与条件收敛",
+  "b_id": "math_zh_a55c5ec7ac::12::绝对收敛级数及其性质",
+  "a_title": "绝对收敛与条件收敛",
+  "b_title": "绝对收敛级数及其性质",
+  "sim": 0.796,
+  "verdict": "SAME",
+  "why": "定义同一个概念",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::12::函数项级数的一致收敛性",
+  "b_id": "math_zh_a55c5ec7ac::13::定理13.2",
+  "a_title": "函数项级数的一致收敛性",
+  "b_title": "定理13.2",
+  "sim": 0.796,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::12::绝对收敛级数及其性质",
+  "b_id": "advmath_tongji_full::12::定理10",
+  "a_title": "绝对收敛级数及其性质",
+  "b_title": "绝对收敛级数的乘法",
+  "sim": 0.796,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::3::定理3.10",
+  "b_id": "math_en_d8fa481c5f::11::theorem_11.4",
+  "a_title": "定理3.10",
+  "b_title": "Theorem 11.4.3",
+  "sim": 0.796,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::12::推论2",
+  "b_id": "advmath_tongji_full::12::定理4",
+  "a_title": "推论2",
+  "b_title": "比值审敛法, 达朗贝尔'判别法",
+  "sim": 0.795,
+  "verdict": "DIFFERENT",
+  "why": "不同审敛法",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::17::复合函数的全微分",
+  "b_id": "advmath_tongji_full::9::全微分的定义",
+  "a_title": "复合函数的全微分",
+  "b_title": "全微分的定义",
+  "sim": 0.795,
+  "verdict": "SAME",
+  "why": "定义全微分",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::20::两类曲线积分的联系",
+  "b_id": "advmath_tongji_full::11::两类曲线积分之间的联系",
+  "a_title": "两类曲线积分的联系",
+  "b_title": "两类曲线积分之间的联系",
+  "sim": 0.795,
+  "verdict": "SAME",
+  "why": "同一概念",
+  "gate": false
+ },
+ {
+  "a_id": "math_en_d8fa481c5f::8::theorem_9.13",
+  "b_id": "math_zh_7f821e3fba::3::定理3.9",
+  "a_title": "Theorem 9.13.1 (Blackwell)",
+  "b_title": "定理3.9",
+  "sim": 0.794,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "openstax_calculus_v1::2::definition_7",
+  "b_id": "advmath_tongji_full::1::函数的间断点",
+  "a_title": "removable discontinuity",
+  "b_title": "函数的间断点",
+  "sim": 0.794,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::21::定理21.4",
+  "b_id": "math_zh_7f821e3fba::9::定理9.3",
+  "a_title": "定理21.4",
+  "b_title": "可积准则",
+  "sim": 0.794,
+  "verdict": "DIFFERENT",
+  "why": "定理不同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::9::定理9.5",
+  "b_id": "advmath_tongji_full::5::定理2",
+  "a_title": "定理9.5",
+  "b_title": "定理2",
+  "sim": 0.794,
+  "verdict": "SAME",
+  "why": "同一定理",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::1::函数的定义",
+  "b_id": "openstax_calculus_v1::1::definition_0",
+  "a_title": "函数的定义",
+  "b_title": "function",
+  "sim": 0.794,
+  "verdict": "SAME",
+  "why": "定义函数概念",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::1::定义2_s16",
+  "b_id": "openstax_calculus_v1::4::definition_7",
+  "a_title": "定义2",
+  "b_title": "Formal Definitions",
+  "sim": 0.794,
+  "verdict": "SAME",
+  "why": "定义极限",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::1::定理3_s41",
+  "b_id": "math_zh_7f821e3fba::4::定理4.7",
+  "a_title": "介值定理",
+  "b_title": "介值性定理",
+  "sim": 0.793,
+  "verdict": "SAME",
+  "why": "同一个定理",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::3::柯西中值定理",
+  "b_id": "math_zh_7f821e3fba::6::定理6.6",
+  "a_title": "柯西中值定理",
+  "b_title": "柯西中值定理",
+  "sim": 0.793,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::1::初等函数",
+  "b_id": "advmath_tongji_full::1::初等函数的连续性",
+  "a_title": "初等函数",
+  "b_title": "初等函数的连续性",
+  "sim": 0.792,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::17::定理17.2",
+  "b_id": "advmath_tongji_full::9::定理1",
+  "a_title": "可微的充分条件",
+  "b_title": "必要条件",
+  "sim": 0.792,
+  "verdict": "DIFFERENT",
+  "why": "一个是充分条件，一个是必要条件",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::16::二元函数的极限",
+  "b_id": "advmath_tongji_full::9::多元函数的极限",
+  "a_title": "二元函数的极限",
+  "b_title": "多元函数的极限",
+  "sim": 0.791,
+  "verdict": "SAME",
+  "why": "同一概念",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::1::定理1",
+  "b_id": "math_zh_7f821e3fba::2::定理2.2",
+  "a_title": "极限的唯一性",
+  "b_title": "唯一性",
+  "sim": 0.791,
+  "verdict": "SAME",
+  "why": "极限的唯一性",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::13::定义3",
+  "b_id": "advmath_tongji_full::12::函数项级数的概念",
+  "a_title": "定义3",
+  "b_title": "函数项级数的概念",
+  "sim": 0.791,
+  "verdict": "SAME",
+  "why": "定义函数级数",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::11::对坐标的曲面积分",
+  "b_id": "math_zh_a55c5ec7ac::22::曲面的侧",
+  "a_title": "对坐标的曲面积分",
+  "b_title": "曲面的侧",
+  "sim": 0.789,
+  "verdict": "DIFFERENT",
+  "why": "曲面积分≠曲面的侧",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::9::定理9.12",
+  "b_id": "advmath_tongji_full::5::定积分的换元法和分部积分法",
+  "a_title": "定积分换元积分法",
+  "b_title": "定积分的换元法和分部积分法",
+  "sim": 0.789,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::16::定理16.10",
+  "b_id": "math_zh_7f821e3fba::4::定理4.7",
+  "a_title": "介值性定理",
+  "b_title": "介值性定理",
+  "sim": 0.789,
+  "verdict": "SAME",
+  "why": "同一个定理",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::4::定理4.6",
+  "b_id": "advmath_tongji_full::1::定理1_s40",
+  "a_title": "最大、最小值定理",
+  "b_title": "有界性与最大值最小值定理",
+  "sim": 0.788,
+  "verdict": "SAME",
+  "why": "同一个极值定理",
+  "gate": false
+ },
+ {
+  "a_id": "openstax_calculus_v1::4::definition_10",
+  "b_id": "math_zh_7f821e3fba::8::定义2",
+  "a_title": "indefinite integral",
+  "b_title": "不定积分",
+  "sim": 0.788,
+  "verdict": "SAME",
+  "why": "同为不定积分概念",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::22::第二型曲面积分的计算",
+  "b_id": "advmath_tongji_full::11::对面积的曲面积分的计算法",
+  "a_title": "第二型曲面积分的计算",
+  "b_title": "对面积的曲面积分的计算法",
+  "sim": 0.788,
+  "verdict": "DIFFERENT",
+  "why": "曲面积分类型不同",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::10::三重积分的计算",
+  "b_id": "math_zh_a55c5ec7ac::21::三重积分换元法",
+  "a_title": "三重积分的计算",
+  "b_title": "三重积分换元法",
+  "sim": 0.788,
+  "verdict": "DIFFERENT",
+  "why": "一个是计算，一个是换元法",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::9::定理2",
+  "b_id": "math_zh_a55c5ec7ac::17::定理17.1",
+  "a_title": "充分条件",
+  "b_title": "可微的必要条件",
+  "sim": 0.788,
+  "verdict": "DIFFERENT",
+  "why": "必要条件vs充分条件",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::4::连续函数的局部性质",
+  "b_id": "advmath_tongji_full::1::函数的连续性与间断点",
+  "a_title": "连续函数的局部性质",
+  "b_title": "函数的连续性与间断点",
+  "sim": 0.787,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "openstax_calculus_v1::4::definition_7",
+  "b_id": "advmath_tongji_full::1::定义2_s19",
+  "a_title": "Formal Definitions",
+  "b_title": "定义2",
+  "sim": 0.787,
+  "verdict": "DIFFERENT",
+  "why": "定义范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::3::定理3.9",
+  "b_id": "math_en_d8fa481c5f::5::theorem_5.2",
+  "a_title": "定理3.9",
+  "b_title": "Theorem 5.2.2",
+  "sim": 0.787,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "advmath_tongji_full::1::定义2_s16",
+  "b_id": "math_zh_7f821e3fba::3::定义1",
+  "a_title": "定义2",
+  "b_title": "函数极限定义1",
+  "sim": 0.786,
+  "verdict": "SAME",
+  "why": "定义函数极限",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::5::定积分的换元法",
+  "b_id": "math_zh_7f821e3fba::9::定理9.12",
+  "a_title": "定积分的换元法",
+  "b_title": "定积分换元积分法",
+  "sim": 0.785,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::2::定理2.11",
+  "b_id": "math_zh_a55c5ec7ac::13::定理13.1",
+  "a_title": "柯西收敛准则",
+  "b_title": "函数列一致收敛的柯西准则",
+  "sim": 0.785,
+  "verdict": "DIFFERENT",
+  "why": "一个是序列柯西收敛准则，另一个是函数列一致收敛的柯西准则",
+  "gate": false
+ },
+ {
+  "a_id": "openstax_calculus_v1::2::definition_7",
+  "b_id": "advmath_tongji_full::1::函数的连续性与间断点",
+  "a_title": "removable discontinuity",
+  "b_title": "函数的连续性与间断点",
+  "sim": 0.785,
+  "verdict": "DIFFERENT",
+  "why": "范围不同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::3::定理3.13",
+  "b_id": "math_en_d8fa481c5f::11::theorem_11.4",
+  "a_title": "定理3.13",
+  "b_title": "Theorem 11.4.3",
+  "sim": 0.785,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "advmath_tongji_full::1::无穷大",
+  "b_id": "openstax_calculus_v1::2::definition_4",
+  "a_title": "无穷大",
+  "b_title": "infinite limits",
+  "sim": 0.785,
+  "verdict": "SAME",
+  "why": "定义无穷极限",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::9::定理1_s16",
+  "b_id": "math_zh_a55c5ec7ac::17::定理17.5",
+  "a_title": "定理1",
+  "b_title": "定理17.5",
+  "sim": 0.785,
+  "verdict": "SAME",
+  "why": "同一总导数公式",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::8::定理8.3",
+  "b_id": "math_en_d8fa481c5f::5::theorem_5.2",
+  "a_title": "定理8.3",
+  "b_title": "Theorem 5.2.2",
+  "sim": 0.784,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "advmath_tongji_full::1::定理3_s41",
+  "b_id": "math_zh_a55c5ec7ac::16::定理16.10",
+  "a_title": "介值定理",
+  "b_title": "介值性定理",
+  "sim": 0.784,
+  "verdict": "SAME",
+  "why": "同为介值定理",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::11::定理11.1",
+  "b_id": "advmath_tongji_full::5::定理5",
+  "a_title": "定理11.1",
+  "b_title": "定理5",
+  "sim": 0.784,
+  "verdict": "DIFFERENT",
+  "why": "定理内容不同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::23::定理23.10",
+  "b_id": "math_zh_7f821e3fba::5::定理5.1",
+  "a_title": "定理23.10",
+  "b_title": "定理5.1",
+  "sim": 0.784,
+  "verdict": "DIFFERENT",
+  "why": "不同定理",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::4::定义2_s6",
+  "b_id": "advmath_tongji_full::1::一致连续性",
+  "a_title": "一致连续性定义",
+  "b_title": "一致连续性",
+  "sim": 0.784,
+  "verdict": "SAME",
+  "why": "定义一致",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::1::函数极限的定义",
+  "b_id": "openstax_calculus_v1::2::definition_10",
+  "a_title": "函数极限的定义",
+  "b_title": "SECTION 2.5 EXERCISES",
+  "sim": 0.784,
+  "verdict": "SAME",
+  "why": "定义函数极限",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::1::定义3_s9",
+  "b_id": "advmath_tongji_full::1::初等函数的连续性",
+  "a_title": "定义3",
+  "b_title": "初等函数的连续性",
+  "sim": 0.783,
+  "verdict": "DIFFERENT",
+  "why": "定义与性质",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::23::定义3",
+  "b_id": "openstax_calculus_v1::2::definition_6",
+  "a_title": "定义3",
+  "b_title": "continuous at a point",
+  "sim": 0.783,
+  "verdict": "DIFFERENT",
+  "why": "定义不同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::12::推论2",
+  "b_id": "advmath_tongji_full::12::常数项级数的审敛法",
+  "a_title": "推论2",
+  "b_title": "常数项级数的审敛法",
+  "sim": 0.783,
+  "verdict": "DIFFERENT",
+  "why": "type闸 rationale≠conceptual",
+  "gate": true
+ },
+ {
+  "a_id": "advmath_tongji_full::1::函数的间断点",
+  "b_id": "math_zh_7f821e3fba::4::定义3",
+  "a_title": "函数的间断点",
+  "b_title": "定义3",
+  "sim": 0.783,
+  "verdict": "SAME",
+  "why": "定义间断点",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::11::对坐标的曲线积分",
+  "b_id": "math_zh_a55c5ec7ac::20::两类曲线积分的联系",
+  "a_title": "对坐标的曲线积分",
+  "b_title": "两类曲线积分的联系",
+  "sim": 0.782,
+  "verdict": "DIFFERENT",
+  "why": "一个定义曲线积分，另一个讨论两类曲线积分的联系",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::6::在近似计算上的应用",
+  "b_id": "advmath_tongji_full::3::函数公式",
+  "a_title": "在近似计算上的应用",
+  "b_title": "函数公式",
+  "sim": 0.782,
+  "verdict": "SAME",
+  "why": "同为Taylor公式",
+  "gate": false
+ },
+ {
+  "a_id": "openstax_calculus_v1::2::definition_3",
+  "b_id": "math_zh_7f821e3fba::3::定义2",
+  "a_title": "one-sided limits",
+  "b_title": "函数极限的ε-δ定义",
+  "sim": 0.782,
+  "verdict": "DIFFERENT",
+  "why": "定义不同",
+  "gate": false
+ },
+ {
+  "a_id": "openstax_calculus_v1::4::definition_6",
+  "b_id": "advmath_tongji_full::1::定义2_s16",
+  "a_title": "horizontal asymptote",
+  "b_title": "定义2",
+  "sim": 0.782,
+  "verdict": "DIFFERENT",
+  "why": "定义不同",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::1::无穷小",
+  "b_id": "openstax_calculus_v1::2::definition_4",
+  "a_title": "无穷小",
+  "b_title": "infinite limits",
+  "sim": 0.781,
+  "verdict": "DIFFERENT",
+  "why": "定义不同",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_a55c5ec7ac::17::定理17.5",
+  "b_id": "advmath_tongji_full::9::定理1",
+  "a_title": "定理17.5",
+  "b_title": "必要条件",
+  "sim": 0.781,
+  "verdict": "DIFFERENT",
+  "why": "不同定理",
+  "gate": false
+ },
+ {
+  "a_id": "advmath_tongji_full::10::转动惯量",
+  "b_id": "math_zh_a55c5ec7ac::21::转动惯量",
+  "a_title": "转动惯量",
+  "b_title": "转动惯量",
+  "sim": 0.78,
+  "verdict": "SAME",
+  "why": "定义同一个概念",
+  "gate": false
+ },
+ {
+  "a_id": "math_zh_7f821e3fba::4::闭区间上连续函数的基本性质",
+  "b_id": "advmath_tongji_full::1::定理1_s40",
+  "a_title": "闭区间上连续函数的基本性质",
+  "b_title": "有界性与最大值最小值定理",
+  "sim": 0.78,
+  "verdict": "DIFFERENT",
+  "why": "type闸 conceptual≠rationale",
+  "gate": true
+ }
+]

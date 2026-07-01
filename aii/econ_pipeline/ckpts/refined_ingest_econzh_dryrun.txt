@@ -1,0 +1,54 @@
+== B仓步骤3 灌入 dry_run [tag=econzh] ==  (dry-run, 不落库)
+书=['econ_zh_9ea2a19eac', 'econ_zh_131d7dbd3b', 'econ_zh_df1f5d7fef', 'econ_zh_621c6b96b0']  A仓KU=332
+
+SAME边=6(并入6, 跳held_apart0)  held_apart记录=5
+→ refined_ku 预计 326 条 (合并簇4 + 单条322)  压缩 332→326 (省6)
+NIM key 池: 4 key 轮转并发
+
+── 多成员簇整合样本(前4) ──────────────
+
+  ▸ 簇(3条) 来源: ['econ_z::ch7_ku5', 'econ_z::ch7_ku0', 'econ_z::ch5_ku1']
+    类型: conceptual  向量dim=1024  fingerprint=da17859f5d5d
+    整合title: Impact of population growth on economic development
+    整合正文: Impact of Population Growth on Economic Development
+The concept of the impact of population growth on economic development refers to the relationship between the growth of a population and the development of a country's economy. According t
+    sources : [{"book_id": "econ_zh_df1f5d7fef", "raw_ku_id": "econ_zh_df1f5d7fef::ch7_ku5", "chapter": "ch7", "contributed": "full"}, {"book_id": "econ_zh_df1f5d7fef", "raw_ku_id": "econ_zh_df1f5d7fef::ch7_ku0", "
+
+  ▸ 簇(3条) 来源: ['econ_z::ch10_ku3', 'econ_z::ch10_ku0', 'econ_z::ch1_ku0']
+    类型: conceptual  向量dim=1024  fingerprint=5d95eb049764
+    整合title: Application of Demand Theorem in Different Markets
+    整合正文: 需求定理在不同市场中的应用是经济学中一个重要的概念。根据第十章的内容，需求定理可以被定义为：在其他条件不变的情况下，商品的价格上升会导致其需求量下降，而价格下降会导致需求量上升。需求定理的内涵是指商品的价格变化会影响其需求量，外延是指这一规律适用于不同类型的市场和商品。需求定理的用处在于它可以帮助企业和政府预测和应对市场变化。需求定理之所以成立，是因为消费者的行为是由价格和偏好决定的。当价格上升时，消费者会减少对该商品的需求，因为他们会寻找更便宜的替代品。反之，当价格下降时，
+    sources : [{"book_id": "econ_zh_9ea2a19eac", "raw_ku_id": "econ_zh_9ea2a19eac::ch10_ku3", "chapter": "ch10", "contributed": "full"}, {"book_id": "econ_zh_9ea2a19eac", "raw_ku_id": "econ_zh_9ea2a19eac::ch10_ku0"
+
+  ▸ 簇(2条) 来源: ['econ_z::ch3_ku28', 'econ_z::ch19_ku0']
+    类型: conceptual  向量dim=1024  fingerprint=1b5832967bb2
+    整合title: Interest and Its Development
+    整合正文: 利息的产生和发展是经济学中一个重要的概念。其内涵（essence）指的是借贷者为获得借款而支付给借款者的费用或报酬。利息的外延（boundary）则涉及到借贷的各种形式和条件，包括利率、借款期限、还款方式等。利息的产生是由于借贷者和借款者之间的时间和风险差异所致。借贷者希望通过借款获得未来更高的回报，而借款者则希望通过还款减少自己的债务。利息作为一种中间物，能够弥补借贷者和借款者之间的时间和风险差异。利息的发展经历了从禁止到允许的过程。在古代，许多宗教和社会禁止或限制利息的收
+    sources : [{"book_id": "econ_zh_131d7dbd3b", "raw_ku_id": "econ_zh_131d7dbd3b::ch3_ku28", "chapter": "ch3", "contributed": "full"}, {"book_id": "econ_zh_9ea2a19eac", "raw_ku_id": "econ_zh_9ea2a19eac::ch19_ku0",
+
+  ▸ 簇(2条) 来源: ['econ_z::ch10_ku1', 'econ_z::ch1_ku1']
+    类型: rationale  向量dim=1024  fingerprint=528ae03a7119
+    整合title: Reasons for the Validity of the Law of Demand
+    整合正文: 需求定理的成立原因是基于消费者的行为和市场机制。根据第十章的内容，需求定理成立的原因在于，当价格上升时，消费者的购买力会减少，从而导致需求量的下降。反之，当价格下降时，消费者的购买力会增加，导致需求量的上升。需求定理的机制可以概括为以下的因果链条：价格变化→消费者购买力的变化→需求量的变化。这种因果关系是需求定理成立的基础。具体来说，当价格上升时，消费者会因为购买力减少而减少购买量，从而导致需求量下降。相反，当价格下降时，消费者会因为购买力增加而增加购买量，从而导致需求量上升
+    sources : [{"book_id": "econ_zh_9ea2a19eac", "raw_ku_id": "econ_zh_9ea2a19eac::ch10_ku1", "chapter": "ch10", "contributed": "full"}, {"book_id": "econ_zh_df1f5d7fef", "raw_ku_id": "econ_zh_df1f5d7fef::ch1_ku1",
+
+── 原语言保留案例(正文存原语言不译, 仅title翻英; 中文体共229条) ──
+
+  ▸ econ_zh_131d7dbd3b::ch2_ku0
+    原标题: 工业的定义  →  英文title: Definition of Industry
+    正文(原语言,存原): essence:工业是指改变原料的经济活动，包括开发、生产和加工。( 第一节)
+boundary:工业不包括农业、商业和运输等活动。( 第一节)
+use:工业的目的是满足人类的需要，包括生产商品和提供服务。( 第一节)
+
+
+  ▸ econ_zh_131d7dbd3b::ch2_ku1
+    原标题: 手工业的特征  →  英文title: Characteristics of Handicraft Industry
+    正文(原语言,存原): 手工业的特征
+手工业是指个人或小规模的生产单位使用传统的技能和技术生产商品的经济活动。手工业的范围包括各种手工制品的生产，如纺织、木工、金属加工等。手工业可以满足人们的基本生活需要，提供就业机会和创造财富。重要：手工业在
+
+  ▸ econ_zh_131d7dbd3b::ch2_ku2
+    原标题: 行会的定义  →  英文title: Guild Definition
+    正文(原语言,存原): 行会的定义
+行会是手工业者按照职业之种类而成立的专门化的组织，其职能有两方面，即对内统一劳动制度，对外要求垄断。行会的范围包括手工业者、学徒、帮工等，目的是维护行会内部各分子的利益，限制外部竞争。行会通过制定规则、限制入
+
+DONE (dry-run, 无写库). 人工核: 整合是否忠实越读越厚? 翻译是否失真? sources是否全溯源?

@@ -63,3 +63,32 @@ _hub/audit/diffs/
 # 批次指令书和外部文件 (不属于仓库)
 STRATUM_BATCH*_CC_INSTRUCTIONS.md
 HEVI_REVISION_REQUEST.md
+deploy/aii-secrets.conf
+
+# flywheel run artifacts (可重建的飞轮运行产物)
+aii/.pipeline_keys.json
+aii/*_pipeline/bu_*.json
+aii/*_pipeline/ckpts/
+aii/*_pipeline/*_state*.json
+
+# e2e scratch (端到端测试垃圾)
+e2e_token*.txt
+e2e_upload_resp*.json
+e2e_docs_resp.json
+e2e_pdf_path.txt
+
+# temp (临时产物)
+_schema_dump.json
+tmp_pdfjs/
+
+# AII pipeline 生成产物 (可重建)
+aii/*_pipeline/batch_report.json
+aii/*_pipeline/quarantine.json
+aii/*_pipeline/flywheel_*
+aii/*_pipeline/booklist_*.txt
+aii/*_pipeline/run_log.jsonl
+aii/*_pipeline/qual/
+aii/*_pipeline/staging/
+aii/*_pipeline/待补/
+deploy/logs/*.log
+scripts/*.log

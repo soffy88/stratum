@@ -8,7 +8,7 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 # Paths exempt from auth (health probes)
-_EXEMPT = {"/api/ping"}
+_EXEMPT = {"/api/ping", "/internal/embed"}
 
 # Rate limit config: (window_seconds, max_requests)
 _DEFAULT_LIMIT = (60, 60)   # 60 req/min for all endpoints

@@ -175,3 +175,77 @@ async def export_one_substrate(
 
     background_tasks.add_task(_do_export)
     return {"status": "started", "substrate_id": sid}
+
+
+@router.patch("/derivative-content")
+async def patch_derivative_content(
+    payload: dict,
+    _user: str = Depends(jwt_auth),
+):
+    """Overwrite derivative.content for a specific substrate+kind (admin use).
+
+    Body: {"substrate_id": "...", "kind": "markdown", "content": "..."}
+    Used by scripts (e.g. fix_werner_fffd.py) to write fixed content while
+    the server holds the DuckDB write lock.
+    """
+    sid = payload.get("substrate_id")
+    kind = payload.get("kind", "markdown")
+    content = payload.get("content")
+    if not sid or not content:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="substrate_id and content required")
+
+    with get_conn() as conn:
+        rows = conn.execute(
+            "UPDATE derivative SET content = ? WHERE substrate_id = ? AND kind = ?",
+            (content, sid, kind),
+        ).rowcount
+    log.info("patch_derivative_content: updated %d row(s) for %s kind=%s", rows, sid[:12], kind)
+    return {"updated": rows, "substrate_id": sid, "kind": kind}
+
+
+@router.delete("/substrates/{substrate_id}")
+async def delete_substrate(
+    substrate_id: str,
+    _user: str = Depends(jwt_auth),
+):
+    """Hard-delete a substrate and its derivatives (admin use).
+
+    Used by scripts/cleanup_library.py for bulk dedup cleanup.
+    """
+    with get_conn() as conn:
+        d_rows = conn.execute(
+            "DELETE FROM derivative WHERE substrate_id = ?", (substrate_id,)
+        ).rowcount
+        s_rows = conn.execute(
+            "DELETE FROM substrates WHERE id = ?", (substrate_id,)
+        ).rowcount
+    log.info("delete_substrate: %s — substrates=%d derivatives=%d", substrate_id[:12], s_rows, d_rows)
+    return {"deleted_substrates": s_rows, "deleted_derivatives": d_rows, "substrate_id": substrate_id}
+
+
+@router.patch("/substrates/bulk-title")
+async def bulk_patch_title(
+    payload: dict,
+    _user: str = Depends(jwt_auth),
+):
+    """Bulk-update substrate titles.
+
+    Body: {"updates": [{"id": "...", "title": "..."}, ...]}
+    Used by scripts/cleanup_library.py for z-lib tag stripping.
+    """
+    updates = payload.get("updates", [])
+    if not updates:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="updates list required")
+
+    count = 0
+    with get_conn() as conn:
+        for item in updates:
+            sid = item.get("id")
+            title = item.get("title")
+            if sid and title:
+                conn.execute("UPDATE substrates SET title = ? WHERE id = ?", (title, sid))
+                count += 1
+    log.info("bulk_patch_title: updated %d titles", count)
+    return {"updated": count}

@@ -36,48 +36,51 @@ PIPELINE_CKPT_DIR="${PIPELINE_CKPT_DIR:-econ_pipeline/ckpts}"
 mkdir -p "$QUAL_DIR" "$PIPELINE_CKPT_DIR"
 QUAL_JSON="$QUAL_DIR/${SUBSTRATE}.json"
 
-export SUBSTRATE AII_MD_FILE PIPELINE_CKPT_DIR
+# ★★★ 固化标识: 经济学 A仓 KU 抽取标准(已验证, 全自动)★★★
+# econ-A仓-v1.3 (2026-06-29): 双仓架构 A仓标准 = 只忠实抽原始KU给人读(全/不漏/中文).
+#   验证: microecon ch9弹性(两约束守住) + Mankiw 生产跑通(persist修复确认).
+#   固化内容:
+#   ① 程序WHAT骨架 + LLM补WHY/HOW(v1.1基础: _find_pos优先真定义框+跳目录, _clean_window清脚注/页码)
+#   ② plan 14K小块(v1.2: 密度大的章granular不被摘要漏)
+#   ③ 六类抽取 + 主动抽why(每概念配rationale) + 准入闸门 + 两约束(rationale不编因果/positional不附会)
+#   ④ A仓瘦身5步: 讲透+完整性严 / 概念抽取(不共现) / 按章KC / BU(单本枢纽) / KU质量门(含六分类rationale≠0)
+#   ⑤ 卸B仓: 有向/归一/谱社区/超边(explains链留provenance)/本性; persist不插生成列is_positional
+ECON_PIPELINE_VERSION="econ-A仓-v1.3"
+export SUBSTRATE AII_MD_FILE PIPELINE_CKPT_DIR ECON_PIPELINE_VERSION
 
 PY=.venv/bin/python
 
 echo "════════════════════════════════════════════"
-echo "★ 经济学管道: $ECON_TITLE"
+echo "★ 经济学管道 [$ECON_PIPELINE_VERSION]: $ECON_TITLE"
 echo "  SUBSTRATE=$SUBSTRATE"
 echo "  AII_MD_FILE=$AII_MD_FILE"
+echo "  LLM=${ECON_LLM_PROVIDER:-deepseek}${OLLAMA_MODEL:+ ($OLLAMA_MODEL)}"
 echo "  QUAL=$QUAL_JSON"
 echo "════════════════════════════════════════════"
 
 # ★步骤失败直接退出(set -e), 不静默通过
+# ★★ A仓瘦身(双仓架构): A仓只忠实抽原始KU给人读(全/不漏/中文). 卸到B仓的:
+#    有向关系readout / 节点归一normalize / KU内部逻辑structure / 共现 / 谱社区 / 概念归一 / 超边 / 本性.
 echo ""
-echo "[1/8] 逐章讲透 KU + 完整性校验(黑体术语should-have) + 打磨(去脚手架/空壳/残留)"
-$PY scripts/synthesize_book.py || { echo "❌ [1/8] 失败"; exit 2; }
+echo "[1/5] 逐章讲透 KU + ★完整性校验严(应有清单, A仓命门:不漏) + 打磨(去脚手架/空壳/残留)"
+$PY scripts/synthesize_book.py || { echo "❌ [1/5] 失败"; exit 2; }
+# ★书内去重(防同概念跨章重抽: 同title+余弦>0.80 留最长; 同名不同内容不动)
+$PY scripts/dedup_within_book.py "$SUBSTRATE" 2>/dev/null || echo "  ⚠ 书内去重跳过(非致命)"
 
 echo ""
-echo "[2/8] 概念抽取 + 共现联结(纯计算, 书内)"
-$PY scripts/materialize_links.py || { echo "❌ [2/8] 失败"; exit 2; }
+echo "[2/5] 概念抽取(单本KU涉及哪些概念; ★只概念不共现, 共现=B仓)"
+$PY scripts/materialize_links.py || { echo "❌ [2/5] 失败"; exit 2; }
 
 echo ""
-echo "[3/8] 有向关系读出(讲透KU读出, 非N²judge)"
-$PY scripts/readout_all.py || { echo "❌ [3/8] 失败"; exit 2; }
+echo "[3/5] 按章KC(书内结构, 给人按书读) + 双语簇摘要"
+$PY scripts/persist_chapter_kc.py && $PY scripts/fix_kc_labels_summaries.py || { echo "❌ [3/5] 失败"; exit 2; }
 
 echo ""
-echo "[4/8] 节点归一: 概念级有向→图 / KU内部逻辑→留KU"
-$PY scripts/normalize_readout.py || { echo "❌ [4/8] 失败"; exit 2; }
+echo "[4/5] BU 书级理解(七项; ★单本枢纽=ku_concept度数+按章KC, 不碰B仓概念图) 入库"
+$PY scripts/generate_bu.py && $PY scripts/persist_bu.py || { echo "❌ [4/5] 失败"; exit 2; }
 
 echo ""
-echo "[5/8] KU内部逻辑结构化(因果链+分解树) + 节点归一"
-$PY scripts/structure_logic.py && $PY scripts/normalize_ku_logic_nodes.py || { echo "❌ [5/8] 失败"; exit 2; }
-
-echo ""
-echo "[6/8] 按章KC(中文主题名) + 双语簇摘要"
-$PY scripts/persist_chapter_kc.py && $PY scripts/fix_kc_labels_summaries.py || { echo "❌ [6/8] 失败"; exit 2; }
-
-echo ""
-echo "[7/8] BU 书级理解(七项+忠实校验) 入库"
-$PY scripts/generate_bu.py && $PY scripts/persist_bu.py || { echo "❌ [7/8] 失败"; exit 2; }
-
-echo ""
-echo "[8/8] ★质量门全检(complete/残留/空壳/双语/有向/KU密度/讲浅/章密度) → $QUAL_JSON"
+echo "[5/5] ★KU质量门(complete严/残留/空壳/双语/讲浅/密度/章/★六分类rationale≠0; 去有向边/explains=B仓) → $QUAL_JSON"
 $PY scripts/econ_quality_gate.py "$SUBSTRATE" --json "$QUAL_JSON"
 GATE_EXIT=$?
 

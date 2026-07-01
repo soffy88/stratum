@@ -9,7 +9,7 @@ from stratum.services.source_watcher_service import run_first_check
 
 router = APIRouter()
 
-VALID_SOURCE_TYPES = {"arxiv", "gutenberg", "oapen"}
+VALID_SOURCE_TYPES = {"arxiv", "gutenberg", "oapen", "openstax", "mit_ocw"}
 
 
 class SourceSubscribeRequest(BaseModel):
@@ -42,6 +42,10 @@ async def source_subscribe(
     elif body.source_type == "oapen":
         if not q.get("query"):
             raise HTTPException(400, "OAPEN 订阅需填写 query（搜索词）")
+    elif body.source_type == "openstax":
+        pass  # subjects/keywords optional — defaults to Math+Science
+    elif body.source_type == "mit_ocw":
+        pass  # departments/keywords optional — defaults to dept 18 (Mathematics)
 
     uh = hash_user_id(user_id)
     sub_id = generate_ulid()
@@ -71,6 +75,14 @@ def _default_name(source_type: str, q: dict) -> str:
         return q.get("topic") or q.get("keywords") or "Gutenberg"
     if source_type == "oapen":
         return q.get("query") or "OAPEN"
+    if source_type == "openstax":
+        subjs = ",".join((q.get("subjects") or ["Math","Science"])[:2])
+        kw = q.get("keywords") or ""
+        return f"OpenStax {subjs}" + (f" — {kw}" if kw else "")
+    if source_type == "mit_ocw":
+        depts = ",".join(q.get("departments") or ["18"])
+        kw = q.get("keywords") or ""
+        return f"MIT OCW dept{depts}" + (f" — {kw}" if kw else "")
     return source_type
 
 

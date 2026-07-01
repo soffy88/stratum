@@ -13,9 +13,15 @@ services:
       - /home/soffy/projects/stratum/src:/app/src
     env_file:
       - /home/soffy/.config/keys/.env
+      - ./aii-secrets.conf
     environment:
       - STRATUM_ENV=production
       - DATABASE_PATH=/data/stratum/meta.duckdb
+      # AII merge P1.5: service-layer store moved DuckDB → aii-postgres stratum schema.
+      - STRATUM_PG_HOST=172.19.0.1
+      - STRATUM_PG_PORT=5435
+      - STRATUM_PG_USER=aii
+      - STRATUM_PG_DB=aii_kg
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9302/health"]
       interval: 30s
@@ -49,6 +55,36 @@ services:
       retries: 3
       start_period: 15s
 
+  # AII merge P3.5: merged frontend (Stratum base + AII pages) serving aii.uex.hk.
+  # Self-contained image baked from the Next standalone build (deploy/Dockerfile.aii-web).
+  # cloudflared (host net) routes aii.uex.hk → 127.0.0.1:3101, aii-api.uex.hk → :8101.
+  aii-web:
+    image: aii-web:latest
+    container_name: aii-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3101:3101"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - PORT=3101
+      # Stratum backends (same docker network, by service name).
+      - STRATUM_SL_BASE=http://stratum-sl:9304
+      - STRATUM_API_BASE=http://stratum-api:9302
+      # AII epistemic-engine backend runs on the host (uvicorn :8101) → via gateway.
+      - AII_API_BASE=http://172.19.0.1:8101
+    env_file:
+      - ./aii-secrets.conf
+    depends_on:
+      - stratum-api
+      - stratum-sl
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3101/',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
   stratum-nginx:
     image: nginx:1.27-alpine
     container_name: stratum-nginx
@@ -68,6 +104,7 @@ services:
     command: tunnel --no-autoupdate run --token ${STRATUM_TUNNEL_TOKEN}
     env_file:
       - /home/soffy/.config/keys/.env
+      - ./aii-secrets.conf
     profiles:
       - public
 
@@ -82,12 +119,18 @@ services:
       - "127.0.0.1:9304:9304"
     env_file:
       - /home/soffy/.config/keys/.env
+      - ./aii-secrets.conf
     environment:
       # §M3 DB merge: stratum-sl now uses DuckDB (~/.stratum/meta.duckdb).
       # STRATUM_DATABASE_DSN (PG) is no longer used — removed.
       # §merge-2026-06-27: switched to .bak as primary (personal library + all repairs merged in).
       # meta.duckdb.live_backup_20260627 holds the pre-merge live snapshot.
       - STRATUM_DB_PATH=/root/.stratum/meta.duckdb.bak
+      # AII merge P1.5: service-layer store moved DuckDB → aii-postgres stratum schema.
+      - STRATUM_PG_HOST=172.19.0.1
+      - STRATUM_PG_PORT=5435
+      - STRATUM_PG_USER=aii
+      - STRATUM_PG_DB=aii_kg
       # Outbound proxy for YouTube/media ingest (Windows Clash via WSL2 bridge — may change on WSL restart)
       - STRATUM_OUTBOUND_PROXY=http://172.23.224.1:20809
       # PaddleOCR: skip network model-source check, use pre-downloaded models from volume
@@ -95,6 +138,9 @@ services:
       # Local embedding via Ollama qwen3-embedding:0.6b (1024-dim, matches DashScope text-embedding-v3)
       - EMBEDDING_PROVIDER=qwen3_local
       - OLLAMA_BASE_URL=http://172.19.0.1:11434
+      # P1.4b: user-substrate vector search embeds queries via the shared BGE-M3
+      # endpoint (AII backend) so query space matches substrate_chunk (BGE-M3).
+      - STRATUM_EMBED_URL=http://172.19.0.1:8101/internal/embed
     volumes:
       # Stratum source mounted live — code changes take effect after container restart, no rebuild.
       - /home/soffy/projects/stratum/src:/app/src

@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from aii.api._provider import register_providers
 from aii.storage.pg_backend import PgBackend
 from aii.api._dependencies import backend
-from aii.api.routes import health, ingest, feed, query, chat, evolution, governance, stats, display, textbook_export, delete
+from aii.api.routes import health, ingest, feed, query, chat, evolution, governance, stats, display, textbook_export, delete, pipelines, internal
 from aii.api._auth import APIKeyMiddleware
 
 # Configure logging
@@ -126,6 +126,7 @@ app.add_middleware(
 )
 
 # Route Mounting (Unified /api prefix)
+app.include_router(pipelines.router, prefix="/api", tags=["pipelines"])
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(ingest.router, prefix="/api", tags=["ingest"])
 app.include_router(feed.router, prefix="/api", tags=["feed"])
@@ -137,3 +138,5 @@ app.include_router(stats.router, prefix="/api", tags=["stats"])
 app.include_router(display.router, prefix="/api", tags=["display"])
 app.include_router(textbook_export.router, prefix="/api", tags=["textbook"])
 app.include_router(delete.router, prefix="/api", tags=["delete"])
+# Internal utilities (no /api prefix, auth-exempt): shared BGE-M3 embedding
+app.include_router(internal.router, tags=["internal"])

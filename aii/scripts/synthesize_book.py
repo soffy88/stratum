@@ -21,7 +21,10 @@ SC = Path(os.getenv("PIPELINE_CKPT_DIR",
     "/tmp/claude-1000/-home-soffy-projects-AII/bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad"))
 SC.mkdir(parents=True, exist_ok=True)
 CKPT = SC / f"ckpt_{SUB}.json"
-_TYPE_MAP = {"concept": "conceptual", "principle": "rationale", "method": "procedural"}
+# 六类直映射(type 即 knowledge_type); 旧类型 back-compat(principle 是 conceptual·原理, 不是 rationale)
+_TYPE_MAP = {"conceptual": "conceptual", "rationale": "rationale", "procedural": "procedural",
+             "positional": "positional", "factual": "factual",
+             "concept": "conceptual", "principle": "conceptual", "method": "procedural"}
 _CJK = re.compile(r"[一-鿿]")
 
 
@@ -35,49 +38,62 @@ def _split_bilingual(body: str):
 
 async def synth_chapter(llm, n):
     text = slice_chapter(SM.read_text(encoding="utf-8", errors="replace"), n)
-    points = await _plan(llm, text, n)   # ★ _plan 现在已含 pos 字段
-    sem = asyncio.Semaphore(8)
+    points = await _plan(llm, text, n)   # ★ _plan 含 pos + type + explains/stance(positional)
+    sem = asyncio.Semaphore(int(os.getenv("AII_SYNTH_CONCURRENCY", "1")))   # ★并发度由飞轮env控制(测3/4/5/6); 默认1=串行
 
-    async def s(name, typ, pos=0):
+    async def s(p):
         async with sem:
-            _, body = await _synth(llm, text, n, name, typ, pos)
-            return name, typ, body
-    kus = await asyncio.gather(*(s(p["name"], p.get("type", "concept"), p.get("pos", 0)) for p in points))
-    names = [k for k, _, _ in kus]
+            _, body = await _synth(llm, text, n, p["name"], p.get("type", "conceptual"), p.get("pos", 0))
+            return p, body              # ★ 返回完整 point 字典 + body(带 explains/stance 透传 persist)
+    kus = await asyncio.gather(*(s(p) for p in points))
+    names = [p["name"] for p, _ in kus]
     comp = check_completeness(text, names)
-    if comp["missing_bold_terms"]:
+    if comp["missing_bold_terms"]:      # 补漏: 黑体术语漏的 → 作 conceptual 点补抽
         fill_pts = []
         for t in comp["missing_bold_terms"]:
             pos = _find_pos(text, t)
-            fill_pts.append((t.title(), "concept", max(0, pos) if pos >= 0 else 0))
-        fill = await asyncio.gather(*(s(name, typ, pos) for name, typ, pos in fill_pts))
+            fill_pts.append({"name": t.title(), "type": "conceptual",
+                             "pos": max(0, pos) if pos >= 0 else 0})
+        fill = await asyncio.gather(*(s(p) for p in fill_pts))
         kus = list(kus) + list(fill)
-        comp = check_completeness(text, [k for k, _, _ in kus])
+        comp = check_completeness(text, [p["name"] for p, _ in kus])
     return text, kus, comp
 
 
 async def persist(conn, n, kus):
     loop = asyncio.get_event_loop()
-    for i, (name, typ, body) in enumerate(kus):
+    # ★双仓: A仓只抽原始KU不建关系. explains 链留在 KU 的 provenance(下方 prov["explains"]),
+    #   explains 超边由 B仓 从 provenance 建(关系=B仓). A仓 不写 explains 边.
+    for i, (p, body) in enumerate(kus):
+        name = p["name"]; typ = p.get("type", "conceptual")
         en_raw, zh_raw = _split_bilingual(body)
         # ★清洗呈现: 去脚手架/markdown/(未涉及); 来源标注剥到 provenance.citations(命门不丢)
         en, en_cites = clean(en_raw)
         zh, zh_cites = clean(zh_raw)
-        if is_empty_shell(zh or en):     # 全空壳(书没讲)→ 不入库
+        # 全空壳(书没讲)→ 不入库; 中文<10字也丢弃(对齐质量门空壳判定: 有英文无中文也算空壳)
+        if is_empty_shell(zh or en) or len(re.findall(r'[一-龥]', zh or '')) < 10:
             continue
         kt = _TYPE_MAP.get(typ, "conceptual")
+        is_pos = (kt == "positional")
+        stance = (p.get("stance_holder") or None) if is_pos else None
+        opposing = (p.get("opposing") or p.get("opposing_stance") or None) if is_pos else None
+        ku_id = f"{SUB}::ch{n}_ku{i}"
         emb = (await loop.run_in_executor(None, lambda c=(zh or en)[:2000]: vector_encode(texts=[c], provider="default")))[0]
         prov = {"chapter": n, "paradigm": "thorough-synthesis", "marker": "AII综合-讲透,非原文逐字",
+                "type": typ, "explains": p.get("explains"),    # ★溯源记真实六类 + explains指向
                 "citations": sorted(set(en_cites + zh_cites))}
+        # ★is_positional 是生成列(=knowledge_type='positional'), 不可显式插入; 只写 stance_holder/opposing_stance
         await conn.execute("""
             INSERT INTO aii.ku_onto (ku_id, substrate_id, title, natural_text, natural_text_zh,
-                knowledge_type, grade, provenance, embedding)
-            VALUES ($1,$2,$3,$4,$5,$6,'unverified',$7,$8)
+                knowledge_type, stance_holder, opposing_stance, grade, provenance, embedding)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'unverified',$9,$10)
             ON CONFLICT (ku_id) DO UPDATE SET natural_text=EXCLUDED.natural_text,
                 natural_text_zh=EXCLUDED.natural_text_zh, knowledge_type=EXCLUDED.knowledge_type,
+                stance_holder=EXCLUDED.stance_holder, opposing_stance=EXCLUDED.opposing_stance,
                 provenance=EXCLUDED.provenance, embedding=EXCLUDED.embedding""",
-            f"{SUB}::ch{n}_ku{i}", SUB, name[:200], en or zh, zh,
-            kt, json.dumps(prov), emb)
+            ku_id, SUB, name[:200], en or zh, zh,
+            kt, stance, opposing, json.dumps(prov), emb)
+        # explains 链已写入 prov["explains"](上方) → B仓据此建 explains 超边; A仓不写边.
 
 
 async def main():

@@ -84,6 +84,7 @@ function KuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
                 </span>
               )}
             </div>
+            {d.title && <h3 className="text-base font-semibold text-[color:var(--text-primary)]">{d.title}</h3>}
             <BilingualText zh={d.natural_text_zh} en={d.natural_text} />
 
             <section className="flex flex-col gap-2">
@@ -218,6 +219,7 @@ function KnowledgePage() {
                   )}
                   <span className="text-xs text-[color:var(--text-tertiary,#888)] ml-auto">{ku.substrate_title}</span>
                 </div>
+                {ku.title && <div className="text-sm font-semibold text-[color:var(--text-primary)]">{ku.title}</div>}
                 <BilingualText zh={ku.natural_text_zh} en={ku.natural_text} />
               </li>
             ))}

@@ -1,0 +1,45 @@
+== B仓步骤4 M0 concept canonical dry_run ==
+书=['mankiw_principles_econ_10e', 'microecon_en_full_v2', 'micro_clean']  同discipline sim≥0.8  候选对=109  (只算+打印, 不落库)
+
+NIM key 池: 4 key 轮转并发
+裁决: SAME=10(合canonical)  DIFFERENT=97(硬闸25)  CANDIDATE=2(不自动合)
+
+── SAME (会归一为同一 canonical 概念) ──────────────────
+  0.981 [econ] shifts in demand curve  ≡  shift in demand curve  (概念相同)
+  0.972 [micr] Outsourcing and offshoring  ≡  Offshoring and Outsourcing  (概念相同)
+  0.925 [econ] price ceiling  ≡  Price Ceiling  (概念相同)
+  0.919 [micr] Minimum Efficient Scale  ≡  Minimum Efficient Scale Of Product  (概念描述相同)
+  0.908 [econ] price floor  ≡  Price Floor  (概念相同)
+  0.859 [econ] exchange  ≡  market exchange  (相同经济学概念)
+  0.850 [econ] short run vs long run  ≡  Short Run and Long Run  (定义相同)
+  0.824 [micr] Diminishing marginal benefit  ≡  Principle of Diminishing Marginal   (概念全同)
+  0.823 [econ] factors that shift supply  ≡  supply shift  (全同)
+  0.807 [econ] economics  ≡  economics as science  (定义相近)
+
+── CANDIDATE (命门: 高风险不自动合, 人工裁) ─────────────
+  0.903 [econ] movements along demand curve  ?  Movement along the Demand Curve  (err:TimeoutError)
+  0.832 [econ] market equilibrium  ?  equilibrium  (2票不一(上下位))
+
+── DIFFERENT (应被挡的假朋友) ─ 抽样前20 ────────────────
+  0.930 [micr] Price elasticity of supply  ≠  Price elasticity of demand  (硬闸:判别词硬闸)
+  0.927 [econ] market bubble  ≠  Market Bubble  (LLM:定义不同)
+  0.915 [micr] Total Fixed Cost, Total Variab  ≠  Average Total Cost, Average Va  (LLM:概念不同)
+  0.910 [micr] Price discrimination: first-de  ≠  Price discrimination: second-d  (LLM:不同类型)
+  0.908 [micr] Factors affecting price elasti  ≠  Price elasticity of demand  (LLM:概念不同)
+  0.904 [micr] Shifts in Short-Run Cost Curve  ≠  Shifts in Short-Run Cost Curve  (LLM:本质维度不同)
+  0.902 [micr] Increasing Returns to Scale  ≠  Decreasing Returns to Scale  (硬闸:判别词硬闸)
+  0.900 [micr] Price discrimination: first-de  ≠  Price discrimination: third-de  (LLM:本质维度不同)
+  0.898 [econ] private costs  ≠  personal cost  (LLM:近义非同一)
+  0.896 [micr] Price discrimination: third-de  ≠  Price discrimination: second-d  (LLM:本质维度不同)
+  0.887 [micr] Price elasticity of supply  ≠  Determinants of price elastici  (LLM:本质维度不同)
+  0.882 [micr] Factors affecting price elasti  ≠  Determinants of price elastici  (硬闸:判别词硬闸)
+  0.881 [micr] Factors That Shift Demand  ≠  Factors That Shift Supply  (硬闸:判别词硬闸)
+  0.880 [econ] elasticity  ≠  elasticity measurement  (LLM:本质维度不同)
+  0.876 [econ] movements along supply curve  ≠  movements along demand curve  (硬闸:判别词硬闸)
+  0.875 [econ] marginal benefit  ≠  diminishing marginal benefit  (硬闸:判别词硬闸)
+  0.872 [micr] Implicit Cost  ≠  Explicit Cost  (LLM:本质维度不同)
+  0.870 [econ] shifts in demand curve  ≠  demand curve  (LLM:概念维度不同)
+  0.869 [econ] excess demand  ≠  excess supply  (硬闸:判别词硬闸)
+  0.868 [micr] Marginal Willingness to Pay  ≠  Willingness to Pay  (硬闸:判别词硬闸)
+
+DONE (dry-run, 无写库). 裁决已存 refined_concept_verdicts_econ.json(带concept_id)。人工核: SAME无错合? CANDIDATE该停? 假朋友全DIFFERENT?

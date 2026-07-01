@@ -13,10 +13,9 @@ from datetime import datetime, timezone
 router = APIRouter()
 
 def get_db():
-    db_path = os.path.expanduser("~/.stratum/meta.duckdb")
-    conn = duckdb.connect(db_path)
-    try: yield conn
-    finally: conn.close()
+    from stratum.db import get_conn
+    with get_conn() as conn:
+        yield conn
 
 @router.post("/register", response_model=RegisterResponse)
 async def register(req: RegisterRequest, db=Depends(get_db)):

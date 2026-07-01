@@ -1,5 +1,9 @@
 """数学专门管道: 应有清单(定义/定理/概念)驱动讲透→数学打磨→完整性自检→质量门. 不入正式库, 出实物.
-★关键: 讲透由确定性应有清单驱动(每知识点一KU), 不靠LLM规划(那会漏). 公式完整=命门."""
+★关键: 讲透由确定性应有清单驱动(每知识点一KU), 不靠LLM规划(那会漏). 公式完整=命门.
+★★固化标识: 数学 A仓 KU 抽取标准 math-A仓-v1(2026-06-29) — 双仓A仓=纯抽取(should_have确定性
+   定义/定理/公式驱动→逐章讲透→质量门content_match/公式≥80%/facet). 本就无readout/KC/BU(已A仓).
+   MATH_LANG=en→英文应有清单. slice_chapter支持 第N章 与 # Chapter N(冒号可选)."""
+MATH_PIPELINE_VERSION = "math-A仓-v1"
 import asyncio, os, json, re, sys, httpx
 from pathlib import Path
 
@@ -28,9 +32,9 @@ def slice_chapter(text, n):
         if '…' in line or re.search(r'\s\d+\s*$', line): continue
         num = _cn2int(m.group(1))
         if num and num not in starts: starts[num] = m.start()
-    # 英文格式 fallback
+    # 英文格式 fallback(冒号可选: '# Chapter 1:' 或 '# Chapter 1')
     if not starts:
-        for m in re.finditer(r'(?m)^#\s+Chapter\s+(\d+):', text):
+        for m in re.finditer(r'(?m)^#\s+Chapter\s+(\d+):?\s*$', text):
             starts[int(m.group(1))] = m.start()
     if n not in starts:
         raise SystemExit(f"chapter {n} not found; have {sorted(starts)}")
@@ -41,12 +45,48 @@ def slice_chapter(text, n):
 SM = Path(os.getenv("AII_MD_FILE",
     "/home/soffy/shared/stratum-to-aii/Principles_of_Microeconomics_The_Way_We__01KVAJCX.md"))
 
-from math_should_have import extract
+# ★语言通道: MATH_LANG=en → 英文数学书专用应有清单(Definition/Theorem 等); 否则中文版.
+if os.getenv('MATH_LANG', '').lower() == 'en':
+    from math_should_have_en import extract
+else:
+    from math_should_have import extract
 KEY = os.getenv('DEEPSEEK_API_KEY')
+
+# ★LLM 端点: 设 NVIDIA_NIM_API_KEY → 用 NIM(云端OpenAI兼容, 快+可并发); 否则 DeepSeek.
+import time as _time
+_NIM_KEY = os.getenv('NVIDIA_NIM_API_KEY')
+if _NIM_KEY:
+    _LLM_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
+    _LLM_KEY = _NIM_KEY
+    _LLM_MODEL = os.getenv('NIM_MODEL', 'meta/llama-3.3-70b-instruct')
+    _LLM_RPM = float(os.getenv('NIM_RPM', '36'))   # NIM 免费层 40/min, 留余量
+else:
+    _LLM_URL = "https://api.deepseek.com/chat/completions"
+    _LLM_KEY = KEY
+    _LLM_MODEL = "deepseek-v4-flash"
+    _LLM_RPM = 0
+# ★全局 async 限流(时间槽节流, 防爆 NIM 40/min)
+_RL = {"next": 0.0}
+_RL_LOCK = asyncio.Lock()
+async def _throttle():
+    if not _LLM_RPM:
+        return
+    async with _RL_LOCK:
+        start = max(_time.monotonic(), _RL["next"])
+        _RL["next"] = start + 60.0 / _LLM_RPM
+    w = start - _time.monotonic()
+    if w > 0:
+        await asyncio.sleep(w)
 # 数学杂乱词(打磨): 含这些的句删
 _MATHNONCOV = re.compile(r"未涉及|未覆盖|未出现|未给出|未提及|未定义|未讨论|需查阅|其他资料|建议参考|不在本(章|节)|超出本(章|节)")
+def _repair_latex(t):
+    """★修复LaTeX转义损坏: LLM的LaTeX单反斜杠进JSON, json解码把 \\t→制表符 \\f→换页 \\r→回车 \\b→退格
+    (\\frac→\x0crac, \\text→\\t+ext, \\times \\to \\tau \\theta \\rho \\rightarrow \\beta 等) → 还原反斜杠.
+    这些控制符在LLM正文里几乎不会合法出现, 还原安全. \\n(换行)是真换行不动(\\nabla等少见, 不还原)."""
+    return t.replace('\t', '\\t').replace('\x0c', '\\f').replace('\r', '\\r').replace('\x08', '\\b')
 def clean_math(t):
     if not t: return ""
+    t = _repair_latex(t)
     t = re.sub(r"\s*[\[【]\s*第?\s*\d+[-–]?\d*\s*页\s*[\]】]", "", t)  # 去页码溯源
     t = re.sub(r"^\s*(KU|知识单元|类型|概念)\s*[:：].*$", "", t, flags=re.M)  # 去元标记行
     t = t.replace("**", "").replace("##", "")
@@ -64,7 +104,7 @@ def facet_check(point_name, zh):
     issues = []
     # 公式汇总/表型(基本导数公式/积分表): 汇总他处已证的公式, 不需单独证明/例题, 只需公式
     is_summary = bool(re.search(r'基本.*公式|基本.*法则|导数公式|微分公式|积分表|公式表|汇总', point_name))
-    is_thm = bool(re.search(r'法则|定理|公式', point_name)) and not is_summary
+    is_thm = bool(re.search(r'法则|定理|公式|theorem|lemma|proposition|corollary|rule', point_name, re.I)) and not is_summary
     has_proof = bool(re.search(r'证明|推导|为什么|∵|证\s*[:(（]|证\s*\d', zh)) or \
                 bool(re.search(r'^\s*证\s', zh, re.MULTILINE))
     has_example = bool(re.search(r'例\s*\d|例如|例题|例\s*[:：]|例子', zh))
@@ -84,18 +124,48 @@ def facet_check(point_name, zh):
 SYS=("你为数学教材合成一个讲透知识单元(KU), 严格只用本章内容、整合非创作。"
      "★数学公式必须完整保留(LaTeX原样, 如 \\frac \\lim), 公式残缺=不合格。"
      "中文主显(简体), 之后附English。书没讲的面直接不写(不要写'未涉及')。"
-     'Output JSON {"zh":"<中文讲透,含完整LaTeX公式>","en":"<English>"}.')
-async def synth(cli, chapter, item):
+     "★name=该知识点的简洁中文概念名(≤12字, 如「数列极限的定义」「罗尔中值定理」「二重积分换元」), "
+     "★绝不要用「定义1」「定理2」这种编号当name(要概念实名)。"
+     'Output JSON {"name":"<简洁概念名>","zh":"<中文讲透,含完整LaTeX公式>","en":"<English>"}.')
+# ★忠实模式(MATH_FAITHFUL=1): 不靠LLM讲透/判断, 只忠实呈现原书内容(定义/定理陈述+公式原样)→快+忠实
+# ★语言: 英文书(MATH_LANG=en)只输出英文(最忠实源, content_match才对得上术语); 中文书输出中文.
+FAITHFUL = os.getenv('MATH_FAITHFUL') == '1'
+_MATH_EN = os.getenv('MATH_LANG', '').lower() == 'en'
+if _MATH_EN:
+    SYS_FAITHFUL = ("Faithfully present this math knowledge point AS IN THE BOOK: state the definition/theorem "
+                    "precisely (conditions + conclusion), keep ALL LaTeX formulas verbatim; at most one sentence "
+                    "of intuition. Do NOT elaborate, no long proofs, no examples beyond the book, no fabrication. "
+                    "Faithful + concise, in ENGLISH (the source language). "
+                    'Output JSON {"name":"<concise concept name>","zh":"<faithful ENGLISH content with LaTeX>","en":""}.')
+else:
+    SYS_FAITHFUL = ("忠实呈现该数学知识点在本书中的原始内容: 准确给出 定义/定理 的陈述(条件+结论), "
+                    "完整LaTeX公式原样保留; 至多补一句直观含义. "
+                    "★不发挥、不写长证明/不展开应用、不编原书没有的内容、不过度解释why/how. 忠实+简洁第一. "
+                    'Output JSON {"name":"<简洁概念名,≤12字,不用定义1这种编号>","zh":"<忠实中文内容,含LaTeX>","en":""}.')
+async def synth(cli, chapter, item, fix_hint=''):
     # ★分块: 喂该知识点所在小节(由pos定位), 不喂整章[:75000]→长章(Ch11/12 12万/18万字)章尾知识点不再被截断成空
     intro = chapter[:1000]  # 章首记号/约定上下文
     p = item.get('pos', 0)
-    section = chapter[max(0, p - 300): p + 13000]
-    prompt=f"本章开头(记号约定):\n{intro}\n\n该知识点所在小节:\n{section}\n\n为知识点「{item['label'] or item['id']}」({item['type']}型)合成讲透KU。\n面: {facets(item['type'])}\n中文讲透(公式完整)+English。"
+    section = chapter[max(0, p - 300): p + int(os.getenv('MATH_SECTION_CHARS', '13000'))]
+    if FAITHFUL and _MATH_EN:
+        prompt=(f"Chapter opening (notation):\n{intro}\n\nSection containing the knowledge point:\n{section}\n\n"
+                f"Faithfully present knowledge point \"{item['label'] or item['id']}\" (type={item['type']}) as in the book: "
+                f"precise statement (conditions + conclusion) + ALL LaTeX verbatim, at most one sentence of intuition. "
+                f"No elaboration, no fabrication. Output in ENGLISH.")
+    elif FAITHFUL:
+        prompt=(f"本章开头(记号约定):\n{intro}\n\n该知识点所在小节(原书内容):\n{section}\n\n"
+                f"忠实呈现知识点「{item['label'] or item['id']}」({item['type']}型)的原书内容: "
+                f"准确给出陈述(条件+结论)+完整LaTeX公式原样, 至多补一句直观含义. 不发挥、不展开、不编造.")
+    else:
+        deep = (f"\n★上次讲浅了, 这次必须补全并实质展开: {fix_hint}。全文≥400字; 每个面都要展开不能一句带过; "
+                f"定理必须给【证明思路】+【具体例子/反例】, 定义必须给【直观含义】+【例子】, 公式完整保留。") if fix_hint else ""
+        prompt=f"本章开头(记号约定):\n{intro}\n\n该知识点所在小节:\n{section}\n\n为知识点「{item['label'] or item['id']}」({item['type']}型)合成讲透KU。\n面: {facets(item['type'])}\n中文讲透(公式完整)+English。{deep}"
     for _ in range(3):
         try:
-            r=await cli.post("https://api.deepseek.com/chat/completions",headers={"Authorization":"Bearer "+KEY},
-                json={"model":"deepseek-v4-flash","response_format":{"type":"json_object"},
-                      "messages":[{"role":"system","content":SYS},{"role":"user","content":prompt}]})
+            await _throttle()
+            r=await cli.post(_LLM_URL,headers={"Authorization":"Bearer "+_LLM_KEY},
+                json={"model":_LLM_MODEL,"response_format":{"type":"json_object"},
+                      "messages":[{"role":"system","content":SYS_FAITHFUL if FAITHFUL else SYS},{"role":"user","content":prompt}]})
             j=json.loads(r.json()["choices"][0]["message"]["content"]); return j
         except Exception: await asyncio.sleep(2)
     return None
@@ -112,22 +182,47 @@ async def main():
     chapter = slice_chapter(_MD.read_text(encoding='utf-8',errors='replace'), ch_n)
     sh = extract(chapter)
     print(f"第{ch_n}章 应有清单: {len(sh)} 知识点", flush=True)
-    sem = asyncio.Semaphore(6)
-    async with httpx.AsyncClient(trust_env=False, timeout=60) as cli:
+    sem = asyncio.Semaphore(int(os.getenv("AII_SYNTH_CONCURRENCY", "1")))   # ★并发度由飞轮env控制(测3/4/5/6); 默认1=串行
+    async with httpx.AsyncClient(trust_env=False, timeout=120) as cli:
         async def one(item):
             async with sem:
                 j = await synth(cli, chapter, item)
                 if not j: return None
-                zh = clean_math(j.get('zh','')); en = clean_math(j.get('en',''))
+                zh = clean_math(j.get('zh','')); en = clean_math(j.get('en','')); nm = (j.get('name') or '').strip()
+                # ★过滤空泛章节摘要(讲浅): KU应是定义/定理/概念, 非'本节主要介绍…'概览
+                if re.match(r'^\s*本(节|章|部分|小节)(主要)?(介绍|讲|讨论|内容)|^\s*这一?(节|章)', zh):
+                    return None
+                # ★面齐校验(防空洞/讲浅): 缺证明/缺例子/过短/无公式
+                fissues = facet_check(item['id'], zh)
+                # ★讲透重试: 浅了用更狠prompt重抽(补证明/例子/直觉/≥400字), 留更深的; 至多2次
+                tries = 0
+                while fissues and tries < 2 and not FAITHFUL:   # 忠实模式不重试讲透
+                    tries += 1
+                    j2 = await synth(cli, chapter, item, fix_hint='; '.join(fissues))
+                    if not j2:
+                        break
+                    zh2 = clean_math(j2.get('zh', '')); en2 = clean_math(j2.get('en', ''))
+                    f2 = facet_check(item['id'], zh2)
+                    if len(f2) < len(fissues) or (len(f2) == len(fissues) and len(zh2) > len(zh)):
+                        zh, en, fissues = zh2, en2, f2
+                        if j2.get('name'):
+                            nm = j2['name'].strip()
+                if tries:
+                    print(f"    ↻讲透重试 {item['id']}: {tries}次→{len(zh)}字, 剩缺面{fissues or '无'}", flush=True)
+                # ★不漏: 重试后仍薄的KU也保留(简单知识点可过); 标记 needs_fill 进待补清单, 后面补.
+                needs_fill = (not FAITHFUL) and bool(fissues) and len(zh) < 250
+                if needs_fill:
+                    print(f"    ⚑待补 {item['id']}: {len(zh)}字 缺{fissues}(保留不漏, 记录待补)", flush=True)
                 has_latex = bool(re.search(r'\\(frac|lim|int|sqrt|prime|partial)|\$', zh))
                 # ★内容层校验: KU内容真含该知识点的辨识词? (堵'占位骗校验')
-                content_ok = any(kt in zh for kt in item['key_terms'])
-                # ★面齐校验(防空洞): 该有的面齐不齐
-                fissues = facet_check(item['id'], zh)
-                return {'point': item['id'], 'type': item['type'], 'label': item['label'],
+                content_ok = any(kt in zh or kt in en for kt in item['key_terms'])  # 查zh+en(英文书术语在en)
+                # ★LLM 概念实名(回退 should_have 标题): 防 '定义1' 这种编号标题
+                lbl = nm if (nm and not re.match(r'^(定义|定理|推论|命题|引理)\d', nm)) else item['label']
+                return {'point': item['id'], 'type': item['type'], 'label': lbl,
                         'key_terms': item['key_terms'], 'zh': zh, 'en': en,
                         'has_formula': has_latex, 'zh_len': len(zh),
-                        'content_match': content_ok, 'facet_issues': fissues}
+                        'content_match': content_ok, 'facet_issues': fissues,
+                        'needs_fill': needs_fill}
         kus = [k for k in await asyncio.gather(*(one(it) for it in sh)) if k]
     for k in kus:
         k['chapter'] = ch_n

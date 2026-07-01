@@ -14,11 +14,9 @@ router = APIRouter()
 
 
 def get_db():
-    conn = duckdb.connect(os.path.expanduser("~/.stratum/meta.duckdb"))
-    try:
+    from stratum.db import get_conn
+    with get_conn() as conn:
         yield conn
-    finally:
-        conn.close()
 
 
 def _require_admin(x_admin_secret: Optional[str] = Header(None)) -> None:
