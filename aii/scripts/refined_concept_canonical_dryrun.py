@@ -8,7 +8,17 @@ AII-REFINED-REPO-MASTER-001 §6 "真正同一才合一" 四道关。
 候选: 同discipline 余弦≥阈值(跨学科不在此层自动合,留后续)。
 四关: 关1判别维度(判别词硬闸 _forced_different 复用 + LLM本质维度) 关2类层级/互斥(LLM当场判上下位)
       关3 LLM语义(反义/方向反) 关4 高风险→CANDIDATE。+ 自一致性二次确认SAME。
-用法: cd aii; NVIDIA_NIM_API_KEY=<econ key> .venv/bin/python scripts/refined_concept_canonical_dryrun.py [--sim 0.80] [--max 150]
+用法: cd aii; NVIDIA_NIM_API_KEY=<key> .venv/bin/python scripts/refined_concept_canonical_dryrun.py \
+        [--books b1,b2,...] [--tag NAME] [--cross-book] [--sim 0.80] [--max 150]
+参数化(item7):
+  --books      逗号分隔 substrate_id, 限定取哪些书的概念(默认 econ 三书)。
+  --tag        裁决输出文件后缀 refined_concept_verdicts_<tag>.json(默认 econ)。
+  --cross-book 去掉 discipline 相等约束, 对【同一学科域】的书集做跨书概念归一。
+               命门: 概念 discipline 现按书粒度(materialize_links 标 substrate_id),
+               不加此旗则只在书内配对、无跨书归一。★仅对单一学科域的 --books 用
+               (如全 math 或全 econ_zh), 混域用会跨域误合(违设计"跨域不在此层自动合")。
+  示例: 数学  --books advmath_tongji_full,math_en_d8fa481c5f,math_zh_7f821e3fba,math_zh_a55c5ec7ac,openstax_calculus_v1,math_zh_edf801aadc --tag math --cross-book
+       econzh --books econ_zh_9ea2a19eac,econ_zh_131d7dbd3b,econ_zh_df1f5d7fef,econ_zh_621c6b96b0 --tag econzh --cross-book
 """
 import asyncio, os, re, json, sys
 from pathlib import Path
@@ -23,7 +33,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from refined_dedup_dryrun import _forced_different      # 判别词硬闸(price/income, consumer/producer...)
 from refined_ingest_dryrun import _build_nim_pool       # 4 NIM key 池
 
-BOOKS = ["mankiw_principles_econ_10e", "microecon_en_full_v2", "micro_clean"]
+# 默认 econ 三书(micro_clean 已清根删除, 移出默认); 可 --books 覆盖。
+DEFAULT_BOOKS = ["mankiw_principles_econ_10e", "microecon_en_full_v2"]
 A_DSN = os.getenv("DATABASE_URL")
 
 JUDGE_SYS = (
@@ -44,14 +55,14 @@ JUDGE_SYS = (
 
 
 # ---- 概念 + 代表KU上下文 ----
-async def _concepts(conn):
+async def _concepts(conn, books):
     rows = await conn.fetch("""
         SELECT DISTINCT co.concept_id, co.name, co.name_zh, co.discipline, co.vector
         FROM aii.concept_onto co
         JOIN aii.ku_concept_onto kc USING(concept_id)
         JOIN aii.ku_onto k USING(ku_id)
         WHERE k.substrate_id = ANY($1) AND co.vector IS NOT NULL
-    """, BOOKS)
+    """, books)
     return rows
 
 
@@ -66,8 +77,10 @@ async def _example(conn, cid, cache):
     return cache[cid]
 
 
-async def _pairs(conn, sim, limit):
-    rows = await conn.fetch("""
+async def _pairs(conn, books, sim, limit, cross_book):
+    # cross_book: 去掉 discipline 相等约束(同域书集跨书归一); 否则只配同 discipline。
+    disc = "" if cross_book else "AND a.discipline = b.discipline"
+    rows = await conn.fetch(f"""
         WITH c AS (
           SELECT DISTINCT co.concept_id, co.name, co.name_zh, co.discipline, co.vector
           FROM aii.concept_onto co
@@ -77,10 +90,10 @@ async def _pairs(conn, sim, limit):
         SELECT a.concept_id ai, a.name an, a.name_zh anz, a.discipline ad,
                b.concept_id bi, b.name bn, b.name_zh bnz, b.discipline bd,
                round((1-(a.vector<=>b.vector))::numeric,3) sim
-        FROM c a JOIN c b ON a.concept_id < b.concept_id AND a.discipline = b.discipline
+        FROM c a JOIN c b ON a.concept_id < b.concept_id {disc}
         WHERE (1-(a.vector<=>b.vector)) >= $2
         ORDER BY sim DESC LIMIT $3
-    """, BOOKS, sim, limit)
+    """, books, sim, limit)
     return [dict(r) for r in rows]
 
 
@@ -132,11 +145,15 @@ async def main():
     def arg(f, d): return sys.argv[sys.argv.index(f) + 1] if f in sys.argv else d
     sim = float(arg("--sim", "0.80"))
     mx = int(arg("--max", "150"))
+    books = [b for b in arg("--books", ",".join(DEFAULT_BOOKS)).split(",") if b]
+    tag = arg("--tag", "econ")
+    cross_book = "--cross-book" in sys.argv
 
     conn = await asyncpg.connect(A_DSN); await register_vector(conn)
-    cands = await _pairs(conn, sim, mx)
-    print(f"== B仓步骤4 M0 concept canonical dry_run ==", flush=True)
-    print(f"书={BOOKS}  同discipline sim≥{sim}  候选对={len(cands)}  (只算+打印, 不落库)\n", flush=True)
+    cands = await _pairs(conn, books, sim, mx, cross_book)
+    print(f"== B仓步骤4 M0 concept canonical dry_run (tag={tag}) ==", flush=True)
+    print(f"书={books}  {'跨书(无discipline约束)' if cross_book else '同discipline'}  "
+          f"sim≥{sim}  候选对={len(cands)}  (只算+打印, 不落库)\n", flush=True)
 
     pool = _build_nim_pool()
     sem = asyncio.Semaphore(len(pool))
@@ -167,9 +184,9 @@ async def main():
     dump = [{"ai": j["ai"], "bi": j["bi"], "an": j["an"], "bn": j["bn"],
              "ad": j["ad"], "sim": float(j["sim"]), "verdict": j["verdict"],
              "why": j.get("why", ""), "gate": j.get("gate", False)} for j in judged]
-    (ROOT / "econ_pipeline" / "ckpts" / "refined_concept_verdicts_econ.json").write_text(
-        json.dumps(dump, ensure_ascii=False, indent=1))
-    print(f"\nDONE (dry-run, 无写库). 裁决已存 refined_concept_verdicts_econ.json(带concept_id)。"
+    out = ROOT / "econ_pipeline" / "ckpts" / f"refined_concept_verdicts_{tag}.json"
+    out.write_text(json.dumps(dump, ensure_ascii=False, indent=1))
+    print(f"\nDONE (dry-run, 无写库). 裁决已存 {out.name}(带concept_id)。"
           f"人工核: SAME无错合? CANDIDATE该停? 假朋友全DIFFERENT?", flush=True)
     await conn.close()
 
