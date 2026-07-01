@@ -25,7 +25,7 @@ export function LoginForm() {
     setError("");
     try {
       await login(data.email_or_username, data.password);
-      router.push("/search");
+      router.push("/documents");
     } catch (e) {
       setError(e instanceof Error ? e.message : "登录失败");
     }
