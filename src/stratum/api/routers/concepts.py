@@ -59,8 +59,8 @@ async def concept_detail(concept_id: str, user_id: str = Depends(jwt_auth)):
         raise HTTPException(404, "Concept not found")
 
     related_subs = query(
-        "SELECT id, title FROM substrates "
-        "WHERE $cid = ANY(concept_refs) AND user_id = $uid LIMIT 20",
+        "SELECT id, title FROM notes_sl "
+        "WHERE $cid = ANY(concept_refs) AND user_id = $uid AND deleted_at IS NULL LIMIT 20",
         {"cid": concept_id, "uid": user_id},
     )
     platform = read("platform_concepts", concept_id)
@@ -93,8 +93,8 @@ async def concept_graph(concept_id: str, depth: int = 2, user_id: str = Depends(
             edges.append({"from": concept_id, "to": rel_id, "type": "related_concept"})
 
     subs = query(
-        "SELECT id, title FROM substrates "
-        "WHERE $cid = ANY(concept_refs) AND user_id = $uid LIMIT 20",
+        "SELECT id, title FROM notes_sl "
+        "WHERE $cid = ANY(concept_refs) AND user_id = $uid AND deleted_at IS NULL LIMIT 20",
         {"cid": concept_id, "uid": user_id},
     )
     for s in subs:
