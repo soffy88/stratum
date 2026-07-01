@@ -82,7 +82,7 @@ async def ku_list(
             )
             rows = await conn.fetch(
                 f"""
-                SELECT k.ku_id, left(k.natural_text, 300) AS natural_text,
+                SELECT k.ku_id, k.title AS title, left(k.natural_text, 300) AS natural_text,
                        left(k.natural_text_zh, 400) AS natural_text_zh,
                        k.knowledge_type, k.grade, k.substrate_id,
                        s.title AS substrate_title, s.subject AS subject,
@@ -99,6 +99,7 @@ async def ku_list(
         items = [
             {
                 "id": _str(r["ku_id"]),
+                "title": r["title"],
                 "natural_text": r["natural_text"],
                 "natural_text_zh": r["natural_text_zh"],
                 "knowledge_type": r["knowledge_type"],
@@ -129,7 +130,7 @@ async def ku_detail(ku_id: str):
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT k.ku_id, k.natural_text, k.natural_text_zh, k.knowledge_type, k.grade,
+                SELECT k.ku_id, k.title AS title, k.natural_text, k.natural_text_zh, k.knowledge_type, k.grade,
                        k.substrate_id, s.title AS substrate_title,
                        k.merge_count, k.sources, k.created_at
                 FROM aii.ku_onto k
@@ -179,6 +180,7 @@ async def ku_detail(ku_id: str):
 
         return success_response({
             "id": _str(row["ku_id"]),
+            "title": row["title"],
             "natural_text": row["natural_text"],
             "natural_text_zh": row["natural_text_zh"],
             "knowledge_type": row["knowledge_type"],
@@ -370,7 +372,7 @@ async def kc_detail(kc_id: str):
                     "       k.substrate_id, s.title AS source_book "
                     "FROM aii.ku_onto k LEFT JOIN aii.ingested_substrate s ON k.substrate_id = s.substrate_id "
                     "WHERE k.ku_id = ANY($1::text[])",
-                    [str(s) for s in source_ids[:50]],
+                    [str(s) for s in source_ids[:200]],
                 )
 
         # 区分两种 KC: 按章(书内固定) vs 谱社区(跨书增长)
@@ -462,7 +464,11 @@ async def bu_list(
         offset = (page - 1) * page_size
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:
-            total = await conn.fetchval("SELECT count(*) FROM aii.bu_onto")
+            # 只列已登记书(ingested_substrate)的 BU。飞轮隔离/空跑会把 BU 写进库但不登记
+            # substrate, 用 INNER JOIN 过滤掉这些残留, 与 /api/books 约定一致。
+            total = await conn.fetchval(
+                "SELECT count(*) FROM aii.bu_onto b "
+                "JOIN aii.ingested_substrate s ON s.substrate_id = b.substrate_id")
             rows = await conn.fetch(
                 """
                 SELECT b.bu_id, b.substrate_id, b.doc_type, b.grade,
@@ -470,7 +476,7 @@ async def bu_list(
                        s.title AS book_title, s.subject AS subject,
                        jsonb_array_length(COALESCE(b.main_claims, '[]'::jsonb)) AS claim_count
                 FROM aii.bu_onto b
-                LEFT JOIN aii.ingested_substrate s ON s.substrate_id = b.substrate_id
+                JOIN aii.ingested_substrate s ON s.substrate_id = b.substrate_id
                 ORDER BY b.created_at DESC
                 LIMIT $1 OFFSET $2
                 """,

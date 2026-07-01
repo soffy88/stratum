@@ -136,27 +136,31 @@ def _cn2int(s):
         a,_,b = s.partition('十'); return _CN[a]*10+(_CN.get(b,0) if b else 0)
     return _CN.get(s, 0)
 chapters = set()
-for m in re.finditer(r'(?m)^第([一二三四五六七八九十]+)章', text):
+for m in re.finditer(r'(?m)^#{0,4}\s*第([一二三四五六七八九十]+)章', text):   # 允许 markdown 前导 #
     line = text[m.start(): m.start()+80]
     if '…' in line or re.search(r'\s\d+\s*$', line): continue
     n = _cn2int(m.group(1))
     if n: chapters.add(n)
+for m in re.finditer(r'(?m)^#\s+Chapter\s+(\d+):?\s*$', text):   # ★英文章节(冒号可选)
+    chapters.add(int(m.group(1)))
 n_ch = len(chapters)
 signals = len(re.findall(r'[=Σ∑∫∂√±≤≥≠αβγδεθλμπρσφω∞·×÷]|\bpercentage\b', text))
 latexes = len(re.findall(r'\$[^$\n]+\$|\\\[|\\\(', text))
+garble = len(re.findall(r'(?:\b[A-Za-z] ){5,}', text))   # ★OCR间隔字母乱码 'C H A P T E R'(born-digital无)
 issues = []
 if n_ch < 3:
     issues.append(f'R1:章节数({n_ch})<3')
-if signals > 30 and latexes == 0:
-    issues.append(f'R6_HARD:数学信号{signals}但无LaTeX(OCR破坏公式)')
-elif signals > 30 and latexes > 0 and latexes/signals < 0.10:
-    issues.append(f'R6_ALARM:公式严重残缺(信号{signals}/LaTeX{latexes}={latexes/signals:.0%})')
+# ★R6 放宽(born-digital aware): 只在 OCR 乱码(公式被毁)时硬拒; born-digital 干净 unicode 公式
+#   (无/少 LaTeX 但 garble 低)→ 放行(A仓给人读够用; 保真低于LaTeX但非乱码).
+if signals > 30 and latexes == 0 and garble > 20:
+    issues.append(f'R6_HARD:数学信号{signals}无LaTeX且OCR乱码(garble={garble}) → 公式被毁')
 if issues:
     print('FAIL:' + '; '.join(issues))
 else:
     ch_list = ','.join(str(c) for c in sorted(chapters))
     print(f'PASS:{n_ch}章({ch_list})')
 PYEOF
+)
 
     if [[ "$PRECHECK" == FAIL* ]]; then
         echo "  ❌ 预检失败: $PRECHECK → 不进管道"
@@ -172,7 +176,7 @@ PYEOF
     fi
 
     # ── 检测章节列表 ──
-    CH_LIST=$($PY - <<PYEOF 2>/dev/null || echo ""
+    CH_LIST=$(_MATH_MD="$MD_PATH" $PY - <<'PYEOF' 2>/dev/null || echo ""
 import re, os
 _CN = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10}
 def _cn2int(s):
@@ -181,13 +185,15 @@ def _cn2int(s):
     if '十' in s:
         a,_,b = s.partition('十'); return _CN[a]*10+(_CN.get(b,0) if b else 0)
     return _CN.get(s, 0)
-text = open('$MD_PATH', encoding='utf-8', errors='replace').read()
+text = open(os.environ['_MATH_MD'], encoding='utf-8', errors='replace').read()
 chapters = {}
-for m in re.finditer(r'(?m)^第([一二三四五六七八九十]+)章', text):
+for m in re.finditer(r'(?m)^#{0,4}\s*第([一二三四五六七八九十]+)章', text):   # 允许 markdown 前导 #
     line = text[m.start(): m.start()+80]
     if '…' in line or re.search(r'\s\d+\s*$', line): continue
     n = _cn2int(m.group(1))
     if n: chapters[n] = m.start()
+for m in re.finditer(r'(?m)^#\s+Chapter\s+(\d+):?\s*$', text):   # 英文章节
+    chapters[int(m.group(1))] = m.start()
 print(' '.join(str(c) for c in sorted(chapters.keys())))
 PYEOF
 )
@@ -254,6 +260,8 @@ PYEOF
         echo "  ✅ 质量门通过 → 自动入库..."
         $PY scripts/math_register.py "$SUBSTRATE" "$MATH_TITLE" \
             --staging "$STAGING_DIR" --subject 数学
+        # ★书内去重(防同概念跨章重抽: 同title+余弦>0.80 留最长; 同名不同内容不动)
+        $PY scripts/dedup_within_book.py "$SUBSTRATE" 2>/dev/null || echo "  ⚠ 书内去重跳过(非致命)"
         N_PASS=$((N_PASS + 1))
         echo "  ✅ 已入正式库: $SUBSTRATE"
     else

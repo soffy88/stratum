@@ -20,13 +20,22 @@ def _register_providers() -> None:
         from obase.provider_registry import ProviderRegistry
         from oprim.llm.llm_call import llm_call
 
-        if not ProviderRegistry.has("llm", "qwen3"):
+        import os, httpx as _httpx
 
-            def _qwen3(messages, **_):
-                prompt = next((m["content"] for m in messages if m["role"] == "user"), "")
-                return llm_call(prompt=prompt, provider="qwen3_dashscope", model="qwen3-max").text
+        _ollama_base = os.environ.get("OLLAMA_BASE_URL", "http://172.17.0.1:11435")
+        _ollama_model = os.environ.get("STRATUM_LLM_MODEL", "qwen3.5:9b")
 
-            ProviderRegistry.register("llm", "qwen3", _qwen3)
+        def _qwen3(messages, **_):
+            resp = _httpx.post(
+                f"{_ollama_base}/api/chat",
+                json={"model": _ollama_model, "messages": messages, "stream": False},
+                timeout=300.0,
+            )
+            resp.raise_for_status()
+            return resp.json()["message"]["content"]
+
+        # replace=True: override oprim's DashScope auto-registration via entry points
+        ProviderRegistry.register("llm", "qwen3", _qwen3, replace=True)
     except Exception:
         pass  # graceful — workflows fall back to failed status without LLM
 
@@ -241,6 +250,10 @@ app.include_router(scan_ocr.router)
 from stratum.api.routers import bundle_split
 
 app.include_router(bundle_split.router)
+
+from stratum.api.routers import quality
+
+app.include_router(quality.router)
 
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 from stratum.api.ws import router as ws_router

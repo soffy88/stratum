@@ -23,13 +23,10 @@ async def stratum_search(
 
     raw_results = await hybrid_search(query=query, corpus_id=corpus_id, top_k=top_k * 3, **kwargs)
 
-    db_path = os.path.expanduser("~/.stratum/meta.duckdb")
-    conn = duckdb.connect(db_path)
-    try:
+    from stratum.db import get_conn
+    with get_conn() as conn:
         dao = SubstrateDAO(conn)
         filtered_results = [
             res for res in raw_results if dao.get_substrate(substrate_id=res.id, user_id=user_id)
         ]
         return filtered_results[:top_k]
-    finally:
-        conn.close()

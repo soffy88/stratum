@@ -10,7 +10,7 @@
 
 Bundle 判据（§20 约束内实现）:
   - epub_toc_split 返回的真书（去掉扉页/目录等辅助节点）≥ 2 本
-  - 辅助节点: content < 1000 chars 且 title 含 扉页/目录/版权/前言/封面
+  - 辅助节点: content < 2000 chars 且 title 含 扉页/目录/版权/前言/封面
   - 触发拆分: real_count >= 2
 
 §20: 不改 oprim/oskill/omodul/obase/oservi 主库

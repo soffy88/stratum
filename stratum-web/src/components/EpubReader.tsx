@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * EpubReader — react-reader + epubjs,cfi 定位高亮。
- * 选中 → 高亮 + 笔记 → 存回 Stratum。重开回显(遍历已有高亮 annotations.highlight)。
+ * EpubReader — react-reader + epubjs，cfi 定位高亮。
+ * 选中 → 底部弹窗(颜色+笔记+确认) → 存回 Stratum。重开回显。
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -14,12 +14,14 @@ import {
 
 const COLORS = ['yellow', 'green', 'blue', 'red'];
 
-export function EpubReader({ buffer, documentId, title }: {
-  buffer: ArrayBuffer; documentId: string; title: string;
+export function EpubReader({ buffer, documentId, title, fullHeight }: {
+  buffer: ArrayBuffer; documentId: string; title: string; fullHeight?: boolean;
 }) {
   const [location, setLocation] = useState<string | number>(0);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
-  const [color, setColor] = useState('yellow');
+  const [pending, setPending] = useState<{ cfi: string; text: string } | null>(null);
+  const [pendingColor, setPendingColor] = useState('yellow');
+  const [pendingNote, setPendingNote] = useState('');
   const renditionRef = useRef<Rendition | null>(null);
 
   const reload = useCallback(() => {
@@ -42,33 +44,35 @@ export function EpubReader({ buffer, documentId, title }: {
 
   const onRendition = (rendition: Rendition) => {
     renditionRef.current = rendition;
-    rendition.on('selected', async (cfiRange: string) => {
+    rendition.on('selected', (cfiRange: string) => {
       let text = '';
       try { text = rendition.getRange(cfiRange).toString(); } catch { /* ignore */ }
-      try {
-        await createHighlight({
-          substrate_id: documentId, color, text,
-          location_json: { cfi: cfiRange },
-        });
-        // 当前会话立即高亮
-        rendition.annotations.highlight(cfiRange, {}, () => {}, '', { fill: color });
-        reload();
-      } catch { /* 保存失败 */ }
+      setPending({ cfi: cfiRange, text });
+      setPendingNote('');
+      setPendingColor('yellow');
     });
   };
 
+  const confirmHighlight = async () => {
+    if (!pending) return;
+    const r = renditionRef.current;
+    try {
+      await createHighlight({
+        substrate_id: documentId,
+        color: pendingColor,
+        text: pending.text,
+        note: pendingNote || undefined,
+        location_json: { cfi: pending.cfi },
+      });
+      if (r) r.annotations.highlight(pending.cfi, {}, () => {}, '', { fill: pendingColor });
+      reload();
+    } catch { /* 保存失败 */ }
+    setPending(null);
+  };
+
   return (
-    <div className="flex flex-col gap-2">
-      {/* 颜色选择(选中前先选色)*/}
-      <div className="flex items-center gap-2 text-sm">
-        <span className="text-muted-foreground">高亮颜色:</span>
-        {COLORS.map(c => (
-          <button key={c} onClick={() => setColor(c)} aria-label={c}
-            className="w-5 h-5 rounded-full border-2"
-            style={{ background: c, borderColor: color === c ? 'var(--foreground)' : 'transparent' }} />
-        ))}
-      </div>
-      <div style={{ height: '75vh' }} className="border border-border rounded-lg overflow-hidden relative">
+    <div className={fullHeight ? 'h-full' : 'flex flex-col gap-2'}>
+      <div style={{ height: fullHeight ? '100%' : '75vh' }} className="border border-border rounded-lg overflow-hidden relative">
         <ReactReader
           url={buffer}
           location={location}
@@ -76,6 +80,37 @@ export function EpubReader({ buffer, documentId, title }: {
           getRendition={onRendition}
           title={title}
         />
+        {pending && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background border rounded-xl shadow-xl p-3 flex flex-col gap-2 w-72 z-50">
+            {pending.text && (
+              <p className="text-xs text-muted-foreground line-clamp-2 border-l-2 border-yellow-400 pl-2">
+                {pending.text}
+              </p>
+            )}
+            <div className="flex gap-1 items-center">
+              <span className="text-xs text-muted-foreground mr-1">颜色:</span>
+              {COLORS.map(c => (
+                <button key={c} onClick={() => setPendingColor(c)} aria-label={c}
+                  className="w-5 h-5 rounded-full border-2 transition-transform hover:scale-110"
+                  style={{ background: c, borderColor: pendingColor === c ? 'var(--foreground)' : 'transparent' }} />
+              ))}
+            </div>
+            <textarea
+              autoFocus
+              value={pendingNote}
+              onChange={e => setPendingNote(e.target.value)}
+              placeholder="添加笔记（可选）…"
+              className="text-xs border rounded p-1.5 resize-none w-full"
+              rows={2}
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setPending(null)} className="text-xs text-muted-foreground px-2 py-1">取消</button>
+              <button onClick={confirmHighlight} className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded">
+                保存高亮
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

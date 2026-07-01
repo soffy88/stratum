@@ -1,0 +1,37 @@
+== B仓步骤3 灌入 dry_run ==  (dry-run, 不落库)
+书=['mankiw_principles_econ_10e', 'microecon_en_full_v2', 'micro_clean']  A仓KU=1222
+
+SAME边=49(并入45, 跳held_apart4)  held_apart记录=5
+→ refined_ku 预计 1182 条 (合并簇29 + 单条1153)  压缩 1222→1182 (省40)
+NIM key 池: 4 key 轮转并发
+
+── 多成员簇整合样本(前2) ──────────────
+
+  ▸ 簇(5条) 来源: ['microe::ch8_ku9', 'mankiw::ch6_ku44', 'mankiw::ch7_ku0', 'mankiw::ch7_ku5', 'micro_::ku_c6_83']
+    类型: conceptual  向量dim=1024  fingerprint=f61f6c4f1753
+    整合title: Consumer Surplus
+    整合正文: Consumer surplus refers to the difference between what a buyer is willing to pay for a unit of a good and the amount actually paid. It arises because in a one-price market, all units trade at the same equilibrium price, yet buyers’ willingn
+    sources : [{"book_id": "microecon_en_full_v2", "raw_ku_id": "microecon_en_full_v2::ch8_ku9", "chapter": "ch8", "contributed": "full"}, {"book_id": "mankiw_principles_econ_10e", "raw_ku_id": "mankiw_principles_e
+
+  ▸ 簇(3条) 来源: ['microe::ch2_ku0', 'mankiw::ch1_ku34', 'micro_::ku_c3_27']
+    类型: conceptual  向量dim=1024  fingerprint=1320942fb96a
+    整合title: Scarcity
+    整合正文: Scarcity is the fundamental condition that we cannot satisfy every want we have because resources are limited while desires are unlimited. It forces individuals to prioritize their desires so that the scarce resources are used in a way that
+    sources : [{"book_id": "microecon_en_full_v2", "raw_ku_id": "microecon_en_full_v2::ch2_ku0", "chapter": "ch2", "contributed": "full"}, {"book_id": "mankiw_principles_econ_10e", "raw_ku_id": "mankiw_principles_e
+
+── 翻译案例(natural_text混中文→NIM英译, 共24条) ──
+
+  ▸ microecon_en_full_v2::ch8_ku10
+    原: 生产者剩余是供应商从参与市场交易中获得的净收益，其正式定义为供应商生产每一单位产出的边际成本与该单位所收到的价格之间的差额。在单一价格市场中，所有单位都以均衡价格出售，除了售出的最后一个单位，其边际成本恰好等于价格外，每一个单位都存在这个差
+    译: Producer surplus is the net gain that suppliers receive from participating in a market transaction, formally defined as 
+
+  ▸ mankiw_principles_econ_10e::ch2_ku29
+    原: "Differences in values among economists" 是一个重要的概念，指的是经济学家之间对价值观和政治哲学的不同意见。这种差异会导致经济学家对某些经济问题的看法和建议不同。根据文本，经济学家之间的价值观差异会导
+    译: The concept of "Differences in values among economists" refers to the varying opinions on values and political philosoph
+
+  ▸ mankiw_principles_econ_10e::ch2_ku35
+    原: 根据本章内容，以下是对"Why economists oppose tariffs and import quotas"的合成解释：
+Economists反对关税和进口配额的原因是，这些贸易限制会导致经济效率的损失和资源的浪费。根据生产可能
+    译: Based on the content of this chapter, the following is a synthesized explanation of "Why economists oppose tariffs and i
+
+DONE (dry-run, 无写库). 人工核: 整合是否忠实越读越厚? 翻译是否失真? sources是否全溯源?

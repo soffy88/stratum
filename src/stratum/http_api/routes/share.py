@@ -17,12 +17,9 @@ router = APIRouter()
 
 
 def get_db():
-    db_path = os.path.expanduser("~/.stratum/meta.duckdb")
-    conn = duckdb.connect(db_path)
-    try:
+    from stratum.db import get_conn
+    with get_conn() as conn:
         yield conn
-    finally:
-        conn.close()
 
 
 # --- Schemas ---

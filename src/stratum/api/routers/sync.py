@@ -59,7 +59,7 @@ async def pull_changefeed(
         "SELECT seq, event_id, event_type, payload, timestamp "
         "FROM changefeed "
         "WHERE user_id = %(uid)s AND seq > %(since)s "
-        "AND list_contains(%(types)s, event_type) "
+        "AND event_type = ANY(%(types)s) "
         "ORDER BY seq ASC",
         {"uid": user_id, "since": since, "types": allowed_types},
         limit=limit,

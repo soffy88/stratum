@@ -1,15 +1,23 @@
 /**
- * Adapter: stratum /api/substrates/* → ODocumentTree + ODocumentReader
+ * Adapter: stratum API → ODocumentTree + ODocumentReader
  *
- * Backend SubstrateItem and DerivativeItem have fewer fields than
- * the helios Substrate and Derivative types. Missing fields are filled
- * with safe defaults per helios type definitions.
+ * useDocumentTree  → /api/substrates        (stratum-api, legacy)
+ * useDocument      → /api/v1/documents/:id  (stratum-sl, new service layer)
+ *
+ * The split exists because stratum-sl holds the DuckDB write lock; stratum-api
+ * cannot open the same file concurrently and returns 500 on per-document queries.
  */
 
 import { useQuery } from "@tanstack/react-query";
 import type { Substrate, Derivative, Medium, SourceType } from "@helios/blocks";
 import { apiClient } from "@/lib/api-client";
 import type { SubstrateItem, SubstratesResponse, DerivativeItem } from "@/lib/types";
+
+/** Derivative shape returned by /api/v1/documents/:id/derivatives (stratum-sl). */
+interface SlDerivativeItem {
+  kind: string;
+  content: string | null;
+}
 
 // ---------------------------------------------------------------------------
 // Shape adapters
@@ -84,22 +92,24 @@ export function useDocumentTree() {
   };
 }
 
-/** Hook: single substrate for ODocumentReader */
+/** Hook: single substrate + derivatives for ODocumentReader (via stratum-sl) */
 export function useDocument(id: string) {
   const subQuery = useQuery({
     queryKey: ["substrate", id],
-    queryFn: () => apiClient.get<SubstrateItem>(`/api/substrates/${id}`),
+    queryFn: () => apiClient.get<SubstrateItem>(`/api/v1/documents/${id}`),
     enabled: !!id,
   });
   const derQuery = useQuery({
     queryKey: ["derivatives", id],
     queryFn: () =>
-      apiClient.get<{ items: DerivativeItem[] }>(`/api/substrates/${id}/derivatives`),
+      apiClient.get<SlDerivativeItem[]>(`/api/v1/documents/${id}/derivatives`),
     enabled: !!id,
   });
   return {
     substrate: subQuery.data ? adaptSubstrate(subQuery.data) : null,
-    derivatives: (derQuery.data?.items ?? []).map((d) => adaptDerivative(d, id)),
+    derivatives: (derQuery.data ?? []).map((d, i) =>
+      adaptDerivative({ id: `${id}-${d.kind}-${i}`, kind: d.kind, seq: i, content: d.content ?? "" }, id)
+    ),
     isLoading: subQuery.isLoading || derQuery.isLoading,
   };
 }

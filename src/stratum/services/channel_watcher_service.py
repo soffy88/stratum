@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import json
+import os
 from stratum.db import get_conn
 from stratum.services.channel_subscription_store import SubscriptionStore
 
@@ -56,6 +57,8 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
                 return {"status": "failed", "error": str(exc)}
 
         status = result.get("status")
+        if status != "completed":
+            log.warning("channel_ingest: result url=%s status=%s error=%s", video_url, status, result.get("error"))
         title = (result.get("title") or "").strip()
         if title:
             current_video_title[0] = title
@@ -96,7 +99,12 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
                 except Exception as exc:
                     log.warning("channel_ingest: medium/title patch failed sid=%s: %s", sid, exc)
 
-                # 新入库的 markdown 导出
+                # Quality gate then export
+                try:
+                    from stratum.lib.quality.ingest_quality_gate import run_quality_gate
+                    run_quality_gate(sid)
+                except Exception as exc:
+                    log.warning("channel_ingest: quality gate failed sid=%s: %s", sid, exc)
                 try:
                     from stratum.services.md_export_service import export_one
                     export_one(sid)
@@ -146,7 +154,7 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
         subscription=store,
         config={
             "channel_url": channel_url,
-            "proxy": "socks5://100.73.220.5:21080",
+            "proxy": os.environ.get("STRATUM_OUTBOUND_PROXY", "http://172.23.224.1:20809"),
             "filter_rules": rules_obj,
             "user_id_hash": user_id_hash,
             "asr_backend": "local",

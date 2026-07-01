@@ -164,10 +164,7 @@ async def run():
     if shallow > 0:
         metrics["讲浅样本(前3)"] = [f"{s['ku_id'].split('::')[1]}:{s['detail']}" for s in shallow_list[:3]]
 
-    # 有向边
-    directed = await conn.fetchval(
-        "SELECT count(*) FROM aii.directed_edge_v2 WHERE substrate_id=$1", SUB) or 0
-    metrics["有向边"] = directed
+    # ★A仓瘦身: 有向边(directed_edge_v2)=B仓产物, A仓不查.
 
     # 章节KC
     kc_count = await conn.fetchval(
@@ -179,6 +176,16 @@ async def run():
     has_bu = bool(await conn.fetchval(
         "SELECT count(*) FROM aii.bu_onto WHERE substrate_id=$1", SUB))
     metrics["BU已生成"] = "是" if has_bu else "否"
+
+    # ── ★六分类分布(A仓的事: 六分类是为便于识别/抽取知识=抽取质量; B仓只管关系不管类别) ──
+    type_rows = await conn.fetch(
+        "SELECT knowledge_type, count(*) n FROM aii.ku_onto WHERE substrate_id=$1 GROUP BY 1 ORDER BY 2 DESC", SUB)
+    type_dist = {r["knowledge_type"]: r["n"] for r in type_rows}
+    metrics["六分类分布"] = type_dist
+    rationale_n = type_dist.get("rationale", 0)
+    top_share = (max(type_dist.values()) / max(ku_total, 1)) if type_dist else 1.0
+    metrics["rationale(why)数"] = rationale_n
+    metrics["最大类占比%"] = round(100 * top_share)
 
     # ── 章级 KU 分布 ──
     ch_rows = await conn.fetch(
@@ -237,13 +244,12 @@ async def run():
     if metrics["双语率%"] < TH["bilingual_min"]:
         alarms.append(f"双语率{metrics['双语率%']}%<{TH['bilingual_min']}%")
 
-    edge_floor = max(15, round(ku_total * TH["directed_per_ku"]))
-    if directed < edge_floor:
-        alarms.append(f"有向边{directed}<{edge_floor}(={ku_total}KU×0.3)")
+    # ★A仓瘦身: 去掉有向边密度报警(directed_edge_v2=B仓产物, A仓不产有向边)
 
-    if shallow > TH["shallow_max"]:
+    # ★讲浅KU: 只检测/标记, 不作隔离依据(用户决定: 讲浅只判断和标记, 不做限制)
+    if shallow > 0:
         sample = metrics.get("讲浅样本(前3)", [])[:2]
-        alarms.append(f"讲浅KU={shallow}>0(面缺,非字数): {'; '.join(sample)}")
+        warnings.append(f"讲浅KU={shallow}(面缺,仅标记不拦截): {'; '.join(sample)}")
 
     # ★KU密度报警(经济书命门: 漏抽=92KU vs 应有150+)
     if density_ratio < TH["ku_density"]:
@@ -261,6 +267,12 @@ async def run():
 
     if not has_bu:
         alarms.append("BU未生成(书级理解缺失)")
+    # ★六分类是A仓的事(便于识别/抽取知识): rationale≠0(抽到为什么/论断,非只概念) + 单类不独吞
+    if ku_total > 0 and rationale_n == 0:
+        alarms.append("rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)")
+    if top_share > 0.95 and ku_total > 20:
+        alarms.append(f"单类独吞{round(100*top_share)}%>95%(只抽了一类, 没抽全六类)")
+    # ★只有 explains边/有向边密度 = B仓产物(关系, 跨KU/跨书), A仓不查
 
     # ── 输出 ──
     result = {
@@ -281,14 +293,19 @@ async def run():
     print(sep)
     for k, v in metrics.items():
         print(f"  {k}: {v}")
-    print(f"\n阈值: complete≥{TH['complete_pct']}% | 残留=0 | 空壳=0 | 双语≥{TH['bilingual_min']}%"
-          f" | 有向≥{TH['directed_per_ku']}×KU | KU密度≥{TH['ku_density']:.0%}预期 | 讲浅(面缺)=0 | 章KU≥{TH['chapter_floor']}")
+    print(f"\n阈值[A仓]: complete≥{TH['complete_pct']}% | 残留=0 | 空壳=0 | 双语≥{TH['bilingual_min']}%"
+          f" | KU密度≥{TH['ku_density']:.0%}预期 | 讲浅(面缺)仅标记不拦截 | 章KU≥{TH['chapter_floor']}"
+          f" | ★rationale≠0+单类<95%(六分类是A仓)  (有向边/explains=B仓, A仓不查)")
     if alarms:
         print(f"\n🚨 报警({len(alarms)}):")
         for a in alarms:
             print(f"  • {a}")
     else:
         print("\n✅ 全部达标 → 可自动入库")
+    if warnings:
+        print(f"\n⚠️ 标记({len(warnings)}, 不拦截):")
+        for w in warnings:
+            print(f"  • {w}")
     if warnings:
         print(f"\n⚠️ 提示: {warnings}")
     print(f"\n{result['note']}")
