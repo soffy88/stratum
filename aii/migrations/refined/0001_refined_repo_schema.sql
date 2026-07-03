@@ -3,7 +3,8 @@
 -- 库: aii_refined（独立容器 aii-refined-postgres:5436）; schema: rf
 --
 -- 两条贯穿 schema 的纪律:
---   ① KU 真身 = 结构化多源贡献 contributions; natural_text 是派生渲染（翻译定稿后填）。
+--   ① KU 真身 = 结构化多源贡献 contributions（各留原语言）; 内容不做 zh↔en 翻译。
+--     natural_text_zh 中文优先视图为显示主视图; natural_text 英文视图（en 源原文保留可展开）。
 --   ② 所有"成员集合"用 junction 关联表, 不用 jsonb id 列表（可加外键、可重放、不漂移）。
 --
 -- 不变量: B = f(A仓, 决策台账)。每张四层表带 decision_id 回指 rf.decision_ledger,
@@ -57,15 +58,16 @@ CREATE TABLE rf.refined_invariant (
 -- ----------------------------------------------------------------------------
 CREATE TABLE rf.refined_ku (
   ku_id           text PRIMARY KEY,                        -- 新 ULID（B仓独立 ID 空间, 稳定不复用）
-  point           text,                                    -- 知识点 canonical 名
+  point           text,                                    -- 知识点 canonical 名（英文, 跨书/跨语言对齐; 名称=概念或论断）
+  point_zh        text,                                    -- 中文名（显示用）
   ku_type         text NOT NULL
                   CHECK (ku_type IN ('factual','conceptual','relational','procedural','rationale')),
   is_positional   boolean DEFAULT false,                   -- 立场性（正交样态）
-  contributions   jsonb NOT NULL DEFAULT '[]'::jsonb,      -- ★真身: 单一可陈述事项的多源片段
-                                                           --   [{source_book_id,version,raw_ku_id,facet,fragment_text}]
+  contributions   jsonb NOT NULL DEFAULT '[]'::jsonb,      -- ★真身: 单一可陈述事项的多源片段（各留原语言）
+                                                           --   [{source_book_id,version,raw_ku_id,facet,fragment_text,lang}]
   facet_count     integer DEFAULT 0,                       -- 原子性预算监控（越阈值触发拆分）
-  natural_text    text,                                    -- 派生渲染（英文, 翻译定稿后填; 可懒渲染, 故可空）
-  natural_text_zh text,                                    -- 派生渲染（原语言, 从 contributions 拼装）
+  natural_text_zh text,                                    -- ★中文优先视图（显示主视图; zh源直接拼装, en源 en→zh 译）
+  natural_text    text,                                    -- 英文视图（en源=原文保留可展开; zh源不译, 可空）
   embedding       vector(1024),                            -- 定稿后算（BGE-M3, 干净 KU）
   stance_holder   text,
   opposing_stance text,
