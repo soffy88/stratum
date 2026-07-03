@@ -6,6 +6,7 @@
 """
 
 from __future__ import annotations
+import asyncio
 import json
 import re
 
@@ -55,6 +56,21 @@ def _parse(raw: str) -> dict:
     return {"verdict": "uncertain", "reason": f"解析失败(保守判 different): {raw[:120]}"}
 
 
+async def _ask(llm, prompt: str, retries: int = 3) -> str:
+    """调 LLM 取文本, 瞬时错误(超时/断连)重试; 最终失败抛出(由 caller 降级)。"""
+    last = None
+    for i in range(retries):
+        try:
+            r = await llm(
+                messages=[{"role": "user", "content": prompt}], system=SYSTEM, max_tokens=400
+            )
+            return r["content"][0]["text"] if isinstance(r, dict) else str(r)
+        except Exception as e:  # noqa: BLE001
+            last = e
+            await asyncio.sleep(1.5 * (i + 1))
+    raise last
+
+
 async def judge_pair(
     a: dict,
     b: dict,
@@ -98,18 +114,14 @@ async def judge_pair(
     prompt = (
         f"{hint}\n\n" if hint else ""
     ) + f"条目 A:\n{_fmt(a)}\n\n条目 B:\n{_fmt(b)}\n\n判定 A、B 是否同一个点。"
-    r = await llm(messages=[{"role": "user", "content": prompt}], system=SYSTEM, max_tokens=400)
-    raw = r["content"][0]["text"] if isinstance(r, dict) else str(r)
+    raw = await _ask(llm, prompt)
     vd = _parse(raw)
     used_model, llm_raw, escalated = model, {"prompt_tail": prompt[-400:], "response": raw}, False
 
     # 费用控制(强模型只用在最需要处): 仅"提议合并(same)"这个不可逆决策升级到强模型确认。
     #   强模型不确认 → 宁碎片判 different。different/uncertain 安全可逆, 不升级、不花钱。
     if vd["verdict"] == "same" and strong_llm is not None:
-        r2 = await strong_llm(
-            messages=[{"role": "user", "content": prompt}], system=SYSTEM, max_tokens=400
-        )
-        raw2 = r2["content"][0]["text"] if isinstance(r2, dict) else str(r2)
+        raw2 = await _ask(strong_llm, prompt)
         vd2 = _parse(raw2)
         used_model, escalated = f"{model}→{strong_model}", True
         llm_raw["escalated"] = {"model": strong_model, "verdict": vd2["verdict"], "response": raw2}

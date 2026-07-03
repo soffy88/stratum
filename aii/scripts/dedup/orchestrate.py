@@ -142,14 +142,25 @@ async def main():
             return
         async with sem:
             kw = dict(kind="ku", model=WEAK, strong_llm=llm_strong, strong_model=STRONG)
-            if USE_LEDGER:
-                async with rf.acquire() as rc:
-                    v = await judge_pair(a, b, llm_weak, DecisionLedger(rc), **kw)
-            else:
-                v = await judge_pair(a, b, llm_weak, None, **kw)
+            try:
+                if USE_LEDGER:
+                    async with rf.acquire() as rc:
+                        v = await judge_pair(a, b, llm_weak, DecisionLedger(rc), **kw)
+                else:
+                    v = await judge_pair(a, b, llm_weak, None, **kw)
+            except (
+                Exception
+            ) as e:  # 单对失败(重试后仍超时/断连)→ 降级 different(宁碎片), 不拖垮整批
+                fails.append((c, str(e)[:60]))
+                v = {"verdict": "different", "reason": f"判同失败降级(宁碎片): {str(e)[:50]}"}
         results.append((a, b, v))
 
+    fails = []
     await asyncio.gather(*(judge_one(c) for c in cands))
+    if fails:
+        print(
+            f"⚠ {len(fails)} 对判同失败, 已降级 different(宁碎片): {[f[0]['a_id'] for f in fails[:5]]}"
+        )
 
     verdicts = Counter(v["verdict"] for _, _, v in results)
     gates = Counter(v.get("gate", "关3-LLM") for _, _, v in results)
