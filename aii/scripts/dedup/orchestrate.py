@@ -28,10 +28,19 @@ import asyncpg  # noqa: E402
 from obase import ProviderRegistry  # noqa: E402
 from aii.api._provider import register_providers  # noqa: E402
 
+from pgvector.asyncpg import register_vector  # noqa: E402
+from oprim import vector_encode  # noqa: E402
 from candidates import ku_candidates  # noqa: E402
 from judge import judge_pair, to_merge_action  # noqa: E402
 from ledger import DecisionLedger  # noqa: E402
-from integrate import cluster_same, build_contributions, needs_split, persist_refined_ku  # noqa: E402
+from integrate import (
+    cluster_same,
+    build_contributions,
+    needs_split,  # noqa: E402
+    persist_refined_ku,
+    render_zh,
+    embed_text,
+)
 
 KG_URL = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
 REFINED_URL = os.getenv("REFINED_URL", "postgresql://aii:aii_safe_pass@localhost:5436/aii_refined")
@@ -60,7 +69,8 @@ ECON_SUBS = [
     "econ_9ea2a19eac",
     "econ_131d7dbd3b",
 ]
-SUBS = {"econ": ECON_SUBS, "all": None}.get(DISC, ECON_SUBS)
+_SUB1 = _arg("--substrate")  # 单书验证: 覆盖 SUBS
+SUBS = [_SUB1] if _SUB1 else {"econ": ECON_SUBS, "all": None}.get(DISC, ECON_SUBS)
 
 _TYPE_MAP = {
     "conceptual": "conceptual",
@@ -101,7 +111,7 @@ async def main():
     llm_weak = ProviderRegistry.get().llm(WEAK)
     llm_strong = ProviderRegistry.get().llm(STRONG)
     kg = await asyncpg.create_pool(KG_URL, min_size=1, max_size=CONC + 2)
-    rf = await asyncpg.create_pool(REFINED_URL, min_size=1, max_size=CONC + 2)
+    rf = await asyncpg.create_pool(REFINED_URL, min_size=1, max_size=CONC + 2, init=register_vector)
 
     async with kg.acquire() as c:
         cands, dropped = await ku_candidates(c, sim=SIM, cap=CAP, substrates=SUBS)
@@ -145,10 +155,27 @@ async def main():
     print(f"强模型({STRONG})调用: {strong_calls} 次 (仅 same 候选升级确认; 其余全免费)")
     print(f"同点簇: {len(clusters)} 个 (覆盖 {sum(len(c) for c in clusters)} 个 A仓 KU)")
 
-    persisted = splits = 0
-    samples = []
-    for cl in clusters:
-        members = [item_by_id[i] for i in cl if i in item_by_id]
+    # 组装落库单元: 合并簇 + 单例(批内未被合并的 KU 各自独立成 refined_ku)
+    merged_ids = set().union(*clusters) if clusters else set()
+    async with kg.acquire() as c:
+        q = (
+            "SELECT ku_id FROM aii.ku_onto WHERE embedding IS NOT NULL AND is_quarantined IS NOT TRUE"
+            + (" AND substrate_id = ANY($1::text[])" if SUBS else "")
+        )
+        all_ids = [r["ku_id"] for r in await c.fetch(q, *([list(SUBS)] if SUBS else []))]
+    singleton_ids = [i for i in all_ids if i not in merged_ids]
+    for i in singleton_ids:  # 补齐非候选单例的 item
+        if i not in item_by_id:
+            async with kg.acquire() as c:
+                it = await _item(c, i)
+            if it:
+                item_by_id[i] = it
+
+    units = [([item_by_id[i] for i in cl if i in item_by_id], True) for cl in clusters]
+    units += [([item_by_id[i]], False) for i in singleton_ids if i in item_by_id]
+
+    built, splits, samples = [], 0, []
+    for members, is_merge in units:
         if not members:
             continue
         contribs, fc = build_contributions(
@@ -164,38 +191,50 @@ async def main():
         )
         if needs_split(fc):
             splits += 1
-        books = sorted({m["book"] for m in members})
-        if len(samples) < 8:
-            samples.append((members[0]["name"], len(members), books))
-        if APPLY:
-            en = next(
-                (m["name"] for m in members if not any("一" <= ch <= "鿿" for ch in m["name"])),
-                None,
-            )
-            zh = next(
-                (m["name"] for m in members if any("一" <= ch <= "鿿" for ch in m["name"])), None
-            )
+        if is_merge and len(samples) < 8:
+            samples.append((members[0]["name"], len(members), sorted({m["book"] for m in members})))
+        built.append((members, contribs, fc))
+
+    print(
+        f"落库单元: {len(clusters)} 合并 + {len(singleton_ids)} 单例 = {len(built)} 个 refined_ku"
+    )
+    print("\n同点簇样本(name / 成员数 / 跨书):")
+    for name, k, books in samples:
+        print(f"  · {name[:40]}  ×{k}  {books}")
+    if splits:
+        print(f"⚠ {splits} 个单元 facet 超原子性预算(该拆多 KU)")
+
+    if APPLY:
+        loop = asyncio.get_event_loop()
+        # B仓 独立向量: BGE-M3 在合并后干净内容上重算(不搬 A仓向量)
+        texts = [embed_text(c) or (m[0].get("name") or "") for m, c, _ in built]
+        embs = await loop.run_in_executor(
+            None, lambda: vector_encode(texts=texts, provider="default")
+        )
+        persisted = 0
+        for (members, contribs, fc), emb in zip(built, embs):
+            names = [m.get("name") or "" for m in members]
+            en = next((x for x in names if not any("一" <= ch <= "鿿" for ch in x)), None)
+            zh = next((x for x in names if any("一" <= ch <= "鿿" for ch in x)), None)
             kt = _TYPE_MAP.get(members[0].get("ktype"), "conceptual")
             async with rf.acquire() as rc:
                 await persist_refined_ku(
                     rc,
-                    point=en or members[0]["name"],
+                    point=en or names[0],
                     point_zh=zh,
                     ku_type=kt,
                     contributions=contribs,
                     facet_count=fc,
+                    embedding=emb,
+                    natural_text_zh=render_zh(contribs),
                 )
             persisted += 1
-
-    print(f"\n同点簇样本(name / 成员数 / 跨书):")
-    for name, k, books in samples:
-        print(f"  · {name[:40]}  ×{k}  {books}")
-    if splits:
-        print(f"⚠ {splits} 个簇 facet 超原子性预算(该拆多 KU, 见 needs_split)")
-    if APPLY:
-        print(f"\n✓ 落库 refined_ku: {persisted} 个 (碎片=未并入簇的 KU 各自独立, 后续单独灌)")
+        print(f"\n✓ 落库 refined_ku: {persisted} 个 (含 B仓 独立向量 BGE-M3)")
     else:
-        print(f"\nDRY-RUN: 将落库 {len(clusters)} 个合并 KU(--apply 落库)。碎片各自独立。")
+        print(
+            f"\nDRY-RUN: 将落库 {len(built)} 个 refined_ku "
+            f"({len(clusters)}合并+{len(singleton_ids)}单例)。--apply 落库"
+        )
     await kg.close()
     await rf.close()
 

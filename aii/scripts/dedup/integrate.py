@@ -82,19 +82,46 @@ def needs_split(facet_count: int) -> bool:
     return facet_count > FACET_BUDGET
 
 
+def render_zh(contributions: list) -> str:
+    """显示渲染: contributions 原语言片段拼装(en 片段 en→zh 是前端后置事, 此处暂留原文)。"""
+    parts = []
+    for c in contributions:
+        f, t = c.get("facet"), (c.get("fragment_text") or "").strip()
+        if t:
+            parts.append(f"【{f}】{t}" if f and f != "main" else t)
+    return "\n".join(parts)
+
+
+def embed_text(contributions: list) -> str:
+    """B仓独立向量的编码输入: 合并后干净内容(原语言片段, BGE-M3 多语种直接编)。"""
+    return " ".join((c.get("fragment_text") or "").strip() for c in contributions).strip()
+
+
 async def persist_refined_ku(
-    conn, *, point, point_zh, ku_type, contributions, facet_count, decision_id=None, ku_id=None
+    conn,
+    *,
+    point,
+    point_zh,
+    ku_type,
+    contributions,
+    facet_count,
+    embedding=None,
+    natural_text_zh=None,
+    decision_id=None,
+    ku_id=None,
 ) -> str:
-    """落 rf.refined_ku(contributions 真身; natural_text 留空, 定稿渲染后置)。返回 ku_id。"""
+    """落 rf.refined_ku(contributions 真身 + B仓独立向量 embedding + 中文渲染)。返回 ku_id。"""
     import json
 
     ku_id = ku_id or _new_ku_id()
     await conn.execute(
         """
-        INSERT INTO rf.refined_ku (ku_id, point, point_zh, ku_type, contributions, facet_count, decision_id)
-        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        INSERT INTO rf.refined_ku
+          (ku_id, point, point_zh, ku_type, contributions, facet_count, embedding, natural_text_zh, decision_id)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
         ON CONFLICT (ku_id) DO UPDATE SET contributions=EXCLUDED.contributions,
-          facet_count=EXCLUDED.facet_count, updated_at=now()
+          facet_count=EXCLUDED.facet_count, embedding=EXCLUDED.embedding,
+          natural_text_zh=EXCLUDED.natural_text_zh, updated_at=now()
         """,
         ku_id,
         point,
@@ -102,6 +129,8 @@ async def persist_refined_ku(
         ku_type,
         json.dumps(contributions, ensure_ascii=False),
         facet_count,
+        embedding,
+        natural_text_zh,
         decision_id,
     )
     return ku_id
