@@ -27,7 +27,7 @@ def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash",
     _call_sync_json uses response_format=json_object to fix ~70% retry rate in llm_extract_ku.
     _call_sync (used internally by _call_async for synthesis) does NOT force JSON mode.
     """
-    _client = httpx.Client(trust_env=False, timeout=240)
+    _client = httpx.Client(trust_env=True, timeout=240)
 
     # ★全局限流: NVIDIA NIM 免费层 40 req/min. rpm>0 时所有并发调用排队, 间隔 60/rpm 秒,
     #   防 readout(无限并发)等步骤爆 429. 给每个调用分配一个时间槽, 锁外 sleep.
@@ -98,7 +98,7 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
     _call_async (synthesis path): plain text, no format=json, 8 k char limit.
     call_sync (extraction path, llm_extract_ku): format=json for clean JSON output.
     """
-    _client = httpx.Client(trust_env=False, timeout=600)  # local models: 8 concurrent × ~60s each
+    _client = httpx.Client(trust_env=True, timeout=600)  # local models: 8 concurrent × ~60s each
     # 提示字符上限: qwen2.5:7b 默认 8000 够; 大context模型(gemma 128K)可经 env 调大避免裁掉WHY窗口/规划全章
     _max_chars = int(os.getenv("OLLAMA_PROMPT_CHARS", "8000"))
 
@@ -164,7 +164,7 @@ def register_providers():
     nim_key = os.getenv("NVIDIA_NIM_API_KEY")
     use_nim = bool(nim_key) and not use_ollama_as_default
     if nim_key:
-        nim_model = os.getenv("NIM_MODEL", "meta/llama-3.3-70b-instruct")
+        nim_model = os.getenv("NIM_MODEL", "meta/llama-3.1-70b-instruct")
         nim_rpm = float(os.getenv("NIM_RPM", "36"))  # NIM 免费层 40/min, 留余量
         nim_caller = _make_deepseek_caller(nim_key, model=nim_model,
                                            base_url="https://integrate.api.nvidia.com/v1/chat/completions",
