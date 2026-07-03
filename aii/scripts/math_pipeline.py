@@ -58,7 +58,7 @@ _NIM_KEY = os.getenv('NVIDIA_NIM_API_KEY')
 if _NIM_KEY:
     _LLM_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
     _LLM_KEY = _NIM_KEY
-    _LLM_MODEL = os.getenv('NIM_MODEL', 'meta/llama-3.3-70b-instruct')
+    _LLM_MODEL = os.getenv('NIM_MODEL', 'meta/llama-3.1-70b-instruct')
     _LLM_RPM = float(os.getenv('NIM_RPM', '36'))   # NIM 免费层 40/min, 留余量
 else:
     _LLM_URL = "https://api.deepseek.com/chat/completions"
