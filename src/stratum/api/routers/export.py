@@ -34,7 +34,7 @@ async def export_markdown(
         SELECT
             s.id                                          AS substrate_id,
             s.title,
-            json_extract_string(s.meta_json, '$.medium') AS medium,
+            s.meta_json ->> 'medium'                      AS medium,
             s.source,
             s.published_at,
             s.created_at,
@@ -51,7 +51,7 @@ async def export_markdown(
 
     if medium_filter:
         placeholders = ", ".join(f"$m{i}" for i in range(len(medium_filter)))
-        sql += f"\n  AND json_extract_string(s.meta_json, '$.medium') IN ({placeholders})"
+        sql += f"\n  AND s.meta_json ->> 'medium' IN ({placeholders})"
         for i, m in enumerate(medium_filter):
             params[f"m{i}"] = m
 

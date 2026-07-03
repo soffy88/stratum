@@ -16,7 +16,15 @@ dependencies = [
     "numpy>=2.0.0",
     "sentence-transformers>=3.0.0",
     "python-dotenv>=1.0.1",
+    # oprim.embedding.__init__ 无条件 import qwen3_dashscope(dashscope 是 oprim 的 llm extra 可选依赖),
+    # 本地 oprim 3.10.38 起需显式引入,否则后端 lifespan register_providers 崩溃。
+    "dashscope>=1.14",
 ]
+
+[tool.uv.sources]
+# 迁移后本地开发:oprim 用本地源码(与 stratum-sl 容器 bind-mount 一致),
+# 因当前 aii 代码引用 v3.10.20 尚无的 oprim._purpose_alignment_score 等模块。
+oprim = { path = "/home/soffy/projects/platform/3O/oprim", editable = true }
 
 [build-system]
 requires = ["setuptools>=61.0"]
