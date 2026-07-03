@@ -113,12 +113,20 @@ async def main():
     kg = await asyncpg.create_pool(KG_URL, min_size=1, max_size=CONC + 2)
     rf = await asyncpg.create_pool(REFINED_URL, min_size=1, max_size=CONC + 2, init=register_vector)
 
+    # 幂等: 已入 B仓 的 raw_ku_id 不再入(增量: A仓固定、B仓随书生长)
+    async with rf.acquire() as rc:
+        ing = await rc.fetch(
+            "SELECT DISTINCT jsonb_array_elements(contributions)->>'raw_ku_id' AS rid FROM rf.refined_ku"
+        )
+    ingested = {r["rid"] for r in ing if r["rid"]}
+
     async with kg.acquire() as c:
-        cands, dropped = await ku_candidates(c, sim=SIM, cap=CAP, substrates=SUBS)
+        cands, dropped = await ku_candidates(c, sim=SIM, cap=CAP, substrates=SUBS, exclude=ingested)
     mode = "APPLY(落库)" if APPLY else "DRY-RUN(不落库)"
     print(
         f"[{mode}] disc={DISC} sim≥{SIM} cap={CAP} 关3弱={WEAK} 升级强={STRONG} ledger={USE_LEDGER}"
     )
+    print(f"幂等: B仓已入 {len(ingested)} 个 A仓 KU, 本轮跳过")
     print(
         f"粗筛候选 {len(cands)} 对" + (f" (超 cap 丢弃 {dropped})" if dropped else ""), flush=True
     )
@@ -163,7 +171,7 @@ async def main():
             + (" AND substrate_id = ANY($1::text[])" if SUBS else "")
         )
         all_ids = [r["ku_id"] for r in await c.fetch(q, *([list(SUBS)] if SUBS else []))]
-    singleton_ids = [i for i in all_ids if i not in merged_ids]
+    singleton_ids = [i for i in all_ids if i not in merged_ids and i not in ingested]
     for i in singleton_ids:  # 补齐非候选单例的 item
         if i not in item_by_id:
             async with kg.acquire() as c:
