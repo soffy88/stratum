@@ -10,6 +10,7 @@ import json
 import re
 
 from dictionary import canonical, dimensions_hint
+from gates import run_gates
 
 SYSTEM = """你是知识库的严格"判同"裁判。唯一任务: 判定两个条目是否指向同一个点(同一概念或同一论断)。
 代价不对称: 错合(把不同的判为同一)是不可逆的地基污染; 保持两个同一的为分开只是碎片, 可恢复。
@@ -65,6 +66,25 @@ async def judge_pair(
         vd = prior["verdict"]
         return {**vd, "replayed": True, "decision_id": prior["decision_id"]}
 
+    # 程序关(确定性, 关1 判别维度 / 关2 上下位 / 关0 术语同名): 命中即定, 不调 LLM
+    g = run_gates(a.get("name", ""), b.get("name", ""))
+    if g:
+        vd = {"verdict": g["verdict"], "reason": f"[{g['gate']}] {g['reason']}"}
+        decision_id = None
+        if ledger:
+            decision_id = await ledger.record_pair(
+                decision_type,
+                kind,
+                a["id"],
+                b["id"],
+                vd,
+                model=g["gate"],
+                actor="program",
+                evidence={"a_name": a.get("name"), "b_name": b.get("name")},
+            )
+        return {**vd, "replayed": False, "gate": g["gate"], "decision_id": decision_id}
+
+    # 关3: LLM 语义判(仅程序关未决的窄候选)
     hint = dimensions_hint(a.get("name", ""), b.get("name", ""))
     prompt = (
         f"{hint}\n\n" if hint else ""
