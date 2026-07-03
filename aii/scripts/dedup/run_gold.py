@@ -37,6 +37,7 @@ LIMIT = int(sys.argv[sys.argv.index("--limit") + 1]) if "--limit" in sys.argv el
 STRONG = (
     sys.argv[sys.argv.index("--strong") + 1] if "--strong" in sys.argv else None
 )  # 分级: same 候选升级确认
+USE_LEDGER = "--no-ledger" not in sys.argv  # 纯评测: 不写生产台账
 GOLD_DIR = Path(__file__).parent.parent / "gold"
 
 
@@ -80,7 +81,8 @@ async def main():
 
     pairs = [
         json.loads(l)
-        for l in (GOLD_DIR / "gold_seed.jsonl").read_text(encoding="utf-8").splitlines()
+        for f in sorted(GOLD_DIR.glob("gold_seed*.jsonl"))
+        for l in f.read_text(encoding="utf-8").splitlines()
         if l.strip()
     ]
     if LIMIT:
@@ -100,7 +102,7 @@ async def main():
                 a,
                 b,
                 llm,
-                DecisionLedger(rfc),
+                DecisionLedger(rfc) if USE_LEDGER else None,
                 kind=p["kind"],
                 model=MODEL,
                 strong_llm=llm_strong,

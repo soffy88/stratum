@@ -25,8 +25,7 @@ MERGE_PRECISION_LINE = 0.99  # → 1.0
 
 def load_gold():
     gold = {}
-    for fn in ["gold_seed.jsonl", "candidates.jsonl"]:
-        p = HERE / fn
+    for p in sorted(HERE.glob("gold_seed*.jsonl")) + [HERE / "candidates.jsonl"]:
         if not p.exists():
             continue
         for ln in p.read_text(encoding="utf-8").splitlines():
