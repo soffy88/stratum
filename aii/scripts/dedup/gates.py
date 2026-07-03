@@ -61,6 +61,15 @@ def gate2_subsumption(a: str, b: str) -> str | None:
     return None
 
 
+def extract_dims(name: str) -> dict | None:
+    """抽取名称的判别维度取值 {维度:取值}(命中族才有), 供 refined_concept.discriminative。"""
+    fam, spec = family_for(name)
+    if not spec:
+        return None
+    vals = {k: v for k, (v, _kind) in _dim_values(name, spec).items()}
+    return vals or None
+
+
 def gate0_canonical(a: str, b: str) -> str | None:
     ca, cb = canonical(a), canonical(b)
     if ca and cb and ca["canonical_en"] == cb["canonical_en"]:
