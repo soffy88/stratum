@@ -34,6 +34,9 @@ MODEL = (
     else os.getenv("GOLD_JUDGE_MODEL", "deepseek-pro")
 )
 LIMIT = int(sys.argv[sys.argv.index("--limit") + 1]) if "--limit" in sys.argv else 0
+STRONG = (
+    sys.argv[sys.argv.index("--strong") + 1] if "--strong" in sys.argv else None
+)  # 分级: same 候选升级确认
 GOLD_DIR = Path(__file__).parent.parent / "gold"
 
 
@@ -71,6 +74,7 @@ async def fetch_item(conn, kind: str, oid) -> dict | None:
 async def main():
     register_providers()
     llm = ProviderRegistry.get().llm(MODEL)
+    llm_strong = ProviderRegistry.get().llm(STRONG) if STRONG else None
     kg_pool = await asyncpg.create_pool(KG_URL, min_size=1, max_size=6)
     rf_pool = await asyncpg.create_pool(REFINED_URL, min_size=1, max_size=6)
 
@@ -92,7 +96,16 @@ async def main():
             misses.append(p["pair_id"])
             return
         async with sem, rf_pool.acquire() as rfc:
-            v = await judge_pair(a, b, llm, DecisionLedger(rfc), kind=p["kind"], model=MODEL)
+            v = await judge_pair(
+                a,
+                b,
+                llm,
+                DecisionLedger(rfc),
+                kind=p["kind"],
+                model=MODEL,
+                strong_llm=llm_strong,
+                strong_model=STRONG,
+            )
         pred = to_merge_action(v["verdict"])
         ok = (pred == "same") == (p["label"] == "same") or p["label"] == "uncertain"
         rep = " [replay]" if v.get("replayed") else ""
