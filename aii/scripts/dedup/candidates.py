@@ -9,8 +9,11 @@ import numpy as np
 from pgvector.asyncpg import register_vector
 
 
-async def ku_candidates(conn, *, sim=0.88, cap=400, substrates=None, cross_book_only=False):
-    """返回 (candidates, dropped)。candidate={a_id,b_id,a_book,b_book,sim}, 按 sim 降序取 cap 个。"""
+async def ku_candidates(
+    conn, *, sim=0.88, cap=400, substrates=None, cross_book_only=False, exclude=None
+):
+    """返回 (candidates, dropped)。candidate={a_id,b_id,a_book,b_book,sim}, 按 sim 降序取 cap 个。
+    exclude: 已入 B仓 的 raw_ku_id 集合(幂等: 不再作候选)。"""
     await register_vector(conn)
     where, args = "WHERE embedding IS NOT NULL AND is_quarantined IS NOT TRUE", []
     if substrates:
@@ -19,6 +22,8 @@ async def ku_candidates(conn, *, sim=0.88, cap=400, substrates=None, cross_book_
     rows = await conn.fetch(
         f"SELECT ku_id, substrate_id, title, embedding FROM aii.ku_onto {where}", *args
     )
+    if exclude:
+        rows = [r for r in rows if r["ku_id"] not in exclude]
     if not rows:
         return [], 0
     ids = [r["ku_id"] for r in rows]
