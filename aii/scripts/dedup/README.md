@@ -9,18 +9,24 @@
 | `dict/dimensions.yaml` | 判别维度闭集词典（本质/表述 标注，与判同共用）|
 | `dict/terms.yaml` | 术语规范闭集词典（原名变体 → 英文 canonical + 中文名；受控对齐非自由翻译）|
 | `dictionary.py` | 词典加载/查询：`family_for` / `dimensions_hint` / `canonical` |
+| `gates.py` | 程序关(确定性)：关1 判别维度 / 关2 上下位 / 关0 术语同名（LLM 关3 之前拦, DIFFERENT 关优先）|
 | `ledger.py` | `DecisionLedger`：append-only `record` + `replay_lookup`（命中不重问模型）|
-| `judge.py` | 判同 `judge_pair`：读原文双语判、维度提示、宁冗余(uncertain→different)、台账 replay、强模型档 |
+| `judge.py` | 判同 `judge_pair`：程序关→关3弱判→**same 才升级强模型确认**、读原文双语、台账 replay |
 | `integrate.py` | `cluster_same`(union-find) / `build_contributions`(去重留出处) / `needs_split`(原子性预算) / `persist_refined_ku` |
+| `candidates.py` | `ku_candidates`：A仓 ku_onto 向量近邻粗筛同点候选对（跨语种, 非静默截断）|
+| `orchestrate.py` | 编排：粗筛→判同→聚簇→整合→[dry-run 报告 / `--apply` 落库]，全程台账 |
 | `run_gold.py` | 金集自证：判官在对抗金集上跑 → `preds_judge.jsonl` → 调 `score.py` |
 
 ## 语言（设计 §5.3）
 判同**读原文**（zh 判中文、zh-en 双语判），**内容不做 zh↔en 翻译**；名称经 `terms.yaml` 受控对齐英文 canonical。呈现层中文优先是前端事，不在此。
 
-## 模型档（设计 §6.4，命门不对称→算力不对称）
-- 粗筛/candidate：本地小模型（0 成本）。
-- **不可逆 confirmed 合并：最强可用模型**（`deepseek-pro` 等）。`run_gold.py --model` 选档。
-- 本地 `qwen2.5:7b`(Ollama) 仅作 harness 自证/粗筛档，不用于不可逆 confirmed。
+## 模型档（设计 §6.4，命门不对称→算力不对称；强模型只用在最需要处省钱）
+三档递进，越贵的用得越少：
+1. **程序关 关0/1/2**（免费, 确定性词典）——解决大多数。
+2. **关3 弱判**（`--weak`, 便宜/本地: `deepseek-flash` 或 Ollama `qwen2.5:7b`）——判所有残余。
+3. **升级强判**（`--strong deepseek-pro`）——**仅当关3弱判=same** 这个不可逆决策才调用；强模型不确认→宁碎片判 different。`different`/`uncertain` 安全可逆, 不升级、不花钱。
+
+即 `deepseek-pro` 只碰"提议合并"的少数对。Ollama 可用时 `--weak default`（`ECON_LLM_PROVIDER=ollama`）令关3弱判也免费。
 
 ## 回测有罪推定（设计 §11、§13.1）
 判同逻辑改动后先过金集：

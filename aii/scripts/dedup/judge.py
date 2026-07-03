@@ -56,7 +56,16 @@ def _parse(raw: str) -> dict:
 
 
 async def judge_pair(
-    a: dict, b: dict, llm, ledger, *, kind: str, model: str, decision_type: str = "ku_dedup"
+    a: dict,
+    b: dict,
+    llm,
+    ledger,
+    *,
+    kind: str,
+    model: str,
+    decision_type: str = "ku_dedup",
+    strong_llm=None,
+    strong_model: str = None,
 ) -> dict:
     """判 a,b 是否同点。返回 {verdict, reason, replayed, decision_id}。verdict∈same/different/uncertain。
     a,b 须含 id + name(+ name_zh/discipline/aliases/text)。"""
@@ -92,6 +101,28 @@ async def judge_pair(
     r = await llm(messages=[{"role": "user", "content": prompt}], system=SYSTEM, max_tokens=400)
     raw = r["content"][0]["text"] if isinstance(r, dict) else str(r)
     vd = _parse(raw)
+    used_model, llm_raw, escalated = model, {"prompt_tail": prompt[-400:], "response": raw}, False
+
+    # 费用控制(强模型只用在最需要处): 仅"提议合并(same)"这个不可逆决策升级到强模型确认。
+    #   强模型不确认 → 宁碎片判 different。different/uncertain 安全可逆, 不升级、不花钱。
+    if vd["verdict"] == "same" and strong_llm is not None:
+        r2 = await strong_llm(
+            messages=[{"role": "user", "content": prompt}], system=SYSTEM, max_tokens=400
+        )
+        raw2 = r2["content"][0]["text"] if isinstance(r2, dict) else str(r2)
+        vd2 = _parse(raw2)
+        used_model, escalated = f"{model}→{strong_model}", True
+        llm_raw["escalated"] = {"model": strong_model, "verdict": vd2["verdict"], "response": raw2}
+        if vd2["verdict"] == "same":
+            vd = {
+                "verdict": "same",
+                "reason": f"关3+{strong_model}双确认: {vd2.get('reason', '')[:60]}",
+            }
+        else:
+            vd = {
+                "verdict": "different",
+                "reason": f"关3判same但{strong_model}未确认→宁碎片: {vd2.get('reason', '')[:60]}",
+            }
 
     decision_id = None
     if ledger:
@@ -101,12 +132,12 @@ async def judge_pair(
             a["id"],
             b["id"],
             vd,
-            model=model,
-            llm_raw={"prompt_tail": prompt[-400:], "response": raw},
+            model=used_model,
+            llm_raw=llm_raw,
             actor="llm",
             evidence={"a_name": a.get("name"), "b_name": b.get("name")},
         )
-    return {**vd, "replayed": False, "decision_id": decision_id}
+    return {**vd, "replayed": False, "escalated": escalated, "decision_id": decision_id}
 
 
 def to_merge_action(verdict: str) -> str:
