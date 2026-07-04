@@ -36,7 +36,9 @@ STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"   # 中文书来自本地文件�
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('econ_zh',''))" 2>/dev/null)"
 export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-4}"   # ★并发度=4(测试定论: 4-5低偶发超时, 6+持续过载)
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:***REMOVED***@localhost:5435/aii_kg}"
-export CUDA_VISIBLE_DEVICES=""
+export CUDA_VISIBLE_DEVICES=""          # 嵌入走 CPU(GPU 让给 math-prog, 防 OOM)
+export HF_HUB_OFFLINE=1                 # ★用本地缓存 BGE-M3, 不连 huggingface(直连超时→卡死)
+export TRANSFORMERS_OFFLINE=1
 # ★忠实模式: KU只忠实呈现原书内容(概念定义/含义), 少靠LLM判断, 不过度why/how → 快+忠实
 export ECON_FAITHFUL=1
 
@@ -54,10 +56,10 @@ echo "════════════════════════�
 echo ""
 
 # ── Step 1: 发现未处理的经济书 ──
-echo "[1/4] 发现未处理的【中文】经济书(books/MD/经济学 筛中文)..."
+echo "[1/4] 发现未处理的经济书(books/MD/经济学 全语言,合并版)..."
 LIMIT_ARG=""
 [ "$ECON_LIMIT" -gt 0 ] 2>/dev/null && LIMIT_ARG="--limit $ECON_LIMIT"
-$PY scripts/econ_discover_zh.py \
+$PY scripts/econ_discover_all.py \
     --out "$FLYWHEEL_BOOK_LIST" \
     --state "$FLYWHEEL_STATE" \
     --verbose \
