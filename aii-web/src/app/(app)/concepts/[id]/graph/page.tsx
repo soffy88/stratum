@@ -12,6 +12,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { apiClient } from "@/lib/api-client";
 import Link from "next/link";
+import { computeForceLayout } from "@/lib/forceLayout";
 
 interface GraphNode {
   id: string;
@@ -31,41 +32,28 @@ interface ConceptGraph {
   edges: GraphEdge[];
 }
 
-// Auto-layout: place center node at origin, radiate others
-function buildFlowNodes(nodes: GraphNode[], conceptId: string): Node[] {
-  const center = nodes.find((n) => n.id === conceptId);
-  const others = nodes.filter((n) => n.id !== conceptId);
-  const angleStep = others.length > 0 ? (2 * Math.PI) / others.length : 0;
-  const radius = 200;
+// Force-directed layout (d3-force simulation to convergence) with the queried
+// concept pinned at the center via fx/fy, rather than a fixed radial ring.
+function buildFlowNodes(nodes: GraphNode[], edges: GraphEdge[], conceptId: string): Node[] {
+  const positions = computeForceLayout(
+    nodes.map((n) => ({ id: n.id })),
+    edges.map((e) => ({ source: e.from, target: e.to })),
+    { fixedCenterNodeId: conceptId },
+  );
 
-  const result: Node[] = [];
-
-  if (center) {
-    result.push({
-      id: center.id,
-      position: { x: 0, y: 0 },
-      data: { label: center.label ?? center.title ?? center.id },
-      style: { background: "var(--color-primary)", color: "#fff", fontWeight: 600 },
-    });
-  }
-
-  others.forEach((n, i) => {
-    const angle = i * angleStep;
-    result.push({
+  return nodes.map((n) => {
+    const isCenter = n.id === conceptId;
+    return {
       id: n.id,
-      position: {
-        x: Math.cos(angle) * radius,
-        y: Math.sin(angle) * radius,
-      },
+      position: positions[n.id] ?? { x: 0, y: 0 },
       data: { label: n.label ?? n.title ?? n.id },
-      style:
-        n.type === "substrate"
+      style: isCenter
+        ? { background: "var(--color-primary)", color: "#fff", fontWeight: 600 }
+        : n.type === "substrate"
           ? { background: "var(--color-surface)", border: "1px solid var(--color-border)" }
           : {},
-    });
+    };
   });
-
-  return result;
 }
 
 function buildFlowEdges(edges: GraphEdge[]): Edge[] {
@@ -98,7 +86,7 @@ export default function ConceptGraphPage({
     return <div className="p-6 text-sm text-red-600">无法加载图谱</div>;
   }
 
-  const flowNodes = buildFlowNodes(data.nodes, id);
+  const flowNodes = buildFlowNodes(data.nodes, data.edges, id);
   const flowEdges = buildFlowEdges(data.edges);
 
   return (

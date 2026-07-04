@@ -2,13 +2,13 @@ import Link from "next/link";
 
 const PRIVACY_TEXT = `隐私政策
 
-生效日期: 2026-05-27  |  版本: v1.0-alpha  |  适用产品: Stratum (https://stratum.uex.hk)
+生效日期: 2026-05-27  |  版本: v1.0-alpha  |  适用产品: aii (https://aii.uex.hk)
 
 ────────────────────────────────────────
 
 1. 我们是谁
 
-Stratum 是一个个人知识管理服务，由独立开发者维护（以下简称"我们"）。当前处于 alpha 测试期，服务可能随时变动或中断。
+aii 是一个个人知识管理服务，由独立开发者维护（以下简称"我们"）。当前处于 alpha 测试期，服务可能随时变动或中断。
 
 联系方式: wiki@uex.hk
 
@@ -123,13 +123,13 @@ Stratum 是一个个人知识管理服务，由独立开发者维护（以下简
 
 任何隐私相关问题: wiki@uex.hk
 
-— Stratum 团队`;
+— aii 团队`;
 
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
       <header className="flex items-center justify-between px-8 py-4 border-b border-[var(--color-border)]">
-        <Link href="/" className="font-semibold text-lg tracking-tight">Stratum</Link>
+        <Link href="/" className="font-semibold text-lg tracking-tight">aii</Link>
       </header>
 
       <article className="max-w-2xl mx-auto px-8 py-16">

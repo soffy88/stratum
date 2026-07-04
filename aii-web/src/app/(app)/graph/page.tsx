@@ -13,6 +13,7 @@ import {
   listEntities, getSubgraph, queryGraph,
   type GraphEntity, type Subgraph, type GraphQueryResult,
 } from '@/lib/graph';
+import { computeForceLayout } from '@/lib/forceLayout';
 
 const TYPE_COLOR: Record<string, string> = {
   concept: '#3b82f6', // 蓝
@@ -84,19 +85,18 @@ export default function GraphPage() {
     finally { setQuerying(false); }
   };
 
-  // subgraph → reactflow nodes/edges(简单环形布局)
+  // subgraph → reactflow nodes/edges(力导向布局，d3-force 迭代收敛)
   const { nodes, edges } = useMemo(() => {
     if (!subgraph) return { nodes: [] as Node[], edges: [] as Edge[] };
-    const n = subgraph.nodes.length;
-    const nodes: Node[] = subgraph.nodes.map((e, i) => {
-      const angle = (i / n) * 2 * Math.PI;
-      const r = 180;
-      return {
-        id: e.id, type: 'entityNode',
-        data: { label: e.name, type: e.type, description: e.description },
-        position: { x: 250 + r * Math.cos(angle), y: 220 + r * Math.sin(angle) },
-      };
-    });
+    const positions = computeForceLayout(
+      subgraph.nodes.map(e => ({ id: e.id })),
+      subgraph.edges.map(r => ({ source: r.source, target: r.target })),
+    );
+    const nodes: Node[] = subgraph.nodes.map(e => ({
+      id: e.id, type: 'entityNode',
+      data: { label: e.name, type: e.type, description: e.description },
+      position: positions[e.id] ?? { x: 0, y: 0 },
+    }));
     const edges: Edge[] = subgraph.edges.map(r => ({
       id: `${r.source}-${r.target}`, source: r.source, target: r.target,
       label: r.type, animated: false,

@@ -7,7 +7,7 @@ import {
   Search, Compass, FileText, Rss, Clock, Network, StickyNote,
   Highlighter, LayoutGrid, Share2, Sparkles, CheckSquare, User, Shield, Settings,
   Menu, PanelLeftClose, Brain, Layers, TrendingUp, ShieldCheck, Gauge, Sun, Moon,
-  Library, Activity,
+  Library, Activity, Upload, SearchCode, MessageSquare, Stethoscope, HeartPulse,
 } from 'lucide-react';
 import { create } from 'zustand';
 import { getTheme, setTheme, type Theme } from '@/lib/theme';
@@ -84,12 +84,17 @@ const NAV: NavGroup[] = [
   ] },
   { title: 'AII 认知引擎', items: [
     { href: '/pipelines', label: '管线通道', icon: Activity },
+    { href: '/ingest', label: '摄取', icon: Upload },
     { href: '/dashboard', label: '认知看板', icon: Gauge },
+    { href: '/query', label: 'KU 检索', icon: SearchCode },
+    { href: '/chat', label: 'AII 对话', icon: MessageSquare },
     { href: '/books', label: '书单元', icon: Library },
     { href: '/knowledge', label: '知识单元', icon: Brain },
     { href: '/clusters', label: '知识簇', icon: Layers },
     { href: '/evolution', label: '演化', icon: TrendingUp },
     { href: '/governance', label: '治理', icon: ShieldCheck },
+    { href: '/diagnose', label: '诊断', icon: Stethoscope },
+    { href: '/health', label: '图谱健康', icon: HeartPulse },
   ] },
   { title: '系统', items: [
     { href: '/jobs', label: '定时任务', icon: CheckSquare },
@@ -162,7 +167,7 @@ export function Sidebar() {
           h-dvh border-r bg-card overflow-y-auto transition-transform duration-200`}
       >
         <div className="flex items-center justify-between px-5 py-4">
-          <span className="font-bold text-lg">Stratum</span>
+          <span className="font-bold text-lg">aii</span>
           <button
             onClick={toggle}
             className="p-2 min-h-11 min-w-11 flex items-center justify-center rounded-lg hover:bg-muted"
