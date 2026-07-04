@@ -16,6 +16,11 @@ echo "════ 数学程序化飞轮 B (0 LLM) $(date '+%Y-%m-%d %H:%M') ═
 processed=0
 for f in /home/soffy/books/MD/英文数学/*.md /home/soffy/books/MD/中文数学/*.md; do
     [ -f "$f" ] || continue
+    # ★门禁: 数学密度/章节结构够≠能被B范式抽取(靠MARK正则找带编号的"定理N/定义N").
+    # 叙事类数学科普书从不编号, 抽出0KU白跑一轮; 不可抽的直接挪 其它/ 给misc飞轮接手.
+    if ! $PY scripts/math_route_or_skip.py "$f"; then
+        continue
+    fi
     stem="$(basename "$f" .md)"
     sub="math_prog_$(printf '%s' "$stem" | md5sum | cut -c1-10)"
     cnt=$(docker exec aii-postgres psql -U aii -d aii_kg -tAc \
