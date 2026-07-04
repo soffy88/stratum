@@ -26,8 +26,8 @@ cd "$(dirname "$0")/.."
 PY=.venv/bin/python
 ECON_QUAL_DIR="${ECON_QUAL_DIR:-econ_pipeline/qual}"
 ECON_CKPT_DIR="${ECON_CKPT_DIR:-econ_pipeline/ckpts}"
-QUARANTINE_JSON="econ_pipeline/quarantine.json"
-BATCH_REPORT="econ_pipeline/batch_report.json"
+QUARANTINE_JSON="${ECON_QUARANTINE_JSON:-econ_pipeline/quarantine.json}"
+BATCH_REPORT="${ECON_BATCH_REPORT:-econ_pipeline/batch_report.json}"
 DRY_RUN="${ECON_DRY_RUN:-0}"
 FORCE="${ECON_FORCE:-0}"
 STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"  # 1=预检失败时反馈Stratum

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# ★程序化中文经济学飞轮 — 自动循环: 发现中文经济书→跑A仓管道→质量门→入库/隔离
+# ★程序化其它飞轮 — 自动循环: 发现书→检MD→反馈Stratum→跑管道→入库/隔离
 # ★程序化 = WHAT 部分由【程序】抽取(_extract_skeleton: 定义框/例子/公式/图表标题/表格数据),
 #   不是 LLM 抽 WHAT; LLM 只负责【规划知识点】+ 补【WHY/HOW】。这是本飞轮的根本标识。
-# (复制自 econ_flywheel_en.sh,改中文发现/math_zh key/_zh状态;原始 econ_flywheel.sh 不动)
+# (复制自 econ_flywheel.sh，待升级为英文经济学专用；原始 econ_flywheel.sh 不动)
 #
 # 流程:
 #   econ_discover.py 找到未处理的经济书 →
@@ -24,25 +24,29 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PY=.venv/bin/python
-# ★中文经济学飞轮: 独立 _zh 状态/书单/报告(与英文/原始 econ_flywheel 不冲突)
-FLYWHEEL_STATE="econ_pipeline/flywheel_zh_state.json"
-FLYWHEEL_BOOK_LIST="econ_pipeline/flywheel_zh_booklist.txt"
-FLYWHEEL_REPORT="econ_pipeline/flywheel_zh_report.json"
-FLYWHEEL_LOG="econ_pipeline/flywheel_zh.log"
+# ★英文经济学飞轮: 独立 _en 状态/书单/报告(与原始 econ_flywheel 不冲突)
+FLYWHEEL_STATE="misc_pipeline/flywheel_misc_state.json"
+FLYWHEEL_BOOK_LIST="misc_pipeline/flywheel_misc_booklist.txt"
+FLYWHEEL_REPORT="misc_pipeline/flywheel_misc_report.json"
+FLYWHEEL_LOG="misc_pipeline/flywheel_misc.log"
 ECON_LIMIT="${ECON_LIMIT:-20}"
-STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"   # 中文书来自本地文件夹, 默认不反馈Stratum
+STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"   # 英文书来自本地文件夹, 默认不反馈Stratum
 
-# ★NIM key(econ_zh 专属, 4飞轮各自独立: econ/econ_zh/math_en/math_zh) + DB + BGE-M3跑CPU(不抢GPU)
-export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('econ_zh',''))" 2>/dev/null)"
+# ★NIM key(免费) + DB + BGE-M3跑CPU(不抢aii-api的GPU)
+export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('econ',''))" 2>/dev/null)"
 export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-4}"   # ★并发度=4(测试定论: 4-5低偶发超时, 6+持续过载)
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
 export CUDA_VISIBLE_DEVICES=""          # 嵌入走 CPU(GPU 让给 math-prog, 防 OOM)
 export HF_HUB_OFFLINE=1                 # ★用本地缓存 BGE-M3, 不连 huggingface(直连超时→卡死)
 export TRANSFORMERS_OFFLINE=1
-# ★忠实模式: KU只忠实呈现原书内容(概念定义/含义), 少靠LLM判断, 不过度why/how → 快+忠实
+# ★忠实模式(同中文版): 只忠实呈现原书内容, 不过度LLM判断/why-how; section 默认13000
 export ECON_FAITHFUL=1
+export ECON_QUARANTINE_JSON="misc_pipeline/quarantine.json"
+export ECON_BATCH_REPORT="misc_pipeline/batch_report.json"
+export ECON_QUAL_DIR="misc_pipeline/qual"
+export ECON_CKPT_DIR="misc_pipeline/ckpts"
 
-mkdir -p econ_pipeline
+mkdir -p misc_pipeline misc_pipeline/qual misc_pipeline/ckpts
 
 # ── 初始化 state ──
 if [ ! -f "$FLYWHEEL_STATE" ]; then
@@ -50,16 +54,16 @@ if [ ! -f "$FLYWHEEL_STATE" ]; then
 fi
 
 echo "════════════════════════════════════════════════════"
-echo "★ 经济学知识飞轮 $(date '+%Y-%m-%d %H:%M')"
+echo "★ 其它知识飞轮 $(date '+%Y-%m-%d %H:%M')"
 echo "  LIMIT=$ECON_LIMIT  DRY_RUN=${ECON_DRY_RUN:-0}  STRATUM_FEEDBACK=$STRATUM_FEEDBACK"
 echo "════════════════════════════════════════════════════"
 echo ""
 
 # ── Step 1: 发现未处理的经济书 ──
-echo "[1/4] 发现未处理的经济书(books/MD/经济学 全语言,合并版)..."
+echo "[1/4] 发现未处理的书(books/MD/其它, 全学科)..."
 LIMIT_ARG=""
 [ "$ECON_LIMIT" -gt 0 ] 2>/dev/null && LIMIT_ARG="--limit $ECON_LIMIT"
-$PY scripts/econ_discover_all.py \
+$PY scripts/misc_discover.py \
     --out "$FLYWHEEL_BOOK_LIST" \
     --state "$FLYWHEEL_STATE" \
     --verbose \
@@ -95,13 +99,13 @@ from pathlib import Path
 state_path = Path('$FLYWHEEL_STATE')
 state = json.loads(state_path.read_text(encoding='utf-8')) if state_path.exists() else {"processed": {}}
 
-batch_report = Path('econ_pipeline/batch_report.json')
+batch_report = Path('misc_pipeline/batch_report.json')
 if not batch_report.exists():
     print("  批量报告不存在, 跳过状态更新")
     exit(0)
 
 report = json.loads(batch_report.read_text(encoding='utf-8'))
-quarantine_file = Path('econ_pipeline/quarantine.json')
+quarantine_file = Path('misc_pipeline/quarantine.json')
 quarantine = json.loads(quarantine_file.read_text(encoding='utf-8')) if quarantine_file.exists() else {"quarantined": []}
 ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
@@ -137,7 +141,7 @@ report = {
 }
 
 # 合并 batch_report
-batch = Path('econ_pipeline/batch_report.json')
+batch = Path('misc_pipeline/batch_report.json')
 if batch.exists():
     report["batch_summary"] = json.loads(batch.read_text(encoding='utf-8')).get("summary", {})
 
