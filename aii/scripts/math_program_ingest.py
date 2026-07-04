@@ -127,13 +127,49 @@ def name_kus(kus):
         # 否则 label 保持标记(书自己的编号,忠实)
 
 
+def _headers(text):
+    """章头(第N章 / Chapter N)与节头(N.N 标题)的位置, 供扁平编号书按位置定位.
+    返回 (chaps=[(pos,章号)], secs=[(pos,'N.N')])."""
+    chaps, secs = [], []
+    for m in re.finditer(r"(?m)^\s*(?:#+\s*)?(?:Chapter\s+(\d+)|第\s*(\d+)\s*章)", text):
+        chaps.append((m.start(), int(m.group(1) or m.group(2))))
+    for m in re.finditer(r"(?m)^\s*(?:#+\s*)?(\d+\.\d+)\s+\S", text):
+        secs.append((m.start(), m.group(1)))
+    return chaps, secs
+
+
+def _before(items, pos, default=None):
+    r = default
+    for p, v in items:
+        if p <= pos:
+            r = v
+        else:
+            break
+    return r
+
+
 def extract_all(text):
-    """整本抽取;章号 = 编号首位(Theorem 1.3.1 → 第1章)。跨标记切,证明全收。"""
+    """整本抽取, 跨标记切、证明全收。兼容两类编号:
+    - 层级编号(Theorem 1.3.1, 含'.'): 章号取首位, 全局唯一→按 label 去重(正式书).
+    - 扁平编号(例 1, 每节重置): 按'第N章'定章、label 冠以'N.N'节号→同章不同节的"例1"各成一KU
+      且 ku_id(sub::章::point) 不撞. 这是中文本科教材(斯图/同济)的形态."""
     marks = list(MARK.finditer(text))
+    chaps, secs = _headers(text)
     kus, seen = [], set()
     for i, m in enumerate(marks):
         typ, num = m.group(1), m.group(2)
-        label = f"{typ} {num}"
+        hierarchical = "." in num and num.split(".")[0].isdigit()
+        if hierarchical:
+            ch = int(num.split(".")[0])
+            label = f"{typ} {num}"
+        else:
+            sec = _before(secs, m.start())
+            if sec:
+                label = f"{sec} {typ} {num}"
+                ch = int(sec.split(".")[0])  # 章号取自节号首位, 与 label 一致
+            else:
+                label = f"{typ} {num}"
+                ch = _before(chaps, m.start(), 0)  # 无节号时回退'第N章'位置
         if label in seen:
             continue
         seen.add(label)
@@ -148,7 +184,6 @@ def extract_all(text):
         )
         if len(body.strip()) < 10:
             continue
-        ch = int(num.split(".")[0]) if num.split(".")[0].isdigit() else 0
         kus.append(
             {
                 "type": _TYPE_ZH.get(typ, typ),
