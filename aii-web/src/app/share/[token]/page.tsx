@@ -52,7 +52,7 @@ export default async function SharePage({
         </article>
 
         <footer className="mt-12 pt-4 border-t border-[var(--color-border)] text-center text-xs text-[var(--color-muted)]">
-          Powered by Stratum · <a href="/register" className="underline">创建你的知识库</a>
+          Powered by aii · <a href="/register" className="underline">创建你的知识库</a>
         </footer>
       </div>
     </div>

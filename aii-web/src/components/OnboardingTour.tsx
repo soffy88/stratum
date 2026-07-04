@@ -7,8 +7,8 @@ const STORAGE_KEY = "stratum_onboarding_completed";
 
 const STEPS = [
   {
-    title: "欢迎使用 Stratum！",
-    body: "Stratum 帮你把英文资料消化成自己的知识。只需上传文件或抓取网页，AI 会自动为你提炼要点。",
+    title: "欢迎使用 aii！",
+    body: "aii 帮你把英文资料消化成自己的知识。只需上传文件或抓取网页，AI 会自动为你提炼要点。",
     action: null,
   },
   {
@@ -18,7 +18,7 @@ const STEPS = [
   },
   {
     title: "抓取网页",
-    body: "点击「文档」→「输入 URL」，粘贴任意网页链接，Stratum 会自动抓取全文入库。",
+    body: "点击「文档」→「输入 URL」，粘贴任意网页链接，aii 会自动抓取全文入库。",
     action: { label: "去抓取", href: "/documents" },
   },
   {
