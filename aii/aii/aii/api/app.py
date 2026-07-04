@@ -6,31 +6,48 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
+from aii.logging_config import configure_logging
+
+configure_logging()
+
 from aii.api._provider import register_providers
 from aii.storage.pg_backend import PgBackend
 from aii.api._dependencies import backend
-from aii.api.routes import health, ingest, feed, query, chat, evolution, governance, stats, display, textbook_export, delete, pipelines, internal
+from aii.api.routes import (
+    health,
+    ingest,
+    feed,
+    query,
+    chat,
+    evolution,
+    governance,
+    stats,
+    display,
+    textbook_export,
+    delete,
+    pipelines,
+    internal,
+)
 from aii.api._auth import APIKeyMiddleware
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 1. Load environment (override to ignore placeholder system env vars)
     load_dotenv(override=True)
-    
+
     # 2. Register providers (LLM, Embedding)
     register_providers()
-    
+
     # 3. Monkey-patch oskill (fix internal 'module not callable' errors)
     try:
         import oskill.ku_extract_pipeline
         import oprim.structural_chunk
         import oprim.llm_extract_ku
         import oprim.ku_gate_validate
-        
+
         oskill.ku_extract_pipeline.structural_chunk = oprim.structural_chunk.structural_chunk
         oskill.ku_extract_pipeline.llm_extract_ku = oprim.llm_extract_ku.llm_extract_ku
         oskill.ku_extract_pipeline.ku_gate_validate = oprim.ku_gate_validate.ku_gate_validate
@@ -43,7 +60,7 @@ async def lifespan(app: FastAPI):
     if not dsn:
         # Default DSN for local development if not in env
         dsn = "postgresql://aii_user:aii_pass@localhost:5432/aii_db"
-    
+
     backend.dsn = dsn
     await backend._ensure_pool()
     logger.info("AII Backend initialized and PG Pool started.")
@@ -65,6 +82,7 @@ async def lifespan(app: FastAPI):
     #     在 yield 之前完成热身，确保对外提供服务时模型已在 GPU。
     try:
         import requests as _r
+
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(
             None,
@@ -84,6 +102,7 @@ async def lifespan(app: FastAPI):
     textbook_flywheel_task = None
     if os.getenv("FLYWHEEL_ENABLED", "1") != "0":
         from aii.service.background_flywheel import flywheel_loop
+
         flywheel_task = asyncio.create_task(flywheel_loop(backend), name="aii-flywheel")
         app.state.flywheel_task = flywheel_task
         logger.info("AII background flywheel started.")
@@ -93,10 +112,18 @@ async def lifespan(app: FastAPI):
         app.state.textbook_flywheel_task = None
         logger.warning("AII flywheels DISABLED (FLYWHEEL_ENABLED=0) — 无自动摄取.")
 
+    # 5b. 跨章/跨书语义去重 — 原来只有 scripts/dedup_semantic.py 手动 CLI,
+    #     没有任何自动调用方 (dedup_within_book.py 覆盖不到的盲区因此从不自动关闭).
+    #     同书合并才 --apply (安全), 跨书只记 log 供人工复核.
+    from aii.service.dedup_semantic import dedup_semantic_loop
+
+    dedup_semantic_task = asyncio.create_task(dedup_semantic_loop(), name="aii-dedup-semantic")
+    app.state.dedup_semantic_task = dedup_semantic_task
+
     yield
 
     # Cleanup
-    for _t in (flywheel_task, textbook_flywheel_task):
+    for _t in (flywheel_task, textbook_flywheel_task, dedup_semantic_task):
         if _t is None:
             continue
         _t.cancel()
@@ -108,6 +135,7 @@ async def lifespan(app: FastAPI):
         await backend._pool.close()
         logger.info("AII PG Pool closed.")
 
+
 app = FastAPI(title="AII API", version="0.1.0", lifespan=lifespan)
 
 # Auth + rate limiting (runs before CORS so preflight still passes)
@@ -117,7 +145,9 @@ app.add_middleware(APIKeyMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000", "http://localhost:3001", "http://localhost:3002",
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
         "https://aii.uex.hk",
     ],
     allow_credentials=True,
