@@ -1,6 +1,6 @@
 "use client";
 
-// 三路抽取管线(经济/中文数学/英文数学)状态 + 控制。数据来自 AII 后端 /api/pipelines。
+// 三飞轮(econ_zh合并版经济学/math_prog数学B范式/misc其它学科)状态 + 控制。数据来自 AII 后端 /api/pipelines。
 import { useEffect, useState, useCallback } from "react";
 
 interface Book { title: string; substrate: string; ku: number; in_db: boolean; done: boolean; }
@@ -38,7 +38,7 @@ export default function PipelinesPage() {
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-1">管线通道</h1>
       <p className="text-sm text-[var(--color-muted)] mb-4">
-        三路抽取管线状态与控制（经济 / 中文数学 / 英文数学，各自独立 NIM key，可同时运行）。每 5 秒刷新。
+        三飞轮状态与控制（经济学合并版 / 数学B范式(0 LLM) / 其它学科，可同时运行）。每 5 秒刷新。
       </p>
       {err && <p className="text-sm text-red-600 mb-3">无法连接 AII 后端 /api/pipelines</p>}
       <div className="space-y-3">
