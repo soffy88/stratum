@@ -153,6 +153,9 @@ def extract_all(text):
     - 层级编号(Theorem 1.3.1, 含'.'): 章号取首位, 全局唯一→按 label 去重(正式书).
     - 扁平编号(例 1, 每节重置): 按'第N章'定章、label 冠以'N.N'节号→同章不同节的"例1"各成一KU
       且 ku_id(sub::章::point) 不撞. 这是中文本科教材(斯图/同济)的形态."""
+    # 中文教材定义/定理常用"页边码在前"格式 "5 定义 …"; 翻成 "定义 5" 让 MARK(词在前)命中.
+    # 放在抽取器内, 任何来源的 MD(经或未经组装器)都兼容, 不再依赖上游翻转.
+    text = re.sub(r"(?m)^(\d+)[ \t]+(定义|定理|引理|推论|命题)(?=[ \t　])", r"\2 \1", text)
     marks = list(MARK.finditer(text))
     chaps, secs = _headers(text)
     kus, seen = [], set()
@@ -184,6 +187,8 @@ def extract_all(text):
         )
         if len(body.strip()) < 10:
             continue
+        if ch == 0:
+            continue  # 前言/预备页 N.N 误命中(如"0.5 例")→ 无真实章号, 丢弃噪音
         kus.append(
             {
                 "type": _TYPE_ZH.get(typ, typ),
