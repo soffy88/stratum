@@ -4,17 +4,17 @@ import "@/styles/globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Stratum — 你的个人知识基座",
-    template: "%s | Stratum",
+    default: "aii — 你的个人知识基座",
+    template: "%s | aii",
   },
   description:
-    "Stratum 将你的文档、笔记和想法连接成可搜索、可推理的知识网络。本地优先，隐私安全。",
+    "aii 将你的文档、笔记和想法连接成可搜索、可推理的知识网络。本地优先，隐私安全。",
   keywords: ["知识库", "个人知识管理", "语义搜索", "笔记", "PKM"],
   openGraph: {
     type: "website",
     locale: "zh_CN",
-    siteName: "Stratum",
-    title: "Stratum — 你的个人知识基座",
+    siteName: "aii",
+    title: "aii — 你的个人知识基座",
     description:
       "将你的文档、笔记和想法连接成可搜索、可推理的知识网络。",
   },

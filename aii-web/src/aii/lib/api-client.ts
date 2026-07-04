@@ -91,17 +91,17 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<ApiResu
 
 export async function query(req: QueryRequest): Promise<ApiResult<QueryResponse>> {
   if (USE_MOCK) return mock.mockQuery(req);
-  return request<QueryResponse>('/query', { method: 'POST', body: req });
+  return request<QueryResponse>('/api/query', { method: 'POST', body: req });
 }
 
 export async function ingest(req: IngestRequest): Promise<ApiResult<IngestResponse>> {
   if (USE_MOCK) return mock.mockIngest(req);
-  return request<IngestResponse>('/ingest', { method: 'POST', body: req });
+  return request<IngestResponse>('/api/ingest', { method: 'POST', body: req });
 }
 
 export async function getGraphHealth(): Promise<ApiResult<GraphHealthResponse>> {
   if (USE_MOCK) return mock.mockGraphHealth();
-  return request<GraphHealthResponse>('/graph/health', { method: 'GET' });
+  return request<GraphHealthResponse>('/api/health/graph', { method: 'GET' });
 }
 
 export async function diagnose(req: DiagnoseRequest): Promise<ApiResult<DiagnoseResponse>> {

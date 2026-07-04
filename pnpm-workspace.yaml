@@ -1,6 +1,5 @@
 packages:
-  - 'stratum-web'
-  - 'aii/aii-web'
+  - 'aii-web'
 allowBuilds:
   '@sentry/cli': set this to true or false
   sharp: set this to true or false

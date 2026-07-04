@@ -2,19 +2,19 @@ import Link from "next/link";
 
 const TERMS_TEXT = `服务条款
 
-生效日期: 2026-05-27  |  版本: v1.0-alpha  |  适用产品: Stratum (https://stratum.uex.hk)
+生效日期: 2026-05-27  |  版本: v1.0-alpha  |  适用产品: aii (https://aii.uex.hk)
 
 ────────────────────────────────────────
 
 1. 接受条款
 
-注册和使用 Stratum 表示你同意本条款。如不同意，请勿使用本服务。
+注册和使用 aii 表示你同意本条款。如不同意，请勿使用本服务。
 
 ────────────────────────────────────────
 
 2. 服务说明
 
-Stratum 是一个个人知识管理工具，提供:
+aii 是一个个人知识管理工具，提供:
   · 笔记、文档、网页保存
   · 全文 / 语义搜索
   · AI 问答和摘要
@@ -123,7 +123,7 @@ Stratum 是一个个人知识管理工具，提供:
 
 11. 知识产权
 
-Stratum 的代码、设计、品牌归我们所有。未经授权不得复制、修改、分发。
+aii 的代码、设计、品牌归我们所有。未经授权不得复制、修改、分发。
 
 ────────────────────────────────────────
 
@@ -143,13 +143,13 @@ Stratum 的代码、设计、品牌归我们所有。未经授权不得复制、
 
 如有重大变更，提前 7 天在登录后页面通知。继续使用视为接受。
 
-— Stratum 团队`;
+— aii 团队`;
 
 export default function TermsPage() {
   return (
     <main className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
       <header className="flex items-center justify-between px-8 py-4 border-b border-[var(--color-border)]">
-        <Link href="/" className="font-semibold text-lg tracking-tight">Stratum</Link>
+        <Link href="/" className="font-semibold text-lg tracking-tight">aii</Link>
       </header>
 
       <article className="max-w-2xl mx-auto px-8 py-16">

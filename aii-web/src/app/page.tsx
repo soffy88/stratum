@@ -5,7 +5,7 @@ export default function LandingPage() {
     <main className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
-        <span className="font-semibold text-lg tracking-tight">Stratum</span>
+        <span className="font-semibold text-lg tracking-tight">aii</span>
         <div className="flex gap-3">
           <Link
             href="/login"
@@ -95,7 +95,7 @@ export default function LandingPage() {
                 <th className="text-left py-2 pr-4">功能</th>
                 <th className="py-2 px-4 text-center">Obsidian</th>
                 <th className="py-2 px-4 text-center">Notion</th>
-                <th className="py-2 px-4 text-center font-semibold text-[var(--color-primary)]">Stratum</th>
+                <th className="py-2 px-4 text-center font-semibold text-[var(--color-primary)]">aii</th>
               </tr>
             </thead>
             <tbody>
@@ -131,7 +131,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-[var(--color-border)] px-6 py-6 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--color-muted)]">
-        <span>© {new Date().getFullYear()} Stratum</span>
+        <span>© {new Date().getFullYear()} aii</span>
         <div className="flex gap-4">
           <Link href="/about" className="hover:underline">关于</Link>
           <Link href="/privacy" className="hover:underline">隐私政策</Link>

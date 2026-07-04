@@ -1,5 +1,5 @@
 {
-  "name": "stratum-web",
+  "name": "aii-web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,8 +15,8 @@
     "build-storybook": "storybook build -o storybook-static"
   },
   "dependencies": {
-    "@helios/blocks": "file:./vendor/helios-blocks-2.8.0.tgz",
-    "@helios/oui": "file:./vendor/helios-oui-1.7.0.tgz",
+    "@helios/blocks": "file:./vendor/helios-blocks-3.0.0.tgz",
+    "@helios/oui": "file:./vendor/helios-oui-2.0.0.tgz",
     "@hookform/resolvers": "^5.0.1",
     "animejs": "^4.5.0",
     "katex": "^0.17.0",
@@ -27,6 +27,7 @@
     "@types/sanitize-html": "^2.16.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "d3-force": "^3.0.0",
     "epubjs": "^0.3.93",
     "lucide-react": "^0.511.0",
     "next": "^16.2.6",
@@ -52,6 +53,7 @@
     "@storybook/react": "^8.6.18",
     "@storybook/react-vite": "^8.6.18",
     "@tailwindcss/postcss": "^4.1.8",
+    "@types/d3-force": "^3.0.10",
     "@types/katex": "^0.16.8",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.9.1",
