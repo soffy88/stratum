@@ -1,0 +1,15 @@
+[Unit]
+Description=AII flywheel — 其它 (非经济/数学的有章节教材:心理/哲学/科普)
+After=network.target aii-backend.service
+
+[Service]
+Type=simple
+WorkingDirectory=/data/soffy/projects/stratum/aii
+ExecStart=/usr/bin/bash scripts/misc_flywheel_run.sh
+StandardOutput=append:/data/soffy/projects/stratum/aii/misc_pipeline/flywheel_misc.log
+StandardError=append:/data/soffy/projects/stratum/aii/misc_pipeline/flywheel_misc.log
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
