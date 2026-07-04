@@ -7,7 +7,8 @@ cd "$(dirname "$0")/.."
 PY=.venv/bin/python
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1   # 用本地缓存 BGE-M3, 不连 huggingface
-# 不设 CUDA_VISIBLE_DEVICES → BGE-M3(FlagEmbedding, fp16)自动用本地 GPU(RTX 3080)加速嵌入
+export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"   # ★嵌入走共享 aii-embed 微服务; 本进程不再加载 BGE-M3, 不抢 GPU
+export CUDA_VISIBLE_DEVICES=""   # ★嵌入已外包给服务, 本飞轮彻底不碰 GPU(抽取0-LLM纯CPU)
 STAGING_BASE="scripts/_staging/math_prog"
 MIN_KU="${MATH_PROG_MIN_KU:-30}"        # DB 已有 >MIN_KU 视为已 B 过
 
