@@ -33,12 +33,13 @@ services:
     # Or use the explicit command in Dockerfile.web header comments.
     image: stratum-web:latest
     build:
-      context: /home/soffy/projects/stratum/stratum-web
+      context: /home/soffy/projects/stratum/aii-web
       dockerfile: /home/soffy/projects/stratum/deploy/Dockerfile.web
     container_name: stratum-web
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"
+      # host 3000 is taken by obsv-grafana on this shared host; moved to 3002.
+      - "127.0.0.1:3002:3000"
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
@@ -131,8 +132,17 @@ services:
       - STRATUM_PG_PORT=5435
       - STRATUM_PG_USER=aii
       - STRATUM_PG_DB=aii_kg
-      # Outbound proxy for YouTube/media ingest (Windows Clash via WSL2 bridge — may change on WSL restart)
-      - STRATUM_OUTBOUND_PROXY=http://172.23.224.1:20809
+      # Outbound proxy = sing-box mixed inbound (host 0.0.0.0:10808), reached via docker gateway 172.19.0.1.
+      # (Old WSL Clash 172.23.224.1:20809 died when the box moved to native Linux.)
+      - STRATUM_OUTBOUND_PROXY=http://172.19.0.1:10808
+      # arxiv/gutenberg fetch via urllib → auto-honor standard proxy env. NO_PROXY keeps internal
+      # HTTP (aii backend embed :8101, ollama :11434, pg, docker service names) off the proxy.
+      - HTTP_PROXY=http://172.19.0.1:10808
+      - HTTPS_PROXY=http://172.19.0.1:10808
+      - http_proxy=http://172.19.0.1:10808
+      - https_proxy=http://172.19.0.1:10808
+      - NO_PROXY=localhost,127.0.0.1,::1,172.19.0.1,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres
+      - no_proxy=localhost,127.0.0.1,::1,172.19.0.1,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres
       # PaddleOCR: skip network model-source check, use pre-downloaded models from volume
       - PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
       # Local embedding via Ollama qwen3-embedding:0.6b (1024-dim, matches DashScope text-embedding-v3)
@@ -177,3 +187,4 @@ services:
 networks:
   default:
     name: stratum-net
+    external: true
