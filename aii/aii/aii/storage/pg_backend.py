@@ -13,10 +13,18 @@ logger = logging.getLogger(__name__)
 
 # Canonical set of valid EpistemicGrade values — must match helios-blocks EPISTEMIC_GRADE_LABEL keys.
 # Any grade value not in this set is a bug in the upstream code that produced it.
-VALID_EPISTEMIC_GRADES: frozenset[str] = frozenset({
-    "proven", "high", "moderate", "low", "very_low",
-    "unverified", "contradicted", "pending_verification",
-})
+VALID_EPISTEMIC_GRADES: frozenset[str] = frozenset(
+    {
+        "proven",
+        "high",
+        "moderate",
+        "low",
+        "very_low",
+        "unverified",
+        "contradicted",
+        "pending_verification",
+    }
+)
 
 
 def _run_coro(coro):
@@ -63,6 +71,7 @@ def _run_coro(coro):
                             await p.close()
                         except Exception:
                             pass
+
         return asyncio.run(_with_pool_cleanup_sync())
 
 
@@ -72,6 +81,7 @@ class PgBackend(StorageBackend, EpistemicStore):
     def __init__(self, pool_name: str = "aii_pool", dsn: str | None = None):
         self.pool_name = pool_name
         import os
+
         self.dsn = dsn or os.getenv("AII_PG_DSN") or os.getenv("DATABASE_URL")
         if not self.dsn and os.getenv("POSTGRES_USER"):
             user = os.getenv("POSTGRES_USER")
@@ -136,13 +146,20 @@ class PgBackend(StorageBackend, EpistemicStore):
             async with pool.acquire() as conn:
                 rows = await conn.fetch("SELECT ku_id FROM aii.ku_onto")
                 return [str(r["ku_id"]) for r in rows]
+
         return _run_coro(_list())
 
     def put_edge(self, src_id: str, relation: str, dst_id: str) -> None:
         async def _put():
             pool = await self._ensure_pool()
             row = {"src_id": src_id, "relation": relation, "dst_id": dst_id}
-            await upsert_batch(pool=pool, table="aii.edge_onto", rows=[row], conflict_columns=["src_id", "relation", "dst_id"])
+            await upsert_batch(
+                pool=pool,
+                table="aii.edge_onto",
+                rows=[row],
+                conflict_columns=["src_id", "relation", "dst_id"],
+            )
+
         _run_coro(_put())
 
     def list_edges(self, node_id: str | None = None) -> list[dict[str, Any]]:
@@ -150,10 +167,13 @@ class PgBackend(StorageBackend, EpistemicStore):
             pool = await self._ensure_pool()
             async with pool.acquire() as conn:
                 if node_id:
-                    rows = await conn.fetch("SELECT * FROM aii.edge_onto WHERE src_id = $1 OR dst_id = $1", node_id)
+                    rows = await conn.fetch(
+                        "SELECT * FROM aii.edge_onto WHERE src_id = $1 OR dst_id = $1", node_id
+                    )
                 else:
                     rows = await conn.fetch("SELECT * FROM aii.edge_onto")
                 return [dict(r) for r in rows]
+
         return _run_coro(_list())
 
     # --- EpistemicStore Implementation ---
@@ -166,6 +186,7 @@ class PgBackend(StorageBackend, EpistemicStore):
         """Async KU write. Uses a fresh direct connection (not the shared pool) so it
         works correctly when invoked from a thread executor with its own event loop."""
         import asyncpg as _asyncpg
+
         if not self.dsn:
             raise ValueError("DSN must be provided to initialize PgPool")
 
@@ -176,6 +197,7 @@ class PgBackend(StorageBackend, EpistemicStore):
             ku_id = ku_id
 
         import hashlib as _hashlib
+
         fingerprint = ku.get("fingerprint")
         if not fingerprint:
             # Derive fingerprint from natural_text so dedup still works
@@ -202,13 +224,14 @@ class PgBackend(StorageBackend, EpistemicStore):
         conn = await _asyncpg.connect(self.dsn)
         try:
             from pgvector.asyncpg import register_vector as _register_vector
+
             await _register_vector(conn)
             async with conn.transaction():
                 # 1. Fingerprint de-duplication
                 if fingerprint:
                     existing = await conn.fetchrow(
                         "SELECT ku_id FROM aii.ku_onto WHERE fingerprint = $1 AND is_quarantined = FALSE",
-                        fingerprint
+                        fingerprint,
                     )
                     if existing and existing["ku_id"] != ku_id:
                         logger.info("KU fingerprint dup %s → skipping", fingerprint[:8])
@@ -223,11 +246,24 @@ class PgBackend(StorageBackend, EpistemicStore):
 
                 # 3. Build column lists dynamically from what's in ku
                 _allowed = {
-                    "ku_id", "project_id", "natural_text", "knowledge_type",
-                    "symbolic_form", "embedding", "grade", "source",
-                    "verified", "is_quarantined", "provenance", "fingerprint",
-                    "is_synthesis", "synthesis_meta", "substrate_id",
-                    "sources", "merge_count", "natural_text_zh",
+                    "ku_id",
+                    "project_id",
+                    "natural_text",
+                    "knowledge_type",
+                    "symbolic_form",
+                    "embedding",
+                    "grade",
+                    "source",
+                    "verified",
+                    "is_quarantined",
+                    "provenance",
+                    "fingerprint",
+                    "is_synthesis",
+                    "synthesis_meta",
+                    "substrate_id",
+                    "sources",
+                    "merge_count",
+                    "natural_text_zh",
                 }
                 row = {k: v for k, v in ku.items() if k in _allowed}
                 row["ku_id"] = ku_id
@@ -239,10 +275,8 @@ class PgBackend(StorageBackend, EpistemicStore):
                     row["sources"] = json.dumps(row["sources"])
 
                 cols = list(row.keys())
-                placeholders = ", ".join(f"${i+1}" for i in range(len(cols)))
-                updates = ", ".join(
-                    f"{c}=EXCLUDED.{c}" for c in cols if c != "ku_id"
-                )
+                placeholders = ", ".join(f"${i + 1}" for i in range(len(cols)))
+                updates = ", ".join(f"{c}=EXCLUDED.{c}" for c in cols if c != "ku_id")
                 sql = (
                     f"INSERT INTO aii.ku_onto ({', '.join(cols)}) VALUES ({placeholders}) "
                     f"ON CONFLICT (ku_id) DO UPDATE SET {updates}"
@@ -257,7 +291,10 @@ class PgBackend(StorageBackend, EpistemicStore):
                             (ku_id, from_grade, to_grade, trigger, decision_trail)
                         VALUES ($1, $2, $3, $4, $5)
                         """,
-                        ku_id, old_grade, new_grade, "put_ku",
+                        ku_id,
+                        old_grade,
+                        new_grade,
+                        "put_ku",
                         json.dumps(ku.get("decision_trail", {})),
                     )
 
@@ -285,7 +322,8 @@ class PgBackend(StorageBackend, EpistemicStore):
                                 ON CONFLICT DO NOTHING
                                 RETURNING concept_id
                                 """,
-                                ku_id, c_row["concept_id"],
+                                ku_id,
+                                c_row["concept_id"],
                             )
                             if inserted:
                                 await conn.execute(
@@ -307,8 +345,12 @@ class PgBackend(StorageBackend, EpistemicStore):
             rows = await conn.fetch("SELECT * FROM aii.ku_onto WHERE grade = $1", grade)
             return [dict(r) for r in rows]
 
-    async def search_ku_by_vector(self, query_vector: list[float], limit: int = 5,
-                                  knowledge_type: "str | list[str] | None" = None) -> list[dict[str, Any]]:
+    async def search_ku_by_vector(
+        self,
+        query_vector: list[float],
+        limit: int = 5,
+        knowledge_type: "str | list[str] | None" = None,
+    ) -> list[dict[str, Any]]:
         """向量检索 KU. ★knowledge_type 作为一等检索维度: 传单类或多类 → 只在该六类内检索
         (走 idx_ku_onto_type 索引). 不传 → 全类."""
         pool = await self._ensure_pool()
@@ -329,9 +371,14 @@ class PgBackend(StorageBackend, EpistemicStore):
             records = await conn.fetch(sql, *params)
         return [dict(r) for r in records]
 
-    async def search_ku_hybrid(self, query_vector: list[float], query_text: str,
-                               limit: int = 5, channel_depth: int = 40,
-                               knowledge_type: "str | list[str] | None" = None) -> list[dict[str, Any]]:
+    async def search_ku_hybrid(
+        self,
+        query_vector: list[float],
+        query_text: str,
+        limit: int = 5,
+        channel_depth: int = 40,
+        knowledge_type: "str | list[str] | None" = None,
+    ) -> list[dict[str, Any]]:
         """★混合检索: dense 主序 + lexical 召回回填(provably 不回退 dense).
         本库 KU 已精炼, dense 强(评测 recall@10≈.93/MRR≈.82); 等权/加权 RRF 都会让 dense 顶命中被
         '双通道命中但离题'的候选挤下 → MRR 反降. 故改 dense-primary + lexical-backfill:
@@ -379,36 +426,274 @@ class PgBackend(StorageBackend, EpistemicStore):
             await conn.execute(
                 "UPDATE aii.ku_onto SET valid_until = now(), superseded_by = $2, updated_at = now() "
                 "WHERE ku_id = $1 AND valid_until IS NULL",
-                old_ku_id, new_ku_id,
+                old_ku_id,
+                new_ku_id,
             )
 
-    async def record_state_change(self, ku_id: str, to_grade: str, reason: str | None = None, decision_trail: dict[str, Any] | None = None) -> None:
+    async def reingest_substrate(self, substrate_id: str, reason: str) -> dict[str, Any]:
+        """Force-supersede a previously-ingested substrate so it can be re-extracted.
+
+        auto_ingest.is_substrate_ingested()/get_substrate_id_by_title() permanently
+        skip anything already in ingested_substrate — there was no path to ever
+        update a book once ingested. This retires every currently-valid KU for the
+        substrate via supersede_ku (history preserved, not hard-deleted) and clears
+        its ingested_substrate row so the next flywheel pass re-extracts it fresh.
+        No 1:1 old->new KU pairing is attempted (re-extraction may chunk
+        differently) — superseded_by is left NULL, meaning "retired by re-ingest",
+        not "replaced by this specific KU".
+        """
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            ku_ids = [
+                r["ku_id"]
+                for r in await conn.fetch(
+                    "SELECT ku_id FROM aii.ku_onto WHERE substrate_id = $1 AND valid_until IS NULL",
+                    substrate_id,
+                )
+            ]
+            for ku_id in ku_ids:
+                await conn.execute(
+                    "UPDATE aii.ku_onto SET valid_until = now(), updated_at = now() WHERE ku_id = $1",
+                    ku_id,
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO aii.ku_state_history (ku_id, from_grade, to_grade, trigger, decision_trail)
+                    SELECT ku_id, grade, grade, $2, $3 FROM aii.ku_onto WHERE ku_id = $1
+                    """,
+                    ku_id,
+                    f"reingest: {reason}",
+                    json.dumps(
+                        {
+                            "action": "reingest_supersede",
+                            "substrate_id": substrate_id,
+                            "reason": reason,
+                        }
+                    ),
+                )
+            await conn.execute(
+                "DELETE FROM aii.ingested_substrate WHERE substrate_id = $1", substrate_id
+            )
+        return {"substrate_id": substrate_id, "superseded_ku_count": len(ku_ids)}
+
+    async def record_state_change(
+        self,
+        ku_id: str,
+        to_grade: str,
+        reason: str | None = None,
+        decision_trail: dict[str, Any] | None = None,
+        grounded_by: dict[str, Any] | None = None,
+    ) -> None:
+        """Transition a KU's grade, with an audit row in ku_state_history.
+
+        `to_grade` must be one of aii.service.onto_vocab.VALID_GRADES — that's
+        the single source of truth the DB's ku_onto_grade_check constraint is
+        generated from. Validating here turns a caller bug into a clear
+        ValueError instead of a raw Postgres CheckViolation surfacing deep
+        inside a transaction.
+
+        Pass `grounded_by` when transitioning to "verified" — ck_ku_onto_grade_mandate
+        rejects grade='verified' unless grounded_by->>'method' != 'default'.
+        """
+        from aii.service.onto_vocab import VALID_GRADES
+
+        if to_grade not in VALID_GRADES:
+            raise ValueError(
+                f"invalid to_grade '{to_grade}' for KU {ku_id}; "
+                f"valid grades: {sorted(VALID_GRADES)}"
+            )
+
         pool = await self._ensure_pool()
         async with transaction(pool) as conn:
-            old_row = await conn.fetchrow("SELECT grade FROM aii.ku_onto WHERE ku_id = $1 FOR UPDATE", ku_id)
+            old_row = await conn.fetchrow(
+                "SELECT grade FROM aii.ku_onto WHERE ku_id = $1 FOR UPDATE", ku_id
+            )
             if not old_row:
                 raise ValueError(f"KU {ku_id} not found")
-            
+
             from_grade = old_row["grade"]
-            await conn.execute("UPDATE aii.ku_onto SET grade = $1, updated_at = CURRENT_TIMESTAMP WHERE ku_id = $2", to_grade, ku_id)
+            if grounded_by is not None:
+                await conn.execute(
+                    "UPDATE aii.ku_onto SET grade = $1, grounded_by = $2, updated_at = CURRENT_TIMESTAMP WHERE ku_id = $3",
+                    to_grade,
+                    json.dumps(grounded_by),
+                    ku_id,
+                )
+            else:
+                await conn.execute(
+                    "UPDATE aii.ku_onto SET grade = $1, updated_at = CURRENT_TIMESTAMP WHERE ku_id = $2",
+                    to_grade,
+                    ku_id,
+                )
             await conn.execute(
                 """
                 INSERT INTO aii.ku_state_history (ku_id, from_grade, to_grade, trigger, decision_trail)
                 VALUES ($1, $2, $3, $4, $5)
                 """,
-                ku_id, from_grade, to_grade, reason or "manual_update", json.dumps(decision_trail or {})
+                ku_id,
+                from_grade,
+                to_grade,
+                reason or "manual_update",
+                json.dumps(decision_trail or {}),
             )
 
     async def quarantine_ku(self, ku_id: str, reason: str) -> None:
-        await self.record_state_change(ku_id, to_grade="quarantined", reason=f"quarantine: {reason}")
+        """Set is_quarantined=TRUE. Quarantine is orthogonal to `grade` in the
+        ku_onto design (unlike the retired aii.ku table, there's no 'quarantined'
+        grade value) — so this does not go through record_state_change."""
+        pool = await self._ensure_pool()
+        async with transaction(pool) as conn:
+            row = await conn.fetchrow(
+                "SELECT grade FROM aii.ku_onto WHERE ku_id = $1 FOR UPDATE", ku_id
+            )
+            if not row:
+                raise ValueError(f"KU {ku_id} not found")
+            await conn.execute(
+                "UPDATE aii.ku_onto SET is_quarantined = TRUE, updated_at = CURRENT_TIMESTAMP WHERE ku_id = $1",
+                ku_id,
+            )
+            # grade itself is unchanged by quarantine — from_grade==to_grade documents that.
+            await conn.execute(
+                """
+                INSERT INTO aii.ku_state_history (ku_id, from_grade, to_grade, trigger, decision_trail)
+                VALUES ($1, $2, $2, $3, $4)
+                """,
+                ku_id,
+                row["grade"],
+                f"quarantine: {reason}",
+                json.dumps({"action": "quarantine", "reason": reason}),
+            )
+
+    async def unquarantine_ku(self, ku_id: str, reason: str) -> None:
+        pool = await self._ensure_pool()
+        async with transaction(pool) as conn:
+            row = await conn.fetchrow(
+                "SELECT grade FROM aii.ku_onto WHERE ku_id = $1 FOR UPDATE", ku_id
+            )
+            if not row:
+                raise ValueError(f"KU {ku_id} not found")
+            await conn.execute(
+                "UPDATE aii.ku_onto SET is_quarantined = FALSE, updated_at = CURRENT_TIMESTAMP WHERE ku_id = $1",
+                ku_id,
+            )
+            await conn.execute(
+                """
+                INSERT INTO aii.ku_state_history (ku_id, from_grade, to_grade, trigger, decision_trail)
+                VALUES ($1, $2, $2, $3, $4)
+                """,
+                ku_id,
+                row["grade"],
+                f"unquarantine: {reason}",
+                json.dumps({"action": "unquarantine", "reason": reason}),
+            )
+
+    async def list_quarantined_kus(self, limit: int = 100) -> list[dict[str, Any]]:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
-            # onto 无 quarantine 机制(ku_onto 无 is_quarantined 列) → no-op
-            _ = ku_id
+            rows = await conn.fetch(
+                "SELECT ku_id, title, natural_text, knowledge_type, grade, substrate_id, updated_at "
+                "FROM aii.ku_onto WHERE is_quarantined = TRUE ORDER BY updated_at DESC LIMIT $1",
+                limit,
+            )
+        return [dict(r) for r in rows]
+
+    async def list_pending_contradictions(self, limit: int = 100) -> list[dict[str, Any]]:
+        """Contradiction pairs detected by scripts/detect_contradictions.py that
+        haven't been reviewed yet, joined with both KUs' text for display."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT
+                    c.id, c.ku_a, c.ku_b, c.similarity, c.rationale, c.confidence,
+                    c.judged_by, c.created_at,
+                    a.natural_text AS ku_a_text, a.grade AS ku_a_grade,
+                    b.natural_text AS ku_b_text, b.grade AS ku_b_grade
+                FROM aii.ku_contradiction c
+                LEFT JOIN aii.ku_onto a ON a.ku_id = c.ku_a
+                LEFT JOIN aii.ku_onto b ON b.ku_id = c.ku_b
+                WHERE c.status = 'pending'
+                ORDER BY c.created_at DESC
+                LIMIT $1
+                """,
+                limit,
+            )
+        return [dict(r) for r in rows]
+
+    async def resolve_contradiction(
+        self, contradiction_id: int, action: str, note: str | None = None
+    ) -> dict[str, Any]:
+        """Resolve a pending contradiction.
+
+        action:
+          keep_a   — ku_b is wrong; grade ku_b -> 'refuted', ku_a -> 'verified'
+          keep_b   — mirror of keep_a
+          keep_both — not a real contradiction (e.g. different contexts/scope);
+                      both KUs are left as-is, just marks the pair reviewed
+          dismiss  — false positive from the detector; marks reviewed, no grade change
+        """
+        valid_actions = {"keep_a", "keep_b", "keep_both", "dismiss"}
+        if action not in valid_actions:
+            raise ValueError(f"invalid action '{action}'; must be one of {sorted(valid_actions)}")
+
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT ku_a, ku_b, status FROM aii.ku_contradiction WHERE id = $1",
+                contradiction_id,
+            )
+            if not row:
+                raise ValueError(f"contradiction {contradiction_id} not found")
+            if row["status"] != "pending":
+                raise ValueError(
+                    f"contradiction {contradiction_id} already resolved ({row['status']})"
+                )
+
+            if action == "keep_a":
+                await self.record_state_change(
+                    row["ku_b"],
+                    to_grade="refuted",
+                    reason=f"contradiction #{contradiction_id}: keep_a",
+                )
+                await self.record_state_change(
+                    row["ku_a"],
+                    to_grade="verified",
+                    reason=f"contradiction #{contradiction_id}: keep_a",
+                    grounded_by={
+                        "method": "contradiction_review",
+                        "contradiction_id": contradiction_id,
+                    },
+                )
+            elif action == "keep_b":
+                await self.record_state_change(
+                    row["ku_a"],
+                    to_grade="refuted",
+                    reason=f"contradiction #{contradiction_id}: keep_b",
+                )
+                await self.record_state_change(
+                    row["ku_b"],
+                    to_grade="verified",
+                    reason=f"contradiction #{contradiction_id}: keep_b",
+                    grounded_by={
+                        "method": "contradiction_review",
+                        "contradiction_id": contradiction_id,
+                    },
+                )
+            # keep_both / dismiss: no grade change, just close out the review
+
+            await conn.execute(
+                "UPDATE aii.ku_contradiction SET status = $1, resolved_at = now(), resolution_note = $2 WHERE id = $3",
+                action,
+                note,
+                contradiction_id,
+            )
+        return {"id": contradiction_id, "status": action}
 
     # --- New Methods for Failure Lessons and Capability Gaps ---
 
-    def record_failure_lesson(self, trigger_type: str, subject_ref: str, evidence: dict, lesson: str) -> None:
+    def record_failure_lesson(
+        self, trigger_type: str, subject_ref: str, evidence: dict, lesson: str
+    ) -> None:
         async def _record():
             pool = await self._ensure_pool()
             sql = """
@@ -423,9 +708,12 @@ class PgBackend(StorageBackend, EpistemicStore):
             """
             async with pool.acquire() as conn:
                 await conn.execute(sql, trigger_type, subject_ref, json.dumps(evidence), lesson)
+
         asyncio.run(_record())
 
-    async def record_failure_lesson_async(self, trigger_type: str, subject_ref: str | None, evidence: dict, lesson: str) -> None:
+    async def record_failure_lesson_async(
+        self, trigger_type: str, subject_ref: str | None, evidence: dict, lesson: str
+    ) -> None:
         pool = await self._ensure_pool()
         sql = """
             INSERT INTO aii.failure_lesson (trigger_type, subject_ref, evidence, lesson, occurrences)
@@ -445,11 +733,14 @@ class PgBackend(StorageBackend, EpistemicStore):
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT 1 FROM aii.failure_lesson WHERE trigger_type = $1 AND subject_ref = $2",
-                trigger_type, subject_ref
+                trigger_type,
+                subject_ref,
             )
             return row is not None
 
-    def query_failure_lessons(self, trigger_type: str = None, subject_ref: str = None) -> list[dict]:
+    def query_failure_lessons(
+        self, trigger_type: str = None, subject_ref: str = None
+    ) -> list[dict]:
         async def _query():
             pool = await self._ensure_pool()
             sql = "SELECT * FROM aii.failure_lesson WHERE 1=1"
@@ -460,10 +751,11 @@ class PgBackend(StorageBackend, EpistemicStore):
             if subject_ref:
                 params.append(subject_ref)
                 sql += f" AND subject_ref = ${len(params)}"
-            
+
             async with pool.acquire() as conn:
                 rows = await conn.fetch(sql, *params)
                 return [dict(r) for r in rows]
+
         return asyncio.run(_query())
 
     def has_failure_lesson(self, trigger_type: str, subject_ref: str) -> bool:
@@ -472,24 +764,32 @@ class PgBackend(StorageBackend, EpistemicStore):
             async with pool.acquire() as conn:
                 row = await conn.fetchrow(
                     "SELECT 1 FROM aii.failure_lesson WHERE trigger_type = $1 AND subject_ref = $2",
-                    trigger_type, subject_ref
+                    trigger_type,
+                    subject_ref,
                 )
                 return row is not None
+
         return asyncio.run(_has())
 
     def save_capability_gap(self, report: dict) -> None:
         async def _save():
             pool = await self._ensure_pool()
             async with pool.acquire() as conn:
-                await conn.execute("INSERT INTO aii.capability_gap (report) VALUES ($1)", json.dumps(report))
+                await conn.execute(
+                    "INSERT INTO aii.capability_gap (report) VALUES ($1)", json.dumps(report)
+                )
+
         asyncio.run(_save())
 
     def get_latest_capability_gap(self) -> dict | None:
         async def _get():
             pool = await self._ensure_pool()
             async with pool.acquire() as conn:
-                row = await conn.fetchrow("SELECT report FROM aii.capability_gap ORDER BY snapshot_at DESC LIMIT 1")
+                row = await conn.fetchrow(
+                    "SELECT report FROM aii.capability_gap ORDER BY snapshot_at DESC LIMIT 1"
+                )
                 return json.loads(row["report"]) if row else None
+
         return asyncio.run(_get())
 
     def get_grade_distribution(self) -> dict:
@@ -504,9 +804,11 @@ class PgBackend(StorageBackend, EpistemicStore):
                     kt = r["knowledge_type"]
                     grade = r["grade"]
                     count = r["count"]
-                    if kt not in res: res[kt] = {}
+                    if kt not in res:
+                        res[kt] = {}
                     res[kt][grade] = count
                 return res
+
         return asyncio.run(_get())
 
     async def get_grade_distribution_async(self) -> dict:
@@ -520,7 +822,8 @@ class PgBackend(StorageBackend, EpistemicStore):
                 kt = r["knowledge_type"]
                 grade = r["grade"]
                 count = r["count"]
-                if kt not in res: res[kt] = {}
+                if kt not in res:
+                    res[kt] = {}
                 res[kt][grade] = count
             return res
 
@@ -530,9 +833,10 @@ class PgBackend(StorageBackend, EpistemicStore):
             async with pool.acquire() as conn:
                 rows = await conn.fetch(
                     "SELECT * FROM aii.ku_onto WHERE grade = 'unverified' AND provenance IS NOT NULL AND updated_at < NOW() - $1::interval",
-                    f"{days} days"
+                    f"{days} days",
                 )
                 return [dict(r) for r in rows]
+
         return asyncio.run(_get())
 
     async def get_stale_unverified_async(self, days: int) -> list[dict]:
@@ -540,7 +844,7 @@ class PgBackend(StorageBackend, EpistemicStore):
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 "SELECT * FROM aii.ku_onto WHERE grade = 'unverified' AND provenance IS NOT NULL AND updated_at < NOW() - make_interval(days => $1)",
-                days
+                days,
             )
             return [dict(r) for r in rows]
 
@@ -555,6 +859,7 @@ class PgBackend(StorageBackend, EpistemicStore):
                 """
                 rows = await conn.fetch(sql)
                 return [str(r["ku_id"]) for r in rows]
+
         return asyncio.run(_get())
 
     async def get_isolated_kus_async(self) -> list[str]:
@@ -568,7 +873,9 @@ class PgBackend(StorageBackend, EpistemicStore):
             rows = await conn.fetch(sql)
             return [str(r["ku_id"]) for r in rows]
 
-    async def query_failure_lessons_async(self, trigger_type: str = None, subject_ref: str = None) -> list[dict]:
+    async def query_failure_lessons_async(
+        self, trigger_type: str = None, subject_ref: str = None
+    ) -> list[dict]:
         pool = await self._ensure_pool()
         sql = "SELECT * FROM aii.failure_lesson WHERE 1=1"
         params = []
@@ -585,12 +892,16 @@ class PgBackend(StorageBackend, EpistemicStore):
     async def save_capability_gap_async(self, report: dict) -> None:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
-            await conn.execute("INSERT INTO aii.capability_gap (report) VALUES ($1)", json.dumps(report))
+            await conn.execute(
+                "INSERT INTO aii.capability_gap (report) VALUES ($1)", json.dumps(report)
+            )
 
     async def get_latest_capability_gap_async(self) -> dict | None:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
-            row = await conn.fetchrow("SELECT report FROM aii.capability_gap ORDER BY snapshot_at DESC LIMIT 1")
+            row = await conn.fetchrow(
+                "SELECT report FROM aii.capability_gap ORDER BY snapshot_at DESC LIMIT 1"
+            )
             return json.loads(row["report"]) if row else None
 
     # --- Deep Understanding methods ---
@@ -607,7 +918,7 @@ class PgBackend(StorageBackend, EpistemicStore):
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 "SELECT ku_id, natural_text, knowledge_type, grade, substrate_id, "
-                "source, is_synthesis, is_quarantined, synthesis_meta, merge_count, created_at "
+                "is_quarantined, merge_count, created_at "
                 "FROM aii.ku_onto WHERE is_quarantined = FALSE ORDER BY created_at"
             )
             return [dict(r) for r in rows]
@@ -628,9 +939,12 @@ class PgBackend(StorageBackend, EpistemicStore):
                 trigger_type="invalid_grade",
                 subject_ref=grade,
                 evidence={
-                    "src_id": src_id, "dst_id": dst_id,
-                    "grade": grade, "relation_type": relation_type,
-                    "extraction_method": extraction_method, "context": "add_relation_edge",
+                    "src_id": src_id,
+                    "dst_id": dst_id,
+                    "grade": grade,
+                    "relation_type": relation_type,
+                    "extraction_method": extraction_method,
+                    "context": "add_relation_edge",
                 },
                 lesson=(
                     f"grade='{grade}' is not a valid EpistemicGrade; "
@@ -653,9 +967,13 @@ class PgBackend(StorageBackend, EpistemicStore):
                     evidence = EXCLUDED.evidence,
                     extraction_method = EXCLUDED.extraction_method
                 """,
-                src_id, relation_type, dst_id,
-                relation_type, grade,
-                json.dumps(evidence or {}), extraction_method,
+                src_id,
+                relation_type,
+                dst_id,
+                relation_type,
+                grade,
+                json.dumps(evidence or {}),
+                extraction_method,
             )
 
     async def get_relation_edges(self, ku_id: str | None = None) -> list[dict[str, Any]]:
@@ -701,7 +1019,11 @@ class PgBackend(StorageBackend, EpistemicStore):
         return str(row["substrate_id"]) if row else None
 
     async def mark_substrate_ingested(
-        self, substrate_id: str, title: str, medium: str, ku_count: int,
+        self,
+        substrate_id: str,
+        title: str,
+        medium: str,
+        ku_count: int,
         subject: str | None = None,
     ) -> None:
         pool = await self._ensure_pool()
@@ -714,7 +1036,11 @@ class PgBackend(StorageBackend, EpistemicStore):
                     ku_count = EXCLUDED.ku_count,
                     subject = COALESCE(EXCLUDED.subject, aii.ingested_substrate.subject)
                 """,
-                substrate_id, title, medium, ku_count, subject,
+                substrate_id,
+                title,
+                medium,
+                ku_count,
+                subject,
             )
 
     def list_ingested_substrates(self) -> list[dict]:
@@ -725,6 +1051,7 @@ class PgBackend(StorageBackend, EpistemicStore):
                     "SELECT substrate_id, title, medium, ku_count, subject FROM aii.ingested_substrate ORDER BY ingested_at"
                 )
             return [dict(r) for r in rows]
+
         return asyncio.run(_list())
 
     def update_substrate_subject(self, substrate_id: str, subject: str) -> None:
@@ -733,8 +1060,10 @@ class PgBackend(StorageBackend, EpistemicStore):
             async with pool.acquire() as conn:
                 await conn.execute(
                     "UPDATE aii.ingested_substrate SET subject = $1 WHERE substrate_id = $2",
-                    subject, substrate_id,
+                    subject,
+                    substrate_id,
                 )
+
         asyncio.run(_update())
 
     async def find_nearest_ku(
@@ -763,11 +1092,16 @@ class PgBackend(StorageBackend, EpistemicStore):
         """Append a source record to existing KU's sources array and increment merge_count.
         Preserves all expressions — multi-perspective is better than lost provenance."""
         from datetime import datetime, timezone
-        source_entry = json.dumps([{
-            "substrate_id": substrate_id,
-            "natural_text": natural_text[:200],
-            "ingested_at": datetime.now(timezone.utc).isoformat(),
-        }])
+
+        source_entry = json.dumps(
+            [
+                {
+                    "substrate_id": substrate_id,
+                    "natural_text": natural_text[:200],
+                    "ingested_at": datetime.now(timezone.utc).isoformat(),
+                }
+            ]
+        )
         pool = await self._ensure_pool()
         async with pool.acquire() as conn:
             await conn.execute(
@@ -777,7 +1111,8 @@ class PgBackend(StorageBackend, EpistemicStore):
                     merge_count = COALESCE(merge_count, 1) + 1
                 WHERE ku_id = $1
                 """,
-                existing_ku_id, source_entry,
+                existing_ku_id,
+                source_entry,
             )
 
     async def get_source_ids_for_ku(self, ku_id: str) -> list[str]:
@@ -796,8 +1131,10 @@ class PgBackend(StorageBackend, EpistemicStore):
         if not row:
             return []
         raw = row["sources"]
-        sources: list[dict] = raw if isinstance(raw, list) else (
-            json.loads(raw) if isinstance(raw, str) and raw else []
+        sources: list[dict] = (
+            raw
+            if isinstance(raw, list)
+            else (json.loads(raw) if isinstance(raw, str) and raw else [])
         )
         result = [s["substrate_id"] for s in sources if s.get("substrate_id")]
         if not result and row["substrate_id"]:
@@ -831,7 +1168,7 @@ class PgBackend(StorageBackend, EpistemicStore):
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 "SELECT ku_id, natural_text, knowledge_type, grade, substrate_id, "
-                "is_synthesis, synthesis_meta, sources "
+                "sources "
                 "FROM aii.ku_onto WHERE ku_id = ANY($1) AND is_quarantined = FALSE",
                 [kid for kid in ku_ids],
             )
@@ -917,12 +1254,16 @@ class PgBackend(StorageBackend, EpistemicStore):
 
     # ── end P3 ─────────────────────────────────────────────────────────────
 
-    async def search_synthesis_kus(self, query_vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
+    async def search_synthesis_kus(
+        self, query_vector: list[float], limit: int = 5
+    ) -> list[dict[str, Any]]:
         """onto: 综合(KC)无向量列, 不做向量检索 → 返回空; chat 回退到常规 KU 检索.
         ★已被 search_kc_by_vector 取代(KC 0004 迁移加了向量列). 保留兼容旧调用."""
         return []
 
-    async def search_kc_by_vector(self, query_vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
+    async def search_kc_by_vector(
+        self, query_vector: list[float], limit: int = 5
+    ) -> list[dict[str, Any]]:
         """★社区/知识簇(KC)摘要向量检索 — global '综述/体系' 问题的正解(GraphRAG global search).
         需先 0004 迁移 + embed_kc_summaries.py 补向量. 无向量的 KC 不参与检索."""
         pool = await self._ensure_pool()
