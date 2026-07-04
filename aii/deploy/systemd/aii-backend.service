@@ -1,0 +1,15 @@
+[Unit]
+Description=AII epistemic backend (uvicorn :8101)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/data/soffy/projects/stratum/aii/aii
+# 嵌入走共享 aii-embed 微服务(按需加载/空闲卸载) → aii-backend 自身 0 常驻 BGE-M3, 不占 2.2G RAM/不碰 GPU
+Environment=AII_EMBED_URL=http://127.0.0.1:8102
+ExecStart=/home/soffy/.local/bin/uv run --project /data/soffy/projects/stratum/aii uvicorn aii.api.app:app --host 0.0.0.0 --port 8101
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
