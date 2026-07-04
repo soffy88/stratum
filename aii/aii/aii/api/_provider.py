@@ -15,9 +15,12 @@ _OLLAMA_CALL_LOCK = threading.Lock()
 logger = logging.getLogger(__name__)
 
 
-def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash",
-                          base_url: str = "https://api.deepseek.com/chat/completions",
-                          rpm: float = 0) -> callable:
+def _make_deepseek_caller(
+    api_key: str,
+    model: str = "deepseek-v4-flash",
+    base_url: str = "https://api.deepseek.com/chat/completions",
+    rpm: float = 0,
+) -> callable:
     """Return an async callable compatible with both omodul (messages/system/max_tokens kwargs)
     and the legacy synthesis_engine (single positional prompt string via executor).
 
@@ -39,6 +42,7 @@ def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash",
         if not _min_int:
             return
         import time as _t
+
         with _rl_lock:
             start = max(_t.monotonic(), _rl_next[0])
             _rl_next[0] = start + _min_int
@@ -78,7 +82,7 @@ def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash",
         parts: list[str] = []
         if system:
             parts.append(system)
-        for msg in (messages or []):
+        for msg in messages or []:
             if isinstance(msg, dict) and msg.get("role") == "user":
                 parts.append(msg.get("content", ""))
         combined = "\n\n".join(p for p in parts if p)
@@ -92,7 +96,9 @@ def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash",
     return _call_async
 
 
-def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://localhost:11434") -> callable:
+def _make_ollama_caller(
+    model: str = "qwen2.5:7b", base_url: str = "http://localhost:11434"
+) -> callable:
     """Return a caller backed by local Ollama.
 
     _call_async (synthesis path): plain text, no format=json, 8 k char limit.
@@ -107,7 +113,12 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
         with _OLLAMA_CALL_LOCK:  # ★串行: 单 GPU 并发会让 gemma 输出垃圾
             resp = _client.post(
                 f"{base_url}/api/generate",
-                json={"model": model, "prompt": prompt[:_max_chars], "stream": False, "format": "json"},
+                json={
+                    "model": model,
+                    "prompt": prompt[:_max_chars],
+                    "stream": False,
+                    "format": "json",
+                },
             )
         resp.raise_for_status()
         return resp.json()["response"]
@@ -127,7 +138,7 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
         parts: list[str] = []
         if system:
             parts.append(system)
-        for msg in (messages or []):
+        for msg in messages or []:
             if isinstance(msg, dict) and msg.get("role") == "user":
                 parts.append(msg.get("content", ""))
         combined = "\n\n".join(p for p in parts if p)
@@ -139,9 +150,10 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
             answer = await loop.run_in_executor(ex, caller, combined)
         return {"content": [{"type": "text", "text": answer}]}
 
-    _call_async.call_sync = _call_sync          # extraction: JSON mode
+    _call_async.call_sync = _call_sync  # extraction: JSON mode
     _call_async.call_sync_plain = _call_sync_plain  # dedup/plain-text
     return _call_async
+
 
 def register_providers():
     """Register computational providers for AII (A24 Routing).
@@ -156,8 +168,12 @@ def register_providers():
     # 1. LLM Provider (DeepSeek v4) — default=flash (实测够用且最省); pro 备用
     #    deepseek-chat 别名 2026/07/24 下线, 已显式改 deepseek-v4-flash.
     api_key = os.getenv("DEEPSEEK_API_KEY")
-    ProviderRegistry.register("llm", "deepseek-flash", _make_deepseek_caller(api_key, model="deepseek-v4-flash"))
-    ProviderRegistry.register("llm", "deepseek-pro", _make_deepseek_caller(api_key, model="deepseek-v4-pro"))
+    ProviderRegistry.register(
+        "llm", "deepseek-flash", _make_deepseek_caller(api_key, model="deepseek-v4-flash")
+    )
+    ProviderRegistry.register(
+        "llm", "deepseek-pro", _make_deepseek_caller(api_key, model="deepseek-v4-pro")
+    )
 
     # ★NVIDIA NIM (云端 OpenAI 兼容; 快 + 可并发, 避开本地单 GPU 串行瓶颈, 无需 DeepSeek 余额).
     #   设 NVIDIA_NIM_API_KEY 即作 default(优先于 DeepSeek); 模型经 NIM_MODEL 选(默认 llama-3.3-70b).
@@ -166,15 +182,20 @@ def register_providers():
     if nim_key:
         nim_model = os.getenv("NIM_MODEL", "meta/llama-3.1-70b-instruct")
         nim_rpm = float(os.getenv("NIM_RPM", "36"))  # NIM 免费层 40/min, 留余量
-        nim_caller = _make_deepseek_caller(nim_key, model=nim_model,
-                                           base_url="https://integrate.api.nvidia.com/v1/chat/completions",
-                                           rpm=nim_rpm)
+        nim_caller = _make_deepseek_caller(
+            nim_key,
+            model=nim_model,
+            base_url="https://integrate.api.nvidia.com/v1/chat/completions",
+            rpm=nim_rpm,
+        )
         ProviderRegistry.register("llm", "nim", nim_caller)
         if use_nim:
             ProviderRegistry.register("llm", "default", nim_caller)
             logger.info("NVIDIA NIM registered as DEFAULT: %s", nim_model)
     if not use_ollama_as_default and not use_nim:
-        ProviderRegistry.register("llm", "default", _make_deepseek_caller(api_key, model="deepseek-v4-flash"))
+        ProviderRegistry.register(
+            "llm", "default", _make_deepseek_caller(api_key, model="deepseek-v4-flash")
+        )
 
     # 2. LLM Provider (Ollama) — low-trust sources OR local testing (ECON_LLM_PROVIDER=ollama)
     try:
@@ -190,20 +211,33 @@ def register_providers():
         if use_ollama_as_default:
             raise RuntimeError(f"ECON_LLM_PROVIDER=ollama but Ollama unavailable: {e}") from e
 
-    # 3. Embedding Provider (Real BGE-M3)
-    from oprim.embedding.bge_m3 import BgeM3Embedder
+    # 3. Embedding Provider
+    #    设 AII_EMBED_URL → 调共享 aii-embed 微服务(不在本进程加载模型, 去冗余/省内存);
+    #    否则 → 进程内 BGE-M3(单机/服务未起时的兜底).
+    embed_url = os.getenv("AII_EMBED_URL")
     try:
-        embedder = BgeM3Embedder()
-        ProviderRegistry.register("embedding", "default", embedder.embed)
-        logger.info("REAL BGE-M3 Provider registered.")
+        if embed_url:
+            from oprim.embedding.aii_remote import AiiRemoteEmbedder
+
+            embedder = AiiRemoteEmbedder(embed_url)
+            ProviderRegistry.register("embedding", "default", embedder.embed)
+            logger.info("Remote embed Provider registered: %s", embed_url)
+        else:
+            from oprim.embedding.bge_m3 import BgeM3Embedder
+
+            embedder = BgeM3Embedder()
+            ProviderRegistry.register("embedding", "default", embedder.embed)
+            logger.info("REAL BGE-M3 Provider registered (in-process).")
     except Exception as e:
-        logger.error(f"Failed to load REAL BGE-M3: {e}")
+        logger.error(f"Failed to register embedding provider: {e}")
 
     default_lbl = f"Ollama({ollama_model})" if use_ollama_as_default else "DeepSeek"
     logger.info("AII Providers registered: llm/default(%s), embedding/default", default_lbl)
 
+
 if __name__ == "__main__":
     from dotenv import load_dotenv
+
     load_dotenv()
     register_providers()
     print(f"LLM default registered: {ProviderRegistry.has('llm', 'default')}")
