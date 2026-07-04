@@ -39,6 +39,7 @@ export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:54
 export CUDA_VISIBLE_DEVICES=""          # 嵌入走 CPU(GPU 让给 math-prog, 防 OOM)
 export HF_HUB_OFFLINE=1                 # ★用本地缓存 BGE-M3, 不连 huggingface(直连超时→卡死)
 export TRANSFORMERS_OFFLINE=1
+export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"   # ★嵌入走共享 aii-embed 微服务, 本进程不再加载 BGE-M3
 # ★忠实模式(同中文版): 只忠实呈现原书内容, 不过度LLM判断/why-how; section 默认13000
 export ECON_FAITHFUL=1
 export ECON_QUARANTINE_JSON="misc_pipeline/quarantine.json"
