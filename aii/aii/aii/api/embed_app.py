@@ -66,7 +66,14 @@ class _Embedder:
                 self._load()
             self._last = time.time()
             vecs = self._model.encode(list(texts), normalize_embeddings=True)
-            return [v[:DIM].tolist() for v in vecs], self._device or "cpu"
+            out = [v[:DIM].tolist() for v in vecs]
+            # 长文本大 batch 的激活会被 torch 缓存分配器留着(可达数G), 每次编码后立刻还给显存,
+            # 稳态只留模型(~2G), 免得挤占 OCR 用卡.
+            if self._device == "cuda":
+                import torch
+
+                torch.cuda.empty_cache()
+            return out, self._device or "cpu"
 
     def maybe_unload(self) -> bool:
         with self._lock:
