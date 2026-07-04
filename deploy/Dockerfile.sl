@@ -82,7 +82,8 @@ RUN pip install --no-cache-dir \
         "paddlex[ocr]" \
         opencv-contrib-python \
         shapely \
-        pyclipper
+        pyclipper \
+        python-docx
 
 # yt-dlp: use nodejs as JS runtime + enable remote ejs component for JS challenges
 RUN mkdir -p /root/.config/yt-dlp && printf -- "--js-runtimes node\n--remote-components ejs:github\n" > /root/.config/yt-dlp/config
