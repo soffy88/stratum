@@ -11,10 +11,15 @@ GET    /api/v1/scheduled-jobs/{id}/runs      run history
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from stratum.api.routers.billing import get_active_tier
 from stratum.common import generate_ulid, jwt_auth, now_utc
 from stratum.db import execute, insert, query, read, update
 
 router = APIRouter(prefix="/api/v1/scheduled-jobs", tags=["scheduled_jobs_sl"])
+
+# Same rationale as folder_watch.py: recurring automations consume LLM budget
+# indefinitely, so they're the natural free-tier cap point.
+FREE_TIER_MAX_JOBS = 2
 
 
 class JobCreate(BaseModel):
@@ -37,21 +42,35 @@ class JobUpdate(BaseModel):
 
 @router.post("")
 async def create_job(body: JobCreate, user_id: str = Depends(jwt_auth)):
+    if get_active_tier(user_id) == "free":
+        existing = query(
+            "SELECT count(*) AS n FROM scheduled_jobs_sl WHERE user_id = %(uid)s",
+            {"uid": user_id},
+            limit=1,
+        )
+        if existing and existing[0]["n"] >= FREE_TIER_MAX_JOBS:
+            raise HTTPException(
+                402,
+                f"Free tier is limited to {FREE_TIER_MAX_JOBS} scheduled jobs — upgrade to add more",
+            )
+
     jid = generate_ulid()
-    insert(
-        "scheduled_jobs_sl",
-        {
-            "id": jid,
-            "user_id": user_id,
-            "name": body.name,
-            "agent_name": body.agent_name,
-            "cron_expression": body.cron_expression,
-            "timezone": body.timezone,
-            "enabled": body.enabled,
-            "max_items": body.max_items,
-            "created_at": now_utc(),
-        },
-    )
+    row = {
+        "id": jid,
+        "user_id": user_id,
+        "name": body.name,
+        "agent_name": body.agent_name,
+        "cron_expression": body.cron_expression,
+        "timezone": body.timezone,
+        "enabled": body.enabled,
+        "max_items": body.max_items,
+        "created_at": now_utc(),
+    }
+    insert("scheduled_jobs_sl", row)
+
+    from stratum.scheduler.runtime import sync_job
+
+    sync_job(row)
     return {"job_id": jid, "status": "created"}
 
 
@@ -79,6 +98,10 @@ async def update_job(job_id: str, body: JobUpdate, user_id: str = Depends(jwt_au
     changes = body.model_dump(exclude_none=True)
     if changes:
         update("scheduled_jobs_sl", job_id, changes)
+
+    from stratum.scheduler.runtime import sync_job
+
+    sync_job(read("scheduled_jobs_sl", job_id))
     return {"job_id": job_id, "status": "updated"}
 
 
@@ -92,6 +115,10 @@ async def delete_job(job_id: str, user_id: str = Depends(jwt_auth)):
         "DELETE FROM scheduled_jobs_sl WHERE id = %(jid)s AND user_id = %(uid)s",
         {"jid": job_id, "uid": user_id},
     )
+
+    from stratum.scheduler.runtime import remove_job
+
+    remove_job(job_id)
     return {"job_id": job_id, "status": "deleted"}
 
 

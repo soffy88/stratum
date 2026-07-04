@@ -41,9 +41,9 @@ UNRESOLVED_LOG = Path("/data/logs/aii_unresolved.log")
 LOOP_INTERVAL = 3600  # 1h
 ALLOWED_SOURCES = {"arxiv", "gutenberg", "oapen", "openstax", "mit_ocw"}
 
-MAX_PER_NEED = 5  # 一个 need 实际入库总篇数上限
-MAX_PER_DAY = 20
-MAX_PER_MONTH = 200
+MAX_PER_NEED = 20  # 一个 need 实际入库总篇数上限
+MAX_PER_DAY = 50
+MAX_PER_MONTH = 500
 ANTI_LOOP_ROUNDS = 2  # 连续 N 轮 ingested=0 → 停
 
 # ── need 性质信号词（§3）─────────────────────────────────────────────────────

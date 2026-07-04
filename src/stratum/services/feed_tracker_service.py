@@ -1,81 +1,144 @@
-"""Feed Tracker service — oservice FeedTrackerEngine assembled for Stratum.
+"""Feed Tracker service — oservi FeedTrackerEngine assembled for Stratum.
 
-Adapters bridge the gap between oservice injection contracts and actual oprim/omodul APIs.
-The __module__ override on oprim adapters is intentional: oservice kind="oprim" validation
-checks __module__ prefix. Adapters are thin wrappers around real oprim callables.
+oservi.engines.feed_tracker.FeedTrackerEngine (installed version 1.2.0) declares
+exactly 3 injection points: fetch_event (oprim, 1), subscription (layer4, 1),
+ingest (omodul, 0..1). fetch_event returns a flat list of "events" (dicts) each
+tick; the engine calls subscription(event=...) and ingest(event=...) once per
+event. There's no separate diff/query/update contract — this module used to
+target an older 5-point shape (fetch/diff/query/update/ingest) that no longer
+matches the installed oservi; due-tracking (last_check_at/etag) is therefore
+done directly against the DB inside fetch_event, since that's the only
+injection point that sees every subscription on every tick (not just the ones
+with new entries).
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import timedelta
 from pathlib import Path
+
+from stratum.common import now_utc, now_utc_dt
 
 log = logging.getLogger(__name__)
 
 _FEED_TRACKER_ENGINE = None
 
 
-# ── Adapters for oprim injection (kind="oprim") ───────────────────────────────
+# ── fetch_event (kind="oprim", cardinality=1) ─────────────────────────────────
 
 
-def _make_fetch_feed_adapter():
-    """Wrap oprim.fetch_rss_feed to match FeedTrackerEngine's injection protocol.
+def _make_fetch_event_adapter():
+    """Poll every due subscription, update its due-tracking state, and return
+    one event dict per newly-seen entry across all of them.
 
-    Engine calls: fn(url=url, etag=etag, last_modified=last_modified)
-    oprim.fetch_rss_feed accepts: (url, timeout, max_items) — no etag/last_modified.
-    Adapter: drops etag/last_modified, remaps 'items' → 'entries'.
+    Engine calls: fn(config=self.config) — no per-subscription args, since this
+    injection point owns the whole "which feeds are due" decision.
     """
-    from oprim import fetch_rss_feed
+    from oprim import fetch_rss_feed, feed_diff_detector
+    from stratum.db import query, update
+    from stratum.services.feed_subscriptions import query_active_subscriptions
 
-    def _fetch_feed_adapter(*, url: str, etag=None, last_modified=None, **_) -> dict:
-        result = fetch_rss_feed(url=url, timeout=20, max_items=50)
-        return {
-            "entries": result.get("items", []),  # engine expects "entries"
-            "etag": None,  # oprim doesn't support conditional GET yet
-            "last_modified": None,
-            "status": None if not result.get("error") else "error",
-            "error": result.get("error"),
-        }
+    def _fetch_event_adapter(*, config: dict | None = None, **_) -> list[dict]:
+        subs = query_active_subscriptions(last_check_before=now_utc())["findings"]["subscriptions"]
+        events: list[dict] = []
+        for sub in subs:
+            frequency_hours = sub.get("frequency_hours") or 6
+            last_check_at = sub.get("last_check_at")
+            if last_check_at is not None:
+                due_at = last_check_at + timedelta(hours=frequency_hours)
+                if now_utc_dt() < due_at:
+                    continue  # not due yet — this sub's own cadence hasn't elapsed
 
-    _fetch_feed_adapter.__module__ = "oprim.feed"  # satisfy kind="oprim" check
-    _fetch_feed_adapter.__name__ = "fetch_feed_adapter"
-    return _fetch_feed_adapter
+            try:
+                fetched = fetch_rss_feed(url=sub["url"], timeout=20, max_items=50)
+            except Exception as exc:
+                log.warning("feed_fetch_failed sub=%s url=%s error=%s", sub["id"], sub["url"], exc)
+                update(
+                    "feed_subscriptions",
+                    sub["id"],
+                    {"last_check_at": now_utc(), "status": "error", "error_message": str(exc)},
+                )
+                continue
+
+            current_entries = fetched.get("items", [])
+            old_items = [{"guid": g} for g in (sub.get("_seen_guids") or [])]
+            diffed = feed_diff_detector(
+                old_items=old_items, new_items=current_entries, key_field="guid"
+            )
+            new_entries = diffed.get("new_items", [])
+
+            # Due-tracking always advances, whether or not new entries were found —
+            # otherwise a quiet feed would look "due" again on every 5s engine tick.
+            update(
+                "feed_subscriptions",
+                sub["id"],
+                {
+                    "last_check_at": now_utc(),
+                    "last_entries_count": len(current_entries),
+                    "status": "active",
+                    "error_message": None,
+                },
+            )
+
+            for entry in new_entries:
+                events.append(
+                    {
+                        "subscription_id": sub["id"],
+                        "user_id": sub["user_id"],
+                        "feed_url": sub["url"],
+                        "title": entry.get("title"),
+                        "link": entry.get("link") or entry.get("guid"),
+                        "content": entry.get("summary")
+                        or entry.get("content")
+                        or entry.get("title")
+                        or "",
+                        "guid": entry.get("guid") or entry.get("link"),
+                    }
+                )
+        return events
+
+    _fetch_event_adapter.__module__ = "oprim.feed"  # satisfies oservi kind="oprim" check
+    _fetch_event_adapter.__name__ = "fetch_event_adapter"
+    return _fetch_event_adapter
 
 
-def _make_diff_adapter():
-    """Wrap oprim.feed_diff_detector to match FeedTrackerEngine's injection protocol.
+# ── subscription (kind="layer4", cardinality=1) ───────────────────────────────
 
-    Engine calls: fn(current_entries=entries, previous_entry_ids=prev_ids)
-    oprim.feed_diff_detector accepts: (old_items, new_items, key_field) → {new_items: [...]}
-    Adapter: converts previous_entry_ids (list[str]) → old_items (list[dict with guid]),
-             remaps output 'new_items' → 'new_entries'.
-    """
-    from oprim import feed_diff_detector
 
-    def _diff_adapter(*, current_entries: list, previous_entry_ids: list[str], **_) -> dict:
-        old_items = [{"guid": gid} for gid in (previous_entry_ids or [])]
-        result = feed_diff_detector(
-            old_items=old_items, new_items=current_entries, key_field="guid"
+def _make_subscription_adapter():
+    """Per-event bookkeeping. fetch_event already persisted last_check_at/status
+    for the whole subscription — this just records that a specific entry was
+    delivered, for observability (last_entries_count is already tracked above;
+    this adds a per-entry log line so a stuck ingest step is visible in logs)."""
+
+    def _subscription_adapter(*, event: dict, **_) -> None:
+        log.info(
+            "feed_event_seen sub=%s user=%s guid=%s",
+            event.get("subscription_id"),
+            event.get("user_id"),
+            event.get("guid"),
         )
-        return {"new_entries": result.get("new_items", [])}
 
-    _diff_adapter.__module__ = "oprim.feed"
-    _diff_adapter.__name__ = "diff_adapter"
-    return _diff_adapter
+    _subscription_adapter.__module__ = (
+        "stratum.services.feed_subscriptions"  # satisfies kind="layer4"
+    )
+    _subscription_adapter.__name__ = "subscription_adapter"
+    return _subscription_adapter
+
+
+# ── ingest (kind="omodul", cardinality=0..1) ──────────────────────────────────
 
 
 def _make_ingest_adapter():
     """Wrap omodul.process_inbox_substrate to match FeedTrackerEngine's ingest protocol.
 
-    Engine calls: fn(content=..., source_url=..., title=..., tags=..., user_id=...)
-    omodul.process_inbox_substrate accepts: (config, input_data, output_dir)
-    Adapter: writes content to a temp file and builds InboxConfig.
+    Engine calls: fn(event=event_dict) with the dict produced by fetch_event above.
     """
-    from omodul import process_inbox_substrate, InboxConfig, InboxInput
+    from omodul.process_inbox_substrate import process_inbox_substrate, InboxConfig, InboxInput
     from stratum.utils.user_id_hash import hash_user_id
     from stratum.db import execute as db_execute, update as db_update
-    from stratum.common import now_utc
     import ast
     import hashlib
     import re
@@ -83,15 +146,11 @@ def _make_ingest_adapter():
 
     _ULID_RE = re.compile(r"[0-9A-Z]{26}")
 
-    def _ingest_adapter(
-        *,
-        content: str,
-        source_url: str | None = None,
-        title: str | None = None,
-        tags: list[str] | None = None,
-        user_id: str | None = None,
-        **_,
-    ) -> dict:
+    def _ingest_adapter(*, event: dict, **_) -> dict:
+        content = event.get("content")
+        user_id = event.get("user_id")
+        title = event.get("title")
+        source_url = event.get("link") or event.get("feed_url")
         if not content or not user_id:
             return {"status": "skipped"}
         with tempfile.NamedTemporaryFile(
@@ -119,13 +178,11 @@ def _make_ingest_adapter():
                 m = _ULID_RE.search(str(sid_raw))
                 if m:
                     sid = m.group(0)
-                    # UPDATE title to real feed entry title
                     if title:
                         try:
                             db_update("substrates", sid, {"title": title, "updated_at": now_utc()})
                         except Exception as exc:
                             log.warning("feed_title_update_failed sid=%s error=%s", sid, exc)
-                    # Populate derivative.content from findings.derivative_ids
                     for item in getattr(findings, "derivative_ids", None) or []:
                         try:
                             d = ast.literal_eval(item) if isinstance(item, str) else item
@@ -151,7 +208,7 @@ def _make_ingest_adapter():
                                 )
         return result
 
-    _ingest_adapter.__module__ = "omodul.feed_ingest"  # satisfy kind="omodul" check
+    _ingest_adapter.__module__ = "omodul.feed_ingest"  # satisfies oservi kind="omodul" check
     _ingest_adapter.__name__ = "ingest_adapter"
     return _ingest_adapter
 
@@ -165,23 +222,19 @@ def get_feed_tracker_engine():
         return _FEED_TRACKER_ENGINE
 
     try:
-        from oservice import assemble, ServiceManifest
-        from stratum.services.feed_subscriptions import (
-            query_active_subscriptions,
-            update_subscription_state,
-        )
+        from oservi import assemble, ServiceManifest
 
         manifest = ServiceManifest(
             name="stratum-feed-tracker",
             skeleton="feed_tracker",
             inject={
-                "fetch_feed_oprim": [_make_fetch_feed_adapter()],
-                "diff_oprim": [_make_diff_adapter()],
-                "subscription_query": [query_active_subscriptions],  # layer4 — no kind check
-                "subscription_update": [update_subscription_state],  # layer4 — no kind check
-                "ingest_omodul": [_make_ingest_adapter()],
+                "fetch_event": [_make_fetch_event_adapter()],
+                "subscription": [_make_subscription_adapter()],
+                "ingest": [_make_ingest_adapter()],
             },
-            trigger={"on_interval": 3600},  # hourly; FeedTrackerEngine uses this for its loop
+            trigger={
+                "on_interval": 3600
+            },  # hourly; per-subscription cadence is enforced inside fetch_event
             config={
                 "max_concurrent_fetches": 5,
                 "default_frequency_hours": 6,
@@ -197,19 +250,19 @@ def get_feed_tracker_engine():
 
 
 async def run_feed_tracker_tick() -> dict:
-    """Execute one feed tracker tick (fetch + diff + ingest for due subscriptions).
+    """Execute one feed tracker tick (fetch + ingest for due subscriptions).
 
     Called from Stratum's lifespan background task every hour.
     """
     engine = get_feed_tracker_engine()
     if engine is None:
-        return {"status": "unavailable", "error": "oservice not assembled"}
+        return {"status": "unavailable", "error": "oservi not assembled"}
     try:
         result = await engine.tick()
         log.info(
-            "feed_tracker_tick feeds_checked=%s new_entries=%s",
-            result.get("feeds_checked"),
-            result.get("new_entries"),
+            "feed_tracker_tick events_fetched=%s events_processed=%s",
+            result.get("events_fetched"),
+            result.get("events_processed"),
         )
         return result
     except Exception as e:

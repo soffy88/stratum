@@ -29,7 +29,7 @@ def query_active_subscriptions(
     """
     rows = query(
         "SELECT id, user_id, feed_url AS url, last_etag AS etag, last_modified, "
-        "       last_entries_count, frequency_hours, status "
+        "       last_entries_count, frequency_hours, status, last_check_at "
         "FROM feed_subscriptions "
         "WHERE status = $status "
         "  AND (last_check_at IS NULL OR last_check_at < CAST($cutoff AS TIMESTAMP))",
