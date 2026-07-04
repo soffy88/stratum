@@ -90,5 +90,6 @@ aii/*_pipeline/run_log.jsonl
 aii/*_pipeline/qual/
 aii/*_pipeline/staging/
 aii/*_pipeline/待补/
+aii/*_pipeline/ocr_cache/
 deploy/logs/*.log
 scripts/*.log
