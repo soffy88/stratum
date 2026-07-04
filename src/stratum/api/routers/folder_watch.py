@@ -7,12 +7,19 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from fastapi import HTTPException
+
+from stratum.api.routers.billing import get_active_tier
 from stratum.common import generate_ulid, jwt_auth, now_utc
 from stratum.db import execute as db_execute, insert, query
 
 log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/folder-watch", tags=["folder-watch"])
+
+# Free-tier cap on ongoing-automation resources (folder watches keep polling
+# disk + LLM budget indefinitely, so this is the natural place to gate).
+FREE_TIER_MAX_WATCHES = 2
 
 
 class FolderWatchRequest(BaseModel):
@@ -39,6 +46,18 @@ async def add_folder_watch(
     body: FolderWatchRequest,
     user_id: str = Depends(jwt_auth),
 ):
+    if get_active_tier(user_id) == "free":
+        existing = query(
+            "SELECT count(*) AS n FROM folder_watches WHERE user_id = %(uid)s AND status != 'deleted'",
+            {"uid": user_id},
+            limit=1,
+        )
+        if existing and existing[0]["n"] >= FREE_TIER_MAX_WATCHES:
+            raise HTTPException(
+                402,
+                f"Free tier is limited to {FREE_TIER_MAX_WATCHES} folder watches — upgrade to add more",
+            )
+
     watch_id = generate_ulid()
 
     insert(

@@ -1,11 +1,23 @@
-"""Stratum HTTP API application."""
+"""Stratum HTTP API application (legacy "Phase 14" app, `stratum-api` container, :9302).
+
+Still load-bearing — don't assume this is dead just because api/main.py (SPEC2,
+:9304) has newer/richer routers with the same names (notes/agents/substrates/
+search/scheduled_jobs). Frontend rewrites send /api/auth/* and bare /api/search
+here specifically (see api/main.py's module docstring for the full routing
+table and why a merge is deferred, not abandoned)."""
 
 import os
 
-from fastapi import FastAPI, Request
+from stratum.logging_config import configure_logging
+
+configure_logging()
+
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from stratum.middleware.corpus_isolation import corpus_isolation_middleware
+from stratum.middleware.rate_limit import rate_limit_middleware
+from stratum.middleware.abuse_detection import abuse_detection_middleware
 from stratum.http_api.routes import auth, search, substrates, notes, agents, scheduled_jobs
 from stratum.http_api.routes.admin import router as admin_router
 from stratum.http_api.routes.feedback import router as feedback_router
@@ -63,6 +75,18 @@ async def corpus_mw(request: Request, call_next):
     return await corpus_isolation_middleware(request, call_next)
 
 
+@app.middleware("http")
+async def rate_limit_mw(request: Request, call_next):
+    return await rate_limit_middleware(request, call_next)
+
+
+# Outermost (registered last → runs first): reject already-blocked IPs before
+# spending any rate-limit/corpus-isolation/route work on them.
+@app.middleware("http")
+async def abuse_detection_mw(request: Request, call_next):
+    return await abuse_detection_middleware(request, call_next)
+
+
 # Auth (exempt from corpus middleware)
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
@@ -87,8 +111,19 @@ app.include_router(admin_router, prefix="/api", tags=["admin"])
 
 
 @app.get("/health")
-def health_check():
-    return {"status": "healthy"}
+def health_check(response: Response):
+    """Was a bare 200 regardless of DB state — a dead backend still passed this
+    check as long as the process was alive. Now verifies the DB connection the
+    app actually depends on."""
+    try:
+        from stratum.db import get_conn
+
+        with get_conn() as conn:
+            conn.execute("SELECT 1")
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        response.status_code = 503
+        return {"status": "unhealthy", "database": "unreachable", "error": str(e)}
 
 
 # MCP SSE endpoint — for Claude Desktop / MCP clients
