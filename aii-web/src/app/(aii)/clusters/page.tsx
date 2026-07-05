@@ -22,10 +22,12 @@ import type { KcListItem, KcDetail } from '@/aii/types/api';
 
 function BiText({ zh, en }: { zh: string; en?: string }) {
   const [showEn, setShowEn] = useState(false);
+  // ★中文原书没有独立英文(与 zh 内容相同, 存储层 fallback 而非翻译)——不显示折叠。
+  const hasSeparateEn = !!en && en.trim().length > 0 && en.trim() !== (zh ?? '').trim();
   return (
     <div className="flex flex-col gap-1.5">
       <MathText text={zh} className="text-sm leading-relaxed" />
-      {en && (
+      {hasSeparateEn && (
         <>
           <button onClick={() => setShowEn(v => !v)} className="self-start text-xs text-[color:var(--text-secondary)] hover:text-[color:var(--accent,#2563eb)]">
             <span className="inline-block w-3">{showEn ? '▾' : '▸'}</span> 英文原文
@@ -52,7 +54,8 @@ function MemberRow({ m, showSource }: { m: KcDetail['members'][number]; showSour
       {open && (
         <div className="pl-2 border-l-2 border-[color:var(--border)] flex flex-col gap-1.5">
           <MathText text={zh} className="text-sm leading-relaxed" />
-          {m.natural_text_en && (
+          {/* ★中文原书没有独立英文(与 zh 内容相同, 存储层 fallback 而非翻译)——不显示折叠。 */}
+          {!!m.natural_text_en && m.natural_text_en.trim() !== zh.trim() && (
             <>
               <button onClick={() => setShowEn(v => !v)} className="self-start text-xs text-[color:var(--text-secondary)] hover:text-[color:var(--accent,#2563eb)]">
                 <span className="inline-block w-3">{showEn ? '▾' : '▸'}</span> 英文原文

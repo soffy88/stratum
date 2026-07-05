@@ -24,6 +24,8 @@ const FACETS: { key: keyof BuFacets; label: string; icon: string }[] = [
 
 function Facet({ label, icon, zh, en }: { label: string; icon: string; zh: string; en: string }) {
   const [showEn, setShowEn] = useState(false);
+  // ★中文原书没有独立英文(与 zh 内容相同, 存储层 fallback 而非翻译)——不显示折叠。
+  const hasSeparateEn = !!en && en.trim().length > 0 && en.trim() !== (zh ?? '').trim();
   return (
     <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-4 flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -31,7 +33,7 @@ function Facet({ label, icon, zh, en }: { label: string; icon: string; zh: strin
         <h3 className="text-sm font-semibold">{label}</h3>
       </div>
       <MathText text={zh} className="text-sm leading-relaxed" />
-      {en && (
+      {hasSeparateEn && (
         <>
           <button
             onClick={() => setShowEn(v => !v)}

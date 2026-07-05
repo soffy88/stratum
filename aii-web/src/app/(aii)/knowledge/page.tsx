@@ -48,14 +48,17 @@ const TYPE_OPTS: OFilterChipOption[] = (
   ['conceptual','rationale','factual','procedural','metacognitive','positional'] as unknown as KnowledgeType[]
 ).map(t => ({ value: t, label: ktLabel(t) }));
 
-/** 双语:中文(简体)主显 + 英文原文折叠(箭头展开)。无中文时回退英文。 */
+/** 双语:中文(简体)主显 + 英文原文折叠(箭头展开)。无中文时回退英文。
+ *  ★中文原书的 KU 没有独立英文(natural_text 与 natural_text_zh 内容相同,
+ *  是存储层 fallback 而非翻译)——此时不显示"英文原文"折叠,直接呈现原文。 */
 function BilingualText({ zh, en }: { zh?: string | null; en: string }) {
   const [showEn, setShowEn] = useState(false);
   const hasZh = !!zh && zh.trim().length > 0;
+  const hasSeparateEn = !!en && en.trim().length > 0 && en.trim() !== (zh ?? '').trim();
   return (
     <div className="flex flex-col gap-1.5">
       <MathText text={hasZh ? (zh as string) : en} className="text-sm leading-relaxed" />
-      {hasZh && (
+      {hasZh && hasSeparateEn && (
         <>
           <button
             onClick={e => { e.stopPropagation(); setShowEn(v => !v); }}
