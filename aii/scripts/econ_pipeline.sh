@@ -77,7 +77,12 @@ $PY scripts/persist_chapter_kc.py && $PY scripts/fix_kc_labels_summaries.py || {
 
 echo ""
 echo "[4/5] BU 书级理解(七项; ★单本枢纽=ku_concept度数+按章KC, 不碰B仓概念图) 入库"
-$PY scripts/generate_bu.py && $PY scripts/persist_bu.py || { echo "❌ [4/5] 失败"; exit 2; }
+# ★BU生成用独立NIM key(math_zh, 闲置未用——math-prog飞轮0-LLM设计不需要key),
+#   避免和本飞轮[1/5]_plan/_synth共享同一把econ_zh key的40/min限流排队.
+NIM_BU_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('math_zh',''))" 2>/dev/null)"
+NVIDIA_NIM_API_KEY="$NIM_BU_KEY" $PY scripts/generate_bu.py \
+  && NVIDIA_NIM_API_KEY="$NIM_BU_KEY" $PY scripts/persist_bu.py \
+  || { echo "❌ [4/5] 失败"; exit 2; }
 
 echo ""
 echo "[5/5] ★KU质量门(complete严/残留/空壳/双语/讲浅/密度/章/★六分类rationale≠0; 去有向边/explains=B仓) → $QUAL_JSON"
