@@ -27,6 +27,36 @@ CHUNK = 40_000
 MIN_NUMBERED_PER_CHUNK = 30  # 编号行够密才认为是"习题教材", 否则无法判断(不误伤叙事书)
 RATIO_THRESHOLD = 0.33  # 结构词/编号行 低于此值 → 判定为烂文本层
 
+# ★内容破碎检测(独立于上面的结构词判据): 捕获"结构词密度测起来正常, 但具体内容本身
+# 破碎成标点堆砌"的乱码——常见于复杂公式/图表密集页, OCR/文本抽取彻底失败, 输出一堆
+# "·:,、;..."这类符号, 而"例/定义"这类结构词恰好在书的其它正常段落里出现、结构词
+# 判据测不出来. 实测 Hubbard《向量微积分、线性代数和微分形式》91%窗口命中 vs 全部
+# 现有正常数学书(斯图/上帝创造整数/牛顿原理等)0%命中, 区分度清晰, 阈值留足余量.
+GARBLE_RE = re.compile(r"[·:：,，、；;!！\.\-~`]{4,}")
+GARBLE_HITS_PER_CHUNK = 20
+GARBLE_BAD_FRACTION = 0.3
+
+
+def _garble_density(text: str) -> tuple[bool, dict]:
+    total = bad = 0
+    for i in range(0, len(text), CHUNK):
+        seg = text[i : i + CHUNK]
+        if len(seg) < 5000:
+            continue
+        total += 1
+        # ★排除"单一字符纯重复"("-----"/"......"这类合法markdown分隔线/占位符,
+        # 不是乱码——真乱码是多种不同标点混杂). 命中至少含2种不同字符才算.
+        hits = [m for m in GARBLE_RE.findall(seg) if len(set(m)) >= 2]
+        if len(hits) > GARBLE_HITS_PER_CHUNK:
+            bad += 1
+    if total == 0:
+        return False, {}
+    frac = bad / total
+    return frac >= GARBLE_BAD_FRACTION, {
+        "garble_chunks": f"{bad}/{total}",
+        "garble_fraction": round(frac, 2),
+    }
+
 
 def needs_ocr(text: str) -> tuple[bool, dict]:
     """返回 (是否需要OCR, 诊断详情). 诊断详情供日志/调试, 不用于决策之外的用途."""
@@ -55,6 +85,14 @@ def needs_ocr(text: str) -> tuple[bool, dict]:
         "chunks_bad": chunks_bad,
         "ratios_sample": ratios[:8],
     }
+
+    garble_flag, garble_detail = _garble_density(text)
+    detail.update(garble_detail)
+    if garble_flag:
+        # 内容破碎信号独立命中(不依赖结构词判据是否够格判断), 直接判需要OCR
+        detail["reason"] = "garbled_content"
+        return True, detail
+
     if chunks_judged < 2:
         # 习题密度不足以判断(叙事类数学书等) → 默认不需要OCR, 避免误伤
         detail["reason"] = "insufficient_exercise_density"
