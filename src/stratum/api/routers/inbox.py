@@ -256,8 +256,14 @@ async def inbox_submit(
             _fill_derivative_content(substrate_id, findings)
             from stratum.lib.quality.ingest_quality_gate import run_quality_gate
             from stratum.services.md_export_service import export_one
+
             sub_ids = getattr(findings, "substrate_ids", None) or [substrate_id]
-            for _sid in sub_ids:
+            for _raw_sid in sub_ids:
+                # substrate_ids may carry IngestResult reprs (omodul quirk);
+                # normalize to the bare ULID like substrate_id above.
+                _sid = _extract_id(_raw_sid)
+                if not _sid:
+                    continue
                 run_quality_gate(_sid)
                 export_one(_sid)
         if substrate_id and _HAS_GRAPH:
@@ -432,8 +438,14 @@ async def inbox_webclip(
             _fill_derivative_content(substrate_id, findings)
             from stratum.lib.quality.ingest_quality_gate import run_quality_gate
             from stratum.services.md_export_service import export_one
+
             sub_ids = getattr(findings, "substrate_ids", None) or [substrate_id]
-            for _sid in sub_ids:
+            for _raw_sid in sub_ids:
+                # substrate_ids may carry IngestResult reprs (omodul quirk);
+                # normalize to the bare ULID like substrate_id above.
+                _sid = _extract_id(_raw_sid)
+                if not _sid:
+                    continue
                 run_quality_gate(_sid)
                 export_one(_sid)
         if substrate_id and _HAS_GRAPH:

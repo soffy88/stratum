@@ -132,7 +132,7 @@ def _build_nim_pool():
     from aii.api._provider import _make_deepseek_caller
     keys = json.loads((ROOT / ".pipeline_keys.json").read_text())
     pool = [_make_deepseek_caller(
-                k, model=os.getenv("NIM_MODEL", "meta/llama-3.3-70b-instruct"),
+                k, model=os.getenv("NIM_MODEL", "meta/llama-3.1-70b-instruct"),
                 base_url="https://integrate.api.nvidia.com/v1/chat/completions", rpm=36)
             for k in keys.values()]
     print(f"NIM key 池: {len(pool)} key 轮转并发", flush=True)
