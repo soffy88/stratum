@@ -89,3 +89,15 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 }
+
+/* aii mark — two rings (raw text, forming structure) turning around a still
+ * core (the concept's inner essence). See docs/brand/aii-visual-identity.html. */
+.aii-mark-ring { transform-box: fill-box; transform-origin: center; }
+.aii-mark-ring--outer { animation: aii-mark-turn 20s linear infinite; }
+.aii-mark-ring--mid { animation: aii-mark-turn 12s linear infinite reverse; }
+@keyframes aii-mark-turn {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aii-mark-ring--outer, .aii-mark-ring--mid { animation: none; }
+}
