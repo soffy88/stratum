@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <style>
+    .ring { transform-box: fill-box; transform-origin: center; }
+    .ring-outer { animation: turn 20s linear infinite; }
+    .ring-mid { animation: turn 12s linear infinite reverse; }
+    @keyframes turn { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .ring-outer, .ring-mid { animation: none; }
+    }
+  </style>
+  <g class="ring ring-outer">
+    <circle cx="100" cy="100" r="86" fill="none" stroke="#7c8394" stroke-width="2" stroke-dasharray="1.5 11" stroke-linecap="round" opacity="0.5"/>
+  </g>
+  <g class="ring ring-mid">
+    <circle cx="100" cy="100" r="60" fill="none" stroke="#a9762f" stroke-width="3" stroke-dasharray="130 420" stroke-linecap="round" opacity="0.6"/>
+  </g>
+  <circle cx="100" cy="100" r="31" fill="#a9762f"/>
+  <circle cx="100" cy="100" r="31" fill="none" stroke="#1c1e29" stroke-width="2" opacity="0.2"/>
+</svg>
