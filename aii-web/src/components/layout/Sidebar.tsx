@@ -39,6 +39,21 @@ export const useSidebarStore = create<{
   },
 }));
 
+function AiiMark({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 200 200" aria-hidden="true">
+      <g className="aii-mark-ring aii-mark-ring--outer">
+        <circle cx="100" cy="100" r="86" fill="none" stroke="var(--color-border)" strokeWidth="4" strokeDasharray="3 22" strokeLinecap="round" />
+      </g>
+      <g className="aii-mark-ring aii-mark-ring--mid">
+        <circle cx="100" cy="100" r="60" fill="none" stroke="var(--color-primary)" strokeWidth="6" strokeDasharray="130 420" strokeLinecap="round" opacity="0.6" />
+      </g>
+      <circle cx="100" cy="100" r="31" fill="var(--color-primary)" />
+      <circle cx="100" cy="100" r="31" fill="none" stroke="var(--color-foreground)" strokeWidth="2" opacity="0.2" />
+    </svg>
+  );
+}
+
 function ThemeToggle() {
   const [theme, setThemeState] = useState<Theme>('zen');
   useEffect(() => { setThemeState(getTheme()); }, []);
@@ -167,7 +182,10 @@ export function Sidebar() {
           h-dvh border-r bg-card overflow-y-auto transition-transform duration-200`}
       >
         <div className="flex items-center justify-between px-5 py-4">
-          <span className="font-bold text-lg">aii</span>
+          <span className="flex items-center gap-2">
+            <AiiMark />
+            <span className="font-bold text-lg">aii</span>
+          </span>
           <button
             onClick={toggle}
             className="p-2 min-h-11 min-w-11 flex items-center justify-center rounded-lg hover:bg-muted"
