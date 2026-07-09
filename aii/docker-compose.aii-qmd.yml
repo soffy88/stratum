@@ -1,0 +1,53 @@
+# qmd (MinerU-Document-Explorer) — retrieval/chunking/deep-read/dedup-prefilter.
+# MINERU-AII-INTEGRATION-SPEC-001 §3 Track A + §8 3O mapping (oskill, not omodul — qmd 不产 KU, 见红线 R1).
+# 独立 compose project(隔离方式照抄 aii-refined 那套): 独立 project name/volume/port,
+# 不与 aii/aii-refined 共享 network, 不做跨隔离手段(dblink 之类)。
+# 端口占用参照 aii-refined-pg 注释里的表: 5432 hevi / 5433 mneme / 5434 platform /
+# 5435 aii-postgres / 5436 aii-refined-postgres → qmd 用 8181(qmd 自己的 MCP 默认端口)。
+name: aii-qmd
+services:
+  aii-qmd:
+    build:
+      context: .
+      dockerfile: Dockerfile.qmd
+      args:
+        HTTP_PROXY: http://172.19.0.1:10808
+        HTTPS_PROXY: http://172.19.0.1:10808
+    image: aii-qmd:latest
+    container_name: aii-qmd
+    restart: unless-stopped
+    # 实测踩坑: qmd 的 HTTP MCP server 对 Docker 端口发布(NAT)链路会 accept 了 TCP
+    # 握手、收完请求后直接静默断连(空回复), 但同一请求从容器网络命名空间内部(docker
+    # exec 进去打 localhost:8181)一切正常——像是某种同源/回环校验没适配 NAT 场景。
+    # 换成 host network 绕开 docker-proxy/NAT 这一层, 直接复现"容器内部访问"的路径。
+    # 代价: 放弃 docker 网络隔离(这里能接受, qmd 本来就只对本机暴露, 不是安全边界)。
+    network_mode: host
+    environment:
+      - HTTP_PROXY=http://172.19.0.1:10808
+      - HTTPS_PROXY=http://172.19.0.1:10808
+      - http_proxy=http://172.19.0.1:10808
+      - https_proxy=http://172.19.0.1:10808
+      - NO_PROXY=localhost,127.0.0.1,::1
+      - no_proxy=localhost,127.0.0.1,::1
+      # Node's built-in fetch (undici) does NOT honor HTTP_PROXY/HTTPS_PROXY by default
+      # like curl/Python do — qmd's model download (huggingface.co) silently tried a
+      # direct connection and hung until ConnectTimeoutError without this flag.
+      - NODE_USE_ENV_PROXY=1
+    volumes:
+      # 现有 325 本书语料, 只读挂载 — "immutable, agent 只读" 约束落到基础设施层面,
+      # 不靠约定(§3.1)。
+      - /home/soffy/books/MD:/corpus:ro
+      # qmd 自己的索引/db, 独立具名 volume(不与任何其它容器共享)。实测确认真实路径是
+      # /root/.cache/qmd(index.sqlite + 下载的 embedding 模型都在这), 不是文档暗示的
+      # .local/share。不给 /root/.config/qmd 挂 volume — doc-reading.json 是镜像里
+      # COPY 进去的静态配置, 挂空 volume 会把它盖成空目录(踩坑点)。
+      - aii_qmd_data:/root/.cache/qmd
+    healthcheck:
+      test: ["CMD-SHELL", "qmd status >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  aii_qmd_data:
