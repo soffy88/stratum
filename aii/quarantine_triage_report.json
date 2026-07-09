@@ -1,0 +1,1156 @@
+{
+  "econ": [
+    {
+      "substrate_id": "econ_zh_1490a1d8d3",
+      "title": "偏好的经济分析_01KVKRW5",
+      "reason_type": "precheck",
+      "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+      "diagnosis": {
+        "check": "chapter_structure",
+        "qmd_doc_toc_sections": 0,
+        "qmd_anchored_matches": 11,
+        "match_spread_fraction": 0.0005443065534509035,
+        "total_lines": 55116,
+        "verdict": "suspected_toc_block_not_real_chapters"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_38384fd445",
+      "title": "内部流动性与外部流动性_01KVKRX1",
+      "reason_type": "precheck",
+      "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+      "diagnosis": {
+        "check": "chapter_structure",
+        "qmd_doc_toc_sections": 0,
+        "qmd_anchored_matches": 0,
+        "match_spread_fraction": null,
+        "total_lines": 32626,
+        "verdict": "qmd_no_signal"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_ddcc996986",
+      "title": "市场结构和对外贸易：报酬递增、不完全竞争和国际经济_01KVKRXJ",
+      "reason_type": "precheck",
+      "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+      "diagnosis": {
+        "check": "chapter_structure",
+        "qmd_doc_toc_sections": null,
+        "qmd_anchored_matches": 0,
+        "match_spread_fraction": null,
+        "total_lines": 76028,
+        "verdict": "qmd_no_signal"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_a51261636f",
+      "title": "当代经济学系列丛书当代经济学译库 （多部诺奖经济学家经典著作，国内最早大规模系统引进和介绍现代经济学理论的大型丛书，新一代经济学人必读） ( etc.) (1)",
+      "reason_type": "precheck",
+      "reason_detail": "FAIL:chapter_gap:章号非连续 1..N: [9]",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "章号非连续"
+        ],
+        "term_hits_in_doc": {
+          "章号非连续": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_5805bf6620",
+      "title": "战略历程：穿越战略管理旷野的指南_(明茨伯格管理经典丛书)_(_etc.)_01KVJTGT",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: [])",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点"
+        ],
+        "term_hits_in_doc": {
+          "完整率": null,
+          "漏知识点": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_bb74a055be",
+      "title": "投资者与市场：组合选择、资产定价及投资建议_01KVKRVX",
+      "reason_type": "precheck",
+      "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+      "diagnosis": {
+        "check": "chapter_structure",
+        "qmd_doc_toc_sections": null,
+        "qmd_anchored_matches": 0,
+        "match_spread_fraction": null,
+        "total_lines": 63111,
+        "verdict": "qmd_no_signal"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_253547b061",
+      "title": "牛奶可乐经济学套装（全四册）（“文津图书奖”获奖升级全套！ 通俗经济学入门就读这四本！） (罗伯特·弗兰克 [罗伯特·弗兰克])",
+      "reason_type": "precheck",
+      "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+      "diagnosis": {
+        "check": "chapter_structure",
+        "qmd_doc_toc_sections": null,
+        "qmd_anchored_matches": 0,
+        "match_spread_fraction": null,
+        "total_lines": 21459,
+        "verdict": "qmd_no_signal"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_fc8e26d4ee",
+      "title": "贸易政策和市场结构_01KVKRXC",
+      "reason_type": "precheck",
+      "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+      "diagnosis": {
+        "check": "chapter_structure",
+        "qmd_doc_toc_sections": 0,
+        "qmd_anchored_matches": 0,
+        "match_spread_fraction": null,
+        "total_lines": 28049,
+        "verdict": "qmd_no_signal"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_53fedeec50",
+      "title": "预见相关性：风险管理新范例",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | KU密度不足: 实抽61仅34%×预期180(基准~15/章×12章) | 低密度章过多: 8章<6KU: ['Ch3(5KU)', 'Ch4(4KU)', 'Ch5(4KU)', 'Ch7(3KU)', 'Ch8(4KU)']",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "密度不足",
+          "实抽",
+          "预期"
+        ],
+        "term_hits_in_doc": {
+          "完整率": null,
+          "漏知识点": null,
+          "密度不足": null,
+          "实抽": null,
+          "预期": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_30b3e5fbfe",
+      "title": "资本主义、社会主义与民主_01KVKRYS",
+      "reason_type": "quality_gate",
+      "reason_detail": "KU密度不足: 实抽62仅22%×预期285(基准~15/章×19章) | 低密度章过多: 17章<6KU: ['Ch1(1KU)', 'Ch2(3KU)', 'Ch3(3KU)', 'Ch5(1KU)', 'Ch7(1KU)']",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "密度不足",
+          "实抽",
+          "预期",
+          "基准",
+          "低密度章过多"
+        ],
+        "term_hits_in_doc": {
+          "密度不足": null,
+          "实抽": null,
+          "预期": null,
+          "基准": null,
+          "低密度章过多": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_1cc74ee08b",
+      "title": "通货原理研究_01KVKS0Z",
+      "reason_type": "quality_gate",
+      "reason_detail": "KU密度不足: 实抽3仅10%×预期30(基准~15/章×2章) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "密度不足",
+          "实抽",
+          "预期",
+          "基准",
+          "没抽到为什么"
+        ],
+        "term_hits_in_doc": {
+          "密度不足": 0,
+          "实抽": 0,
+          "预期": 25,
+          "基准": 0,
+          "没抽到为什么": 0
+        },
+        "verdict": "has_some_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_1e95f05ba2",
+      "title": "金融资本_01KVKS0J",
+      "reason_type": "quality_gate",
+      "reason_detail": "KU密度不足: 实抽94仅37%×预期255(基准~15/章×17章) | 低密度章过多: 9章<6KU: ['Ch3(1KU)', 'Ch4(3KU)', 'Ch7(3KU)', 'Ch8(4KU)', 'Ch12(3KU)']",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "密度不足",
+          "实抽",
+          "预期",
+          "基准",
+          "低密度章过多"
+        ],
+        "term_hits_in_doc": {
+          "密度不足": 0,
+          "实抽": 0,
+          "预期": 6,
+          "基准": 6,
+          "低密度章过多": 0
+        },
+        "verdict": "has_some_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_e02d6f741e",
+      "title": "11849189_系统之美——决策者的系统思考_01KVJT9Z",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | KU密度不足: 实抽47仅45%×预期105(基准~15/章×7章) | 低密度章过多: 3章<6KU: ['Ch1(5KU)', 'Ch3(1KU)', 'Ch4(1KU)']",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "密度不足",
+          "实抽",
+          "预期"
+        ],
+        "term_hits_in_doc": {
+          "完整率": null,
+          "漏知识点": null,
+          "密度不足": null,
+          "实抽": null,
+          "预期": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_b0b27652c0",
+      "title": "为什么我也不是保守派：古典自由主义的典型看法",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | KU密度不足: 实抽42仅28%×预期150(基准~15/章×10章) | 低密度章过多: 6章<6KU: ['Ch2(2KU)', 'Ch3(3KU)', 'Ch5(4KU)', 'Ch8(4KU)', 'Ch9(1KU)']",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "密度不足",
+          "实抽",
+          "预期"
+        ],
+        "term_hits_in_doc": {
+          "完整率": null,
+          "漏知识点": null,
+          "密度不足": null,
+          "实抽": null,
+          "预期": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_07620412ec",
+      "title": "价格的发现_01KVKRRF",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "没抽到为什么",
+          "论断",
+          "退回概念"
+        ],
+        "term_hits_in_doc": {
+          "完整率": 0,
+          "漏知识点": 0,
+          "没抽到为什么": 0,
+          "论断": 6,
+          "退回概念": 0
+        },
+        "verdict": "has_some_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_c9e29652c4",
+      "title": "企业、合同与财务结构_01KVKRWV",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: [])",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点"
+        ],
+        "term_hits_in_doc": {
+          "完整率": null,
+          "漏知识点": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_en_528f998ddd",
+      "title": "动物精神_01KVKRR3",
+      "reason_type": "precheck",
+      "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+      "diagnosis": {
+        "check": "chapter_structure",
+        "qmd_doc_toc_sections": 0,
+        "qmd_anchored_matches": 0,
+        "match_spread_fraction": null,
+        "total_lines": 2031,
+        "verdict": "qmd_no_signal"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_04f261fef5",
+      "title": "叙事经济学_01KVKRSM",
+      "reason_type": "pipeline_error",
+      "reason_detail": "管道步骤失败(exit 2)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "管道步骤失败"
+        ],
+        "term_hits_in_doc": {
+          "管道步骤失败": 0
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_da27a19f30",
+      "title": "大繁荣_01KVKRQX",
+      "reason_type": "precheck",
+      "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+      "diagnosis": {
+        "check": "chapter_structure",
+        "qmd_doc_toc_sections": 0,
+        "qmd_anchored_matches": 0,
+        "match_spread_fraction": null,
+        "total_lines": 3225,
+        "verdict": "qmd_no_signal"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_d8347c21db",
+      "title": "大钱细思：优秀投资者如何思考和决断_01KVHXJ4",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | KU密度不足: 实抽92仅34%×预期270(基准~15/章×18章) | 低密度章过多: 11章<6KU: ['Ch5(3KU)', 'Ch6(3KU)', 'Ch7(2KU)', 'Ch8(2KU)', 'Ch9(5KU)']",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "密度不足",
+          "实抽",
+          "预期"
+        ],
+        "term_hits_in_doc": {
+          "完整率": null,
+          "漏知识点": null,
+          "密度不足": null,
+          "实抽": null,
+          "预期": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_c17913c054",
+      "title": "好的经济学（《贫穷的本质》作者诺贝尔经济学奖得主新作，解决当今世界的棘手问题，共_01KVM1QD",
+      "reason_type": "quality_gate",
+      "reason_detail": "KU密度不足: 实抽7仅8%×预期90(基准~15/章×6章) | 低密度章过多: 6章<6KU: ['Ch2(1KU)', 'Ch3(2KU)', 'Ch4(1KU)', 'Ch5(1KU)', 'Ch6(1KU)']",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "密度不足",
+          "实抽",
+          "预期",
+          "基准",
+          "低密度章过多"
+        ],
+        "term_hits_in_doc": {
+          "密度不足": null,
+          "实抽": null,
+          "预期": null,
+          "基准": null,
+          "低密度章过多": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_def644a1f3",
+      "title": "宏观经济思想七学派",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | KU密度不足: 实抽14仅19%×预期75(基准~15/章×5章) | 低密度章过多: 5章<6KU: ['Ch2(2KU)', 'Ch3(2KU)', 'Ch4(4KU)', 'Ch5(4KU)', 'Ch6(2KU)']",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "密度不足",
+          "实抽",
+          "预期"
+        ],
+        "term_hits_in_doc": {
+          "完整率": 0,
+          "漏知识点": 0,
+          "密度不足": 0,
+          "实抽": 0,
+          "预期": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_856bf79a2a",
+      "title": "怪诞行为学._4，诚实的真相_01KVM21Z",
+      "reason_type": "quality_gate",
+      "reason_detail": "KU密度不足: 实抽6仅13%×预期45(基准~15/章×3章) | 低密度章过多: 3章<6KU: ['Ch3(1KU)', 'Ch6(2KU)', 'Ch9(3KU)']",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "密度不足",
+          "实抽",
+          "预期",
+          "基准",
+          "低密度章过多"
+        ],
+        "term_hits_in_doc": {
+          "密度不足": null,
+          "实抽": null,
+          "预期": null,
+          "基准": null,
+          "低密度章过多": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_ce44d5c59b",
+      "title": "房地产的繁荣与萧条_(（美）托马斯·索维尔（Thomas_Sowell）著_[S_01KVA57F",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | KU密度不足: 实抽22仅49%×预期45(基准~15/章×3章)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "密度不足",
+          "实抽",
+          "预期"
+        ],
+        "term_hits_in_doc": {
+          "完整率": null,
+          "漏知识点": null,
+          "密度不足": null,
+          "实抽": null,
+          "预期": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_370fbfcac6",
+      "title": "政治算术：西蒙·库兹涅茨与经济学的实证传统",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | KU密度不足: 实抽16仅21%×预期75(基准~15/章×5章) | 低密度章过多: 5章<6KU: ['Ch1(3KU)', 'Ch2(4KU)', 'Ch3(3KU)', 'Ch4(5KU)', 'Ch6(1KU)']",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "密度不足",
+          "实抽",
+          "预期"
+        ],
+        "term_hits_in_doc": {
+          "完整率": null,
+          "漏知识点": null,
+          "密度不足": null,
+          "实抽": null,
+          "预期": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_6b2c62a4fb",
+      "title": "經濟學的思考方式：經濟學大師寫給大眾的入門書_(湯瑪斯‧索維爾（Thomas_S_01KVA3Q9",
+      "reason_type": "pipeline_error",
+      "reason_detail": "管道步骤失败(exit 2)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "管道步骤失败"
+        ],
+        "term_hits_in_doc": {
+          "管道步骤失败": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_d335c0d77d",
+      "title": "繁荣与萧条_01KVKRZR",
+      "reason_type": "quality_gate",
+      "reason_detail": "KU密度不足: 实抽1仅7%×预期15(基准~15/章×1章) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "密度不足",
+          "实抽",
+          "预期",
+          "基准",
+          "没抽到为什么"
+        ],
+        "term_hits_in_doc": {
+          "密度不足": 0,
+          "实抽": 0,
+          "预期": null,
+          "基准": 0,
+          "没抽到为什么": 0
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_130c35565a",
+      "title": "经济学家时刻（一部人人看得懂的经济学家如何影响社会的通识佳作。读懂美国经济政策的_01KVAB6K",
+      "reason_type": "quality_gate",
+      "reason_detail": "KU密度不足: 实抽25仅42%×预期60(基准~15/章×4章)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "密度不足",
+          "实抽",
+          "预期",
+          "基准"
+        ],
+        "term_hits_in_doc": {
+          "密度不足": null,
+          "实抽": null,
+          "预期": null,
+          "基准": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_0164798c48",
+      "title": "经济学的思维方式.现实应用篇_01KVM18M",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | KU密度不足: 实抽36仅40%×预期90(基准~15/章×6章)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "密度不足",
+          "实抽",
+          "预期"
+        ],
+        "term_hits_in_doc": {
+          "完整率": null,
+          "漏知识点": null,
+          "密度不足": null,
+          "实抽": null,
+          "预期": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_d0717121de",
+      "title": "经济学的思维方式_01KVM17D",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | KU密度不足: 实抽34仅57%×预期60(基准~15/章×4章)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "密度不足",
+          "实抽",
+          "预期"
+        ],
+        "term_hits_in_doc": {
+          "完整率": 0,
+          "漏知识点": 0,
+          "密度不足": 0,
+          "实抽": 0,
+          "预期": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_e8b4c74665",
+      "title": "逃离不平等：健康、财富及不平等的起源_01KVKRS7",
+      "reason_type": "quality_gate",
+      "reason_detail": "KU密度不足: 实抽2仅13%×预期15(基准~15/章×1章) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "密度不足",
+          "实抽",
+          "预期",
+          "基准",
+          "没抽到为什么"
+        ],
+        "term_hits_in_doc": {
+          "密度不足": null,
+          "实抽": null,
+          "预期": null,
+          "基准": null,
+          "没抽到为什么": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_a202f2b23b",
+      "title": "风险认知：如何精准决策（格尔德·吉仁泽讲授各种决策原则，指导人们轻松、自主、明智_01KVJSZN",
+      "reason_type": "quality_gate",
+      "reason_detail": "KU密度不足: 实抽53仅39%×预期135(基准~15/章×9章) | 低密度章过多: 5章<6KU: ['Ch1(4KU)', 'Ch5(2KU)', 'Ch6(5KU)', 'Ch7(4KU)', 'Ch11(2KU)']",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "密度不足",
+          "实抽",
+          "预期",
+          "基准",
+          "低密度章过多"
+        ],
+        "term_hits_in_doc": {
+          "密度不足": null,
+          "实抽": null,
+          "预期": null,
+          "基准": null,
+          "低密度章过多": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_23f95a67ed",
+      "title": "国民经济学基础_01KVKS0C",
+      "reason_type": "pipeline_error",
+      "reason_detail": "管道步骤失败(exit 2)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "管道步骤失败"
+        ],
+        "term_hits_in_doc": {
+          "管道步骤失败": 0
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "econ_zh_85c1e848a6",
+      "title": "《道德情操论》亚当·斯密_01KVJQXC",
+      "reason_type": "pipeline_error",
+      "reason_detail": "管道步骤失败(exit 2)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "管道步骤失败"
+        ],
+        "term_hits_in_doc": {
+          "管道步骤失败": null
+        },
+        "verdict": "no_term_hits"
+      }
+    }
+  ],
+  "misc": [
+    {
+      "substrate_id": "misc_zh_17fdfbd3fe",
+      "title": "偏见的本质（《社会性动物》阿伦森推荐的“偏见百科全书”，社会心理学入门必读，打破_01KVJPZG",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | 双语率0%<99% | KU密度不足: 实抽0仅0%×预期12(基准~8/章×0章)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "双语率",
+          "密度不足",
+          "实抽"
+        ],
+        "term_hits_in_doc": {
+          "完整率": null,
+          "漏知识点": null,
+          "双语率": null,
+          "密度不足": null,
+          "实抽": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "misc_zh_008be64573",
+      "title": "决断力：如何在生活与工作中做出更好的选择_01KVJQ3W",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | KU密度不足: 实抽1仅8%×预期12(基准~8/章×1章) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "密度不足",
+          "实抽",
+          "预期"
+        ],
+        "term_hits_in_doc": {
+          "完整率": null,
+          "漏知识点": null,
+          "密度不足": null,
+          "实抽": null,
+          "预期": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "misc_zh_c7b5caf706",
+      "title": "动机心理学_(罗曼·格尔佩林)_01KVJR9P",
+      "reason_type": "quality_gate",
+      "reason_detail": "KU密度不足: 实抽15仅31%×预期48(基准~8/章×6章) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "密度不足",
+          "实抽",
+          "预期",
+          "基准",
+          "没抽到为什么"
+        ],
+        "term_hits_in_doc": {
+          "密度不足": null,
+          "实抽": null,
+          "预期": null,
+          "基准": null,
+          "没抽到为什么": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "misc_zh_94fee0e2b8",
+      "title": "如何活用行為經濟學：解讀人性，運用推力，引導人們做出更好的行為，設計出更有效的政_01KVJT3S",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "没抽到为什么",
+          "论断",
+          "退回概念"
+        ],
+        "term_hits_in_doc": {
+          "完整率": null,
+          "漏知识点": null,
+          "没抽到为什么": null,
+          "论断": null,
+          "退回概念": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "misc_zh_d374839971",
+      "title": "数学的意义_01KVQSJA",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: [])",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点"
+        ],
+        "term_hits_in_doc": {
+          "完整率": 0,
+          "漏知识点": 0
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "misc_zh_a2bdad753a",
+      "title": "数学觉醒学会更清晰地思考_(戴维·贝西_(David_Bessis))_01KVQ0TT",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | 双语率0%<99% | KU密度不足: 实抽0仅0%×预期12(基准~8/章×0章)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "双语率",
+          "密度不足",
+          "实抽"
+        ],
+        "term_hits_in_doc": {
+          "完整率": null,
+          "漏知识点": null,
+          "双语率": null,
+          "密度不足": null,
+          "实抽": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "misc_zh_19766a3109",
+      "title": "法国农村史_01KVKRZZ",
+      "reason_type": "quality_gate",
+      "reason_detail": "KU密度不足: 实抽4仅17%×预期24(基准~8/章×3章) | 低密度章过多: 3章<3KU: ['Ch4(1KU)', 'Ch6(2KU)', 'Ch7(1KU)'] | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "密度不足",
+          "实抽",
+          "预期",
+          "基准",
+          "低密度章过多"
+        ],
+        "term_hits_in_doc": {
+          "密度不足": 0,
+          "实抽": 0,
+          "预期": 0,
+          "基准": 4,
+          "低密度章过多": 0
+        },
+        "verdict": "has_some_term_hits"
+      }
+    },
+    {
+      "substrate_id": "misc_zh_6244f6016b",
+      "title": "读心（知名沟通专家教你在更短的时间里_快速解读对方的行为，了解对方的思想）_(亨_01KVJQNV",
+      "reason_type": "quality_gate",
+      "reason_detail": "完整率0%<100%(漏知识点: []) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "完整率",
+          "漏知识点",
+          "没抽到为什么",
+          "论断",
+          "退回概念"
+        ],
+        "term_hits_in_doc": {
+          "完整率": null,
+          "漏知识点": null,
+          "没抽到为什么": null,
+          "论断": null,
+          "退回概念": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "misc_zh_85c1e848a6",
+      "title": "《道德情操论》亚当·斯密_01KVJQXC",
+      "reason_type": "pipeline_error",
+      "reason_detail": "管道步骤失败(exit 2)",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "misc_en_502cd8370d",
+      "title": "Precalculus_-_Mathematics_for_Calculus_8_01KWS131",
+      "reason_type": "precheck",
+      "reason_detail": "FAIL:chapter_dup:章号重复(正文混入目录副本?): 共41个/去重12个",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "章号重复",
+          "正文混入目录副本",
+          "去重"
+        ],
+        "term_hits_in_doc": {
+          "章号重复": null,
+          "正文混入目录副本": null,
+          "去重": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "misc_zh_fdb9a50074",
+      "title": "网络心理学：隐藏在现象背后的行为设计真相_(Mary_Aiken,_门群)_01KVJQPF",
+      "reason_type": "pipeline_error",
+      "reason_detail": "管道步骤失败(exit 2)",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "管道步骤失败"
+        ],
+        "term_hits_in_doc": {
+          "管道步骤失败": null
+        },
+        "verdict": "no_term_hits"
+      }
+    }
+  ],
+  "math": [
+    {
+      "substrate_id": "math_zh_7f821e3fba",
+      "title": "数学分析(第5版) 上 (华东师范大学数学系)",
+      "reason_type": "quality_gate",
+      "reason_detail": "content_match=75%<90%(68个key_terms未出现) | has_formula=32%<80% (无公式KU=186: ['定义1', '定义2', '定义1_s4', '定义2_s4', '定义3']) | 真缺facet=87%>10% (240个KU未修复): ['定义1', '定义2', '定义1_s4', '定义2_s4', '定义3']",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_zh_41c4c86ce7",
+      "title": "高等数学 上册 第八版 (同济大学数学科学院 编)",
+      "reason_type": "quality_gate",
+      "reason_detail": "content_match=81%<90%(26个key_terms未出现) | has_formula=47%<80% (无公式KU=74: ['定理2', '推论', '定义1_s15', '定义2_s16', '定理1_s17']) | 真缺facet=86%>10% (119个KU未修复): ['定义2', '定理2', '定理3', '推论', '定义1_s15']",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_zh_e29ece1555",
+      "title": "高等数学 下册 第八版 (同济大学数学科学学院 编)",
+      "reason_type": "quality_gate",
+      "reason_detail": "content_match=79%<90%(32个key_terms未出现) | has_formula=37%<80% (无公式KU=97: ['定理3', '二重积分的概念', '二重积分的性质', '利用直角坐标计算二重积分', '利用极坐标计算二重积分']) | 真缺facet=85%>10% (130个KU未修复): ['定理1', '定理3', '定理4', '二重积分的概念', '二重积分的性质']",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_zh_1e01f97f8f",
+      "title": "高观点下的初等数学（第一卷）算术、代数、分析 ([德]菲利克斯·克莱因 舒湘芹(译) 陈义章 等(译))",
+      "reason_type": "pipeline_error",
+      "reason_detail": "9章管道失败",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_zh_74440c01b2",
+      "title": "高观点下的初等数学（第三卷）精确数学与近似数学 ([德]菲利克斯·克莱因 吴大任 等(译))",
+      "reason_type": "pipeline_error",
+      "reason_detail": "10章管道失败",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_zh_13d75a53d3",
+      "title": "高观点下的初等数学（第二卷）几何 ([德]菲利克斯·克莱因 舒湘芹(译) 陈义章 等(译))",
+      "reason_type": "pipeline_error",
+      "reason_detail": "12章管道失败",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_en_d8fa481c5f",
+      "title": "An Introduction to Mathematical Analysis for Economic Theory and Econometrics 2009",
+      "reason_type": "pipeline_error",
+      "reason_detail": "1章管道失败",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_en_1a28eea8ce",
+      "title": "Calculus Without Tears A Friendly Guide for the Math-Averse (George DeCarlo)",
+      "reason_type": "quality_gate",
+      "reason_detail": "KU总数0<底线10(管道未跑完?)",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_en_bd39fa1150",
+      "title": "Calculus for the Modern Engineer Math and Programming at the Scale of Life (Jessy Grizzle)",
+      "reason_type": "quality_gate",
+      "reason_detail": "content_match=18%<90%(89个key_terms未出现) | 真缺facet=74%>10% (81个KU未修复): ['definition_1.3', 'definition_1.16', 'definition_1.18', 'definition_1.22', 'proposition_1.42'] | 空壳KU(zh<200字)=39: ['definition_1.18', 'proposition_1.42', 'definition_1.38', 'definition_1.62', 'definition_10.22']",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_en_25c2ed557b",
+      "title": "Calculus of Variations, Second Edition (Filip Rindler)",
+      "reason_type": "pipeline_error",
+      "reason_detail": "1章管道失败",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_en_89cabe71d3",
+      "title": "Stochastic Finance - An Introduction in Discrete Time",
+      "reason_type": "pipeline_error",
+      "reason_detail": "3章管道失败",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_zh_d56cebea39",
+      "title": "上帝创造整数",
+      "reason_type": "quality_gate",
+      "reason_detail": "content_match=57%<90%(13个key_terms未出现) | has_formula=50%<80% (无公式KU=15: ['命题1', '推论', '定理1_s13', '问题的表述', '势或基数的概念']) | 真缺facet=90%>10% (27个KU未修复): ['命题1', '推论', '定理1', '定理1_s13', '问题的表述']",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_zh_a32988d13a",
+      "title": "代数拓扑基础 （Munkres）",
+      "reason_type": "pipeline_error",
+      "reason_detail": "8章管道失败",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "章管道失败"
+        ],
+        "term_hits_in_doc": {
+          "章管道失败": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "math_zh_eba60d8a2f",
+      "title": "动态最优化基础",
+      "reason_type": "pipeline_error",
+      "reason_detail": "10章管道失败",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_zh_4d6f280264",
+      "title": "基础拓扑学讲义（尤承业）",
+      "reason_type": "pipeline_error",
+      "reason_detail": "6章管道失败",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "章管道失败"
+        ],
+        "term_hits_in_doc": {
+          "章管道失败": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "math_zh_7edeacf7f0",
+      "title": "微积分学教程（第 1 卷）",
+      "reason_type": "pipeline_error",
+      "reason_detail": "7章管道失败",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "章管道失败"
+        ],
+        "term_hits_in_doc": {
+          "章管道失败": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "math_zh_c2e6551cab",
+      "title": "微积分学教程（第 2 卷）",
+      "reason_type": "pipeline_error",
+      "reason_detail": "7章管道失败",
+      "diagnosis": {
+        "check": "generic_keyword_recheck",
+        "extracted_terms": [
+          "章管道失败"
+        ],
+        "term_hits_in_doc": {
+          "章管道失败": null
+        },
+        "verdict": "no_term_hits"
+      }
+    },
+    {
+      "substrate_id": "math_zh_fce9e129d6",
+      "title": "数学可以这样学：专业又有趣的数学科普大集合 (史蒂芬·霍金, 杰森·威尔克斯, 陈卓, 约翰·查尔顿·波金霍尔, 吉姆·亨勒 etc.)",
+      "reason_type": "pipeline_error",
+      "reason_detail": "24章管道失败",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_zh_228710c5b0",
+      "title": "欧几里得之窗",
+      "reason_type": "quality_gate",
+      "reason_detail": "KU总数0<底线10(管道未跑完?)",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_zh_ffd94445b7",
+      "title": "证明与布丁",
+      "reason_type": "quality_gate",
+      "reason_detail": "KU总数0<底线10(管道未跑完?)",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_en_6aef3fc962",
+      "title": "Beginning in Algebraic Geometry",
+      "reason_type": "quality_gate",
+      "reason_detail": "content_match=54%<90%(18个key_terms未出现) | 真缺facet=87%>10% (34个KU未修复): ['proposition_0.20', 'corollary_0.48', 'proposition_1.24', 'proposition_1.31', 'proposition_10.12'] | 空壳KU(zh<200字)=22: ['proposition_0.20', 'corollary_0.48', 'proposition_1.24', 'proposition_1.31', 'proposition_10.12']",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_en_eac5bab5a9",
+      "title": "Representation Theory",
+      "reason_type": "quality_gate",
+      "reason_detail": "真缺facet=76%>10% (56个KU未修复): ['corollary_1.2', 'definition_1.2', 'theorem_1.2', 'lemma_1.2', 'lemma_1.3'] | 空壳KU(zh<200字)=28: ['corollary_1.2', 'definition_1.2', 'lemma_1.2', 'definition_1.6', 'lemma_2.1'] | R6:数学信号6098但0个LaTeX公式(数学命门:OCR破坏公式)",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    },
+    {
+      "substrate_id": "math_zh_5d43fc908d",
+      "title": "機率陷阱：從購物、保險到用藥，如何做出最萬無一失的選擇？_(捷爾德．蓋格瑞澤(G_01KVJT94",
+      "reason_type": "pipeline_error",
+      "reason_detail": "3章管道失败",
+      "diagnosis": {
+        "verdict": "md_file_missing"
+      }
+    }
+  ]
+}
