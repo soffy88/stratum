@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 r"""G0 评估指标脚手架 — MINERU-AII-INTEGRATION-SPEC-001 §5.2.
 
-本轮交付的是框架, 不是跑完的评估结果。真正的双通道对比(Unlimited-OCR vs
-MinerU VLM)需要 MinerU VLM 装好(Track B, 按 §9 落地顺序还在 G0 过闸之前,
-本轮不装), 跑不动的部分在函数体里用 raise NotImplementedError 标清楚, 不假装
-能跑出数字。
+2026-07-09 更新: MinerU VLM 侧的 V1 现在是真实现(compute_v1_from_middle_json),
+不再是 NotImplementedError 占位——Track B 代码端已经搭好(见
+aii/scripts/parse_channel_router.py + math_ocr_convert.py 的
+ensure_mineru_container 系列)。但本机 GPU 硬件故障(Xid 79)未恢复, 这个函数
+没有真实跑通过 MinerU VLM 的输出——单独用 CPU-only 的 `mineru pipeline` 后端
+验证过 middle_json 的真实 schema(不是查文档假设的), 函数实现照这个真实
+schema 写, 但"双通道完整对比"仍然要等 GPU 恢复、mineru-vlm 容器真的跑起来
+才能出数字。
 
 ★ 意外发现, 比"MinerU 没装"更根本的一个阻塞: Unlimited-OCR 现在的输出就是拍
 平后的 MD 纯文本(见 scripts/math_ocr_convert.py 的 ocr_pdf_to_text 签名), 没
@@ -54,21 +58,20 @@ def compute_v1_from_flattened_md(doc_path: Path, *, channel: str) -> V1Result:
 
     Args:
         doc_path: 样本文档路径(来自 g0_eval/sample_set.json)。
-        channel: "unlimited_ocr" 或 "mineru_vlm" —— 本轮只有 unlimited_ocr
-            有真实数据可算(读现成的 MD), mineru_vlm 侧要等 Track B 装完才能
-            跑出对应产物, 调这个函数会直接抛 NotImplementedError。
+        channel: 只接受 "unlimited_ocr"——这个函数是"从拍平MD反推"这条近似
+            路径专用的, MinerU VLM 有真正的结构化产物(middle_json), 不该也走
+            这条近似路径, 见 compute_v1_from_middle_json()。
 
     Raises:
-        NotImplementedError: channel == "mineru_vlm"(Track B 未装)。
+        ValueError: channel 不是 "unlimited_ocr"(MinerU VLM 请用
+            compute_v1_from_middle_json, 不是把它硬凑进这个近似函数)。
         FileNotFoundError: doc_path 不存在。
     """
-    if channel == "mineru_vlm":
-        raise NotImplementedError(
-            "MinerU VLM 未装(Track B 还在 G0 过闸之前, 按 §9 落地顺序本轮不装)。"
-            "装好后这里应该读 middle_json 里的结构化表格/公式元素, 不是再反推 MD。"
-        )
     if channel != "unlimited_ocr":
-        raise ValueError(f"unknown channel: {channel!r}")
+        raise ValueError(
+            f"compute_v1_from_flattened_md 只服务 unlimited_ocr, 收到 {channel!r}。"
+            "MinerU VLM 有真实结构化产物, 用 compute_v1_from_middle_json()。"
+        )
 
     text = doc_path.read_text(encoding="utf-8", errors="ignore")
     table_rows = len(TABLE_ROW_RE.findall(text))
@@ -89,6 +92,69 @@ def compute_v1_from_flattened_md(doc_path: Path, *, channel: str) -> V1Result:
         reading_order_correct=None,  # 需要人工标注真值, 本轮不做
         is_approximation=True,
         notes="从拍平 MD 反推, 非结构化元素直接量测; 表格数=行密度非单元格准确率",
+    )
+
+
+# middle_json 里标志结构化元素的 type 值——真实实测出来的(见模块 docstring),
+# 不是查文档假设的。公式这一项踩过一次坑: 第一版写成"block.type"级别, 拿一份
+# 真含公式(MFR Predict 实测跑过8个公式区域)的页面验证后发现根本不对——公式
+# 类型信息在 span 级别(block["lines"][i]["spans"][j]["type"]), 不是 block 级别,
+# block 级别对含公式的段落仍然只标 "text"。已按实测修正。
+# 表格类型名仍未在实测样本里遇到过(测试样本没有表格页), 保留 block 级别猜测,
+# 如实标注这半条还没验证过, 不混同于已验证的公式那部分。
+_TABLE_BLOCK_TYPES = {"table"}  # ⚠ 未实测验证, 猜测值(spec 文档类型枚举)
+_EQUATION_SPAN_TYPES = {"interline_equation", "inline_equation"}  # ✅ 已实测验证
+
+
+def compute_v1_from_middle_json(middle_json: dict, doc_path: Path) -> V1Result:
+    """从 MinerU VLM 的真实结构化产物(middle_json)直接量测, 不是近似值。
+
+    与 compute_v1_from_flattened_md 的关键差别: 这里数的是"解析器自己标注为
+    表格/公式的结构化元素", 不是从文本正则反推的代理信号(is_approximation=False)。
+
+    实测过的真实 schema(2026-07-09, mineru 3.4.3 pipeline 后端 CPU 实跑两页
+    真实 PDF 核实, 不是照文档抄): middle_json 顶层 {pdf_info, _backend,
+    _version_name}; 每页 pdf_info[i] 下有 para_blocks/discarded_blocks, 每个
+    block 带 "type"(如 "title"/"text") + "lines"→"spans" 嵌套结构, **公式的
+    type 在 span 级别**("inline_equation" 等, block 级别对含公式段落仍是
+    "text"——第一版实现搞错了这个层级, 用真实含公式页面测出来才发现, 已修正)。
+    表格 block 级别的 "table" 类型名还没在实测样本里遇到过真表格页, 是根据
+    spec 文档类型枚举的猜测值, 见下面 _TABLE_BLOCK_TYPES 的 ⚠ 标注。
+
+    Args:
+        middle_json: omodul.mineru_vlm_parse 或 parse_with_mineru_vlm() 返回的
+            middle_json 字典。
+        doc_path: 仅用于结果里标注来源, 不读这个路径(数据已经在 middle_json 里)。
+
+    Returns:
+        V1Result, is_approximation=False。reading_order_correct 仍然是 None
+        (需要人工标注真值, 本轮不做——这点和 Unlimited-OCR 侧一样, 不因为
+        MinerU 有结构化产物就自动有阅读顺序真值)。
+    """
+    table_count = 0
+    equation_count = 0
+    for page in middle_json.get("pdf_info", []):
+        blocks = page.get("para_blocks", []) + page.get("discarded_blocks", [])
+        for block in blocks:
+            if block.get("type", "") in _TABLE_BLOCK_TYPES:
+                table_count += 1
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    if span.get("type", "") in _EQUATION_SPAN_TYPES:
+                        equation_count += 1
+
+    return V1Result(
+        channel="mineru_vlm",
+        doc_path=str(doc_path),
+        table_row_count=table_count or None,
+        latex_span_count=equation_count,
+        latex_balanced_rate=None,  # 结构化块本身已经是解析器判定过的公式, 配平率这个
+        # 代理信号是给"从纯文本反推"那条路准备的, 这里没有反推, 不适用
+        reading_order_correct=None,  # 需要人工标注真值, 本轮不做(两个通道待遇一致)
+        is_approximation=False,
+        notes="从 middle_json 结构化元素直接数, 非文本正则反推; 公式计数(span级别)"
+        "已用真实含公式页面验证过(8个公式区域, 与 MFR Predict 日志对上); 表格计数"
+        "(block级别 'table' 类型)还没在实测样本里遇到过真表格页, 是猜测值",
     )
 
 
