@@ -313,7 +313,9 @@ async def inbox_submit(
                 if not _sid:
                     continue
                 run_quality_gate(_sid)
-                export_one(_sid)
+                # export_one 内部用 asyncio.run(); 此处身处 async 请求处理器的事件循环,
+                # 必须丢到线程 (否则 RuntimeError: asyncio.run() cannot be called from a running event loop)
+                await asyncio.to_thread(export_one, _sid)
         if substrate_id and _HAS_GRAPH:
             background_tasks.add_task(
                 _build_graph,
@@ -495,7 +497,9 @@ async def inbox_webclip(
                 if not _sid:
                     continue
                 run_quality_gate(_sid)
-                export_one(_sid)
+                # export_one 内部用 asyncio.run(); 此处身处 async 请求处理器的事件循环,
+                # 必须丢到线程 (否则 RuntimeError: asyncio.run() cannot be called from a running event loop)
+                await asyncio.to_thread(export_one, _sid)
         if substrate_id and _HAS_GRAPH:
             background_tasks.add_task(
                 _build_graph,
