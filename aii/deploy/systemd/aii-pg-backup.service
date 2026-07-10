@@ -1,0 +1,10 @@
+[Unit]
+Description=AII Postgres logical backup (aii_kg + aii_refined via pg_dump -Fc)
+After=network.target docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/data/soffy/projects/stratum/deploy
+ExecStart=/usr/bin/bash /data/soffy/projects/stratum/deploy/pg_backup.sh
+StandardOutput=append:/home/soffy/aii-backups/pg_backup.log
+StandardError=append:/home/soffy/aii-backups/pg_backup.log
