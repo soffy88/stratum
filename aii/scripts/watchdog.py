@@ -31,6 +31,13 @@ REPORT = WATCHDOG_DIR / "health_report.json"
 STATE = WATCHDOG_DIR / "state.json"
 PIPELINE_STATUS = ROOT / "PIPELINE_STATUS.md"
 
+# ── P2b 自愈相关 ──
+ACTIONS_LOG = WATCHDOG_DIR / "health_actions.jsonl"  # append-only 修复动作审计
+ACTION_STATE = WATCHDOG_DIR / "action_state.json"  # 限速用: {action_key: [ts,...]}
+MAINTENANCE_FLAG = WATCHDOG_DIR / "MAINTENANCE"  # 内容必须是ISO过期时间(裸flag被无视)
+RATE_PER_HOUR = 1  # 同一动作+目标 ≤1次/小时
+RATE_PER_DAY = 3  # ≤3次/天, 超过则升级人工(不再自动)
+
 try:
     from dotenv import load_dotenv
 
@@ -386,12 +393,43 @@ def check_backlog() -> list[dict]:
         ]
 
 
+def check_stuck_pulls() -> list[dict]:
+    """卡死的拉料/分类进程(正常一轮<3min; >900s=可疑, 源自真实9h19m卡死教训)。"""
+    rc, txt = _sh(["ps", "-eo", "pid,etimes,args", "--no-headers"])
+    stuck = []
+    for line in txt.splitlines():
+        parts = line.strip().split(None, 2)
+        if len(parts) < 3:
+            continue
+        pid, etimes, args = parts
+        try:
+            et = int(etimes)
+        except ValueError:
+            continue
+        if et > 900 and ("pull_ingest.sh" in args or "classify_md.py" in args):
+            stuck.append({"pid": int(pid), "etimes": et, "args": args[:80]})
+    if not stuck:
+        return [
+            {"name": "stuck-pulls", "status": "ok", "severity": "info", "detail": "无卡死拉料进程"}
+        ]
+    return [
+        {
+            "name": "stuck-pull",
+            "status": "stuck",
+            "severity": "warn",
+            "pid": s["pid"],
+            "detail": f"pid={s['pid']} 已运行 {s['etimes']}s: {s['args']}",
+        }
+        for s in stuck
+    ]
+
+
 # ── assemble + write ──────────────────────────────────────────────────────────
 
 
 def build_report(state: dict) -> dict:
     checks: list[dict] = []
-    for fn in (check_services, check_gpu, check_embed, check_backlog):
+    for fn in (check_services, check_gpu, check_embed, check_backlog, check_stuck_pulls):
         try:
             checks += fn()
         except Exception as e:
@@ -454,6 +492,150 @@ def update_pipeline_status(report: dict) -> None:
     tmp.replace(PIPELINE_STATUS)
 
 
+# ── P2b 自愈层(默认 WATCHDOG_REMEDIATE=0: 只决策+审计"本会做什么", 不执行)────────────
+#
+# 设计要点(压力测试 H5):
+#   - 关闭时也跑决策逻辑并把意图写进 health_actions.jsonl —— 观察期就能验证修复逻辑对不对,
+#     再翻开关, 绝不"检查+动作同天上线"。
+#   - 崩溃环不无脑重启(会给 Restart=always 的循环加油): 只隔离肇事条目, 隔离即断环, 不追加重启。
+#   - 维护 flag 必须内嵌 ISO 过期时间; 无过期/解析失败一律无视(裸 flag 被遗忘=看门狗永久失效,
+#     等于 8.5h 静默零产出事故换装重演)。
+#   - 每动作限速(≤1/hr/目标, ≤3/天则升级人工)。
+
+
+def _load_action_state() -> dict:
+    try:
+        return json.loads(ACTION_STATE.read_text())
+    except Exception:
+        return {}
+
+
+def _save_action_state(astate: dict) -> None:
+    WATCHDOG_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = ACTION_STATE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(astate, indent=2))
+    tmp.replace(ACTION_STATE)
+
+
+def _audit(rec: dict) -> None:
+    WATCHDOG_DIR.mkdir(parents=True, exist_ok=True)
+    rec = {"ts": _now(), **rec}
+    with open(ACTIONS_LOG, "a", encoding="utf-8") as f:
+        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+
+def _maintenance_active() -> tuple[bool, str]:
+    """维护模式: flag 文件内容须是未来的 ISO 时间; 过期/无法解析一律当未激活(并留痕)。"""
+    if not MAINTENANCE_FLAG.exists():
+        return False, ""
+    content = ""
+    try:
+        content = MAINTENANCE_FLAG.read_text().strip()
+        expiry = datetime.fromisoformat(content)
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) < expiry:
+            return True, content
+        _audit({"event": "maintenance-expired-ignored", "expiry": content})
+        return False, ""
+    except Exception:
+        # 无有效过期时间 → 拒绝把看门狗永久关掉, 无视这个 flag 并告警。
+        _audit({"event": "maintenance-flag-invalid-ignored", "content": content[:60]})
+        return False, ""
+
+
+def _rate_ok(key: str, astate: dict) -> bool:
+    now = time.time()
+    hist = [t for t in astate.get(key, []) if now - t < 86400]
+    astate[key] = hist
+    return sum(1 for t in hist if now - t < 3600) < RATE_PER_HOUR and len(hist) < RATE_PER_DAY
+
+
+def _record_action(key: str, astate: dict) -> None:
+    astate.setdefault(key, []).append(time.time())
+
+
+def _actions_for(report: dict) -> list[dict]:
+    """从 checks 推出待执行修复动作。"""
+    acts = []
+    for c in report["checks"]:
+        if c["name"].startswith("svc:") and c["status"] == "inactive":
+            acts.append({"action": "restart-service", "target": c["name"][4:], "why": c["detail"]})
+        elif c["name"] == "stratum-sl" and c["status"] == "crash-loop":
+            acts.append({"action": "quarantine-poison", "target": "stratum-sl", "why": c["detail"]})
+        elif c["name"] == "stuck-pull" and c.get("pid"):
+            acts.append({"action": "kill-process", "target": str(c["pid"]), "why": c["detail"]})
+    return acts
+
+
+def _quarantine_crash_loop_item() -> tuple[bool, str]:
+    """崩溃环止损: 把最近崩溃最多、尚未隔离的入库条目写进 stratum.ingest_quarantine(断环)。"""
+
+    async def _run():
+        import asyncpg
+
+        conn = await asyncpg.connect(DSN, timeout=10)
+        try:
+            row = await conn.fetchrow(
+                "SELECT item_key, source_type, count(*) n FROM stratum.ingest_attempts "
+                "WHERE outcome IN ('crashed','timeout') AND attempted_at > NOW() - interval '30 min' "
+                "AND item_key NOT IN (SELECT item_key FROM stratum.ingest_quarantine) "
+                "GROUP BY item_key, source_type ORDER BY n DESC LIMIT 1"
+            )
+            if not row:
+                return False, "无未隔离的崩溃条目可锁定"
+            await conn.execute(
+                "INSERT INTO stratum.ingest_quarantine (item_key, source_type, reason, fail_count) "
+                "VALUES ($1,$2,$3,$4) ON CONFLICT (item_key) DO NOTHING",
+                row["item_key"],
+                row["source_type"],
+                f"watchdog crash-loop auto-quarantine ({row['n']} crashes/30min)",
+                row["n"],
+            )
+            return True, f"已隔离肇事条目 {row['item_key']} ({row['n']}次崩溃)"
+        finally:
+            await conn.close()
+
+    try:
+        return asyncio.run(_run())
+    except Exception as e:
+        return False, f"隔离失败: {str(e)[:80]}"
+
+
+def _execute(action: str, target: str) -> tuple[bool, str]:
+    if action == "restart-service":
+        rc, out = _sh(["systemctl", "--user", "start", target], timeout=30)
+        return rc == 0, out[:200] or "started"
+    if action == "kill-process":
+        rc, out = _sh(["kill", "-9", target])
+        return rc == 0, out[:120] or "killed"
+    if action == "quarantine-poison":
+        return _quarantine_crash_loop_item()
+    return False, f"unknown action {action}"
+
+
+def remediate(report: dict, astate: dict) -> None:
+    remediate_on = os.getenv("WATCHDOG_REMEDIATE", "0") == "1"
+    maint, maint_until = _maintenance_active()
+    for a in _actions_for(report):
+        key = f"{a['action']}:{a['target']}"
+        base = {"action": a["action"], "target": a["target"], "why": a["why"]}
+        if maint:
+            _audit({**base, "executed": False, "blocked": f"maintenance until {maint_until}"})
+            continue
+        if not _rate_ok(key, astate):
+            _audit(
+                {**base, "executed": False, "blocked": "rate-limited (≤1/hr, ≤3/day → 升级人工)"}
+            )
+            continue
+        if not remediate_on:
+            _audit({**base, "executed": False, "blocked": "observe-only (WATCHDOG_REMEDIATE=0)"})
+            continue
+        ok, detail = _execute(a["action"], a["target"])
+        _record_action(key, astate)
+        _audit({**base, "executed": True, "result": ("ok" if ok else "failed") + ": " + detail})
+
+
 def main() -> int:
     state = _load_state()
     report = build_report(state)
@@ -463,6 +645,12 @@ def main() -> int:
         update_pipeline_status(report)
     except Exception:
         pass
+    try:
+        astate = _load_action_state()
+        remediate(report, astate)
+        _save_action_state(astate)
+    except Exception as e:
+        _audit({"event": "remediate-crashed", "error": str(e)[:120]})
     if "--human" in sys.argv:
         print(f"overall={report['overall']}")
         for c in report["checks"]:
