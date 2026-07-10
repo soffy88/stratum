@@ -149,7 +149,9 @@ async def _ingest_item(result, user_id_hash: str, sub_id: str) -> str | None:
         try:
             from stratum.services.md_export_service import export_one
 
-            export_one(sid)
+            # export_one 内部用 asyncio.run(); 此处身处事件循环, 必须丢到线程执行
+            # (否则 RuntimeError: asyncio.run() cannot be called from a running event loop)
+            await asyncio.to_thread(export_one, sid)
         except Exception as exc:
             log.warning("source_watcher: md_export failed sid=%s: %s", sid, exc)
 
