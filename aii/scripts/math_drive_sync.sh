@@ -17,6 +17,13 @@
 set -euo pipefail
 export PATH="$HOME/.local/bin:$PATH"
 
+# 服务器在墙内, rclone 直连 Google(oauth2/drive API)会超时。默认走本机代理; 用 RCLONE_PROXY
+# 覆盖端口, RCLONE_PROXY='' 则不走代理。若外部已设 HTTPS_PROXY 则尊重外部设置。
+: "${RCLONE_PROXY=http://127.0.0.1:7890}"
+if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
+  export HTTPS_PROXY="${RCLONE_PROXY}" HTTP_PROXY="${RCLONE_PROXY}"
+fi
+
 RCLONE_REMOTE="${RCLONE_REMOTE:-gdrive}"
 DRIVE_FOLDER_ID="${DRIVE_FOLDER_ID:-1tbxwprHUfM0rjaCtTJGdGah70Pk2Wt-k}"
 DEST="${DEST:-/home/soffy/books/数学}"
