@@ -468,7 +468,13 @@ def main() -> int:
         for c in report["checks"]:
             mark = {"info": "  ", "warn": "⚠ ", "crit": "🚨"}.get(c["severity"], "  ")
             print(f"{mark} [{c['status']}] {c['name']}: {c['detail']}")
-    return 2 if report["overall"] == "critical" else (1 if report["overall"] == "degraded" else 0)
+        # 交互/监控用: 退出码反映健康(0绿/1降级/2严重)。
+        return (
+            2 if report["overall"] == "critical" else (1 if report["overall"] == "degraded" else 0)
+        )
+    # systemd 服务(默认): 只要成功产出报告就退0——"degraded/critical"是健康结论, 不是运行失败,
+    # 否则 Type=oneshot 会把每次降级都标成服务failed。健康严重度在报告文件里, 不在退出码。
+    return 0
 
 
 if __name__ == "__main__":
