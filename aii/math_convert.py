@@ -15,6 +15,43 @@ MD_ZH = "/home/soffy/books/MD/中文数学"
 MD_EN = "/home/soffy/books/MD/英文数学"
 DO = "--do" in sys.argv
 
+import json
+
+
+def _load_drive_ids() -> dict:
+    """源文件基名 → Drive 直链 映射; 由 scripts/math_drive_sync.sh 同步时写到 SRC/.driveid.json。
+    缺失/损坏 → 空 dict(照常转换, source_url 留空, 不阻塞)。"""
+    try:
+        return json.loads((Path(SRC) / ".driveid.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+_DRIVE_IDS = _load_drive_ids()
+
+
+def _frontmatter(title: str, src_path: str, lang: str) -> str:
+    """YAML frontmatter; source_url 按源文件基名取自 Drive 同步映射(没有则留空)。
+    值用 JSON 串做双引号标量, 安全处理冒号/引号/CJK。"""
+    fname = Path(src_path).name
+
+    def y(v):
+        return json.dumps(v, ensure_ascii=False)
+
+    return "\n".join(
+        [
+            "---",
+            f"title: {y(title)}",
+            f"source_file: {y(fname)}",
+            f"source_url: {y(_DRIVE_IDS.get(fname, ''))}",
+            f"lang: {y(lang)}",
+            "converter: markitdown",
+            "---",
+            "",
+            "",
+        ]
+    )
+
 
 def norm(s):  # 归一标题(去 z-lib/作者括号/空格标点)用于匹配
     s = re.sub(r"\(z-lib[^)]*\)|\(z-library[^)]*\)|\([^)]*1lib[^)]*\)", "", s, flags=re.I)
@@ -71,8 +108,12 @@ def matched(stem):
 def chapters(text):
     # ★"第N 章"(数字后带空格)是烂文本层/扫描书常见的 fitz 抽取排版噪音, 原正则要求
     # 紧贴无空格, 会让这类书永远判"无章节结构"、连 OCR 门槛都进不去(实测斯图: 0→362命中).
+    # ★中文分支原来不认"# "前缀——但 math_ocr_convert.ocr_pdf_to_text() 会把匹配到的中英文
+    # 章节行统一提升成"# 标题"markdown格式, 导致新鲜OCR出来的中文书章节行变成"# 第N章",
+    # 恰好只有英文分支认这个前缀, 中文分支永远算0章(实测斯图尔特今晚OCR复现: 0章被拒,
+    # 而同一本书旧版手工转换的MD因为没有"#"前缀反而能通过). 中文分支也加上同样的可选前缀.
     return len(
-        re.findall(r"(?m)^#\s+Chapter\s+\d|^第[一二三四五六七八九十百\d]+\s*章|^Chapter\s+\d", text)
+        re.findall(r"(?m)^(?:#\s+)?Chapter\s+\d|^(?:#\s+)?第[一二三四五六七八九十百\d]+\s*章", text)
     )
 
 
@@ -109,26 +150,30 @@ from collections import Counter
 
 
 def convert(path):
-    """PDF/EPUB → 清洗后的 MD 文本(去页眉页脚/页码, 章节行提升为 # 标题)."""
-    d = fitz.open(path)
-    pages = [d[p].get_text() for p in range(d.page_count)]
-    cnt = Counter()
-    for pg in pages:
-        ls = [l.strip() for l in pg.splitlines() if l.strip()]
-        if ls:
-            cnt[ls[0]] += 1
-            cnt[ls[-1]] += 1
-    headers = {l for l, c in cnt.items() if c > len(pages) * 0.12 and len(l) < 80}
+    """PDF/EPUB → 清洗后的 MD 文本(去页眉页脚/页码, 章节行提升为 # 标题).
+    ★2026-07-07: 正文抽取换成 markitdown(pdfminer.six/pdfplumber), 换掉裸 fitz.get_text()
+    ——统一转换工具链, 见 platform/3O/oprim/parser/parse_pdf.py 的同步改动(那边的
+    pymupdf4llm 复现过整段内容按固定字符间隔重复的bug, 这边虽未复现但一起换)。markitdown
+    不像 fitz 那样有天然页边界, 页眉页脚剔除从"按页首尾行频率"改成"全文行频率", 阈值沿用
+    原有的 0.12*页数(页数仍用 fitz 快速取一次, 比按总行数算更准——总行数会随大部头/合集类
+    书暴涨, 稀释掉真正逐页重复的页眉页脚)。"""
+    from markitdown import MarkItDown
+
+    npg = fitz.open(path).page_count
+    text = MarkItDown().convert(path).text_content
+    lines = text.split("\n")
+    cnt = Counter(l.strip() for l in lines if l.strip())
+    thresh = max(3, int(npg * 0.12))
+    headers = {l for l, c in cnt.items() if c > thresh and len(l) < 80}
     out = []
-    for pg in pages:
-        for l in pg.splitlines():
-            s = l.strip()
-            if not s or s in headers or re.fullmatch(r"\d{1,4}", s):
-                continue
-            if re.match(r"^(Chapter\s+\d+|第[一二三四五六七八九十百\d]+\s*章|CHAPTER\s+\d+)\b", s):
-                out.append(f"\n# {s}\n")
-            else:
-                out.append(s)
+    for l in lines:
+        s = l.strip()
+        if not s or s in headers or re.fullmatch(r"\d{1,4}", s):
+            continue
+        if re.match(r"^(Chapter\s+\d+|第[一二三四五六七八九十百\d]+\s*章|CHAPTER\s+\d+)\b", s):
+            out.append(f"\n# {s}\n")
+        else:
+            out.append(s)
     return "\n".join(out)
 
 
@@ -184,8 +229,9 @@ for cat in ["可转", "需OCR(烂文本层)", "需OCR(无文字层)", "无章节
         print(f"  {'%4d页 ' % npg if npg else ''}{stem[:60]}")
 
 
-def _write_if_math_textbook(stem, text):
-    """判定+写文件(可转/OCR共用尾段). 返回 True=已写入."""
+def _write_if_math_textbook(stem, text, path):
+    """判定+写文件(可转/OCR共用尾段). 返回 True=已写入.
+    path=源文件路径, 用于在 frontmatter 里写 source_url(Drive 直链)."""
     ok, lang, m = math_textbook(text)
     if not ok:
         print(f"  – 跳过[{m}]: {stem[:42]}")
@@ -199,7 +245,7 @@ def _write_if_math_textbook(stem, text):
     if os.path.exists(dst):
         print(f"  – 已存在, 跳过: {clean[:40]}")
         return False
-    open(dst, "w", encoding="utf-8").write(text)
+    open(dst, "w", encoding="utf-8").write(_frontmatter(clean, path, lang) + text)
     existing.add(norm(clean))  # 记入, 防同轮后续重复
     print(f"  ✓ [{lang}] {clean[:45]} ({len(text) // 1024}KB)")
     return True
@@ -213,11 +259,18 @@ if DO:
         except Exception as e:
             print(f"  ✗ 转换失败 {stem[:40]}: {e}")
             continue
-        _write_if_math_textbook(stem, text)
+        _write_if_math_textbook(stem, text, path)
 
     # ★自主 OCR: 遇到烂文本层/无文字层的数学扫描书, 自己拉起 vLLM 容器转清后再入常规流程,
     # 不需要人工干预. 只在确有此类书时才启动容器(不白占 GPU); 处理完统一释放.
-    ocr_books = results.get("需OCR(烂文本层)", []) + results.get("需OCR(无文字层)", [])
+    # ★默认关(env门禁): 大书OCR一本能到~80min, 这一步不能塞进三个飞轮每轮都调的
+    # pull_ingest.sh(有600s超时, 会把没转完的OCR任务腰斩)——只在 scripts/ocr_daemon.sh
+    # 那条独立、慢节奏、无短超时的常驻循环里打开 MATH_CONVERT_AUTO_OCR=1。
+    ocr_books = (
+        (results.get("需OCR(烂文本层)", []) + results.get("需OCR(无文字层)", []))
+        if os.getenv("MATH_CONVERT_AUTO_OCR") == "1"
+        else []
+    )
     if ocr_books:
         import signal
 
@@ -251,7 +304,7 @@ if DO:
                     except Exception as e:
                         print(f"  ✗ OCR失败 {stem[:40]}: {e}")
                         continue
-                    _write_if_math_textbook(stem, text)
+                    _write_if_math_textbook(stem, text, path)
             finally:
                 release_container()
         else:
