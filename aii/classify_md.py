@@ -1,16 +1,17 @@
 import os, re, glob, sys, shutil, subprocess
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
+from book_identity import norm_stem  # noqa: E402
+
 SRC = "/home/soffy/shared/stratum-to-aii"
 DST = "/home/soffy/books/MD"
 DO = "--do" in sys.argv  # 默认 dry-run
 
 
-def _norm(s):  # 归一标题查重(同 econ/math_convert)
-    s = re.sub(r"\(z-lib[^)]*\)|\(z-library[^)]*\)|\([^)]*1lib[^)]*\)", "", s, flags=re.I)
-    s = re.sub(r"\.(pdf|epub|md)$", "", s, flags=re.I)
-    s = re.sub(r"[\s_\-（）()【】\[\]·,，.。、:：;；]+", "", s)
-    return s.lower()
+def _norm(s):  # 归一标题查重 — 统一走 book_identity.norm_stem(它比旧版多剥 _01KWXXXX
+    # ULID 后缀, 正是 md_export 制造重复的根源, 如"微积分的力量"跨文件夹重复案例)。
+    return norm_stem(s)
 
 
 def _done_norms():
@@ -173,10 +174,29 @@ def classify(path):
     zh = len(re.findall(r"[一-鿿]", samp))
     en = len(re.findall(r"[A-Za-z]", samp))
     headings = len(re.findall(r"(?m)^#{1,4}\s", text))
-    chaps = len(re.findall(r"(?m)^#\s+Chapter\s+\d|^第[一二三四五六七八九十百\d]+章", text))
+    chaps = len(re.findall(r"(?m)^#{1,3}\s+\**Chapter\s+\d|^第[一二三四五六七八九十百\d]+章", text))
+    # ★2026-07-06: 有些教材章节标题本身没有"Chapter N"/"第N章"字样(如Mathematics for Machine
+    # Learning: 章节直接叫"Introduction and Motivation", 靠小节编号"1.1/2.1"体现结构), 上面
+    # 那条正则永远抓不到, 判"无章节"→ 错分去其它(即便编号定理densely, 也进不了数学). 补一条:
+    # 统计标题行里出现过的"N.M"小节编号, 不同的整数大节号N≥3个, 也算有章节结构。
+    # ★但学术论文的"1. Introduction/2. Related Work"也是这个格式(实测撞过3篇论文被误判成
+    # 教材)——用 frontmatter 的 doc_type 精确排除, 只对 doc_type!=paper 生效。
+    decimal_ch = (
+        0
+        if "doc_type: paper" in text[:500]
+        else len(set(int(m) for m in re.findall(r"(?m)^#{1,6}\s+\**(\d{1,2})\.\d+\b", text)))
+    )
     # ── 品质门 ──
     if _GARBAGE.match(name) or len(name) < 4:
         return ("低质", "垃圾/碎片名", None)
+    # ★2026-07-09 实测: _PAPER 文件名正则(WP/AER/JEL/(年份)/et al)只认旧式经济学工作论文
+    # 命名, 抓不到 aii_feedback_service 自动订阅拉回来的 arxiv 论文(文件名是"标题截断+ULID后
+    # 缀", 不带那些引用体式标记)——查真实数据: 84个单篇论文靠这条漏网, 全部错分进"其它"(章节
+    # 教材专用文件夹), misc discover 的 chapters<3 门槛又把它们永久静默跳过, querier无记录、
+    # KU永远0。frontmatter 的 doc_type 是权威信号(md_export_service.py 按 medium 精确打上去
+    # 的), 不靠文件名猜, 放在文件名正则前面先查, 覆盖面更广。
+    if "doc_type: paper" in text[:500]:
+        return ("低质", "学术论文(doc_type=paper)", None)
     if _PAPER.search(name):
         return ("低质", "学术论文(非教材)", None)
     if n < 60000:
@@ -198,18 +218,25 @@ def classify(path):
     is_zh = zh > 1000  # 有大量中文即判中文书(中文数学教材公式里英文多, 不能用 zh>en)
     dens_e = econ / (n / 1000)
     dens_m = math / (n / 1000)
-    has_ch = chaps >= 3
+    has_ch = chaps >= 3 or decimal_ch >= 3
     # 经济学教材: econ密度高 + 有章节
     if dens_e >= 2.0 and dens_e >= dens_m and has_ch:
-        return ("经济学", f"econ{dens_e:.1f} 章{chaps}", _out)
-    # 数学教材: math密度高 + 带编号定理多(非科普) + 有章节
-    if dens_m >= 1.5 and dens_m > dens_e and thm_num >= 10 and has_ch:
+        return ("经济学", f"econ{dens_e:.1f} 章{max(chaps, decimal_ch)}", _out)
+    # 数学教材: math密度高 或 编号定理绝对数量很多(应用型数学书, 如ML数学, 正文夹叙夹议
+    # 稀释了关键词密度, 但编号定理照样densely) + 有章节。同 math_convert.py 的 math_textbook()
+    # 已用的 thm>=30 or dens>=1.2 口径(2026-07-06 实测: Mathematics for Machine Learning
+    # 106个编号定理但dens_m仅0.7, 原先纯AND逻辑判不进数学).
+    if (dens_m >= 1.5 or thm_num >= 30) and thm_num >= 10 and dens_m > dens_e and has_ch:
         return (
             "中文数学" if is_zh else "英文数学",
-            f"math{dens_m:.1f} 编号定理{thm_num} 章{chaps} {'中' if is_zh else '英'}",
+            f"math{dens_m:.1f} 编号定理{thm_num} 章{max(chaps, decimal_ch)} {'中' if is_zh else '英'}",
             _out,
         )
-    return ("其它", f"e{dens_e:.1f}/m{dens_m:.1f} 章{chaps} 编号定理{thm_num}", _out)
+    return (
+        "其它",
+        f"e{dens_e:.1f}/m{dens_m:.1f} 章{max(chaps, decimal_ch)} 编号定理{thm_num}",
+        _out,
+    )
 
 
 cats = {}
@@ -229,7 +256,7 @@ if DO:
     for cat, items in cats.items():
         if cat in ("低质", "SKIP"):
             continue
-        tgt = DST if cat == "其它" else f"{DST}/{cat}"
+        tgt = f"{DST}/{cat}"
         os.makedirs(tgt, exist_ok=True)
         for name, _, cleaned in items:
             src = f"{SRC}/{name}"
