@@ -29,9 +29,12 @@ def _sid(stem: str, text: str) -> str:
 
 
 def _chapters(text: str) -> int:
-    cn = len(re.findall(r"(?m)^第([一二三四五六七八九十]+)章", text))
-    en = len(re.findall(r"(?m)^#\s+Chapter\s+\d+:?\s*$", text))
-    return max(cn, en)
+    # ★口径统一: 直接用 chapter_ingest.chapter_starts——下游预检(econ_batch_run.sh 的
+    # PASS_ZH 兜底)和切章用的就是它(含 第N章/# Chapter N:/N.M小节编号三种风格)。
+    # 之前这里自带窄正则, OpenStax 等"N.M 小节编号"排版的书(拉书回流的主要产物)数出
+    # 0 章被永久静默跳过——书进了池没人捡, 最后一公里断在这。
+    from chapter_ingest import chapter_starts
+    return len(chapter_starts(text))
 
 
 def discover() -> list[dict]:
