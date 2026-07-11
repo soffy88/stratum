@@ -168,6 +168,12 @@ _TOPIC_MAP: list[tuple[list[str], list[dict]]] = [
                 "max_results": 5,
             },
             {
+                "source_type": "arxiv",
+                "query": {"categories": ["math.PR", "math.ST", "math.HO"], "keywords": "lecture notes"},
+                "max_results": 10,
+                "bucket": "book",
+            },
+            {
                 "source_type": "mit_ocw",
                 "query": {
                     "departments": ["18"],
@@ -185,7 +191,24 @@ _TOPIC_MAP: list[tuple[list[str], list[dict]]] = [
                 "source_type": "arxiv",
                 "query": {"categories": ["math.CA"], "keywords": "calculus analysis"},
             },
+            {
+                # ★arXiv 长篇讲义(lecture notes): 定理编号密集, classify 的"讲义型"门
+                # (≥300KB+定理≥40)会路由进数学池——math-prog B范式的规模化粮源。
+                "source_type": "arxiv",
+                "query": {"categories": ["math.CA", "math.HO"], "keywords": "lecture notes"},
+                "max_results": 10,
+                "bucket": "book",  # 讲义实为书: 走书桶配额, 别和论文抢
+            },
             {"source_type": "gutenberg", "query": {"topic": "calculus", "languages": ["en"]}},
+            {
+                "source_type": "openstax",
+                "query": {"subjects": ["Math"], "keywords": "calculus"},
+            },
+            {
+                "source_type": "oapen",
+                "query": {"query": "calculus analysis"},
+                "max_results": 5,
+            },
         ],
     ),
     (
@@ -195,7 +218,22 @@ _TOPIC_MAP: list[tuple[list[str], list[dict]]] = [
                 "source_type": "arxiv",
                 "query": {"categories": ["math.LA"], "keywords": "linear algebra matrix"},
             },
+            {
+                "source_type": "arxiv",
+                "query": {"categories": ["math.LA", "math.RA"], "keywords": "lecture notes"},
+                "max_results": 10,
+                "bucket": "book",
+            },
             {"source_type": "gutenberg", "query": {"topic": "algebra", "languages": ["en"]}},
+            {
+                "source_type": "openstax",
+                "query": {"subjects": ["Math"], "keywords": "algebra"},
+            },
+            {
+                "source_type": "oapen",
+                "query": {"query": "linear algebra"},
+                "max_results": 5,
+            },
         ],
     ),
     (
@@ -253,6 +291,12 @@ _TOPIC_MAP: list[tuple[list[str], list[dict]]] = [
                 "max_results": 5,
             },
             {
+                "source_type": "arxiv",
+                "query": {"categories": ["math.OC", "math.HO"], "keywords": "lecture notes"},
+                "max_results": 10,
+                "bucket": "book",
+            },
+            {
                 "source_type": "mit_ocw",
                 "query": {
                     "departments": ["18", "15"],
@@ -298,7 +342,21 @@ _TOPIC_MAP: list[tuple[list[str], list[dict]]] = [
                     "keywords": "mathematics",
                 },
             },
+            {
+                "source_type": "arxiv",
+                "query": {
+                    "categories": ["math.NT", "math.GR", "math.AT", "math.HO"],
+                    "keywords": "lecture notes",
+                },
+                "max_results": 10,
+                "bucket": "book",
+            },
             {"source_type": "gutenberg", "query": {"topic": "mathematics", "languages": ["en"]}},
+            {
+                "source_type": "oapen",
+                "query": {"query": "abstract algebra number theory"},
+                "max_results": 5,
+            },
         ],
     ),
     (
@@ -319,14 +377,17 @@ def _map_topic_rule(topic: str, need_type: str = "both") -> list[dict] | None:
     topic_l = topic.lower()
     for keywords, queries in _TOPIC_MAP:
         if any(k.lower() in topic_l for k in keywords):
+            def _is_book_spec(q):
+                return q["source_type"] in _BOOK_SOURCES or q.get("bucket") == "book"
+
             if need_type == "book":
-                filtered = [q for q in queries if q["source_type"] in _BOOK_SOURCES]
+                filtered = [q for q in queries if _is_book_spec(q)]
             elif need_type == "paper":
-                filtered = [q for q in queries if q["source_type"] not in _BOOK_SOURCES]
+                filtered = [q for q in queries if not _is_book_spec(q)]
             else:
-                # 中性：书优先（gutenberg/openstax/mit_ocw/oapen 先），arxiv 补充
-                books = [q for q in queries if q["source_type"] in _BOOK_SOURCES]
-                papers = [q for q in queries if q["source_type"] not in _BOOK_SOURCES]
+                # 中性：书优先（含 bucket=book 的讲义 spec），纯论文 arxiv 补充
+                books = [q for q in queries if _is_book_spec(q)]
+                papers = [q for q in queries if not _is_book_spec(q)]
                 filtered = books + papers
             return filtered if filtered else queries  # 若该性质无对应源则回退全部
     return None
@@ -665,7 +726,7 @@ async def _process_one_need(need: dict, user_id: str, *, _runner=None) -> None:
 
         # G1: 按剩余配额分配 max_results（历史+本轮已拉累计不超上限, 书/论文各自记账;
         # 本桶吃满只跳过该源, 另一桶的源继续——不能 break）
-        is_book = source_type in _BOOK_SOURCES
+        is_book = source_type in _BOOK_SOURCES or q_spec.get("bucket") == "book"
         remaining = max(
             0,
             MAX_PER_NEED
@@ -786,3 +847,17 @@ async def _tick() -> None:
             await _process_one_need(need, user_id)
         except Exception as exc:
             log.error("aii_feedback: error processing need=%r: %s", str(need)[:80], exc)
+        # ★subtopics 也是真实 KG 缺口(aii backend 按 purpose 拆出的子方向): 只处理主
+        # topic 时, 每个 need 的书配额终身 20 本, 主题集固定 → 拉满即永久断供("修完
+        # 过几天又空转"的结构性根因)。子题各自成 need(独立 hash=独立配额), 供给×10;
+        # G2/G3 日/月闸和 G5 反循环照常兜底, 不会失控。
+        for sub in (need.get("subtopics") or [])[:10]:
+            sub = (sub or "").strip()
+            if not sub:
+                continue
+            try:
+                await _process_one_need(
+                    {"topic": sub, "reason": f"subtopic of {need.get('topic', '')}"}, user_id
+                )
+            except Exception as exc:
+                log.error("aii_feedback: error processing subtopic=%r: %s", sub[:40], exc)
