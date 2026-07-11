@@ -47,10 +47,17 @@ async def _ingest_item(result, user_id_hash: str, sub_id: str) -> str | None:
         log.warning("source_watcher: SKIP quarantined ext_id=%s", result.external_id)
         return None
 
-    medium_hint = result.file_type  # "pdf" | "epub" | "txt"
+    file_type = result.file_type  # "pdf" | "epub" | "txt"
+    # 书源的下载物是"书"不是"论文": medium 直接沿用 file_type 时, md_export 的
+    # pdf→paper 映射会把 PDF 教材打成 doc_type:paper, aii 侧 classify 一律扔低质堆
+    # (2026-07-11 实测 openstax《Principles of Finance 2e》如此报废, 历史 gutenberg
+    # PDF 同理)。arxiv 论文仍走 file_type(pdf→paper 正确)。
+    medium_hint = (
+        "book" if source_type in ("gutenberg", "oapen", "openstax", "mit_ocw") else file_type
+    )
 
     with tempfile.TemporaryDirectory(prefix="srcwatch_") as tmpdir:
-        ext = {"pdf": ".pdf", "epub": ".epub", "txt": ".txt"}.get(medium_hint, ".bin")
+        ext = {"pdf": ".pdf", "epub": ".epub", "txt": ".txt"}.get(file_type, ".bin")
         safe_id = re.sub(r"[^A-Za-z0-9_-]", "_", result.external_id)
         file_path = Path(tmpdir) / f"{safe_id}{ext}"
 
