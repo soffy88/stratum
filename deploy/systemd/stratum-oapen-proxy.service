@@ -1,0 +1,19 @@
+[Unit]
+Description=Stratum OAPEN search proxy (:8766) — oapen_direct_search 的缺失上游, 拉开放获取学术专著
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# OAPEN 在墙内直连不稳, 统一走 sing-box 出网代理(与容器内 STRATUM_OUTBOUND_PROXY 同一个)
+Environment=HTTPS_PROXY=http://172.19.0.1:10808
+Environment=HTTP_PROXY=http://172.19.0.1:10808
+Environment=https_proxy=http://172.19.0.1:10808
+Environment=http_proxy=http://172.19.0.1:10808
+WorkingDirectory=/data/soffy/projects/stratum
+ExecStart=/usr/bin/python3 scripts/oapen_search_proxy.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

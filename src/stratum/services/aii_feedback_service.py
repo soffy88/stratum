@@ -4,10 +4,10 @@ Pipeline:
   needs.json → 性质判断 → 护栏检查 → 话题→查询条件映射 → 创建订阅 → 触发扫描 → 记日志
 
 五道护栏 (§4):
-  G1 MAX_PER_NEED=5       一个 need 实际入库总篇数 ≤ 5（跨源累计，不是每源5）
-  G2 MAX_PER_DAY=20       每天全局最多创建 20 个订阅
-  G3 MAX_PER_MONTH=200    每月全局最多创建 200 个订阅
-  G4 source whitelist     只用 arxiv / gutenberg（oapen 网络待修）
+  G1 MAX_PER_NEED=20      一个 need 实际入库篇数上限——书/论文分桶各自记账（论文吃满不堵拉书）
+  G2 MAX_PER_DAY=50       每天全局最多创建 50 个订阅
+  G3 MAX_PER_MONTH=500    每月全局最多创建 500 个订阅
+  G4 source whitelist     arxiv / gutenberg / openstax / mit_ocw（oapen 代理服务 :8766 缺失待建）
   G5 anti-loop            同 need 2 轮 ingested=0 → needs_human_review，停
 
 need 性质判断 (§3):
@@ -41,7 +41,11 @@ UNRESOLVED_LOG = Path("/data/logs/aii_unresolved.log")
 LOOP_INTERVAL = 3600  # 1h
 ALLOWED_SOURCES = {"arxiv", "gutenberg", "oapen", "openstax", "mit_ocw"}
 
-MAX_PER_NEED = 20  # 一个 need 实际入库总篇数上限
+MAX_PER_NEED = 20  # 一个 need 实际入库篇数上限（书/论文分桶, 各自 ≤ 此值）
+# G1 分桶依据: 四个飞轮只吃有章节教材, 但 arxiv 论文曾把单桶配额全部吃满
+# (2026-07-11 实测 6/6 个 need 被 G1 卡死, 历史累计 3992 篇论文 vs 340 本书),
+# 不分桶的话"拉书"通道被论文永久堵死。
+_BOOK_SOURCES = frozenset({"gutenberg", "oapen", "openstax", "mit_ocw"})
 MAX_PER_DAY = 50
 MAX_PER_MONTH = 500
 ANTI_LOOP_ROUNDS = 2  # 连续 N 轮 ingested=0 → 停
@@ -120,6 +124,20 @@ _TOPIC_MAP: list[tuple[list[str], list[dict]]] = [
         ],
         [
             {
+                "source_type": "openstax",
+                "query": {"subjects": ["Business"], "keywords": "finance"},
+            },
+            {
+                "source_type": "oapen",
+                "query": {"query": "quantitative finance"},
+                "max_results": 5,
+            },
+            {
+                "source_type": "mit_ocw",
+                "query": {"departments": ["15"], "keywords": "finance", "max_pdfs_per_course": 4},
+                "max_results": 8,
+            },
+            {
                 "source_type": "arxiv",
                 "query": {
                     "categories": ["q-fin.ST", "q-fin.TR", "q-fin.PM"],
@@ -140,6 +158,24 @@ _TOPIC_MAP: list[tuple[list[str], list[dict]]] = [
                 },
             },
             {"source_type": "gutenberg", "query": {"topic": "probability", "languages": ["en"]}},
+            {
+                "source_type": "openstax",
+                "query": {"subjects": ["Math"], "keywords": "statistics"},
+            },
+            {
+                "source_type": "oapen",
+                "query": {"query": "probability statistics"},
+                "max_results": 5,
+            },
+            {
+                "source_type": "mit_ocw",
+                "query": {
+                    "departments": ["18"],
+                    "keywords": "probability",
+                    "max_pdfs_per_course": 4,
+                },
+                "max_results": 8,
+            },
         ],
     ),
     (
@@ -176,6 +212,20 @@ _TOPIC_MAP: list[tuple[list[str], list[dict]]] = [
                 "source_type": "gutenberg",
                 "query": {"topic": "computer science", "languages": ["en"]},
             },
+            {
+                "source_type": "oapen",
+                "query": {"query": "machine learning"},
+                "max_results": 5,
+            },
+            {
+                "source_type": "mit_ocw",
+                "query": {
+                    "departments": ["6"],
+                    "keywords": "machine learning",
+                    "max_pdfs_per_course": 4,
+                },
+                "max_results": 8,
+            },
         ],
     ),
     (
@@ -191,6 +241,29 @@ _TOPIC_MAP: list[tuple[list[str], list[dict]]] = [
         ],
     ),
     (
+        ["最优化", "凸优化", "optimization", "convex", "运筹", "operations research"],
+        [
+            {
+                "source_type": "arxiv",
+                "query": {"categories": ["math.OC"], "keywords": "optimization"},
+            },
+            {
+                "source_type": "oapen",
+                "query": {"query": "optimization"},
+                "max_results": 5,
+            },
+            {
+                "source_type": "mit_ocw",
+                "query": {
+                    "departments": ["18", "15"],
+                    "keywords": "optimization",
+                    "max_pdfs_per_course": 4,
+                },
+                "max_results": 8,
+            },
+        ],
+    ),
+    (
         ["经济学", "economics", "宏观经济", "微观经济", "金融"],
         [
             {
@@ -198,6 +271,21 @@ _TOPIC_MAP: list[tuple[list[str], list[dict]]] = [
                 "query": {"categories": ["econ.GN", "q-fin.GN"], "keywords": "economics"},
             },
             {"source_type": "gutenberg", "query": {"topic": "economics", "languages": ["en"]}},
+            {
+                "source_type": "openstax",
+                "query": {"subjects": ["Business"], "keywords": "econom"},
+            },
+            {
+                "source_type": "oapen",
+                # 单词 "economics" 上游命中恒 0(DSpace 搜索怪癖), 多词才有结果
+                "query": {"query": "macroeconomics"},
+                "max_results": 5,
+            },
+            {
+                "source_type": "mit_ocw",
+                "query": {"departments": ["14", "15"], "max_pdfs_per_course": 4},
+                "max_results": 8,
+            },
         ],
     ),
     (
@@ -232,13 +320,13 @@ def _map_topic_rule(topic: str, need_type: str = "both") -> list[dict] | None:
     for keywords, queries in _TOPIC_MAP:
         if any(k.lower() in topic_l for k in keywords):
             if need_type == "book":
-                filtered = [q for q in queries if q["source_type"] != "arxiv"]
+                filtered = [q for q in queries if q["source_type"] in _BOOK_SOURCES]
             elif need_type == "paper":
-                filtered = [q for q in queries if q["source_type"] not in ("gutenberg", "oapen")]
+                filtered = [q for q in queries if q["source_type"] not in _BOOK_SOURCES]
             else:
-                # 中性：书优先（gutenberg/oapen 先），arxiv 补充
-                books = [q for q in queries if q["source_type"] in ("gutenberg", "oapen")]
-                papers = [q for q in queries if q["source_type"] == "arxiv"]
+                # 中性：书优先（gutenberg/openstax/mit_ocw/oapen 先），arxiv 补充
+                books = [q for q in queries if q["source_type"] in _BOOK_SOURCES]
+                papers = [q for q in queries if q["source_type"] not in _BOOK_SOURCES]
                 filtered = books + papers
             return filtered if filtered else queries  # 若该性质无对应源则回退全部
     return None
@@ -290,8 +378,14 @@ def _map_topic(topic: str) -> tuple[list[dict], str]:
 # ── 护栏 ────────────────────────────────────────────────────────────────────
 
 
-def _need_hash(topic: str, reason: str = "") -> str:
-    return hashlib.sha256(f"{topic}|{reason}".encode()).hexdigest()[:16]
+def _need_hash(topic: str) -> str:
+    """按 topic 本身算哈希, 不能带 reason——reason 里嵌了 ku_count, 每轮飞轮进化都在涨,
+
+    混进哈希会导致同一个 topic 每次 tick 都算出"新"哈希, 让 G1/G5 两道护栏(按 need_hash
+    记账)形同虚设, 造成同一 topic 反复建全新订阅(2026-07-09 实测: 同一 topic 105条订阅
+    只有3种真实query, 105-3=102条是这个bug造出来的重复)。
+    """
+    return hashlib.sha256(topic.encode()).hexdigest()[:16]
 
 
 def _guardrail_daily_monthly() -> tuple[int, int]:
@@ -315,14 +409,19 @@ def _guardrail_daily_monthly() -> tuple[int, int]:
         return 0, 0
 
 
-def _guardrail_need_count(need_hash: str) -> int:
-    """此 need 跨全部历史已实际入库的论文/书总数（SUM ingested_count）。"""
+def _guardrail_need_count(need_hash: str, sources: frozenset[str] | None = None) -> int:
+    """此 need 跨全部历史已实际入库的篇数（SUM ingested_count）。
+
+    sources 给定时只统计这些源——G1 按书/论文分桶记账用。
+    """
     try:
+        sql = "SELECT COALESCE(SUM(ingested_count), 0) FROM aii_processed_needs WHERE need_hash=?"
+        params: list = [need_hash]
+        if sources:
+            sql += f" AND source_type IN ({','.join('?' * len(sources))})"
+            params.extend(sorted(sources))
         with get_conn() as conn:
-            row = conn.execute(
-                "SELECT COALESCE(SUM(ingested_count), 0) FROM aii_processed_needs WHERE need_hash=?",
-                (need_hash,),
-            ).fetchone()
+            row = conn.execute(sql, tuple(params)).fetchone()
         return int(row[0]) if row else 0
     except Exception as exc:
         log.warning("aii_feedback: need_count query failed: %s", exc)
@@ -366,31 +465,46 @@ async def _create_and_run_subscription(
     *,
     _runner=None,
 ) -> tuple[str | None, int]:
-    """创建订阅并立即触发扫描。返回 (sub_id, ingested_count)。
+    """按 (user_id, source_type, query) 复用已有 active 订阅, 没有才新建, 然后立即触发扫描。
+    返回 (sub_id, ingested_count)。
+
+    复用而不是每次都新建, 是因为 _need_hash 修好之后 G1/G5 护栏会让同一 topic 每小时
+    仍可能被处理若干轮(直到配额用完/连续miss达标才停)——如果这里还是无脑INSERT, 同一个
+    query 依然会攒出一堆新订阅行, 只是比之前(每小时必建)慢一点, 治标不治本。
 
     _runner: 测试注入点（keyword-only）。None→生产路径 _check_one_subscription；
              非 None→调 _runner(sub_id, user_id, source_type, query, max_results)。
     """
     from ulid import ULID
 
-    sub_id = str(ULID())
+    query_json = json.dumps(query, ensure_ascii=False)
     try:
         with get_conn() as conn:
-            conn.execute(
-                "INSERT INTO source_subscriptions "
-                "(id, user_id, source_type, name, query_json, max_results, status, scan_status) "
-                "VALUES (?, ?, ?, ?, ?, ?, 'active', 'idle')",
-                (
-                    sub_id,
-                    user_id,
-                    source_type,
-                    name[:200],
-                    json.dumps(query, ensure_ascii=False),
-                    max_results,
-                ),
-            )
+            existing = conn.execute(
+                "SELECT id FROM source_subscriptions "
+                "WHERE user_id=? AND source_type=? AND query_json=? AND status='active'",
+                (user_id, source_type, query_json),
+            ).fetchone()
+        if existing:
+            sub_id = existing[0]
+        else:
+            sub_id = str(ULID())
+            with get_conn() as conn:
+                conn.execute(
+                    "INSERT INTO source_subscriptions "
+                    "(id, user_id, source_type, name, query_json, max_results, status, scan_status) "
+                    "VALUES (?, ?, ?, ?, ?, ?, 'active', 'idle')",
+                    (
+                        sub_id,
+                        user_id,
+                        source_type,
+                        name[:200],
+                        query_json,
+                        max_results,
+                    ),
+                )
     except Exception as exc:
-        log.error("aii_feedback: create subscription failed: %s", exc)
+        log.error("aii_feedback: create/lookup subscription failed: %s", exc)
         return None, 0
 
     try:
@@ -485,11 +599,10 @@ def _record_need(
 
 async def _process_one_need(need: dict, user_id: str, *, _runner=None) -> None:
     topic = (need.get("topic") or "").strip()
-    reason = need.get("reason", "")
     if not topic:
         return
 
-    nh = _need_hash(topic, reason)
+    nh = _need_hash(topic)
     log.info("aii_feedback: processing need hash=%s topic=%r", nh, topic[:50])
 
     # G2/G3: daily/monthly cap
@@ -501,11 +614,15 @@ async def _process_one_need(need: dict, user_id: str, *, _runner=None) -> None:
         log.warning("aii_feedback: G3 monthly cap reached (%d), skip", mon_c)
         return
 
-    # G1: per-need 总入库篇数上限（历史累计）
-    already_ingested = _guardrail_need_count(nh)
-    if already_ingested >= MAX_PER_NEED:
+    # G1: per-need 入库篇数上限（历史累计, 书/论文分桶——论文吃满不堵拉书）
+    already_books = _guardrail_need_count(nh, _BOOK_SOURCES)
+    already_papers = _guardrail_need_count(nh) - already_books
+    if already_books >= MAX_PER_NEED and already_papers >= MAX_PER_NEED:
         log.info(
-            "aii_feedback: G1 quota full (already=%d) for topic=%r", already_ingested, topic[:50]
+            "aii_feedback: G1 quota full (books=%d papers=%d) for topic=%r",
+            already_books,
+            already_papers,
+            topic[:50],
         )
         return
 
@@ -518,6 +635,8 @@ async def _process_one_need(need: dict, user_id: str, *, _runner=None) -> None:
         return
 
     total_ingested = 0
+    total_books = 0
+    total_papers = 0
     for q_spec in queries:
         source_type = q_spec.get("source_type", "")
         # G4: whitelist
@@ -544,14 +663,23 @@ async def _process_one_need(need: dict, user_id: str, *, _runner=None) -> None:
             log.warning("aii_feedback: cap reached mid-loop, stopping")
             break
 
-        # G1: 按剩余配额分配 max_results（历史+本轮已拉累计不超上限）
-        remaining = max(0, MAX_PER_NEED - already_ingested - total_ingested)
+        # G1: 按剩余配额分配 max_results（历史+本轮已拉累计不超上限, 书/论文各自记账;
+        # 本桶吃满只跳过该源, 另一桶的源继续——不能 break）
+        is_book = source_type in _BOOK_SOURCES
+        remaining = max(
+            0,
+            MAX_PER_NEED
+            - (already_books if is_book else already_papers)
+            - (total_books if is_book else total_papers),
+        )
         if remaining <= 0:
             log.info(
-                "aii_feedback: G1 quota exhausted (total=%d), stopping",
-                already_ingested + total_ingested,
+                "aii_feedback: G1 %s quota exhausted for topic=%r, skip source=%s",
+                "book" if is_book else "paper",
+                topic[:50],
+                source_type,
             )
-            break
+            continue
         max_r = min(q_spec.get("max_results", remaining), remaining)
 
         query = q_spec.get("query", {})
@@ -561,6 +689,10 @@ async def _process_one_need(need: dict, user_id: str, *, _runner=None) -> None:
             user_id, source_type, query, sub_name, max_r, _runner=_runner
         )
         total_ingested += ingested
+        if is_book:
+            total_books += ingested
+        else:
+            total_papers += ingested
 
         if ingested == 0:
             miss_rounds = _get_prev_miss_rounds(nh, source_type) + 1
