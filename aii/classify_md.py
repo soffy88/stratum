@@ -195,7 +195,21 @@ def classify(path):
     # 教材专用文件夹), misc discover 的 chapters<3 门槛又把它们永久静默跳过, querier无记录、
     # KU永远0。frontmatter 的 doc_type 是权威信号(md_export_service.py 按 medium 精确打上去
     # 的), 不靠文件名猜, 放在文件名正则前面先查, 覆盖面更广。
+    # ★例外(2026-07-11, 给 math-prog 找英文粮): 长篇+定理编号密集的"论文"其实是讲义/
+    # lecture notes(arXiv math 上大量存在, 几十上百页、Theorem N.M 满篇)——正是 math-prog
+    # B范式(程序抠编号陈述+证明, 0-LLM, 不需要章节结构)的对口粮。短论文(<300KB 或定理<40)
+    # 照旧进低质。计数用全文而非 samp, 长文档定理分布在后半部。
     if "doc_type: paper" in text[:500]:
+        _thm_full = len(
+            re.findall(r"\b(theorem|definition|lemma|corollary)\s+\d", text.lower())
+        ) + len(re.findall(r"(定理|定义|引理|推论)\s*[\d一二三四五六七八九十]", text))
+        if n >= 300000 and _thm_full >= 40:
+            _is_zh_note = len(re.findall(r"[一-鿿]", samp)) > 1000
+            return (
+                "中文数学" if _is_zh_note else "英文数学",
+                f"讲义型(定理{_thm_full} {n // 1024}KB, doc_type=paper但B范式可抽)",
+                _out,
+            )
         return ("低质", "学术论文(doc_type=paper)", None)
     if _PAPER.search(name):
         return ("低质", "学术论文(非教材)", None)
@@ -219,8 +233,12 @@ def classify(path):
     dens_e = econ / (n / 1000)
     dens_m = math / (n / 1000)
     has_ch = chaps >= 3 or decimal_ch >= 3
-    # 经济学教材: econ密度高 + 有章节
-    if dens_e >= 2.0 and dens_e >= dens_m and has_ch:
+    # 经济学教材: econ密度高 + 有章节。★阈值分语言: 2.0/千字符按中文校准(中文2字词每千
+    # 字符命中数天然高), 英文教材结构性只有~0.8-1.0(实测 Principles of Finance 0.8/
+    # Microeconomics 0.9), 统一2.0会把全部英文经济教材错放"其它", econ飞轮(discover本就
+    # 全语言, econ_en_前缀都留好了)永远吃不到英文书。
+    econ_floor = 2.0 if is_zh else 0.7
+    if dens_e >= econ_floor and dens_e >= dens_m and has_ch:
         return ("经济学", f"econ{dens_e:.1f} 章{max(chaps, decimal_ch)}", _out)
     # 数学教材: math密度高 或 编号定理绝对数量很多(应用型数学书, 如ML数学, 正文夹叙夹议
     # 稀释了关键词密度, 但编号定理照样densely) + 有章节。同 math_convert.py 的 math_textbook()
@@ -268,6 +286,10 @@ if DO:
                 os.remove(src)
                 moved += 1
             else:
-                shutil.move(src, dst)
+                # ★copy+remove 而非 move: stratum 容器导出的 MD 属主是 root, 同盘 move=rename
+                # 保留 root 属主, 下游要回写文件的步骤(如 math_route_or_skip 盖 frontmatter 戳)
+                # 会 PermissionError; copy 出来的新文件归本用户。删 src 只需目录写权限(soffy有)。
+                shutil.copy2(src, dst)
+                os.remove(src)
                 moved += 1
     print(f"✓ 移动 {moved} 个, 跳过(已存在/已入库){skipped} 个. 低质留在 {SRC}")
