@@ -184,7 +184,17 @@ def _classify_by_llm(
         f"{hints}文件名: {rel_path}\n文件内容:\n{body}\n\n"
         '返回: {"project": "...", "type": "...", "confidence": 0.0-1.0, "reason": "一句话"}'
     )
-    result = llm_call(prompt=prompt, provider="nvidia_nim", model="meta/llama-3.1-70b-instruct")
+    result = None
+    for attempt in range(2):  # NIM 偶发 read timeout, 重试一次
+        try:
+            result = llm_call(
+                prompt=prompt, provider="nvidia_nim", model="meta/llama-3.1-70b-instruct"
+            )
+            break
+        except Exception:
+            if attempt == 1:
+                raise
+            time.sleep(3)
     m = re.search(r"\{.*\}", result.text, re.DOTALL)
     if not m:
         raise ValueError(f"no JSON in LLM reply: {result.text[:150]}")
