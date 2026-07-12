@@ -61,6 +61,10 @@ dump_db aii-postgres aii aii_kg
 # Secondary: refined (B-repo, pgvector) if present. User/db default to aii/aii_refined; override via env.
 dump_db aii-refined-postgres "${AII_REFINED_PG_USER:-aii}" "${AII_REFINED_PG_DB:-aii_refined}"
 
+# C-repo: personal judgment assets (aii_context, same container as B-repo, database-level isolation).
+# See AII-CONTEXT-REPO-SPEC-001 / aii/migrations/context/0001_context_repo_schema.sql.
+dump_db aii-refined-postgres "${AII_REFINED_PG_USER:-aii}" aii_context
+
 # Retention: prune day-dirs older than N days.
 find "${BACKUP_ROOT}" -mindepth 1 -maxdepth 1 -type d -name "20*" -mtime +"${RETENTION_DAYS}" -exec rm -rf {} \; 2>/dev/null || true
 echo "[pg_backup] retention: kept last ${RETENTION_DAYS} days under ${BACKUP_ROOT}"
