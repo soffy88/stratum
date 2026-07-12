@@ -1,0 +1,17 @@
+[Unit]
+Description=AII context-archiver — GDrive alldata 归档管家(分类搬运, AII-CONTEXT-REPO-SPEC-001 组件A)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# rclone 在 ~/.local/bin, systemd 默认 PATH 不含
+Environment=PATH=/home/soffy/.local/bin:/usr/local/bin:/usr/bin:/bin
+# 墙内: rclone 连 Google API 必须走本机代理(同 aii-gdrive-mount 单元); LLM 分类走 NIM 同理
+Environment=HTTPS_PROXY=http://127.0.0.1:7890
+Environment=HTTP_PROXY=http://127.0.0.1:7890
+Environment=NO_PROXY=localhost,127.0.0.1,172.19.0.1,100.68.226.13
+WorkingDirectory=/data/soffy/projects/stratum/aii
+# flock 防与手动跑重入(-n: 拿不到锁直接跳过本轮, 等下个定时)
+ExecStart=/usr/bin/flock -n /data/soffy/projects/stratum/aii/.locks/context_archiver.lock \
+  /data/soffy/projects/stratum/aii/.venv/bin/python scripts/context_archiver.py --do
