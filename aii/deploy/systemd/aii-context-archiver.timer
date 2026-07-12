@@ -1,0 +1,10 @@
+[Unit]
+Description=AII context-archiver 每小时归档一轮(alldata 无文件时秒退)
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=120
+Persistent=true
+
+[Install]
+WantedBy=timers.target
