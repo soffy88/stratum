@@ -7,7 +7,7 @@ import {
   Search, Compass, FileText, Rss, Clock, Network, StickyNote,
   Highlighter, LayoutGrid, Share2, Sparkles, CheckSquare, User, Shield, Settings,
   Menu, PanelLeftClose, Brain, Layers, TrendingUp, ShieldCheck, Gauge, Sun, Moon,
-  Library, Activity, Upload, SearchCode, MessageSquare, Stethoscope, HeartPulse,
+  Library, Activity, Upload, SearchCode, MessageSquare, Stethoscope, HeartPulse, GraduationCap,
 } from 'lucide-react';
 import { create } from 'zustand';
 import { getTheme, setTheme, type Theme } from '@/lib/theme';
@@ -99,6 +99,7 @@ const NAV: NavGroup[] = [
   ] },
   { title: 'AII 认知引擎', items: [
     { href: '/pipelines', label: '管线通道', icon: Activity },
+    { href: '/learning', label: '学习助手', icon: GraduationCap },
     { href: '/ingest', label: '摄取', icon: Upload },
     { href: '/dashboard', label: '认知看板', icon: Gauge },
     { href: '/query', label: 'KU 检索', icon: SearchCode },
