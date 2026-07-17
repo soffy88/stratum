@@ -1,8 +1,13 @@
 """金集自证: 用真判官(判同)在对抗金集上跑 → preds.jsonl → score.py。
 回测有罪推定: 判同逻辑先过金集(merge precision→1)才准碰真数据/灌库。
 
-用法: uv run python scripts/dedup/run_gold.py [--model deepseek-pro] [--limit N]
+用法: uv run python scripts/dedup/run_gold.py [--model deepseek-pro] [--limit N] [--tag 判据版本标签]
 env: AII_KG_URL(A仓 5435) / REFINED_URL(B仓 5436) / DEEPSEEK_API_KEY(.env)
+
+★AII-EVALSET-SPEC-001: 每次跑都会在 scripts/gold/runs/ 归档一份带时间戳+版本标签的
+预测快照(git 版本化,可回溯), 并自动跟上一次归档的 run 比对, 报告哪些对子从"判对"
+变"判错"(回归)——这是回归网存在的唯一理由: 检验"这次改动有没有改坏", 不是拿它当
+优化目标去搜索判据参数(见 scripts/gold/README.md 红线)。
 """
 
 import asyncio
@@ -10,6 +15,7 @@ import json
 import os
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -38,7 +44,25 @@ STRONG = (
     sys.argv[sys.argv.index("--strong") + 1] if "--strong" in sys.argv else None
 )  # 分级: same 候选升级确认
 USE_LEDGER = "--no-ledger" not in sys.argv  # 纯评测: 不写生产台账
+TAG = sys.argv[sys.argv.index("--tag") + 1] if "--tag" in sys.argv else None
 GOLD_DIR = Path(__file__).parent.parent / "gold"
+RUNS_DIR = GOLD_DIR / "runs"
+
+
+def _git_short_rev() -> str:
+    try:
+        return (
+            subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"],
+                cwd=Path(__file__).parent,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            ).stdout.strip()
+            or "unknown"
+        )
+    except Exception:
+        return "unknown"
 
 
 async def fetch_item(conn, kind: str, oid) -> dict | None:
@@ -128,6 +152,32 @@ async def main():
         print(f"⚠ A仓缺失 {len(misses)}: {misses}", flush=True)
     print(f"\n判官={MODEL}, 预测 {len(preds)} 对 → {out}\n", flush=True)
     subprocess.run([sys.executable, str(GOLD_DIR / "score.py"), "--pred", str(out)])
+
+    # ★归档带时间戳+判据版本(git rev)的快照, 供 compare_runs.py 做回归对比。
+    # runs/ 不 gitignore——回归网要能跨时间比较, 历史快照本身要可追溯(AII-EVALSET-SPEC-001 §2.5)。
+    RUNS_DIR.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    tag = TAG or f"{MODEL}-{_git_short_rev()}"
+    prior_runs = sorted(RUNS_DIR.glob("*.jsonl"))
+    run_path = RUNS_DIR / f"{ts}_{tag}.jsonl"
+    run_path.write_text(out.read_text(encoding="utf-8"), encoding="utf-8")
+    print(f"归档快照 → {run_path}", flush=True)
+
+    if prior_runs:
+        baseline = prior_runs[-1]
+        print(f"\n跟上一次归档的 run 比对回归(baseline={baseline.name}):\n", flush=True)
+        subprocess.run(
+            [
+                sys.executable,
+                str(GOLD_DIR / "compare_runs.py"),
+                "--baseline",
+                str(baseline),
+                "--current",
+                str(run_path),
+            ]
+        )
+    else:
+        print("\n(这是第一次归档的 run, 还没有基线可比对回归)", flush=True)
 
 
 if __name__ == "__main__":
