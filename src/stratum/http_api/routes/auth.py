@@ -92,7 +92,7 @@ async def refresh(request: Request, db=Depends(get_db)):
         raise HTTPException(401, "Missing refresh token")
     refresh_hash = hashlib.sha256(token_str.encode()).hexdigest()
     session = SessionDAO(db).get_session_by_refresh_hash(refresh_hash)
-    if not session or session.expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
+    if not session or session.expires_at < datetime.now(timezone.utc):
         raise HTTPException(401, "Invalid or expired session")
     user = UserDAO(db).get_user_by_id(session.user_id)
     if not user:
