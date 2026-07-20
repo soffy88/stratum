@@ -16,6 +16,7 @@
   - same_as 边不写 edge_onto (operad 语义: same_as=合并信号, 非边)
   - intuition/insight/opposing_stance 本次恒 NULL (二期 enrichment)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -72,9 +73,9 @@ async def persist_ontology_result(
     *,
     dsn: str,
     substrate_id: str,
-    result: Any,              # OntologyExtractResult
-    trail_dir: Path,          # register_ku_ontology 写决策轨迹的目录
-    backend: Any,             # PgBackend, 复用 record_failure_lesson_async / vector_encode
+    result: Any,  # OntologyExtractResult
+    trail_dir: Path,  # register_ku_ontology 写决策轨迹的目录
+    backend: Any,  # PgBackend, 复用 record_failure_lesson_async / vector_encode
 ) -> dict:
     """持久化一本书的抽取结果到 _onto 表。返回统计 dict。"""
     ku_candidates = list(result.ku_candidates or [])
@@ -87,8 +88,7 @@ async def persist_ontology_result(
         edges_by_src.setdefault(e.get("source", ""), []).append(e)
 
     loop = asyncio.get_event_loop()
-    stats = {"registered": 0, "rejected": 0, "edges": 0, "concepts": 0,
-             "same_as_signals": 0}
+    stats = {"registered": 0, "rejected": 0, "edges": 0, "concepts": 0, "same_as_signals": 0}
 
     # ★ku_id 按 substrate 命名空间化 (根治跨书碰撞: ku_c0_0 每本从0重启, ku_id 是全局PK)
     ku_temp_ids = {(k.get("id") or k.get("ku_id")) for k in ku_candidates}
@@ -103,7 +103,27 @@ async def persist_ontology_result(
     conn = await asyncpg.connect(dsn)
     try:
         from pgvector.asyncpg import register_vector
+
         await register_vector(conn)
+
+        # ★本书的真学科, 插概念【之前】就查出来(aii.substrate_discipline 权威映射,
+        # migrations/0002 + seed/substrate_discipline.tsv)。
+        # 以前这里是先插 discipline=NULL、等下面第二段再 COALESCE 补——那个 NULL 窗口
+        # 是 concept_onto.discipline 长期脏掉的根源之一: 概念一旦被别的路径先建出来、
+        # 或本轮没走到补齐那步, discipline 就永久留空/留成 substrate id。
+        book_discipline = await conn.fetchval(
+            "SELECT discipline FROM aii.substrate_discipline WHERE substrate_id = $1",
+            substrate_id,
+        )
+        if book_discipline is None:
+            # ★不静默放行(Wiki 2026-07-20 定的运维纪律: 新书登记 discipline 必填, 否则
+            # 新 substrate 继续烂)。只让这一本失败, 飞轮会记异常继续下一本。
+            raise ValueError(
+                f"substrate_id={substrate_id!r} 不在 aii.substrate_discipline 映射表里。"
+                "请先往该表加一行(受控集合: 数学/经济学/哲学/心理学/计算机/其他), "
+                "并同步 aii/migrations/seed/substrate_discipline.tsv 提交 git。"
+                "★论文类 substrate 本就不该走概念层(见 migrations/0002 注释)。"
+            )
 
         # ── 先把全书概念 upsert, 拿 name→concept_id 映射 ───────────────
         concept_id_by_name: dict[str, int] = {}
@@ -113,11 +133,13 @@ async def persist_ontology_result(
         for name in (n for n in all_names if n):
             cid = await conn.fetchval(
                 """
-                INSERT INTO aii.concept_onto(name) VALUES($1)
-                ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+                INSERT INTO aii.concept_onto(name, discipline) VALUES($1, $2)
+                ON CONFLICT (name) DO UPDATE
+                  SET discipline = COALESCE(aii.concept_onto.discipline, EXCLUDED.discipline)
                 RETURNING concept_id
                 """,
                 name,
+                book_discipline,
             )
             concept_id_by_name[name] = cid
             stats["concepts"] += 1
@@ -149,13 +171,16 @@ async def persist_ontology_result(
             # register_ku_ontology 是同步 → executor 包, 不阻塞事件循环
             # ★注入 AII 词表(含 rationale), 校验绑 AII 单一权威, 不用主库默认
             reg = await loop.run_in_executor(
-                None, lambda: register_ku_ontology(
-                    cfg, inp, trail_dir,
+                None,
+                lambda: register_ku_ontology(
+                    cfg,
+                    inp,
+                    trail_dir,
                     valid_knowledge_types=V.VALID_KNOWLEDGE_TYPES,
                     valid_sub_types=V.VALID_SUB_TYPES,
                     valid_grades=V.VALID_GRADES,
                     valid_relation_types=V.VALID_RELATION_TYPES,
-                )
+                ),
             )
 
             if reg.get("status") != "completed":
@@ -171,9 +196,11 @@ async def persist_ontology_result(
 
             # ── embedding 入库时填 (写 ku_onto 前算, 和旧链路一致) ──────
             content = _as_text(ku.get("content")) or ""
-            _emb = (await loop.run_in_executor(
-                None, lambda c=content: vector_encode(texts=[c], provider="default")
-            ))[0]  # (1,1024) → 取第 0 行; register_vector 后 pgvector 收 np 向量
+            _emb = (
+                await loop.run_in_executor(
+                    None, lambda c=content: vector_encode(texts=[c], provider="default")
+                )
+            )[0]  # (1,1024) → 取第 0 行; register_vector 后 pgvector 收 np 向量
 
             # ── 写 ku_onto ───────────────────────────────────────────
             async with conn.transaction():
@@ -193,8 +220,10 @@ async def persist_ontology_result(
                         example=EXCLUDED.example,
                         embedding=EXCLUDED.embedding
                     """,
-                    _ns(ku_id), substrate_id,
-                    _as_text(ku.get("title")), content,
+                    _ns(ku_id),
+                    substrate_id,
+                    _as_text(ku.get("title")),
+                    content,
                     ku.get("knowledge_type"),
                     ku.get("sub_type") or None,
                     _as_text(ku.get("stance_holder")),
@@ -210,7 +239,9 @@ async def persist_ontology_result(
                 if ku.get("knowledge_type") == "conceptual" and ku.get("defines_concept"):
                     nm = ku["defines_concept"]
                     m = concept_meta.setdefault(
-                        nm, {"level": None, "discipline": None, "invariant": None, "disc_conflict": []})
+                        nm,
+                        {"level": None, "discipline": None, "invariant": None, "disc_conflict": []},
+                    )
                     if m["level"] is None and ku.get("concept_level"):
                         m["level"] = ku["concept_level"]
                     if m["invariant"] is None and ku.get("concept_invariant"):
@@ -223,7 +254,7 @@ async def persist_ontology_result(
                             m["disc_conflict"].append(d)  # 学科判定冲突 = 信号, 记日志
 
                 # ── 写 ku_concept_onto ──────────────────────────────
-                for cname in (ku.get("concepts") or []):
+                for cname in ku.get("concepts") or []:
                     cid = concept_id_by_name.get(cname)
                     if cid is None:
                         continue
@@ -232,7 +263,8 @@ async def persist_ontology_result(
                         INSERT INTO aii.ku_concept_onto(ku_id, concept_id)
                         VALUES ($1,$2) ON CONFLICT DO NOTHING
                         """,
-                        _ns(ku_id), cid,
+                        _ns(ku_id),
+                        cid,
                     )
 
                 # ── 写 edge_onto (same_as 跳过 = 合并信号, 非边) ─────
@@ -251,7 +283,10 @@ async def persist_ontology_result(
                             (substrate_id, src_id, dst_id, relation_type, extraction_method)
                         VALUES ($1,$2,$3,$4,'llm')
                         """,
-                        substrate_id, _ns(ku_id), _dst, rel,
+                        substrate_id,
+                        _ns(ku_id),
+                        _dst,
+                        rel,
                     )
                     stats["edges"] += 1
 
@@ -262,31 +297,59 @@ async def persist_ontology_result(
             cid = concept_id_by_name.get(nm)
             if cid is None:
                 cid = await conn.fetchval(
-                    "INSERT INTO aii.concept_onto(name) VALUES($1) "
-                    "ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name RETURNING concept_id", nm)
+                    "INSERT INTO aii.concept_onto(name, discipline) VALUES($1, $2) "
+                    "ON CONFLICT (name) DO UPDATE SET discipline = "
+                    "COALESCE(aii.concept_onto.discipline, EXCLUDED.discipline) "
+                    "RETURNING concept_id",
+                    nm,
+                    book_discipline,
+                )
                 concept_id_by_name[nm] = cid
             if m["disc_conflict"]:
-                logger.info("onto_persist[invariant]: discipline 冲突 concept=%r keep=%r others=%r",
-                            nm, m["discipline"], m["disc_conflict"])
-            # level/discipline 仍是 concept_onto 列, 首个非空胜出
+                logger.info(
+                    "onto_persist[invariant]: discipline 冲突 concept=%r keep=%r others=%r",
+                    nm,
+                    m["discipline"],
+                    m["disc_conflict"],
+                )
+            # level 仍是"首个非空胜出"。
+            # ★discipline 不再从这里写: 上面插入时已由 aii.substrate_discipline 权威映射
+            # 填好了。m["discipline"] 是 KU 抽取阶段 LLM 给的自由文本(正是 190 种脏取值
+            # 的来源之一), 权威映射优先于它——COALESCE 保证它只在权威值缺失时才可能补上,
+            # 而权威值现在恒非空, 所以实际上它已被彻底让位。disc_conflict 的日志保留:
+            # 那是"同一概念被不同 KU 判成不同学科"的信号, 仍值得看。
             await conn.execute(
                 "UPDATE aii.concept_onto SET level=COALESCE(level,$1), "
                 "discipline=COALESCE(discipline,$2) WHERE concept_id=$3",
-                m["level"], m["discipline"], cid)
+                m["level"],
+                m["discipline"],
+                cid,
+            )
             stats["concept_meta"] = stats.get("concept_meta", 0) + 1
             # 有 invariant 且该概念尚无 invariant_id → 建单本性节点(is_concept=false)并回链
             if m["invariant"]:
                 has_inv = await conn.fetchval(
-                    "SELECT invariant_id FROM aii.concept_onto WHERE concept_id=$1", cid)
+                    "SELECT invariant_id FROM aii.concept_onto WHERE concept_id=$1", cid
+                )
                 if has_inv is None:
-                    iv = (await loop.run_in_executor(
-                        None, lambda t=m["invariant"]: vector_encode(texts=[t], provider="default")))[0]
+                    iv = (
+                        await loop.run_in_executor(
+                            None,
+                            lambda t=m["invariant"]: vector_encode(texts=[t], provider="default"),
+                        )
+                    )[0]
                     inv_id = await conn.fetchval(
                         """INSERT INTO aii.invariant(statement, vector, member_concept_ids, is_concept)
                            VALUES ($1, $2, $3::jsonb, false) RETURNING id""",
-                        m["invariant"], iv, json.dumps([str(cid)]))
+                        m["invariant"],
+                        iv,
+                        json.dumps([str(cid)]),
+                    )
                     await conn.execute(
-                        "UPDATE aii.concept_onto SET invariant_id=$1 WHERE concept_id=$2", inv_id, cid)
+                        "UPDATE aii.concept_onto SET invariant_id=$1 WHERE concept_id=$2",
+                        inv_id,
+                        cid,
+                    )
                     stats["invariants"] = stats.get("invariants", 0) + 1
 
         return stats
