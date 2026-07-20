@@ -468,6 +468,37 @@ export interface ThemesResponse {
   stale_reason?: string | null;
 }
 
+// ── Leiden 社区【预览】 GET /api/graph/communities(AII-KNOWLEDGE-FIRST-SPEC-001 改进二) ──
+// ★跟 Theme(已固化)的关键区别:这是现算的,没命名、没落库、没 grade,换个 resolution
+// 就是另一套划分。用途是让人【看着图调 resolution】——SPEC §2.2 红线2:社区好坏没有
+// 客观裁判,resolution 只能人调,接口绝不自动优化。调好了再跑 build_theme_kc.py 固化。
+export interface CommunitiesRequest {
+  /** 社区粒度旋钮。大→社区更碎更多,小→更粗更少。★人工试,不自动优化。 */
+  resolution?: number;
+  /** 小于这个规模的社区不在结果里展示(只是过滤展示,不是把它们合并进别的社区)。 */
+  min_size?: number;
+}
+export interface CommunityMember {
+  concept_id: number;
+  label: string;
+  label_zh?: string | null;
+}
+export interface Community {
+  community_id: number;
+  size: number;
+  members: CommunityMember[];
+  disciplines: string[];
+}
+export interface CommunitiesResponse {
+  communities: Community[];
+  resolution: number;
+  total_concepts: number;
+  /** 单例社区(孤立概念)数量——被 min_size 滤出展示,不是被悄悄抹除。 */
+  singleton_count: number;
+  /** 模块度:无监督内部指标,不是"划分对不对"的裁判(那个没有客观裁判)。 */
+  modularity?: number;
+}
+
 // ── 视图4:知识簇 KC GET /api/kc/list, /api/kc/{id} ──
 export interface KcListItem {
   id: string;

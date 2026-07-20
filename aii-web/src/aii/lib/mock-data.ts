@@ -354,6 +354,9 @@ import type {
   GodNodeRequest,
   GodNodeResponse,
   ThemesResponse,
+  CommunitiesRequest,
+  CommunitiesResponse,
+  CommunityMember,
 } from '@/aii/types/api';
 import type { EpistemicGrade } from '@helios/blocks';
 
@@ -673,6 +676,42 @@ export async function mockThemes(): Promise<ApiResult<ThemesResponse>> {
     grade: 'unverified' as const,
   }));
   return { ok: true, degraded: false, data: { themes, concept_theme, stale: false } };
+}
+
+export async function mockCommunities(
+  req: CommunitiesRequest = {}
+): Promise<ApiResult<CommunitiesResponse>> {
+  await delay(220);
+  const resolution = req.resolution ?? 1.0;
+  const minSize = req.min_size ?? 2;
+  const nodes = _mockConceptNodes(300);
+  // resolution 越大社区越碎——mock 里用它直接决定切几份, 好让滑块拖起来有可见反馈。
+  const count = Math.max(2, Math.round(6 * resolution));
+  const buckets: CommunityMember[][] = Array.from({ length: count }, () => []);
+  nodes.forEach((n, i) => {
+    if (i % 4 === 0) return; // 一部分概念不属于任何社区(呼应真实数据里的孤立/小社区)
+    buckets[i % count]!.push({ concept_id: n.id, label: n.label, label_zh: n.label_zh });
+  });
+  const communities = buckets
+    .map((members, i) => ({
+      community_id: i,
+      size: members.length,
+      members,
+      disciplines: ['economics'],
+    }))
+    .filter((c) => c.size >= minSize)
+    .sort((a, b) => b.size - a.size);
+  return {
+    ok: true,
+    degraded: false,
+    data: {
+      communities,
+      resolution,
+      total_concepts: nodes.length,
+      singleton_count: nodes.filter((_, i) => i % 4 === 0).length,
+      modularity: 0.9,
+    },
+  };
 }
 
 // ── 知识簇 KC ──
