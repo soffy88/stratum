@@ -68,6 +68,10 @@ $PY scripts/synthesize_book.py || { echo "❌ [1/5] 失败"; exit 2; }
 $PY scripts/dedup_within_book.py "$SUBSTRATE" 2>/dev/null || echo "  ⚠ 书内去重跳过(非致命)"
 
 echo ""
+echo "[1.5/5] ★程序为主+LLM辅助质检(独立key, 抓why不充分/内容不连贯, 只标记不拦截, 见econ_verify.py)"
+$PY scripts/econ_verify.py 2>&1 || echo "  ⚠ 判官调用异常(非致命, 继续)"
+
+echo ""
 echo "[2/5] 概念抽取(单本KU涉及哪些概念; ★只概念不共现, 共现=B仓)"
 $PY scripts/materialize_links.py || { echo "❌ [2/5] 失败"; exit 2; }
 
