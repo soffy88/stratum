@@ -53,10 +53,10 @@ class _Embedder:
             pass
         return "cpu"
 
-    def _load(self) -> None:
+    def _load(self, force_device: str | None = None) -> None:
         from sentence_transformers import SentenceTransformer
 
-        dev = self._pick_device()
+        dev = force_device or self._pick_device()
         self._model = SentenceTransformer(MODEL_NAME, device=dev)
         self._device = dev
 
@@ -65,7 +65,44 @@ class _Embedder:
             if self._model is None:
                 self._load()
             self._last = time.time()
-            vecs = self._model.encode(list(texts), normalize_embeddings=True)
+            # ★小卡(如笔记本4G的1050Ti)扛不住大batch一次性编码, 见2026-07-08实测: 一次OOM
+            # 崩了整个进程, 卡了下游飞轮十几小时才被发现. batch_size给小默认值+OOM时降批重试,
+            # 而不是让整个请求(乃至进程)崩掉.
+            bs = int(os.getenv("AII_EMBED_BATCH_SIZE", "16"))
+            vecs = None
+            for attempt in range(3):
+                try:
+                    vecs = self._model.encode(list(texts), normalize_embeddings=True, batch_size=bs)
+                    break
+                except RuntimeError as e:
+                    if self._device != "cuda" or attempt == 2:
+                        break  # 非GPU错误, 或重试用尽 → 走下面的CPU兜底/继续抛
+                    print(
+                        f"EMBED WARNING: cuda encode failed (attempt {attempt + 1}/3): {e}",
+                        flush=True,
+                    )
+                    import torch
+
+                    torch.cuda.empty_cache()
+                    bs = max(1, bs // 4)  # ★降批重试
+            if vecs is None:
+                if self._device != "cuda":
+                    raise RuntimeError("embed failed on cpu, no fallback left")
+                # ★GPU重试也救不回来(不只是简单OOM, 可能是驱动/上下文级故障) → 强制卸载重建成
+                #   纯CPU模型, 把这次请求做完, 不让它彻底失败("不能停"). 不去手动"修复"GPU本身
+                #   (那是驱动层的事, 应用层做不到) —— 卸载CPU化之后, 空闲超时会整体卸载, 下次
+                #   新请求重新走_pick_device()探测, GPU若已恢复会自然切回去, 这就是"自愈".
+                print(
+                    "EMBED WARNING: GPU embedding broken after retries, forcing CPU reload",
+                    flush=True,
+                )
+                self._model = None
+                self._device = None
+                import torch
+
+                torch.cuda.empty_cache()
+                self._load(force_device="cpu")
+                vecs = self._model.encode(list(texts), normalize_embeddings=True, batch_size=bs)
             out = [v[:DIM].tolist() for v in vecs]
             # 长文本大 batch 的激活会被 torch 缓存分配器留着(可达数G), 每次编码后立刻还给显存,
             # 稳态只留模型(~2G), 免得挤占 OCR 用卡.

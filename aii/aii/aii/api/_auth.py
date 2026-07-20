@@ -1,4 +1,5 @@
 """API Key authentication middleware with in-memory rate limiting."""
+
 import os
 import secrets
 import time
@@ -11,8 +12,11 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 _EXEMPT = {"/api/ping", "/internal/embed"}
 
 # Rate limit config: (window_seconds, max_requests)
-_DEFAULT_LIMIT = (60, 60)   # 60 req/min for all endpoints
-_CHAT_LIMIT    = (60, 20)   # 20 req/min for /api/chat (DeepSeek cost guard)
+_DEFAULT_LIMIT = (60, 300)  # 300 req/min for all endpoints — shared bucket across ALL aii-web
+# users/pages (keyed by API key, not per-client; aii-web is a
+# single-key BFF proxy). 60/min was too tight: /pipelines alone
+# polls 2 endpoints every 5s (24 req/min) from one open tab.
+_CHAT_LIMIT = (60, 20)  # 20 req/min for /api/chat (DeepSeek cost guard)
 
 # In-memory sliding window per path-group: {key -> deque of timestamps}
 _windows: dict[str, deque] = {}
@@ -70,7 +74,7 @@ class APIKeyMiddleware:
 
         # --- Auth ---
         # Accepted keys: AII_API_KEY (frontend/admin) + STRATUM_API_KEY (read-only, revocable)
-        main_key    = os.getenv("AII_API_KEY", "")
+        main_key = os.getenv("AII_API_KEY", "")
         stratum_key = os.getenv("STRATUM_API_KEY", "")
         if not main_key:
             resp = _err_response(500, "server_misconfigured", "AII_API_KEY not set on server")
@@ -78,9 +82,8 @@ class APIKeyMiddleware:
             return
 
         headers = dict(scope.get("headers", []))
-        provided = (
-            headers.get(b"x-api-key", b"").decode()
-            or _bearer(headers.get(b"authorization", b"").decode())
+        provided = headers.get(b"x-api-key", b"").decode() or _bearer(
+            headers.get(b"authorization", b"").decode()
         )
 
         matched = False
@@ -103,7 +106,9 @@ class APIKeyMiddleware:
             bucket = f"default:{provided[:8]}"
 
         if not _rate_limit(bucket, window, max_req):
-            resp = _err_response(429, "rate_limited", f"Too many requests — limit {max_req}/{window}s")
+            resp = _err_response(
+                429, "rate_limited", f"Too many requests — limit {max_req}/{window}s"
+            )
             await resp(scope, receive, send)
             return
 

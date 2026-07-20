@@ -14,7 +14,7 @@ interface Channel {
   running: boolean; has_key: boolean; last_log: string; current: CurrentBook | null;
 }
 interface OcrStatus {
-  active: boolean; book?: string; total_pages?: number; pages_done?: number; percent?: number; last_book?: string;
+  active: boolean; running: boolean; book?: string; total_pages?: number; pages_done?: number; percent?: number; last_book?: string;
 }
 interface HealthCheck { name: string; status: string; severity: "info" | "warn" | "crit"; detail: string; }
 interface Health {
@@ -56,6 +56,12 @@ export default function PipelinesPage() {
     setTimeout(() => { load(); setBusy(""); }, 1200);
   };
 
+  const ocrCtrl = async (action: "start" | "stop") => {
+    setBusy("ocr" + action);
+    try { await fetch(`/api/aii/api/ocr/${action}`, { method: "POST" }); } catch {}
+    setTimeout(() => { load(); setBusy(""); }, 1200);
+  };
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-1">管线通道</h1>
@@ -85,9 +91,23 @@ export default function PipelinesPage() {
       {err && <p className="text-sm text-red-600 mb-3">无法连接 AII 后端 /api/pipelines</p>}
       {ocr && (
         <div className="border border-[var(--color-border)] rounded-lg p-4 mb-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${ocr.active ? "bg-green-500" : "bg-gray-400"}`} />
-            <span className="font-medium truncate">OCR 转换（ocr-vllm）</span>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${ocr.active ? "bg-green-500" : ocr.running ? "bg-amber-500" : "bg-gray-400"}`} />
+              <span className="font-medium truncate">OCR 转换（ocr-vllm）</span>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                disabled={ocr.running || !!busy}
+                onClick={() => ocrCtrl("start")}
+                className="px-3 py-1 text-sm rounded bg-[var(--color-primary)] text-white disabled:opacity-40"
+              >{busy === "ocrstart" ? "…" : "启动"}</button>
+              <button
+                disabled={!ocr.running || !!busy}
+                onClick={() => ocrCtrl("stop")}
+                className="px-3 py-1 text-sm rounded border border-[var(--color-border)] disabled:opacity-40"
+              >{busy === "ocrstop" ? "…" : "停止"}</button>
+            </div>
           </div>
           {ocr.active ? (
             <>
@@ -108,7 +128,7 @@ export default function PipelinesPage() {
             </>
           ) : (
             <div className="mt-2 text-sm text-[var(--color-muted)]">
-              ○ 空闲{ocr.last_book ? `（上一本：${ocr.last_book}）` : ""}
+              {ocr.running ? "◐ 空转（等待下一轮）" : "○ 已停止"}{ocr.last_book ? `（上一本：${ocr.last_book}）` : ""}
             </div>
           )}
         </div>
