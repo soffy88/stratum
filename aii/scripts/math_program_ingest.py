@@ -65,6 +65,22 @@ _TYPE_ZH = {
 MAX_LEN = 8000
 
 _KEY = os.getenv("NVIDIA_NIM_API_KEY", "")
+# ★fail-open 可观测性(2026-07-20 教训): 这里原来是"没 key 就静默降级成纯 0-LLM 版",
+# 结果 math_flywheel_prog.sh:17 去 .pipeline_keys.json 取 'math_prog_verify' —— 那个键
+# 根本不存在(实有 econ/math_en/math_zh/advmath_verify/...) → 取到空串 → 规划审核②
+# 从未运行过, 14919 条 KU 的命名全部从①掉到③摘首句, 而没有任何地方报过一声。
+# 静默降级 = 缺陷可以永久隐身。凡 fail-open 的降级点, 必须可观测。
+# ②算增强不算命门(缺了仍能产 KU), 所以报警+继续, 不 fail-fast 停管线。
+if not _KEY:
+    print(
+        "=" * 78 + "\n"
+        "!! 规划审核(②llm_name)未启用: NVIDIA_NIM_API_KEY 为空。\n"
+        "!! 后果: 命名将跳过②, 从①书自带括号名(命中率个位数)直接掉到③摘首句,\n"
+        "!!       title 会是陈述原文而不是概念名 —— 下游吃 title 的都会拿到陈述。\n"
+        "!! 排查: math_flywheel_prog.sh 取的键名是否存在于 .pipeline_keys.json。\n"
+        "!! 这不是致命错误, 抽取继续(仍产 KU), 但请知道②没在跑。\n" + "=" * 78,
+        file=sys.stderr,
+    )
 _LLM = None
 if _KEY:
     ROOT = Path(__file__).resolve().parents[1]
@@ -258,7 +274,14 @@ def extract_chapter(ch_text, chapter_n):
 
 
 # 名字合法性:首字母大写(或多词)+ 只字母/空格/常见标点,≥3字(排除公式括号如 (A∨B))
-_NAME_OK = re.compile(r"^[A-Za-z][A-Za-z ,.\-'’&]+$")
+# ★2026-07-20 实测(Probability Theory 一书, 338 标记)发现这个字符类同时犯两个方向的错:
+#   误杀: 数学最经典的人名定理恰恰带 en-dash 和重音字母 —— Borel–Cantelli / Cauchy–Schwarz /
+#         Berry–Esséen / De Moivre–Laplace / Rao–Cramér–Frechet 全被拒(– 和 é 不在类里)。
+#   漏拦: "S n" / "X j" 这种【裸记号】却能过(纯 ASCII 字母 + 空格), 进 concept_onto 就是垃圾概念。
+# 修法: 字符类补 en/em-dash 与 Latin-1 重音字母; 裸记号另设 _BARE_NOTATION 拦掉。
+_NAME_OK = re.compile(r"^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ ,.\-‐-―'’&]+$")
+# 裸记号: 1~2 个字母(可带下标式空格/数字)构成的"名字", 如 S n / X j / Fn / a1 —— 是记号不是概念。
+_BARE_NOTATION = re.compile(r"^[A-Za-z][A-Za-z]?\s*[a-z0-9]?$")
 # 中文书自带名(如"阿基米德，来自《圆的度量》"): 含中文字符, 只由中文/字母数字/常见中文标点/书名号组成
 _NAME_OK_ZH = re.compile(r"^[一-鿿A-Za-z0-9，,、·（）()《》\-\s]{2,45}$")
 
@@ -266,6 +289,8 @@ _NAME_OK_ZH = re.compile(r"^[一-鿿A-Za-z0-9，,、·（）()《》\-\s]{2,45}$
 def _is_name(s):
     s = s.strip()
     if len(s) < 3:
+        return False
+    if _BARE_NOTATION.match(s):  # S n / X j / Fn —— 记号不是概念名, 宁漏不编
         return False
     if _NAME_OK.match(s):
         return s[0].isupper() or " " in s

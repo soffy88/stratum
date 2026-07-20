@@ -13,8 +13,18 @@ export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:54
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1   # 用本地缓存 BGE-M3, 不连 huggingface
 export AII_EMBED_URL="${AII_EMBED_URL:-http://100.68.226.13:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU); 本进程不再加载 BGE-M3
 export CUDA_VISIBLE_DEVICES=""   # ★嵌入已外包给服务, 本飞轮彻底不碰 GPU(抽取0-LLM纯CPU)
-# ★规划审核用key(math_prog_verify, 与入库后质检共用; 未配置则该字段空, 两步都fail-open)
-export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('math_prog_verify',''))" 2>/dev/null)"
+# ★规划审核用key。原来只取 'math_prog_verify' —— 该键在 .pipeline_keys.json 里【不存在】
+# (实有 econ/math_en/econ_zh/math_zh/advmath_2/advmath_3/advmath_verify/learning),
+# 取到空串后 math_program_ingest 静默 fail-open, 规划审核②从未跑过, 14919 条 KU 的命名
+# 全部掉到③摘首句 —— 这就是 title 是陈述原文而非概念名的根因(2026-07-20 查实)。
+# 改为按优先级回退到确实存在的键; 全找不到时下游会大声报警(不再静默)。
+export NVIDIA_NIM_API_KEY="$($PY -c "
+import json
+d = json.load(open('.pipeline_keys.json'))
+for k in ('math_prog_verify', 'advmath_verify', 'math_zh', 'math_en'):
+    if d.get(k):
+        print(d[k]); break
+" 2>/dev/null)"
 export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
 STAGING_BASE="scripts/_staging/math_prog"
 MIN_KU="${MATH_PROG_MIN_KU:-30}"        # DB 已有 >MIN_KU 视为已 B 过(小书靠下面的 .done 标记判断)
