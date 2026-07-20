@@ -84,6 +84,13 @@ tmp_pdfjs/
 # AII pipeline 生成产物 (可重建)
 aii/*_pipeline/batch_report.json
 aii/*_pipeline/quarantine.json
+aii/*_pipeline/quarantine.json.bak
+aii/*_pipeline/quarantine_worker*.json
+aii/*_pipeline/recall_audit/
+aii/*_pipeline/archive_registry.sqlite
+aii/*_pipeline/archive_report.json
+aii/*_pipeline/compile_report.json
+aii/.locks/
 aii/*_pipeline/flywheel_*
 aii/*_pipeline/booklist_*.txt
 aii/*_pipeline/run_log.jsonl
@@ -91,5 +98,6 @@ aii/*_pipeline/qual/
 aii/*_pipeline/staging/
 aii/*_pipeline/待补/
 aii/*_pipeline/ocr_cache/
+aii/quarantine_corrupted_md/
 deploy/logs/*.log
 scripts/*.log
