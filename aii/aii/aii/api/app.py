@@ -27,6 +27,10 @@ from aii.api.routes import (
     delete,
     pipelines,
     internal,
+    learning,
+    skills,
+    classify,
+    graph_concepts,
 )
 from aii.api._auth import APIKeyMiddleware
 
@@ -148,7 +152,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:3002",
-        "https://aii.uex.hk",
+        "https://aii.kanpan.co",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -168,5 +172,9 @@ app.include_router(stats.router, prefix="/api", tags=["stats"])
 app.include_router(display.router, prefix="/api", tags=["display"])
 app.include_router(textbook_export.router, prefix="/api", tags=["textbook"])
 app.include_router(delete.router, prefix="/api", tags=["delete"])
+app.include_router(learning.router, prefix="/api", tags=["learning"])
+app.include_router(skills.router, prefix="/api", tags=["skills"])
+app.include_router(classify.router, prefix="/api", tags=["classify"])
+app.include_router(graph_concepts.router, prefix="/api", tags=["graph_concepts"])
 # Internal utilities (no /api prefix, auth-exempt): shared BGE-M3 embedding
 app.include_router(internal.router, tags=["internal"])
