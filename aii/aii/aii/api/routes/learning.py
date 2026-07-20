@@ -1096,10 +1096,16 @@ _COACH_SYSTEM = (
     "【红线】1.绝不直接给出题目/证明/代码的答案(那会让裁判失效=帮他作弊骗自己)。"
     "2.他没通过时给对症引导/提示/追问(基于给你的'补救建议'), 不是把答案递过去。3.鼓励、口语化、"
     "一次聚焦一件事, 用中文。\n"
+    "【★Query-first红线, AII-KNOWLEDGE-FIRST-SPEC-001】'教学材料'是 B仓(去重增强过、可溯源)编译出的"
+    "真知识, 是你首选且必须使用的内容——'ku_coverage'字段告诉你它够不够:\n"
+    "  · ku_coverage='sufficient': 必须基于'教学材料'讲, 不许绕开它凭自己的训练知识重新组织一套。\n"
+    "  · ku_coverage='insufficient'(教学材料为空或过短, B仓没覆盖这个点): 你可以用自己的通用知识讲,"
+    "但 message ★必须以'⚠ B仓暂未覆盖这个知识点, 以下是通用知识(未经 AII 编译):'开头, 不能不声明就"
+    "当作编译精华讲——绝不允许在B仓没覆盖时装作是编译过的内容, 那是骗学习者。\n"
     "【按状态决定 action 与 message】"
     "phase=start: 欢迎+简述怎么学(逐点、独立作答、裁判判真掌握), action=start; "
-    "phase=present: 用'教学材料'把这个知识点讲清关键, 再布置该点任务(概念→用简单话讲清; 程序→写代码/推导; "
-    "事实→答速测题), action=present; "
+    "phase=present: 讲清这个知识点关键(遵守上面的 Query-first 红线), 再布置该点任务(概念→用简单话讲清; "
+    "程序→写代码/推导; 事实→答速测题), action=present; "
     "phase=judged 且 passed=true: 肯定他、指出好在哪、宣布进入下一个点, action=advance; "
     "phase=judged 且 passed=false: 依据'补救建议'和'错误类型'给一个引导/提示(不给答案)让他再试, 不放行, action=remediate。\n"
     '只输出严格JSON: {"message":"(对学生说的话)","action":"start|present|advance|remediate|done"}'
@@ -1122,12 +1128,17 @@ async def _coach_turn(
             "action": "done",
             "revealed_answer": False,
         }
+    # ★Query-first: B仓覆盖够不够, 显式告诉 LLM, 别让它自己从"材料是不是空的"去猜
+    # (猜的话大概率不猜, 直接凭训练知识悄悄讲——B仓白建, 见 AII-KNOWLEDGE-FIRST-SPEC-001 §3)。
+    # 阈值 50 字符: 少于这个基本讲不清一个知识点, 等同没材料。
+    teaching_material = (ku_context or "")[:4000]
     state = {
         "phase": phase,
         "objective": objective,
         "student_input": student_input,
         "verdict": verdict,
-        "teaching_material": (ku_context or "")[:4000],
+        "teaching_material": teaching_material,
+        "ku_coverage": "sufficient" if len(teaching_material.strip()) >= 50 else "insufficient",
     }
     msgs = list(history or [])
     msgs.append(
