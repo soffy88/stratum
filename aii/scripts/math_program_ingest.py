@@ -193,65 +193,80 @@ def _apply_llm_names(kus, by_label):
         k["concept_candidate"] = bool(nm) and is_concept_candidate(k)
 
 
-async def audit_plan(kus, chapter_n):
-    """规划审核: 候选标记里筛掉非真概念(交叉引用/半截碎片/重复); 顺带给类型合适的展示名
-    (概念→概念名, 定理→定理名/断言概括, 例子→题目概括——不是逐字摘录整句). 不改内容本身,
-    只影响label/是否保留. fail-open."""
-    if not _LLM or not kus:
-        return kus
-    # ★不用方括号包label(如"- [1.1 例 1]: ..."): 实测LLM会把方括号原样抄进返回的label字段
-    # (变成"[1.1 例 1]"), 跟真实label对不上, 导致keep交集算成0→安全阀误判"100%丢弃"全回退。
+# ★分片上限(2026-07-20 实测定): 一次调用要为每条候选输出 label+keep+name 约 40~60 token,
+# 而 max_tokens 实际可用上限 8000 —— 超过 ~50 条候选的章必然被截断, JSON 不闭合,
+# 整章 0 命名(手册类书实测: 302条→0%, 424条→9%, 而 43条→100%)。
+# 调大 max_tokens 治不了: 推理模型先生成思考再写 JSON, 输出长度不可控。
+# 分片是把问题从"求模型自律"变成"结构上不可能超"。取 40 留足余量。
+CHUNK = int(os.getenv("MATH_PROG_AUDIT_CHUNK", "40"))
+
+
+async def _audit_chunk(kus, chapter_n, idx, total_chunks):
+    """审一片候选, 返回 {label: item} (失败返回 None —— 由调用方 fail-open 保留该片)。"""
     items = "\n".join(f"- {k['label']}: {k['en'][:180].replace(chr(10), ' ')}" for k in kus)
+    tag = f"ch{chapter_n}" + (f" 片{idx}/{total_chunks}" if total_chunks > 1 else "")
     content = (
-        f"Chapter {chapter_n} candidates ({len(kus)} total):\n{items}\n\n"
+        f"Chapter {chapter_n} candidates ({len(kus)} in this batch):\n{items}\n\n"
         "For each: keep/drop + a type-appropriate display name (see rules)."
     )
     try:
         r = await _call_with_retry(
             messages=[{"role": "user", "content": content}],
             system=PLAN_AUDIT_SYS,
-            # ★每条要输出label+keep+name三个字段, 比老版本(只输出keep的label列表)长得多;
-            #   固定4000在候选多的章节(48条实测)会截断JSON→解析失败. 按候选数动态给, 留余量.
             max_tokens=min(8000, 800 + 120 * len(kus)),
         )
         t = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
         m = re.search(r"\{.*\}", t, re.DOTALL)
         parsed = json.loads(m.group(0)).get("items") if m else None
     except Exception as e:
-        print(f"  ⚠ ch{chapter_n} 规划审核调用失败(不拦截, 全部保留): {e}", flush=True)
-        return kus
+        print(f"  ⚠ {tag} 规划审核调用失败(该片全保留): {str(e)[:100]}", flush=True)
+        return None
     if not parsed:
-        # fail-open 全保留(不因判官抽风丢数据), 但★必须报警 —— 这条路原来完全静默,
-        # 于是"②在密集章节整章拿不到名字"这件事在日志里一声不响(2026-07-20 实测:
-        # 手册类书 302/152 条候选的章 → 命名 0 条, 无任何输出)。
-        # 根因是 max_tokens 的 8000 上限: 每条候选要输出 label+keep+name 约 40~60 token,
-        # 超过 ~50 条候选的章就必然被截断 → JSON 不闭合 → 这里 parsed 为空。
-        # ★这是容量问题不是判官抽风, 修法是把候选分片调用(见 TODO), 不是调大 max_tokens。
-        print(
-            f"  ⚠ ch{chapter_n} 规划审核无有效输出({len(kus)}条候选, 疑似超出单次JSON容量"
-            f"→响应被 max_tokens 截断), 全保留但【本章 0 条命名】",
-            flush=True,
-        )
-        return kus
-    # ★防御性剥离: 万一LLM仍把方括号/引号原样抄进label(见上面注释), 这里兜底清一次.
-    by_label = {
+        # 分片后仍解析不出 = 真的异常(不再是容量问题), 报出来别静默
+        print(f"  ⚠ {tag} 无有效输出({len(kus)}条, 该片全保留、0命名)", flush=True)
+        return None
+    # ★防御性剥离: 万一LLM把方括号/引号原样抄进label, 兜底清一次
+    return {
         it["label"].strip().strip("[]").strip(): it
         for it in parsed
         if isinstance(it, dict) and it.get("label")
     }
+
+
+async def audit_plan(kus, chapter_n):
+    """规划审核: 候选标记里筛掉非真概念(交叉引用/半截碎片/重复); 顺带给类型合适的展示名
+    (概念→概念名, 定理→定理名/断言概括, 例子→题目概括——不是逐字摘录整句). 不改内容本身,
+    只影响label/是否保留. fail-open.
+
+    ★按 CHUNK 分片调用, 结果合并。失败的片 fail-open 全保留(不影响其它片的产出)——
+    这也是"降级最小化伤害面"那条教训: 一片坏不该让整章归零。
+    """
+    if not _LLM or not kus:
+        return kus
+
+    chunks = [kus[i : i + CHUNK] for i in range(0, len(kus), CHUNK)]
+    by_label, covered = {}, []
+    for i, c in enumerate(chunks, 1):
+        got = await _audit_chunk(c, chapter_n, i, len(chunks))
+        if got is None:
+            continue  # 该片 fail-open: 不进 covered, 下面按"未覆盖"处理(保留, 无名字)
+        by_label.update(got)
+        covered.extend(c)
+        if i < len(chunks):
+            await asyncio.sleep(1.8)  # NIM 限流
+
+    if not by_label:
+        print(f"  ⚠ ch{chapter_n} 全部 {len(chunks)} 片均无有效输出, 全保留且 0 命名", flush=True)
+        return kus
+
     keep = {lbl for lbl, it in by_label.items() if it.get("keep")}
-    # ★安全阀: 单次调用丢弃比例过高(>40%)不可信(实测偶发"对长列表偷懒瞎选"的坏
-    #   response, 见2026-07-07: 30条全是干净Definition/Theorem/Example却丢了28条)——
-    #   真实0LLM抽取里交叉引用/半截碎片本该是少数, 大规模丢弃更可能是判官抽风,
-    #   不是真的抽取质量问题. 回退成全保留, 而不是让一次坏调用吞掉一整章内容.
-    drop_ratio = 1 - len(keep & {k["label"] for k in kus}) / len(kus)
+    # ★drop_ratio 只在【被成功覆盖的候选】上算 —— 失败片的候选不算"被丢弃",
+    # 否则一片失败就会把 drop_ratio 顶上去、误触安全阀。
+    cov_labels = {k["label"] for k in covered}
+    drop_ratio = 1 - len(keep & cov_labels) / max(len(cov_labels), 1)
     if drop_ratio > 0.4:
-        # ★安全阀解耦(2026-07-20): 以前这里直接 return kus, 把②的【两个独立产出】
-        # 一起丢——留弃决策(确实不可信, 该丢)和命名(无辜, 被连坐)。drop_ratio 过高
-        # 说明的是"②在这本书上的【留弃判断】不可信", 并不说明"②起的名字不可信":
-        # 实测烂本 ch1 触发安全阀后, 156 条 KU 一个名字都没拿到, 全部退回③摘首句。
-        # 两者可信度独立 → 留弃全回退(保持原行为), 命名照单保留。
-        # 这与 fail-open 那条同源: 降级时必须【最小化伤害面】, 别顺手扩大。
+        # ★安全阀解耦(2026-07-20): 留弃判断不可信 ≠ 命名不可信, 两者可信度独立。
+        # 留弃全回退(保持原行为), 命名照单保留。降级要最小化伤害面。
         _apply_llm_names(kus, by_label)
         got = sum(1 for k in kus if k.get("llm_name"))
         print(
@@ -260,14 +275,19 @@ async def audit_plan(kus, chapter_n):
             flush=True,
         )
         return kus
-    dropped = [k for k in kus if k["label"] not in keep]
+
+    # 未被任何成功片覆盖的候选 → 无条件保留(fail-open), 只是拿不到名字
+    dropped = [k for k in covered if k["label"] not in keep]
     if dropped:
         print(
             f"  ch{chapter_n} 规划审核: 丢弃{len(dropped)}条非真概念 → "
             + ", ".join(k["label"] for k in dropped[:5]),
             flush=True,
         )
-    kept = [k for k in kus if k["label"] in keep]
+    uncovered = [k for k in kus if k["label"] not in cov_labels]
+    if uncovered:
+        print(f"  ch{chapter_n} {len(uncovered)}条因分片失败未审(保留, 无命名)", flush=True)
+    kept = [k for k in kus if k["label"] in keep or k["label"] not in cov_labels]
     _apply_llm_names(kept, by_label)
     return kept
 
