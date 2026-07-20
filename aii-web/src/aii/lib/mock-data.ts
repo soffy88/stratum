@@ -347,6 +347,13 @@ import type {
   BuDetail,
   KnowledgeType,
   RelationType,
+  ConceptGraphRequest,
+  ConceptGraphResponse,
+  ConceptNode,
+  ConceptNodeDetail,
+  GodNodeRequest,
+  GodNodeResponse,
+  ThemesResponse,
 } from '@/aii/types/api';
 import type { EpistemicGrade } from '@helios/blocks';
 
@@ -549,6 +556,123 @@ export async function mockGraphSearch(req: GraphSearchRequest): Promise<ApiResul
     .slice(0, req.limit ?? 8)
     .map((t, i) => ({ id: `ku-${String(i+1).padStart(5,'0')}`, label: t.slice(0, 24), grade: (i===0?'proven':'unverified') as EpistemicGrade }));
   return { ok: true, degraded: false, data: { matches } };
+}
+
+// ── B仓知识网络审查 · 视图1:概念判同(AII-BREPO-VIZ-SPEC-001) ──
+// 分布故意模仿真实 rf.refined_concept 现状(1137条里绝大多数 alias_count=1,
+// 少量=2且都是大小写变体——即真实数据现在没有高风险合并),但额外掺几条
+// alias_count>=3 的假节点,方便本地开发时验证 risk_only/红色高亮渲染逻辑。
+const DISCIPLINES = ['economics', '经济学', 'mathematics', 'physics'];
+const CONCEPT_NAMES = [
+  'reservation price', 'shifts in demand curve', 'human capital', 'investment',
+  'comparative advantage', 'specialization', 'consumer surplus', 'price taker',
+  'marginal utility', 'opportunity cost', 'elasticity', 'equilibrium price',
+];
+function _mockConceptNodes(n: number): ConceptNode[] {
+  return Array.from({ length: n }, (_, i) => {
+    const isRisky = i % 23 === 0 && i > 0; // 少数几个高风险合并样例
+    const aliasCount = isRisky ? 3 + (i % 3) : (i % 9 === 0 ? 2 : 1);
+    const name = CONCEPT_NAMES[i % CONCEPT_NAMES.length]!;
+    return {
+      id: i + 1,
+      label: name,
+      label_zh: undefined,
+      discipline: DISCIPLINES[i % DISCIPLINES.length]!,
+      alias_count: aliasCount,
+      aliases: Array.from({ length: aliasCount }, (_, j) => (j === 0 ? name : `${name} (变体${j})`)),
+      risk_flag: isRisky,
+      discriminative: i % 15 === 0 ? { 侧: 'demand', 弹性对象: 'income' } : null,
+    };
+  });
+}
+export async function mockConceptGraph(req: ConceptGraphRequest): Promise<ApiResult<ConceptGraphResponse>> {
+  await delay(300);
+  const limit = req.limit ?? 300;
+  let nodes = _mockConceptNodes(Math.min(limit, 300));
+  if (req.discipline) nodes = nodes.filter((n) => n.discipline === req.discipline);
+  if (req.risk_only) nodes = nodes.filter((n) => n.risk_flag);
+  const ids = new Set(nodes.map((n) => n.id));
+  const edges = nodes
+    .filter((_, i) => i % 3 !== 0) // 留一部分孤立节点,验证"不隐藏孤立节点"
+    .map((n, i) => ({
+      id: i + 1,
+      source: n.id,
+      target: nodes[(i + 1) % nodes.length]?.id ?? n.id,
+      relation_type: (['derives', 'subsumes', 'prerequisite'] as const)[i % 3]!,
+      strength: 0.6,
+      grade: 'unverified' as EpistemicGrade,
+    }))
+    .filter((e) => e.source !== e.target && ids.has(e.target));
+  return { ok: true, degraded: false, data: { nodes, edges, truncated: false } };
+}
+export async function mockConceptNode(id: number): Promise<ApiResult<ConceptNodeDetail>> {
+  await delay(150);
+  const node = _mockConceptNodes(300).find((n) => n.id === id) ?? _mockConceptNodes(1)[0]!;
+  return {
+    ok: true,
+    degraded: false,
+    data: {
+      ...node,
+      level: null,
+      sources: { a_concept_ids: [1000 + id, 2000 + id] },
+      decision: null,
+      created_at: new Date(2026, 6, 1).toISOString(),
+      edges: [],
+    },
+  };
+}
+
+// ── God Node 检测(AII-KNOWLEDGE-FIRST-SPEC-001 改进一) ──
+export async function mockGodNodes(req: GodNodeRequest): Promise<ApiResult<GodNodeResponse>> {
+  await delay(200);
+  const all = _mockConceptNodes(300)
+    .filter((n) => n.alias_count >= 1)
+    .slice(0, 40)
+    .map((n, i) => {
+      const crossDisc = i % 9 === 0; // 少数几个跨学科候选,呼应真实数据里"平均速度/位置函数"那种稀有信号
+      const centrality = 0.01 - i * 0.0002;
+      return {
+        concept_id: n.id,
+        label: n.label,
+        label_zh: n.label_zh,
+        discipline: n.discipline,
+        centrality: Math.max(centrality, 0.0005),
+        betweenness: Math.max(centrality / 3, 0),
+        in_degree: Math.max(10 - i, 0),
+        disciplines: crossDisc ? [n.discipline, 'mathematics'] : [n.discipline],
+        invariant_candidate: crossDisc,
+      };
+    })
+    .filter((n) => (req.min_centrality ? n.centrality >= req.min_centrality : true))
+    .filter((n) => (req.cross_disc_only ? n.invariant_candidate : true));
+  return {
+    ok: true,
+    degraded: false,
+    data: { god_nodes: all.slice(0, req.limit ?? 50), graph_size: 1137 },
+  };
+}
+
+export async function mockThemes(): Promise<ApiResult<ThemesResponse>> {
+  await delay(200);
+  const nodes = _mockConceptNodes(300);
+  const themeCount = 6;
+  const themeNames = ['微观基础', '产权与经济激励', '需求与边际', '导数与切线', '定积分应用', '折现分析'];
+  const concept_theme: Record<string, number> = {};
+  nodes.forEach((n, i) => {
+    if (i % 4 !== 0) concept_theme[String(n.id)] = (i % themeCount) + 1; // 留一部分概念不属于任何主题(呼应真实数据里社区外的小/孤立概念)
+  });
+  const themes = Array.from({ length: themeCount }, (_, i) => ({
+    kc_id: i + 1,
+    theme_name: themeNames[i]!,
+    theme_name_en: null,
+    summary: `围绕"${themeNames[i]}"的概念聚合(mock)。`,
+    summary_zh: null,
+    source_books: ['economics'],
+    size: Object.values(concept_theme).filter((k) => k === i + 1).length,
+    created_at: null,
+    grade: 'unverified' as const,
+  }));
+  return { ok: true, degraded: false, data: { themes, concept_theme, stale: false } };
 }
 
 // ── 知识簇 KC ──

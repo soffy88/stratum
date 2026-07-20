@@ -364,6 +364,103 @@ export interface GraphSearchResponse {
   matches: Array<{ id: string; label: string; grade: EpistemicGrade }>;
 }
 
+// ── B仓知识网络审查 · 视图1:概念判同 GET /api/graph/concepts ──
+// AII-BREPO-VIZ-SPEC-001。数据源是 rf.refined_concept(独立于上面 aii.ku_onto 的图),
+// 关系类型/字段语义都不同,不复用 RelationType/GraphNode。
+export type ConceptRelationType = 'derives' | 'subsumes' | 'prerequisite';
+export interface ConceptGraphRequest {
+  discipline?: string;
+  limit?: number;
+  /** 审查模式:只返回高风险合并(默认展示全图应先经用户主动选择)。 */
+  risk_only?: boolean;
+}
+export interface ConceptNode {
+  id: number;
+  label: string;
+  label_zh?: string | null;
+  discipline: string;
+  /** 归并的别名数——节点大小映射此值,"挂了一堆别名"错合信号一眼可见。 */
+  alias_count: number;
+  aliases: string[];
+  /** ★risk_flag=true → 红色高亮描边(见 §四"高风险优先")。 */
+  risk_flag: boolean;
+  discriminative?: Record<string, string> | null;
+}
+export interface ConceptEdge {
+  id: number;
+  source: number;
+  target: number;
+  relation_type: ConceptRelationType;
+  strength: number;
+  /** grade 可视化铁律:非 confirmed 的边视觉上必须与 confirmed 区分(虚线/半透明)。 */
+  grade: EpistemicGrade;
+}
+export interface ConceptGraphResponse {
+  nodes: ConceptNode[];
+  edges: ConceptEdge[];
+  truncated: boolean;
+}
+export interface ConceptNodeDetail extends ConceptNode {
+  level?: string | null;
+  /** 一键回溯:指向 A仓的原始概念 id(目前只有 id 指针,没有现成的 A仓原文查询接口)。 */
+  sources?: { a_concept_ids: number[] } | null;
+  decision?: {
+    decision_id: number;
+    decision_type: string;
+    verdict: Record<string, unknown>;
+    model?: string | null;
+  } | null;
+  created_at?: string | null;
+  edges: ConceptEdge[];
+}
+
+// ── God Node 检测 GET /api/graph/god-nodes(AII-KNOWLEDGE-FIRST-SPEC-001 改进一) ──
+// ★只是本性路径B候选提示,不是本性认定——高中心性≠有本性,见后端函数 docstring 红线。
+export interface GodNodeRequest {
+  min_centrality?: number;
+  cross_disc_only?: boolean;
+  limit?: number;
+}
+export interface GodNode {
+  concept_id: number;
+  label: string;
+  label_zh?: string | null;
+  discipline?: string | null;
+  centrality: number;
+  betweenness: number;
+  in_degree: number;
+  /** discipline 原始数据质量差(多为per-book哈希/ULID,只做过粗归一),这是弱信号。 */
+  disciplines: string[];
+  invariant_candidate: boolean;
+}
+export interface GodNodeResponse {
+  god_nodes: GodNode[];
+  graph_size: number;
+}
+
+// ── 已固化主题(社区染色) GET /api/graph/themes(AII-KNOWLEDGE-FIRST-SPEC-001 改进二) ──
+// 数据来自 rf.refined_theme_kc(scripts/build_theme_kc.py 离线固化,Leiden+LLM自动命名),
+// 这个接口本身只读,不重新聚类不重新命名。
+export interface Theme {
+  kc_id: number;
+  theme_name: string;
+  theme_name_en?: string | null;
+  summary?: string | null;
+  summary_zh?: string | null;
+  source_books: string[];
+  size: number;
+  created_at?: string | null;
+  /** ★Leiden聚类+LLM命名的AII综合物,同grade铁律——'unverified'(默认)未经人工审,不是定论。 */
+  grade: 'unverified' | 'verified';
+}
+export interface ThemesResponse {
+  themes: Theme[];
+  /** concept_id(字符串key,JSON对象限制) → kc_id。前端按此上色。 */
+  concept_theme: Record<string, number>;
+  /** ★true=固化后概念图变过,染色可能不准,需要重跑 build_theme_kc.py 重新固化。 */
+  stale: boolean;
+}
+
 // ── 视图4:知识簇 KC GET /api/kc/list, /api/kc/{id} ──
 export interface KcListItem {
   id: string;

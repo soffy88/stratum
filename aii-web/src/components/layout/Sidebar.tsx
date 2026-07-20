@@ -8,6 +8,7 @@ import {
   Highlighter, LayoutGrid, Share2, Sparkles, CheckSquare, User, Shield, Settings,
   Menu, PanelLeftClose, Brain, Layers, TrendingUp, ShieldCheck, Gauge, Sun, Moon,
   Library, Activity, Upload, SearchCode, MessageSquare, Stethoscope, HeartPulse, GraduationCap,
+  FolderCog, Waypoints,
 } from 'lucide-react';
 import { create } from 'zustand';
 import { getTheme, setTheme, type Theme } from '@/lib/theme';
@@ -105,7 +106,9 @@ const NAV: NavGroup[] = [
     { href: '/query', label: 'KU 检索', icon: SearchCode },
     { href: '/chat', label: 'AII 对话', icon: MessageSquare },
     { href: '/books', label: '书单元', icon: Library },
+    { href: '/file-classify', label: '文件分类', icon: FolderCog },
     { href: '/knowledge', label: '知识单元', icon: Brain },
+    { href: '/concept-graph', label: '概念判同审查', icon: Waypoints },
     { href: '/clusters', label: '知识簇', icon: Layers },
     { href: '/evolution', label: '演化', icon: TrendingUp },
     { href: '/governance', label: '治理', icon: ShieldCheck },

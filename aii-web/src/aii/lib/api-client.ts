@@ -152,6 +152,12 @@ import type {
   BuDetail,
   BuData,
   BookInfo,
+  ConceptGraphRequest,
+  ConceptGraphResponse,
+  ConceptNodeDetail,
+  GodNodeRequest,
+  GodNodeResponse,
+  ThemesResponse,
 } from '@/aii/types/api';
 
 function qs(params: Record<string, unknown>): string {
@@ -194,6 +200,39 @@ export async function getSubgraph(req: SubgraphRequest): Promise<ApiResult<Subgr
 export async function graphSearch(req: GraphSearchRequest): Promise<ApiResult<GraphSearchResponse>> {
   if (USE_MOCK) return mock.mockGraphSearch(req);
   return request<GraphSearchResponse>(`/api/graph/search${qs({ q: req.q, limit: req.limit })}`, { method: 'GET' });
+}
+
+// ── B仓知识网络审查 · 视图1:概念判同(AII-BREPO-VIZ-SPEC-001) ──
+export async function getConceptGraph(req: ConceptGraphRequest = {}): Promise<ApiResult<ConceptGraphResponse>> {
+  if (USE_MOCK) return mock.mockConceptGraph(req);
+  return request<ConceptGraphResponse>(
+    `/api/graph/concepts${qs({ discipline: req.discipline, limit: req.limit, risk_only: req.risk_only })}`,
+    { method: 'GET' }
+  );
+}
+
+export async function getConceptNode(id: number): Promise<ApiResult<ConceptNodeDetail>> {
+  if (USE_MOCK) return mock.mockConceptNode(id);
+  return request<ConceptNodeDetail>(`/api/graph/node/${id}`, { method: 'GET' });
+}
+
+// ── God Node 检测(AII-KNOWLEDGE-FIRST-SPEC-001 改进一) ──
+export async function getGodNodes(req: GodNodeRequest = {}): Promise<ApiResult<GodNodeResponse>> {
+  if (USE_MOCK) return mock.mockGodNodes(req);
+  return request<GodNodeResponse>(
+    `/api/graph/god-nodes${qs({
+      min_centrality: req.min_centrality,
+      cross_disc_only: req.cross_disc_only,
+      limit: req.limit,
+    })}`,
+    { method: 'GET' }
+  );
+}
+
+// ── 已固化主题染色(AII-KNOWLEDGE-FIRST-SPEC-001 改进二) ──
+export async function getThemes(): Promise<ApiResult<ThemesResponse>> {
+  if (USE_MOCK) return mock.mockThemes();
+  return request<ThemesResponse>('/api/graph/themes', { method: 'GET' });
 }
 
 export async function getKcList(
