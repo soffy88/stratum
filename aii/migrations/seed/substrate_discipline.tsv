@@ -1,0 +1,190 @@
+substrate_id	discipline	decided_by	evidence
+advmath_tongji_full	数学	program_keyword	前缀advmath_tongji_full: 同济高数
+advmath_zh_07fe788402	经济学	program_keyword	关键词命中: 市场, 金融, market, 经济, 博弈, 价格, price, 收益, 投资, 成本, 税收, 资本, 效用, c
+advmath_zh_09c0cb2d99	经济学	program_keyword	关键词命中: 均衡, 增长, fiscal, equilibrium, cost, capital, 市场, 价格, 收益, 资本, 
+advmath_zh_17593f19b5	数学	program_keyword	关键词命中: theorem, topolog, 引理, lemma, 函数, 定理, 映射, 分布
+advmath_zh_1b08c20ddf	经济学	program_keyword	关键词命中: equilibrium, demand, price, welfare, 经济, 均衡, 市场, market, 金融,
+advmath_zh_1fa53e9fef	数学	program_keyword	关键词命中: vector space, theorem, matrix, derivative, differentiab, con
+advmath_zh_2addb40ad6	数学	human	博弈论形式机器(Payoff Matrix/策略单纯形/Nash均衡形式化)=工具层
+advmath_zh_2c2ed98877	数学	program_keyword	关键词命中: 集合, 定理, 函数, injection, surjection, theorem, lemma, 收敛, 极限, c
+advmath_zh_3351f3030f	数学	program_keyword	关键词命中: derivative, power rule, matrix, eigen, theorem, lemma, integ
+advmath_zh_447b04d249	经济学	program_keyword	关键词命中: 增长, 均衡, 福利, 税收, 成本, 资本, capital, 价格, 厂商, 消费者, price, equilib
+advmath_zh_450a2e154e	经济学	program_keyword	关键词命中: 经济, 宏观, price, cost, capital, 成本, 收益, 均衡, equilibrium, 通货膨胀,
+advmath_zh_5103d7d0c8	经济学	program_keyword	关键词命中: market, cost, 经济, 成本, 市场, 均衡, 博弈, equilibrium, game theor, d
+advmath_zh_589f790d51	数学	human	KKT/非线性规划/线性规划对偶=最优化工具层
+advmath_zh_63d60f54d3	经济学	program_keyword	关键词命中: 需求, 价格, 市场, 均衡, 资本, capital, demand, welfare, price, elastic
+advmath_zh_704ca10d84	数学	program_keyword	关键词命中: 集合, 函数, 向量, 积分, integral, 拓扑, topolog, 定理, theorem, 连续性, con
+advmath_zh_8b24126928	经济学	program_keyword	关键词命中: 市场, 资本, 经济, 福利, 增长, 利率, market, utility, equilibrium, capita
+advmath_zh_9ae93e700b	经济学	program_keyword	关键词命中: 资本, 增长, 市场, 均衡, 投资, cost, demand, market, monopol, 垄断, 税收, e
+advmath_zh_9bbeb64cca	经济学	program_keyword	关键词命中: 价格, price, 利率, capital, 增长, equilibrium, 均衡, 资本, 经济, 税收, uti
+advmath_zh_a18a4eb8f0	经济学	program_keyword	关键词命中: price, market, cost, capital, 金融, 市场, 价格, 税收, 收益, 投资
+advmath_zh_a8cae40a36	经济学	program_keyword	关键词命中: cost, elasticity, 厂商, 供给, 收益, 需求, 经济, 成本, 价格, 市场, 均衡, 生产者, 税
+advmath_zh_ade5cfeffd	数学	program_keyword	关键词命中: 极限, 积分, 定理, 微积分, 微分, 连续性, 函数, 导数, derivative, theorem, conti
+advmath_zh_bae4140179	经济学	program_keyword	关键词命中: market, capital, supply, 经济, 增长, 垄断
+advmath_zh_c110afbec7	经济学	human	支出函数/对偶/消费者问题=应用层, CCH只是脚手架
+advmath_zh_cc2e923ac0	经济学	program_keyword	关键词命中: 经济, 增长, capital, 资本, 福利, utility, elasticity, 均衡, market, mo
+advmath_zh_d066f760fa	数学	program_keyword	关键词命中: topolog, 收敛, 拓扑, 引理, 定理, 极限, converge, continuity, lemma, 连续
+advmath_zh_d273d4943e	数学	program_keyword	关键词命中: 集合, theorem
+advmath_zh_dbf827ada1	经济学	program_keyword	关键词命中: 需求, 供给, 价格, 市场, 均衡, 消费者, 生产者, utility, price, demand, equili
+advmath_zh_e25aa94fe9	经济学	program_keyword	关键词命中: capital, demand
+advmath_zh_e8d09bcbe2	经济学	program_keyword	关键词命中: equilibrium, demand, price, monopol, 博弈, game theor, 收益, 均衡,
+advmath_zh_f655cb5d7f	数学	human	鞅/停时/Girsanov/最优停止=随机过程工具层
+advmath_zh_fac1820d26	经济学	program_keyword	关键词命中: cost, demand, supply, 经济, 成本, 需求, price, capital, 市场, 供给, 均衡
+econ_131d7dbd3b	经济学	program_keyword	前缀econ: 书名
+econ_9ea2a19eac	经济学	program_keyword	前缀econ: 书名
+econ_en_528f998ddd	经济学	program_keyword	前缀econ_en: 书名
+econ_en_aebb2f3981	经济学	program_keyword	前缀econ_en: 书名
+econ_zh_0164798c48	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_04f261fef5	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_07620412ec	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_130c35565a	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_142946e849	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_1cc74ee08b	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_1e95f05ba2	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_23f95a67ed	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_26b4fe7a8e	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_2726f38224	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_30b3e5fbfe	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_370fbfcac6	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_495a1c50dd	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_53fedeec50	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_5805bf6620	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_61f168e49d	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_6b2c62a4fb	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_821b2d3183	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_856bf79a2a	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_85c1e848a6	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_9f5962837c	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_a202f2b23b	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_b0b27652c0	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_ba1e1ec4e3	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_c17913c054	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_c9e29652c4	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_ce44d5c59b	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_d0717121de	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_d335c0d77d	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_d8347c21db	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_da27a19f30	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_dbbac66e8b	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_def644a1f3	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_e02d6f741e	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+econ_zh_e8b4c74665	经济学	program_keyword	前缀econ_zh: 登记subject一致+内容一致
+mankiw_principles_econ_10e	经济学	program_keyword	前缀mankiw_principles_econ_10e: 书名
+math_calculus	数学	program_keyword	前缀math_calculus: 书名
+math_calculus_ch2	数学	program_keyword	前缀math_calculus_ch2: 书名
+math_prog_02acc20be4	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_02d68a5f5e	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_071ae04a9a	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_08d1db0a78	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_096e6ebd0e	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_0ba573a7cf	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_12ed484a36	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_16bb59ad7a	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_16fc6eb697	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_1f660086ff	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_1f794c4ebf	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_28225940e8	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_29cc6a6c35	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_29efcce75e	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_2a45bc6b26	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_364fee8d14	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_36edc1ab0e	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_37c44570ce	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_397201e29d	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_3ad4be9daf	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_3cc2d0c221	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_3e7d55817d	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_4259c2772b	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_4939eb860b	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_4d6f280264	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_4e9134f9b0	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_530b3898d9	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_5590df25d5	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_5768fe0c20	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_611dece64d	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_653e026cfb	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_67b5c1a9d6	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_6c14ab59f1	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_72b75645eb	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_7edeacf7f0	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_817f9c55a4	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_827bed3779	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_83fa66a77f	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_870191664b	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_87713336a0	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_89665c6a11	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_8a86107a08	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_8f0791daff	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_90aaf5fdb0	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_925e6313e8	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_97c34f490d	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_9beccce421	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_9cdf21d54d	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_9fbb7ccad0	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_a32988d13a	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_a6df60dc61	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_a9b8c7c2f2	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_ababc922b4	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_ade5cfeffd	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_bace2824e4	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_bb496b4ea7	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_c04edbced6	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_c25b45ba14	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_c2e6551cab	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_cf2fb831ec	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_d0be002d47	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_d19622585a	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_d1fac9c875	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_d285a9930c	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_d657d56752	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_df4a0a6446	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_e4628df07c	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_e8e7036487	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_ec2bbebc49	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_f44db034cf	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_f481038414	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_f52923d794	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_prog_f97d989e47	数学	program_keyword	前缀math_prog: 内容实测:庞加莱引理/正态分布/样本均值无偏/SVM margin
+math_zh_a55c5ec7ac	数学	program_keyword	前缀math_zh: 书名
+math_zh_edf801aadc	数学	program_keyword	前缀math_zh: 书名
+micro_clean	经济学	program_keyword	前缀micro_clean: 书名
+microecon_en_full_v2	经济学	program_keyword	前缀microecon_en_full_v2: 书名
+misc_zh_008be64573	其他	human	仅1条KU'拓宽选择空间', 证据不足
+misc_zh_0638af80e2	心理学	human	焦虑/快乐/心境和气质
+misc_zh_0cf72c7691	心理学	human	付款痛苦/可变比率强化程式
+misc_zh_19766a3109	经济学	human	庄园/公共牧场权/圈地=经济史
+misc_zh_1f58acc541	经济学	human	财富的源泉/价值与效用/利润率=古典经济学
+misc_zh_1fb5459d55	其他	human	创造性/价值/健康是对环境的超越, 信号太弱
+misc_zh_277938b8b1	经济学	program_keyword	关键词命中: 需求, 供给, 经济, 效用, 增长
+misc_zh_2a3b7ca23e	经济学	program_keyword	关键词命中: 税收, 货币
+misc_zh_313cc48150	经济学	human	市場/投資/指標
+misc_zh_397201e29d	数学	program_keyword	关键词命中: 概率, 函数, 微分
+misc_zh_4c2fb83629	哲学	human	理性與道德的進步
+misc_zh_57f4e4c020	其他	human	Dirac方程/Feynman图=物理, 受控集合无物理
+misc_zh_621846bc00	数学	program_keyword	关键词命中: 映射, 微分
+misc_zh_6244f6016b	心理学	program_keyword	关键词命中: 情绪
+misc_zh_6d3cc1e0b3	其他	human	文化的根柢深不可測, 信号太弱
+misc_zh_81d690213f	心理学	program_keyword	关键词命中: 心理学, 认知心理, 认知科学, 记忆, 知觉
+misc_zh_83b514654d	心理学	human	幼鹅效应/锚定/社会规范=行为科学
+misc_zh_85c1e848a6	其他	human	仅1条KU'同情', 证据不足
+misc_zh_86c9a93811	数学	human	库拉托夫斯基十四集/哥德巴赫/若尔当曲线
+misc_zh_948ef3fd08	经济学	program_keyword	关键词命中: 效用, 均衡, 福利
+misc_zh_94fee0e2b8	经济学	human	同儕效應/觀察偏誤/實證資料=实证社科
+misc_zh_9e6c02510d	哲学	program_keyword	关键词命中: 哲学, 道德, 认识论
+misc_zh_a98b36503c	哲学	program_keyword	关键词命中: 哲学, 知识论, 伦理
+misc_zh_ac39183282	数学	human	左右对称/自同构
+misc_zh_b3607c6078	数学	program_keyword	关键词命中: 微积分, 积分, 拓扑, 导数, 极限, 定理, 微分, calculus
+misc_zh_baa17c37b4	心理学	human	可变比率强化程式=操作性条件反射
+misc_zh_c7b5caf706	心理学	human	意志力/诱惑与焦虑/行为反常
+misc_zh_cc50696eb6	数学	program_keyword	关键词命中: 微积分, 积分, 级数, 概率, 函数, 定理, theorem, calculus
+misc_zh_d374839971	数学	human	大魔群/哥德尔不完全性定理
+misc_zh_d483906107	数学	program_keyword	关键词命中: 映射, 定理, 拓扑, 曲率, 导数, 微积分, 积分, 函数
+misc_zh_d58b4eeff4	数学	program_keyword	关键词命中: 概率
+misc_zh_dd9b0deb3d	经济学	program_keyword	关键词命中: 贸易
+misc_zh_e286fcb474	经济学	human	债务的流通性/创造=货币史
+misc_zh_e86fe0055b	数学	program_keyword	关键词命中: 概率, 分布, 函数, 定理
+misc_zh_eca0adf94f	其他	human	通用生面团/玉米意大利面=食谱, 受控集合无对应
+misc_zh_fdb9a50074	心理学	program_keyword	关键词命中: 心理学, 情绪
+openstax_calculus_v1	数学	program_keyword	前缀openstax_calculus_v1: 书名
+shida_mathanalysis_v5_vol1	数学	program_keyword	前缀shida_mathanalysis_v5_vol1: 师大数分
+shufen_huadong_full	数学	program_keyword	前缀shufen_huadong_full: 华东师大数分
