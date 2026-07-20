@@ -24,16 +24,29 @@ register_providers()
 
 
 def _ku_type(t):
-    """暂存type → DB knowledge_type."""
-    return {
+    """暂存type → DB knowledge_type.
+
+    ★2026-07-20 修: 表里原来只有"例子", 没有"例"/"例题"。而 math_program_ingest 的
+    _TYPE_ZH 只映射【英文】标记(Example→例子), 中文书的"例"/"例题"是原样透传的 ——
+    于是中文书的例题全部落到 .get(t, "conceptual") 这个默认值, 被存成了 conceptual。
+    实测: 库里 conceptual 7267 条里掺着大量例题, 该字段无法区分定义和例题。
+    这是【静默默认值】造成的错分, 不是任何人的判断 —— 与 fail-open 同族:
+    落默认值不报警, 错误就能永久隐身。所以这里补全映射, 并让未知类型显式报警。
+    """
+    m = {
         "定理": "rationale",
         "推论": "rationale",
         "引理": "rationale",
         "命题": "rationale",
         "例子": "procedural",
+        "例": "procedural",  # ★中文书标记, 原来漏了 → 落默认 conceptual
+        "例题": "procedural",  # ★同上
         "定义": "conceptual",
         "知识点": "conceptual",
-    }.get(t, "conceptual")
+    }
+    if t not in m:
+        print(f"  ⚠ 未知 KU 类型 {t!r} → 回落 conceptual(请补 _ku_type 映射表)", flush=True)
+    return m.get(t, "conceptual")
 
 
 async def main(substrate: str, staging_dir: Path, dry_run: bool = False):
