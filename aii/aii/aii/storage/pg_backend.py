@@ -371,6 +371,47 @@ class PgBackend(StorageBackend, EpistemicStore):
             records = await conn.fetch(sql, *params)
         return [dict(r) for r in records]
 
+    async def search_paper_skill_by_vector(
+        self,
+        query_vector: list[float],
+        limit: int = 5,
+        contribution_type: "str | list[str] | None" = None,
+    ) -> list[dict[str, Any]]:
+        """向量检索论文技能(doc_type=paper 的 BU)。供 agent 按任务意图找可调用论文方法/结论。
+        contribution_type 可过滤(如只要 method、排除 impossibility)。"""
+        pool = await self._ensure_pool()
+        params: list = [query_vector, limit]
+        where = "WHERE doc_type='paper' AND embedding IS NOT NULL"
+        if contribution_type:
+            cts = (
+                [contribution_type]
+                if isinstance(contribution_type, str)
+                else list(contribution_type)
+            )
+            params.append(cts)
+            where += " AND agent_skill->>'contribution_type' = ANY($3)"
+        sql = f"""
+            SELECT substrate_id, overview_oneline, problem_statement, authors, venue_year,
+                   agent_skill, limitations, embedding <=> $1 AS distance
+            FROM aii.bu_onto
+            {where}
+            ORDER BY embedding <=> $1
+            LIMIT $2
+        """
+        async with pool.acquire() as conn:
+            records = await conn.fetch(sql, *params)
+        return [dict(r) for r in records]
+
+    async def get_paper_bu(self, substrate_id: str) -> "dict[str, Any] | None":
+        """取一篇论文 BU 全行(供 SKILL.md 导出)。"""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            r = await conn.fetchrow(
+                "SELECT * FROM aii.bu_onto WHERE substrate_id=$1 AND doc_type='paper'",
+                substrate_id,
+            )
+        return dict(r) if r else None
+
     async def search_ku_hybrid(
         self,
         query_vector: list[float],
