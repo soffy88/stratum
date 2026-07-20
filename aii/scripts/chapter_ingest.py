@@ -79,7 +79,8 @@ def _zh_chapter_starts(text):
         else:
             i += 1
 
-    starts = {}
+    # 每个章号收集全部候选位置(非TOC), 供下面按序挑选(不再"首个出现即用")
+    candidates = {}
     for (pos, num), toc in zip(raw, is_toc):
         if toc:
             continue
@@ -89,16 +90,58 @@ def _zh_chapter_starts(text):
         line = text[pos : pos + 60]
         if "…" in line or re.search(r"\s\d+\s*$", line):  # 兜底: 孤立目录条目(未成块)
             continue
-        if num not in starts:  # 每章首个正文出现(后续页眉重复忽略)
-            starts[num] = pos
+        candidates.setdefault(num, []).append(pos)
+
+    # ★序号必须随位置单调递增(真实书里章节顺序=编号顺序): 前言/后记讲述后续章节内容
+    # ("第3章就是一个好示例…")偶尔恰好换行落在行首, 被误当正文起点, 但位置比更小编号
+    # 的章还靠前——矛盾, 说明该候选是误判. 跳过它, 改选同一章号里位置更靠后(晚于上一
+    # 章)的候选; 找不到就丢弃该章(宁缺不流出乱序边界).
+    starts = {}
+    prev_pos = -1
+    for num in sorted(candidates):
+        pick = next((p for p in candidates[num] if p > prev_pos), None)
+        if pick is None:
+            continue
+        starts[num] = pick
+        prev_pos = pick
     return starts
 
 
+def _decimal_chapter_starts(text):
+    """章节没有"Chapter N"/"第N章"字样, 只靠小节编号(如"1.1 Something")体现结构时的兜底
+    ——只在上面两条规则都找不到时才启用(纯新增路径, 不影响已经工作的书)。现代教材
+    (尤其高级数学/经济学, 如2026-07-07 高级数学经济专用飞轮这批书)很常见章节标题就是
+    直接的名字(不含"Chapter N"字样), 靠小节编号体现结构——不加这条这类书直接切不了章,
+    不是"分类判断"层面的问题(那个见 classify_md.py 的 decimal_ch), 是真正内容抽取切不
+    出章节。用每个大节号N下最小的小节M的位置近似当章节起点(会漏掉章首引言到第一小节
+    之间的几段, 但总比整本书因为没有"Chapter"字样就完全切不了强)。
+    ★markitdown(2026-07-07起换用, 见 econ_convert.py/math_convert.py)是纯 pdfminer 文本流,
+    不像 pymupdf4llm 那样按字号推断标题级别——"1.1 Finding Words for Intuitions"这类小节
+    标题在 markitdown 输出里没有"#"前缀, 只是普通一行。所以除了带"#"的正规写法, 还兜底
+    识别"裸"小节行: 独占一行、紧跟在空行后(段落边界)、"N.M 短标题"且标题部分是Title Case
+    短语(非完整句子, 没有句末标点)——降低把"如1.1节所述"这类正文引用误判成标题的概率。"""
+    cand: dict[int, list[tuple[int, int]]] = {}
+    for m in re.finditer(r"(?m)^#{1,6}\s+\**(\d{1,2})\.(\d+)\b", text):
+        n, sub = int(m.group(1)), int(m.group(2))
+        cand.setdefault(n, []).append((sub, m.start()))
+    if not cand:
+        for m in re.finditer(
+            r"(?m)(?<=\n\n)(\d{1,2})\.(\d+)\s+([A-Z][A-Za-z0-9 ,'\-]{3,80})$", text
+        ):
+            n, sub = int(m.group(1)), int(m.group(2))
+            cand.setdefault(n, []).append((sub, m.start()))
+    return {n: min(subs)[1] for n, subs in cand.items()}
+
+
 def chapter_starts(text):
-    """章起始位置(英文 # Chapter N: 或中文 第N章). 自动判格式."""
+    """章起始位置(英文 # Chapter N: 或中文 第N章). 自动判格式.
+    ★两种都找不到时, 兜底用小节编号(1.1/2.1这类, 无"Chapter"字样的现代教材常见)近似
+    定位——见 _decimal_chapter_starts。"""
     starts = {int(m.group(1)): m.start() for m in re.finditer(r"(?m)^#\s+Chapter\s+(\d+):", text)}
     if not starts:
         starts = _zh_chapter_starts(text)
+    if not starts:
+        starts = _decimal_chapter_starts(text)
     return starts
 
 
@@ -114,8 +157,13 @@ def slice_chapter(text, n):
     e = starts.get(n + 1, len(text))
     chap = text[s:e]
     # ★末章截掉书末 back-matter(GLOSSARY/INDEX, 可能间隔字母 'G L O S S A R Y')—— 防全书术语表误抽进末章
+    # 中文书back-matter(作者简介/译者简介/关于封面/出版社社区推广)常是纯文本无markdown标题,
+    # 且紧跟在末章正文后一起被切进"末章"——LLM 会把这段简介/致谢/推广文字误抽成假KU
+    # (曾抽出"贝叶斯层次化模型"这种文不对题的概念, 实际内容是译者后记+异步社区广告).
     bm = re.search(
-        r"(?im)^#{1,3}\s*\**\s*(?:g\s*l\s*o\s*s\s*s\s*a\s*r\s*y|i\s*n\s*d\s*e\s*x)\b", chap
+        r"(?im)^#{1,3}\s*\**\s*(?:g\s*l\s*o\s*s\s*s\s*a\s*r\s*y|i\s*n\s*d\s*e\s*x)\b"
+        r"|^(?:作者简介|译者简介|关于封面|欢迎来到异步社区)\s*$",
+        chap,
     )
     if bm:
         chap = chap[: bm.start()]
