@@ -457,8 +457,15 @@ export interface ThemesResponse {
   themes: Theme[];
   /** concept_id(字符串key,JSON对象限制) → kc_id。前端按此上色。 */
   concept_theme: Record<string, number>;
-  /** ★true=固化后概念图变过,染色可能不准,需要重跑 build_theme_kc.py 重新固化。 */
+  /**
+   * ★true=固化结果已不完整,需要重跑 build_theme_kc.py。
+   * 注意语义:染色本身【不会错】——concept_theme 直读 rf.refined_kc_concept,是固化当时
+   * 如实存下的归属(不再像早先那样每次重算 Leiden 按位置猜 kc_id,那会静默错位)。
+   * stale 只表示"固化后新增的概念还没归入任何主题",或旧数据根本没存概念归属。
+   */
   stale: boolean;
+  /** stale 的具体原因(人读),不 stale 时为 null。 */
+  stale_reason?: string | null;
 }
 
 // ── 视图4:知识簇 KC GET /api/kc/list, /api/kc/{id} ──
