@@ -626,7 +626,7 @@ M0–M4 完成定义**不能只看结构**(表建了、边长了),要看**功能
 - **建库 DDL**:`~/projects/stratum/aii/migrations/refined/`(0001 repo schema、0002 dedup_decision_ledger、0003 concept_decision_ledger;按本文补齐 decision_ledger、junction、多态 member、快照版本、contributions)。
 - **代码**:`~/projects/AII/aii` 及 `/home/soffy/projects/AII`;远端 `git@github.com:soffy88/aii.git`。
 - **书源**:`/home/soffy/shared/stratum-to-aii/`;AII↔Stratum 队列 `/home/soffy/shared/aii-to-stratum/`。
-- **前端**:aii.uex.hk,API:8101,前端:3101。
+- **前端**:aii.kanpan.co,API:8101,前端:3101。
 - **embedding**:BGE-M3(vector(1024))/ qwen3-embedding(本地,0 成本)。
 - **模型分级**:粗筛/candidate 用本地小模型;不可逆 confirmed 决策用最强可用模型(钉死)。
 
