@@ -31,6 +31,7 @@ from aii.api.routes import (
     skills,
     classify,
     graph_concepts,
+    context_recall,
 )
 from aii.api._auth import APIKeyMiddleware
 
@@ -176,5 +177,6 @@ app.include_router(learning.router, prefix="/api", tags=["learning"])
 app.include_router(skills.router, prefix="/api", tags=["skills"])
 app.include_router(classify.router, prefix="/api", tags=["classify"])
 app.include_router(graph_concepts.router, prefix="/api", tags=["graph_concepts"])
+app.include_router(context_recall.router, prefix="/api", tags=["context_recall"])
 # Internal utilities (no /api prefix, auth-exempt): shared BGE-M3 embedding
 app.include_router(internal.router, tags=["internal"])
