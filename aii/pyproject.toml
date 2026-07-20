@@ -20,6 +20,14 @@ dependencies = [
     # 本地 oprim 3.10.38 起需显式引入,否则后端 lifespan register_providers 崩溃。
     "dashscope>=1.14",
     "pymupdf>=1.28.0",
+    # ★AII 转换管道直接依赖(math_convert/econ_convert/advmath_convert 用): 之前靠 oskill 传递引入,
+    # oskill 切本地源码(v4.11.0 不再依赖它们)后需显式声明, 否则 markitdown/繁简转换 缺库崩。
+    "markitdown[pdf]>=0.1.6",
+    "opencc-python-reimplemented>=0.1.7",
+    # magika(markitdown传递)会拉 onnxruntime; 不约束会解析到 py3.14 无轮子的 1.20.1, 卡下限到有轮子的 1.27。
+    "onnxruntime>=1.27.0",
+    "leidenalg>=0.12.0",
+    "python-igraph>=1.0.0",
 ]
 
 [tool.uv.sources]
