@@ -59,6 +59,10 @@ APPLY = "--apply" in sys.argv
 USE_LEDGER = "--no-ledger" not in sys.argv
 DISC = _arg("--disc", "econ")
 # 首批学科书目(econ: 词典最全; math: 导数族)
+# ★2026-07-19: 原8本(07-03首批, M0概念归一唯一跑过的一批)之外, A仓已积累35本新econ书
+# 从未走过这里(幂等 exclude=ingested 保证不会重复入,但没进这个硬编码列表的书永远不会
+# 自动被捡到——这正是"KC建在stale快照上"问题的根因之一)。补进来后, 这个列表还是会
+# 随econ飞轮持续摄入而再度过期, 需要定期人工核对/补(未来可考虑改成动态查询)。
 ECON_SUBS = [
     "microecon_en_full_v2",
     "micro_clean",
@@ -68,6 +72,41 @@ ECON_SUBS = [
     "econ_zh_3f11a8f38e",
     "econ_9ea2a19eac",
     "econ_131d7dbd3b",
+    "econ_zh_5805bf6620",
+    "econ_zh_495a1c50dd",
+    "econ_zh_d8347c21db",
+    "econ_zh_1e95f05ba2",
+    "econ_zh_6b2c62a4fb",
+    "econ_zh_26b4fe7a8e",
+    "econ_zh_85c1e848a6",
+    "econ_zh_30b3e5fbfe",
+    "econ_zh_53fedeec50",
+    "econ_zh_a202f2b23b",
+    "econ_zh_dbbac66e8b",
+    "econ_zh_07620412ec",
+    "econ_zh_23f95a67ed",
+    "econ_zh_e02d6f741e",
+    "econ_zh_b0b27652c0",
+    "econ_zh_0164798c48",
+    "econ_zh_d0717121de",
+    "econ_en_528f998ddd",
+    "econ_zh_c9e29652c4",
+    "econ_zh_04f261fef5",
+    "econ_zh_130c35565a",
+    "econ_zh_ce44d5c59b",
+    "econ_en_aebb2f3981",
+    "econ_zh_370fbfcac6",
+    "econ_zh_def644a1f3",
+    "econ_zh_821b2d3183",
+    "econ_zh_c17913c054",
+    "econ_zh_856bf79a2a",
+    "econ_zh_142946e849",
+    "econ_zh_1cc74ee08b",
+    "econ_zh_61f168e49d",
+    "econ_zh_e8b4c74665",
+    "econ_zh_9f5962837c",
+    "econ_zh_ba1e1ec4e3",
+    "econ_zh_d335c0d77d",
 ]
 _SUB1 = _arg("--substrate")  # 单书验证: 覆盖 SUBS
 SUBS = [_SUB1] if _SUB1 else {"econ": ECON_SUBS, "all": None}.get(DISC, ECON_SUBS)
@@ -225,11 +264,33 @@ async def main():
 
     if APPLY:
         loop = asyncio.get_event_loop()
-        # B仓 独立向量: BGE-M3 在合并后干净内容上重算(不搬 A仓向量)
+        # B仓 独立向量: BGE-M3 在合并后干净内容上重算(不搬 A仓向量)。
+        # ★走共享 aii-embed 远程服务(笔记本GPU), 不在本进程 local-load BGE-M3——
+        # 本机GPU常被其它进程间歇性占用, 本地 fallback 会不稳定撞 OOM。
+        # ★trust_env=False 必须: 本机 http_proxy/https_proxy 指向出网代理(sing-box),
+        # NO_PROXY 虽含 100.64.0.0/10(100.68.226.13 在此段内), 但 httpx 不解析 CIDR
+        # 写法的 NO_PROXY(只做前缀/域名匹配)——用默认 httpx.post()(trust_env 默认真)
+        # 会把这个内网请求错误地打进出网代理, 代理连不上内网 IP 后吐 502(空 body,
+        # 固定~5.2s)。2026-07-19 实测: 同一请求 curl(正确认 CIDR) 200, httpx 默认 502,
+        # httpx.Client(trust_env=False) 200——确认是代理误路由, 不是 aii-embed 服务问题。
+        import httpx as _httpx
+
+        embed_url = os.getenv("AII_EMBED_URL", "http://100.68.226.13:8102")
+
+        def _embed_batch(batch):
+            # read=300: 共享服务被其它飞轮并发占用时会排队, 同 aii_remote.py 既有约定。
+            timeout = _httpx.Timeout(connect=10, read=300, write=30, pool=10)
+            with _httpx.Client(trust_env=False, timeout=timeout) as c:
+                r = c.post(f"{embed_url}/embed", json={"texts": batch})
+                r.raise_for_status()
+                return r.json()["embeddings"]
+
         texts = [embed_text(c) or (m[0].get("name") or "") for m, c, _ in built]
-        embs = await loop.run_in_executor(
-            None, lambda: vector_encode(texts=texts, provider="default")
-        )
+        BATCH = 64  # 同 math_ingest.py 既有约定, 避免单批过大拖慢/超时
+        embs = []
+        for i in range(0, len(texts), BATCH):
+            chunk = texts[i : i + BATCH]
+            embs.extend(await loop.run_in_executor(None, lambda c=chunk: _embed_batch(c)))
         persisted = 0
         for (members, contribs, fc), emb in zip(built, embs):
             names = [m.get("name") or "" for m in members]
