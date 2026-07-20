@@ -1,16 +1,28 @@
 #!/usr/bin/env bash
 # ★数学程序化飞轮(B 范式): 程序从原文抠"陈述+证明"(0 LLM) + 程序命名(书自带名→标记).
-# 取代旧 math_pipeline 的 LLM synth(费钱且抽成 blob). 全本地: BGE-M3 嵌入, 无 LLM 调用.
-# 单轮: 扫 /books/MD/{英文,中文}数学 → 未 B 过的逐本 program_ingest + math_ingest 落库.
+# 取代旧 math_pipeline 的 LLM synth(费钱且抽成 blob). 全本地: BGE-M3 嵌入, 内容抽取本身无 LLM 调用.
+# 单轮: 扫 /books/MD/{英文,中文}数学 → 未 B 过的逐本:
+#   math_program_ingest.py 抽取(内含规划审核: 每章1次LLM筛掉交叉引用/半截碎片/重复候选,
+#     只做留弃取舍不碰内容, 见该文件说明) → math_ingest.py 落库 →
+#   math_prog_verify.py 质检(抓PDF转换污染/type误判, 只标记不拦截, 见该文件说明).
+#   规划审核+质检共用同一个独立key(math_prog_verify), 无key则两步都fail-open跳过.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 PY=.venv/bin/python
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:***REMOVED***@localhost:5435/aii_kg}"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1   # 用本地缓存 BGE-M3, 不连 huggingface
-export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"   # ★嵌入走共享 aii-embed 微服务; 本进程不再加载 BGE-M3, 不抢 GPU
+export AII_EMBED_URL="${AII_EMBED_URL:-http://100.68.226.13:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU); 本进程不再加载 BGE-M3
 export CUDA_VISIBLE_DEVICES=""   # ★嵌入已外包给服务, 本飞轮彻底不碰 GPU(抽取0-LLM纯CPU)
+# ★规划审核用key(math_prog_verify, 与入库后质检共用; 未配置则该字段空, 两步都fail-open)
+export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('math_prog_verify',''))" 2>/dev/null)"
+export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
 STAGING_BASE="scripts/_staging/math_prog"
-MIN_KU="${MATH_PROG_MIN_KU:-30}"        # DB 已有 >MIN_KU 视为已 B 过
+MIN_KU="${MATH_PROG_MIN_KU:-30}"        # DB 已有 >MIN_KU 视为已 B 过(小书靠下面的 .done 标记判断)
+
+# ★主动拉料: 别等 feeder 独立时钟才有新书: D盘同步+本地PDF转换+stratum分类一次做全
+# (flock 防和其他飞轮/feeder撞车挪同一文件)
+mkdir -p .locks
+flock -w 120 .locks/classify_md.lock -c "timeout 600 bash scripts/pull_ingest.sh" || true
 
 echo "════ 数学程序化飞轮 B (0 LLM) $(date '+%Y-%m-%d %H:%M') ════"
 processed=0
@@ -23,13 +35,21 @@ for f in /home/soffy/books/MD/英文数学/*.md /home/soffy/books/MD/中文数�
     fi
     stem="$(basename "$f" .md)"
     sub="math_prog_$(printf '%s' "$stem" | md5sum | cut -c1-10)"
+    # ★已成功入库过的标记(即便书本身 KU 数<MIN_KU, 也不再永远重跑, 见下方 .done 写入)
+    [ -f "$STAGING_BASE/$sub/.done" ] && continue
     cnt=$(docker exec aii-postgres psql -U aii -d aii_kg -tAc \
           "SELECT count(*) FROM aii.ku_onto WHERE substrate_id='$sub'" 2>/dev/null | tr -d '[:space:]')
     [ "${cnt:-0}" -gt "$MIN_KU" ] && continue
     echo "── 抽取: ${stem:0:50} (sub=$sub) ──"
     $PY scripts/math_program_ingest.py "$f" "$sub" 2>&1 | tail -2
-    $PY scripts/math_ingest.py --substrate "$sub" --staging "$STAGING_BASE/$sub" 2>&1 | grep -E '入库完成|准备入库' || true
+    ingest_out=$($PY scripts/math_ingest.py --substrate "$sub" --staging "$STAGING_BASE/$sub" 2>&1)
+    echo "$ingest_out" | grep -E '入库完成|准备入库' || true
+    echo "$ingest_out" | grep -qE '入库完成: ok=[0-9]+ skip=[0-9]+ err=0$' && touch "$STAGING_BASE/$sub/.done"
+    SUBSTRATE="$sub" $PY scripts/math_prog_verify.py 2>&1 || echo "  ⚠ 判官调用异常(非致命, 继续)"
     processed=$((processed + 1))
 done
 echo "── 本轮处理 $processed 本 ──"
-[ "$processed" -eq 0 ] && echo "飞轮完成: 无新书"
+if [ "$processed" -eq 0 ]; then
+    echo "飞轮完成: 无新书"
+fi
+exit 0

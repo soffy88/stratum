@@ -34,18 +34,25 @@ STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"   # 英文书来自本地文件�
 
 # ★NIM key(免费) + DB + BGE-M3跑CPU(不抢aii-api的GPU)
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('econ',''))" 2>/dev/null)"
+# ★模型选型: 同 advmath/math_prog(2026-07-07实测对比) — 默认 meta/llama-3.1-70b-instruct 讲得干,
+#   nemotron-super-49b 明显更好, _plan() 规划知识点这步换掉默认档.
+export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
 export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-4}"   # ★并发度=4(测试定论: 4-5低偶发超时, 6+持续过载)
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:***REMOVED***@localhost:5435/aii_kg}"
 export CUDA_VISIBLE_DEVICES=""          # 嵌入走 CPU(GPU 让给 math-prog, 防 OOM)
 export HF_HUB_OFFLINE=1                 # ★用本地缓存 BGE-M3, 不连 huggingface(直连超时→卡死)
 export TRANSFORMERS_OFFLINE=1
-export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"   # ★嵌入走共享 aii-embed 微服务, 本进程不再加载 BGE-M3
+export AII_EMBED_URL="${AII_EMBED_URL:-http://100.68.226.13:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU)
 # ★忠实模式(同中文版): 只忠实呈现原书内容, 不过度LLM判断/why-how; section 默认13000
 export ECON_FAITHFUL=1
 export ECON_QUARANTINE_JSON="misc_pipeline/quarantine.json"
 export ECON_BATCH_REPORT="misc_pipeline/batch_report.json"
 export ECON_QUAL_DIR="misc_pipeline/qual"
 export ECON_CKPT_DIR="misc_pipeline/ckpts"
+# ★质量门密度基准: econ_quality_gate.py 默认按经济学教材(~15KU/章)校准, "其它"学科
+#   (哲学/通识等)天然密度更低, 套经济学基准会把正常书误判隔离 → 降基准, 非放水
+export QGATE_KU_PER_CHAPTER="${QGATE_KU_PER_CHAPTER:-8}"
+export QGATE_CHAPTER_FLOOR="${QGATE_CHAPTER_FLOOR:-3}"
 
 mkdir -p misc_pipeline misc_pipeline/qual misc_pipeline/ckpts
 
@@ -59,6 +66,11 @@ echo "★ 其它知识飞轮 $(date '+%Y-%m-%d %H:%M')"
 echo "  LIMIT=$ECON_LIMIT  DRY_RUN=${ECON_DRY_RUN:-0}  STRATUM_FEEDBACK=$STRATUM_FEEDBACK"
 echo "════════════════════════════════════════════════════"
 echo ""
+
+# ── Step 0: 主动拉料 ── 别等 feeder 独立时钟才有新书: D盘同步+本地PDF转换+stratum分类
+# 一次做全 (flock 防和其他飞轮/feeder撞车挪同一文件)
+mkdir -p .locks
+flock -w 120 .locks/classify_md.lock -c "timeout 600 bash scripts/pull_ingest.sh" || true
 
 # ── Step 1: 发现未处理的经济书 ──
 echo "[1/4] 发现未处理的书(books/MD/其它, 全学科)..."
