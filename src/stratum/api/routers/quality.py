@@ -182,7 +182,8 @@ async def export_one_substrate(
         from stratum.services.md_export_service import export_one
 
         try:
-            result = await asyncio.to_thread(export_one, sid)
+            # 手动API触发的重导出=人明确要求, 绕过 exported_at 防重
+            result = await asyncio.to_thread(lambda: export_one(sid, force=True))
             log.info("md_export_one: %s → %s", sid[:12], result)
         except Exception:
             log.exception("md_export_one: failed for %s", sid[:12])

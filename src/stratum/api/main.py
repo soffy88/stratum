@@ -170,7 +170,7 @@ app = FastAPI(title="Stratum Service Layer", version="0.5.0", lifespan=_lifespan
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://stratum.uex.hk"],
+    allow_origins=["http://localhost:3000", "https://stratum.kanpan.co"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
