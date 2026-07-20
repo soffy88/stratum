@@ -12,7 +12,7 @@ const slBase =
   process.env.STRATUM_SL_BASE ??
   `http://localhost:${process.env.STRATUM_SL_PORT ?? "9304"}`;
 // AII merge P3.2: ported AII pages call the AII backend (epistemic knowledge engine)
-// via the same-origin /api/aii/* proxy → AII FastAPI (:8101 dev / aii-api.uex.hk prod).
+// via the same-origin /api/aii/* proxy → AII FastAPI (:8101 dev / aii-api.kanpan.co prod).
 const aiiBase =
   process.env.AII_API_BASE ??
   `http://localhost:${process.env.AII_API_PORT ?? "8101"}`;

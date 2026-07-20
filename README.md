@@ -3,7 +3,7 @@
 把英文资料消化成自己的知识。PDF / 网页 / RSS / 研究主题 → AI 翻译 / 摘要 / 朗读 / 插图 / 概念图谱。
 
 > 当前版本: **alpha v1.0** (Phase 17.10)  
-> 立即试用: **https://stratum.uex.hk**（免费注册）
+> 立即试用: **https://stratum.kanpan.co**（免费注册）
 
 ---
 
@@ -38,7 +38,7 @@
 ## 立即试用
 
 ```
-https://stratum.uex.hk
+https://stratum.kanpan.co
 ```
 
 1. 注册免费账号

@@ -1,4 +1,4 @@
-# Merged frontend (Stratum base + AII pages) for aii.uex.hk.
+# Merged frontend (Stratum base + AII pages) for aii.kanpan.co.
 # Bakes the pre-built Next.js standalone output so the image is self-contained
 # (decoupled from the build worktree).
 #
