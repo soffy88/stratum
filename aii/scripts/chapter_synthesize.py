@@ -301,7 +301,8 @@ def _not_toc(tl: str, start: int) -> bool:
 
 
 def _bad_anchor(text: str, pos: int) -> bool:
-    """该 pos 所在行是不是坏锚点:md_export 元数据行(<ID> title: X ---)或 章/节标题。
+    """该 pos 所在行是不是坏锚点:md_export 元数据行(<ID> title: X ---)或 章/节标题,
+    或落在目录块里(目录条目本身跟章节标题同名, 会被误当'首次出现'命中)。
     这些是定位噪声,抠出来是垃圾而非定义,应跳过。"""
     ls = text.rfind("\n", 0, pos) + 1
     le = text.find("\n", pos)
@@ -311,6 +312,12 @@ def _bad_anchor(text: str, pos: int) -> bool:
     if re.match(
         r"^\s*(?:#{1,4}\s*)?第\s*[一二三四五六七八九十百\d]+\s*[章节]", line
     ):  # 中文章/节标题
+        return True
+    # ★目录块: 无页码的中文目录(只有"一、二、三…"编号小节+"参考书目", 没有正文)
+    #   识别不了"行尾页码"那种目录格式, 靠"参考书目"这个只在目录/章末书目里出现的词兜底:
+    #   附近(±400字)出现"参考书目" → 大概率还在目录区(正文里不会平白出现这四个字连用).
+    window = text[max(0, pos - 400) : pos + 400]
+    if "参考书目" in window:
         return True
     return False
 
@@ -366,6 +373,17 @@ def _find_pos(text: str, name: str) -> int:
         ):
             if _not_toc(tl, m.start()) and m.start() >= fm_end:
                 return m.start()
+    # 3b. ★中文术语+英文原名括注: "TERM（English Gloss）" — 译本引入术语的惯例写法(该词第一次
+    #     真正被讲解的地方), 比4b的裸"TERM是…"copula句优先级更高(裸"是"句常是后文顺带提及/转折句,
+    #     不是真讲解处, 如"TERM是防火墙, 但更有效的方式是…"这类会误导到别的主题去).
+    for v in list(dict.fromkeys(variants))[:4]:
+        for m in re.finditer(rf"{re.escape(v)}[（(][A-Za-z][^）)]{{0,60}}[）)]", text):
+            if (
+                m.start() >= fm_end
+                and _not_toc(text, m.start())
+                and not _bad_anchor(text, m.start())
+            ):
+                return m.start()
     # 4b. ★中文定义句式: "X 是/是指/指/意味着/定义为/称为/叫做/即" 或 "所谓X" (跳目录/前言)
     for v in list(dict.fromkeys(variants))[:4]:
         for m in re.finditer(
@@ -392,6 +410,16 @@ def _find_pos(text: str, name: str) -> int:
                 ):
                     return mm.start()
             break
+    # 6. ★中文"修饰语+的+核心词"复合名兜底: LLM 常把原文的裸术语(如"自组织")包装成
+    #    "系统的自组织"这类复合名, 原文往往只有裸核心词——上面按空格切"词"对中文无效
+    #    (中文没有空格). 剥掉最后一个"的"前的修饰部分, 用核心词重试一次(单层, 不递归
+    #    多层防死循环).
+    if "的" in name:
+        core = name.rsplit("的", 1)[-1].strip()
+        if core and core != name and len(core) >= 2:
+            found = _find_pos(text, core)
+            if found >= 0:
+                return found
     return -1
 
 
@@ -486,8 +514,15 @@ async def _plan(llm, text, n):
             seen.add(k)
             out.append(p)
     # ★为每个知识点定位 pos (供 _synth 定向窗口用) — 定位到定义性出现
+    # ★rationale点的name常是LLM自己归纳的整句话式复合短语(如"系统的适应力与内部结构的
+    #   反馈回路"), 原文里根本不会逐字出现, _find_pos直接定位name必然落空(pos=0→_synth
+    #   抠出空内容→persist时当空壳静默丢弃, 见2026-07-07: 某章规划7点仅2点真正入库)。
+    #   rationale点的name定位不到时, 退而用它的explains(所解释的概念——通常是真实术语,
+    #   本就该在原文里能找到)去定位, 而不是直接放弃(pos=0)。
     for p in out:
         found = _find_pos(text, p.get("name", ""))
+        if found < 0 and p.get("type") == "rationale" and p.get("explains"):
+            found = _find_pos(text, p["explains"])
         p["pos"] = found if found >= 0 else 0
     return out
 
@@ -551,8 +586,6 @@ async def main():
         fill = await asyncio.gather(*(s(p) for p in fill_pts))
         kus = list(kus) + list(fill)
         print(f"backfilled {len(fill)} missing → total {len(kus)} KUs", flush=True)
-    import os
-
     Path(os.getenv("PIPELINE_CKPT_DIR", "/tmp") + f"/ch{n}_synth.md").write_text(
         "\n\n".join(f"### {nm}\n{body}" for nm, body in kus), encoding="utf-8"
     )

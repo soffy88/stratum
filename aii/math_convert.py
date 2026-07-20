@@ -229,13 +229,23 @@ for cat in ["可转", "需OCR(烂文本层)", "需OCR(无文字层)", "无章节
         print(f"  {'%4d页 ' % npg if npg else ''}{stem[:60]}")
 
 
-def _write_if_math_textbook(stem, text, path):
+def _write_if_math_textbook(stem, text, path, force=False):
     """判定+写文件(可转/OCR共用尾段). 返回 True=已写入.
-    path=源文件路径, 用于在 frontmatter 里写 source_url(Drive 直链)."""
+    path=源文件路径, 用于在 frontmatter 里写 source_url(Drive 直链).
+    force=True(仅OCR调用路径用): OCR是几十分钟到数小时一次性投入, 门禁(章节/密度)没过
+    也必须写出MD——门禁只该决定"是否自动入飞轮队列", 不该决定"OCR结果要不要保留".
+    这里门禁没过时, 语言判不出就按中文兜底(zh计数≥en才有意义, 判不出通常是没什么正文
+    可数的情况, 罕见)。写出的书章节/密度不达标, 飞轮自己的入库门禁会跳过它、不会误抽,
+    等于放在原地待人工修структура或换更宽松的识别规则重新捡起, 而不是彻底丢失。"""
     ok, lang, m = math_textbook(text)
     if not ok:
-        print(f"  – 跳过[{m}]: {stem[:42]}")
-        return False
+        if not force:
+            print(f"  – 跳过[{m}]: {stem[:42]}")
+            return False
+        zh = len(re.findall(r"[一-鿿]", text[:300000]))
+        en = len(re.findall(r"[A-Za-z]", text[:300000]))
+        lang = "中文数学" if zh >= en else "英文数学"
+        print(f"  ⚠ 质量门未过[{m}], 仍写入(OCR产物不丢): {stem[:35]}")
     tgt = MD_ZH if lang == "中文数学" else MD_EN
     clean = re.sub(r"\s*\(z-lib[^)]*\)|\s*\(z-library[^)]*\)", "", stem).strip()
     if matched(clean):  # 同轮稍早已转/已入库的近似书 → 不重复
@@ -304,7 +314,7 @@ if DO:
                     except Exception as e:
                         print(f"  ✗ OCR失败 {stem[:40]}: {e}")
                         continue
-                    _write_if_math_textbook(stem, text, path)
+                    _write_if_math_textbook(stem, text, path, force=True)
             finally:
                 release_container()
         else:
