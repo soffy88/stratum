@@ -133,8 +133,19 @@ def _normalize_discipline(d: str | None) -> str | None:
     这些纯经济学概念全部被误判为 invariant_candidate=true)。
 
     这里只做粗归一(合并明显同义变体), 不是完整数据清洗——归一不到的哈希/ULID类
-    值原样返回, 残余噪声仍在, cross_disc/invariant_candidate 因此只能当【弱信号】,
-    比 God node 本身的中心性信号更不可靠, 使用时需要知道这层局限。
+    值原样返回。
+
+    ★2026-07-20 复测归一效果(别再凭上面那段描述想象现状): 1137 个概念里 1136 个
+    归一到了真学科(economics 908 / math 195 / physics 2, 另有 31 个 discipline 为空),
+    只剩 1 个 ULID 没归到——即"脏数据导致误判跨学科"这件事实际已经不成立, Scarcity/
+    Demand Curve 现在都正确判为单一 economics, 全库 invariant_candidate 只有 2 个
+    (平均速度/位置函数, math↔physics), 判得对。
+
+    ★真正的局限换了一个: 不是"信号脏", 是"信号几乎不存在"——1137 个概念里只有 287 个
+    有边(75% 完全孤立), 最高中心性仅 0.0097, 且全库实质只有 economics + math 两个学科
+    (physics 只有 2 个概念)。跨学科候选只可能出现在 math↔physics 这条缝里。这不是清洗
+    discipline 能解决的, 根子在上游: 第①层有向关系没建全(267 条边撑 1137 个概念),
+    以及灌进来的书只覆盖经济学和数学。
     """
     if not d:
         return None
@@ -166,8 +177,12 @@ async def graph_god_nodes(
     disciplines 用邻居概念的 discipline 集合近似"跨学科"(Layer1 现有 schema 下,
     refined_ku 没有学科字段, 没法像 SPEC 设想的那样按 KU/超边算, 见 graph_concepts
     模块 docstring 同一条数据缺口)——概念本身的 discipline 是单一标签, 但如果它连接
-    的邻居概念横跨多个学科, 这个概念本身就是"多学科都在用"的候选信号。★discipline
-    原始值质量差(见 _normalize_discipline), cross_disc 只做过粗归一, 仍是弱信号。
+    的邻居概念横跨多个学科, 这个概念本身就是"多学科都在用"的候选信号。
+
+    ★这个信号目前【稀薄到近乎无用】, 但原因不是脏数据(归一已覆盖 1136/1137, 详见
+    _normalize_discipline 的复测记录), 而是图本身太稀疏 + 学科太少: 75% 的概念一条边
+    都没有, 全库实质只有 economics 和 math。要让本性路径B候选真的有料, 得先补第①层
+    有向关系、并灌入经济学/数学以外的学科——不是在这里调判据能解决的。
     """
     conn = await asyncpg.connect(REFINED_DSN)
     try:
