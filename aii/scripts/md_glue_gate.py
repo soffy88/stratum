@@ -100,3 +100,18 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+# ── 概念标记预检(Wiki 2026-07-20: 淘汰率高×成本低的门先跑) ──────────────────
+# 实测 Precalculus 全书 611 条【全是 Example】, 一个编号 Definition/Theorem 都没有 →
+# 烧了 4300s(72分钟) LLM 产出 0 个概念候选。这种书对"概念层接入"这个目的是纯浪费。
+# 该检查只做正则计数(毫秒级、零成本), 所以排在粘连门【之前】: 零标记的书连粘连都不用测。
+_CONCEPT_MARK = __import__("re").compile(
+    r"(?m)^\s{0,3}(?:#{1,4}\s*)?(?:\*\*)?\s*"
+    r"(?:Definition|Theorem|Lemma|Proposition|Corollary|定义|定理|引理|推论|命题)\s*\d"
+)
+
+
+def concept_mark_count(text: str) -> int:
+    """书里编号的 定义/定理/引理/推论/命题 标记数。0 = 这本书产不出概念候选。"""
+    return len(_CONCEPT_MARK.findall(text))

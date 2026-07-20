@@ -27,7 +27,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, "scripts")
-from md_glue_gate import GLUE_THRESHOLD, glue_ratio  # noqa: E402
+from md_glue_gate import GLUE_THRESHOLD, concept_mark_count, glue_ratio  # noqa: E402
 
 BOOK_DIRS = ["/home/soffy/books/MD/英文数学", "/home/soffy/books/MD/中文数学"]
 OUT_BASE = Path("scripts/_staging/math_prog_rename")
@@ -63,17 +63,31 @@ def main() -> int:
         print("没有匹配到书。", file=sys.stderr)
         return 1
 
-    plan, skipped = [], []
+    plan, skip_glue, skip_nomark = [], [], []
     for f, sub in books:
-        ratio, _, _ = glue_ratio(f.read_text(encoding="utf-8", errors="replace"))
+        txt = f.read_text(encoding="utf-8", errors="replace")
+        # ★门序: 概念标记预检【先】于粘连门 —— 淘汰率高 × 成本低的门先跑。
+        # 前者是毫秒级正则计数, 后者要扫全文算比例; 零标记的书连粘连都不用测。
+        # 实测 Precalculus 全书 611 条全是 Example、0 个编号定义/定理 →
+        # 旧顺序下它照跑不误, 烧掉 4300s LLM 产出 0 个概念候选。
+        n_mark = concept_mark_count(txt)
+        if n_mark == 0:
+            skip_nomark.append(f.name)
+            continue
+        ratio, _, _ = glue_ratio(txt)
         if ratio > GLUE_THRESHOLD:
-            skipped.append((f.name, ratio))
+            skip_glue.append((f.name, ratio))
             continue
         plan.append((f, sub, ratio))
 
-    print(f"[{args.tag}] 计划跑 {len(plan)} 本 | 粘连门拦下 {len(skipped)} 本")
-    for n, r in skipped:
-        print(f"   ⏭ {r:5.1%} {n[:56]}")
+    print(
+        f"[{args.tag}] 计划跑 {len(plan)} 本 | 无概念标记跳过 {len(skip_nomark)} 本"
+        f" | 粘连门拦下 {len(skip_glue)} 本"
+    )
+    for n in skip_nomark:
+        print(f"   ⏭ 0概念标记 {n[:52]}")
+    for n, r in skip_glue:
+        print(f"   ⏭ 粘连{r:5.1%} {n[:52]}")
     if args.dry_run:
         for f, sub, r in plan:
             print(f"   · {r:5.1%} {f.name[:56]}")
