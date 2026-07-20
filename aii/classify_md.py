@@ -210,7 +210,14 @@ def classify(path):
                 f"讲义型(定理{_thm_full} {n // 1024}KB, doc_type=paper但B范式可抽)",
                 _out,
             )
-        return ("低质", "学术论文(doc_type=paper)", None)
+        # ★普通论文(非讲义型)不再判"低质"扔掉——论文≠教材,不需要凑章节/定理密度,
+        # 走 generate_bu.py 的论文分支(BU两层理解 + paper_v3_gate.py skill抽取,
+        # 见 docs/PAPER_BU_SCHEMA.md)。只挡明显不合格的(OCR乱码/摘要级残片)。
+        if fffd / max(n, 1) > 0.008:
+            return ("低质", f"OCR乱码({100 * fffd // n}%)", None)
+        if n < 15000:
+            return ("低质", f"论文太短({n // 1024}KB, 疑似摘要/残片)", None)
+        return ("论文", f"{n // 1024}KB", _out)
     if _PAPER.search(name):
         return ("低质", "学术论文(非教材)", None)
     if n < 60000:
@@ -262,7 +269,7 @@ for f in sorted(glob.glob(f"{SRC}/*.md")):
     cat, reason, cleaned = classify(f)
     cats.setdefault(cat, []).append((Path(f).name, reason, cleaned))
 
-for cat in ["经济学", "中文数学", "英文数学", "其它", "低质", "SKIP"]:
+for cat in ["经济学", "中文数学", "英文数学", "论文", "其它", "低质", "SKIP"]:
     items = cats.get(cat, [])
     print(f"\n=== {cat} ({len(items)}) ===")
     for name, reason, _ in items[:60]:
