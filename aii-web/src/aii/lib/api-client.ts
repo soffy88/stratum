@@ -158,6 +158,8 @@ import type {
   GodNodeRequest,
   GodNodeResponse,
   ThemesResponse,
+  CommunitiesRequest,
+  CommunitiesResponse,
 } from '@/aii/types/api';
 
 function qs(params: Record<string, unknown>): string {
@@ -233,6 +235,15 @@ export async function getGodNodes(req: GodNodeRequest = {}): Promise<ApiResult<G
 export async function getThemes(): Promise<ApiResult<ThemesResponse>> {
   if (USE_MOCK) return mock.mockThemes();
   return request<ThemesResponse>('/api/graph/themes', { method: 'GET' });
+}
+
+// ── Leiden 社区预览(改进二 · resolution 调参用,现算不落库) ──
+export async function getCommunities(req: CommunitiesRequest = {}): Promise<ApiResult<CommunitiesResponse>> {
+  if (USE_MOCK) return mock.mockCommunities(req);
+  return request<CommunitiesResponse>(
+    `/api/graph/communities${qs({ resolution: req.resolution, min_size: req.min_size })}`,
+    { method: 'GET' }
+  );
 }
 
 export async function getKcList(
