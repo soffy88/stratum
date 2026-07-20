@@ -126,6 +126,13 @@ async def persist(conn, n, kus):
         kt = _TYPE_MAP.get(typ, "conceptual")
         is_pos = kt == "positional"
         stance = (p.get("stance_holder") or None) if is_pos else None
+        # ★LLM 偶尔标 positional 却不给 stance_holder → 撞 ck_ku_onto_positional_holder
+        # 硬约束, 整章 persist 中途炸掉(前面已插的KU真提交, 后面全丢, 还得重跑一次LLM).
+        # 降级成 conceptual 而不是让DB拒绝: KU内容本身抽出来了, 只是够不上positional的
+        # 元数据要求, 不该因为这个丢整章.
+        if is_pos and not stance:
+            kt = "conceptual"
+            is_pos = False
         opposing = (p.get("opposing") or p.get("opposing_stance") or None) if is_pos else None
         ku_id = f"{SUB}::ch{n}_ku{i}"
         emb = (

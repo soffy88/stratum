@@ -28,6 +28,9 @@ def _ku_type(t):
     return {
         "定理": "rationale",
         "推论": "rationale",
+        "引理": "rationale",
+        "命题": "rationale",
+        "例子": "procedural",
         "定义": "conceptual",
         "知识点": "conceptual",
     }.get(t, "conceptual")
