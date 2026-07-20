@@ -36,8 +36,27 @@ def check(label: str, ok: bool, detail: str = ""):
         FAIL += 1
 
 
+def test_rules():
+    """新书自动登记用的程序化规则(discipline_rules)——存量和增量必须是同一把尺。"""
+    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent / "aii"))
+    from aii.service.discipline_rules import classify, CONTROLLED
+
+    cases = [
+        ("数学", ["导数的定义", "积分中值定理", "函数的连续性"], "微积分教程"),
+        ("经济学", ["需求价格弹性", "消费者剩余", "市场均衡"], "微观经济学"),
+        ("心理学", ["记忆的编码", "注意力资源", "知觉恒常性"], "认知心理学"),
+        ("其他", ["随想一", "随想二"], None),  # 无信号 → 落其他, 不留空不硬判
+    ]
+    for expect, titles, title in cases:
+        got, why = classify(titles, title)
+        check(f"规则: {expect}", got == expect, f"得到 {got}({why[:34]})")
+    got, _ = classify([], None)
+    check("空输入不抛异常", got in CONTROLLED, f"得到 {got}")
+
+
 async def main():
     print("substrate→discipline 映射回归测试")
+    test_rules()
     conn = await asyncpg.connect(DSN)
     try:
         # 1. 映射表存在且非空

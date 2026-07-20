@@ -32,6 +32,7 @@ from oprim import vector_encode
 
 from aii.service import onto_vocab as V
 from aii.service.structural_gate import is_structural_noise
+from aii.service.discipline_rules import classify as classify_discipline
 
 from omodul.register_ku_ontology import (
     register_ku_ontology,
@@ -116,13 +117,35 @@ async def persist_ontology_result(
             substrate_id,
         )
         if book_discipline is None:
-            # ★不静默放行(Wiki 2026-07-20 定的运维纪律: 新书登记 discipline 必填, 否则
-            # 新 substrate 继续烂)。只让这一本失败, 飞轮会记异常继续下一本。
-            raise ValueError(
-                f"substrate_id={substrate_id!r} 不在 aii.substrate_discipline 映射表里。"
-                "请先往该表加一行(受控集合: 数学/经济学/哲学/心理学/计算机/其他), "
-                "并同步 aii/migrations/seed/substrate_discipline.tsv 提交 git。"
-                "★论文类 substrate 本就不该走概念层(见 migrations/0002 注释)。"
+            # ★新书自动登记(不阻塞灌书): 新 substrate 按定义不可能预先在映射表里,
+            # 直接 raise 会让【每一本新书】都失败 —— 5 条飞轮持续在跑, 那是活的停摆。
+            # 但也不能不管("否则新 substrate 继续烂, 下个月又是一堆 NULL"),
+            # 所以用与存量同一套程序化规则(discipline_rules, 0 LLM、命中可回溯)现场定级,
+            # 落 confirmed_by=NULL 的行等人复核 —— 灌书不停, 也不静默烂掉。
+            # 复核清单: SELECT * FROM aii.substrate_discipline WHERE confirmed_by IS NULL
+            sample_titles = [t for t in (_as_text(k.get("title")) for k in ku_candidates) if t][
+                :200
+            ]
+            book_title = await conn.fetchval(
+                "SELECT title FROM aii.ingested_substrate WHERE substrate_id = $1",
+                substrate_id,
+            )
+            book_discipline, evidence = classify_discipline(sample_titles, book_title)
+            await conn.execute(
+                "INSERT INTO aii.substrate_discipline"
+                "  (substrate_id, discipline, decided_by, evidence) VALUES($1,$2,$3,$4) "
+                "ON CONFLICT (substrate_id) DO NOTHING",
+                substrate_id,
+                book_discipline,
+                "program_keyword",
+                f"[新书自动登记] {evidence}",
+            )
+            logger.warning(
+                "onto_persist: substrate=%r 未预先登记学科, 已按程序化规则自动定为 %r (%s)"
+                " —— 未经人工确认, 请复核 aii.substrate_discipline 中 confirmed_by IS NULL 的行",
+                substrate_id,
+                book_discipline,
+                evidence,
             )
 
         # ── 先把全书概念 upsert, 拿 name→concept_id 映射 ───────────────
