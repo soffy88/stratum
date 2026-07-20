@@ -132,17 +132,38 @@ PLAN_AUDIT_SYS = (
 )
 
 
+# ★重试可观测(2026-07-20, 同一条模式教训的第六个案例): 这里原来完全静默重试 ——
+# 429 限流和超时退避不留任何痕迹, 于是"每章 444s vs 估算 220s"这个 2 倍偏差
+# 在日志里查无实据, 只能靠猜。退避是一种降级, 降级必须可观测。
+# 计数器累计到进程级, 跑完由调用方打印, 用来分辨"限流拖慢"还是"成本模型本身错了"。
+RETRY_STATS = {"calls": 0, "retries": 0, "rate_limited": 0, "timeouts": 0, "backoff_s": 0.0}
+
+
 async def _call_with_retry(retries=4, base_delay=8, **kwargs):
+    RETRY_STATS["calls"] += 1
     for attempt in range(retries):
         try:
-            return await _LLM(**kwargs)
+            t0 = time.time()
+            r = await _LLM(**kwargs)
+            RETRY_STATS.setdefault("llm_s", 0.0)
+            RETRY_STATS["llm_s"] += time.time() - t0
+            return r
         except Exception as e:
             if attempt == retries - 1:
                 raise
             msg = str(e)
             if "429" not in msg and "timed out" not in msg.lower() and "timeout" not in msg.lower():
                 raise
-            await asyncio.sleep(base_delay * (2**attempt))
+            kind = "rate_limited" if "429" in msg else "timeouts"
+            RETRY_STATS[kind] += 1
+            RETRY_STATS["retries"] += 1
+            delay = base_delay * (2**attempt)
+            RETRY_STATS["backoff_s"] += delay
+            print(
+                f"    ↻ 重试{attempt + 1}/{retries - 1} ({kind}, 退避{delay}s): {msg[:90]}",
+                flush=True,
+            )
+            await asyncio.sleep(delay)
 
 
 # ★裁1 结构闸(Wiki 2026-07-20): 数学的真知识点=定义/定理(MATH-PIPELINE-001), 例题从来
@@ -199,7 +220,18 @@ async def audit_plan(kus, chapter_n):
     except Exception as e:
         print(f"  ⚠ ch{chapter_n} 规划审核调用失败(不拦截, 全部保留): {e}", flush=True)
         return kus
-    if not parsed:  # 解析失败/空 → fail-open 全保留, 不因判官抽风丢数据
+    if not parsed:
+        # fail-open 全保留(不因判官抽风丢数据), 但★必须报警 —— 这条路原来完全静默,
+        # 于是"②在密集章节整章拿不到名字"这件事在日志里一声不响(2026-07-20 实测:
+        # 手册类书 302/152 条候选的章 → 命名 0 条, 无任何输出)。
+        # 根因是 max_tokens 的 8000 上限: 每条候选要输出 label+keep+name 约 40~60 token,
+        # 超过 ~50 条候选的章就必然被截断 → JSON 不闭合 → 这里 parsed 为空。
+        # ★这是容量问题不是判官抽风, 修法是把候选分片调用(见 TODO), 不是调大 max_tokens。
+        print(
+            f"  ⚠ ch{chapter_n} 规划审核无有效输出({len(kus)}条候选, 疑似超出单次JSON容量"
+            f"→响应被 max_tokens 截断), 全保留但【本章 0 条命名】",
+            flush=True,
+        )
         return kus
     # ★防御性剥离: 万一LLM仍把方括号/引号原样抄进label(见上面注释), 这里兜底清一次.
     by_label = {
@@ -499,3 +531,12 @@ for n in sorted(by_ch):
         + " / ".join(f"{k['label']}={k['point']}" for k in kus[:3])
     )
 print(f"★ 完成: {total} KU → {STAGING}  (规划审核LLM调用={'0(无key)' if not _LLM else '章数'})")
+# ★成本诊断: 分辨"限流退避拖慢"还是"成本模型本身错了"(2026-07-20 的 444s/章 vs 220s/章)
+if _LLM:
+    _r = RETRY_STATS
+    _llm = _r.get("llm_s", 0.0)
+    print(
+        f"   ⏱ LLM调用 {_r['calls']} 次, 净生成 {_llm:.0f}s"
+        f" | 重试 {_r['retries']} 次(429={_r['rate_limited']}, 超时={_r['timeouts']})"
+        f", 退避累计 {_r['backoff_s']:.0f}s"
+    )
