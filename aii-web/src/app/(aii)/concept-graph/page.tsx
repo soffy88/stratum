@@ -265,7 +265,9 @@ export default function ConceptGraphPage() {
         <div className="flex flex-col gap-1">
           {themesState.data.stale && (
             <p className="text-xs text-amber-600">
-              ⚠ 概念图已在固化后变化,染色可能不准——需要重跑 scripts/build_theme_kc.py 重新固化。
+              ⚠{' '}
+              {themesState.data.stale_reason ??
+                '固化结果已不完整——需要重跑 scripts/build_theme_kc.py。'}
             </p>
           )}
           {themesState.data.themes.some((t) => t.grade === 'unverified') && (
