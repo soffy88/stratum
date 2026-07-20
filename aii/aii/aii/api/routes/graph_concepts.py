@@ -338,28 +338,20 @@ async def graph_communities(
     )
 
 
-_THEME_RESOLUTION = 1.0
-_THEME_MIN_SIZE = 3
-
-
 @router.get("/graph/themes")
 async def graph_themes():
     """已固化主题(rf.refined_theme_kc, AII-KNOWLEDGE-FIRST-SPEC-001 改进二)的读接口
     ——供前端"按主题染色"视图用。★只读, 不写任何表(固化本身由 scripts/build_theme_kc.py
-    离线跑, 这里只是把固化结果连同 concept_id 归属一起吐给前端)。
+    离线跑, 这里只把固化结果连同概念归属吐给前端)。
 
-    refined_kc_member 挂的是 ku_id(见 build_theme_kc.py 同一条 schema 说明), 不能直接
-    拿它反查 concept_id——尤其是 9 个纯数学社区在固化时就是 0 KU(概念只靠概念-概念边
-    关联, 没有挂载 KU), 走 KU 反查这些社区会一个概念都染不上色。因此这里改为在
-    concept-concept 图上用【跟 build_theme_kc.py 完全相同的 resolution/min_size/seed】
-    重新算一遍 Leiden(seed 固定, 图不变则结果确定不变, 不是"又调了一遍参数"),
-    按同样的"过滤 min_size → 按size降序排序"规则得到 cluster 列表, 按顺序对齐固化时
-    写入的 kc_id 顺序(build_theme_kc.py 写入顺序 = 同一套排序规则, 两边一致)。
+    概念归属直接读 rf.refined_kc_concept(migrations/refined/0005)——那是 build_theme_kc.py
+    固化当时如实写下的聚类产物。此前这里是"每次请求重跑一遍 Leiden, 再按 size 降序的
+    位置去对齐 kc_id", 概念图一变就会静默错位染色(把 A 主题的颜色刷到 B 主题的概念上),
+    唯一护栏"cluster数量==theme行数"挡不住"数量没变而边界变了"。现在不重算不对齐。
 
-    ★如果自固化以来 B仓概念图变过(新概念/新边), 重算出的 cluster 数量或顺序可能跟
-    固化时不再一致——这里做一个粗校验(cluster 数量对不对得上 theme 行数), 对不上就在
-    响应里标 stale=true, 提示"概念图已变化, 需要重跑 build_theme_kc.py 重新固化",
-    不会假装对得上而悄悄给出错的染色。
+    ★stale 判据也随之变实: 不再是猜数量对不对得上, 而是看固化后概念图有没有新增概念/
+    新增边(created_at 晚于主题固化时间)。有 → stale=true 提示重跑 build_theme_kc.py,
+    但已有的染色仍然是固化当时的真实归属, 不是错位的猜测。
     """
     conn = await asyncpg.connect(REFINED_DSN)
     try:
@@ -371,79 +363,64 @@ async def graph_themes():
             ORDER BY kc_id
             """
         )
-        concepts = await conn.fetch(
-            "SELECT concept_id, name, name_zh, discipline FROM rf.refined_concept"
+        if not theme_rows:
+            return success_response({"themes": [], "concept_theme": {}, "stale": False})
+
+        kc_ids = [r["kc_id"] for r in theme_rows]
+        member_rows = await conn.fetch(
+            "SELECT kc_id, concept_id FROM rf.refined_kc_concept WHERE kc_id = ANY($1::bigint[])",
+            kc_ids,
         )
-        edges = await conn.fetch(
-            "SELECT src_concept, dst_concept, strength FROM rf.refined_directed_edge"
+        # 固化后新增的概念(还没被任何一版聚类覆盖)——不是错位, 是"这些点还没有主题"。
+        newer_concepts = await conn.fetchval(
+            "SELECT count(*) FROM rf.refined_concept WHERE created_at > $1",
+            max(r["created_at"] for r in theme_rows if r["created_at"]),
         )
     finally:
         await conn.close()
 
-    if not theme_rows:
-        return success_response({"themes": [], "concept_theme": {}, "stale": False})
-
-    id_list = [c["concept_id"] for c in concepts]
-    idx_of = {cid: i for i, cid in enumerate(id_list)}
-
-    g = ig.Graph()
-    g.add_vertices(len(id_list))
-    edge_pairs: list[tuple[int, int]] = []
-    weights: list[float] = []
-    seen: set[tuple[int, int]] = set()
-    for e in edges:
-        s, t = e["src_concept"], e["dst_concept"]
-        if s not in idx_of or t not in idx_of or s == t:
-            continue
-        key = tuple(sorted((idx_of[s], idx_of[t])))
-        if key in seen:
-            continue
-        seen.add(key)
-        edge_pairs.append(key)
-        weights.append(float(e["strength"] or 1.0))
-    g.add_edges(edge_pairs)
-    if weights:
-        g.es["weight"] = weights
-
-    partition = leidenalg.find_partition(
-        g,
-        leidenalg.RBConfigurationVertexPartition,
-        resolution_parameter=_THEME_RESOLUTION,
-        weights="weight" if weights else None,
-        seed=42,
-    )
-    clusters = [
-        [id_list[i] for i in member_indices]
-        for member_indices in partition
-        if len(member_indices) >= _THEME_MIN_SIZE
-    ]
-    clusters.sort(key=len, reverse=True)
-
-    stale = len(clusters) != len(theme_rows)
-    n = min(len(clusters), len(theme_rows))
-
-    themes = []
     concept_theme: dict[int, int] = {}
-    for i in range(n):
-        row = theme_rows[i]
-        members = clusters[i]
-        themes.append(
-            {
-                "kc_id": row["kc_id"],
-                "theme_name": row["theme_name"],
-                "theme_name_en": row["theme_name_en"],
-                "summary": row["summary"],
-                "summary_zh": row["summary_zh"],
-                "source_books": _jsonb(row["source_books"], []),
-                "size": len(members),
-                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
-                "grade": row["grade"],
-            }
-        )
-        for m in members:
-            concept_theme[m] = row["kc_id"]
+    size_by_kc: dict[int, int] = {}
+    for r in member_rows:
+        concept_theme[r["concept_id"]] = r["kc_id"]
+        size_by_kc[r["kc_id"]] = size_by_kc.get(r["kc_id"], 0) + 1
 
-    return success_response({"themes": themes, "concept_theme": concept_theme, "stale": stale})
+    # 有主题行却一条概念成员都没有 = 这批主题是 0005 迁移之前固化的旧数据, 概念归属
+    # 当年没存下来。★不退回"重算+猜对齐"那条老路(那正是本次要拆掉的错位来源), 如实
+    # 报 stale 并让 concept_theme 为空——宁可不染色, 不给可能错的颜色。
+    legacy_no_members = not member_rows
+
+    themes = [
+        {
+            "kc_id": r["kc_id"],
+            "theme_name": r["theme_name"],
+            "theme_name_en": r["theme_name_en"],
+            "summary": r["summary"],
+            "summary_zh": r["summary_zh"],
+            "source_books": _jsonb(r["source_books"], []),
+            "size": size_by_kc.get(r["kc_id"], 0),
+            "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+            "grade": r["grade"],
+        }
+        for r in theme_rows
+    ]
+
+    return success_response(
+        {
+            "themes": themes,
+            "concept_theme": concept_theme,
+            "stale": legacy_no_members or bool(newer_concepts),
+            "stale_reason": (
+                "主题KC固化于 rf.refined_kc_concept 之前, 概念归属未存——请重跑 scripts/build_theme_kc.py"
+                if legacy_no_members
+                else (
+                    f"固化后新增了 {newer_concepts} 个概念, 尚未归入任何主题——可重跑 scripts/build_theme_kc.py"
+                    if newer_concepts
+                    else None
+                )
+            ),
+        }
+    )
 
 
 @router.get("/graph/node/{concept_id}")
