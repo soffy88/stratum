@@ -145,6 +145,33 @@ async def _call_with_retry(retries=4, base_delay=8, **kwargs):
             await asyncio.sleep(base_delay * (2**attempt))
 
 
+# ★裁1 结构闸(Wiki 2026-07-20): 数学的真知识点=定义/定理(MATH-PIPELINE-001), 例题从来
+# 就不该独立成概念。实测干净本 ch2: ②给 49 条命了名, 其中定理6+定义8=14 条是真概念名
+# (挤压定理/水平渐近线/区间连续定义), 而 35 条例题拿到的是【描述性标签】
+# (拆差分解极限/导数差商极限)——那不是数学概念, 是这道题的摘要。
+# 它当 KU 显示标签比"例3"强得多, 价值在展示层; 错只错在冒充概念。
+# 所以按类型程序化分流, 不靠 LLM 自觉: 定理/定义 → 概念候选; 例 → 仅显示字段。
+_CONCEPT_TYPES = ("定义", "定理", "引理", "推论", "命题")
+
+
+def is_concept_candidate(ku) -> bool:
+    """该 KU 的名字能不能进 concept_onto。★程序化判据, 不问 LLM。"""
+    return ku.get("type") in _CONCEPT_TYPES
+
+
+def _apply_llm_names(kus, by_label):
+    """把②给的名字写回 KU。★同时按结构闸分流: 只有定理/定义类才标成概念候选。
+
+    concept_candidate=True  → 名字可进 concept_onto
+    concept_candidate=False → 名字只做显示(label), 例题的"名"是摘要不是概念, 进概念层就是编
+    """
+    for k in kus:
+        nm = (by_label.get(k["label"]) or {}).get("name", "").strip()
+        if nm:
+            k["llm_name"] = nm  # ★name_kus() 优先用书自带括号名, 其次这个, 最后才摘首句
+        k["concept_candidate"] = bool(nm) and is_concept_candidate(k)
+
+
 async def audit_plan(kus, chapter_n):
     """规划审核: 候选标记里筛掉非真概念(交叉引用/半截碎片/重复); 顺带给类型合适的展示名
     (概念→概念名, 定理→定理名/断言概括, 例子→题目概括——不是逐字摘录整句). 不改内容本身,
@@ -187,9 +214,17 @@ async def audit_plan(kus, chapter_n):
     #   不是真的抽取质量问题. 回退成全保留, 而不是让一次坏调用吞掉一整章内容.
     drop_ratio = 1 - len(keep & {k["label"] for k in kus}) / len(kus)
     if drop_ratio > 0.4:
+        # ★安全阀解耦(2026-07-20): 以前这里直接 return kus, 把②的【两个独立产出】
+        # 一起丢——留弃决策(确实不可信, 该丢)和命名(无辜, 被连坐)。drop_ratio 过高
+        # 说明的是"②在这本书上的【留弃判断】不可信", 并不说明"②起的名字不可信":
+        # 实测烂本 ch1 触发安全阀后, 156 条 KU 一个名字都没拿到, 全部退回③摘首句。
+        # 两者可信度独立 → 留弃全回退(保持原行为), 命名照单保留。
+        # 这与 fail-open 那条同源: 降级时必须【最小化伤害面】, 别顺手扩大。
+        _apply_llm_names(kus, by_label)
+        got = sum(1 for k in kus if k.get("llm_name"))
         print(
             f"  ⚠ ch{chapter_n} 规划审核丢弃比例异常({drop_ratio:.0%}, 疑似判官抽风)"
-            f", 不可信, 回退全保留",
+            f", 留弃判断不可信→全保留; 但命名仍采纳({got}/{len(kus)} 条拿到名字)",
             flush=True,
         )
         return kus
@@ -201,10 +236,7 @@ async def audit_plan(kus, chapter_n):
             flush=True,
         )
     kept = [k for k in kus if k["label"] in keep]
-    for k in kept:
-        nm = (by_label.get(k["label"]) or {}).get("name", "").strip()
-        if nm:
-            k["llm_name"] = nm  # ★name_kus() 优先用书自带括号名, 其次这个, 最后才摘首句
+    _apply_llm_names(kept, by_label)
     return kept
 
 
@@ -268,6 +300,9 @@ def extract_chapter(ch_text, chapter_n):
                 "zh": "",
                 "chapter": chapter_n,
                 "key_terms": [],
+                # ★裁1结构闸: 名字能否进 concept_onto。默认 False,
+                # 由 _apply_llm_names 按 KU 类型(定理/定义 vs 例)程序化置位。
+                "concept_candidate": False,
             }
         )
     return kus
@@ -416,6 +451,9 @@ def extract_all(text):
                 "zh": "",
                 "chapter": ch,
                 "key_terms": [],
+                # ★裁1结构闸: 名字能否进 concept_onto。默认 False,
+                # 由 _apply_llm_names 按 KU 类型(定理/定义 vs 例)程序化置位。
+                "concept_candidate": False,
             }
         )
     return kus
