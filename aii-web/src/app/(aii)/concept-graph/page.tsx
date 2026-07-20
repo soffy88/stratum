@@ -9,9 +9,11 @@
  *   - risk_flag 目前只基于 alias_count(≥3),decision_id 链路暂空,"跨discipline判据"
  *     当前 schema 不可计算,详见实施计划。
  *   - "一键回溯 A仓原文"目前只到"看到 a_concept_ids"这一步,没有 A仓原文查询接口。
- *   - ★God Node 只是本性路径B候选提示,不是本性认定——高中心性≠有本性;disciplines
- *     字段依赖的 discipline 原始数据质量差(多为per-book哈希/ULID,只做过粗归一),
- *     跨学科信号仍偏弱,详见后端 graph_god_nodes 函数 docstring。
+ *   - ★God Node 只是本性路径B候选提示,不是本性认定——高中心性≠有本性。
+ *   - ★候选目前极少(跨学科的只有2个),原因不是判据太严也不是数据脏(discipline 归一
+ *     已覆盖 1136/1137),而是图本身没长起来:1137 个概念里只有 287 个有边,且全库实质
+ *     只有经济学和数学两个学科。详见后端 graph_god_nodes / _normalize_discipline
+ *     的复测记录。页面如实把这层稀疏度显示出来,不让人误以为是判据问题。
  */
 'use client';
 
@@ -254,7 +256,7 @@ export default function ConceptGraphPage() {
             onChange={(e) => setCrossDiscOnly(e.target.checked)}
             disabled={!showGodNodes}
           />
-          只看跨学科候选(信号偏弱,discipline 原始数据质量差)
+          只看跨学科候选(全库目前仅 2 个,因为学科只有经济学和数学)
         </label>
       </OGridFrame>
 
@@ -321,9 +323,20 @@ export default function ConceptGraphPage() {
       </div>
 
       {showGodNodes && godState.data && (
-        <p className="text-xs text-[color:var(--text-tertiary,#888)]">
-          God Node 候选 {godState.data.god_nodes.length} 个(全图 {godState.data.graph_size} 概念)
-        </p>
+        <div className="flex flex-col gap-1">
+          <p className="text-xs text-[color:var(--text-tertiary,#888)]">
+            God Node 候选 {godState.data.god_nodes.length} 个(全图 {godState.data.graph_size} 概念) ·
+            其中跨学科(本性路径B候选){godState.data.god_nodes.filter((g) => g.invariant_candidate).length} 个
+          </p>
+          {/* ★如实告知信号有多稀薄——不说的话,"候选只有个位数"看起来像判据太严,
+              实际是图本身没长起来(概念大多没有边),调判据解决不了。 */}
+          <p className="text-xs text-amber-600">
+            ⚠ 中心性算在一张很稀疏的图上:{' '}
+            {godState.data.god_nodes.filter((g) => g.centrality > 0).length}/{godState.data.graph_size}{' '}
+            个概念才有边,其余是孤立点。跨学科信号还受限于全库只有经济学和数学两个学科——
+            要让候选真的有料,得先补第①层有向关系、并灌入其它学科的书。
+          </p>
+        </div>
       )}
 
       {colorMode === 'theme' && themesState.data && (
