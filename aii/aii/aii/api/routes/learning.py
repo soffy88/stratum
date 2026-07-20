@@ -1102,6 +1102,8 @@ _COACH_SYSTEM = (
     "  · ku_coverage='insufficient'(教学材料为空或过短, B仓没覆盖这个点): 你可以用自己的通用知识讲,"
     "但 message ★必须以'⚠ B仓暂未覆盖这个知识点, 以下是通用知识(未经 AII 编译):'开头, 不能不声明就"
     "当作编译精华讲——绝不允许在B仓没覆盖时装作是编译过的内容, 那是骗学习者。\n"
+    "  · ku_coverage='not_applicable': 这一回合不是讲知识点(是欢迎/判分后的反馈引导), 不需要教学材料,"
+    "也不要加上面那句声明。\n"
     "【按状态决定 action 与 message】"
     "phase=start: 欢迎+简述怎么学(逐点、独立作答、裁判判真掌握), action=start; "
     "phase=present: 讲清这个知识点关键(遵守上面的 Query-first 红线), 再布置该点任务(概念→用简单话讲清; "
@@ -1117,6 +1119,21 @@ def _coach_leaks(text: str) -> bool:
     return any(s in low for s in ("答案是", "答案为", "the answer is", "正确答案：", "证明如下："))
 
 
+# ★Query-first 兜底声明(AII-KNOWLEDGE-FIRST-SPEC-001 §3.2/§3.4)。prompt 里要求 LLM 自己加,
+# 但"要求"不是"保证"——模型漏加就等于把通用知识冒充成 B仓编译精华。跟 _coach_leaks 一样在
+# Python 侧硬校验兜底: 该声明而没声明的, 由我们补上, 不指望模型守规矩。
+_UNCOMPILED_MARKER = "⚠ B仓暂未覆盖这个知识点, 以下是通用知识(未经 AII 编译):"
+
+
+def _ku_coverage(phase: str, teaching_material: str) -> str:
+    """B仓对当前回合够不够用。★只有'讲知识点'的回合才谈得上覆盖——欢迎(start)和判分后的
+    反馈引导(judged)本来就不该吃教学材料, 给它们判 insufficient 会让教练在纯反馈里也挂
+    '未经编译'声明(噪声, 且把红线稀释成套话)。阈值 50 字符: 少于这个基本讲不清一个知识点。"""
+    if phase != "present":
+        return "not_applicable"
+    return "sufficient" if len(teaching_material.strip()) >= 50 else "insufficient"
+
+
 async def _coach_turn(
     *, phase, objective=None, student_input=None, verdict=None, ku_context=None, history=None
 ) -> dict:
@@ -1127,18 +1144,19 @@ async def _coach_turn(
             "message": "🎓 这一段的知识点你都独立通过了，扎实学完了。要不要挑下一章？",
             "action": "done",
             "revealed_answer": False,
+            "ku_coverage": "not_applicable",
         }
     # ★Query-first: B仓覆盖够不够, 显式告诉 LLM, 别让它自己从"材料是不是空的"去猜
     # (猜的话大概率不猜, 直接凭训练知识悄悄讲——B仓白建, 见 AII-KNOWLEDGE-FIRST-SPEC-001 §3)。
-    # 阈值 50 字符: 少于这个基本讲不清一个知识点, 等同没材料。
     teaching_material = (ku_context or "")[:4000]
+    coverage = _ku_coverage(phase, teaching_material)
     state = {
         "phase": phase,
         "objective": objective,
         "student_input": student_input,
         "verdict": verdict,
         "teaching_material": teaching_material,
-        "ku_coverage": "sufficient" if len(teaching_material.strip()) >= 50 else "insufficient",
+        "ku_coverage": coverage,
     }
     msgs = list(history or [])
     msgs.append(
@@ -1156,6 +1174,7 @@ async def _coach_turn(
             "message": (verdict or {}).get("feedback") or "我们继续。",
             "action": act,
             "revealed_answer": False,
+            "ku_coverage": coverage,
         }
     try:
         data = json.loads(m.group(0))
@@ -1167,13 +1186,22 @@ async def _coach_turn(
             "message": (verdict or {}).get("feedback") or "我们继续。",
             "action": act,
             "revealed_answer": False,
+            "ku_coverage": coverage,
         }
     message = str(data.get("message", "")).strip() or "我们继续。"
     action = data.get("action") if data.get("action") in _COACH_ACTIONS else "present"
     revealed = _coach_leaks(message)
     if revealed:
         message = "我先不把答案给你——那样裁判就白判了。你卡在哪一步？说说你的想法，我顺着引导。"
-    return {"message": message, "action": action, "revealed_answer": revealed}
+    elif coverage == "insufficient" and not message.startswith(_UNCOMPILED_MARKER):
+        # B仓没覆盖却没声明 = 把通用知识当编译精华递出去。补声明, 不静默放行。
+        message = f"{_UNCOMPILED_MARKER}\n{message}"
+    return {
+        "message": message,
+        "action": action,
+        "revealed_answer": revealed,
+        "ku_coverage": coverage,
+    }
 
 
 @router.post("/learning/profiles/{profile_id}/tutor/turn")
@@ -1228,13 +1256,19 @@ async def tutor_turn(
             phase = "judged"
 
         ku_context = None
+        used_ku_ids: list = []
+        attached_ku_count = 0
         if phase == "present":
             ku_ids = (
                 json.loads(obj_row["b_repo_ku_ids"])
                 if isinstance(obj_row["b_repo_ku_ids"], str)
                 else (obj_row["b_repo_ku_ids"] or [])
             )
+            attached_ku_count = len(ku_ids)
             rowsku = await _ku_display_rows(ku_ids[:3])  # 只取前几条挂靠KU当教学材料(按需翻译)
+            # ★实际喂给教练的 KU id 要回给调用方——SPEC §3.2 验收"每个知识点可追溯到B仓KU"
+            # 只有把 id 吐出来才验得了; 挂了几条 vs 真用了几条也要分开报(取前3是有损的)。
+            used_ku_ids = [k["ku_id"] for k in rowsku]
             ku_context = "\n\n".join(
                 (k["natural_text_zh"] or k["natural_text"] or "") for k in rowsku
             )
@@ -1259,6 +1293,11 @@ async def tutor_turn(
             "verdict": verdict,
             "revealed_answer": turn["revealed_answer"],
             "reason": why,
+            # ★Query-first 溯源(AII-KNOWLEDGE-FIRST-SPEC-001 §3.2/§3.4): 这段话是"B仓编译过的
+            # 真知识"还是"Claude 的通用知识", 调用方必须能判——不返回 id 就没法验收。
+            "ku_coverage": turn["ku_coverage"],
+            "ku_ids": used_ku_ids,
+            "attached_ku_count": attached_ku_count,
         }
     )
 
