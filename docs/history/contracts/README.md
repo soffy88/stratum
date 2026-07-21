@@ -8,7 +8,8 @@
 | 文件 | 作用 |
 |---|---|
 | `history-query-response.schema.json` | ★冻结契约。§8.1 查询响应 JSON Schema（draft 2020-12）。形状严格取自 spec §3/§4/§8.1，无新增字段。`additionalProperties:false` 全程锁死。 |
-| `sample.sanjiafenjin.json` | ★冻结完整静态样例（三家分晋·晋阳之战节点）。G1b 对拍的基准实例。已验证 conform schema。 |
+| `sample.sanjiafenjin.json` | ★冻结完整静态样例（三家分晋·晋阳之战节点）。G1b 对拍的基准实例。**JSON 本体零下划线键，committed bytes 原样过 validate**（无 strip-before-validate 隐形预处理——那会让 G1b 要么复刻要么漂移）。 |
+| `sample.sanjiafenjin.notes.md` | 人读注释（从 JSON 迁出）。非契约、不参与对拍。 |
 
 ## G1b 对拍协议（§8.4）
 
@@ -36,12 +37,13 @@ cd docs/history
 python3 - <<'PY'
 import json; from jsonschema import Draft202012Validator
 schema=json.load(open("contracts/history-query-response.schema.json"))
-s=json.load(open("contracts/sample.sanjiafenjin.json"))
-s={k:v for k,v in s.items() if not k.startswith("_")}
+s=json.load(open("contracts/sample.sanjiafenjin.json"))   # 本体零下划线键，原样 validate（无预处理）
 errs=list(Draft202012Validator(schema).iter_errors(s))
 print("VALID" if not errs else f"{len(errs)} errors")
 PY
 ```
+
+> **零下划线约定**：本包所有 JSON 本体不含 `_`-前缀键；人读注释一律在同名 `*.notes.md`。冻结契约的真理形态 = 落盘字节本身，validate 不得依赖任何 strip/预处理步骤。
 
 ## 相关交付
 
