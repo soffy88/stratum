@@ -13,6 +13,8 @@
 
 ## G1b 对拍协议（§8.4）
 
+> **★钉点（pin）**：G1b 对拍 **git tag `history-contract-v0.1`**（annotated tag，非 commit hash）下的 `contracts/{history-query-response.schema.json, sample.sanjiafenjin.json}`。tag 不可变、不惧承载分支后续 rebase/squash。**旧钉点 `ab228ab` 已作废**（其 sample 字节在 `_meta` 迁移中演进；ab228ab 仅存为首个冻结 commit）——改判记入 `docs/history/DECISIONS.md`。
+
 1. 生产端按 `history-query-response.schema.json` 装配 VisualFact 前的中间态（G1a 手工同形数据）。
 2. KU 实装后，`GET`（§8.1 只读接口：时间窗/人物/势力/event_type/断代）→ 返回体**必须 validate 通过本 schema**。
 3. 与 `sample.sanjiafenjin.json` **逐字段对拍**：一致，或**差异可解释**。已知可解释差异：
