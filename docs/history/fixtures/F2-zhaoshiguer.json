@@ -9,7 +9,7 @@
           "前597",
           "前583"
         ],
-        "note": "★date 本身即冲突：史记·赵世家系于晋景公三年（前597）；左传系于成公八年下宫之难（前583）。两端并存，主线取值见 mainline_decision。"
+        "note": "★date 本身即冲突：史记·赵世家系于晋景公三年（前597）；左传系于成公八年下宫之难（前583）。两端并存，主线取值见 mainline_decision。差14年系同一事件的系年异说，非两次族诛（见 rejected_alternatives）。"
       },
       "event_type": "政变",
       "actors": [
@@ -59,9 +59,10 @@
         "ac:zhaonan-shiji-zhaoshijia"
       ],
       "conflicts": [
-        "cf:zhaonan-existence",
+        "cf:zhaonan-shiji-internal",
         "cf:zhaonan-date",
-        "cf:zhaonan-shiji-internal"
+        "cf:zhaonan-existence",
+        "cf:zhaonan-narrative-souhu"
       ],
       "evidence_tier": "E2",
       "tier_override": {
@@ -72,7 +73,7 @@
       "mainline_account_ref": "ac:zhaonan-zuozhuan",
       "mainline_decision": {
         "choice": "ac:zhaonan-zuozhuan",
-        "rationale": "★边界裁定（详 JUDGMENTS.md#F2）：判为『同事异述』——同指赵氏被诛而赵武复兴之本事，屠岸贾/程婴系晚出敷演，落为 existence 冲突对象而非另一事件。主线取左传（近源编年）；史记·赵世家戏剧叙事并陈、走 S12 对勘。前583/前597 之差落为 date 冲突。",
+        "rationale": "★边界裁定（详 JUDGMENTS.md#F2）：判为『同事异述』——同指赵氏被诛而赵武复兴之本事，屠岸贾/搜孤救孤系晚出敷演，落为 existence/narrative 冲突对象而非另一事件、亦非另一次族诛。主线取左传（近源编年，成公八年·前583）；史记·赵世家戏剧叙事全文保留、走 S12 对勘。前583/前597 之差落为 date 冲突。",
         "decided_by": "Wiki-亲裁（待签署）",
         "date": "2026-07-21"
       }
@@ -105,7 +106,7 @@
         "number_claims": [],
         "dialogue_spans": []
       },
-      "genre_note": "近源编年，晋事最可据；无藏孤替死戏剧情节。"
+      "genre_note": "近源编年，晋事最可据；无藏孤替死戏剧情节。★mainline 依据。"
     },
     {
       "account_id": "ac:zhaonan-shiji-jinshijia",
@@ -116,7 +117,7 @@
         "chapter": "晋世家",
         "section": null,
         "para_ulid": null,
-        "note": "★待补。史记·晋世家因袭左传系统：景公时讨赵同赵括、韩厥存赵武，无屠岸贾藏孤。→ 与同书赵世家自相冲突。"
+        "note": "★待补。史记·晋世家因袭左传系统：景公时讨赵同赵括、韩厥存赵武，无屠岸贾藏孤。→ 与同书赵世家自相冲突（cf:zhaonan-shiji-internal 首证）。"
       },
       "白文span_refs": [],
       "白话ref": null,
@@ -132,7 +133,7 @@
         "number_claims": [],
         "dialogue_spans": []
       },
-      "genre_note": "★史记内部『左传派』一面（取材 src:zuozhuan，见 sources.json derivation_edges）；与赵世家戏剧叙事冲突。"
+      "genre_note": "★史记内部『左传派』一面（取材 src:zuozhuan，见 sources.json derivation_edges）；与赵世家戏剧叙事冲突——归因链首证。"
     },
     {
       "account_id": "ac:zhaonan-shiji-zhaoshijia",
@@ -143,7 +144,7 @@
         "chapter": "赵世家",
         "section": null,
         "para_ulid": null,
-        "note": "★待补。史记·赵世家戏剧叙事：屠岸贾灭赵氏，程婴与公孙杵臼藏赵武，程婴以己子替死、公孙杵臼就死；后景公立赵武、诛屠岸贾。系于晋景公三年（前597）。→ 与同书晋世家、与左传冲突。"
+        "note": "★待补。史记·赵世家戏剧叙事：屠岸贾灭赵氏，程婴与公孙杵臼藏赵武，程婴以己子替死、公孙杵臼就死；后景公立赵武、诛屠岸贾。系于晋景公三年（前597）。→ 与同书晋世家、与左传冲突。★account 全文保留（S12 差异化供给），不因判传说而删。"
       },
       "白文span_refs": [],
       "白话ref": null,
@@ -170,34 +171,34 @@
           "（程婴、公孙杵臼谋孤对白；韩厥梦赵盾等——大段可演绎素材，透传导演，只存不消费）"
         ]
       },
-      "genre_note": "★晚出敷演/传说化（战国赵人追记，太史公采异闻）；戏剧张力强，正是 S12 对勘的差异化内容供给。"
+      "genre_note": "★晚出敷演/传说化（战国赵人追记，太史公采异闻）；后世戏曲『赵氏孤儿』母题所本。戏剧张力强，正是 S12 对勘的差异化内容供给——全文保留，标晚出敷演，不采入史实骨干。"
     }
   ],
   "conflicts": [
     {
-      "conflict_id": "cf:zhaonan-existence",
+      "conflict_id": "cf:zhaonan-shiji-internal",
       "event_ref": "ev:zhaoshi-zhinan",
-      "dimension": "existence",
+      "dimension": "narrative",
       "account_refs": [
-        "ac:zhaonan-shiji-zhaoshijia",
-        "ac:zhaonan-zuozhuan",
-        "ac:zhaonan-shiji-jinshijia"
+        "ac:zhaonan-shiji-jinshijia",
+        "ac:zhaonan-shiji-zhaoshijia"
       ],
       "independence_analysis": {
-        "independent_witness_count": 1,
-        "reasoning": "『屠岸贾灭赵 + 程婴/公孙杵臼藏孤替死』仅史记·赵世家一处独有；左传与史记·晋世家（因袭左传，非独立）皆无。故该情节独立见证 = 1（且晚出、无近源支撑），近源编年（左传）反证其无。存疑走宁碎片：不并入『史实骨干』，作 existence 冲突对象显式并陈。",
+        "independent_witness_count": 0,
+        "reasoning": "★归因链首证：史记内部自裂——晋世家（因袭左传，无屠岸贾/搜孤）与赵世家（屠岸贾+搜孤戏剧叙事）自相矛盾。二者同属史记（源系谱同），不构成两重独立见证（计 0）；但『屠岸贾/搜孤』连史记自己的晋世家都不载，是判定该叙事为晚出敷演的第一条内证，先于 date/existence/narrative 三冲突对象。同时：若 locator 只停『史记』书级，此篇内冲突被抹掉——证明 locator 必到篇（§2.2）。",
         "derivation_notes": [
-          "ac:zhaonan-shiji-jinshijia ← src:zuozhuan（史记晋世家因袭左传）→ 与左传不另计独立见证",
-          "屠岸贾/程婴 3 人物注册表 active_range 已标『仅见赵世家』"
+          "同 source_id=src:shiji，chapter 分别为『晋世家』『赵世家』",
+          "locator.book 相同、locator.chapter 不同 → 冲突可见性依赖 chapter 级 locator",
+          "归因链角色：本条为『赵世家叙事晚出』结论的首证"
         ]
       },
       "mainline_decision": {
-        "choice": "存录为异说，不采入史实骨干（骨干以左传为准）",
-        "rationale": "近源无、晚出敷演、戏剧化痕迹重 → 判为传说增饰，宁碎片不并。但作一等冲突对象保留，S12 对勘正是其价值。",
+        "choice": "以晋世家（左传系统）为史记内可信面；赵世家异叙并陈",
+        "rationale": "同书自相冲突显式记录，示 locator-到-篇之必要 + 作归因链首证；不静默取一。",
         "decided_by": "Wiki-亲裁（待签署）",
         "date": "2026-07-21"
       },
-      "presentation_hint": "S12对勘"
+      "presentation_hint": "仅记录"
     },
     {
       "conflict_id": "cf:zhaonan-date",
@@ -209,7 +210,7 @@
       ],
       "independence_analysis": {
         "independent_witness_count": 2,
-        "reasoning": "前597（赵世家）vs 前583（左传）两系年，分属两叙事系统。差14年——正是本 fixture 入选边界的量化指标。左传近源系年可靠度高。",
+        "reasoning": "前597（赵世家）vs 前583（左传）两系年，差14年——本 fixture 入选边界的量化指标。左传近源系年可靠度高。★此差为同一事件的系年异说，非两次族诛（见 rejected_alternatives 调和说否弃）。",
         "derivation_notes": [
           "前597 = 晋景公三年（史记·赵世家）",
           "前583 = 鲁成公八年（左传）",
@@ -222,31 +223,66 @@
         "decided_by": "Wiki-亲裁（待签署）",
         "date": "2026-07-21"
       },
-      "presentation_hint": "主线+角标"
+      "presentation_hint": "S12对勘"
     },
     {
-      "conflict_id": "cf:zhaonan-shiji-internal",
+      "conflict_id": "cf:zhaonan-existence",
       "event_ref": "ev:zhaoshi-zhinan",
-      "dimension": "narrative",
+      "dimension": "existence",
       "account_refs": [
-        "ac:zhaonan-shiji-jinshijia",
-        "ac:zhaonan-shiji-zhaoshijia"
+        "ac:zhaonan-shiji-zhaoshijia",
+        "ac:zhaonan-zuozhuan",
+        "ac:zhaonan-shiji-jinshijia"
       ],
       "independence_analysis": {
-        "independent_witness_count": 0,
-        "reasoning": "★同书内冲突：史记·晋世家（因袭左传）与史记·赵世家（戏剧叙事）自相矛盾。二者同属史记（源系谱同），不构成两重独立见证；但构成『同源两篇不同述』——若 locator 只停在『史记』书级，此冲突被抹掉。此条存在的唯一目的：证明 locator 必到篇（§2.2）。",
+        "independent_witness_count": 1,
+        "reasoning": "『屠岸贾追赵盾旧案、擅灭赵氏于下宫』仅史记·赵世家独有；左传与史记·晋世家（因袭左传，非独立）皆无。故屠岸贾灭族之说独立见证 = 1（晚出、无近源支撑），近源编年（左传：晋景公诛赵同赵括系政治清算、无屠岸贾）反证其无。宁碎片：不并入史实骨干。",
         "derivation_notes": [
-          "同 source_id=src:shiji，chapter 分别为『晋世家』『赵世家』",
-          "locator.book 相同、locator.chapter 不同 → 冲突可见性依赖 chapter 级 locator"
+          "屠岸贾仅见赵世家（persons.json per:tuoanguijia active_range 已标）",
+          "ac:zhaonan-shiji-jinshijia ← src:zuozhuan → 与左传不另计"
         ]
       },
       "mainline_decision": {
-        "choice": "以晋世家（左传系统）为史记内可信面；赵世家异叙并陈",
-        "rationale": "同书自相冲突显式记录，示 locator-到-篇之必要；不静默取一。",
+        "choice": "存录为异说，不采入史实骨干（骨干以左传『晋诛赵同赵括』为准）",
+        "rationale": "近源无、晚出敷演 → 判传说增饰，宁碎片不并；作一等冲突对象 S12 并陈。",
         "decided_by": "Wiki-亲裁（待签署）",
         "date": "2026-07-21"
       },
       "presentation_hint": "S12对勘"
+    },
+    {
+      "conflict_id": "cf:zhaonan-narrative-souhu",
+      "event_ref": "ev:zhaoshi-zhinan",
+      "dimension": "narrative",
+      "account_refs": [
+        "ac:zhaonan-shiji-zhaoshijia",
+        "ac:zhaonan-zuozhuan",
+        "ac:zhaonan-shiji-jinshijia"
+      ],
+      "independence_analysis": {
+        "independent_witness_count": 1,
+        "reasoning": "搜孤救孤情节（程婴、公孙杵臼谋藏赵武；公孙杵臼抱他人婴就死；程婴以己子代赵武死、匿孤于山十五年；后立赵武、诛屠岸贾、程婴自杀报公孙杵臼）仅史记·赵世家独有；左传『韩厥言于晋侯、立赵武、复田』无藏孤替死。独立见证 = 1（晚出敷演），近源反证其无。此即后世戏曲『赵氏孤儿』母题所本——传说层增饰，S12 差异化供给的金矿，不作史实。",
+        "derivation_notes": [
+          "程婴/公孙杵臼仅见赵世家（persons.json 已标）",
+          "『居十五年』number_claim 属戏剧叙事内部时序，非独立系年"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "存录为异说，不采入史实骨干",
+        "rationale": "搜孤救孤为晚出敷演/戏剧母题，宁缺毋附会不并入史实；全文保留于 ac:zhaonan-shiji-zhaoshijia 供 S12 对勘。",
+        "decided_by": "Wiki-亲裁（待签署）",
+        "date": "2026-07-21"
+      },
+      "presentation_hint": "S12对勘"
+    }
+  ],
+  "rejected_alternatives": [
+    {
+      "id": "reject:zhaonan-tiaohe-two-purges",
+      "claim": "调和说（两次族诛）：谓左传前583下宫之难与史记·赵世家前597屠岸贾灭赵为两次独立的赵氏族诛（前597一次、前583一次），如此两说皆真、并不冲突。",
+      "verdict": "否弃",
+      "reason": "前597屠岸贾灭族无任何近源支撑（左传、史记·晋世家俱无，见 cf:zhaonan-shiji-internal 首证），调和说为消弭14年系年矛盾而虚构第二次族诛，凭空增殖无佐证的历史实体（违 parsimony / 宁缺毋附会）。本 fixture 判前597/前583为同一事件之系年异说（落 cf:zhaonan-date），非两桩史实——把源系年分歧误当两次真实族诛，正是同一性判定要防的错（似真而非）。",
+      "decided_by": "Wiki-亲裁（待签署）"
     }
   ]
 }
