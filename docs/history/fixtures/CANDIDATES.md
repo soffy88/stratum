@@ -5,7 +5,23 @@
 > **红线**：清单本身非 gold、不含判定；禁抽取器生成。
 > 日期 2026-07-21 · 拟制 CC
 
-**已建（W-H0 四核心，不在扩展计数内）**：F1 三家分晋 · F2 赵氏孤儿 · F3 官渡兵力+裴按 · F4 尧舜禅让。
+**已建**：W-H0 四核心 gold 冻结（tag `history-fixtures-v0.1`：F1 三家分晋 · F2 赵氏孤儿 · F3 官渡兵力+裴按 · F4 尧舜禅让）+ 扩展批首条 **F5 曹操"宁我负人"**（三国·carrier 引书侧·判定人 CC）。
+
+---
+
+## ★圈选结果 + Q1 首发断代（Wiki 委 CC 定 · 2026-07-21，"按你建议"）
+
+**Q1 首发断代建议：三国。** 理由：① `carrier/裴注/按语` 是本域最富、最难、最具区分度的机制，且**仅三国**富集——首发落三国，把最硬的机制在灌注一线先跑通、回归网先钉密；② 三国志 + 裴注是边界清晰的自洽语料；③ 三国事件冲突密度高（number/existence/carrier），S12 差异化供给对 tongjian 产能最友好。**⚠ 耦合**：Q1 = 生产 spec Q8 同源，本建议须与生产侧 Q8 concurrence 方最终定；在此之前，扩展 fixtures 按 schema-全史-建、机制优先跨断代铺，不硬依赖 Q1。
+
+**选批（→ 约 30，含已建 5）与优先级**：
+
+- **Tier 1（机制关键，先建）**：F5 ✅（carrier 引书侧）· C1 赤壁（number+carrier）· C2 隆中对（existence+carrier·魏略异说）· C3 空城计（★按语+existence，郭冲三事裴松之自驳）· D3 牧野克商（纪年override+考古E0·利簋）· A1 田氏代齐（parent#2+succession）
+- **Tier 2（覆盖补齐）**：C5 街亭 · C6 七擒孟获 · C7 关羽 · C8 官渡乌巢（parent 子节点）· A3 桂陵马陵（纪年override·魏惠王）· A4 苏秦帛书（考古E0+genre）· A5 长平（number）· B2 鸿门宴（篇内冲突，同 F2-b 机制）· D4 共和行政（canonical 轴起点）
+- **Tier 3（广度）**：A2 商鞅 · A6 荆轲 · A7 完璧 · A9 乐毅 · D1 涿鹿 · D2 大禹 · B1 焚书坑儒 · B4 垓下
+
+**生产节奏**：范式已签署（D-003）——非边界 gold 由 CC 照范式判、Wiki 验收；按 Tier 分批建（每批 commit + JUDGMENTS 登记供抽验），边界案（若某条出现类 F2 压边界判定）单独提请 Wiki 亲裁。**下一批拟建 Tier 1 余 5 条**（C1/C2/C3/D3/A1），除非你改圈。
+
+---
 
 机制标签：`parent` 组合事件 · `date` 系年冲突 · `number` 数字冲突 · `existence` 存否冲突 · `narrative` 叙事冲突 · `causality` 事理冲突 · `carrier` 载体/原源折算 · `按语` judgment≠testimony · `genre` 体裁降权（策士言辞等）· `纪年override` 六国年表/断代校正 · `考古E0` 出土互证 · `E4` 传说层 · `succession` 势力承继 · `dialogue` 演绎素材接口。
 

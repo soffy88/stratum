@@ -1,0 +1,202 @@
+{
+  "events": [
+    {
+      "event_id": "ev:ningwofuren",
+      "title": "曹操杀吕伯奢家（『宁我负人』）",
+      "canonical_date": {
+        "type": "year",
+        "value": "公元189",
+        "note": "约中平六年/初平元年间，曹操逃董卓东归，过故人吕伯奢家而杀之。系年从略（各说不精）。"
+      },
+      "event_type": "人事",
+      "actors": [
+        {
+          "person_ref": "per:caocao",
+          "role": "杀人者",
+          "force_ref": "fo:cao"
+        },
+        {
+          "person_ref": "per:lyu-boshe",
+          "role": "被杀家主（一说不在，家人被杀）",
+          "force_ref": null
+        }
+      ],
+      "geo": {
+        "place_refs": [
+          "pl:chenggao"
+        ],
+        "route_hint": "逃董卓东归途中",
+        "mapstate_hint": null
+      },
+      "parent_event": null,
+      "accounts": [
+        "ac:ningwo-weishu",
+        "ac:ningwo-shiyu",
+        "ac:ningwo-sunsheng"
+      ],
+      "conflicts": [
+        "cf:ningwo-nature",
+        "cf:ningwo-mingyan"
+      ],
+      "evidence_tier": "E1",
+      "tier_override": {
+        "rationale": "曹操杀吕伯奢家一事，魏书/世语/孙盛杂记三源（均经裴注载）皆记其发生——三独立文献见证 → E1。分歧在『性质』（自卫 vs 误杀）与『名言』存否，落 conflict，不降事件本身的 attestation。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
+      "mainline_account_ref": "ac:ningwo-shiyu",
+      "mainline_decision": {
+        "choice": "ac:ningwo-shiyu",
+        "rationale": "★三说并陈、无定论。主线取世语『误杀（疑其图己）』为折中：魏书『正当防卫』系曹魏官修、有为曹操饰过之嫌（genre 降权）；孙盛『宁我负人』名言逸闻性强、增色成分大。世语误杀说居中，暂取为主线，魏书/孙盛异说 S12 并陈。裴松之本人亦未定谳（其存三说而不专主一说）。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:ningwo-weishu",
+      "event_ref": "ev:ningwofuren",
+      "source_id": "src:weishu",
+      "locator": {
+        "book": "三国志",
+        "chapter": "魏书·武帝纪（裴注引 王沈《魏书》）",
+        "section": "曹操东归过吕伯奢段",
+        "para_ulid": null,
+        "note": "★待补。carrier=裴注；original=王沈《魏书》（被载原源，独立登记 src:weishu）。非裴松之按语——是裴注所【引之书】。"
+      },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "约189",
+        "actor_claims": [
+          "曹操逃归乡里，从数骑过故人成皋吕伯奢",
+          "伯奢不在，其子与宾客共劫太祖，取马及物",
+          "太祖手刃击杀数人"
+        ],
+        "causal_claims": [
+          "★自卫说：伯奢家人劫掠 → 曹操格杀（正当防卫）"
+        ],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "★曹魏官修（王沈魏书），有为曹操饰过之嫌——genre 降权；『正当防卫』为三说中最利曹操者。"
+    },
+    {
+      "account_id": "ac:ningwo-shiyu",
+      "event_ref": "ev:ningwofuren",
+      "source_id": "src:shiyu",
+      "locator": {
+        "book": "三国志",
+        "chapter": "魏书·武帝纪（裴注引 郭颁《世语》）",
+        "section": "曹操东归过吕伯奢段",
+        "para_ulid": null,
+        "note": "★待补。carrier=裴注；original=《世语》（被载原源 src:shiyu，独立登记）。"
+      },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "约189",
+        "actor_claims": [
+          "曹操过伯奢，伯奢出行，五子皆在，备宾主礼",
+          "太祖自以背卓命，疑其图己，手剑夜杀八人而去"
+        ],
+        "causal_claims": [
+          "★误杀说：曹操疑心（背卓命，惧被图） → 夜杀八人"
+        ],
+        "number_claims": [
+          {
+            "value": "八",
+            "unit": "人",
+            "quote_span": "手剑夜杀八人而去",
+            "display": "《三国志》裴注引《世语》载"
+          }
+        ],
+        "dialogue_spans": []
+      },
+      "genre_note": "★《世语》裴松之屡疑其可靠（他处讥其『不实』）——genre 中偏低；误杀说居三说之中。"
+    },
+    {
+      "account_id": "ac:ningwo-sunsheng",
+      "event_ref": "ev:ningwofuren",
+      "source_id": "src:sunsheng-zaji",
+      "locator": {
+        "book": "三国志",
+        "chapter": "魏书·武帝纪（裴注引 孙盛《杂记》）",
+        "section": "曹操东归过吕伯奢段",
+        "para_ulid": null,
+        "note": "★待补。carrier=裴注；original=孙盛《杂记》（被载原源 src:sunsheng-zaji，独立登记）。『宁我负人』名言仅此源。"
+      },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "约189",
+        "actor_claims": [
+          "太祖闻其食器声，以为图己，遂夜杀之",
+          "既而凄怆曰：『宁我负人，毋人负我！』遂行"
+        ],
+        "causal_claims": [
+          "★误杀说 + 事后凉薄名言：疑心误杀，复以名言自解"
+        ],
+        "number_claims": [],
+        "dialogue_spans": [
+          "『宁我负人，毋人负我！』——名言，演绎素材接口，透传导演；★存否本身是 cf:ningwo-mingyan 冲突对象"
+        ]
+      },
+      "genre_note": "★孙盛杂记，晋人逸闻/史评，逸闻增色性强——genre 中偏低；『宁我负人』名言即出此，后世曹操形象所本，然仅一源。"
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:ningwo-nature",
+      "event_ref": "ev:ningwofuren",
+      "dimension": "narrative",
+      "account_refs": [
+        "ac:ningwo-weishu",
+        "ac:ningwo-shiyu",
+        "ac:ningwo-sunsheng"
+      ],
+      "independence_analysis": {
+        "independent_witness_count": 3,
+        "reasoning": "★carrier/original『引书』侧 smoke test（F3 之镜像）：三 account 虽同经裴注(carrier)载，但 original 是三部**不同的被载原源**（王沈魏书 / 世语 / 孙盛杂记）——是三份【证词/testimony】，非『裴注一源说三遍』。故独立见证 = 3，非 1。★与 F3 对照：F3 用的是裴松之【按语】(judgment，计 0)；本条用的是裴注【引书】(testimony，各计 1)——同一 carrier 内两类严格分开。折算修正：三源虽计 3，但 genre 全降权（魏书曲笔 / 世语不实 / 孙盛逸闻），净证据力打折——独立见证数 ≠ 可靠度。",
+        "derivation_notes": [
+          "carrier=src:peizhu；originals={src:weishu, src:shiyu, src:sunsheng-zaji}（均在 peizhu.carrier_of）",
+          "三 original 各独立登记、各计 1 → indep=3（对照 F3：按语 judgment 计 0）",
+          "genre 系数：魏书↓（曲笔饰曹）、世语↓（裴松之疑其不实）、孙盛↓（逸闻）"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "主线取世语误杀说；魏书自卫说、孙盛名言说 S12 并陈",
+        "rationale": "三说性质歧异（自卫/误杀/误杀+名言），皆晚出且 genre 降权，无一独大——存冲突对象、S12 对勘，不静默取利曹操者。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
+      "presentation_hint": "S12对勘"
+    },
+    {
+      "conflict_id": "cf:ningwo-mingyan",
+      "event_ref": "ev:ningwofuren",
+      "dimension": "existence",
+      "account_refs": [
+        "ac:ningwo-sunsheng",
+        "ac:ningwo-weishu",
+        "ac:ningwo-shiyu"
+      ],
+      "independence_analysis": {
+        "independent_witness_count": 1,
+        "reasoning": "『宁我负人，毋人负我』名言仅孙盛《杂记》一源独有；魏书（自卫说、无此语）、世语（误杀、无此语）皆无。故该名言独立见证 = 1（晚出逸闻），存否作 existence 冲突对象。后世曹操『奸雄』形象多本此一语——正因单源逸闻，尤须显式标注、不当信史直陈。",
+        "derivation_notes": [
+          "名言仅见 src:sunsheng-zaji；weishu/shiyu 无",
+          "单源逸闻：宁碎片不附会——存录并陈，不并入史实骨干"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "存录为孙盛一源之说，不作定谳",
+        "rationale": "单源晚出逸闻，宁缺毋附会；作 existence 冲突对象保留（S12 供给），不当作曹操确言直书。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
+      "presentation_hint": "S12对勘"
+    }
+  ]
+}
