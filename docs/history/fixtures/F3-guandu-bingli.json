@@ -1,32 +1,50 @@
 {
-  "_meta": {
-    "fixture": "F3 · 官渡兵力 + 裴按",
-    "spec": "AII-HISTORY-KU-SPEC-001 §10 W-H0 ③",
-    "purpose": "number 冲突 + 裴注机制 smoke test：《三国志》『兵不满万』与裴松之按语质疑——观点归属 R8 与 carrier/original 一箭双雕；跨断代（西晋陈寿→刘宋裴松之）保留。",
-    "mechanisms_exercised": ["number 维冲突（曹操兵力『不满万』vs 裴松之质疑）", "carrier/original：裴注是载体（carrier_of 魏略/江表传/世语），裴松之【按语】是其原创观点（原源非被载源）", "R8 观点归属（质疑归属裴松之本人）", "跨断代独立见证折算（陈寿 vs 裴松之）"],
-    "identity_verdicts_see": "fixtures/JUDGMENTS.md#F3",
-    "locator_note": "para_ulid 待补；chapter=武帝纪，裴注附于同篇正文之下（locator 以 carrier 标注区分注/正文）。",
-    "created": "2026-07-21",
-    "author": "CC (手工，禁抽取器)"
-  },
   "events": [
     {
       "event_id": "ev:guandu",
       "title": "官渡之战",
-      "canonical_date": { "type": "year", "value": "公元200", "note": "建安五年，曹操与袁绍相持于官渡，曹以少胜多。" },
+      "canonical_date": {
+        "type": "year",
+        "value": "公元200",
+        "note": "建安五年，曹操与袁绍相持于官渡，曹以少胜多。"
+      },
       "event_type": "战役",
       "actors": [
-        { "person_ref": "per:caocao", "role": "曹方主帅（以少胜多）", "force_ref": "fo:cao" },
-        { "person_ref": "per:yuanshao", "role": "袁方主帅（败）", "force_ref": "fo:yuan" }
+        {
+          "person_ref": "per:caocao",
+          "role": "曹方主帅（以少胜多）",
+          "force_ref": "fo:cao"
+        },
+        {
+          "person_ref": "per:yuanshao",
+          "role": "袁方主帅（败）",
+          "force_ref": "fo:yuan"
+        }
       ],
-      "geo": { "place_refs": ["pl:guandu"], "route_hint": "官渡—乌巢", "mapstate_hint": "曹袁对峙线" },
+      "geo": {
+        "place_refs": [
+          "pl:guandu"
+        ],
+        "route_hint": "官渡—乌巢",
+        "mapstate_hint": "曹袁对峙线"
+      },
       "parent_event": null,
-      "accounts": ["ac:guandu-sanguozhi", "ac:guandu-peizhu-an"],
-      "conflicts": ["cf:guandu-bingli"],
+      "accounts": [
+        "ac:guandu-sanguozhi",
+        "ac:guandu-peizhu-an"
+      ],
+      "conflicts": [
+        "cf:guandu-bingli"
+      ],
       "evidence_tier": "E2",
       "tier_override": null,
       "mainline_account_ref": "ac:guandu-sanguozhi",
-      "mainline_decision": { "choice": "ac:guandu-sanguozhi", "rationale": "陈寿近源纪传，『兵不满万』为正文记载；裴松之质疑存录为 number 冲突对象（无反数，仅推论）。主线取陈寿原文并透传裴按。", "decided_by": "CC", "date": "2026-07-21" }
+      "mainline_decision": {
+        "choice": "ac:guandu-sanguozhi",
+        "rationale": "陈寿近源纪传，『兵不满万』为正文记载；裴松之质疑存录为 number 冲突对象（无反数，仅推论）。主线取陈寿原文并透传裴按。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      }
     }
   ],
   "accounts": [
@@ -34,15 +52,31 @@
       "account_id": "ac:guandu-sanguozhi",
       "event_ref": "ev:guandu",
       "source_id": "src:sanguozhi",
-      "locator": { "book": "三国志", "chapter": "魏书·武帝纪", "section": "官渡相持段（正文）", "para_ulid": null, "note": "待补。陈寿正文。" },
+      "locator": {
+        "book": "三国志",
+        "chapter": "魏书·武帝纪",
+        "section": "官渡相持段（正文）",
+        "para_ulid": null,
+        "note": "待补。陈寿正文。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "建安五年 = 公元200",
-        "actor_claims": ["公与绍相拒官渡", "时公兵少、乏粮，士卒疲乏"],
-        "causal_claims": ["兵少粮乏 → 后奇袭乌巢、烧绍粮 → 反败为胜"],
+        "actor_claims": [
+          "公与绍相拒官渡",
+          "时公兵少、乏粮，士卒疲乏"
+        ],
+        "causal_claims": [
+          "兵少粮乏 → 后奇袭乌巢、烧绍粮 → 反败为胜"
+        ],
         "number_claims": [
-          { "value": "不满万", "unit": "人（曹操兵）", "quote_span": "時公兵不滿萬，傷者十二三。", "display": "《三国志·武帝纪》载" }
+          {
+            "value": "不满万",
+            "unit": "人（曹操兵）",
+            "quote_span": "時公兵不滿萬，傷者十二三。",
+            "display": "《三国志·武帝纪》载"
+          }
         ],
         "dialogue_spans": []
       },
@@ -52,19 +86,37 @@
       "account_id": "ac:guandu-peizhu-an",
       "event_ref": "ev:guandu",
       "source_id": "src:peizhu",
-      "locator": { "book": "三国志", "chapter": "魏书·武帝纪（裴注·臣松之案）", "section": "『兵不满万』下裴松之按语", "para_ulid": null, "note": "★待补。carrier=裴注；此为裴松之【按语】（原创观点），非裴注所引之他源（魏略/江表传等）。locator 以 carrier 维度标『注/按』以别于正文。" },
+      "locator": {
+        "book": "三国志",
+        "chapter": "魏书·武帝纪（裴注·臣松之案）",
+        "section": "『兵不满万』下裴松之按语",
+        "para_ulid": null,
+        "note": "★待补。carrier=裴注；此为裴松之【按语】（原创观点），非裴注所引之他源（魏略/江表传等）。locator 以 carrier 维度标『注/按』以别于正文。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "（注成公元429，评论前事）",
-        "actor_claims": ["裴松之质疑陈寿『兵不满万』之说"],
+        "actor_claims": [
+          "裴松之质疑陈寿『兵不满万』之说"
+        ],
         "causal_claims": [
           "裴松之案：魏武初起兵已有众五千，自后百战百胜、败者十二三而已；一破黄巾即受降卒三十余万，余所吞并不可悉纪——虽征战有损，兵数未应如此之少。",
           "又：绍若十倍于曹，曹当分兵拒守，不得如陈寿所云悬殊——故『不满万』或史家饰曹以少胜多之辞。"
         ],
         "number_claims": [
-          { "value": "五千", "unit": "人（魏武初起兵）", "quote_span": "魏武初起兵，已有众五千。", "display": "《三国志》裴松之注·案 载" },
-          { "value": "三十余万", "unit": "人（青州降卒）", "quote_span": "受降卒三十余万。", "display": "《三国志》裴松之注·案 载" }
+          {
+            "value": "五千",
+            "unit": "人（魏武初起兵）",
+            "quote_span": "魏武初起兵，已有众五千。",
+            "display": "《三国志》裴松之注·案 载"
+          },
+          {
+            "value": "三十余万",
+            "unit": "人（青州降卒）",
+            "quote_span": "受降卒三十余万。",
+            "display": "《三国志》裴松之注·案 载"
+          }
         ],
         "dialogue_spans": []
       },
@@ -76,13 +128,25 @@
       "conflict_id": "cf:guandu-bingli",
       "event_ref": "ev:guandu",
       "dimension": "number",
-      "account_refs": ["ac:guandu-sanguozhi", "ac:guandu-peizhu-an"],
+      "account_refs": [
+        "ac:guandu-sanguozhi",
+        "ac:guandu-peizhu-an"
+      ],
       "independence_analysis": {
         "independent_witness_count": 1,
         "reasoning": "★carrier/original smoke test，兼判 judgment vs testimony：官渡兵数的独立见证仅陈寿《三国志》正文 1 个（近源纪传）。裴松之按语是【评断/judgment】不是【证词/testimony】——他未提供官渡兵数的独立证词，而是据『初起兵五千、青州降卒三十余万』推理质疑陈寿；故按语出【冲突对象 + 观点归属(R8 归裴松之)】，但不入独立见证折算、不动 E tier（同 F4『两独立说并存≠升 tier』的守门逻辑）。event tier 维持 E2（单一近源文献），与 indep=1 一致。★carrier/original 教训在此更锋利：裴注若【引】佚籍(魏略/江表传等被载原源)给出官渡兵数，那才是另一份 testimony、计入独立见证；裴松之自己的【按语】是 judgment，不计。真正分野不止 carrier vs original，更是同一 carrier 内『引书(testimony,计)』vs『按语(judgment,不计)』。",
-        "derivation_notes": ["src:sanguozhi：陈寿正文，官渡兵数唯一独立证词，计 1", "src:peizhu 按语：裴松之评断(judgment)，出冲突对象+R8观点归属，独立见证折算计 0、不动 E tier", "反例警戒：若把裴注【引某佚籍的兵数证词】与裴松之【按语】混同，或把『三国志+裴注引书』当一源，独立性折算即错——carrier_of=[魏略,江表传,世语] 是引书(testimony)，与按语(judgment)分属两类"]
+        "derivation_notes": [
+          "src:sanguozhi：陈寿正文，官渡兵数唯一独立证词，计 1",
+          "src:peizhu 按语：裴松之评断(judgment)，出冲突对象+R8观点归属，独立见证折算计 0、不动 E tier",
+          "反例警戒：若把裴注【引某佚籍的兵数证词】与裴松之【按语】混同，或把『三国志+裴注引书』当一源，独立性折算即错——carrier_of=[魏略,江表传,世语] 是引书(testimony)，与按语(judgment)分属两类"
+        ]
       },
-      "mainline_decision": { "choice": "陈寿『兵不满万』为主线记载；裴松之质疑并陈（S12/角标）", "rationale": "近源正文优先；裴按无反数、属合理质疑，存为 number 冲突对象、屏幕并陈其疑，不改主线数值。", "decided_by": "CC", "date": "2026-07-21" },
+      "mainline_decision": {
+        "choice": "陈寿『兵不满万』为主线记载；裴松之质疑并陈（S12/角标）",
+        "rationale": "近源正文优先；裴按无反数、属合理质疑，存为 number 冲突对象、屏幕并陈其疑，不改主线数值。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
       "presentation_hint": "S12对勘"
     }
   ]
