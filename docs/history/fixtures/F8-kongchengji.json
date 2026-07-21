@@ -1,0 +1,97 @@
+{
+  "events": [
+    {
+      "event_id": "ev:kongchengji",
+      "title": "空城计（诸葛亮据城退司马懿·逸闻）",
+      "canonical_date": {
+        "type": "fuzzy",
+        "value": null,
+        "note": "★逸闻，系年不确。郭冲系于诸葛亮屯阳平时；裴松之考其时地皆与史实不合（司马懿当时不在关中）。事之真伪本身即冲突焦点。"
+      },
+      "event_type": "战役",
+      "actors": [
+        { "person_ref": "per:zhugeliang", "role": "据城设疑者（逸闻）", "force_ref": "fo:liu" },
+        { "person_ref": "per:simayi", "role": "疑伏兵而退者（逸闻）", "force_ref": "fo:cao" }
+      ],
+      "geo": { "place_refs": ["pl:xicheng"], "route_hint": null, "mapstate_hint": null },
+      "parent_event": null,
+      "accounts": ["ac:kongcheng-guochong", "ac:kongcheng-peian"],
+      "conflicts": ["cf:kongcheng-existence"],
+      "evidence_tier": "E3",
+      "tier_override": {
+        "rationale": "空城计仅见郭冲《条亮五事》一晚出逸闻（西晋，对晋宗室夸述），且被裴松之逐条驳其时地硬伤（司马懿时为荆州都督在宛，不在关中）。单源、晚出、无近源、本注者自驳 → E3（晚出追记无支撑）；就『是否真发生』而言更近于否——但作为流传逸闻保留其条目 + existence 冲突。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
+      "mainline_account_ref": "ac:kongcheng-peian",
+      "mainline_decision": {
+        "choice": "ac:kongcheng-peian",
+        "rationale": "★主线取裴松之按语的裁断：空城计很可能不实（郭冲三事时地皆误、单源夸述）。不作史实直陈；郭冲原说保留为 existence 冲突对象、S12 并陈其疑。这是主线取『否定性 judgment』而非取某肯定叙事的样本。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:kongcheng-guochong",
+      "event_ref": "ev:kongchengji",
+      "source_id": "src:guochong",
+      "locator": { "book": "三国志", "chapter": "蜀书·诸葛亮传（裴注引 郭冲《条亮五事》其三）", "section": "空城计叙事", "para_ulid": null, "note": "★待补。carrier=裴注；original=郭冲条亮五事（被载原源，引书）。空城计的唯一正面来源。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "（郭冲系于亮屯阳平、遣魏延东下时）",
+        "actor_claims": ["亮屯阳平，遣魏延诸军东下，营中兵少；司马懿率二十万众卒至", "亮意气自若，令大开四城门，扫地却洒", "懿疑其有伏，遂引兵北趣山"],
+        "causal_claims": ["★正面叙事：亮以空城疑兵退懿（存在说）"],
+        "number_claims": [{ "value": "二十万", "unit": "人（司马懿众，郭冲说）", "quote_span": "宣王率二十万众……", "display": "《三国志》裴注引郭冲《条亮五事》载" }],
+        "dialogue_spans": ["（空城退敌情节——演绎素材，透传；★后世戏曲空城计母题所本）"]
+      },
+      "genre_note": "★单源晚出逸闻（郭冲对晋扶风王夸述其父旧闻）；genre 折算极低，存否可疑。"
+    },
+    {
+      "account_id": "ac:kongcheng-peian",
+      "event_ref": "ev:kongchengji",
+      "source_id": "src:peizhu",
+      "locator": { "book": "三国志", "chapter": "蜀书·诸葛亮传（裴注·臣松之案）", "section": "驳郭冲空城计之按语", "para_ulid": null, "note": "★待补。裴松之【按语】——judgment，逐条驳郭冲。非引书。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "（注成 429）",
+        "actor_claims": [
+          "裴松之案：亮屯阳平时，司马懿尚为荆州都督、镇宛城，不在关中，无缘与亮对；此其一不合",
+          "就使宣王果来，既知亮兵少力弱，自当径进，何为疑伏而退？此其二不合",
+          "郭冲对晋扶风王（宣王之孙）称述其祖，扬亮而不觉其抑宣王之短，事理悖谬——不足取信"
+        ],
+        "causal_claims": ["★按语=judgment：以时、地、事理三驳，判空城计不实"],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "★裴松之按语（judgment，不计入独立见证）；本条为『按语驱动 existence 否定』的样本——与 F5 引书计入、F3 按语质疑数字 并列三态。"
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:kongcheng-existence",
+      "event_ref": "ev:kongchengji",
+      "dimension": "existence",
+      "account_refs": ["ac:kongcheng-guochong", "ac:kongcheng-peian"],
+      "independence_analysis": {
+        "independent_witness_count": 1,
+        "reasoning": "★『空城计是否发生』的独立见证仅郭冲《条亮五事》1 处（单源、晚出、genre 极低）。裴松之按语（ac:kongcheng-peian）是 judgment 不计入见证——但其以时/地/事理三驳，构成对该单一见证的强否定。折算结论：正面见证=1（且极弱），否定性 judgment 使主线倾向『很可能不实』。★三态对照：F5 裴注引书=testimony 计入（indep+1）；F3 裴注按语=judgment 质疑数字（计 0，不改主线数值）；本条 F8 裴注按语=judgment 否定存否（计 0，但驱动 existence→否）。",
+        "derivation_notes": [
+          "ac:kongcheng-guochong：src:guochong 单源，正面见证计 1（genre 极低）",
+          "ac:kongcheng-peian：裴松之按语 judgment 计 0，作否定性裁断",
+          "对照：F5 引书(计) / F3 按语质疑(不计, 存数值) / F8 按语否定(不计, 倾向否存否)"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "很可能不实（采裴松之驳）；郭冲原说保留为异说并陈",
+        "rationale": "单源晚出 + 本注者以时地事理三驳 → 判传说逸闻、不作史实；后世空城计母题所本此，尤须显式标注非信史。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
+      "presentation_hint": "S12对勘"
+    }
+  ]
+}

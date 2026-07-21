@@ -361,6 +361,59 @@
       "谥字号": "曹操父旧友；F5 被杀者",
       "active_range": "东汉末（约189）",
       "force_affiliations": []
+    },
+    {
+      "person_id": "per:liubei",
+      "names_by_source": {
+        "刘备": ["src:sanguozhi"],
+        "先主": ["src:sanguozhi"],
+        "备": ["src:sanguozhi", "src:weilue"]
+      },
+      "谥字号": "蜀汉昭烈帝，字玄德",
+      "active_range": "公元161–223（隆中对 207 / 赤壁 208）",
+      "force_affiliations": ["fo:liu"]
+    },
+    {
+      "person_id": "per:sunquan",
+      "names_by_source": {
+        "孙权": ["src:sanguozhi"],
+        "权": ["src:sanguozhi", "src:jiangbiaozhuan"]
+      },
+      "谥字号": "吴大帝，字仲谋",
+      "active_range": "公元182–252（赤壁 208 为吴主）",
+      "force_affiliations": ["fo:sun"]
+    },
+    {
+      "person_id": "per:zhouyu",
+      "names_by_source": {
+        "周瑜": ["src:sanguozhi"],
+        "公瑾": ["src:sanguozhi"]
+      },
+      "谥字号": "字公瑾；赤壁吴军都督",
+      "active_range": "公元175–210",
+      "force_affiliations": ["fo:sun"]
+    },
+    {
+      "person_id": "per:zhugeliang",
+      "names_by_source": {
+        "诸葛亮": ["src:sanguozhi"],
+        "孔明": ["src:sanguozhi"],
+        "亮": ["src:sanguozhi", "src:weilue", "src:guochong"]
+      },
+      "谥字号": "谥忠武，字孔明",
+      "active_range": "公元181–234（隆中对 207 / 空城计逸闻属北伐期）",
+      "force_affiliations": ["fo:liu"]
+    },
+    {
+      "person_id": "per:simayi",
+      "names_by_source": {
+        "司马懿": ["src:sanguozhi"],
+        "宣王": ["src:guochong", "src:sanguozhi"],
+        "晋宣帝": ["src:sanguozhi"]
+      },
+      "谥字号": "晋宣帝，字仲达；空城计逸闻中被疑退兵者",
+      "active_range": "公元179–251",
+      "force_affiliations": ["fo:cao"]
     }
   ]
 }
