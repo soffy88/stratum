@@ -1,11 +1,4 @@
 {
-  "_meta": {
-    "registry": "source",
-    "spec": "AII-HISTORY-KU-SPEC-001 §3.1",
-    "note": "源注册表种子。战国书目按 §2.3 首批候选建；三国志+裴注、竹书/山海经/逸周书为 fixtures（官渡、E4）所涉。derivation_edges 必填字段（可空数组）。carrier_of 用于 carrier/original 独立性折算（裴注是首例）。成书年代/底本note 允许 TODO，字段结构不缺。",
-    "created": "2026-07-21",
-    "author": "CC (手工)"
-  },
   "sources": [
     {
       "source_id": "src:zuozhuan",
@@ -54,10 +47,26 @@
       "genre": "纪传",
       "carrier_of": [],
       "derivation_edges": [
-        { "from": "src:zuozhuan", "scope": "春秋部分", "note": "晋世家等纪春秋晋事，取材左传——故史记·晋世家与左传同述、与史记·赵世家冲突（F2 篇内冲突根源）。" },
-        { "from": "src:guoyu", "scope": "春秋部分", "note": "取材国语。" },
-        { "from": "src:zhanguoce", "scope": "战国部分", "note": "战国世家/年表取材战国策系材料。" },
-        { "from": "src:shiben", "scope": "世系", "note": "世系取材世本。" }
+        {
+          "from": "src:zuozhuan",
+          "scope": "春秋部分",
+          "note": "晋世家等纪春秋晋事，取材左传——故史记·晋世家与左传同述、与史记·赵世家冲突（F2 篇内冲突根源）。"
+        },
+        {
+          "from": "src:guoyu",
+          "scope": "春秋部分",
+          "note": "取材国语。"
+        },
+        {
+          "from": "src:zhanguoce",
+          "scope": "战国部分",
+          "note": "战国世家/年表取材战国策系材料。"
+        },
+        {
+          "from": "src:shiben",
+          "scope": "世系",
+          "note": "世系取材世本。"
+        }
       ],
       "genre_reliability": "纪传体，太史公互见法：同事散见多篇、各有侧重（本模型的古代版）。★内部篇际可自相冲突（赵世家 vs 晋世家），故 locator 必到篇。",
       "底本note": "TODO"
@@ -69,7 +78,11 @@
       "genre": "纪传",
       "carrier_of": [],
       "derivation_edges": [
-        { "from": "src:shiji", "scope": "汉初部分", "note": "武帝前多因史记。" }
+        {
+          "from": "src:shiji",
+          "scope": "汉初部分",
+          "note": "武帝前多因史记。"
+        }
       ],
       "genre_reliability": "断代纪传。",
       "底本note": "TODO"
@@ -81,7 +94,11 @@
       "genre": "纪传",
       "carrier_of": [],
       "derivation_edges": [
-        { "from": "src:sanguozhi", "scope": "汉末部分", "note": "汉末群雄事与三国志互见。" }
+        {
+          "from": "src:sanguozhi",
+          "scope": "汉末部分",
+          "note": "汉末群雄事与三国志互见。"
+        }
       ],
       "genre_reliability": "晚出，汉末事成书距事约二百余年。",
       "底本note": "TODO"
@@ -101,9 +118,17 @@
       "title": "三国志裴松之注",
       "成书年代": "南朝宋（裴松之，公元429）",
       "genre": "注",
-      "carrier_of": ["src:weilue", "src:jiangbiaozhuan", "src:shiyu"],
+      "carrier_of": [
+        "src:weilue",
+        "src:jiangbiaozhuan",
+        "src:shiyu"
+      ],
       "derivation_edges": [
-        { "from": "src:sanguozhi", "scope": "全书", "note": "注附三国志正文之上。" }
+        {
+          "from": "src:sanguozhi",
+          "scope": "全书",
+          "note": "注附三国志正文之上。"
+        }
       ],
       "genre_reliability": "★carrier（载体）：裴注引书百余种、多佚籍——『三国志+裴注引《魏略》』是两源两证，非一源两遍（§3.1）。裴注自身另含裴松之【按语】，按语是裴松之的原创观点（R8 观点归属），不属被载原源，需与所引原源分开计独立性。",
       "底本note": "TODO"
@@ -145,9 +170,21 @@
       "genre": "编年",
       "carrier_of": [],
       "derivation_edges": [
-        { "from": "src:shiji", "scope": "战国部分", "note": "★通鉴战国部分取材史记。" },
-        { "from": "src:zhanguoce", "scope": "战国部分", "note": "并取战国策——故『通鉴+史记+战国策同说』常只是一重证据（§6 回溯祖源）。" },
-        { "from": "src:sanguozhi", "scope": "三国部分", "note": "三国部分取材三国志及裴注所存。" }
+        {
+          "from": "src:shiji",
+          "scope": "战国部分",
+          "note": "★通鉴战国部分取材史记。"
+        },
+        {
+          "from": "src:zhanguoce",
+          "scope": "战国部分",
+          "note": "并取战国策——故『通鉴+史记+战国策同说』常只是一重证据（§6 回溯祖源）。"
+        },
+        {
+          "from": "src:sanguozhi",
+          "scope": "三国部分",
+          "note": "三国部分取材三国志及裴注所存。"
+        }
       ],
       "genre_reliability": "编年综合，晚出（去战国千余年）。取材上游，独立性须回溯祖源折算，非独立见证。通鉴起于前403命侯——司马光以此为周室衰亡之始。",
       "底本note": "TODO"
