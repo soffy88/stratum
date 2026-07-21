@@ -123,7 +123,8 @@
         "src:jiangbiaozhuan",
         "src:shiyu",
         "src:weishu",
-        "src:sunsheng-zaji"
+        "src:sunsheng-zaji",
+        "src:guochong"
       ],
       "derivation_edges": [
         {
@@ -250,6 +251,16 @@
       "derivation_edges": [],
       "genre_reliability": "晋人史评/逸闻，好载议论臧否（『宁我负人，毋人负我』名言即出此）；晚出、逸闻性强，genre 折算中偏低。多存于裴注（carrier=src:peizhu）。",
       "底本note": "TODO：佚籍，存裴注等所引。"
+    },
+    {
+      "source_id": "src:guochong",
+      "title": "郭冲《条亮五事》",
+      "成书年代": "西晋（郭冲，对晋扶风王言）",
+      "genre": "纪传",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "★晋人为诸葛亮扬名所条五事（空城计即其三），单源逸闻、且系对晋宗室夸述其父旧闻——裴松之逐条驳其时地不合。genre 折算极低，存否本身可疑。多存于裴注（carrier=src:peizhu）。",
+      "底本note": "TODO：佚籍，存裴注所引。"
     }
   ]
 }

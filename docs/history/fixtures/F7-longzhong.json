@@ -1,0 +1,121 @@
+{
+  "events": [
+    {
+      "event_id": "ev:sangu-longzhong",
+      "title": "三顾茅庐 / 隆中对",
+      "canonical_date": {
+        "type": "year",
+        "value": "公元207",
+        "note": "建安十二年前后，刘备与诸葛亮相见于隆中，问计（隆中对）。相见之主动方为两说冲突焦点。"
+      },
+      "event_type": "人事",
+      "actors": [
+        { "person_ref": "per:liubei", "role": "求贤者（三顾说）/被谒者（魏略说）", "force_ref": "fo:liu" },
+        { "person_ref": "per:zhugeliang", "role": "被顾者（三顾说）/主动北谒者（魏略说）", "force_ref": "fo:liu" }
+      ],
+      "geo": { "place_refs": ["pl:longzhong"], "route_hint": null, "mapstate_hint": null },
+      "parent_event": null,
+      "accounts": ["ac:longzhong-liangzhuan", "ac:longzhong-chushibiao", "ac:longzhong-weilue", "ac:longzhong-peian"],
+      "conflicts": ["cf:longzhong-existence"],
+      "evidence_tier": "E2",
+      "tier_override": null,
+      "mainline_account_ref": "ac:longzhong-liangzhuan",
+      "mainline_decision": {
+        "choice": "ac:longzhong-liangzhuan",
+        "rationale": "取『刘备三顾』说：诸葛亮《出师表》自述『三顾臣于草庐之中』为当事人近源自证（最强证据），与陈寿本传合；魏略『亮北行见备』为异说并陈。裴松之按语即以出师表裁定三顾（见 ac:longzhong-peian）。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:longzhong-liangzhuan",
+      "event_ref": "ev:sangu-longzhong",
+      "source_id": "src:sanguozhi",
+      "locator": { "book": "三国志", "chapter": "蜀书·诸葛亮传", "section": "徐庶荐、备三顾段", "para_ulid": null, "note": "待补。陈寿正文：徐庶荐亮，先主遂诣亮，凡三往乃见，因问计（隆中对）。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "建安十二年前后 = 公元207",
+        "actor_claims": ["徐庶荐诸葛亮于刘备，谓宜枉驾顾之", "先主遂诣亮，凡三往，乃见", "亮为备画取荆益、鼎足之策（隆中对）"],
+        "causal_claims": ["★三顾说：主动方=刘备（备诣亮）"],
+        "number_claims": [{ "value": "三", "unit": "次（往访）", "quote_span": "凡三往，乃见。", "display": "《三国志·诸葛亮传》载" }],
+        "dialogue_spans": ["（隆中对策辞——演绎素材，透传）"]
+      },
+      "genre_note": "近源纪传（陈寿蜀书）；三顾说主线依据之一。"
+    },
+    {
+      "account_id": "ac:longzhong-chushibiao",
+      "event_ref": "ev:sangu-longzhong",
+      "source_id": "src:sanguozhi",
+      "locator": { "book": "三国志", "chapter": "蜀书·诸葛亮传（录《出师表》）", "section": "出师表『三顾臣于草庐之中』句", "para_ulid": null, "note": "★待补。诸葛亮当事人自述，最强证据。出师表载于本传。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "追述 207（表作于 227）",
+        "actor_claims": ["先帝不以臣卑鄙，猥自枉屈，三顾臣于草庐之中，咨臣以当世之事"],
+        "causal_claims": ["★三顾说：诸葛亮当事人自证——主动方=刘备（先帝枉屈三顾）"],
+        "number_claims": [{ "value": "三", "unit": "次（顾）", "quote_span": "三顾臣于草庐之中。", "display": "《出师表》（诸葛亮）载" }],
+        "dialogue_spans": []
+      },
+      "genre_note": "★当事人（诸葛亮）近源自述——existence 冲突中分量最重的一证。"
+    },
+    {
+      "account_id": "ac:longzhong-weilue",
+      "event_ref": "ev:sangu-longzhong",
+      "source_id": "src:weilue",
+      "locator": { "book": "三国志", "chapter": "蜀书·诸葛亮传（裴注引《魏略》）", "section": "亮北行见备段", "para_ulid": null, "note": "★待补。carrier=裴注；original=魏略（被载原源，引书 testimony）。异说：诸葛亮主动北谒刘备。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "约 207",
+        "actor_claims": ["刘备屯樊城，亮北行见备；备以其年少，以诸生意待之", "坐集既毕，众宾皆去，而亮独留；亮乃进说拒曹之策，备由此知亮有英略，乃以上客礼之"],
+        "causal_claims": ["★魏略异说：主动方=诸葛亮（亮北行见备），非刘备三顾"],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "★carrier=裴注引书（魏略，testimony 计入）；但为魏人所记蜀事、与当事人自述相牴——existence 冲突对象。《九州春秋》所载略同。"
+    },
+    {
+      "account_id": "ac:longzhong-peian",
+      "event_ref": "ev:sangu-longzhong",
+      "source_id": "src:peizhu",
+      "locator": { "book": "三国志", "chapter": "蜀书·诸葛亮传（裴注·臣松之案）", "section": "裁三顾/北行两说之按语", "para_ulid": null, "note": "★待补。裴松之【按语】——judgment，非引书。以出师表裁定三顾。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "（注成 429，评前事）",
+        "actor_claims": ["裴松之案：亮《出师表》云『三顾臣于草庐之中』，则非亮先诣备明矣；虽闻见异辞，各生彼此，然乖背至是，亦良为可怪"],
+        "causal_claims": ["★按语=judgment：以诸葛亮自述（出师表）裁定『三顾』为是、魏略『北行』为非"],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "★裴松之按语（judgment，不计入独立见证）；其裁决所据=出师表（ac:longzhong-chushibiao 的当事人自证）。"
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:longzhong-existence",
+      "event_ref": "ev:sangu-longzhong",
+      "dimension": "existence",
+      "account_refs": ["ac:longzhong-liangzhuan", "ac:longzhong-chushibiao", "ac:longzhong-weilue"],
+      "independence_analysis": {
+        "independent_witness_count": 2,
+        "reasoning": "『相见主动方』两说：三顾（备诣亮）由陈寿本传 + 诸葛亮《出师表》当事人自证支持——出师表最强，本传相合，计约 2 独立见证（本传或部分本于出师表/蜀汉官方，从严可折为 1.5，取 2 计其含当事人自证）；魏略『亮北行见备』为 1（裴注引书 testimony，魏人记蜀事）。★裴松之按语（ac:longzhong-peian）是 judgment 不计见证，但它以出师表裁三顾——判定人可直接采其据（当事人自述 > 他方追记）。",
+        "derivation_notes": [
+          "ac:longzhong-chushibiao：诸葛亮当事人自述，existence 最强证据",
+          "ac:longzhong-weilue：carrier=裴注引书（魏略，testimony 计 1），异说",
+          "ac:longzhong-peian：裴松之按语=judgment（计 0），据出师表裁三顾——对照 F5 引书计入 / F3 按语不计"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "三顾（备诣亮）为主线；魏略『亮北行见备』异说 S12 并陈",
+        "rationale": "当事人（诸葛亮·出师表）自述『三顾』分量最重，陈寿本传相合，裴松之按语亦据此裁定；魏略异说保留并陈，但不采为主线。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
+      "presentation_hint": "S12对勘"
+    }
+  ]
+}

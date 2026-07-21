@@ -5,7 +5,7 @@
 > **红线**：清单本身非 gold、不含判定；禁抽取器生成。
 > 日期 2026-07-21 · 拟制 CC
 
-**已建**：W-H0 四核心 gold 冻结（tag `history-fixtures-v0.1`：F1 三家分晋 · F2 赵氏孤儿 · F3 官渡兵力+裴按 · F4 尧舜禅让）+ 扩展批首条 **F5 曹操"宁我负人"**（三国·carrier 引书侧·判定人 CC）。
+**已建**：W-H0 四核心 gold 冻结（tag `history-fixtures-v0.1`：F1 三家分晋 · F2 赵氏孤儿 · F3 官渡兵力+裴按 · F4 尧舜禅让）+ 扩展批 **F5 宁我负人 · F6 赤壁 · F7 隆中对 · F8 空城计**（三国 carrier/按语簇，判定人 CC，post-v0.1）。
 
 ---
 
@@ -15,11 +15,13 @@
 
 **选批（→ 约 30，含已建 5）与优先级**：
 
-- **Tier 1（机制关键，先建）**：F5 ✅（carrier 引书侧）· C1 赤壁（number+carrier）· C2 隆中对（existence+carrier·魏略异说）· C3 空城计（★按语+existence，郭冲三事裴松之自驳）· D3 牧野克商（纪年override+考古E0·利簋）· A1 田氏代齐（parent#2+succession）
+- **Tier 1（机制关键，先建）**：F5 ✅（carrier 引书侧）· C1 赤壁 ✅F6（number+carrier）· C2 隆中对 ✅F7（existence+carrier·魏略异说+按语）· C3 空城计 ✅F8（按语否定+existence）· D3 牧野克商（纪年override+考古E0·利簋，**下批**）· A1 田氏代齐（parent#2+succession，**下批**）
 - **Tier 2（覆盖补齐）**：C5 街亭 · C6 七擒孟获 · C7 关羽 · C8 官渡乌巢（parent 子节点）· A3 桂陵马陵（纪年override·魏惠王）· A4 苏秦帛书（考古E0+genre）· A5 长平（number）· B2 鸿门宴（篇内冲突，同 F2-b 机制）· D4 共和行政（canonical 轴起点）
 - **Tier 3（广度）**：A2 商鞅 · A6 荆轲 · A7 完璧 · A9 乐毅 · D1 涿鹿 · D2 大禹 · B1 焚书坑儒 · B4 垓下
 
-**生产节奏**：范式已签署（D-003）——非边界 gold 由 CC 照范式判、Wiki 验收；按 Tier 分批建（每批 commit + JUDGMENTS 登记供抽验），边界案（若某条出现类 F2 压边界判定）单独提请 Wiki 亲裁。**下一批拟建 Tier 1 余 5 条**（C1/C2/C3/D3/A1），除非你改圈。
+**生产节奏**：范式已签署（D-003）——非边界 gold 由 CC 照范式判、Wiki 验收；按 Tier 分批建（每批 commit + JUDGMENTS 登记供抽验），边界案（若某条出现类 F2 压边界判定）单独提请 Wiki 亲裁。**下一批拟建 Tier 1 余 2**（D3 牧野克商 / A1 田氏代齐）+ 起 Tier 2；除非你改圈。
+
+> ⚠ **待你定的一处（D3 牧野牵出）**：`source.genre` enum = {编年|纪传|国别策论|注|辑佚}，**无『出土/金文/经』类**——尚书（经·记言）、利簋（金文）无法登记为一等 Source。§6『考古E0』的考古源本就 Q3 远期再接（先留字段）。故 D3 拟以 史记（纪传）+ 竹书古本（辑佚）两文献 account 建，考古（利簋甲子）作 tier_override 注记的 E0-aspiration，不伪造 Source。若欲让考古/金文成一等源，需 v0.2 扩 `source.genre` enum（改契约形状、bump contract_version）——请示下走 aspiration-note 还是扩 enum。
 
 ---
 
