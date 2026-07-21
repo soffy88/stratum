@@ -167,6 +167,18 @@
       "name_by_era": { "秦末": "刘邦集团（汉王）", "后": "汉" },
       "active_range": "前206 刘邦为汉王 → 汉朝",
       "succession_edges": []
+    },
+    {
+      "force_id": "fo:qin",
+      "name_by_era": { "战国": "秦" },
+      "active_range": "战国至前221 一统（长平 前260 为秦方）",
+      "succession_edges": []
+    },
+    {
+      "force_id": "fo:yan",
+      "name_by_era": { "战国": "燕" },
+      "active_range": "战国（苏秦相燕/合纵）",
+      "succession_edges": []
     }
   ]
 }
