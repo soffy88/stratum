@@ -512,6 +512,55 @@
       "谥字号": "★竹书系『共伯和干王位/摄行天子事』之主；与史记『周召共和』说冲突",
       "active_range": "共和期（前841–前828 诸说）",
       "force_affiliations": ["fo:zhou"]
+    },
+    {
+      "person_id": "per:sujin",
+      "names_by_source": { "苏秦": ["src:shiji", "src:zhanguoce"], "季子": ["src:zhanguoce"] },
+      "谥字号": "★纵横家，合纵之主；★生平年代经马王堆帛书《战国纵横家书》出土反证（史记系年错乱）",
+      "active_range": "★战国中晚期（帛书证其晚于张仪，非史记所置与张仪对抗之世）",
+      "force_affiliations": ["fo:yan"]
+    },
+    {
+      "person_id": "per:zhangyi",
+      "names_by_source": { "张仪": ["src:shiji", "src:zhanguoce"] },
+      "谥字号": "连横家；史记置其与苏秦对抗，帛书反证二人非同时敌手",
+      "active_range": "战国中期（早于苏秦）",
+      "force_affiliations": ["fo:qin"]
+    },
+    {
+      "person_id": "per:baiqi",
+      "names_by_source": { "白起": ["src:shiji"], "武安君": ["src:shiji"] },
+      "谥字号": "秦将；长平坑赵",
+      "active_range": "至前257",
+      "force_affiliations": ["fo:qin"]
+    },
+    {
+      "person_id": "per:zhaokuo",
+      "names_by_source": { "赵括": ["src:shiji"], "马服子": ["src:shiji"] },
+      "谥字号": "赵将；纸上谈兵，长平败死",
+      "active_range": "至前260（长平战死）",
+      "force_affiliations": ["fo:zhao"]
+    },
+    {
+      "person_id": "per:lianpo",
+      "names_by_source": { "廉颇": ["src:shiji"] },
+      "谥字号": "赵将；长平前期坚壁，后被赵括代",
+      "active_range": "战国中晚期",
+      "force_affiliations": ["fo:zhao"]
+    },
+    {
+      "person_id": "per:masu",
+      "names_by_source": { "马谡": ["src:sanguozhi"], "幼常": ["src:sanguozhi"] },
+      "谥字号": "蜀将；街亭违节度而败，★死状两说（斩 / 下狱物故）",
+      "active_range": "至公元228（街亭后卒）",
+      "force_affiliations": ["fo:liu"]
+    },
+    {
+      "person_id": "per:wangping",
+      "names_by_source": { "王平": ["src:sanguozhi"] },
+      "谥字号": "蜀将；街亭谏马谡不听、敛众而还",
+      "active_range": "三国蜀",
+      "force_affiliations": ["fo:liu"]
     }
   ]
 }

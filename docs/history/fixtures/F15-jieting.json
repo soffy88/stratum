@@ -1,0 +1,106 @@
+{
+  "events": [
+    {
+      "event_id": "ev:jieting",
+      "title": "街亭之败与马谡之死",
+      "canonical_date": { "type": "year", "value": "公元228", "note": "建兴六年，诸葛亮首次北伐，马谡为先锋，违节度失街亭；亮退军，坐谡。★马谡结局三国志诸篇异说。" },
+      "event_type": "战役",
+      "actors": [
+        { "person_ref": "per:masu", "role": "先锋（违节度失街亭，结局异说）", "force_ref": "fo:liu" },
+        { "person_ref": "per:zhugeliang", "role": "统帅（坐谡、自贬三等）", "force_ref": "fo:liu" },
+        { "person_ref": "per:wangping", "role": "谏马谡不听、敛众而还", "force_ref": "fo:liu" }
+      ],
+      "geo": { "place_refs": ["pl:jieting"], "route_hint": "马谡舍水上山，张郃绝其汲道", "mapstate_hint": null },
+      "parent_event": null,
+      "accounts": ["ac:jieting-liangzhuan", "ac:jieting-masuzhuan", "ac:jieting-xianglang"],
+      "conflicts": ["cf:jieting-masi-death"],
+      "evidence_tier": "E2",
+      "tier_override": {
+        "rationale": "街亭失守、马谡违节度为诸篇同述（E2 稳）；分歧在马谡『结局』（斩/狱死/逃亡），落 existence-narrative 冲突，不降事件本身。三说同属三国志（同源篇间），非三独立文献。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
+      "mainline_account_ref": "ac:jieting-liangzhuan",
+      "mainline_decision": {
+        "choice": "ac:jieting-liangzhuan",
+        "rationale": "诸葛亮传『戮谡以谢众』为主线（与王平传『丞相亮既诛马谡』合、后世『挥泪斩马谡』所本）；马谡传『下狱物故』、向朗传『谡逃亡（朗知情不举）』为同书异说并陈——★同源篇间冲突，示 locator 必到篇（同 F2-b）。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:jieting-liangzhuan",
+      "event_ref": "ev:jieting",
+      "source_id": "src:sanguozhi",
+      "locator": { "book": "三国志", "chapter": "蜀书·诸葛亮传", "section": "街亭·戮谡段", "para_ulid": null, "note": "★待补。诸葛亮传：谡违亮节度，举动失宜，大为张郃所破；亮拔西县千余家还汉中，戮谡以谢众，上疏自贬三等。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "建兴六年 = 公元228",
+        "actor_claims": ["马谡违亮节度、举动失宜，大为张郃所破，失街亭", "亮进无所据，退还汉中", "★戮谡以谢众；亮上疏自贬三等"],
+        "causal_claims": ["★马谡结局：戮（斩）"],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "★同源篇间主篇（诸葛亮传）：『戮谡』；与王平传『既诛马谡』合，后世斩马谡母题所本。"
+    },
+    {
+      "account_id": "ac:jieting-masuzhuan",
+      "event_ref": "ev:jieting",
+      "source_id": "src:sanguozhi",
+      "locator": { "book": "三国志", "chapter": "蜀书·马良传（附马谡）", "section": "马谡结局段", "para_ulid": null, "note": "★待补。马谡传：谡下狱物故，亮为之流涕。→ 与诸葛亮传『戮谡』相异（同书篇间冲突）。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "公元228",
+        "actor_claims": ["★马谡下狱物故（病死狱中），亮为之流涕"],
+        "causal_claims": ["★马谡结局：下狱物故（非被斩）"],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "★同书异篇（马谡本传）：『下狱物故』——与诸葛亮传『戮谡』冲突，locator 到篇方可见。"
+    },
+    {
+      "account_id": "ac:jieting-xianglang",
+      "event_ref": "ev:jieting",
+      "source_id": "src:sanguozhi",
+      "locator": { "book": "三国志", "chapter": "蜀书·向朗传", "section": "朗知谡逃亡段", "para_ulid": null, "note": "★待补。向朗传：朗素与谡善，谡逃亡，朗知情不举，亮恨之，免官还成都。→ 隐含马谡曾逃亡（第三说）。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "公元228",
+        "actor_claims": ["★向朗与马谡善；谡兵败逃亡，朗知情不举；亮恨之，免朗官"],
+        "causal_claims": ["★隐含第三说：马谡曾逃亡（后或被执/或狱死/或戮）"],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "★同书第三篇（向朗传）：透出『马谡逃亡』一节，与前两说再生歧异——同源篇间多歧的完整样本。"
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:jieting-masi-death",
+      "event_ref": "ev:jieting",
+      "dimension": "existence",
+      "account_refs": ["ac:jieting-liangzhuan", "ac:jieting-masuzhuan", "ac:jieting-xianglang"],
+      "independence_analysis": {
+        "independent_witness_count": 1,
+        "reasoning": "★马谡结局三说——诸葛亮传『戮谡』/ 马谡传『下狱物故』/ 向朗传『逃亡（后事不明）』——三说**同属三国志**（同源篇间），不构成三独立见证（计 1）。这是 F2-b（史记赵世家 vs 晋世家）的三国志版、且**三歧**（比 F2-b 两歧更密）：单一史书内三篇各记结局相异。若 locator 停在『三国志』书级，三歧全被抹平——**再证 locator 必到篇（§2.2）**。裴松之于此亦未强为弥缝。",
+        "derivation_notes": [
+          "三 account 同 source_id=src:sanguozhi，chapter 各异（诸葛亮传/马谡传/向朗传）",
+          "同源篇间三歧 → 不折为多重独立见证，indep=1",
+          "对照 F2-b（史记篇间两歧）：本条三国志篇间三歧，locator-到-篇 的更强样本"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "主线取诸葛亮传『戮谡』（与王平传合、后世所本）；马谡传『下狱物故』、向朗传『逃亡』并陈",
+        "rationale": "以诸葛亮传为可信面（自贬谢众语境完整、与王平传互证）；余两说同书并陈，示同源三歧、不静默取一。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
+      "presentation_hint": "S12对勘"
+    }
+  ]
+}

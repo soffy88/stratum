@@ -5,7 +5,7 @@
 > **红线**：清单本身非 gold、不含判定；禁抽取器生成。
 > 日期 2026-07-21 · 拟制 CC
 
-**已建**：W-H0 四核心 gold 冻结（tag `history-fixtures-v0.1`：F1 三家分晋 · F2 赵氏孤儿 · F3 官渡兵力+裴按 · F4 尧舜禅让）+ **扩展批 Tier 1 全建完**：F5 宁我负人 · F6 赤壁 · F7 隆中对 · F8 空城计（三国 carrier/按语簇）· F9 牧野克商（纪年override+考古E0-aspiration）· F10 田氏代齐（parent#2+succession）。+ **Tier 2 起**：F11 马陵（六国override实战）· F12 鸿门宴（互见法）· F13 共和行政（canonical起点+竹书narrative）。共 **13 fixtures**，判定人 CC（F2 Wiki 亲裁），post-v0.1。
+**已建**：W-H0 四核心 gold 冻结（tag `history-fixtures-v0.1`：F1 三家分晋 · F2 赵氏孤儿 · F3 官渡兵力+裴按 · F4 尧舜禅让）+ **扩展批 Tier 1 全建完**：F5 宁我负人 · F6 赤壁 · F7 隆中对 · F8 空城计（三国 carrier/按语簇）· F9 牧野克商（纪年override+考古E0-aspiration）· F10 田氏代齐（parent#2+succession）。+ **Tier 2**：F11 马陵（六国override实战）· F12 鸿门宴（互见法·互补）· F13 共和行政（canonical起点+竹书）· F14 苏秦（★出土反证传世/A代价）· F15 街亭马谡（三国志篇间三歧）· F16 长平（number+考古E0-aspiration）。共 **16 fixtures**，判定人 CC（F2 Wiki 亲裁），post-v0.1。
 
 ---
 
@@ -19,7 +19,9 @@
 - **Tier 2（覆盖补齐）**：C5 街亭 · C6 七擒孟获 · C7 关羽 · C8 官渡乌巢（parent 子节点）· A3 桂陵马陵（纪年override·魏惠王）· A4 苏秦帛书（考古E0+genre）· A5 长平（number）· B2 鸿门宴（篇内冲突，同 F2-b 机制）· D4 共和行政（canonical 轴起点）
 - **Tier 3（广度）**：A2 商鞅 · A6 荆轲 · A7 完璧 · A9 乐毅 · D1 涿鹿 · D2 大禹 · B1 焚书坑儒 · B4 垓下
 
-**生产节奏**：范式已签署（D-003）——非边界 gold 由 CC 照范式判、Wiki 验收；按 Tier 分批建（每批 commit + JUDGMENTS 登记供抽验），边界案（若某条出现类 F2 压边界判定）单独提请 Wiki 亲裁。**Tier 1 全建完（F5–F10）**。**Tier 2 已建**：A3 桂陵马陵 ✅F11（纪年override·魏惠王）· B2 鸿门宴 ✅F12（互见法）· D4 共和行政 ✅F13（canonical 轴起点）。**Tier 2 余**：C5 街亭 · C6 七擒孟获 · C7 关羽 · C8 官渡乌巢（parent 子节点）· A4 苏秦帛书（考古E0+genre，撞 enum→A/B）· A5 长平（number）。除非你改圈。
+**生产节奏**：范式已签署（D-003）——非边界 gold 由 CC 照范式判、Wiki 验收；按 Tier 分批建（每批 commit + JUDGMENTS 登记供抽验），边界案（若某条出现类 F2 压边界判定）单独提请 Wiki 亲裁。**Tier 1 全建完（F5–F10）**。**Tier 2 已建**：A3 ✅F11 · B2 ✅F12 · D4 ✅F13 · A4 苏秦 ✅F14（出土反证/A）· C5 街亭 ✅F15（篇间三歧）· A5 长平 ✅F16（number+考古aspiration）。**Tier 2 余（纯广度·重复机制）**：C6 七擒孟获 · C7 关羽 · C8 官渡乌巢（parent 子节点）——三者均为已覆盖机制（三国 existence/narrative、parent）的广度补充，非新机制。
+
+> ★**机制覆盖已基本完备**（16 fixtures）：carrier/按语三态(F3/F5/F7/F8)、number(F3/F6/F16)、existence(F7/F8/F15)、date+纪年override(F9/F11)、parent+succession(F1/F10)、互见法矛盾/互补(F2-b/F15 vs F12)、E4(F4)、narrative(F13等)、出土反证/考古E0-aspiration(F9/F14/F16)。**余下 C6/C7/C8 是广度而非机制** —— 是否续建（凑向 30–50 广度）由你定；若只求机制护栏，16 条已成网。
 
 > ✅ **已拍板（D-005，2026-07-21）**：`source.genre` enum **维持不变，取 (A)** —— 考古/金文/经不作一等 Source，以文献 account + `tier_override` E0-候选注记表达。**(B) 扩 enum 的触发条件**＝Q3 考古/金文管线真正落地时，作一次协调的 **v0.2 契约 bump**（`contract_version`↑ + 双端同步 + decision trail）。在此之前一律 (A)。**A4 苏秦帛书按 (A) 建**（帛书《战国纵横家书》作 E0-候选注记，不登记为 Source）。
 
