@@ -9,10 +9,11 @@
   "spec": "AII-HISTORY-KU-SPEC-001 §10 W-H0 ②",
   "purpose": "existence/narrative 冲突 + 同书不同篇冲突（史记·赵世家 vs 史记·晋世家）→ locator 必到篇的必要性示范。★压边界案：左传（前583）与史记·赵世家（前597）时间差14年、主体集半重合——gold 判定由 Wiki 亲裁并记全理由。",
   "mechanisms_exercised": [
-    "existence 维冲突（屠岸贾/程婴/公孙杵臼藏孤替死，仅见赵世家）",
-    "date 维冲突（前583 vs 前597，差14年）",
-    "★同源篇内冲突（史记赵世家 vs 晋世家）——locator 到篇",
-    "边界同一性判定（同事异述 vs 似而非同）"
+    "①归因链首证：史记篇内分裂（晋世家 vs 赵世家，cf:zhaonan-shiji-internal, indep=0, presentation=仅记录）——locator 必到篇",
+    "②调和说『两次族诛』否弃项显式在录（rejected_alternatives）+ 否弃理由（虚构第二次族诛、违 parsimony）",
+    "③冲突对象三挂（S12）：date 597/583、existence 屠岸贾灭族、narrative 搜孤救孤",
+    "④mainline=左传·成八；赵世家 account 全文保留 + genre_note 晚出敷演",
+    "边界同一性判定（同事异述 vs 似而非同）；★gold 由 Wiki 亲裁"
   ],
   "identity_verdicts_see": "fixtures/JUDGMENTS.md#F2",
   "boundary_case": true,
