@@ -78,9 +78,9 @@
       "dimension": "number",
       "account_refs": ["ac:guandu-sanguozhi", "ac:guandu-peizhu-an"],
       "independence_analysis": {
-        "independent_witness_count": 2,
-        "reasoning": "★carrier/original smoke test：陈寿《三国志》正文（1 独立见证，近源）与裴松之按语（1 独立见证，刘宋，跨断代229年后）——裴松之明确质疑陈寿，是独立观察者，故计 2 独立见证。但注意：(a) 裴松之按语是裴注(carrier)所载之【原创观点】，与裴注所【引】的魏略/江表传等被载原源分开——若本条误把『三国志+裴注引某书』当一源，独立性折算即错；(b) 裴松之给的是推论（初起兵五千、降卒三十余万）非官渡实数，genre 折算：其质疑成立、但不构成官渡兵数的等重反证。",
-        "derivation_notes": ["src:sanguozhi：陈寿正文，genre=纪传近源，计 1", "src:peizhu 按语：裴松之原创观点（非 carrier_of 中的被载源），R8 归属裴松之，计 1（跨断代独立）", "carrier 区分：src:peizhu.carrier_of=[魏略,江表传,世语] 是【引书】；本 account 用的是【按语】，不在 carrier_of 之列——独立性各计"]
+        "independent_witness_count": 1,
+        "reasoning": "★carrier/original smoke test，兼判 judgment vs testimony：官渡兵数的独立见证仅陈寿《三国志》正文 1 个（近源纪传）。裴松之按语是【评断/judgment】不是【证词/testimony】——他未提供官渡兵数的独立证词，而是据『初起兵五千、青州降卒三十余万』推理质疑陈寿；故按语出【冲突对象 + 观点归属(R8 归裴松之)】，但不入独立见证折算、不动 E tier（同 F4『两独立说并存≠升 tier』的守门逻辑）。event tier 维持 E2（单一近源文献），与 indep=1 一致。★carrier/original 教训在此更锋利：裴注若【引】佚籍(魏略/江表传等被载原源)给出官渡兵数，那才是另一份 testimony、计入独立见证；裴松之自己的【按语】是 judgment，不计。真正分野不止 carrier vs original，更是同一 carrier 内『引书(testimony,计)』vs『按语(judgment,不计)』。",
+        "derivation_notes": ["src:sanguozhi：陈寿正文，官渡兵数唯一独立证词，计 1", "src:peizhu 按语：裴松之评断(judgment)，出冲突对象+R8观点归属，独立见证折算计 0、不动 E tier", "反例警戒：若把裴注【引某佚籍的兵数证词】与裴松之【按语】混同，或把『三国志+裴注引书』当一源，独立性折算即错——carrier_of=[魏略,江表传,世语] 是引书(testimony)，与按语(judgment)分属两类"]
       },
       "mainline_decision": { "choice": "陈寿『兵不满万』为主线记载；裴松之质疑并陈（S12/角标）", "rationale": "近源正文优先；裴按无反数、属合理质疑，存为 number 冲突对象、屏幕并陈其疑，不改主线数值。", "decided_by": "CC", "date": "2026-07-21" },
       "presentation_hint": "S12对勘"
