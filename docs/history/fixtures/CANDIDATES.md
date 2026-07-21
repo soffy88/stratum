@@ -21,7 +21,7 @@
 
 **生产节奏**：范式已签署（D-003）——非边界 gold 由 CC 照范式判、Wiki 验收；按 Tier 分批建（每批 commit + JUDGMENTS 登记供抽验），边界案（若某条出现类 F2 压边界判定）单独提请 Wiki 亲裁。**Tier 1 全建完（F5–F10）**。**Tier 2 已建**：A3 桂陵马陵 ✅F11（纪年override·魏惠王）· B2 鸿门宴 ✅F12（互见法）· D4 共和行政 ✅F13（canonical 轴起点）。**Tier 2 余**：C5 街亭 · C6 七擒孟获 · C7 关羽 · C8 官渡乌巢（parent 子节点）· A4 苏秦帛书（考古E0+genre，撞 enum→A/B）· A5 长平（number）。除非你改圈。
 
-> ⚠ **待你定（D3 牧野牵出，仍开）**：`source.genre` enum = {编年|纪传|国别策论|注|辑佚}，**无『出土/金文/经』类**——尚书（经）、利簋（金文）当不了一等 Source。**F9 已走 (A) aspiration-note**（不改契约：史记+竹书两文献 account，利簋作 tier_override E0-候选）。若日后欲让考古/金文成一等源（真正 E0），须 **(B) v0.2 扩 `source.genre` enum**（改契约形状、bump `contract_version`、双端同步、记 decision trail）。A4 苏秦帛书（Tier 2）会再次撞上此问题——若届时仍未定 B，同走 A。
+> ✅ **已拍板（D-005，2026-07-21）**：`source.genre` enum **维持不变，取 (A)** —— 考古/金文/经不作一等 Source，以文献 account + `tier_override` E0-候选注记表达。**(B) 扩 enum 的触发条件**＝Q3 考古/金文管线真正落地时，作一次协调的 **v0.2 契约 bump**（`contract_version`↑ + 双端同步 + decision trail）。在此之前一律 (A)。**A4 苏秦帛书按 (A) 建**（帛书《战国纵横家书》作 E0-候选注记，不登记为 Source）。
 
 ---
 
