@@ -59,9 +59,9 @@
         "raw": "魏惠王（史记年表在位年数）",
         "canonical": "TODO",
         "override": {
-          "corrected_canonical": "TODO：魏惠王有『后元』改元，史记未分致后段系年整体前移，需按后元重排",
+          "corrected_canonical": "魏惠王在位含『后元』（前369–前319）；史记年表未分后元致马陵等系年偏早约十年——按后元重排后马陵之战 = 前341",
           "tradition": "钱穆/杨宽一系",
-          "academic_source": "TODO：杨宽《战国史》战国纪年校订 / 钱穆《先秦诸子系年》相应条"
+          "academic_source": "杨宽《战国史》战国纪年校订（魏惠王后元）；钱穆《先秦诸子系年》相应条。★F11 马陵 cf:maling-date 已用此 override（placeholder → 实证）"
         }
       },
       {
