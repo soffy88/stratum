@@ -4,6 +4,16 @@
 
 ---
 
+## D-005 · `source.genre` enum 拍板 = (A) 不改契约；(B) 触发条件定义
+
+- **日期**：2026-07-21
+- **决策人**：Wiki（拍板）/ CC（建议 A、记录）
+- **裁决**：`source.genre` enum 维持 `{编年|纪传|国别策论|注|辑佚}` **不变——取 (A) aspiration-note**。考古 / 金文 / 经（尚书、利簋、简帛之属）**暂不作一等 Source**。
+- **理由**：① 契约 `history-query-response.schema.json` 已冻结、G1b 钉 `history-contract-v0.1`；改 enum＝契约形状变更（bump `contract_version` + 双端同步 + 风险）。② §6 考古 flag 本就 **Q3 远期再接**（先留字段）——当前无 live 需求。③ 现有及将来 fixtures（F9 牧野 / A4 苏秦帛书）以文献 account + `tier_override` 的 E0-候选注记表达，不失真。
+- **★(B) 触发条件（明确，免将来再议）**：当 **Q3 考古 / 金文管线真正落地**（有实际简帛/金文源要入库）时，才做 (B) 扩 `source.genre` enum——且作为**一次协调的 v0.2 契约 bump**（`contract_version` → v0.2、README + G1b 双端同步、记 decision trail）。在此之前一律走 (A)。
+- **落地**：A4 苏秦帛书（Tier 2）按 (A) 建——帛书《战国纵横家书》作 `tier_override` E0-候选注记，不登记为 Source。
+- **与 fixtures gold tag 无关**（重申 D-004）：本裁决只定 enum；`history-fixtures-v0.2` tag 仍待 Wiki 抽验通过再打（契约 tag 与 gold tag 两回事）。
+
 ## D-004 · 扩展批 Tier 1 建完（F5–F10）交付抽验
 
 - **日期**：2026-07-21
