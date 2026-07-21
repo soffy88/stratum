@@ -1,0 +1,95 @@
+{
+  "events": [
+    {
+      "event_id": "ev:changping",
+      "title": "长平之战（白起坑赵）",
+      "canonical_date": { "type": "year", "value": "前260", "note": "秦赵决战长平；赵括代廉颇出战，白起断粮围之，赵军降而尽坑。" },
+      "event_type": "战役",
+      "actors": [
+        { "person_ref": "per:baiqi", "role": "秦将（坑赵降卒）", "force_ref": "fo:qin" },
+        { "person_ref": "per:zhaokuo", "role": "赵将（纸上谈兵，战死）", "force_ref": "fo:zhao" },
+        { "person_ref": "per:lianpo", "role": "赵前期主将（坚壁，被代）", "force_ref": "fo:zhao" }
+      ],
+      "geo": { "place_refs": ["pl:changping"], "route_hint": "白起佯败、断赵粮道、分割合围", "mapstate_hint": "秦围赵于长平" },
+      "parent_event": null,
+      "accounts": ["ac:changping-baiqi", "ac:changping-zhaoshijia"],
+      "conflicts": ["cf:changping-number"],
+      "evidence_tier": "E1",
+      "tier_override": {
+        "rationale": "长平之战为史记多篇同述（E1）。★考古E0-aspiration（approach A / D-005）：长平（今高平）尸骨坑遗址（永录等地）出土大量非正常死亡遗骸，佐证『大规模坑杀』之实——本可将『大规模坑杀』升 E0（文献+出土互证）；但考古源 Q3 远期、`source.genre` enum 无出土类（走 A），故记于此 tier_override（E0-候选），不作 Source。注意：考古佐证『大规模』，不证『恰四十万』这一确数。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
+      "mainline_account_ref": "ac:changping-baiqi",
+      "mainline_decision": {
+        "choice": "ac:changping-baiqi",
+        "rationale": "以史记白起王翦列传『四十万』为主线记数（最详）；但★标注确数存疑（后世多疑其夸大、考古证大规模而非确数）；赵世家『数十万』约数并陈。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:changping-baiqi",
+      "event_ref": "ev:changping",
+      "source_id": "src:shiji",
+      "locator": { "book": "史记", "chapter": "白起王翦列传", "section": "长平坑赵段", "para_ulid": null, "note": "★待补。白起列传：赵卒降，武安君挟诈尽阬之；前后斩首虏四十五万，赵人大震。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "前260",
+        "actor_claims": ["赵括代廉颇，出击；白起佯败、断其粮道、围之", "赵军断粮四十六日，赵括突围战死", "赵卒四十万降，武安君乃挟诈尽阬杀之"],
+        "causal_claims": ["赵括轻出 + 白起断粮合围 → 赵军降 → 尽坑"],
+        "number_claims": [
+          { "value": "四十万", "unit": "人（坑杀降卒）", "quote_span": "卒四十万人降武安君……乃挟诈而尽阬杀之。", "display": "《史记·白起王翦列传》载" },
+          { "value": "四十五万", "unit": "人（前后斩首虏）", "quote_span": "前后斩首虏四十五万，赵人大震。", "display": "《史记·白起王翦列传》载" }
+        ],
+        "dialogue_spans": []
+      },
+      "genre_note": "★确数最详（四十万/四十五万）；后世多疑其夸大——number 主线但标存疑。"
+    },
+    {
+      "account_id": "ac:changping-zhaoshijia",
+      "event_ref": "ev:changping",
+      "source_id": "src:shiji",
+      "locator": { "book": "史记", "chapter": "赵世家", "section": "长平段", "para_ulid": null, "note": "★待补。赵世家记长平作『数十万』约数——与白起列传『四十万』确数，同书篇间之精粗差。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "前260",
+        "actor_claims": ["赵括军败，数十万之众遂降秦，秦悉阬之"],
+        "causal_claims": [],
+        "number_claims": [
+          { "value": "数十万", "unit": "人（约数）", "quote_span": "数十万之众遂降秦，秦悉阬之。", "display": "《史记·赵世家》载" }
+        ],
+        "dialogue_spans": []
+      },
+      "genre_note": "★同书异篇（赵世家）：作『数十万』约数——与白起列传『四十万』确数并列，精粗互见。"
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:changping-number",
+      "event_ref": "ev:changping",
+      "dimension": "number",
+      "account_refs": ["ac:changping-baiqi", "ac:changping-zhaoshijia"],
+      "independence_analysis": {
+        "independent_witness_count": 1,
+        "reasoning": "坑杀之数：白起列传『四十万』（确数）vs 赵世家『数十万』（约数）——二者**同属史记**（同源篇间），不构成两独立见证（计 1）；差在**精粗**（确数 vs 约数），非对立。★后世多疑『四十万』确数夸大（战国动员力、粮运之限）；长平尸骨坑考古证『大规模坑杀』属实，但**不证恰四十万**——考古佐证为 E0-候选（A 下不作 Source，记于 tier_override）。故：事件与大规模坑杀 = 强（文献+考古 aspiration）；『四十万』这一**确数** = 存疑（单一史书、后世质疑、考古不证确数）。",
+        "derivation_notes": [
+          "白起列传『四十万』/ 赵世家『数十万』：同 src:shiji 篇间, 精粗差, indep=1",
+          "确数四十万后世质疑夸大；考古（尸骨坑）证大规模、不证确数",
+          "考古 E0-候选（A/D-005）：不作 Source, 记 tier_override"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "记『四十万』（史记白起列传，最详）+ 明标确数存疑（考古证大规模、不证确数；赵世家作数十万）",
+        "rationale": "呈现史记确数但不当铁案；屏幕并陈『确数存疑』角标，守宁缺毋附会——不替史记坐实四十万、亦不擅改。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
+      "presentation_hint": "主线+角标"
+    }
+  ]
+}
