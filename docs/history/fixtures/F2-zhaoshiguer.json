@@ -67,14 +67,14 @@
       "evidence_tier": "E2",
       "tier_override": {
         "rationale": "近源（左传）为单一编年支柱，屠岸贾藏孤情节无近源支撑、晚出敷演——就『屠岸贾/程婴』叙事而言实近 E3；就『赵氏被诛而赵武复兴』骨干而言有左传近源，E2。取骨干 tier=E2，敷演部分在 conflict 内单独标注。",
-        "decided_by": "Wiki-亲裁（待签署）",
+        "decided_by": "Wiki（亲裁·签署 2026-07-21）",
         "date": "2026-07-21"
       },
       "mainline_account_ref": "ac:zhaonan-zuozhuan",
       "mainline_decision": {
         "choice": "ac:zhaonan-zuozhuan",
         "rationale": "★边界裁定（详 JUDGMENTS.md#F2）：判为『同事异述』——同指赵氏被诛而赵武复兴之本事，屠岸贾/搜孤救孤系晚出敷演，落为 existence/narrative 冲突对象而非另一事件、亦非另一次族诛。主线取左传（近源编年，成公八年·前583）；史记·赵世家戏剧叙事全文保留、走 S12 对勘。前583/前597 之差落为 date 冲突。",
-        "decided_by": "Wiki-亲裁（待签署）",
+        "decided_by": "Wiki（亲裁·签署 2026-07-21）",
         "date": "2026-07-21"
       }
     }
@@ -195,7 +195,7 @@
       "mainline_decision": {
         "choice": "以晋世家（左传系统）为史记内可信面；赵世家异叙并陈",
         "rationale": "同书自相冲突显式记录，示 locator-到-篇之必要 + 作归因链首证；不静默取一。",
-        "decided_by": "Wiki-亲裁（待签署）",
+        "decided_by": "Wiki（亲裁·签署 2026-07-21）",
         "date": "2026-07-21"
       },
       "presentation_hint": "仅记录"
@@ -220,7 +220,7 @@
       "mainline_decision": {
         "choice": "前583（左传·成公八年）",
         "rationale": "近源编年系年优先；赵世家前597属戏剧叙事系统，其系年随叙事晚出。",
-        "decided_by": "Wiki-亲裁（待签署）",
+        "decided_by": "Wiki（亲裁·签署 2026-07-21）",
         "date": "2026-07-21"
       },
       "presentation_hint": "S12对勘"
@@ -245,7 +245,7 @@
       "mainline_decision": {
         "choice": "存录为异说，不采入史实骨干（骨干以左传『晋诛赵同赵括』为准）",
         "rationale": "近源无、晚出敷演 → 判传说增饰，宁碎片不并；作一等冲突对象 S12 并陈。",
-        "decided_by": "Wiki-亲裁（待签署）",
+        "decided_by": "Wiki（亲裁·签署 2026-07-21）",
         "date": "2026-07-21"
       },
       "presentation_hint": "S12对勘"
@@ -270,7 +270,7 @@
       "mainline_decision": {
         "choice": "存录为异说，不采入史实骨干",
         "rationale": "搜孤救孤为晚出敷演/戏剧母题，宁缺毋附会不并入史实；全文保留于 ac:zhaonan-shiji-zhaoshijia 供 S12 对勘。",
-        "decided_by": "Wiki-亲裁（待签署）",
+        "decided_by": "Wiki（亲裁·签署 2026-07-21）",
         "date": "2026-07-21"
       },
       "presentation_hint": "S12对勘"
@@ -282,7 +282,7 @@
       "claim": "调和说（两次族诛）：谓左传前583下宫之难与史记·赵世家前597屠岸贾灭赵为两次独立的赵氏族诛（前597一次、前583一次），如此两说皆真、并不冲突。",
       "verdict": "否弃",
       "reason": "前597屠岸贾灭族无任何近源支撑（左传、史记·晋世家俱无，见 cf:zhaonan-shiji-internal 首证），调和说为消弭14年系年矛盾而虚构第二次族诛，凭空增殖无佐证的历史实体（违 parsimony / 宁缺毋附会）。本 fixture 判前597/前583为同一事件之系年异说（落 cf:zhaonan-date），非两桩史实——把源系年分歧误当两次真实族诛，正是同一性判定要防的错（似真而非）。",
-      "decided_by": "Wiki-亲裁（待签署）"
+      "decided_by": "Wiki（亲裁·签署 2026-07-21）"
     }
   ]
 }

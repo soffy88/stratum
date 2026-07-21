@@ -54,4 +54,4 @@ PY
 - §5 同一性判定记录（A 类回归网首批 gold）：`../fixtures/JUDGMENTS.md`。
 - 承自 conformance（Task 0）：`../AII-HISTORY-KU-SPEC-001.md` 附录 A。
 
-> ⚠ **F2（赵氏孤儿）判定含边界案，`decided_by=Wiki-亲裁（待签署）`**——Wiki 签署前，F2 gold 未最终冻结（见 JUDGMENTS.md#F2）。契约 schema/sample 与 F1/F3/F4 gold 已冻结。
+> ✓ **F2（赵氏孤儿）边界案 gold 已由 Wiki 亲裁签署（2026-07-21）**。W-H0 四核心 gold（F1–F4）全部冻结，tag `history-fixtures-v0.1`（与契约 tag `history-contract-v0.1` 并列；前者钉 gold 判定、后者钉 §8 契约形状）。

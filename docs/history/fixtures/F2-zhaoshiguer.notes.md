@@ -20,6 +20,6 @@
   "gold_adjudicator": "Wiki（亲裁，见 JUDGMENTS.md#F2；本 fixture 内 mainline_decision.decided_by 标 Wiki-亲裁）",
   "locator_note": "para_ulid 待补；★chapter 级为本 fixture 判据核心，不可省——冲突正在史记内部两篇之间。",
   "created": "2026-07-21",
-  "author": "CC (手工，证据与归因链备齐待 Wiki 亲裁)"
+  "author": "CC 备据 + Wiki 亲裁签署 2026-07-21（gold 冻结, tag history-fixtures-v0.1）"
 }
 ```
