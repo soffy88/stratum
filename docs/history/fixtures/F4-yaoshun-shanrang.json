@@ -1,0 +1,81 @@
+{
+  "_meta": {
+    "fixture": "F4 · 尧舜禅让（E4 传说层样本）",
+    "spec": "AII-HISTORY-KU-SPEC-001 §10 W-H0 ④",
+    "purpose": "E4 传说层 banner 链路（evidence_tier=E4 → 生产 R9 强制 banner）。附带演示 竹书纪年 registry 用法（古本『舜篡尧』异文 vs 史记『禅让』）与 fuzzy 纪年。",
+    "mechanisms_exercised": ["evidence_tier=E4（传说层，显式标注不假装）", "fuzzy canonical_date（前841 之前不可 canonical 化）", "narrative 冲突（禅让 vs 篡夺）", "竹书纪年 古本/今本分立、今本只作参考（§2.3）"],
+    "identity_verdicts_see": "fixtures/JUDGMENTS.md#F4",
+    "locator_note": "para_ulid 待补。",
+    "created": "2026-07-21",
+    "author": "CC (手工，禁抽取器)"
+  },
+  "events": [
+    {
+      "event_id": "ev:yaoshun-shanrang",
+      "title": "尧舜禅让",
+      "canonical_date": { "type": "fuzzy", "value": null, "note": "★传说层，约前23世纪，前841 之前不可 canonical 化。屏幕 banner 显式标『传说·无确切纪年』，不假装精确。" },
+      "event_type": "人事",
+      "actors": [
+        { "person_ref": "per:yao", "role": "禅位者（或被囚者，异说）", "force_ref": null },
+        { "person_ref": "per:shun", "role": "受禅者（或篡夺者，异说）", "force_ref": null }
+      ],
+      "geo": { "place_refs": ["pl:jinyang-note-none"], "route_hint": null, "mapstate_hint": null },
+      "parent_event": null,
+      "accounts": ["ac:shanrang-shiji", "ac:shanrang-zhushu-guben"],
+      "conflicts": ["cf:shanrang-narrative"],
+      "evidence_tier": "E4",
+      "tier_override": { "rationale": "五帝事，纯文献传说、无考古/出土互证特定事件、成书距事极远——按 §6 E4 定义（传说层，五帝夏商大部）。显式标 E4，不假装 E1/E2。", "decided_by": "CC", "date": "2026-07-21" },
+      "mainline_account_ref": "ac:shanrang-shiji",
+      "mainline_decision": { "choice": "ac:shanrang-shiji", "rationale": "主流叙事取史记·五帝本纪『禅让』；竹书纪年古本『舜篡尧』作 narrative 冲突并陈。★但主线不改 E4 属性——无论取哪说，皆传说层，banner 恒亮。", "decided_by": "CC", "date": "2026-07-21" }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:shanrang-shiji",
+      "event_ref": "ev:yaoshun-shanrang",
+      "source_id": "src:shiji",
+      "locator": { "book": "史记", "chapter": "五帝本纪", "section": null, "para_ulid": null, "note": "待补。尧老，命舜摄行天子之政，巡狩、举贤；尧崩，舜让丹朱不得，遂即位——禅让美谈。太史公自言五帝事『其文不雅驯』，采其可著者。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "（传说，无确切纪年）",
+        "actor_claims": ["尧老，使舜摄行天子之政", "尧崩，三年丧毕，舜让辟丹朱于南河之南，诸侯归舜，舜乃即天子位"],
+        "causal_claims": ["尧知子丹朱不肖，不足授天下 → 授舜（授贤）"],
+        "number_claims": [],
+        "dialogue_spans": ["（尧咨舜、舜让丹朱诸辞——演绎素材，透传，只存不消费）"]
+      },
+      "genre_note": "★E4 传说层；太史公亦言五帝事文不雅驯（自标存疑），采择而书。"
+    },
+    {
+      "account_id": "ac:shanrang-zhushu-guben",
+      "event_ref": "ev:yaoshun-shanrang",
+      "source_id": "src:zhushu-guben",
+      "locator": { "book": "竹书纪年·古本（辑佚）", "chapter": "（五帝纪·辑文）", "section": null, "para_ulid": null, "note": "★待补。古本辑文异说：『昔尧德衰，为舜所囚』『舜囚尧于平阳，取之帝位』『舜放尧于平阳』——篡夺叙事，与史记禅让美谈相反。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "（传说，无确切纪年）",
+        "actor_claims": ["尧德衰，为舜所囚", "舜囚尧、复偃塞丹朱，使不与父相见 → 舜取帝位"],
+        "causal_claims": ["权力篡夺（非授贤）"],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "★竹书纪年古本（辑佚）异文；战国魏国原始编年系统，与史记系统相反。仅古本作证据来源、今本(src:zhushu-jinben)只作参考不入此 account（§2.3 分立登记）。"
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:shanrang-narrative",
+      "event_ref": "ev:yaoshun-shanrang",
+      "dimension": "narrative",
+      "account_refs": ["ac:shanrang-shiji", "ac:shanrang-zhushu-guben"],
+      "independence_analysis": {
+        "independent_witness_count": 2,
+        "reasoning": "史记禅让说（儒家主流叙事系统）与竹书纪年古本篡夺说（战国魏编年系统）分属两独立传统，各 1 见证，计 2。但两者皆 E4 传说层——独立见证数不改 tier：传说层的分歧仍是传说层，不因两说并存而升为信史。今本竹书纪年（真伪有争）不计入（§2.3 只作参考）。",
+        "derivation_notes": ["src:shiji 五帝本纪：禅让", "src:zhushu-guben：舜囚尧/篡（辑佚异文）", "src:zhushu-jinben 排除（今本存疑，只参考不作证据）"]
+      },
+      "mainline_decision": { "choice": "主线取史记禅让说，竹书古本篡说并陈", "rationale": "禅让为主流叙事、教学惯用；篡说作 narrative 冲突对象呈现（S12 差异化供给）。★无论主线取谁，evidence_tier 恒 E4、banner 恒亮，不得因『有两说』而暗示其为信史。", "decided_by": "CC", "date": "2026-07-21" },
+      "presentation_hint": "S12对勘"
+    }
+  ]
+}
