@@ -1,0 +1,330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aii/stratum/history/contracts/history-query-response.schema.json",
+  "title": "AII History KU — tongjian 只读查询响应契约",
+  "description": "AII-HISTORY-KU-SPEC-001 §8.1 的查询响应形状。生产端 G1a 手工装配同形数据先跑，KU 实装后 G1b 逐字段对拍。契约是两仓唯一耦合面——冻结 v0.1（2026-07-21）。字段结构严格取自 spec §3（注册表族）/§4（KU 类型族）/§8.1，不新增。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "event", "accounts", "conflicts", "registry_bundle"],
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "description": "契约版本。冻结值 'v0.1'。KU 版本另以内容指纹钉住（§8.3），此处仅标契约形状版本。",
+      "const": "v0.1"
+    },
+    "event": { "$ref": "#/$defs/h_event" },
+    "accounts": {
+      "type": "array",
+      "description": "该 event 的全部源述（§4.2）。同事异述常态：一 event 挂多 account。",
+      "items": { "$ref": "#/$defs/h_account" }
+    },
+    "conflicts": {
+      "type": "array",
+      "description": "该 event 的显式冲突对象（§4.3）。冲突是一等公民、是资产。",
+      "items": { "$ref": "#/$defs/h_conflict" }
+    },
+    "registry_bundle": {
+      "$ref": "#/$defs/registry_bundle",
+      "description": "§8.1 的『人/地/纪年解析包』——把 event/account 里的 *_ref 解析成注册表实体，下游免二次查。"
+    }
+  },
+  "$defs": {
+    "canonical_date": {
+      "type": "object",
+      "description": "§4.1 canonical_date。canonical 轴 = 共和元年（前841）起连续；之前入 fuzzy 区。",
+      "additionalProperties": false,
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "enum": ["exact", "year", "range", "fuzzy"] },
+        "value": {
+          "description": "type=range 时为 [起, 止]；其余为标量。纪年字面（如 '前453'/'公元200'）；fuzzy 可为 null 或约称。",
+          "anyOf": [
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "null" },
+            { "type": "array", "items": { "type": ["string", "number"] }, "minItems": 2, "maxItems": 2 }
+          ]
+        },
+        "note": { "type": "string" }
+      }
+    },
+    "mainline_decision": {
+      "type": "object",
+      "description": "§4.3 mainline_decision（§4.1 event 主线取值、§3.2 争议日期主线均复用此结构）。",
+      "additionalProperties": false,
+      "required": ["choice", "rationale", "decided_by", "date"],
+      "properties": {
+        "choice": { "type": "string", "description": "所选 account_ref / 取值 id" },
+        "rationale": { "type": "string" },
+        "decided_by": { "type": "string", "description": "决策人（Wiki / CC / 经理人）" },
+        "date": { "type": "string", "description": "决策日期 YYYY-MM-DD" }
+      }
+    },
+    "h_event": {
+      "type": "object",
+      "description": "§4.1 ku:h-event（B仓超边层）。",
+      "additionalProperties": false,
+      "required": ["event_id", "title", "canonical_date", "event_type", "actors", "geo", "accounts", "conflicts", "evidence_tier", "mainline_account_ref", "mainline_decision"],
+      "properties": {
+        "event_id": { "type": "string" },
+        "title": { "type": "string" },
+        "canonical_date": { "$ref": "#/$defs/canonical_date" },
+        "event_type": { "enum": ["战役", "政变", "会盟", "册命", "迁都", "变法", "灾异", "制度", "人事", "其他"] },
+        "actors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["person_ref", "role"],
+            "properties": {
+              "person_ref": { "type": "string" },
+              "role": { "type": "string" },
+              "force_ref": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "geo": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["place_refs"],
+          "properties": {
+            "place_refs": { "type": "array", "items": { "type": "string" } },
+            "route_hint": { "type": ["string", "null"] },
+            "mapstate_hint": { "type": ["string", "null"] }
+          }
+        },
+        "parent_event": {
+          "description": "§4.1 组合事件。父事件 event_id（本事件是子）或本事件作为父时列出子 event_ids。见 F1 三家分晋的用法约定。",
+          "anyOf": [
+            { "type": "null" },
+            { "type": "string" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "role": { "enum": ["parent", "child"] },
+                "parent_event_id": { "type": ["string", "null"] },
+                "child_event_ids": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          ]
+        },
+        "accounts": { "type": "array", "items": { "type": "string" }, "description": "account_id 引用（→ ku:h-account）" },
+        "conflicts": { "type": "array", "items": { "type": "string" }, "description": "conflict_id 引用（→ ku:h-conflict）" },
+        "evidence_tier": { "enum": ["E0", "E1", "E2", "E3", "E4"], "description": "§6 计算，可人工覆盖并记理由（tier_override）" },
+        "tier_override": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": { "rationale": { "type": "string" }, "decided_by": { "type": "string" }, "date": { "type": "string" } },
+          "description": "evidence_tier 人工覆盖时记理由（§4.1『可人工覆盖并记理由』）；未覆盖为 null。"
+        },
+        "mainline_account_ref": { "type": "string" },
+        "mainline_decision": { "$ref": "#/$defs/mainline_decision" }
+      }
+    },
+    "h_account": {
+      "type": "object",
+      "description": "§4.2 ku:h-account（某一源对该事件的证词）。",
+      "additionalProperties": false,
+      "required": ["account_id", "event_ref", "source_id", "locator", "extraction"],
+      "properties": {
+        "account_id": { "type": "string" },
+        "event_ref": { "type": "string" },
+        "source_id": { "type": "string" },
+        "locator": {
+          "type": "object",
+          "description": "到段落级 ULID（§2.2；承 STRATUM_SPEC v0.2 §D2/§4.2）。冲突常在同书不同篇，locator 必到篇及以下。",
+          "additionalProperties": false,
+          "required": ["book", "para_ulid"],
+          "properties": {
+            "book": { "type": "string", "description": "书（source 显示名，如 '史记'）" },
+            "chapter": { "type": ["string", "null"], "description": "篇/卷（如 '赵世家'）——同书不同篇冲突的判据" },
+            "section": { "type": ["string", "null"], "description": "段" },
+            "para_ulid": {
+              "type": ["string", "null"],
+              "description": "段落级 ULID，格式 <substrate-ULID>:<para-suffix>；语料未入库前置 null 并在 note 记待补",
+              "pattern": "^[0-9A-HJKMNP-TV-Z]{26}:[0-9A-HJKMNP-TV-Z]{4,8}$"
+            },
+            "note": { "type": "string" }
+          }
+        },
+        "白文span_refs": { "type": "array", "items": { "type": "string" } },
+        "白话ref": { "type": ["string", "null"] },
+        "extraction": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "date_claim": { "type": ["string", "null"] },
+            "actor_claims": { "type": "array", "items": { "type": "string" } },
+            "causal_claims": { "type": "array", "items": { "type": "string" } },
+            "number_claims": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["value", "quote_span", "display"],
+                "properties": {
+                  "value": { "type": ["string", "number"] },
+                  "unit": { "type": ["string", "null"] },
+                  "quote_span": { "type": "string", "description": "白文原句" },
+                  "display": { "type": "string", "description": "屏幕呈现，如 '《三国志》载'" }
+                }
+              }
+            },
+            "dialogue_spans": {
+              "type": "array",
+              "description": "演绎段素材接口：只存不消费，透传导演流水线（§8.2）。",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "genre_note": { "type": ["string", "null"], "description": "策士言辞/追记/注引 等降权标记" }
+      }
+    },
+    "h_conflict": {
+      "type": "object",
+      "description": "§4.3 ku:h-conflict（异说：显式一等对象）。",
+      "additionalProperties": false,
+      "required": ["conflict_id", "event_ref", "dimension", "account_refs", "independence_analysis", "mainline_decision", "presentation_hint"],
+      "properties": {
+        "conflict_id": { "type": "string" },
+        "event_ref": { "type": "string" },
+        "dimension": { "enum": ["date", "actor", "number", "causality", "narrative", "existence"] },
+        "account_refs": { "type": "array", "items": { "type": "string" }, "minItems": 2 },
+        "independence_analysis": {
+          "type": "object",
+          "description": "§6 折算后的真实独立见证数 + 归因。",
+          "additionalProperties": false,
+          "required": ["independent_witness_count", "reasoning"],
+          "properties": {
+            "independent_witness_count": { "type": "number" },
+            "reasoning": { "type": "string" },
+            "derivation_notes": { "type": "array", "items": { "type": "string" }, "description": "回溯祖源/carrier-original/genre 系数的说明" }
+          }
+        },
+        "mainline_decision": { "$ref": "#/$defs/mainline_decision" },
+        "presentation_hint": { "enum": ["S12对勘", "主线+角标", "banner", "仅记录"] }
+      }
+    },
+    "registry_bundle": {
+      "type": "object",
+      "description": "§8.1 解析包。把本响应里出现的 *_ref 解析为注册表实体。",
+      "additionalProperties": false,
+      "required": ["persons", "places", "forces", "sources", "chronology"],
+      "properties": {
+        "persons": { "type": "array", "items": { "$ref": "#/$defs/person" } },
+        "places": { "type": "array", "items": { "$ref": "#/$defs/place" } },
+        "forces": { "type": "array", "items": { "$ref": "#/$defs/force" } },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+        "chronology": {
+          "type": "array",
+          "description": "本响应涉及日期的 per-source→canonical 解析（§3.2）。",
+          "items": { "$ref": "#/$defs/chronology_resolution" }
+        }
+      }
+    },
+    "person": {
+      "type": "object",
+      "description": "§3.3 Person。",
+      "additionalProperties": false,
+      "required": ["person_id", "names_by_source"],
+      "properties": {
+        "person_id": { "type": "string" },
+        "names_by_source": {
+          "type": "object",
+          "description": "异名归一：{名: [出处 source_id...]} 或 {source_id: 名}。此契约取 {名: [source_id]} 形。",
+          "additionalProperties": { "type": "array", "items": { "type": "string" } }
+        },
+        "谥字号": { "type": ["string", "null"] },
+        "active_range": { "type": ["string", "null"] },
+        "force_affiliations": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "place": {
+      "type": "object",
+      "description": "§3.4 Place。",
+      "additionalProperties": false,
+      "required": ["place_id", "name_by_era"],
+      "properties": {
+        "place_id": { "type": "string" },
+        "name_by_era": { "type": "object", "additionalProperties": { "type": "string" } },
+        "geo_hint": { "type": ["string", "null"] },
+        "mapstate_hints": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "force": {
+      "type": "object",
+      "description": "§3.5 Force。色留生产侧，实体在此。",
+      "additionalProperties": false,
+      "required": ["force_id", "name_by_era"],
+      "properties": {
+        "force_id": { "type": "string" },
+        "name_by_era": { "type": "object", "additionalProperties": { "type": "string" } },
+        "active_range": { "type": ["string", "null"] },
+        "succession_edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["from", "to", "relation"],
+            "properties": { "from": { "type": ["string", "null"] }, "to": { "type": ["string", "null"] }, "relation": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "description": "§3.1 Source。derivation_edges 必填（可空数组，但字段必在）。",
+      "additionalProperties": false,
+      "required": ["source_id", "title", "genre", "carrier_of", "derivation_edges"],
+      "properties": {
+        "source_id": { "type": "string" },
+        "title": { "type": "string" },
+        "成书年代": { "type": ["string", "null"] },
+        "genre": { "enum": ["编年", "纪传", "国别策论", "注", "辑佚"] },
+        "carrier_of": {
+          "type": "array",
+          "description": "载体关系：本源作为载体所载的原源 source_id（各原源独立登记、独立计独立性）。",
+          "items": { "type": "string" }
+        },
+        "derivation_edges": {
+          "type": "array",
+          "description": "派生：本源取材自的上游 source_id（通鉴←史记/战国策；史记←左传/国语/世本）。§6 折算回溯祖源用此。",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["from", "note"],
+            "properties": {
+              "from": { "type": "string", "description": "上游 source_id（被取材者）" },
+              "scope": { "type": ["string", "null"], "description": "派生范围，如 '战国部分'" },
+              "note": { "type": "string" }
+            }
+          }
+        },
+        "genre_reliability": { "type": ["string", "null"], "description": "体裁可靠性注记，影响 §6 折算系数" },
+        "底本note": { "type": ["string", "null"] }
+      }
+    },
+    "chronology_resolution": {
+      "type": "object",
+      "description": "§3.2 per-source→canonical 解析 + 系统性误差 override。",
+      "additionalProperties": false,
+      "required": ["source_id", "raw", "canonical"],
+      "properties": {
+        "source_id": { "type": "string" },
+        "raw": { "type": "string", "description": "源内纪年字面：王公纪年/干支/年号，如 '晋景公三年'" },
+        "canonical": { "type": "string", "description": "映射到 canonical 轴，如 '前597'；fuzzy 区标 fuzzy" },
+        "override": {
+          "type": ["object", "null"],
+          "description": "系统性误差 override（六国年表类）。structure 必在，出处可 TODO。",
+          "additionalProperties": false,
+          "properties": {
+            "corrected_canonical": { "type": ["string", "null"] },
+            "tradition": { "type": ["string", "null"], "description": "校正传统，如 '钱穆/杨宽一系'" },
+            "academic_source": { "type": ["string", "null"], "description": "学术出处；未落实标 TODO" }
+          }
+        }
+      }
+    }
+  }
+}

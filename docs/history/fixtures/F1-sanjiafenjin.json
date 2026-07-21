@@ -1,0 +1,170 @@
+{
+  "_meta": {
+    "fixture": "F1 · 三家分晋",
+    "spec": "AII-HISTORY-KU-SPEC-001 §10 W-H0 ①",
+    "purpose": "isomorphism（同事异述）常态样本 + parent_event 组合结构。供生产端 G1b 对拍（本 fixture 装配为 §8 契约样例 sample.sanjiafenjin.json）。",
+    "mechanisms_exercised": ["parent_event 组合（过程 ⊃ 晋阳之战 + 命侯）", "同事异述：一 event 挂多 account（晋阳之战 之于 通鉴/史记/战国策）", "策士言辞 genre 降权（战国策）", "命侯 date 精确"],
+    "identity_verdicts_see": "fixtures/JUDGMENTS.md#F1",
+    "locator_note": "语料层未入库，para_ulid 一律 null 并在 note 记待补；书/篇级已定（冲突判据充分）。",
+    "created": "2026-07-21",
+    "author": "CC (手工，禁抽取器)"
+  },
+  "events": [
+    {
+      "event_id": "ev:sanjiafenjin",
+      "title": "三家分晋（过程）",
+      "canonical_date": { "type": "range", "value": ["前455", "前403"], "note": "自晋阳之战（前455围/前453灭智）至命侯（前403）的过程事件；亦有延至前376晋绝祀者，此处取『瓜分晋权→立为诸侯』主干。" },
+      "event_type": "制度",
+      "actors": [
+        { "person_ref": "per:zhao-xiangzi", "role": "赵氏宗主", "force_ref": "fo:zhao" },
+        { "person_ref": "per:zhibo", "role": "智氏宗主（被灭）", "force_ref": "fo:zhi" },
+        { "person_ref": "per:hankangzi", "role": "韩氏宗主", "force_ref": "fo:han" },
+        { "person_ref": "per:weihuanzi", "role": "魏氏宗主", "force_ref": "fo:wei" }
+      ],
+      "geo": { "place_refs": ["pl:jin", "pl:jinyang"], "route_hint": null, "mapstate_hint": "晋 → 韩/赵/魏 三色分裂" },
+      "parent_event": { "role": "parent", "parent_event_id": null, "child_event_ids": ["ev:jinyang-zhizhan", "ev:minghou-403"] },
+      "accounts": [],
+      "conflicts": [],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:minghou-zztj",
+      "mainline_decision": { "choice": "组合叙事：晋阳之战（灭智，前453）+ 命侯（立国，前403）为过程两支点", "rationale": "过程事件本身不单挂一源；以两子事件的近源 account 组合。通鉴以前403命侯为周衰起点，取为过程收束标志。", "decided_by": "CC", "date": "2026-07-21" }
+    },
+    {
+      "event_id": "ev:jinyang-zhizhan",
+      "title": "晋阳之战（智伯之亡）",
+      "canonical_date": { "type": "range", "value": ["前455", "前453"], "note": "前455 智伯率韩魏围赵襄子于晋阳；前453 韩魏反戈，灭智伯，三分其地。" },
+      "event_type": "战役",
+      "actors": [
+        { "person_ref": "per:zhibo", "role": "围攻方主谋（被杀）", "force_ref": "fo:zhi" },
+        { "person_ref": "per:zhao-xiangzi", "role": "守方（晋阳）", "force_ref": "fo:zhao" },
+        { "person_ref": "per:hankangzi", "role": "初随智、后反戈", "force_ref": "fo:han" },
+        { "person_ref": "per:weihuanzi", "role": "初随智、后反戈", "force_ref": "fo:wei" }
+      ],
+      "geo": { "place_refs": ["pl:jinyang"], "route_hint": "引汾水灌晋阳", "mapstate_hint": "晋阳围城" },
+      "parent_event": { "role": "child", "parent_event_id": "ev:sanjiafenjin", "child_event_ids": [] },
+      "accounts": ["ac:jinyang-zztj", "ac:jinyang-shiji", "ac:jinyang-zhanguoce"],
+      "conflicts": ["cf:jinyang-independence"],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:jinyang-shiji",
+      "mainline_decision": { "choice": "ac:jinyang-shiji", "rationale": "史记赵世家/晋世家系年与事最完整；通鉴述本于史记（派生），战国策为策士敷演（降权）。三 account 同事异述，主线取近祖源史记。", "decided_by": "CC", "date": "2026-07-21" }
+    },
+    {
+      "event_id": "ev:minghou-403",
+      "title": "命侯（周威烈王命韩赵魏为诸侯）",
+      "canonical_date": { "type": "exact", "value": "前403", "note": "周威烈王二十三年，初命晋大夫魏斯、赵籍、韩虔为诸侯。通鉴开篇于此。" },
+      "event_type": "册命",
+      "actors": [
+        { "person_ref": "per:wei-si", "role": "受命为魏侯", "force_ref": "fo:wei" },
+        { "person_ref": "per:zhao-ji", "role": "受命为赵侯", "force_ref": "fo:zhao" },
+        { "person_ref": "per:han-qian", "role": "受命为韩侯", "force_ref": "fo:han" }
+      ],
+      "geo": { "place_refs": ["pl:jin"], "route_hint": null, "mapstate_hint": "三晋正式立国" },
+      "parent_event": { "role": "child", "parent_event_id": "ev:sanjiafenjin", "child_event_ids": [] },
+      "accounts": ["ac:minghou-zztj", "ac:minghou-shiji"],
+      "conflicts": [],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:minghou-zztj",
+      "mainline_decision": { "choice": "ac:minghou-zztj", "rationale": "前403 命侯，通鉴以此发凡（周室衰亡之始），系年明确；史记年表同。两 account 同述。", "decided_by": "CC", "date": "2026-07-21" }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:jinyang-shiji",
+      "event_ref": "ev:jinyang-zhizhan",
+      "source_id": "src:shiji",
+      "locator": { "book": "史记", "chapter": "赵世家", "section": null, "para_ulid": null, "note": "待补：史记·赵世家 晋阳之役段落级 ULID。另见晋世家/魏世家/韩世家互见。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "前455 围、前453 灭智",
+        "actor_claims": ["智伯率韩魏攻赵，围晋阳、引水灌城", "赵襄子夜使张孟谈说韩魏反", "韩魏与赵合谋，杀智伯，尽灭智氏，三分其地"],
+        "causal_claims": ["智伯贪、索地无厌 → 韩魏惧 → 反戈"],
+        "number_claims": [],
+        "dialogue_spans": ["（张孟谈说韩魏『唇亡齿寒』之辞——透传导演，只存不消费）"]
+      },
+      "genre_note": "近祖源纪传，互见于史记多篇。"
+    },
+    {
+      "account_id": "ac:jinyang-zztj",
+      "event_ref": "ev:jinyang-zhizhan",
+      "source_id": "src:zztj",
+      "locator": { "book": "资治通鉴", "chapter": "周纪一", "section": null, "para_ulid": null, "note": "待补。通鉴此段派生自史记（derivation_edges: src:zztj←src:shiji 战国部分），非独立见证。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "前453（三家灭智）",
+        "actor_claims": ["智伯请地于韩魏赵，赵不与 → 智伯帅韩魏攻赵、围晋阳", "韩魏阴与赵通，共灭智伯"],
+        "causal_claims": ["智伯无德而强、索地 → 众叛"],
+        "number_claims": [],
+        "dialogue_spans": ["（司马光『臣光曰』论智伯才德之辨——评论，非事实 claim）"]
+      },
+      "genre_note": "编年综合，晚出（去事千余年），派生自史记；§6 折算不另计独立见证。"
+    },
+    {
+      "account_id": "ac:jinyang-zhanguoce",
+      "event_ref": "ev:jinyang-zhizhan",
+      "source_id": "src:zhanguoce",
+      "locator": { "book": "战国策", "chapter": "赵策一（知伯帅赵韩魏而伐范中行氏 / 知伯索地）", "section": null, "para_ulid": null, "note": "待补。策士敷演，重言辞。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "（策文不重系年）",
+        "actor_claims": ["知伯索地，赵襄子拒", "晋阳被围，张孟谈潜出说韩魏"],
+        "causal_claims": ["贪 → 亡"],
+        "number_claims": [],
+        "dialogue_spans": ["（大段策士说辞——透传导演；genre 降权，不作事实增量）"]
+      },
+      "genre_note": "★策士言辞多虚托夸饰（genre_reliability 降权）；同事异述之一，与史记骨架同而增言辞。"
+    },
+    {
+      "account_id": "ac:minghou-zztj",
+      "event_ref": "ev:minghou-403",
+      "source_id": "src:zztj",
+      "locator": { "book": "资治通鉴", "chapter": "周纪一·威烈王二十三年", "section": null, "para_ulid": null, "note": "待补。通鉴开篇之年。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "前403（威烈王二十三年）",
+        "actor_claims": ["初命晋大夫魏斯、赵籍、韩虔为诸侯"],
+        "causal_claims": ["司马光论：非三晋坏礼，乃天子自坏之"],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "编年，命侯系年明确。"
+    },
+    {
+      "account_id": "ac:minghou-shiji",
+      "event_ref": "ev:minghou-403",
+      "source_id": "src:shiji",
+      "locator": { "book": "史记", "chapter": "周本纪 / 六国年表 / 魏世家", "section": null, "para_ulid": null, "note": "待补。年表与世家互见。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "前403",
+        "actor_claims": ["周威烈王赐魏赵韩皆命为诸侯"],
+        "causal_claims": [],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "纪传，与通鉴同述。"
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:jinyang-independence",
+      "event_ref": "ev:jinyang-zhizhan",
+      "dimension": "narrative",
+      "account_refs": ["ac:jinyang-shiji", "ac:jinyang-zztj", "ac:jinyang-zhanguoce"],
+      "independence_analysis": {
+        "independent_witness_count": 1.5,
+        "reasoning": "三 account 非三重独立见证：通鉴派生自史记（回溯同祖源，不另计），实计约1个独立文献支柱（史记）；战国策虽材料另出但策士敷演、genre 降权，仅作半重旁证。故『三源同说』≈ 1.5 独立见证，非3。",
+        "derivation_notes": ["src:zztj ← src:shiji（战国部分，通鉴取材史记）→ 不另计", "src:zhanguoce genre_reliability 降权（策士言辞）→ 计 0.5", "src:shiji 计 1"]
+      },
+      "mainline_decision": { "choice": "ac:jinyang-shiji", "rationale": "同事异述、骨架一致；主线取近祖源史记，通鉴/战国策为异述并陈（非冲突实质，dimension=narrative 记其叙事侧重差）。", "decided_by": "CC", "date": "2026-07-21" },
+      "presentation_hint": "主线+角标"
+    }
+  ]
+}
