@@ -1,0 +1,71 @@
+{
+  "places": [
+    {
+      "place_id": "pl:jinyang",
+      "name_by_era": {
+        "春秋战国": "晋阳",
+        "今": "太原（山西）"
+      },
+      "geo_hint": "汾水中游，今太原市西南",
+      "mapstate_hints": [
+        "晋阳之战围城点",
+        "赵氏根据地"
+      ]
+    },
+    {
+      "place_id": "pl:jin",
+      "name_by_era": {
+        "春秋": "晋",
+        "战国": "晋（三分前）"
+      },
+      "geo_hint": "今山西大部及河北河南一角",
+      "mapstate_hints": [
+        "三家分晋前的晋国疆域",
+        "分晋后 → 韩/赵/魏 三色"
+      ]
+    },
+    {
+      "place_id": "pl:xiagong",
+      "name_by_era": {
+        "春秋": "下宫"
+      },
+      "geo_hint": "晋赵氏宫邑，具体待考",
+      "mapstate_hints": [
+        "下宫之难发生地（左传）"
+      ]
+    },
+    {
+      "place_id": "pl:guandu",
+      "name_by_era": {
+        "东汉": "官渡",
+        "今": "河南中牟东北"
+      },
+      "geo_hint": "鸿沟一线，许都北面屏障",
+      "mapstate_hints": [
+        "官渡之战曹袁对峙线（公元200）"
+      ]
+    },
+    {
+      "place_id": "pl:zhuolu",
+      "name_by_era": {
+        "传说": "涿鹿",
+        "今": "河北涿鹿"
+      },
+      "geo_hint": "★E4 传说地望，后世附会",
+      "mapstate_hints": [
+        "涿鹿之战（黄帝擒蚩尤，传说层）"
+      ]
+    },
+    {
+      "place_id": "pl:jinyang-note-none",
+      "name_by_era": {
+        "传说": "（尧舜之都，蒲阪/平阳诸说并存）",
+        "今": "山西南部诸说"
+      },
+      "geo_hint": "★E4 传说，都址异说并存，不定于一",
+      "mapstate_hints": [
+        "尧舜禅让相关地望（传说层，异说并存）"
+      ]
+    }
+  ]
+}

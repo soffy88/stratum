@@ -1,0 +1,233 @@
+{
+  "sources": [
+    {
+      "source_id": "src:zuozhuan",
+      "title": "左传（春秋左氏传，附春秋经）",
+      "成书年代": "战国早期（约前4世纪）",
+      "genre": "编年",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "近源编年，晋事记载最近、最重；下宫之难以此为准（§10 赵氏孤儿 mainline 依据）。",
+      "底本note": "TODO：开放白文源待定；禁与在版点校本逐字对齐（§2.1）。"
+    },
+    {
+      "source_id": "src:guoyu",
+      "title": "国语",
+      "成书年代": "战国早期",
+      "genre": "国别策论",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "国别记言，与左传相辅；晋语部分可与左传互证。",
+      "底本note": "TODO"
+    },
+    {
+      "source_id": "src:zhanguoce",
+      "title": "战国策",
+      "成书年代": "西汉（刘向辑定），材料出战国",
+      "genre": "国别策论",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "★策士言辞多虚托夸饰，与编年史不同权——§6 折算降权（genre 系数）。晋阳之战之策士叙事以此为一 account。",
+      "底本note": "TODO"
+    },
+    {
+      "source_id": "src:shiben",
+      "title": "世本",
+      "成书年代": "战国（后散佚，今为辑本）",
+      "genre": "辑佚",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "谱牒世系，史记取材之一。",
+      "底本note": "TODO：辑佚本，分立登记。"
+    },
+    {
+      "source_id": "src:shiji",
+      "title": "史记",
+      "成书年代": "西汉（约前91）",
+      "genre": "纪传",
+      "carrier_of": [],
+      "derivation_edges": [
+        {
+          "from": "src:zuozhuan",
+          "scope": "春秋部分",
+          "note": "晋世家等纪春秋晋事，取材左传——故史记·晋世家与左传同述、与史记·赵世家冲突（F2 篇内冲突根源）。"
+        },
+        {
+          "from": "src:guoyu",
+          "scope": "春秋部分",
+          "note": "取材国语。"
+        },
+        {
+          "from": "src:zhanguoce",
+          "scope": "战国部分",
+          "note": "战国世家/年表取材战国策系材料。"
+        },
+        {
+          "from": "src:shiben",
+          "scope": "世系",
+          "note": "世系取材世本。"
+        }
+      ],
+      "genre_reliability": "纪传体，太史公互见法：同事散见多篇、各有侧重（本模型的古代版）。★内部篇际可自相冲突（赵世家 vs 晋世家），故 locator 必到篇。",
+      "底本note": "TODO"
+    },
+    {
+      "source_id": "src:hanshu",
+      "title": "汉书",
+      "成书年代": "东汉（约公元82）",
+      "genre": "纪传",
+      "carrier_of": [],
+      "derivation_edges": [
+        {
+          "from": "src:shiji",
+          "scope": "汉初部分",
+          "note": "武帝前多因史记。"
+        }
+      ],
+      "genre_reliability": "断代纪传。",
+      "底本note": "TODO"
+    },
+    {
+      "source_id": "src:houhanshu",
+      "title": "后汉书",
+      "成书年代": "南朝宋（范晔，约公元445）",
+      "genre": "纪传",
+      "carrier_of": [],
+      "derivation_edges": [
+        {
+          "from": "src:sanguozhi",
+          "scope": "汉末部分",
+          "note": "汉末群雄事与三国志互见。"
+        }
+      ],
+      "genre_reliability": "晚出，汉末事成书距事约二百余年。",
+      "底本note": "TODO"
+    },
+    {
+      "source_id": "src:sanguozhi",
+      "title": "三国志",
+      "成书年代": "西晋（陈寿，约公元280s）",
+      "genre": "纪传",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "近源纪传，陈寿去汉末近；官渡『兵不满万』据此为一 account 之 number_claim。行文简，裴注补之。",
+      "底本note": "TODO"
+    },
+    {
+      "source_id": "src:peizhu",
+      "title": "三国志裴松之注",
+      "成书年代": "南朝宋（裴松之，公元429）",
+      "genre": "注",
+      "carrier_of": [
+        "src:weilue",
+        "src:jiangbiaozhuan",
+        "src:shiyu"
+      ],
+      "derivation_edges": [
+        {
+          "from": "src:sanguozhi",
+          "scope": "全书",
+          "note": "注附三国志正文之上。"
+        }
+      ],
+      "genre_reliability": "★carrier（载体）：裴注引书百余种、多佚籍——『三国志+裴注引《魏略》』是两源两证，非一源两遍（§3.1）。裴注自身另含裴松之【按语】，按语是裴松之的原创观点（R8 观点归属），不属被载原源，需与所引原源分开计独立性。",
+      "底本note": "TODO"
+    },
+    {
+      "source_id": "src:weilue",
+      "title": "魏略（鱼豢）",
+      "成书年代": "三国魏",
+      "genre": "纪传",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "多存于裴注；作为被载原源独立登记、独立计独立性（carrier=src:peizhu）。",
+      "底本note": "TODO：佚籍，仅存裴注等所引。"
+    },
+    {
+      "source_id": "src:jiangbiaozhuan",
+      "title": "江表传（虞溥）",
+      "成书年代": "西晋",
+      "genre": "纪传",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "被载原源，独立登记（carrier=src:peizhu）。",
+      "底本note": "TODO：佚籍。"
+    },
+    {
+      "source_id": "src:shiyu",
+      "title": "世语（郭颁·魏晋世语）",
+      "成书年代": "西晋",
+      "genre": "纪传",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "被载原源，独立登记（carrier=src:peizhu）；裴松之本人对其可靠性有微词，genre 折算偏低。",
+      "底本note": "TODO：佚籍。"
+    },
+    {
+      "source_id": "src:zztj",
+      "title": "资治通鉴",
+      "成书年代": "北宋（司马光，公元1084）",
+      "genre": "编年",
+      "carrier_of": [],
+      "derivation_edges": [
+        {
+          "from": "src:shiji",
+          "scope": "战国部分",
+          "note": "★通鉴战国部分取材史记。"
+        },
+        {
+          "from": "src:zhanguoce",
+          "scope": "战国部分",
+          "note": "并取战国策——故『通鉴+史记+战国策同说』常只是一重证据（§6 回溯祖源）。"
+        },
+        {
+          "from": "src:sanguozhi",
+          "scope": "三国部分",
+          "note": "三国部分取材三国志及裴注所存。"
+        }
+      ],
+      "genre_reliability": "编年综合，晚出（去战国千余年）。取材上游，独立性须回溯祖源折算，非独立见证。通鉴起于前403命侯——司马光以此为周室衰亡之始。",
+      "底本note": "TODO"
+    },
+    {
+      "source_id": "src:zhushu-guben",
+      "title": "竹书纪年·古本（辑佚）",
+      "成书年代": "战国魏（原简），今为辑佚",
+      "genre": "辑佚",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "★战国魏国原始编年，与史记系统多异（如尧舜『禅让』vs『舜篡尧』）。古本为辑佚，异文可作校勘参考与冲突对象来源；与今本分立登记（§2.3）。",
+      "底本note": "TODO：辑佚（王国维等辑）。分立登记，勿与今本混。"
+    },
+    {
+      "source_id": "src:zhushu-jinben",
+      "title": "竹书纪年·今本",
+      "成书年代": "真伪有争（或宋以后重编）",
+      "genre": "编年",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "★真伪有争——默认只作参考不作证据（§2.3）。与古本分立登记。",
+      "底本note": "TODO：今本，grade 默认 unverified。"
+    },
+    {
+      "source_id": "src:shanhaijing",
+      "title": "山海经",
+      "成书年代": "战国至汉（分层成书）",
+      "genre": "辑佚",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "神话地理博物，涿鹁/黄帝蚩尤等传说层材料来源之一；E4 层，显式标注不假装。",
+      "底本note": "TODO"
+    },
+    {
+      "source_id": "src:yizhoushu",
+      "title": "逸周书（含尝麦解）",
+      "成书年代": "战国至汉",
+      "genre": "辑佚",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "尝麦解载黄帝杀蚩尤，传说层材料；E4。",
+      "底本note": "TODO"
+    }
+  ]
+}

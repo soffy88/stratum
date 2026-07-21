@@ -1,0 +1,353 @@
+{
+  "persons": [
+    {
+      "person_id": "per:zhao-xiangzi",
+      "names_by_source": {
+        "赵襄子": [
+          "src:shiji",
+          "src:zztj"
+        ],
+        "无恤": [
+          "src:shiji"
+        ],
+        "赵孟": [
+          "src:zuozhuan",
+          "src:guoyu"
+        ]
+      },
+      "谥字号": "谥襄，名无恤",
+      "active_range": "前5世纪中（晋阳之战主角）",
+      "force_affiliations": [
+        "fo:zhao"
+      ]
+    },
+    {
+      "person_id": "per:zhibo",
+      "names_by_source": {
+        "智伯": [
+          "src:shiji",
+          "src:zhanguoce",
+          "src:zztj"
+        ],
+        "智瑶": [
+          "src:shiji"
+        ],
+        "荀瑶": [
+          "src:zuozhuan"
+        ],
+        "知伯": [
+          "src:zhanguoce"
+        ]
+      },
+      "谥字号": "名瑶，智氏（荀氏别宗）宗主",
+      "active_range": "前5世纪中（晋阳之战被灭）",
+      "force_affiliations": [
+        "fo:zhi"
+      ]
+    },
+    {
+      "person_id": "per:hankangzi",
+      "names_by_source": {
+        "韩康子": [
+          "src:shiji",
+          "src:zztj"
+        ],
+        "韩虎": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "谥康",
+      "active_range": "前5世纪中",
+      "force_affiliations": [
+        "fo:han"
+      ]
+    },
+    {
+      "person_id": "per:weihuanzi",
+      "names_by_source": {
+        "魏桓子": [
+          "src:shiji",
+          "src:zztj"
+        ],
+        "魏驹": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "谥桓",
+      "active_range": "前5世纪中",
+      "force_affiliations": [
+        "fo:wei"
+      ]
+    },
+    {
+      "person_id": "per:wei-si",
+      "names_by_source": {
+        "魏文侯": [
+          "src:shiji",
+          "src:zztj"
+        ],
+        "魏斯": [
+          "src:shiji",
+          "src:zztj"
+        ]
+      },
+      "谥字号": "谥文，名斯",
+      "active_range": "前445–前396（前403 受命为侯）",
+      "force_affiliations": [
+        "fo:wei"
+      ]
+    },
+    {
+      "person_id": "per:zhao-ji",
+      "names_by_source": {
+        "赵烈侯": [
+          "src:shiji",
+          "src:zztj"
+        ],
+        "赵籍": [
+          "src:shiji",
+          "src:zztj"
+        ]
+      },
+      "谥字号": "谥烈，名籍",
+      "active_range": "前403 受命为侯",
+      "force_affiliations": [
+        "fo:zhao"
+      ]
+    },
+    {
+      "person_id": "per:han-qian",
+      "names_by_source": {
+        "韩景侯": [
+          "src:shiji",
+          "src:zztj"
+        ],
+        "韩虔": [
+          "src:shiji",
+          "src:zztj"
+        ]
+      },
+      "谥字号": "谥景，名虔",
+      "active_range": "前403 受命为侯",
+      "force_affiliations": [
+        "fo:han"
+      ]
+    },
+    {
+      "person_id": "per:zhaowu",
+      "names_by_source": {
+        "赵武": [
+          "src:zuozhuan",
+          "src:shiji"
+        ],
+        "赵文子": [
+          "src:zuozhuan"
+        ],
+        "赵氏孤儿": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "谥文（赵文子），即『赵氏孤儿』",
+      "active_range": "前6世纪中（下宫之难幸存者）",
+      "force_affiliations": [
+        "fo:zhao"
+      ]
+    },
+    {
+      "person_id": "per:hanjue",
+      "names_by_source": {
+        "韩厥": [
+          "src:zuozhuan",
+          "src:shiji"
+        ],
+        "韩献子": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "谥献",
+      "active_range": "前6世纪中（保全赵武、请复赵氏田邑）",
+      "force_affiliations": [
+        "fo:jin",
+        "fo:han"
+      ]
+    },
+    {
+      "person_id": "per:jin-jinggong",
+      "names_by_source": {
+        "晋景公": [
+          "src:zuozhuan",
+          "src:shiji"
+        ]
+      },
+      "谥字号": "谥景",
+      "active_range": "前599–前581 在位",
+      "force_affiliations": [
+        "fo:jin"
+      ]
+    },
+    {
+      "person_id": "per:tuoanguijia",
+      "names_by_source": {
+        "屠岸贾": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "—",
+      "active_range": "★仅见史记·赵世家；左传/晋世家无此人——F2 existence 冲突主体",
+      "force_affiliations": [
+        "fo:jin"
+      ]
+    },
+    {
+      "person_id": "per:chengying",
+      "names_by_source": {
+        "程婴": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "—",
+      "active_range": "★仅见史记·赵世家（藏孤、以己子替死）；左传无——F2 existence 冲突主体",
+      "force_affiliations": [
+        "fo:zhao"
+      ]
+    },
+    {
+      "person_id": "per:gongsun-chujiu",
+      "names_by_source": {
+        "公孙杵臼": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "—",
+      "active_range": "★仅见史记·赵世家（与程婴谋、就死）；左传无——F2 existence 冲突主体",
+      "force_affiliations": [
+        "fo:zhao"
+      ]
+    },
+    {
+      "person_id": "per:caocao",
+      "names_by_source": {
+        "曹操": [
+          "src:sanguozhi"
+        ],
+        "太祖": [
+          "src:sanguozhi"
+        ],
+        "魏武": [
+          "src:peizhu"
+        ],
+        "公": [
+          "src:sanguozhi"
+        ]
+      },
+      "谥字号": "魏武帝，字孟德",
+      "active_range": "公元155–220（官渡 公元200）",
+      "force_affiliations": [
+        "fo:cao"
+      ]
+    },
+    {
+      "person_id": "per:yuanshao",
+      "names_by_source": {
+        "袁绍": [
+          "src:sanguozhi"
+        ],
+        "绍": [
+          "src:sanguozhi"
+        ]
+      },
+      "谥字号": "字本初",
+      "active_range": "官渡兵败方",
+      "force_affiliations": [
+        "fo:yuan"
+      ]
+    },
+    {
+      "person_id": "per:chenshou",
+      "names_by_source": {
+        "陈寿": [
+          "src:sanguozhi"
+        ]
+      },
+      "谥字号": "三国志作者",
+      "active_range": "公元233–297",
+      "force_affiliations": []
+    },
+    {
+      "person_id": "per:peisongzhi",
+      "names_by_source": {
+        "裴松之": [
+          "src:peizhu"
+        ],
+        "臣松之": [
+          "src:peizhu"
+        ]
+      },
+      "谥字号": "三国志注者；按语作者（R8 观点归属）",
+      "active_range": "公元372–451（注成 429）",
+      "force_affiliations": []
+    },
+    {
+      "person_id": "per:huangdi",
+      "names_by_source": {
+        "黄帝": [
+          "src:shiji",
+          "src:yizhoushu"
+        ],
+        "轩辕": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "★E4 传说层",
+      "active_range": "fuzzy（传说）",
+      "force_affiliations": []
+    },
+    {
+      "person_id": "per:chiyou",
+      "names_by_source": {
+        "蚩尤": [
+          "src:shiji",
+          "src:yizhoushu",
+          "src:shanhaijing"
+        ]
+      },
+      "谥字号": "★E4 传说层",
+      "active_range": "fuzzy（传说）",
+      "force_affiliations": []
+    },
+    {
+      "person_id": "per:yao",
+      "names_by_source": {
+        "尧": [
+          "src:shiji"
+        ],
+        "帝尧": [
+          "src:shiji"
+        ],
+        "放勋": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "★E4 传说层",
+      "active_range": "fuzzy（传说）",
+      "force_affiliations": []
+    },
+    {
+      "person_id": "per:shun",
+      "names_by_source": {
+        "舜": [
+          "src:shiji"
+        ],
+        "帝舜": [
+          "src:shiji"
+        ],
+        "重华": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "★E4 传说层",
+      "active_range": "fuzzy（传说）",
+      "force_affiliations": []
+    }
+  ]
+}
