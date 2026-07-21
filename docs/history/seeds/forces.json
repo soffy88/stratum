@@ -105,6 +105,24 @@
           "relation": "官渡败后渐灭"
         }
       ]
+    },
+    {
+      "force_id": "fo:sun",
+      "name_by_era": {
+        "东汉末": "孙权集团（江东）",
+        "后": "孙吴"
+      },
+      "active_range": "赤壁（公元208）为吴方",
+      "succession_edges": []
+    },
+    {
+      "force_id": "fo:liu",
+      "name_by_era": {
+        "东汉末": "刘备集团",
+        "后": "蜀汉"
+      },
+      "active_range": "隆中对/赤壁期（207–208）刘备草创，后立蜀汉",
+      "succession_edges": []
     }
   ]
 }
