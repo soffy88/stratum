@@ -1,0 +1,107 @@
+{
+  "events": [
+    {
+      "event_id": "ev:hongmen",
+      "title": "鸿门宴",
+      "canonical_date": { "type": "year", "value": "前206", "note": "秦亡之际，项羽驻鸿门，刘邦往谢；范增举玦、项庄舞剑、樊哙闯帐，刘邦脱走。" },
+      "event_type": "会盟",
+      "actors": [
+        { "person_ref": "per:xiangyu", "role": "东道主（未杀刘邦）", "force_ref": "fo:chu" },
+        { "person_ref": "per:liubang", "role": "赴宴脱走者", "force_ref": "fo:hanliu" },
+        { "person_ref": "per:fanzeng", "role": "项羽谋主（举玦促杀）", "force_ref": "fo:chu" },
+        { "person_ref": "per:fankuai", "role": "刘邦将（闯帐护主）", "force_ref": "fo:hanliu" }
+      ],
+      "geo": { "place_refs": ["pl:hongmen"], "route_hint": null, "mapstate_hint": null },
+      "parent_event": null,
+      "accounts": ["ac:hongmen-xiangyuji", "ac:hongmen-gaozuji", "ac:hongmen-fankuai"],
+      "conflicts": ["cf:hongmen-huxian"],
+      "evidence_tier": "E2",
+      "tier_override": {
+        "rationale": "同一源（史记）互见于三篇——非三独立文献见证（源系谱同）。近源纪传、细节相补，取 E2（单一文献系统，虽篇多但同源）。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
+      "mainline_account_ref": "ac:hongmen-xiangyuji",
+      "mainline_decision": {
+        "choice": "ac:hongmen-xiangyuji",
+        "rationale": "项羽本纪载鸿门宴最详（举玦、舞剑、闯帐、脱走全过程）为主线；高祖本纪、樊哙列传互见互补（各详一面），非矛盾。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:hongmen-xiangyuji",
+      "event_ref": "ev:hongmen",
+      "source_id": "src:shiji",
+      "locator": { "book": "史记", "chapter": "项羽本纪", "section": "鸿门宴全段", "para_ulid": null, "note": "待补。鸿门宴主叙——最详。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "前206",
+        "actor_claims": ["项羽设宴鸿门，范增数目项王、举所佩玉玦以示之者三，项王默然不应", "项庄拔剑起舞，意在沛公；项伯亦起舞，常以身翼蔽沛公", "樊哙带剑拥盾入军门，嗔目视项王；沛公起如厕，因招樊哙出，脱身间道走霸上"],
+        "causal_claims": ["项羽不忍/优柔 + 项伯翼蔽 + 樊哙闯护 → 刘邦得脱"],
+        "number_claims": [],
+        "dialogue_spans": ["（『大行不顾细谨，大礼不辞小让』『人为刀俎，我为鱼肉』等——演绎素材，透传）"]
+      },
+      "genre_note": "★互见法主篇：项羽本纪载之最详，为鸿门宴叙事主线。"
+    },
+    {
+      "account_id": "ac:hongmen-gaozuji",
+      "event_ref": "ev:hongmen",
+      "source_id": "src:shiji",
+      "locator": { "book": "史记", "chapter": "高祖本纪", "section": "鸿门段（简）", "para_ulid": null, "note": "★待补。同事互见于高祖本纪——从刘邦视角简载，与项羽本纪互补非矛盾。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "前206",
+        "actor_claims": ["沛公从百余骑至鸿门谢项羽，言己无意背项王", "赖项伯、樊哙，得解去"],
+        "causal_claims": ["刘邦谢罪示弱 → 得免"],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "★互见法·同源异篇（高祖本纪）：详略与视角不同（重刘邦），与项羽本纪相补——**非冲突**。"
+    },
+    {
+      "account_id": "ac:hongmen-fankuai",
+      "event_ref": "ev:hongmen",
+      "source_id": "src:shiji",
+      "locator": { "book": "史记", "chapter": "樊郦滕灌列传（樊哙）", "section": "樊哙闯帐段", "para_ulid": null, "note": "★待补。同事互见于樊哙传——详樊哙闯帐、饮斗酒啖彘肩、责项王之辞。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "前206",
+        "actor_claims": ["樊哙闯入，项王壮之，赐卮酒彘肩；哙立而饮之、拔剑切肉尽之", "哙责项王：『沛公先入定咸阳……而听细说欲诛有功之人，此亡秦之续耳』"],
+        "causal_claims": ["樊哙勇责 → 项羽气夺，刘邦得间脱"],
+        "number_claims": [],
+        "dialogue_spans": ["（樊哙责项王辞——演绎素材，透传）"]
+      },
+      "genre_note": "★互见法·同源异篇（樊哙列传）：详樊哙一面，补主篇之略——互补。"
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:hongmen-huxian",
+      "event_ref": "ev:hongmen",
+      "dimension": "narrative",
+      "account_refs": ["ac:hongmen-xiangyuji", "ac:hongmen-gaozuji", "ac:hongmen-fankuai"],
+      "independence_analysis": {
+        "independent_witness_count": 1,
+        "reasoning": "★太史公互见法：同一事散见史记三篇（项羽本纪/高祖本纪/樊哙列传），各有侧重、彼此相补——**同源，故独立见证＝1**（非3）。与 F2-b 关键对照：F2-b 是史记篇间**自相矛盾**（narrative 冲突，indep=0，示 locator 必到篇）；本条是史记篇间**互补非矛盾**（互见法常态），故 dimension=narrative 但记为『侧重差/互补』、`presentation_hint=仅记录`，非 S12 对勘的实质冲突。二者共同界定『同源异篇』的两种形态：矛盾（F2-b）vs 互补（F12）。",
+        "derivation_notes": [
+          "三 account 同 source_id=src:shiji，chapter 各异（项羽本纪/高祖本纪/樊哙列传）",
+          "互补非矛盾 → 不折为多重独立见证；独立见证 = 1（史记）",
+          "对照 F2-b（篇间矛盾，indep=0，冲突真实）：本条篇间互补，记录侧重差而已"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "项羽本纪为主叙，高祖本纪/樊哙传互补并采（拼合全貌）",
+        "rationale": "互见法互补：主篇取项羽本纪，余篇细节择要补入；非取一弃余、非 S12 对勘。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
+      "presentation_hint": "仅记录"
+    }
+  ]
+}

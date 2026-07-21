@@ -116,6 +116,24 @@
       "name_by_era": { "周至战国": "齐（都临淄）" },
       "geo_hint": "今山东淄博临淄",
       "mapstate_hints": ["姜齐→田齐（田氏代齐）核心疆域"]
+    },
+    {
+      "place_id": "pl:maling",
+      "name_by_era": { "战国": "马陵", "今": "河北大名/山东莘县诸说" },
+      "geo_hint": "马陵道险隘，齐军伏击处（庞涓死）",
+      "mapstate_hints": ["马陵之战（约前341）"]
+    },
+    {
+      "place_id": "pl:hongmen",
+      "name_by_era": { "秦末": "鸿门", "今": "陕西西安临潼东" },
+      "geo_hint": "新丰鸿门，项羽军驻处",
+      "mapstate_hints": ["鸿门宴（前206）"]
+    },
+    {
+      "place_id": "pl:zhi",
+      "name_by_era": { "西周": "彘", "今": "山西霍州" },
+      "geo_hint": "周厉王出奔地",
+      "mapstate_hints": ["厉王奔彘（前842）→ 共和行政（前841）"]
     }
   ]
 }
