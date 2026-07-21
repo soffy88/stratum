@@ -1,38 +1,81 @@
 {
-  "_meta": {
-    "fixture": "F2 · 赵氏孤儿（赵氏之难）",
-    "spec": "AII-HISTORY-KU-SPEC-001 §10 W-H0 ②",
-    "purpose": "existence/narrative 冲突 + 同书不同篇冲突（史记·赵世家 vs 史记·晋世家）→ locator 必到篇的必要性示范。★压边界案：左传（前583）与史记·赵世家（前597）时间差14年、主体集半重合——gold 判定由 Wiki 亲裁并记全理由。",
-    "mechanisms_exercised": ["existence 维冲突（屠岸贾/程婴/公孙杵臼藏孤替死，仅见赵世家）", "date 维冲突（前583 vs 前597，差14年）", "★同源篇内冲突（史记赵世家 vs 晋世家）——locator 到篇", "边界同一性判定（同事异述 vs 似而非同）"],
-    "identity_verdicts_see": "fixtures/JUDGMENTS.md#F2",
-    "boundary_case": true,
-    "gold_adjudicator": "Wiki（亲裁，见 JUDGMENTS.md#F2；本 fixture 内 mainline_decision.decided_by 标 Wiki-亲裁）",
-    "locator_note": "para_ulid 待补；★chapter 级为本 fixture 判据核心，不可省——冲突正在史记内部两篇之间。",
-    "created": "2026-07-21",
-    "author": "CC (手工，证据与归因链备齐待 Wiki 亲裁)"
-  },
   "events": [
     {
       "event_id": "ev:zhaoshi-zhinan",
       "title": "赵氏之难（『赵氏孤儿』本事）",
-      "canonical_date": { "type": "range", "value": ["前597", "前583"], "note": "★date 本身即冲突：史记·赵世家系于晋景公三年（前597）；左传系于成公八年下宫之难（前583）。两端并存，主线取值见 mainline_decision。" },
+      "canonical_date": {
+        "type": "range",
+        "value": [
+          "前597",
+          "前583"
+        ],
+        "note": "★date 本身即冲突：史记·赵世家系于晋景公三年（前597）；左传系于成公八年下宫之难（前583）。两端并存，主线取值见 mainline_decision。"
+      },
       "event_type": "政变",
       "actors": [
-        { "person_ref": "per:zhaowu", "role": "赵氏孤儿（幸存复兴）", "force_ref": "fo:zhao" },
-        { "person_ref": "per:hanjue", "role": "保全赵武、请复赵氏田邑（两述皆有）", "force_ref": "fo:jin" },
-        { "person_ref": "per:jin-jinggong", "role": "晋君（诛赵/立赵）", "force_ref": "fo:jin" },
-        { "person_ref": "per:tuoanguijia", "role": "灭赵主谋（★仅赵世家）", "force_ref": "fo:jin" },
-        { "person_ref": "per:chengying", "role": "藏孤、以己子替死（★仅赵世家）", "force_ref": "fo:zhao" },
-        { "person_ref": "per:gongsun-chujiu", "role": "与程婴谋、就死（★仅赵世家）", "force_ref": "fo:zhao" }
+        {
+          "person_ref": "per:zhaowu",
+          "role": "赵氏孤儿（幸存复兴）",
+          "force_ref": "fo:zhao"
+        },
+        {
+          "person_ref": "per:hanjue",
+          "role": "保全赵武、请复赵氏田邑（两述皆有）",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:jin-jinggong",
+          "role": "晋君（诛赵/立赵）",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:tuoanguijia",
+          "role": "灭赵主谋（★仅赵世家）",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:chengying",
+          "role": "藏孤、以己子替死（★仅赵世家）",
+          "force_ref": "fo:zhao"
+        },
+        {
+          "person_ref": "per:gongsun-chujiu",
+          "role": "与程婴谋、就死（★仅赵世家）",
+          "force_ref": "fo:zhao"
+        }
       ],
-      "geo": { "place_refs": ["pl:xiagong", "pl:jin"], "route_hint": null, "mapstate_hint": null },
+      "geo": {
+        "place_refs": [
+          "pl:xiagong",
+          "pl:jin"
+        ],
+        "route_hint": null,
+        "mapstate_hint": null
+      },
       "parent_event": null,
-      "accounts": ["ac:zhaonan-zuozhuan", "ac:zhaonan-shiji-jinshijia", "ac:zhaonan-shiji-zhaoshijia"],
-      "conflicts": ["cf:zhaonan-existence", "cf:zhaonan-date", "cf:zhaonan-shiji-internal"],
+      "accounts": [
+        "ac:zhaonan-zuozhuan",
+        "ac:zhaonan-shiji-jinshijia",
+        "ac:zhaonan-shiji-zhaoshijia"
+      ],
+      "conflicts": [
+        "cf:zhaonan-existence",
+        "cf:zhaonan-date",
+        "cf:zhaonan-shiji-internal"
+      ],
       "evidence_tier": "E2",
-      "tier_override": { "rationale": "近源（左传）为单一编年支柱，屠岸贾藏孤情节无近源支撑、晚出敷演——就『屠岸贾/程婴』叙事而言实近 E3；就『赵氏被诛而赵武复兴』骨干而言有左传近源，E2。取骨干 tier=E2，敷演部分在 conflict 内单独标注。", "decided_by": "Wiki-亲裁（待签署）", "date": "2026-07-21" },
+      "tier_override": {
+        "rationale": "近源（左传）为单一编年支柱，屠岸贾藏孤情节无近源支撑、晚出敷演——就『屠岸贾/程婴』叙事而言实近 E3；就『赵氏被诛而赵武复兴』骨干而言有左传近源，E2。取骨干 tier=E2，敷演部分在 conflict 内单独标注。",
+        "decided_by": "Wiki-亲裁（待签署）",
+        "date": "2026-07-21"
+      },
       "mainline_account_ref": "ac:zhaonan-zuozhuan",
-      "mainline_decision": { "choice": "ac:zhaonan-zuozhuan", "rationale": "★边界裁定（详 JUDGMENTS.md#F2）：判为『同事异述』——同指赵氏被诛而赵武复兴之本事，屠岸贾/程婴系晚出敷演，落为 existence 冲突对象而非另一事件。主线取左传（近源编年）；史记·赵世家戏剧叙事并陈、走 S12 对勘。前583/前597 之差落为 date 冲突。", "decided_by": "Wiki-亲裁（待签署）", "date": "2026-07-21" }
+      "mainline_decision": {
+        "choice": "ac:zhaonan-zuozhuan",
+        "rationale": "★边界裁定（详 JUDGMENTS.md#F2）：判为『同事异述』——同指赵氏被诛而赵武复兴之本事，屠岸贾/程婴系晚出敷演，落为 existence 冲突对象而非另一事件。主线取左传（近源编年）；史记·赵世家戏剧叙事并陈、走 S12 对勘。前583/前597 之差落为 date 冲突。",
+        "decided_by": "Wiki-亲裁（待签署）",
+        "date": "2026-07-21"
+      }
     }
   ],
   "accounts": [
@@ -40,13 +83,25 @@
       "account_id": "ac:zhaonan-zuozhuan",
       "event_ref": "ev:zhaoshi-zhinan",
       "source_id": "src:zuozhuan",
-      "locator": { "book": "左传", "chapter": "成公八年（附成公四年、五年赵婴通赵庄姬事）", "section": null, "para_ulid": null, "note": "待补。下宫之难：晋讨赵同、赵括，赵庄姬谮之；韩厥言于晋侯，立赵武、复其田邑。★无屠岸贾、无程婴藏孤替死。" },
+      "locator": {
+        "book": "左传",
+        "chapter": "成公八年（附成公四年、五年赵婴通赵庄姬事）",
+        "section": null,
+        "para_ulid": null,
+        "note": "待补。下宫之难：晋讨赵同、赵括，赵庄姬谮之；韩厥言于晋侯，立赵武、复其田邑。★无屠岸贾、无程婴藏孤替死。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "鲁成公八年 = 前583",
-        "actor_claims": ["晋讨赵同、赵括（赵氏遭诛）", "赵庄姬（赵武之母）谮赵同赵括", "韩厥言于晋景公：『成季之勋、宣孟之忠而无后，为善者惧矣』→ 立赵武，复赵氏田邑"],
-        "causal_claims": ["赵氏内乱（赵婴通庄姬被逐）+ 庄姬谮 → 晋诛赵同赵括 → 韩厥请存赵后"],
+        "actor_claims": [
+          "晋讨赵同、赵括（赵氏遭诛）",
+          "赵庄姬（赵武之母）谮赵同赵括",
+          "韩厥言于晋景公：『成季之勋、宣孟之忠而无后，为善者惧矣』→ 立赵武，复赵氏田邑"
+        ],
+        "causal_claims": [
+          "赵氏内乱（赵婴通庄姬被逐）+ 庄姬谮 → 晋诛赵同赵括 → 韩厥请存赵后"
+        ],
         "number_claims": [],
         "dialogue_spans": []
       },
@@ -56,13 +111,24 @@
       "account_id": "ac:zhaonan-shiji-jinshijia",
       "event_ref": "ev:zhaoshi-zhinan",
       "source_id": "src:shiji",
-      "locator": { "book": "史记", "chapter": "晋世家", "section": null, "para_ulid": null, "note": "★待补。史记·晋世家因袭左传系统：景公时讨赵同赵括、韩厥存赵武，无屠岸贾藏孤。→ 与同书赵世家自相冲突。" },
+      "locator": {
+        "book": "史记",
+        "chapter": "晋世家",
+        "section": null,
+        "para_ulid": null,
+        "note": "★待补。史记·晋世家因袭左传系统：景公时讨赵同赵括、韩厥存赵武，无屠岸贾藏孤。→ 与同书赵世家自相冲突。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "晋景公时（因袭左传，约前583前后）",
-        "actor_claims": ["晋景公诛赵同、赵括", "韩厥言存赵氏后，立赵武"],
-        "causal_claims": ["承左传：庄姬谮 + 内乱"],
+        "actor_claims": [
+          "晋景公诛赵同、赵括",
+          "韩厥言存赵氏后，立赵武"
+        ],
+        "causal_claims": [
+          "承左传：庄姬谮 + 内乱"
+        ],
         "number_claims": [],
         "dialogue_spans": []
       },
@@ -72,15 +138,37 @@
       "account_id": "ac:zhaonan-shiji-zhaoshijia",
       "event_ref": "ev:zhaoshi-zhinan",
       "source_id": "src:shiji",
-      "locator": { "book": "史记", "chapter": "赵世家", "section": null, "para_ulid": null, "note": "★待补。史记·赵世家戏剧叙事：屠岸贾灭赵氏，程婴与公孙杵臼藏赵武，程婴以己子替死、公孙杵臼就死；后景公立赵武、诛屠岸贾。系于晋景公三年（前597）。→ 与同书晋世家、与左传冲突。" },
+      "locator": {
+        "book": "史记",
+        "chapter": "赵世家",
+        "section": null,
+        "para_ulid": null,
+        "note": "★待补。史记·赵世家戏剧叙事：屠岸贾灭赵氏，程婴与公孙杵臼藏赵武，程婴以己子替死、公孙杵臼就死；后景公立赵武、诛屠岸贾。系于晋景公三年（前597）。→ 与同书晋世家、与左传冲突。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "晋景公三年 = 前597（★与左传前583差14年）",
-        "actor_claims": ["屠岸贾为司寇，追论赵盾弑君旧案 → 擅灭赵氏于下宫", "程婴、公孙杵臼谋藏赵氏孤儿", "公孙杵臼抱他人婴就死，程婴以己子代赵武死、匿赵武于山中", "十五年后韩厥白于景公，立赵武、反其田邑，诛屠岸贾，程婴自杀报公孙杵臼"],
-        "causal_claims": ["屠岸贾以赵盾弑灵公旧案为由私怨灭赵 → 藏孤 → 复立复仇"],
-        "number_claims": [{ "value": "十五年", "unit": "年", "quote_span": "居十五年……", "display": "《史记·赵世家》载" }],
-        "dialogue_spans": ["（程婴、公孙杵臼谋孤对白；韩厥梦赵盾等——大段可演绎素材，透传导演，只存不消费）"]
+        "actor_claims": [
+          "屠岸贾为司寇，追论赵盾弑君旧案 → 擅灭赵氏于下宫",
+          "程婴、公孙杵臼谋藏赵氏孤儿",
+          "公孙杵臼抱他人婴就死，程婴以己子代赵武死、匿赵武于山中",
+          "十五年后韩厥白于景公，立赵武、反其田邑，诛屠岸贾，程婴自杀报公孙杵臼"
+        ],
+        "causal_claims": [
+          "屠岸贾以赵盾弑灵公旧案为由私怨灭赵 → 藏孤 → 复立复仇"
+        ],
+        "number_claims": [
+          {
+            "value": "十五年",
+            "unit": "年",
+            "quote_span": "居十五年……",
+            "display": "《史记·赵世家》载"
+          }
+        ],
+        "dialogue_spans": [
+          "（程婴、公孙杵臼谋孤对白；韩厥梦赵盾等——大段可演绎素材，透传导演，只存不消费）"
+        ]
       },
       "genre_note": "★晚出敷演/传说化（战国赵人追记，太史公采异闻）；戏剧张力强，正是 S12 对勘的差异化内容供给。"
     }
@@ -90,39 +178,74 @@
       "conflict_id": "cf:zhaonan-existence",
       "event_ref": "ev:zhaoshi-zhinan",
       "dimension": "existence",
-      "account_refs": ["ac:zhaonan-shiji-zhaoshijia", "ac:zhaonan-zuozhuan", "ac:zhaonan-shiji-jinshijia"],
+      "account_refs": [
+        "ac:zhaonan-shiji-zhaoshijia",
+        "ac:zhaonan-zuozhuan",
+        "ac:zhaonan-shiji-jinshijia"
+      ],
       "independence_analysis": {
         "independent_witness_count": 1,
         "reasoning": "『屠岸贾灭赵 + 程婴/公孙杵臼藏孤替死』仅史记·赵世家一处独有；左传与史记·晋世家（因袭左传，非独立）皆无。故该情节独立见证 = 1（且晚出、无近源支撑），近源编年（左传）反证其无。存疑走宁碎片：不并入『史实骨干』，作 existence 冲突对象显式并陈。",
-        "derivation_notes": ["ac:zhaonan-shiji-jinshijia ← src:zuozhuan（史记晋世家因袭左传）→ 与左传不另计独立见证", "屠岸贾/程婴 3 人物注册表 active_range 已标『仅见赵世家』"]
+        "derivation_notes": [
+          "ac:zhaonan-shiji-jinshijia ← src:zuozhuan（史记晋世家因袭左传）→ 与左传不另计独立见证",
+          "屠岸贾/程婴 3 人物注册表 active_range 已标『仅见赵世家』"
+        ]
       },
-      "mainline_decision": { "choice": "存录为异说，不采入史实骨干（骨干以左传为准）", "rationale": "近源无、晚出敷演、戏剧化痕迹重 → 判为传说增饰，宁碎片不并。但作一等冲突对象保留，S12 对勘正是其价值。", "decided_by": "Wiki-亲裁（待签署）", "date": "2026-07-21" },
+      "mainline_decision": {
+        "choice": "存录为异说，不采入史实骨干（骨干以左传为准）",
+        "rationale": "近源无、晚出敷演、戏剧化痕迹重 → 判为传说增饰，宁碎片不并。但作一等冲突对象保留，S12 对勘正是其价值。",
+        "decided_by": "Wiki-亲裁（待签署）",
+        "date": "2026-07-21"
+      },
       "presentation_hint": "S12对勘"
     },
     {
       "conflict_id": "cf:zhaonan-date",
       "event_ref": "ev:zhaoshi-zhinan",
       "dimension": "date",
-      "account_refs": ["ac:zhaonan-shiji-zhaoshijia", "ac:zhaonan-zuozhuan"],
+      "account_refs": [
+        "ac:zhaonan-shiji-zhaoshijia",
+        "ac:zhaonan-zuozhuan"
+      ],
       "independence_analysis": {
         "independent_witness_count": 2,
         "reasoning": "前597（赵世家）vs 前583（左传）两系年，分属两叙事系统。差14年——正是本 fixture 入选边界的量化指标。左传近源系年可靠度高。",
-        "derivation_notes": ["前597 = 晋景公三年（史记·赵世家）", "前583 = 鲁成公八年（左传）", "两者见 chronology.json resolutions"]
+        "derivation_notes": [
+          "前597 = 晋景公三年（史记·赵世家）",
+          "前583 = 鲁成公八年（左传）",
+          "两者见 chronology.json resolutions"
+        ]
       },
-      "mainline_decision": { "choice": "前583（左传·成公八年）", "rationale": "近源编年系年优先；赵世家前597属戏剧叙事系统，其系年随叙事晚出。", "decided_by": "Wiki-亲裁（待签署）", "date": "2026-07-21" },
+      "mainline_decision": {
+        "choice": "前583（左传·成公八年）",
+        "rationale": "近源编年系年优先；赵世家前597属戏剧叙事系统，其系年随叙事晚出。",
+        "decided_by": "Wiki-亲裁（待签署）",
+        "date": "2026-07-21"
+      },
       "presentation_hint": "主线+角标"
     },
     {
       "conflict_id": "cf:zhaonan-shiji-internal",
       "event_ref": "ev:zhaoshi-zhinan",
       "dimension": "narrative",
-      "account_refs": ["ac:zhaonan-shiji-jinshijia", "ac:zhaonan-shiji-zhaoshijia"],
+      "account_refs": [
+        "ac:zhaonan-shiji-jinshijia",
+        "ac:zhaonan-shiji-zhaoshijia"
+      ],
       "independence_analysis": {
         "independent_witness_count": 0,
         "reasoning": "★同书内冲突：史记·晋世家（因袭左传）与史记·赵世家（戏剧叙事）自相矛盾。二者同属史记（源系谱同），不构成两重独立见证；但构成『同源两篇不同述』——若 locator 只停在『史记』书级，此冲突被抹掉。此条存在的唯一目的：证明 locator 必到篇（§2.2）。",
-        "derivation_notes": ["同 source_id=src:shiji，chapter 分别为『晋世家』『赵世家』", "locator.book 相同、locator.chapter 不同 → 冲突可见性依赖 chapter 级 locator"]
+        "derivation_notes": [
+          "同 source_id=src:shiji，chapter 分别为『晋世家』『赵世家』",
+          "locator.book 相同、locator.chapter 不同 → 冲突可见性依赖 chapter 级 locator"
+        ]
       },
-      "mainline_decision": { "choice": "以晋世家（左传系统）为史记内可信面；赵世家异叙并陈", "rationale": "同书自相冲突显式记录，示 locator-到-篇之必要；不静默取一。", "decided_by": "Wiki-亲裁（待签署）", "date": "2026-07-21" },
+      "mainline_decision": {
+        "choice": "以晋世家（左传系统）为史记内可信面；赵世家异叙并陈",
+        "rationale": "同书自相冲突显式记录，示 locator-到-篇之必要；不静默取一。",
+        "decided_by": "Wiki-亲裁（待签署）",
+        "date": "2026-07-21"
+      },
       "presentation_hint": "S12对勘"
     }
   ]
