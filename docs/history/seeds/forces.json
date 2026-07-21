@@ -155,6 +155,18 @@
       "succession_edges": [
         { "from": "fo:jiangqi", "to": "fo:tianqi", "relation": "代姜齐而有其国" }
       ]
+    },
+    {
+      "force_id": "fo:chu",
+      "name_by_era": { "秦末": "楚（项羽·西楚）" },
+      "active_range": "秦末（鸿门宴 前206）至前202 垓下",
+      "succession_edges": []
+    },
+    {
+      "force_id": "fo:hanliu",
+      "name_by_era": { "秦末": "刘邦集团（汉王）", "后": "汉" },
+      "active_range": "前206 刘邦为汉王 → 汉朝",
+      "succession_edges": []
     }
   ]
 }

@@ -449,6 +449,69 @@
       "谥字号": "田太公，名和；前386 列为诸侯（田齐立国）",
       "active_range": "前386 受命为齐侯",
       "force_affiliations": ["fo:tianqi"]
+    },
+    {
+      "person_id": "per:sunbin",
+      "names_by_source": { "孙膑": ["src:shiji"], "孙子": ["src:shiji"] },
+      "谥字号": "齐军师；桂陵/马陵之战谋主",
+      "active_range": "战国中期（马陵约前341）",
+      "force_affiliations": ["fo:tianqi"]
+    },
+    {
+      "person_id": "per:pangjuan",
+      "names_by_source": { "庞涓": ["src:shiji"] },
+      "谥字号": "魏将；马陵道自刭",
+      "active_range": "至前341（马陵败死）",
+      "force_affiliations": ["fo:wei"]
+    },
+    {
+      "person_id": "per:weihuiwang",
+      "names_by_source": { "魏惠王": ["src:shiji"], "梁惠王": ["src:shiji"], "魏罃": ["src:shiji"] },
+      "谥字号": "谥惠，名罃；★有『后元』改元（史记未分致年表系年偏早，见纪年override）",
+      "active_range": "前369–前319（含后元）",
+      "force_affiliations": ["fo:wei"]
+    },
+    {
+      "person_id": "per:xiangyu",
+      "names_by_source": { "项羽": ["src:shiji"], "项籍": ["src:shiji"], "羽": ["src:shiji"] },
+      "谥字号": "西楚霸王，名籍字羽",
+      "active_range": "公元前232–前202（鸿门宴 前206）",
+      "force_affiliations": ["fo:chu"]
+    },
+    {
+      "person_id": "per:liubang",
+      "names_by_source": { "刘邦": ["src:shiji"], "沛公": ["src:shiji"], "高祖": ["src:shiji"], "汉王": ["src:shiji"] },
+      "谥字号": "汉高祖，字季",
+      "active_range": "公元前256–前195（鸿门宴 前206 为沛公）",
+      "force_affiliations": ["fo:hanliu"]
+    },
+    {
+      "person_id": "per:fanzeng",
+      "names_by_source": { "范增": ["src:shiji"], "亚父": ["src:shiji"] },
+      "谥字号": "项羽谋主；鸿门举玦",
+      "active_range": "秦末（鸿门宴 前206）",
+      "force_affiliations": ["fo:chu"]
+    },
+    {
+      "person_id": "per:fankuai",
+      "names_by_source": { "樊哙": ["src:shiji"] },
+      "谥字号": "刘邦将；鸿门闯帐",
+      "active_range": "秦末汉初",
+      "force_affiliations": ["fo:hanliu"]
+    },
+    {
+      "person_id": "per:zhouliwang",
+      "names_by_source": { "周厉王": ["src:shiji"], "厉王": ["src:shiji"], "胡": ["src:shiji"] },
+      "谥字号": "谥厉，名胡；暴虐，国人暴动奔彘",
+      "active_range": "至前842 奔彘（共和前）",
+      "force_affiliations": ["fo:zhou"]
+    },
+    {
+      "person_id": "per:gongbohe",
+      "names_by_source": { "共伯和": ["src:zhushu-guben"], "卫武公（一说）": ["src:zhushu-guben"] },
+      "谥字号": "★竹书系『共伯和干王位/摄行天子事』之主；与史记『周召共和』说冲突",
+      "active_range": "共和期（前841–前828 诸说）",
+      "force_affiliations": ["fo:zhou"]
     }
   ]
 }
