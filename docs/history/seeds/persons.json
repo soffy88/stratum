@@ -414,6 +414,41 @@
       "谥字号": "晋宣帝，字仲达；空城计逸闻中被疑退兵者",
       "active_range": "公元179–251",
       "force_affiliations": ["fo:cao"]
+    },
+    {
+      "person_id": "per:zhouwuwang",
+      "names_by_source": { "武王": ["src:shiji"], "周武王": ["src:shiji"], "发": ["src:shiji"] },
+      "谥字号": "周武王，名发；克商",
+      "active_range": "克商约前1046（断代工程）",
+      "force_affiliations": ["fo:zhou"]
+    },
+    {
+      "person_id": "per:dixin",
+      "names_by_source": { "纣": ["src:shiji"], "帝辛": ["src:shiji"], "商纣王": ["src:shiji"] },
+      "谥字号": "商纣王，名辛（帝辛）；牧野败亡",
+      "active_range": "至克商（约前1046）",
+      "force_affiliations": ["fo:shang"]
+    },
+    {
+      "person_id": "per:tianchang",
+      "names_by_source": { "田常": ["src:shiji"], "田成子": ["src:shiji"], "陈恒": ["src:zuozhuan"], "陈成子": ["src:zuozhuan"] },
+      "谥字号": "谥成，田氏（陈氏入齐改田）宗主；弑齐简公",
+      "active_range": "前481 弑简公",
+      "force_affiliations": ["fo:tianqi"]
+    },
+    {
+      "person_id": "per:qijiangong",
+      "names_by_source": { "齐简公": ["src:shiji"], "壬": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "谥简，名壬；姜齐之君，为田常所弑",
+      "active_range": "至前481（被弑）",
+      "force_affiliations": ["fo:jiangqi"]
+    },
+    {
+      "person_id": "per:tianhe",
+      "names_by_source": { "田和": ["src:shiji", "src:zztj"], "田太公": ["src:shiji"] },
+      "谥字号": "田太公，名和；前386 列为诸侯（田齐立国）",
+      "active_range": "前386 受命为齐侯",
+      "force_affiliations": ["fo:tianqi"]
     }
   ]
 }

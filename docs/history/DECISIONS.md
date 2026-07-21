@@ -4,6 +4,15 @@
 
 ---
 
+## D-004 · 扩展批 Tier 1 建完（F5–F10）交付抽验
+
+- **日期**：2026-07-21
+- **决策人**：CC（交付）/ Wiki（抽验待）
+- **内容**：扩展批 Tier 1 六条按 D-003 签署范式建成、判定人 CC（非边界）：F5 宁我负人 / F6 赤壁 / F7 隆中对 / F8 空城计 / F9 牧野克商 / F10 田氏代齐。覆盖机制——carrier/按语**三态**（F3/F5/F7/F8 综合钉死：引书计入 / 按语质疑不改主线 / 按语否定改主线 / 引书+按语裁断）、number（F6）、existence（F7/F8）、纪年override + 考古E0-aspiration（F9）、parent#2 + succession（F10）。
+- **状态**：★CC 交付、**Wiki 抽验待**。`JUDGMENTS.md` 回归网登记齐，供抽验。
+- **v0.2 tag**：★**暂缓**——待 Wiki 抽验通过再打 `history-fixtures-v0.2`（避免 stable-ref 钉未验证 gold；抽验若改则免移 tag）。
+- **关联待决**：F9 牵出 `source.genre` enum 缺『出土/金文/经』类（D3 待决 A/B）——F9 走 **A**（aspiration-note，不改契约）；Tier 2 之 A4 苏秦帛书将再撞，届时未定 B 则同走 A。
+
 ## D-003 · F2 赵氏孤儿 gold 签署 + `history-fixtures-v0.1` tag
 
 - **日期**：2026-07-21
