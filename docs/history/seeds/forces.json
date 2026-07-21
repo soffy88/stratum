@@ -123,6 +123,38 @@
       },
       "active_range": "隆中对/赤壁期（207–208）刘备草创，后立蜀汉",
       "succession_edges": []
+    },
+    {
+      "force_id": "fo:zhou",
+      "name_by_era": { "商末周初": "周" },
+      "active_range": "克商（约前1046）为周方",
+      "succession_edges": [
+        { "from": "fo:shang", "to": "fo:zhou", "relation": "克商，代殷而王" }
+      ]
+    },
+    {
+      "force_id": "fo:shang",
+      "name_by_era": { "商": "商（殷）" },
+      "active_range": "至克商（约前1046）亡",
+      "succession_edges": [
+        { "from": "fo:shang", "to": "fo:zhou", "relation": "牧野败，商亡" }
+      ]
+    },
+    {
+      "force_id": "fo:jiangqi",
+      "name_by_era": { "西周至战国初": "齐（姜姓·吕氏）" },
+      "active_range": "至前386（田和代之、姜齐绝祀）",
+      "succession_edges": [
+        { "from": "fo:jiangqi", "to": "fo:tianqi", "relation": "田氏代齐，姜齐→田齐" }
+      ]
+    },
+    {
+      "force_id": "fo:tianqi",
+      "name_by_era": { "战国": "齐（田姓·妫氏）" },
+      "active_range": "前386 田和立为诸侯 → 战国田齐",
+      "succession_edges": [
+        { "from": "fo:jiangqi", "to": "fo:tianqi", "relation": "代姜齐而有其国" }
+      ]
     }
   ]
 }

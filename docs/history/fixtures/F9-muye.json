@@ -1,0 +1,96 @@
+{
+  "events": [
+    {
+      "event_id": "ev:muye",
+      "title": "牧野之战（武王克商）",
+      "canonical_date": {
+        "type": "year",
+        "value": "前1046",
+        "note": "★克商年在共和（前841）之前，本属 fuzzy 区；主线取夏商周断代工程定年前1046（override，见 chronology.json 与 cf:muye-date）。史记传统（刘歆三统历）作前1122，另有前1027 诸说——皆并陈。"
+      },
+      "event_type": "战役",
+      "actors": [
+        { "person_ref": "per:zhouwuwang", "role": "克商方主帅", "force_ref": "fo:zhou" },
+        { "person_ref": "per:dixin", "role": "商方（败亡）", "force_ref": "fo:shang" }
+      ],
+      "geo": { "place_refs": ["pl:muye"], "route_hint": "周师东出，会牧野", "mapstate_hint": "周 vs 商，牧野决战" },
+      "parent_event": null,
+      "accounts": ["ac:muye-shiji", "ac:muye-zhushu"],
+      "conflicts": ["cf:muye-date"],
+      "evidence_tier": "E1",
+      "tier_override": {
+        "rationale": "★考古E0 之 aspiration-note（approach A）：牧野克商为文献多源（史记周本纪 + 竹书古本）→ E1。利簋铭文『珷征商，唯甲子朝，岁鼎』（西周金文）与文献互证『甲子日克商』，本可将该事实升至 E0（文献+出土互证）；但——① §6 考古佐证 flag 为 Q3 远期再接（先留字段）；② `source.genre` enum 现无『出土/金文』类，利簋无法登记为一等 Source。故本条据实取 E1，考古升 E0 留作 aspiration（待 Q3 + 契约 v0.2 决），不伪造 Source、不假装 E0。年份则仍存 date 冲突（override）。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
+      "mainline_account_ref": "ac:muye-shiji",
+      "mainline_decision": {
+        "choice": "ac:muye-shiji",
+        "rationale": "克商本事（甲子日、牧野、纣师倒戈、商亡）以史记周本纪为主线叙事；竹书古本系年异说并陈。年份取断代工程前1046（override）。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:muye-shiji",
+      "event_ref": "ev:muye",
+      "source_id": "src:shiji",
+      "locator": { "book": "史记", "chapter": "周本纪", "section": "武王伐纣·牧野段", "para_ulid": null, "note": "待补。甲子昧爽，武王朝至牧野，誓师；纣发兵拒之，纣师倒戈，纣走登鹿台自焚。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "甲子日（干支，日名可稽；年份诸说）",
+        "actor_claims": ["武王朝至商郊牧野，作《牧誓》誓师", "纣师虽众，皆无战心，前徒倒戈，纣兵败", "纣走入登鹿台，蒙衣自焚而死，商亡"],
+        "causal_claims": ["商纣失德、师无战心 → 倒戈 → 商亡"],
+        "number_claims": [
+          { "value": "七十万", "unit": "人（纣兵）", "quote_span": "纣发兵七十万人距武王。", "display": "《史记·周本纪》载" },
+          { "value": "四万五千", "unit": "人（周甲士）", "quote_span": "戎车三百乘，虎贲三千人，甲士四万五千人。", "display": "《史记·周本纪》载" }
+        ],
+        "dialogue_spans": ["（《牧誓》誓辞——演绎素材，透传）"]
+      },
+      "genre_note": "纪传（史记周本纪）；克商叙事主线。纣兵七十万疑夸大（后世多质疑），但无对源反数，暂存录。"
+    },
+    {
+      "account_id": "ac:muye-zhushu",
+      "event_ref": "ev:muye",
+      "source_id": "src:zhushu-guben",
+      "locator": { "book": "竹书纪年·古本（辑佚）", "chapter": "（周纪·辑文）", "section": "克商纪年", "para_ulid": null, "note": "★待补。竹书系年与史记刘歆传统异——克商年及其后王世纪年自成一系（如『自武王灭殷以至幽王二百五十七年』类推算）。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "克商年系竹书一系（与史记刘歆前1122 传统不合，近前1027/前1046 诸校）",
+        "actor_claims": ["武王灭殷（克商）——纪年据竹书魏史系统"],
+        "causal_claims": [],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "★竹书古本（辑佚）：战国魏原始编年，系年独立于史记刘歆系统——克商年 date 冲突的另一端。"
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:muye-date",
+      "event_ref": "ev:muye",
+      "dimension": "date",
+      "account_refs": ["ac:muye-shiji", "ac:muye-zhushu"],
+      "independence_analysis": {
+        "independent_witness_count": 2,
+        "reasoning": "克商年诸说：史记刘歆三统历传统『前1122』、竹书魏史系统（推校近前1027 等）、夏商周断代工程综合定『前1046』。史记与竹书为两独立编年系统（各计 1）；断代工程非古源而是现代综合定年，作 override 学术出处、不计为古见证。★甲子『日名』诸说一致（利簋金文亦『甲子』），冲突只在『年』不在『日』。",
+        "derivation_notes": [
+          "史记刘歆传统 前1122 / 竹书系统 近前1027 / 断代工程 前1046（override）",
+          "override 详 chronology.json（academic_source=断代工程，非本仓考据——考据结论工程化）",
+          "考古：利簋『唯甲子朝』佐证甲子日（E0-aspiration，Q3 考古源接入前不落 Source）"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "前1046（夏商周断代工程，override）",
+        "rationale": "主线取断代工程定年（利簋+天象+文献综合）；史记前1122、竹书系诸说并陈（角标/仅记录）。共和前系年精度存疑，显式标注。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      },
+      "presentation_hint": "主线+角标"
+    }
+  ]
+}

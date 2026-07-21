@@ -40,6 +40,16 @@
       "raw": "帝尧/帝舜（五帝本纪）",
       "canonical": "fuzzy（前841 之前，约前23世纪，不可 canonical 化）",
       "override": null
+    },
+    {
+      "source_id": "src:shiji",
+      "raw": "武王克商（史记系传统 = 刘歆三统历，前1122）",
+      "canonical": "前1046（override 后）",
+      "override": {
+        "corrected_canonical": "前1046",
+        "tradition": "夏商周断代工程",
+        "academic_source": "夏商周断代工程 1996–2000 结论（利簋『甲子』金文 + 天象 + 文献综合）。诸说另有前1027 等 —— 克商年在共和（前841）之前的 fuzzy 区，override 系将学术定年工程化，非本仓考据；诸说并陈见 F9 cf:muye-date。"
+      }
     }
   ],
   "sixstates_override_placeholders": {
