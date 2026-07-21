@@ -1,0 +1,121 @@
+{
+  "_meta": {
+    "sample": "§8 契约完整静态样例 · 三家分晋（晋阳之战 节点）",
+    "spec": "AII-HISTORY-KU-SPEC-001 §8.1 / §8.4",
+    "conforms_to": "history-query-response.schema.json",
+    "note": "冻结样例。生产端 G1b 对拍此文件（逐字段一致或差异可解释）。取三家分晋之核心子事件『晋阳之战』作查询响应——其 3 account（史记/通鉴/战国策）即『同事异述』常态、parent_event 指向组合父事件。数据源 fixtures/F1-sanjiafenjin.json。para_ulid 语料未入库故为 null（G1a 手工装配同形数据时同置 null；G1b 实装后填 ULID 即『差异可解释』）。",
+    "frozen": "v0.1 · 2026-07-21"
+  },
+  "contract_version": "v0.1",
+  "event": {
+    "event_id": "ev:jinyang-zhizhan",
+    "title": "晋阳之战（智伯之亡）",
+    "canonical_date": { "type": "range", "value": ["前455", "前453"], "note": "前455 智伯率韩魏围赵襄子于晋阳；前453 韩魏反戈，灭智伯，三分其地。" },
+    "event_type": "战役",
+    "actors": [
+      { "person_ref": "per:zhibo", "role": "围攻方主谋（被杀）", "force_ref": "fo:zhi" },
+      { "person_ref": "per:zhao-xiangzi", "role": "守方（晋阳）", "force_ref": "fo:zhao" },
+      { "person_ref": "per:hankangzi", "role": "初随智、后反戈", "force_ref": "fo:han" },
+      { "person_ref": "per:weihuanzi", "role": "初随智、后反戈", "force_ref": "fo:wei" }
+    ],
+    "geo": { "place_refs": ["pl:jinyang"], "route_hint": "引汾水灌晋阳", "mapstate_hint": "晋阳围城" },
+    "parent_event": { "role": "child", "parent_event_id": "ev:sanjiafenjin", "child_event_ids": [] },
+    "accounts": ["ac:jinyang-zztj", "ac:jinyang-shiji", "ac:jinyang-zhanguoce"],
+    "conflicts": ["cf:jinyang-independence"],
+    "evidence_tier": "E1",
+    "tier_override": null,
+    "mainline_account_ref": "ac:jinyang-shiji",
+    "mainline_decision": { "choice": "ac:jinyang-shiji", "rationale": "史记赵世家/晋世家系年与事最完整；通鉴述本于史记（派生），战国策为策士敷演（降权）。三 account 同事异述，主线取近祖源史记。", "decided_by": "CC", "date": "2026-07-21" }
+  },
+  "accounts": [
+    {
+      "account_id": "ac:jinyang-shiji",
+      "event_ref": "ev:jinyang-zhizhan",
+      "source_id": "src:shiji",
+      "locator": { "book": "史记", "chapter": "赵世家", "section": null, "para_ulid": null, "note": "待补：史记·赵世家 晋阳之役段落级 ULID。互见晋世家/魏世家/韩世家。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "前455 围、前453 灭智",
+        "actor_claims": ["智伯率韩魏攻赵，围晋阳、引水灌城", "赵襄子夜使张孟谈说韩魏反", "韩魏与赵合谋，杀智伯，尽灭智氏，三分其地"],
+        "causal_claims": ["智伯贪、索地无厌 → 韩魏惧 → 反戈"],
+        "number_claims": [],
+        "dialogue_spans": ["（张孟谈说韩魏『唇亡齿寒』之辞——透传导演，只存不消费）"]
+      },
+      "genre_note": "近祖源纪传，互见于史记多篇。"
+    },
+    {
+      "account_id": "ac:jinyang-zztj",
+      "event_ref": "ev:jinyang-zhizhan",
+      "source_id": "src:zztj",
+      "locator": { "book": "资治通鉴", "chapter": "周纪一", "section": null, "para_ulid": null, "note": "待补。通鉴此段派生自史记，非独立见证。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "前453（三家灭智）",
+        "actor_claims": ["智伯请地于韩魏赵，赵不与 → 智伯帅韩魏攻赵、围晋阳", "韩魏阴与赵通，共灭智伯"],
+        "causal_claims": ["智伯无德而强、索地 → 众叛"],
+        "number_claims": [],
+        "dialogue_spans": ["（司马光『臣光曰』论智伯才德之辨——评论，非事实 claim）"]
+      },
+      "genre_note": "编年综合，晚出，派生自史记；§6 折算不另计独立见证。"
+    },
+    {
+      "account_id": "ac:jinyang-zhanguoce",
+      "event_ref": "ev:jinyang-zhizhan",
+      "source_id": "src:zhanguoce",
+      "locator": { "book": "战国策", "chapter": "赵策一", "section": null, "para_ulid": null, "note": "待补。策士敷演，重言辞。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "（策文不重系年）",
+        "actor_claims": ["知伯索地，赵襄子拒", "晋阳被围，张孟谈潜出说韩魏"],
+        "causal_claims": ["贪 → 亡"],
+        "number_claims": [],
+        "dialogue_spans": ["（大段策士说辞——透传导演；genre 降权，不作事实增量）"]
+      },
+      "genre_note": "★策士言辞多虚托夸饰（降权）；与史记骨架同而增言辞。"
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:jinyang-independence",
+      "event_ref": "ev:jinyang-zhizhan",
+      "dimension": "narrative",
+      "account_refs": ["ac:jinyang-shiji", "ac:jinyang-zztj", "ac:jinyang-zhanguoce"],
+      "independence_analysis": {
+        "independent_witness_count": 1.5,
+        "reasoning": "三 account 非三重独立见证：通鉴派生自史记（回溯同祖源，不另计），实计约1个独立文献支柱（史记）；战国策虽材料另出但策士敷演、genre 降权，仅作半重旁证。故『三源同说』≈ 1.5 独立见证，非3。",
+        "derivation_notes": ["src:zztj ← src:shiji（战国部分）→ 不另计", "src:zhanguoce genre 降权 → 计 0.5", "src:shiji 计 1"]
+      },
+      "mainline_decision": { "choice": "ac:jinyang-shiji", "rationale": "同事异述、骨架一致；主线取近祖源史记，通鉴/战国策异述并陈。", "decided_by": "CC", "date": "2026-07-21" },
+      "presentation_hint": "主线+角标"
+    }
+  ],
+  "registry_bundle": {
+    "persons": [
+      { "person_id": "per:zhibo", "names_by_source": { "智伯": ["src:shiji", "src:zhanguoce", "src:zztj"], "智瑶": ["src:shiji"], "荀瑶": ["src:zuozhuan"], "知伯": ["src:zhanguoce"] }, "谥字号": "名瑶，智氏宗主", "active_range": "前5世纪中", "force_affiliations": ["fo:zhi"] },
+      { "person_id": "per:zhao-xiangzi", "names_by_source": { "赵襄子": ["src:shiji", "src:zztj"], "无恤": ["src:shiji"], "赵孟": ["src:zuozhuan", "src:guoyu"] }, "谥字号": "谥襄，名无恤", "active_range": "前5世纪中", "force_affiliations": ["fo:zhao"] },
+      { "person_id": "per:hankangzi", "names_by_source": { "韩康子": ["src:shiji", "src:zztj"], "韩虎": ["src:shiji"] }, "谥字号": "谥康", "active_range": "前5世纪中", "force_affiliations": ["fo:han"] },
+      { "person_id": "per:weihuanzi", "names_by_source": { "魏桓子": ["src:shiji", "src:zztj"], "魏驹": ["src:shiji"] }, "谥字号": "谥桓", "active_range": "前5世纪中", "force_affiliations": ["fo:wei"] }
+    ],
+    "places": [
+      { "place_id": "pl:jinyang", "name_by_era": { "春秋战国": "晋阳", "今": "太原（山西）" }, "geo_hint": "汾水中游，今太原市西南", "mapstate_hints": ["晋阳之战围城点", "赵氏根据地"] }
+    ],
+    "forces": [
+      { "force_id": "fo:zhi", "name_by_era": { "春秋末": "智氏（知氏）" }, "active_range": "至前453（晋阳之战被灭）", "succession_edges": [{ "from": "fo:zhi", "to": null, "relation": "前453 灭，地为韩赵魏瓜分" }] },
+      { "force_id": "fo:zhao", "name_by_era": { "春秋": "赵氏（晋卿）", "战国": "赵" }, "active_range": "晋卿 → 前403 立为诸侯", "succession_edges": [{ "from": "fo:jin", "to": "fo:zhao", "relation": "自晋分立" }] },
+      { "force_id": "fo:han", "name_by_era": { "春秋": "韩氏（晋卿）", "战国": "韩" }, "active_range": "晋卿 → 前403 立为诸侯", "succession_edges": [{ "from": "fo:jin", "to": "fo:han", "relation": "自晋分立" }] },
+      { "force_id": "fo:wei", "name_by_era": { "春秋": "魏氏（晋卿）", "战国": "魏" }, "active_range": "晋卿 → 前403 立为诸侯", "succession_edges": [{ "from": "fo:jin", "to": "fo:wei", "relation": "自晋分立" }] }
+    ],
+    "sources": [
+      { "source_id": "src:shiji", "title": "史记", "成书年代": "西汉（约前91）", "genre": "纪传", "carrier_of": [], "derivation_edges": [{ "from": "src:zuozhuan", "scope": "春秋部分", "note": "取材左传" }, { "from": "src:zhanguoce", "scope": "战国部分", "note": "取材战国策系材料" }], "genre_reliability": "纪传体，互见法；篇内可自相冲突，locator 必到篇。", "底本note": "TODO" },
+      { "source_id": "src:zztj", "title": "资治通鉴", "成书年代": "北宋（约1084）", "genre": "编年", "carrier_of": [], "derivation_edges": [{ "from": "src:shiji", "scope": "战国部分", "note": "★取材史记" }, { "from": "src:zhanguoce", "scope": "战国部分", "note": "并取战国策" }], "genre_reliability": "编年综合，晚出；取材上游，须回溯祖源折算，非独立见证。", "底本note": "TODO" },
+      { "source_id": "src:zhanguoce", "title": "战国策", "成书年代": "西汉辑定，材料出战国", "genre": "国别策论", "carrier_of": [], "derivation_edges": [], "genre_reliability": "★策士言辞多虚托夸饰，§6 折算降权。", "底本note": "TODO" }
+    ],
+    "chronology": [
+      { "source_id": "src:shiji", "raw": "晋出公二十二年 / 晋阳之役后二年", "canonical": "前453", "override": null },
+      { "source_id": "src:zztj", "raw": "周威烈王二十三年（命侯，父事件收束）", "canonical": "前403", "override": null }
+    ]
+  }
+}
