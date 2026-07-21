@@ -121,7 +121,9 @@
       "carrier_of": [
         "src:weilue",
         "src:jiangbiaozhuan",
-        "src:shiyu"
+        "src:shiyu",
+        "src:weishu",
+        "src:sunsheng-zaji"
       ],
       "derivation_edges": [
         {
@@ -228,6 +230,26 @@
       "derivation_edges": [],
       "genre_reliability": "尝麦解载黄帝杀蚩尤，传说层材料；E4。",
       "底本note": "TODO"
+    },
+    {
+      "source_id": "src:weishu",
+      "title": "魏书（王沈）",
+      "成书年代": "三国魏（王沈等官修）",
+      "genre": "纪传",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "★曹魏官修，回护曹魏、多曲笔——genre 折算降权，尤忌其为曹操饰过处（吕伯奢事作『正当防卫』即疑其曲笔）。多存于裴注（carrier=src:peizhu）。",
+      "底本note": "TODO：佚籍，存裴注等所引。"
+    },
+    {
+      "source_id": "src:sunsheng-zaji",
+      "title": "孙盛杂记（孙盛《杂记》系）",
+      "成书年代": "东晋（孙盛）",
+      "genre": "纪传",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "晋人史评/逸闻，好载议论臧否（『宁我负人，毋人负我』名言即出此）；晚出、逸闻性强，genre 折算中偏低。多存于裴注（carrier=src:peizhu）。",
+      "底本note": "TODO：佚籍，存裴注等所引。"
     }
   ]
 }

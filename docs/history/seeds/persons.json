@@ -348,6 +348,19 @@
       "谥字号": "★E4 传说层",
       "active_range": "fuzzy（传说）",
       "force_affiliations": []
+    },
+    {
+      "person_id": "per:lyu-boshe",
+      "names_by_source": {
+        "吕伯奢": [
+          "src:weishu",
+          "src:shiyu",
+          "src:sunsheng-zaji"
+        ]
+      },
+      "谥字号": "曹操父旧友；F5 被杀者",
+      "active_range": "东汉末（约189）",
+      "force_affiliations": []
     }
   ]
 }
