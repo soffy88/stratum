@@ -5,16 +5,70 @@
       "title": "晋国衰亡弧",
       "time_window": "前745（曲沃封桓叔）–前403（三家命侯）",
       "sub_arcs": [
-        { "sub_arc_id": "arc:jin-decline/s1-quwo", "title": "曲沃代翼", "seq": 1, "member_event_refs": [], "membership_decided_by": "顾问 Claude" },
-        { "sub_arc_id": "arc:jin-decline/s2-liji", "title": "骊姬之乱与『诅无畜群公子』", "seq": 2, "member_event_refs": [] },
-        { "sub_arc_id": "arc:jin-decline/s3-sanjun-liuqing", "title": "作三军设六卿", "seq": 3, "member_event_refs": ["ev:jin-gongshi-bei"] },
-        { "sub_arc_id": "arc:jin-decline/s4-qingzu", "title": "卿族兼并（灭栾郤祁羊舌）", "seq": 4, "member_event_refs": [] },
-        { "sub_arc_id": "arc:jin-decline/s5-liuqing-siqing", "title": "六卿相并至四卿", "seq": 5, "member_event_refs": [] },
-        { "sub_arc_id": "arc:jin-decline/s6-jinyang", "title": "晋阳之战灭智", "seq": 6, "member_event_refs": ["ev:jinyang-zhizhan"] },
-        { "sub_arc_id": "arc:jin-decline/s7-minghou", "title": "三家分晋命侯", "seq": 7, "member_event_refs": ["ev:sanjiafenjin", "ev:minghou-403"] }
+        {
+          "sub_arc_id": "arc:jin-decline/s1-quwo",
+          "title": "曲沃代翼",
+          "seq": 1,
+          "member_event_refs": [],
+          "membership_decided_by": "顾问 Claude"
+        },
+        {
+          "sub_arc_id": "arc:jin-decline/s2-liji",
+          "title": "骊姬之乱与『诅无畜群公子』",
+          "seq": 2,
+          "member_event_refs": []
+        },
+        {
+          "sub_arc_id": "arc:jin-decline/s3-sanjun-liuqing",
+          "title": "作三军设六卿",
+          "seq": 3,
+          "member_event_refs": [
+            "ev:jin-gongshi-bei"
+          ]
+        },
+        {
+          "sub_arc_id": "arc:jin-decline/s4-qingzu",
+          "title": "卿族兼并（灭栾郤祁羊舌）",
+          "seq": 4,
+          "member_event_refs": []
+        },
+        {
+          "sub_arc_id": "arc:jin-decline/s5-liuqing-siqing",
+          "title": "六卿相并至四卿",
+          "seq": 5,
+          "member_event_refs": []
+        },
+        {
+          "sub_arc_id": "arc:jin-decline/s6-jinyang",
+          "title": "晋阳之战灭智",
+          "seq": 6,
+          "member_event_refs": [
+            "ev:jinyang-zhizhan"
+          ]
+        },
+        {
+          "sub_arc_id": "arc:jin-decline/s7-minghou",
+          "title": "三家分晋命侯",
+          "seq": 7,
+          "member_event_refs": [
+            "ev:sanjiafenjin",
+            "ev:minghou-403"
+          ]
+        }
       ],
-      "member_event_refs": ["ev:jin-gongshi-bei", "ev:jinyang-zhizhan", "ev:sanjiafenjin", "ev:minghou-403"],
-      "thesis_refs": ["thesis:shifu-modabizhe", "thesis:shuxiang-gongshi-jiang-bei", "thesis:shimo-wuchang", "thesis:taishigong-jin", "thesis:sima-guang-li"],
+      "member_event_refs": [
+        "ev:jin-gongshi-bei",
+        "ev:jinyang-zhizhan",
+        "ev:sanjiafenjin",
+        "ev:minghou-403"
+      ],
+      "thesis_refs": [
+        "thesis:shifu-modabizhe",
+        "thesis:shuxiang-gongshi-jiang-bei",
+        "thesis:shimo-wuchang",
+        "thesis:taishigong-jin",
+        "thesis:sima-guang-li"
+      ],
       "narrative_note": "『晋国为何衰亡』非任一史书原文，是解释——本弧以论点层（thesis）承载因果论断，事件层（KU）承载史实。P2 逐子簇入 member_event（本波先钉 s3/s6/s7 已有 KU 事件；s1/s2/s4/s5 待事件抽取）。深度立意：公室分权→卿族坐大→本弱末强（师服『末大必折』一以贯之，前745 预言 / 前403 应验）。",
       "status": "draft",
       "membership_decision": {
@@ -32,9 +86,17 @@
       "attribution": {
         "type": "源内",
         "who": "师服（晋大夫）",
-        "locator": { "book": "左传", "chapter": "桓公二年", "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0004", "quote": "今晉，甸侯也，而建國，本既弱矣，其能久乎？" }
+        "locator": {
+          "book": "左传",
+          "chapter": "桓公二年",
+          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0004",
+          "quote": "今晉，甸侯也，而建國，本既弱矣，其能久乎？"
+        }
       },
-      "evidence_refs": ["ev:jin-gongshi-bei", "ev:sanjiafenjin"],
+      "evidence_refs": [
+        "ev:jin-gongshi-bei",
+        "ev:sanjiafenjin"
+      ],
       "counter_refs": [],
       "mainline_decision": {
         "choice": "采为本弧主线论点之源头（前745 预言）",
@@ -49,9 +111,16 @@
       "attribution": {
         "type": "源内",
         "who": "司马光（臣光曰）",
-        "locator": { "book": "资治通鉴", "chapter": "周纪一", "para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0002", "quote": "臣光曰：臣聞天子之職莫大於禮，禮莫大於分，分莫大於名。" }
+        "locator": {
+          "book": "资治通鉴",
+          "chapter": "周纪一",
+          "para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0002",
+          "quote": "臣光曰：臣聞天子之職莫大於禮，禮莫大於分，分莫大於名。"
+        }
       },
-      "evidence_refs": ["ev:minghou-403"],
+      "evidence_refs": [
+        "ev:minghou-403"
+      ],
       "counter_refs": [],
       "mainline_decision": {
         "choice": "并陈为本弧『制度/礼制视角』论点",
@@ -66,9 +135,16 @@
       "attribution": {
         "type": "源内",
         "who": "太史公（司马迁·晋世家赞）",
-        "locator": { "book": "史记", "chapter": "晋世家", "para_ulid": null, "quote": "（太史公曰·晋世家赞——原文段落待抓入库，PENDING）" }
+        "locator": {
+          "book": "史记",
+          "chapter": "晋世家",
+          "para_ulid": null,
+          "quote": "（太史公曰·晋世家赞——原文段落待抓入库，PENDING）"
+        }
       },
-      "evidence_refs": ["ev:jin-gongshi-bei"],
+      "evidence_refs": [
+        "ev:jin-gongshi-bei"
+      ],
       "counter_refs": [],
       "mainline_decision": {
         "choice": "占位·待原文入库",
@@ -83,13 +159,20 @@
       "attribution": {
         "type": "源内",
         "who": "叔向（晋大夫，与晏子问答）",
-        "locator": { "book": "左传", "chapter": "昭公三年", "para_ulid": null, "quote": "（叔向语·左传昭三——wikisource 分年 URL 404，原文待换源抓取，PENDING）" }
+        "locator": {
+          "book": "左传",
+          "chapter": "昭公三年",
+          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0005",
+          "quote": "晉之公族盡矣……公室將卑……欒、郤、胥、原、狐、續、慶、伯，降在皁隸，政在家門，民無所依。"
+        }
       },
-      "evidence_refs": ["ev:jin-gongshi-bei"],
+      "evidence_refs": [
+        "ev:jin-gongshi-bei"
+      ],
       "counter_refs": [],
       "mainline_decision": {
-        "choice": "占位·待原文入库",
-        "rationale": "§3 源内论点矿；本波抓取时 wikisource 昭公三年分年页 404，原文未入库（PENDING）。占位固 thesis_id/归属，换源抓取后回填 para_ulid + quote。",
+        "choice": "采为本弧论点(原文已入库)",
+        "rationale": "§3 源内论点矿；本波抓取时 wikisource 昭公三年分年页 404，原文未入库（PENDING）。原文 W-H1a-2 入库(ctext 逐字), para_ulid 回填。",
         "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-22）",
         "date": "2026-07-22"
       }
@@ -100,13 +183,20 @@
       "attribution": {
         "type": "源内",
         "who": "史墨（蔡墨，晋太史）",
-        "locator": { "book": "左传", "chapter": "昭公三十二年", "para_ulid": null, "quote": "（史墨语·左传昭三十二——wikisource 分年 URL 404，原文待换源抓取，PENDING）" }
+        "locator": {
+          "book": "左传",
+          "chapter": "昭公三十二年",
+          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0006",
+          "quote": "社稷無常奉，君臣無常位，自古以然。……三后之姓於今為庶。"
+        }
       },
-      "evidence_refs": ["ev:sanjiafenjin"],
+      "evidence_refs": [
+        "ev:sanjiafenjin"
+      ],
       "counter_refs": [],
       "mainline_decision": {
-        "choice": "占位·待原文入库",
-        "rationale": "§3 源内论点矿；史墨『无常位』是卿族代兴的最强源内理据、通贯本弧。本波原文未抓（404，PENDING），占位固 thesis_id/归属，换源回填。",
+        "choice": "采为本弧论点(原文已入库)",
+        "rationale": "§3 源内论点矿；史墨『无常位』是卿族代兴的最强源内理据、通贯本弧。本波原文未抓（404，PENDING），占位固 thesis_id/归属，换源回填。。原文 W-H1a-2 入库(ctext 逐字), para_ulid 回填。",
         "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-22）",
         "date": "2026-07-22"
       }

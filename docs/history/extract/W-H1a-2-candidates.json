@@ -1,0 +1,491 @@
+{
+  "batch": "W-H1a-1 半自动抽取抽检包",
+  "model": "qwen3-8b",
+  "is_gold": false,
+  "date_policy": "不产出, 走 chronology 注册表(§4.4发现)",
+  "candidates": [
+    {
+      "source_para_ulid": "6GB8KKM05W13RWT6A7DRMCXDVB:0001",
+      "source_chapter": "国语·晋语九",
+      "extracted": {
+        "title": "智果别族",
+        "persons": [
+          "智宣子",
+          "智瑶",
+          "智果"
+        ],
+        "place": null,
+        "event_type": "其他"
+      },
+      "registry_resolution": [
+        {
+          "name": "智宣子",
+          "registry": "per:zhixuanzi"
+        },
+        {
+          "name": "智瑶",
+          "registry": "per:zhibo"
+        },
+        {
+          "name": "智果",
+          "registry": "per:zhiguo"
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "6GB8KKM05W13RWT6A7DRMCXDVB:0002",
+      "source_chapter": "国语·晋语九·围晋阳",
+      "extracted": {
+        "title": "晋师围而灌之",
+        "persons": [
+          "晋师"
+        ],
+        "place": null,
+        "event_type": "战役"
+      },
+      "registry_resolution": [
+        {
+          "name": "晋师",
+          "registry": null
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "7RTPSJS9QAKBREZPGTR8DSSV5T:0001",
+      "source_chapter": "三国志（含裴注）·蜀书·诸葛亮传·裴注引郭冲条亮五事其三",
+      "extracted": {
+        "title": "阳平之战",
+        "persons": [
+          "亮",
+          "司馬宣王"
+        ],
+        "place": "陽平",
+        "event_type": "战役"
+      },
+      "registry_resolution": [
+        {
+          "name": "亮",
+          "registry": "per:zhugeliang"
+        },
+        {
+          "name": "司馬宣王",
+          "registry": null
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "7RTPSJS9QAKBREZPGTR8DSSV5T:0002",
+      "source_chapter": "三国志（含裴注）·蜀书·诸葛亮传·裴注臣松之案",
+      "extracted": {
+        "title": "诸葛亮与司马懿在关中对抗",
+        "persons": [
+          "诸葛亮",
+          "司马宣帝"
+        ],
+        "place": "关中",
+        "event_type": "战役"
+      },
+      "registry_resolution": [
+        {
+          "name": "诸葛亮",
+          "registry": "per:zhugeliang"
+        },
+        {
+          "name": "司马宣帝",
+          "registry": null
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0001",
+      "source_chapter": "史记·赵世家",
+      "extracted": {
+        "title": "三国攻晋阳",
+        "persons": [],
+        "place": "晋阳",
+        "event_type": "战役"
+      },
+      "registry_resolution": [],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0002",
+      "source_chapter": "史记·晋世家",
+      "extracted": {
+        "title": "魏韩赵灭晋",
+        "persons": [
+          "魏武侯",
+          "韩哀侯",
+          "赵敬侯",
+          "静公"
+        ],
+        "place": null,
+        "event_type": "战役"
+      },
+      "registry_resolution": [
+        {
+          "name": "魏武侯",
+          "registry": null
+        },
+        {
+          "name": "韩哀侯",
+          "registry": null
+        },
+        {
+          "name": "赵敬侯",
+          "registry": null
+        },
+        {
+          "name": "静公",
+          "registry": null
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0003",
+      "source_chapter": "史记·田敬仲完世家",
+      "extracted": {
+        "title": "田氏杀简公",
+        "persons": [
+          "简公",
+          "田氏之徒"
+        ],
+        "place": "徐州",
+        "event_type": "其他"
+      },
+      "registry_resolution": [
+        {
+          "name": "简公",
+          "registry": "per:qijiangong"
+        },
+        {
+          "name": "田氏之徒",
+          "registry": null
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0004",
+      "source_chapter": "史记·项羽本纪",
+      "extracted": {
+        "title": "鸿门宴",
+        "persons": [
+          "项庄",
+          "项伯",
+          "沛公",
+          "噲"
+        ],
+        "place": null,
+        "event_type": "其他"
+      },
+      "registry_resolution": [
+        {
+          "name": "项庄",
+          "registry": null
+        },
+        {
+          "name": "项伯",
+          "registry": null
+        },
+        {
+          "name": "沛公",
+          "registry": "per:liubang"
+        },
+        {
+          "name": "噲",
+          "registry": null
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "FR8TKEM3839A5M37HD8MRBT5MP:0001",
+      "source_chapter": "战国策·赵策一",
+      "extracted": {
+        "title": "围晋阳",
+        "persons": [
+          "张孟谈"
+        ],
+        "place": "晋阳",
+        "event_type": "战役"
+      },
+      "registry_resolution": [
+        {
+          "name": "张孟谈",
+          "registry": "per:zhangmengtan"
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "FR8TKEM3839A5M37HD8MRBT5MP:0002",
+      "source_chapter": "战国策·魏策一",
+      "extracted": {
+        "title": "知伯索地与晋阳之战",
+        "persons": [
+          "知伯",
+          "魏桓子",
+          "任章",
+          "赵",
+          "韩",
+          "魏"
+        ],
+        "place": "晋阳",
+        "event_type": "战役"
+      },
+      "registry_resolution": [
+        {
+          "name": "知伯",
+          "registry": "per:zhibo"
+        },
+        {
+          "name": "魏桓子",
+          "registry": "per:weihuanzi"
+        },
+        {
+          "name": "任章",
+          "registry": "per:renzhang"
+        },
+        {
+          "name": "赵",
+          "registry": "per:zhao-xiangzi"
+        },
+        {
+          "name": "韩",
+          "registry": "per:hankangzi"
+        },
+        {
+          "name": "魏",
+          "registry": "per:weihuanzi"
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0001",
+      "source_chapter": "左传（春秋左氏传）·隐公五年",
+      "extracted": {
+        "title": "公矢鱼于棠",
+        "persons": [
+          "公"
+        ],
+        "place": "棠",
+        "event_type": "其他"
+      },
+      "registry_resolution": [
+        {
+          "name": "公",
+          "registry": "per:jin-jinggong"
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0002",
+      "source_chapter": "左传（春秋左氏传）·哀公九年",
+      "extracted": {
+        "title": "吴城邗沟",
+        "persons": [],
+        "place": "邗",
+        "event_type": "其他"
+      },
+      "registry_resolution": [],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0003",
+      "source_chapter": "左传（春秋左氏传）·哀公十四年",
+      "extracted": {
+        "title": "齐陈恒弑其君壬",
+        "persons": [
+          "齐陈恒",
+          "齐君壬"
+        ],
+        "place": "舒州",
+        "event_type": "政变"
+      },
+      "registry_resolution": [
+        {
+          "name": "齐陈恒",
+          "registry": null
+        },
+        {
+          "name": "齐君壬",
+          "registry": null
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0004",
+      "source_chapter": "左传（春秋左氏传）·桓公二年",
+      "extracted": {
+        "title": "晋国建国之议",
+        "persons": [
+          "師"
+        ],
+        "place": null,
+        "event_type": "其他"
+      },
+      "registry_resolution": [
+        {
+          "name": "師",
+          "registry": null
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0005",
+      "source_chapter": "左传（春秋左氏传）·昭公三年",
+      "extracted": {
+        "title": "晋公族尽",
+        "persons": [
+          "肸"
+        ],
+        "place": null,
+        "event_type": "其他"
+      },
+      "registry_resolution": [
+        {
+          "name": "肸",
+          "registry": null
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0006",
+      "source_chapter": "左传（春秋左氏传）·昭公三十二年",
+      "extracted": {
+        "title": "鲁君与季氏关系",
+        "persons": [
+          "鲁君",
+          "季氏"
+        ],
+        "place": null,
+        "event_type": "其他"
+      },
+      "registry_resolution": [
+        {
+          "name": "鲁君",
+          "registry": null
+        },
+        {
+          "name": "季氏",
+          "registry": null
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0001",
+      "source_chapter": "资治通鉴·周纪一·命侯",
+      "extracted": {
+        "title": "晋大夫封诸侯",
+        "persons": [
+          "魏斯",
+          "赵籍",
+          "韩虔"
+        ],
+        "place": null,
+        "event_type": "册命"
+      },
+      "registry_resolution": [
+        {
+          "name": "魏斯",
+          "registry": "per:wei-si"
+        },
+        {
+          "name": "赵籍",
+          "registry": "per:zhao-ji"
+        },
+        {
+          "name": "韩虔",
+          "registry": "per:han-qian"
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0002",
+      "source_chapter": "资治通鉴·周纪一·臣光曰",
+      "extracted": {
+        "title": "论礼与分",
+        "persons": [],
+        "place": null,
+        "event_type": "其他"
+      },
+      "registry_resolution": [],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    },
+    {
+      "source_para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0003",
+      "source_chapter": "资治通鉴·周纪一·围晋阳",
+      "extracted": {
+        "title": "晋阳之战",
+        "persons": [
+          "智伯",
+          "魏桓子",
+          "韩康子",
+          "赵襄子",
+          "张孟谈"
+        ],
+        "place": "晋阳",
+        "event_type": "战役"
+      },
+      "registry_resolution": [
+        {
+          "name": "智伯",
+          "registry": "per:zhibo"
+        },
+        {
+          "name": "魏桓子",
+          "registry": "per:weihuanzi"
+        },
+        {
+          "name": "韩康子",
+          "registry": "per:hankangzi"
+        },
+        {
+          "name": "赵襄子",
+          "registry": "per:zhao-xiangzi"
+        },
+        {
+          "name": "张孟谈",
+          "registry": "per:zhangmengtan"
+        }
+      ],
+      "is_gold": false,
+      "note": "抽取候选（半自动·qwen2.5vl:7b）·非 gold·date 留注册表·顾问审重待"
+    }
+  ],
+  "summary": {
+    "n_candidates": 19,
+    "person_resolve_hit": "23/40"
+  }
+}
