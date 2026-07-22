@@ -582,6 +582,41 @@
       "谥字号": "吴王夫差（阖闾子）",
       "active_range": "前495–前473 在位（黄池争霸；越灭吴自刭）",
       "force_affiliations": ["fo:wu"]
+    },
+    {
+      "person_id": "per:zhixuanzi",
+      "names_by_source": { "智宣子": ["src:guoyu", "src:zztj"], "甲": ["src:guoyu"] },
+      "谥字号": "谥宣，名申/甲（智瑶之父）",
+      "active_range": "前5世纪初（立瑶为后）",
+      "force_affiliations": ["fo:zhi"]
+    },
+    {
+      "person_id": "per:zhiguo",
+      "names_by_source": { "智果": ["src:guoyu", "src:zztj"], "辅果": ["src:guoyu"] },
+      "谥字号": "智氏族人；谏立瑶不听，别族于太史为辅氏（『及智氏之亡也，唯辅果在』）",
+      "active_range": "前5世纪初（谏立瑶）至智氏亡（前453）后",
+      "force_affiliations": ["fo:zhi"]
+    },
+    {
+      "person_id": "per:renzhang",
+      "names_by_source": { "任章": ["src:zhanguoce", "src:zztj"] },
+      "谥字号": "魏桓子相（『与之以骄知伯』献策者）",
+      "active_range": "前5世纪中（晋阳之战前夕）",
+      "force_affiliations": ["fo:wei"]
+    },
+    {
+      "person_id": "per:zhangmengtan",
+      "names_by_source": { "张孟谈": ["src:zhanguoce", "src:zztj"], "张孟同": ["src:shiji"] },
+      "谥字号": "赵襄子家臣；潜出说韩魏反智（★史记·赵世家作『张孟同』——异名一次归一之例）",
+      "active_range": "前455–前453（晋阳之围）",
+      "force_affiliations": ["fo:zhao"]
+    },
+    {
+      "person_id": "per:simaguang",
+      "names_by_source": { "司马光": ["src:zztj"] },
+      "谥字号": "字君实，谥文正；《资治通鉴》作者——『臣光曰』观点主体（R8 观点归属对象）",
+      "active_range": "1019–1086（北宋；史论非当世见证）",
+      "force_affiliations": []
     }
   ]
 }
