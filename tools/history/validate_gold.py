@@ -114,7 +114,39 @@ def main() -> int:
         print(f"{f.name}: {'OK' if not problems else 'FAIL'}")
         failures += [f"{f.name}: {p}" for p in problems]
 
-    print(f"--- {len(fixtures)} fixtures · registry {len(seed_ids)} ids")
+    # 5. 扩样例集（contracts/samples/**）：每文件必须过契约 schema（D-019 交付面②）
+    samples = sorted((ROOT / "contracts" / "samples").glob("*/*.json"))
+    for f in samples:
+        d = load(f)
+        problems = [f"schema: {e.json_path} {e.message}" for e in contract_v.iter_errors(d)]
+        problems += [f"下划线前缀键: {p}" for p in underscore_keys(d)]
+        bundle_ids = {
+            e[k]
+            for grp, k in [
+                ("persons", "person_id"),
+                ("places", "place_id"),
+                ("forces", "force_id"),
+                ("sources", "source_id"),
+            ]
+            for e in d.get("registry_bundle", {}).get(grp, [])
+        }
+        # 只扫响应体（event/accounts/conflicts）：body 引用须在 bundle 内闭合；
+        # registry 条目自身的谱系边（derivation/succession/names_by_source）可指向未随包实体，不算悬空。
+        body = json.dumps(
+            {
+                "event": d.get("event"),
+                "accounts": d.get("accounts"),
+                "conflicts": d.get("conflicts"),
+            },
+            ensure_ascii=False,
+        )
+        dangling = {r for r in REF_RE.findall(body) if r not in bundle_ids}
+        if dangling:
+            problems.append(f"registry_bundle 未携带的 body 引用: {sorted(dangling)}")
+        print(f"samples/{f.parent.name}/{f.name}: {'OK' if not problems else 'FAIL'}")
+        failures += [f"{f.name}: {p}" for p in problems]
+
+    print(f"--- {len(fixtures)} fixtures · {len(samples)} samples · registry {len(seed_ids)} ids")
     if failures:
         print("\n".join(failures))
         return 1
