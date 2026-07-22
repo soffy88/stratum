@@ -111,6 +111,8 @@ Source {source_id, title, 成书年代, genre(编年|纪传|国别策论|注|辑
  mainline_account_ref + mainline_decision}
 ```
 
+> **★hint 不得私裁（D-017）**：`geo.route_hint` / `mapstate_hint` 等提示字段若取值涉及**源间分歧**，只有两条合法路径——①该分歧的冲突对象已建，且 hint **跟随 `mainline_decision`**（并注异说所在 cf）；②置 `null`。**hint 永不承载未裁决的选择**。首例：B06 晋阳灌城水源（route_hint 单方取『汾水』而晋水/汾水 h-conflict 未建，G1b 抓出）。
+
 ### 4.2 ku:h-account（源述：某一源对该事件的证词）
 
 ```

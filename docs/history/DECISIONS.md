@@ -4,6 +4,30 @@
 
 ---
 
+## D-019 · Gap 补齐批 = F21+ 工作单（G1b 缺口清单 → fixture 订单）+ 扩样例集交付
+
+- **日期**：2026-07-22 · **决策人**：Wiki（下单）/ CC（执行）
+- **订单源**：CC-A G1b 首跑 coverage gap 清单（hevi `output/g1b_sanjia_fenjin/G1B_REPORT.md` + `tools/g1b_parity_harness.py::GAPS`）：一集 11 拍 ≈ 5 ev / 7 ac / 2 cf / 8 per。按逐拍清单建，计入 7:3 台账、四段计时照记（多数平凡料）。
+- **交付两面**：① fixtures **F21–F25**（F21 智果谏立瑶·平凡 / F22 智伯索地+任章·平凡 / F23 晋阳水源+围城年数·难例 / F24 命侯+臣光曰·难例 / F25 晋公室卑六卿彊·平凡）+ seeds persons +5。② **响应交付 = 扩样例集不动 schema**：`contracts/samples/ep_sanjia_fenjin/` 每事件一响应文件（生成器 `tools/history/build_ep_samples.py`，samples=f(fixtures,seeds) 零漂移），**形状零变更、无需 bump**；G1b 钉点 `sample.sanjiafenjin.json` 字节不动。
+- **★水源 cf 判定（从实际 locator 定，非记忆）**：查证通道＝维基文库/ctext 原文逐字摘录（2026-07-22）——史记·赵世家『三國攻晉陽，**歲餘**，引**汾水**灌其城』；战国策·赵策一『圍晉陽**三年**』『決**晉水**而灌之』；通鉴『圍而灌之』/『智伯行水』**不名水**、国语·晋语九『晉師圍而灌之，沈灶產蛙』**亦不名水**——两不表态源不计冲突端。`cf:jinyang-shuiyuan`（dimension=**place**，v0.2 新维第二用户，indep=2，S12）主线随事件 mainline（史记）＝汾水。
+- **★超订单 +1 明报**：围城年数 岁余（史记）vs 三年（战国策）**同指涉对立**（围城时长）——通则 a 之下这是真冲突，不建即 gold 自违 P1，故建 `cf:jinyang-weicheng-duration`（number，S12）。订单 2 cf 系 CC-A 密度估算，此为范式必然产物，**Wiki 可否决**。
+- **VO『围两年』核查结论**：史记（岁余）/战国策（三年）/通鉴（无）/国语（无）四系皆无『两年』——**查无实据坐实**，按令登 G1a 打磨清单改署源表述（通知件送 hevi）。
+- **另**：B05 拍级合围路线不入本批——`route_hint` 单值系契约形状，拍级多路线属 G2 口径议题。B02 智果 ac 挂 `ev:zhixuanzi-liyao`（+1 事件对象，超密度估算，明报）。
+
+## D-018 · m0 陈旧字节拆弹：合流时 docs/history 显式取 main 侧
+
+- **日期**：2026-07-22 · **决策人**：Wiki（裁拆弹必要）/ CC（二选一定案）
+- **旧判作废实录**：此前『m0 三副本 commit 与 main 同内容 add、merge 无冲突、无需处理』的判断**作废**——main 已演进到 v0.2（`_meta` 迁移 + F3 改判 + place 维 + F5–F25），m0 的 `docs/history` 副本（`ab228ab`/`11412a1`/`9130820` 系，sample 仍 v0.1 旧字节）已成**分歧内容**；G1b harness 亦实测『工作树 m0 还是 v0.1 旧字节』。
+- **裁（二选一取后者）**：❌(a) rebase 掉 m0 三副本 commit——m0 已推远端（`origin/feat/m0-concept-canonical`），中段摘除需重写并 force-push 长分支史，风险外溢。✅**(b) 合流时 `docs/history` 显式取 main 侧**，程序三步：① merge 时 `git checkout main -- docs/history tools/history`；② 验 `git diff main -- docs/history tools/history` 为空；③ `python3 tools/history/validate_gold.py` 全绿。三步全过方可提交 merge。**不留给未来的 merge 撞运气。**
+- **影响**：m0 合流 checklist 挂本条；F1–F4 两套血缘的撞车路径正式封死。
+
+## D-017 · KU spec 补丁：hint 不得私裁（B06 首例）
+
+- **日期**：2026-07-22 · **决策人**：Wiki
+- **规则**：`geo.route_hint`/`mapstate_hint` 类提示字段取值涉及源间分歧时——要么**冲突对象已建且 hint 跟随 `mainline_decision`**（注异说 cf），要么**置 null**。**hint 永不承载未裁决的选择。**
+- **首例**：B06 晋阳灌城水源——sample/F1 `route_hint:"引汾水灌晋阳"` 单方取汾水（史记系）而晋水/汾水 h-conflict 未建，G1b 对拍抓出（手工 VO 取晋水，两端各私裁一边）。
+- **落地**：spec §4.1 补注；F23 建 `cf:jinyang-shuiyuan` 后 route_hint 改为跟随主线并注 cf（`ep_sanjia_fenjin` 样例同步）；今后 fixture/样例过 harness 前人工自查此条（机检待 hint-cf 关联字段，暂不改形状）。
+
 ## D-016 · agent 分钟＝排期运营单位（换算率问题撤销）+ 引文核对定为 W-H1 机核项
 
 - **日期**：2026-07-22 · **决策人**：Wiki
