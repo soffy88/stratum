@@ -80,7 +80,8 @@ def main():
         p for p in zz["paragraphs"] if JIN.search(p["text"]) and 20 <= len(p["text"]) <= 200
     ]
     step = max(1, len(cands_src) // N)
-    sample = cands_src[::step][:N]
+    off = (step // 2) if len(sys.argv) > 2 and sys.argv[2] == "shift" else 0
+    sample = cands_src[off::step][:N]
 
     out_cands = []
     pn_tot = pn_hit = 0

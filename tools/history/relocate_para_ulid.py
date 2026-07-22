@@ -23,6 +23,7 @@ QUOTED = re.compile(r"[「『\"]([^」』\"]{6,})[」』\"]")
 # 策展 key 表（设计批 F1–F9 等；原文在全文语料的 account → 繁体原文键）。
 # 仅在 note 无 brackets 时兜底；键取自各篇确定在库的原文片段。
 CURATED = {
+    "ac:longzhong-peian": "非亮先詣備",
     "ac:jinyang-shiji": "三國攻晉陽",
     "ac:jinyang-zztj": "三家以國人圍而灌之",
     "ac:jinyang-zhanguoce": "決晉水而灌之",
@@ -44,7 +45,7 @@ CURATED = {
     "ac:longzhong-liangzhuan": "每自比於管仲",
     "ac:guandu-sanguozhi": "兵不滿萬",
     "ac:ningwo-sunsheng": "寧我負人",
-    "ac:ningwo-weishu": "呂伯奢",
+    "ac:ningwo-weishu": "伯奢",
     "ac:longzhong-chushibiao": "三顧臣於草廬",
     "ac:longzhong-weilue": "亮乃北行見備",
     "ac:kongcheng-guochong": "偃旗息鼓",
