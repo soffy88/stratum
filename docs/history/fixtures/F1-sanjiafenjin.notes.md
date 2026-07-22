@@ -20,3 +20,13 @@
   "author": "CC (手工，禁抽取器)"
 }
 ```
+
+---
+
+## 事件注记 · 独立见证折算（indep≈1.5）· v0.3.1 移入（D-023）
+
+> 原 `cf:jinyang-independence`（dimension=narrative，hint=主线+角标）**已撤**——三 account 系**同说**（无对立主张），该对象实为独立性折算记录，非冲突。折算依据移事件级（本注记 + `mainline_decision.rationale` + `JUDGMENTS.md#F1`），不占 cf 对象位。
+
+- **折算**：史记 计 1 · 通鉴 派生自史记（同祖源 src:zztj←src:shiji，不另计）· 战国策 策士敷演 genre 降权（计 0.5）→ 三源同说 ≈ **1.5** 独立见证（非 3）。
+- **★防倒退点（D-023）**：凡为**侧重差（F12）或折算记录（F1）**立 cf 即倒退信号；narrative cf 只挂真对立主张。
+- **裁**：顾问 Claude（Wiki 授权 2026-07-22，D-023），Wiki 保留否决权。

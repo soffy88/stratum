@@ -5,7 +5,11 @@
 
 ## 取数（跨仓钉点协议：tag，不裸 commit——m0 教训的直接延伸）
 
-- **钉点**：stratum annotated tag **`history-contract-v0.2.1`**。⚠ 这是**交付集版本**（样例扩充），契约**形状**仍 v0.2——`contract_version` 字段不动，你们 harness 里 schema/sample 两个 sha256 仍有效（`sample.sanjiafenjin.json` 字节未动）。
+- **钉点（更新至 v0.2.2）**：stratum annotated tag **`history-contract-v0.2.2`**。gap 补齐样例集 `contracts/samples/ep_sanjia_fenjin/` 随此 tag（内容承 v0.2.1，未变）。
+- **★G1b 对拍钉点随迁 v0.2.2**（D-023）：`sample.sanjiafenjin.json` **字节已变**——撤 `cf:jinyang-independence`（三源同说的独立性折算记录误作 narrative cf，抽验裁撤、折算移事件级）。**contract_version 仍 v0.2**（撤 conflict 实例非 shape）。**⚠ 你们 harness 硬编码 sha256 须更新**：
+  - `sample.sanjiafenjin.json` **新** = `4126c842aa0fc8f3b22268a0830c4b18e728233ca36f12297e636b0c572c62d9`（旧 `a1e7d70…` 作废）
+  - `schema` **不变** = `638fc28e7db8bde88dd90309d478a280287a87d0d7b7c7e77d8ff02373ff7b6f`
+  - 对拍效应：sample `conflicts` 现为空数组（原 cf:jinyang-independence 撤）；`project_duals()` 依旧 0 条（该 cf 本为 hint=主线+角标、非 S12，从不投 dual），故 dual 侧对拍不受影响。冲突形态样例演示改看 `jinyang-zhizhan.json`（cf:jinyang-shuiyuan S12→DualAccountFact）。
 - **响应文件**：`docs/history/contracts/samples/ep_sanjia_fenjin/`（每事件一响应，`contract_version: v0.2`）。
 - 勿取 m0 工作树——其 sample 仍 v0.1 旧字节（D-018 已裁 m0 合流时 docs/history 取 main 侧）。
 
