@@ -3,17 +3,44 @@
     {
       "event_id": "ev:changping",
       "title": "长平之战（白起坑赵）",
-      "canonical_date": { "type": "year", "value": "前260", "note": "秦赵决战长平；赵括代廉颇出战，白起断粮围之，赵军降而尽坑。" },
+      "canonical_date": {
+        "type": "year",
+        "value": "前260",
+        "note": "秦赵决战长平；赵括代廉颇出战，白起断粮围之，赵军降而尽坑。"
+      },
       "event_type": "战役",
       "actors": [
-        { "person_ref": "per:baiqi", "role": "秦将（坑赵降卒）", "force_ref": "fo:qin" },
-        { "person_ref": "per:zhaokuo", "role": "赵将（纸上谈兵，战死）", "force_ref": "fo:zhao" },
-        { "person_ref": "per:lianpo", "role": "赵前期主将（坚壁，被代）", "force_ref": "fo:zhao" }
+        {
+          "person_ref": "per:baiqi",
+          "role": "秦将（坑赵降卒）",
+          "force_ref": "fo:qin"
+        },
+        {
+          "person_ref": "per:zhaokuo",
+          "role": "赵将（纸上谈兵，战死）",
+          "force_ref": "fo:zhao"
+        },
+        {
+          "person_ref": "per:lianpo",
+          "role": "赵前期主将（坚壁，被代）",
+          "force_ref": "fo:zhao"
+        }
       ],
-      "geo": { "place_refs": ["pl:changping"], "route_hint": "白起佯败、断赵粮道、分割合围", "mapstate_hint": "秦围赵于长平" },
+      "geo": {
+        "place_refs": [
+          "pl:changping"
+        ],
+        "route_hint": "白起佯败、断赵粮道、分割合围",
+        "mapstate_hint": "秦围赵于长平"
+      },
       "parent_event": null,
-      "accounts": ["ac:changping-baiqi", "ac:changping-zhaoshijia"],
-      "conflicts": ["cf:changping-number"],
+      "accounts": [
+        "ac:changping-baiqi",
+        "ac:changping-zhaoshijia"
+      ],
+      "conflicts": [
+        "cf:changping-number"
+      ],
       "evidence_tier": "E1",
       "tier_override": {
         "rationale": "长平之战为史记多篇同述（E1）。★考古E0-aspiration（approach A / D-005）：长平（今高平）尸骨坑遗址（永录等地）出土大量非正常死亡遗骸，佐证『大规模坑杀』之实——本可将『大规模坑杀』升 E0（文献+出土互证）；但考古源 Q3 远期、`source.genre` enum 无出土类（走 A），故记于此 tier_override（E0-候选），不作 Source。注意：考古佐证『大规模』，不证『恰四十万』这一确数。",
@@ -34,16 +61,38 @@
       "account_id": "ac:changping-baiqi",
       "event_ref": "ev:changping",
       "source_id": "src:shiji",
-      "locator": { "book": "史记", "chapter": "白起王翦列传", "section": "长平坑赵段", "para_ulid": null, "note": "★待补。白起列传：赵卒降，武安君挟诈尽阬之；前后斩首虏四十五万，赵人大震。" },
+      "locator": {
+        "book": "史记",
+        "chapter": "白起王翦列传",
+        "section": "长平坑赵段",
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0493",
+        "note": "★待补。白起列传：赵卒降，武安君挟诈尽阬之；前后斩首虏四十五万，赵人大震。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "前260",
-        "actor_claims": ["赵括代廉颇，出击；白起佯败、断其粮道、围之", "赵军断粮四十六日，赵括突围战死", "赵卒四十万降，武安君乃挟诈尽阬杀之"],
-        "causal_claims": ["赵括轻出 + 白起断粮合围 → 赵军降 → 尽坑"],
+        "actor_claims": [
+          "赵括代廉颇，出击；白起佯败、断其粮道、围之",
+          "赵军断粮四十六日，赵括突围战死",
+          "赵卒四十万降，武安君乃挟诈尽阬杀之"
+        ],
+        "causal_claims": [
+          "赵括轻出 + 白起断粮合围 → 赵军降 → 尽坑"
+        ],
         "number_claims": [
-          { "value": "四十万", "unit": "人（坑杀降卒）", "quote_span": "卒四十万人降武安君……乃挟诈而尽阬杀之。", "display": "《史记·白起王翦列传》载" },
-          { "value": "四十五万", "unit": "人（前后斩首虏）", "quote_span": "前后斩首虏四十五万，赵人大震。", "display": "《史记·白起王翦列传》载" }
+          {
+            "value": "四十万",
+            "unit": "人（坑杀降卒）",
+            "quote_span": "卒四十万人降武安君……乃挟诈而尽阬杀之。",
+            "display": "《史记·白起王翦列传》载"
+          },
+          {
+            "value": "四十五万",
+            "unit": "人（前后斩首虏）",
+            "quote_span": "前后斩首虏四十五万，赵人大震。",
+            "display": "《史记·白起王翦列传》载"
+          }
         ],
         "dialogue_spans": []
       },
@@ -53,15 +102,28 @@
       "account_id": "ac:changping-zhaoshijia",
       "event_ref": "ev:changping",
       "source_id": "src:shiji",
-      "locator": { "book": "史记", "chapter": "赵世家", "section": "长平段", "para_ulid": null, "note": "★待补。赵世家记长平作『数十万』约数——与白起列传『四十万』确数，同书篇间之精粗差。" },
+      "locator": {
+        "book": "史记",
+        "chapter": "赵世家",
+        "section": "长平段",
+        "para_ulid": null,
+        "note": "★待补。赵世家记长平作『数十万』约数——与白起列传『四十万』确数，同书篇间之精粗差。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "前260",
-        "actor_claims": ["赵括军败，数十万之众遂降秦，秦悉阬之"],
+        "actor_claims": [
+          "赵括军败，数十万之众遂降秦，秦悉阬之"
+        ],
         "causal_claims": [],
         "number_claims": [
-          { "value": "数十万", "unit": "人（约数）", "quote_span": "数十万之众遂降秦，秦悉阬之。", "display": "《史记·赵世家》载" }
+          {
+            "value": "数十万",
+            "unit": "人（约数）",
+            "quote_span": "数十万之众遂降秦，秦悉阬之。",
+            "display": "《史记·赵世家》载"
+          }
         ],
         "dialogue_spans": []
       },
@@ -73,7 +135,10 @@
       "conflict_id": "cf:changping-number",
       "event_ref": "ev:changping",
       "dimension": "number",
-      "account_refs": ["ac:changping-baiqi", "ac:changping-zhaoshijia"],
+      "account_refs": [
+        "ac:changping-baiqi",
+        "ac:changping-zhaoshijia"
+      ],
       "independence_analysis": {
         "independent_witness_count": 1,
         "reasoning": "★同指涉对齐前置（通则a，见 JUDGMENTS 方法论）：本冲突只涉『坑杀降卒』这一指涉——四十万（白起列传·坑降卒）vs 数十万（赵世家·坑）同指涉、差精粗。白起列传另有『前后斩首虏四十五万』＝**战役总斩首虏**（不同指涉），**非本冲突之一端**（四十五万与四十万不对立，一为总计一为坑数）。坑杀之数：白起列传『四十万』（确数）vs 赵世家『数十万』（约数）——二者**同属史记**（同源篇间），不构成两独立见证（计 1）；差在**精粗**（确数 vs 约数），非对立。★后世多疑『四十万』确数夸大（战国动员力、粮运之限）；长平尸骨坑考古证『大规模坑杀』属实，但**不证恰四十万**——考古佐证只注记事件存在性（大规模坑杀确有），**不给数字挂 tier**（通则b）：数字永远是署源 claim + 冲突对象。",

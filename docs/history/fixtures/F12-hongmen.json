@@ -69,7 +69,7 @@
         "book": "史记",
         "chapter": "项羽本纪",
         "section": "鸿门宴全段",
-        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0004",
+        "para_ulid": null,
         "note": "待补。鸿门宴主叙——最详。"
       },
       "白文span_refs": [],
@@ -99,7 +99,7 @@
         "book": "史记",
         "chapter": "高祖本纪",
         "section": "鸿门段（简）",
-        "para_ulid": null,
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0460",
         "note": "★待补。同事互见于高祖本纪——从刘邦视角简载，与项羽本纪互补非矛盾。"
       },
       "白文span_refs": [],
@@ -126,7 +126,7 @@
         "book": "史记",
         "chapter": "樊郦滕灌列传（樊哙）",
         "section": "樊哙闯帐段",
-        "para_ulid": null,
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0460",
         "note": "★待补。同事互见于樊哙传——详樊哙闯帐、饮斗酒啖彘肩、责项王之辞。"
       },
       "白文span_refs": [],
