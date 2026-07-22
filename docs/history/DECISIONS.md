@@ -4,6 +4,14 @@
 
 ---
 
+## D-015 · 校验尺子立项 + 『全 validate』主张修正 + scratchpad 禁令扩 B 线
+
+- **日期**：2026-07-22 · **决策人**：Wiki（立项）/ CC（落地）
+- **★主张修正（诚实入账）**：commit `7ef49d2` 称『18 fixtures 全 validate』——按 README 冻结命令直测**不成立**（fixture 顶层是 gold 包裹格式非契约响应体，additionalProperties 全拒）。2026-07-22 复核：子对象级（events/accounts/conflicts 对契约 $defs）18/18 过、注册表引用零悬空——但该复核脚本自身漏了 `fo:` 前缀（写成 `frc:`），**F10 的 force 引用当时根本没被验过**。两层教训一并入册。
+- **落地（平凡批前置件，本 commit）**：① `fixtures/gold-bundle.schema.json`——束格式（events/accounts/conflicts/rejected_alternatives/adjudication 判定元数据），内层 $ref 契约 $defs 零漂移；含 `work_log` 四段工时字段（D-011）与 `kind`(agent/human)。② harness `tools/history/validate_gold.py`——束级 schema + 注册表引用（前缀含 `fo:`）+ 束内引用闭合 + 零下划线键，exit code 硬门。③ README 冻结命令更新。实测：sample VALID + 18/18 ALL GREEN。
+- **★scratchpad 禁令扩 B 线（通则）**：验证类脚本**一律入仓**——scratchpad 里的尺子等于没有尺子（本日第三次 scratchpad 吃掉或险些吃掉证据）。A/B 两线同令。
+- **影响**：『全 validate』口头主张作废，今后以本 harness 输出为唯一口径；**平凡批开工条件即此尺子入仓**（Wiki 开工令，与抽验补课 D-010 并行）。
+
 ## D-014 · F2 收尾包：真签 GATE 工件 + 四行证据定位图 + 否弃项锚点回贴
 
 - **日期**：2026-07-22 · **决策人**：Wiki（签）/ CC（记录）

@@ -46,12 +46,18 @@ print("VALID" if not errs else f"{len(errs)} errors")
 PY
 ```
 
+**Fixtures gold 校验（D-015 尺子，冻结口径）**——fixture 是 gold 包裹格式（`fixtures/gold-bundle.schema.json`，内层 $ref 本契约 $defs），**不是**本 schema 的响应体，直测必挂；一律走 harness：
+
+```bash
+python3 tools/history/validate_gold.py   # 束级 schema + 注册表引用(含 fo:) + 束内引用闭合 + 零下划线键
+```
+
 > **零下划线约定**：本包所有 JSON 本体不含 `_`-前缀键；人读注释一律在同名 `*.notes.md`。冻结契约的真理形态 = 落盘字节本身，validate 不得依赖任何 strip/预处理步骤。
 
 ## 相关交付
 
 - 注册表种子：`../seeds/{sources,chronology,persons,places,forces}.json`（§3；derivation_edges 必填、六国 override 占位、fixtures 涉及实体）。
-- W-H0 fixtures：`../fixtures/F1..F4*.json`（§10；四核心样本）。
+- W-H0 fixtures：`../fixtures/F*.json`（§10）+ 束格式 `../fixtures/gold-bundle.schema.json` + harness `tools/history/validate_gold.py`（D-015）。
 - §5 同一性判定记录（A 类回归网首批 gold）：`../fixtures/JUDGMENTS.md`。
 - 承自 conformance（Task 0）：`../AII-HISTORY-KU-SPEC-001.md` 附录 A。
 

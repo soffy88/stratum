@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aii/stratum/history/fixtures/gold-bundle.schema.json",
+  "title": "W-H0 gold fixture bundle（fixtures/F*.json 包裹格式）",
+  "description": "D-015 校验尺子。fixture 是 gold 包裹（多 event + 全量 account/conflict + 否弃项 + 判定元数据），不是 §8 查询响应体——契约 schema 直测 fixture 必挂（additionalProperties 拒），此前『全 validate』口头主张即栽在这里。内层实体一律 $ref 契约 $defs：契约变，尺子跟着变，零漂移。判定元数据（adjudication）可选：存量 18 个 fixture 的判定元数据在 *.notes.md 与 COVERAGE-MATRIX；平凡批（产线）起建议入本体并带 work_log 四段工时（D-011）。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["events", "accounts", "conflicts"],
+  "properties": {
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "https://aii/stratum/history/contracts/history-query-response.schema.json#/$defs/h_event" }
+    },
+    "accounts": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "https://aii/stratum/history/contracts/history-query-response.schema.json#/$defs/h_account" }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": { "$ref": "https://aii/stratum/history/contracts/history-query-response.schema.json#/$defs/h_conflict" }
+    },
+    "rejected_alternatives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "claim", "verdict", "reason", "decided_by"],
+        "properties": {
+          "id": { "type": "string" },
+          "claim": { "type": "string" },
+          "verdict": { "type": "string" },
+          "reason": { "type": "string" },
+          "decided_by": { "type": "string" }
+        }
+      }
+    },
+    "adjudication": {
+      "type": "object",
+      "description": "判定元数据（产线批起）。work_log 四段 = D-011 钉定口径；kind 标 agent/human 不混计（诚实总账：agent 工时≠人时）。",
+      "additionalProperties": false,
+      "required": ["adjudicator", "date"],
+      "properties": {
+        "adjudicator": { "type": "string" },
+        "date": { "type": "string" },
+        "tier_class": { "enum": ["平凡", "难例"] },
+        "gate_artifact": { "type": "string", "description": "边界案真签工件位置（如 F2 notes GATE 节）；非边界省略。" },
+        "work_log": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unit", "kind", "extract", "registry_resolve", "adjudicate", "review"],
+          "properties": {
+            "unit": { "const": "min" },
+            "kind": { "enum": ["agent", "human"] },
+            "extract": { "type": "number", "description": "抽取（原文定位+要素抽出）——LLM 抽取器将替代的部分，喂 W-H1 ROI" },
+            "registry_resolve": { "type": "number", "description": "注册表解析（persons/places/forces/sources/chronology 对齐与增补）" },
+            "adjudicate": { "type": "number", "description": "判定（§5 同一性/冲突/主线决策）" },
+            "review": { "type": "number", "description": "复核（harness 校验+自查）" },
+            "note": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
