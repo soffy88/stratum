@@ -1,0 +1,1919 @@
+{
+  "batch": "W-H1a-3 左传晋系首批抽取（P1 出口件·候选非gold）",
+  "model": "qwen3-8b",
+  "date_policy": "不产出(D-028)",
+  "is_gold": false,
+  "eval_metrics_note": "held-out=全文左传晋系段, gold结构不入prompt",
+  "summary": {
+    "n_sampled": 52,
+    "n_valid_json": 52,
+    "type_in_enum": "52/52",
+    "person_resolve_rate": "48/246 (19%)",
+    "new_person_candidates": 198,
+    "identity_matched_gold": 0
+  },
+  "candidates": [
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0052",
+      "source_chapter": "隱公·隱公三年",
+      "extracted": {
+        "title": "结两国之信",
+        "persons": [],
+        "place": null,
+        "event_type": "其他",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0145",
+      "source_chapter": "隱公·隱公十年",
+      "extracted": {
+        "title": "中丘会盟",
+        "persons": [
+          "公",
+          "齐侯",
+          "郑伯"
+        ],
+        "place": "中丘",
+        "event_type": "会盟",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "公",
+            "registry": "per:jin-jinggong"
+          }
+        ],
+        "persons_candidate": [
+          "齐侯",
+          "郑伯"
+        ],
+        "place_candidate": "中丘",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0217",
+      "source_chapter": "桓公·桓公三年",
+      "extracted": {
+        "title": "曲沃武公伐翼",
+        "persons": [
+          "曲沃武公",
+          "韩万",
+          "梁弘",
+          "翼侯",
+          "栾共叔"
+        ],
+        "place": "陘庭、汾隰",
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "曲沃武公",
+          "韩万",
+          "梁弘",
+          "翼侯",
+          "栾共叔"
+        ],
+        "place_candidate": "陘庭、汾隰",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0313",
+      "source_chapter": "桓公·桓公十三年",
+      "extracted": {
+        "title": "楚屈瑕伐羅",
+        "persons": [
+          "楚屈瑕",
+          "鬬伯比",
+          "楚子",
+          "鄧曼"
+        ],
+        "place": null,
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "楚子",
+            "registry": "per:i4-027"
+          }
+        ],
+        "persons_candidate": [
+          "楚屈瑕",
+          "鬬伯比",
+          "鄧曼"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0396",
+      "source_chapter": "莊公·莊公亖年",
+      "extracted": {
+        "title": "楚武王伐随",
+        "persons": [
+          "楚武王",
+          "邓曼",
+          "令尹斗祁",
+          "莫敖屈重",
+          "随侯"
+        ],
+        "place": "汉汭",
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "楚武王",
+          "邓曼",
+          "令尹斗祁",
+          "莫敖屈重",
+          "随侯"
+        ],
+        "place_candidate": "汉汭",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0521",
+      "source_chapter": "莊公·莊公二十年",
+      "extracted": {
+        "title": "王子頹享五大夫",
+        "persons": [
+          "鄭伯",
+          "虢叔",
+          "虢公",
+          "王子頹"
+        ],
+        "place": null,
+        "event_type": "其他",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "鄭伯",
+          "虢叔",
+          "虢公",
+          "王子頹"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0616",
+      "source_chapter": "莊公·莊公三十一年",
+      "extracted": {
+        "title": "齐侯献戎捷",
+        "persons": [
+          "齐侯"
+        ],
+        "place": null,
+        "event_type": "其他",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "齐侯"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0684",
+      "source_chapter": "僖公·僖公元年",
+      "extracted": {
+        "title": "莒人来求赂",
+        "persons": [
+          "莒子",
+          "公子友",
+          "季友"
+        ],
+        "place": null,
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "莒子",
+          "公子友",
+          "季友"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0769",
+      "source_chapter": "僖公·僖公九年",
+      "extracted": {
+        "title": "诸侯盟于葵丘",
+        "persons": [
+          "晋侯诡诸"
+        ],
+        "place": "葵丘",
+        "event_type": "会盟",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "晋侯诡诸"
+        ],
+        "place_candidate": "葵丘",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0804",
+      "source_chapter": "僖公·僖公十一年",
+      "extracted": {
+        "title": "戎伐京师",
+        "persons": [
+          "王子带"
+        ],
+        "place": "京师, 王城",
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "王子带"
+        ],
+        "place_candidate": "京师, 王城",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0852",
+      "source_chapter": "僖公·僖公十五年",
+      "extracted": {
+        "title": "韩原之战",
+        "persons": [
+          "晋侯",
+          "庆郑",
+          "梁由靡",
+          "韩简",
+          "虢射",
+          "秦伯"
+        ],
+        "place": "韩原",
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "晋侯",
+          "庆郑",
+          "梁由靡",
+          "韩简",
+          "虢射",
+          "秦伯"
+        ],
+        "place_candidate": "韩原",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0911",
+      "source_chapter": "僖公·僖公十九年",
+      "extracted": {
+        "title": "鄫子祭祀事件",
+        "persons": [
+          "宋公",
+          "邾文公",
+          "鄫子",
+          "司马子鱼"
+        ],
+        "place": "次睢之社",
+        "event_type": "其他",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "宋公",
+          "邾文公",
+          "鄫子",
+          "司马子鱼"
+        ],
+        "place_candidate": "次睢之社",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0990",
+      "source_chapter": "僖公·僖公二十四年",
+      "extracted": {
+        "title": "晋师与秦师行动",
+        "persons": [
+          "狐偃",
+          "公子縶"
+        ],
+        "place": "廬柳, 郇, 曲沃, 武宮, 高梁",
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "狐偃",
+          "公子縶"
+        ],
+        "place_candidate": "廬柳, 郇, 曲沃, 武宮, 高梁",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1025",
+      "source_chapter": "僖公·僖公二十六年",
+      "extracted": {
+        "title": "向会盟",
+        "persons": [
+          "鲁桓公",
+          "莒子",
+          "卫甯速"
+        ],
+        "place": "向",
+        "event_type": "会盟",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "鲁桓公",
+          "莒子",
+          "卫甯速"
+        ],
+        "place_candidate": "向",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1064",
+      "source_chapter": "僖公·僖公二十八年",
+      "extracted": {
+        "title": "郑伯赴楚求和",
+        "persons": [
+          "郑伯",
+          "子人九",
+          "晋栾枝"
+        ],
+        "place": null,
+        "event_type": "其他",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "郑伯",
+          "子人九",
+          "晋栾枝"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1093",
+      "source_chapter": "僖公·僖公三十年",
+      "extracted": {
+        "title": "晋人侵郑",
+        "persons": [
+          "晋人",
+          "郑"
+        ],
+        "place": null,
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "郑",
+            "registry": "per:i4-023"
+          }
+        ],
+        "persons_candidate": [
+          "晋人"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1141",
+      "source_chapter": "文公·文公元年",
+      "extracted": {
+        "title": "晋侯伐卫",
+        "persons": [
+          "晋侯",
+          "卫人",
+          "叔孙得臣"
+        ],
+        "place": null,
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "晋侯",
+          "卫人",
+          "叔孙得臣"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1182",
+      "source_chapter": "文公·文公三年",
+      "extracted": {
+        "title": "晋伐楚救江",
+        "persons": [
+          "王叔桓公",
+          "晋阳处父",
+          "息公子朱"
+        ],
+        "place": "方城",
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "息公子朱",
+            "registry": "per:i4-055"
+          }
+        ],
+        "persons_candidate": [
+          "王叔桓公",
+          "晋阳处父"
+        ],
+        "place_candidate": "方城",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1230",
+      "source_chapter": "文公·文公七年",
+      "extracted": {
+        "title": "赵衰与赵盾的比喻",
+        "persons": [
+          "赵衰",
+          "赵盾"
+        ],
+        "place": null,
+        "event_type": "其他",
+        "is_event": false
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "赵衰",
+            "registry": "per:i4-017"
+          },
+          {
+            "name": "赵盾",
+            "registry": "per:i4-018"
+          }
+        ],
+        "persons_candidate": [],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1318",
+      "source_chapter": "文公·文公十年",
+      "extracted": {
+        "title": "楚子西縊而縣絕",
+        "persons": [
+          "成王",
+          "子玉",
+          "子西",
+          "楚穆王",
+          "子家"
+        ],
+        "place": null,
+        "event_type": "人事",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "成王",
+          "子玉",
+          "子西",
+          "楚穆王",
+          "子家"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1374",
+      "source_chapter": "文公·文公十四年",
+      "extracted": {
+        "title": "邾文公卒",
+        "persons": [
+          "邾文公",
+          "定公",
+          "捷菑"
+        ],
+        "place": null,
+        "event_type": "人事",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "邾文公",
+          "定公",
+          "捷菑"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1417",
+      "source_chapter": "文公·文公十七年",
+      "extracted": {
+        "title": "郑太子夷与石楚质于晋",
+        "persons": [
+          "郑太子夷",
+          "石楚",
+          "襄仲",
+          "臧文仲"
+        ],
+        "place": null,
+        "event_type": "其他",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "石楚",
+            "registry": "per:i4-019"
+          },
+          {
+            "name": "襄仲",
+            "registry": "per:i4-020"
+          },
+          {
+            "name": "臧文仲",
+            "registry": "per:i4-021"
+          }
+        ],
+        "persons_candidate": [
+          "郑太子夷"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1461",
+      "source_chapter": "宣公·宣公三年",
+      "extracted": {
+        "title": "楚人侵鄭",
+        "persons": [
+          "楚人",
+          "鄭",
+          "宋文公",
+          "昭公子",
+          "戴桓",
+          "司馬子伯",
+          "武穆"
+        ],
+        "place": null,
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "鄭",
+            "registry": "per:i4-008"
+          }
+        ],
+        "persons_candidate": [
+          "楚人",
+          "宋文公",
+          "昭公子",
+          "戴桓",
+          "司馬子伯",
+          "武穆"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1507",
+      "source_chapter": "宣公·宣公九年",
+      "extracted": {
+        "title": "会盟",
+        "persons": [
+          "晋侯",
+          "宋公",
+          "卫侯",
+          "郑伯",
+          "曹伯",
+          "晋荀林父"
+        ],
+        "place": "扈",
+        "event_type": "会盟",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "晋侯",
+          "宋公",
+          "卫侯",
+          "郑伯",
+          "曹伯",
+          "晋荀林父"
+        ],
+        "place_candidate": "扈",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1535",
+      "source_chapter": "宣公·宣公十二年",
+      "extracted": {
+        "title": "楚灭萧及诸侯会盟与军事行动",
+        "persons": [
+          "楚子",
+          "晋人",
+          "宋人",
+          "卫人",
+          "曹人"
+        ],
+        "place": "清丘",
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "楚子",
+            "registry": "per:i4-027"
+          }
+        ],
+        "persons_candidate": [
+          "晋人",
+          "宋人",
+          "卫人",
+          "曹人"
+        ],
+        "place_candidate": "清丘",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1584",
+      "source_chapter": "宣公·宣公十七年",
+      "extracted": {
+        "title": "郤克会盟齐国",
+        "persons": [
+          "晋侯",
+          "郤克",
+          "齐顷公",
+          "献子",
+          "栾京庐",
+          "高固",
+          "晏弱",
+          "蔡朝",
+          "南郭偃"
+        ],
+        "place": "齐国",
+        "event_type": "会盟",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "献子",
+            "registry": "per:hanjue"
+          }
+        ],
+        "persons_candidate": [
+          "晋侯",
+          "郤克",
+          "齐顷公",
+          "栾京庐",
+          "高固",
+          "晏弱",
+          "蔡朝",
+          "南郭偃"
+        ],
+        "place_candidate": "齐国",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1627",
+      "source_chapter": "成公·成公三年",
+      "extracted": {
+        "title": "晋卫伐廧咎如",
+        "persons": [
+          "郤克",
+          "孙良夫"
+        ],
+        "place": "廧咎如",
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "郤克",
+          "孙良夫"
+        ],
+        "place_candidate": "廧咎如",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1656",
+      "source_chapter": "成公·成公六年",
+      "extracted": {
+        "title": "邾子来朝",
+        "persons": [
+          "邾子"
+        ],
+        "place": null,
+        "event_type": "人事",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "邾子"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1687",
+      "source_chapter": "成公·成公九年",
+      "extracted": {
+        "title": "晋栾书帅师伐郑",
+        "persons": [
+          "齐侯无野",
+          "晋人",
+          "郑伯",
+          "栾书"
+        ],
+        "place": null,
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "齐侯无野",
+          "晋人",
+          "郑伯",
+          "栾书"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1714",
+      "source_chapter": "成公·成公十一年",
+      "extracted": {
+        "title": "合晋楚之成",
+        "persons": [
+          "华元",
+          "晋侯",
+          "秦伯",
+          "郤犨",
+          "范文子"
+        ],
+        "place": null,
+        "event_type": "会盟",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "华元",
+            "registry": "per:i4-028"
+          }
+        ],
+        "persons_candidate": [
+          "晋侯",
+          "秦伯",
+          "郤犨",
+          "范文子"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1753",
+      "source_chapter": "成公·成公十五年",
+      "extracted": {
+        "title": "会于戚讨曹成公",
+        "persons": [
+          "晋侯",
+          "曹伯",
+          "子臧"
+        ],
+        "place": "戚",
+        "event_type": "会盟",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "晋侯",
+          "曹伯",
+          "子臧"
+        ],
+        "place_candidate": "戚",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1788",
+      "source_chapter": "成公·成公十七年",
+      "extracted": {
+        "title": "郑子驷侵晋虚滑",
+        "persons": [
+          "郑子驷",
+          "卫北宫括"
+        ],
+        "place": "虚滑",
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "郑子驷",
+          "卫北宫括"
+        ],
+        "place_candidate": "虚滑",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1824",
+      "source_chapter": "襄公·襄公二年",
+      "extracted": {
+        "title": "郑伯睔卒",
+        "persons": [
+          "郑伯睔"
+        ],
+        "place": null,
+        "event_type": "人事",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "郑伯睔"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1856",
+      "source_chapter": "襄公·襄公五年",
+      "extracted": {
+        "title": "陈楚之战",
+        "persons": [
+          "陈楚公子贞",
+          "晋侯",
+          "宋公",
+          "卫侯",
+          "郑伯",
+          "曹伯",
+          "齐世子光"
+        ],
+        "place": null,
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "陈楚公子贞",
+          "晋侯",
+          "宋公",
+          "卫侯",
+          "郑伯",
+          "曹伯",
+          "齐世子光"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1905",
+      "source_chapter": "襄公·襄公九年",
+      "extracted": {
+        "title": "宋国灾后防御",
+        "persons": [
+          "乐喜",
+          "伯氏",
+          "华臣",
+          "向戌",
+          "乐遄",
+          "皇郧",
+          "西鉏吾",
+          "司宫巷伯",
+          "二师",
+          "四乡正",
+          "祝宗"
+        ],
+        "place": "宋国",
+        "event_type": "灾异",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "乐喜",
+          "伯氏",
+          "华臣",
+          "向戌",
+          "乐遄",
+          "皇郧",
+          "西鉏吾",
+          "司宫巷伯",
+          "二师",
+          "四乡正",
+          "祝宗"
+        ],
+        "place_candidate": "宋国",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1945",
+      "source_chapter": "襄公·襄公十二年",
+      "extracted": {
+        "title": "楚秦伐宋",
+        "persons": [
+          "楚子囊",
+          "秦庶長無地"
+        ],
+        "place": "楊梁",
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "楚子囊",
+            "registry": "per:i4-034"
+          }
+        ],
+        "persons_candidate": [
+          "秦庶長無地"
+        ],
+        "place_candidate": "楊梁",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1983",
+      "source_chapter": "襄公·襄公十五年",
+      "extracted": {
+        "title": "齐侯围成",
+        "persons": [
+          "齐侯"
+        ],
+        "place": "成",
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "齐侯"
+        ],
+        "place_candidate": null,
+        "place_registry": "pl:chenggao"
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2022",
+      "source_chapter": "襄公·襄公十九年",
+      "extracted": {
+        "title": "齐灵公卒庄公即位",
+        "persons": [
+          "齐灵公",
+          "庄公",
+          "公子牙",
+          "夙沙卫",
+          "卫"
+        ],
+        "place": "句渎之丘",
+        "event_type": "人事",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "卫",
+            "registry": "per:gongbohe"
+          }
+        ],
+        "persons_candidate": [
+          "齐灵公",
+          "庄公",
+          "公子牙",
+          "夙沙卫"
+        ],
+        "place_candidate": "句渎之丘",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2065",
+      "source_chapter": "襄公·襄公二十三年",
+      "extracted": {
+        "title": "杞孝公卒",
+        "persons": [
+          "杞孝公",
+          "晋悼夫人",
+          "陈侯",
+          "公子黄",
+          "庆氏"
+        ],
+        "place": null,
+        "event_type": "人事",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "杞孝公",
+          "晋悼夫人",
+          "陈侯",
+          "公子黄",
+          "庆氏"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2125",
+      "source_chapter": "襄公·襄公二十九年",
+      "extracted": {
+        "title": "卫侯衎卒",
+        "persons": [
+          "卫侯衎",
+          "吴子餘祭",
+          "仲孫羯",
+          "晋荀盈",
+          "齐高止",
+          "宋华定",
+          "卫世叔仪",
+          "郑公孙段",
+          "曹人",
+          "莒人",
+          "滕人",
+          "薛人",
+          "小邾人",
+          "杞子",
+          "晋侯",
+          "士鞅",
+          "吴子"
+        ],
+        "place": null,
+        "event_type": "人事",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "宋华定",
+            "registry": "per:i4-050"
+          }
+        ],
+        "persons_candidate": [
+          "卫侯衎",
+          "吴子餘祭",
+          "仲孫羯",
+          "晋荀盈",
+          "齐高止",
+          "卫世叔仪",
+          "郑公孙段",
+          "曹人",
+          "莒人",
+          "滕人",
+          "薛人",
+          "小邾人",
+          "杞子",
+          "晋侯",
+          "士鞅",
+          "吴子"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2165",
+      "source_chapter": "襄公·襄公三十一年",
+      "extracted": {
+        "title": "吴国继承问题",
+        "persons": [
+          "赵文子",
+          "延州来季子",
+          "诸樊",
+          "戴吴"
+        ],
+        "place": null,
+        "event_type": "人事",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "赵文子",
+            "registry": "per:zhaowu"
+          }
+        ],
+        "persons_candidate": [
+          "延州来季子",
+          "诸樊",
+          "戴吴"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2236",
+      "source_chapter": "昭公·昭公五年",
+      "extracted": {
+        "title": "楚杀屈伸立屈生",
+        "persons": [
+          "楚子",
+          "屈伸",
+          "屈生",
+          "令尹子荡",
+          "郑伯",
+          "子产",
+          "晋侯"
+        ],
+        "place": "氾, 菟氏, 邢丘",
+        "event_type": "人事",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "楚子",
+            "registry": "per:i4-027"
+          },
+          {
+            "name": "令尹子荡",
+            "registry": "per:i4-029"
+          },
+          {
+            "name": "子产",
+            "registry": "per:i4-046"
+          }
+        ],
+        "persons_candidate": [
+          "屈伸",
+          "屈生",
+          "郑伯",
+          "晋侯"
+        ],
+        "place_candidate": "氾, 菟氏, 邢丘",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2284",
+      "source_chapter": "昭公·昭公八年",
+      "extracted": {
+        "title": "陈侯之弟招杀陈世子偃师",
+        "persons": [
+          "哀公",
+          "公子勝",
+          "楚人",
+          "公子留",
+          "陈侯之弟招",
+          "陈世子偃师",
+          "叔弓",
+          "郑伯",
+          "史趙",
+          "子大叔"
+        ],
+        "place": null,
+        "event_type": "其他",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "叔弓",
+            "registry": "per:i4-044"
+          }
+        ],
+        "persons_candidate": [
+          "哀公",
+          "公子勝",
+          "楚人",
+          "公子留",
+          "陈侯之弟招",
+          "陈世子偃师",
+          "郑伯",
+          "史趙",
+          "子大叔"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2349",
+      "source_chapter": "昭公·昭公十三年",
+      "extracted": {
+        "title": "平丘会盟",
+        "persons": [
+          "公",
+          "刘子",
+          "晋侯",
+          "齐侯",
+          "宋公",
+          "卫侯",
+          "郑伯",
+          "曹伯",
+          "莒子",
+          "邾子",
+          "滕子",
+          "薛伯",
+          "杞伯",
+          "小邾子"
+        ],
+        "place": "平丘",
+        "event_type": "会盟",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "公",
+            "registry": "per:jin-jinggong"
+          },
+          {
+            "name": "薛伯",
+            "registry": "per:i4-068"
+          },
+          {
+            "name": "杞伯",
+            "registry": "per:i4-005"
+          }
+        ],
+        "persons_candidate": [
+          "刘子",
+          "晋侯",
+          "齐侯",
+          "宋公",
+          "卫侯",
+          "郑伯",
+          "曹伯",
+          "莒子",
+          "邾子",
+          "滕子",
+          "小邾子"
+        ],
+        "place_candidate": "平丘",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+      "source_chapter": "昭公·昭公二十年",
+      "extracted": {
+        "title": "华氏之乱",
+        "persons": [
+          "宋元公",
+          "华亥",
+          "华定",
+          "华向",
+          "华定",
+          "华亥",
+          "向宁",
+          "公子寅",
+          "公子御戎",
+          "公子朱",
+          "公子固",
+          "公孙援",
+          "公孙丁",
+          "向胜",
+          "向行",
+          "太子栾",
+          "母弟辰",
+          "公子地",
+          "华亥之子无慼",
+          "向宁之子罗",
+          "华定之子启"
+        ],
+        "place": null,
+        "event_type": "政变",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "宋元公",
+            "registry": "per:i4-048"
+          },
+          {
+            "name": "华亥",
+            "registry": "per:i4-049"
+          },
+          {
+            "name": "华定",
+            "registry": "per:i4-050"
+          },
+          {
+            "name": "华向",
+            "registry": "per:i4-051"
+          },
+          {
+            "name": "华定",
+            "registry": "per:i4-050"
+          },
+          {
+            "name": "华亥",
+            "registry": "per:i4-049"
+          },
+          {
+            "name": "向宁",
+            "registry": "per:i4-052"
+          },
+          {
+            "name": "公子寅",
+            "registry": "per:i4-053"
+          },
+          {
+            "name": "公子御戎",
+            "registry": "per:i4-054"
+          },
+          {
+            "name": "公子朱",
+            "registry": "per:i4-055"
+          },
+          {
+            "name": "公子固",
+            "registry": "per:i4-056"
+          },
+          {
+            "name": "公孙援",
+            "registry": "per:i4-057"
+          },
+          {
+            "name": "公孙丁",
+            "registry": "per:i4-058"
+          },
+          {
+            "name": "向胜",
+            "registry": "per:i4-059"
+          },
+          {
+            "name": "向行",
+            "registry": "per:i4-060"
+          },
+          {
+            "name": "母弟辰",
+            "registry": "per:i4-061"
+          },
+          {
+            "name": "公子地",
+            "registry": "per:i4-062"
+          },
+          {
+            "name": "华亥之子无慼",
+            "registry": "per:i4-049"
+          },
+          {
+            "name": "向宁之子罗",
+            "registry": "per:i4-052"
+          },
+          {
+            "name": "华定之子启",
+            "registry": "per:i4-050"
+          }
+        ],
+        "persons_candidate": [
+          "太子栾"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2475",
+      "source_chapter": "昭公·昭公二十三年",
+      "extracted": {
+        "title": "莒子庚舆被逐",
+        "persons": [
+          "莒子庚輿",
+          "齐乌存",
+          "苑羊牧",
+          "郊公"
+        ],
+        "place": "莒",
+        "event_type": "政变",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "莒子庚輿",
+          "齐乌存",
+          "苑羊牧",
+          "郊公"
+        ],
+        "place_candidate": "莒",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2523",
+      "source_chapter": "昭公·昭公二十六年",
+      "extracted": {
+        "title": "晋赵鞅纳王",
+        "persons": [
+          "刘子",
+          "王",
+          "晋知躒",
+          "赵鞅"
+        ],
+        "place": "渠, 褚氏, 苑谷, 胥靡, 滑",
+        "event_type": "其他",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "王",
+            "registry": "per:simayi"
+          }
+        ],
+        "persons_candidate": [
+          "刘子",
+          "晋知躒",
+          "赵鞅"
+        ],
+        "place_candidate": "渠, 褚氏, 苑谷, 胥靡, 滑",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2573",
+      "source_chapter": "昭公·昭公三十一年",
+      "extracted": {
+        "title": "季孫意如會晉荀躒",
+        "persons": [
+          "季孫意如",
+          "晋荀躒"
+        ],
+        "place": "適歷",
+        "event_type": "会盟",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "晋荀躒",
+            "registry": "per:i4-069"
+          }
+        ],
+        "persons_candidate": [
+          "季孫意如"
+        ],
+        "place_candidate": "適歷",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2641",
+      "source_chapter": "定公·定公五年",
+      "extracted": {
+        "title": "吴师与楚师之战",
+        "persons": [
+          "夫概王",
+          "吴子",
+          "闉輿罷",
+          "叶公诸梁",
+          "后臧"
+        ],
+        "place": "雍澨, 公婿之谿, 麇",
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "夫概王",
+          "吴子",
+          "闉輿罷",
+          "叶公诸梁",
+          "后臧"
+        ],
+        "place_candidate": "雍澨, 公婿之谿, 麇",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2712",
+      "source_chapter": "定公·定公十三年",
+      "extracted": {
+        "title": "晋荀寅与士吉射叛乱",
+        "persons": [
+          "荀寅",
+          "士吉射",
+          "薛"
+        ],
+        "place": "朝歌",
+        "event_type": "战役",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [
+          {
+            "name": "荀寅",
+            "registry": "per:i4-070"
+          },
+          {
+            "name": "薛",
+            "registry": "per:i4-068"
+          }
+        ],
+        "persons_candidate": [
+          "士吉射"
+        ],
+        "place_candidate": "朝歌",
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2798",
+      "source_chapter": "哀公·哀公四年",
+      "extracted": {
+        "title": "蔡昭侯之乱",
+        "persons": [
+          "蔡昭侯",
+          "承",
+          "公孙翩",
+          "文之锴",
+          "公孙辰",
+          "公孙姓",
+          "公孙盱"
+        ],
+        "place": null,
+        "event_type": "其他",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "蔡昭侯",
+          "承",
+          "公孙翩",
+          "文之锴",
+          "公孙辰",
+          "公孙姓",
+          "公孙盱"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    },
+    {
+      "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2837",
+      "source_chapter": "哀公·哀公八年",
+      "extracted": {
+        "title": "齐侯杀胡姬",
+        "persons": [
+          "齐侯",
+          "吴子",
+          "大宰子餘",
+          "邾子",
+          "太子革"
+        ],
+        "place": null,
+        "event_type": "人事",
+        "is_event": true
+      },
+      "registry_resolution": {
+        "persons_hit": [],
+        "persons_candidate": [
+          "齐侯",
+          "吴子",
+          "大宰子餘",
+          "邾子",
+          "太子革"
+        ],
+        "place_candidate": null,
+        "place_registry": null
+      },
+      "identity": {
+        "matches_gold_event": null,
+        "verdict": "新事件(候选)"
+      },
+      "is_gold": false
+    }
+  ]
+}
