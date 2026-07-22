@@ -101,3 +101,5 @@ aii/*_pipeline/ocr_cache/
 aii/quarantine_corrupted_md/
 deploy/logs/*.log
 scripts/*.log
+# code-review-graph local graph DB (rebuilt from source, not committed)
+.code-review-graph/
