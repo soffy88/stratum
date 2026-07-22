@@ -55,6 +55,11 @@
 |---|---|---|---|---|---|---|
 | F19 矢鱼于棠 | ev:shiyu-tang | —（单述零机制） | 平凡 P1 | CC | 2026-07-22 | CC 判·产线（入下个 fixtures tag） |
 | F20 吴城邗 | ev:wu-cheng-han | —（单述零机制） | 平凡 P2 | CC | 2026-07-22 | CC 判·产线（入下个 fixtures tag） |
+| F21 智果谏立瑶 | ev:zhixuanzi-liyao | —（单独立源） | 平凡·Gap B02 | CC | 2026-07-22 | CC 判·产线（入下个 fixtures tag） |
+| F22 智伯索地 | ev:zhibo-suodi | —（单述零冲突） | 平凡·Gap B03/B04 | CC | 2026-07-22 | CC 判·产线（入下个 fixtures tag） |
+| F23 晋阳水源+年数 | ev:jinyang-zhizhan（再声明） | **place** · number | 难例·Gap B06——★place 维第二用户（晋水 vs 汾水）+ 年数同指涉对立（通则a，超订单+1）+ D-017 首例修复 | CC | 2026-07-22 | CC 判·产线（入下个 fixtures tag） |
+| F24 命侯·臣光曰 | ev:minghou-403（再声明） | —（judgment/R8） | 难例·Gap B10/B11——★自署史论计0（judgment 第四形态） | CC | 2026-07-22 | CC 判·产线（入下个 fixtures tag） |
+| F25 公室卑六卿彊 | ev:jin-gongshi-bei | —（背景态单述） | 平凡·Gap B01 | CC | 2026-07-22 | CC 判·产线（入下个 fixtures tag） |
 
 ## 判定日期分布（工时/节奏参考，接 D-008 产线计量）
 

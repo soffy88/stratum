@@ -1,0 +1,54 @@
+{
+  "events": [
+    {
+      "event_id": "ev:jin-gongshi-bei",
+      "title": "晋公室卑·六卿彊（三家分晋背景态）",
+      "canonical_date": { "type": "year", "value": "前526", "note": "史记·晋世家系于晋昭公六年卒（前526）后：『六卿彊，公室卑。』取此为背景态的系年锚点；状态延续至前453 灭智/前403 命侯。" },
+      "event_type": "制度",
+      "actors": [],
+      "geo": { "place_refs": ["pl:jin"], "route_hint": null, "mapstate_hint": "晋公室名存·六卿实权格局（B01 背景拍底图）" },
+      "parent_event": null,
+      "accounts": ["ac:gongshibei-shiji"],
+      "conflicts": [],
+      "evidence_tier": "E1",
+      "mainline_account_ref": "ac:gongshibei-shiji",
+      "mainline_decision": {
+        "choice": "ac:gongshibei-shiji",
+        "rationale": "平凡例（Gap 批 B01）：单事件（背景态）·单述·零冲突。六卿专权公室卑弱为诸系通识，晋世家一句为最直接的态判定句。",
+        "decided_by": "CC",
+        "date": "2026-07-22"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:gongshibei-shiji",
+      "event_ref": "ev:jin-gongshi-bei",
+      "source_id": "src:shiji",
+      "locator": {
+        "book": "史记",
+        "chapter": "晋世家",
+        "section": "昭公卒·顷公立",
+        "para_ulid": null,
+        "note": "待补。『（昭公）六年卒。六卿彊，公室卑。子頃公去疾立。』又晋世家收束句：『靜公二年，魏武侯、韓哀侯、趙敬侯滅晉後而三分其地。靜公遷爲家人，晉絶不祀。』（原文经维基文库·史記/卷039 逐字核对，2026-07-22。）"
+      },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "晋昭公六年卒（前526）后",
+        "actor_claims": ["六卿彊，公室卑"],
+        "causal_claims": [],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "纪传（晋世家）。背景态事件：一句态判定 + 无过程叙事——B01 背景拍的 KU 最小供给；晋绝祀收束句（前376）为父事件 canonical_date note 的『延至前376』一说出处。"
+    }
+  ],
+  "conflicts": [],
+  "adjudication": {
+    "adjudicator": "CC",
+    "date": "2026-07-22",
+    "tier_class": "平凡",
+    "work_log": { "unit": "min", "kind": "agent", "extract": 4, "registry_resolve": 1, "adjudicate": 2, "review": 2, "note": "Gap 批 B01。extract 含晋世家原文网络查证。actors 空：背景态无个体行动者（六卿作为 force 层现象，fo:zhi/zhao/han/wei 已在注册表；范氏中行氏不入——已亡于前490，非本背景态末段主体）。" }
+  }
+}

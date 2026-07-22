@@ -1,0 +1,58 @@
+{
+  "events": [
+    {
+      "event_id": "ev:zhixuanzi-liyao",
+      "title": "智宣子立瑶为后·智果谏（不听，别族辅氏）",
+      "canonical_date": { "type": "fuzzy", "value": "晋阳之战前（前453 前）", "note": "国语不系年；智宣子立后在其卒前、智瑶掌权（前475 顷）之前。" },
+      "event_type": "人事",
+      "actors": [
+        { "person_ref": "per:zhixuanzi", "role": "立后者（智氏宗主）", "force_ref": "fo:zhi" },
+        { "person_ref": "per:zhibo", "role": "被立者（瑶，即智襄子/智伯）", "force_ref": "fo:zhi" },
+        { "person_ref": "per:zhiguo", "role": "谏者（不听，别族于太史为辅氏）", "force_ref": "fo:zhi" }
+      ],
+      "geo": { "place_refs": ["pl:jin"], "route_hint": null, "mapstate_hint": null },
+      "parent_event": null,
+      "accounts": ["ac:liyao-guoyu"],
+      "conflicts": [],
+      "evidence_tier": "E2",
+      "mainline_account_ref": "ac:liyao-guoyu",
+      "mainline_decision": {
+        "choice": "ac:liyao-guoyu",
+        "rationale": "平凡例（Gap 批 B02）：单事件·单独立源·零冲突。国语·晋语九为原源；通鉴周纪一采之（派生，不另计、不另立 account）。",
+        "decided_by": "CC",
+        "date": "2026-07-22"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:liyao-guoyu",
+      "event_ref": "ev:zhixuanzi-liyao",
+      "source_id": "src:guoyu",
+      "locator": {
+        "book": "国语",
+        "chapter": "晋语九",
+        "section": "智果论智瑶必灭宗",
+        "para_ulid": null,
+        "note": "待补。『智宣子將以瑤為後，智果曰：不如宵也。……瑤之賢于人者五，其不逮者一也。……如是而甚不仁。以其五賢陵人，而以不仁行之，其誰能待之？若果立瑤也，智宗必滅。……智果別族于太史為輔氏。及智氏之亡也，唯輔果在。』（原文经 ctext.org 晋语九 逐字核对，2026-07-22。）"
+      },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "（不系年）智宣子立后之际",
+        "actor_claims": ["智宣子将以瑶为后", "智果谏：不如宵也；若果立瑶，智宗必灭", "宣子不听；智果别族于太史为辅氏", "及智氏之亡，唯辅果在"],
+        "causal_claims": ["智果预判：五贤陵人而以不仁行之→智宗必灭（人物评价型归因，非事件因果链）"],
+        "number_claims": [],
+        "dialogue_spans": ["智果谏辞全文（五贤一不仁之论——人物评价拍 B02 的 VO 素材，透传不消费）"]
+      },
+      "genre_note": "国别（国语·晋语九，原源）。通鉴周纪一开篇采此段（『智果曰：不如宵也……』）＝derivation，独立见证不另计。智果后更名辅果（persons 异名归一）。"
+    }
+  ],
+  "conflicts": [],
+  "adjudication": {
+    "adjudicator": "CC",
+    "date": "2026-07-22",
+    "tier_class": "平凡",
+    "work_log": { "unit": "min", "kind": "agent", "extract": 5, "registry_resolve": 3, "adjudicate": 2, "review": 2, "note": "Gap 批 B02。extract 含国语原文网络查证（ctext，维基文库 404 后换道）。" }
+  }
+}
