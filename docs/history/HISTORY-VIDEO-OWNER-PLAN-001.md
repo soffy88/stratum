@@ -36,3 +36,11 @@
 - D-025 Arc/Thesis 为仓内 schema，不进查询契约；消费面到 P3 才 bump 契约
 - D-026 抽取器云端 API 默认禁（Stratum 无云端原则），例外需显式裁决入册
 - D-027 现代考订论点以自撰摘述 + 出处登记入 thesis，原文不入语料层（版权）
+
+> ★D-028～D-032 系 **CC-B 按 W-H1a-2 指令所含决策渲染入册**（指令称『文本我已定』但正文未附逐字文本；下述为 CC-B 据任务列渲染，**Wiki 可改字/否决**）。KU 线 `docs/history/DECISIONS.md` 另有独立 D 号序列（D-001..D-023），与本附录 D 号**存在既有碰撞**（如 D-024 在两处指不同决策）——留 Wiki 裁是否统一编号。
+
+- D-028 **抽取器 date 不产出**：抽取器只产 事件/人物/地点/类型，**canonical_date 一律走 chronology 注册表 override**，不由白文抽取（W-H1a-1 实测：小模型编造年份，弑简公判前403实前481）。评测不计 date 字段。
+- D-029 **F10 通过 + 抽验门全关 + 年数 cf 追认**：F8/F10/F12 三份抽验门全关（F10 引文改在库原文·史记主语『田氏之徒追执』、弑地舒州/执地徐州入 pl:shuzhou variant）；`cf:jinyang-weicheng-duration`（岁余/三年）追认留存。判定人=顾问 Claude。KU DECISIONS 交叉引本条。
+- D-030 **语料库仓内自包含 + 全书全量入库现实**：语料库为**仓内 committed-bytes 可寻址存储**（不走已崩的 DuckDB/PG 生产管线）；R5 白文（wikisource CC BY-SA 逐字、禁点校本）。★『左传/国语/史记全书』verbatim 全量经 WebFetch **不可行**（逐页有损、体量十万字级）——全书需 wikisource dump/bulk 导入（另立工程事项，PENDING）；本波入库=首弧论点+fixtures 高价值被引段（6 书 19 段）。
+- D-031 **Qwen3-8B 获取路径 + VRAM 实测**：解代理实为 curl 经 `127.0.0.1:7890` 直连 hf-mirror/hf（W-H1a-1 pull 失败系 ollama 进程未走代理）；路径 = hf GGUF（Qwen3-8B-Q4_K_M 5.03GB）→ `ollama create`。★VRAM 实测本机 **RTX 3080 10GB**（纠记忆 1050Ti）、qwen3-8b 负载 5.5GB used/4.4GB free；按令『装不上 14B 就 8B』取 **8B**（14B Q4 ~9GB 太挤未冒险）。
+- D-032 **抽取器定型 = qwen3-8b**：正式评测（12 段 held-out，date 不产出）字段均 **0.94**（vs qwen2.5vl:7b 0.71），title/place/type 达/接近基线。定型为**半自动偏自动**抽取器（产候选经顾问审重入 gold，抽取候选永不直接成 gold）；**全自动**待 ① held-out ≥30 段（本波 12，全书语料 PENDING）② 同一性判定一致率验收。

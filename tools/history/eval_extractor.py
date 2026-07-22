@@ -14,10 +14,10 @@ import subprocess
 import sys
 
 OLLAMA = "http://localhost:11434/api/generate"
-MODELS = ["qwen2.5vl:7b", "qwen2.5vl:3b", "llama3.2:latest"]
+MODELS = ["qwen3-8b", "qwen2.5vl:7b"]
 
 PROMPT = (
-    "你是文言史料结构化抽取器。从下面这段史料抽取, 只输出 JSON, 不要解释。"
+    "/no_think 你是文言史料结构化抽取器。从下面这段史料抽取, 只输出 JSON, 不要解释。"
     '字段: {"title":事件名, "date":时间(有干support则给,如"前403"), '
     '"persons":[主要人物], "place":地点或null, '
     '"event_type":一个值∈["战役","政变","会盟","册命","迁都","变法","灾异","制度","人事","其他"]}。'
@@ -81,6 +81,30 @@ CASES = [
             "date_trap": None,
         },
     },
+]
+
+CASES += [
+    {"id": "左传桓2/师服", "text": "今晉，甸侯也，而建國，本既弱矣，其能久乎？",
+     "gold": {"persons_any": ["师服", "晋"], "place": None, "type": ["其他", "人事"],
+              "title_kw": ["晋", "建国", "本弱"], "date_trap": None}},
+    {"id": "左传昭3/叔向", "text": "晉之公族盡矣。欒、郤、胥、原、狐、續、慶、伯，降在皁隸，政在家門，民無所依。",
+     "gold": {"persons_any": ["叔向", "晋", "栾", "郤"], "place": None, "type": ["其他", "人事", "制度"],
+              "title_kw": ["公族", "晋", "政"], "date_trap": None}},
+    {"id": "左传昭32/史墨", "text": "社稷無常奉，君臣無常位，自古以然。三后之姓於今為庶。",
+     "gold": {"persons_any": ["史墨", "蔡墨"], "place": None, "type": ["其他", "人事"],
+              "title_kw": ["社稷", "君臣", "无常"], "date_trap": None}},
+    {"id": "史记项羽/鸿门", "text": "項莊拔劍起舞，項伯亦拔劍起舞，常以身翼蔽沛公，莊不得擊。",
+     "gold": {"persons_any": ["项庄", "项伯", "沛公", "刘邦"], "place": None, "type": ["政变", "其他", "人事"],
+              "title_kw": ["舞", "剑", "项"], "date_trap": None}},
+    {"id": "国语晋9/智果", "text": "智宣子將以瑤為後，智果曰：不如宵也。若果立瑤也，智宗必滅。",
+     "gold": {"persons_any": ["智宣子", "智果", "瑶", "宵"], "place": None, "type": ["人事", "其他"],
+              "title_kw": ["立", "后", "智"], "date_trap": None}},
+    {"id": "通鉴/围晋阳", "text": "三家以國人圍而灌之。智伯行水，魏桓子御，韓康子驂乘。",
+     "gold": {"persons_any": ["智伯", "魏桓子", "韩康子"], "place": None, "type": ["战役", "其他"],
+              "title_kw": ["围", "灌", "晋阳"], "date_trap": None}},
+    {"id": "三国志/空城", "text": "亮意氣自若，敕軍中皆臥旗息鼓，又令大開四城門，埽地卻灑。宣王疑其有伏兵，於是引軍北趣山。",
+     "gold": {"persons_any": ["亮", "诸葛亮", "宣王", "司马懿"], "place": None, "type": ["战役", "其他"],
+              "title_kw": ["城", "空城", "退兵", "亮"], "date_trap": None}},
 ]
 
 

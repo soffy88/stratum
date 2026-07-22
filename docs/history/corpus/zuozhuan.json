@@ -7,7 +7,7 @@
       "url": "https://zh.wikisource.org/wiki/春秋左氏傳",
       "license": "CC BY-SA 3.0（维基文库标点白文）",
       "fetch_date": "2026-07-22",
-      "char_count": 194,
+      "char_count": 368,
       "form": "白文（维基文库标点，CC BY-SA）",
       "r5": "禁对齐在版点校本；非记忆备录，WebFetch 逐字"
     },
@@ -45,6 +45,22 @@
       "text": "師服曰：吾聞國家之立也，本大而末小，是以能固。故天子建國，諸侯立家，卿置側室，大夫有貳宗，士有隸子弟，庶人、工、商各有分親，皆有等衰。是以民服事其上，而下無覬覦。今晉，甸侯也，而建國，本既弱矣，其能久乎？",
       "backs_fixtures": [
         "arc:jin-decline/thesis:shifu"
+      ]
+    },
+    {
+      "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0005",
+      "chapter": "昭公三年",
+      "text": "晉之公族盡矣。肸聞之，公室將卑，其宗族枝葉先落，則公從之。肸之宗十一族，唯羊舌氏在而已，肸又無子。……欒、郤、胥、原、狐、續、慶、伯，降在皁隸，政在家門，民無所依。君日不悛，以樂慆憂。公室之卑，其何日之有？",
+      "backs_fixtures": [
+        "arc:jin-decline/thesis:shuxiang"
+      ]
+    },
+    {
+      "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0006",
+      "chapter": "昭公三十二年",
+      "text": "物生有兩、有三、有五、有陪貳。……社稷無常奉，君臣無常位，自古以然。……三后之姓於今為庶，王所知也。……魯君世從其失，季氏世脩其勤，民忘君矣。",
+      "backs_fixtures": [
+        "arc:jin-decline/thesis:shimo"
       ]
     }
   ]
