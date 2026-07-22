@@ -9,8 +9,8 @@
   "properties": {
     "contract_version": {
       "type": "string",
-      "description": "契约版本。冻结值 'v0.1'。KU 版本另以内容指纹钉住（§8.3），此处仅标契约形状版本。",
-      "const": "v0.1"
+      "description": "契约版本。当前 'v0.2'（v0.1→v0.2 变更：h_conflict.dimension 增 place 值，见 DECISIONS D-006）。KU 版本另以内容指纹钉住（§8.3），此处仅标契约形状版本。",
+      "const": "v0.2"
     },
     "event": { "$ref": "#/$defs/h_event" },
     "accounts": {
@@ -189,7 +189,7 @@
       "properties": {
         "conflict_id": { "type": "string" },
         "event_ref": { "type": "string" },
-        "dimension": { "enum": ["date", "actor", "number", "causality", "narrative", "existence"] },
+        "dimension": { "enum": ["date", "actor", "number", "causality", "narrative", "existence", "place"] },
         "account_refs": { "type": "array", "items": { "type": "string" }, "minItems": 2 },
         "independence_analysis": {
           "type": "object",

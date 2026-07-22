@@ -124,7 +124,8 @@
         "src:shiyu",
         "src:weishu",
         "src:sunsheng-zaji",
-        "src:guochong"
+        "src:guochong",
+        "src:xiangyangji"
       ],
       "derivation_edges": [
         {
@@ -261,6 +262,26 @@
       "derivation_edges": [],
       "genre_reliability": "★晋人为诸葛亮扬名所条五事（空城计即其三），单源逸闻、且系对晋宗室夸述其父旧闻——裴松之逐条驳其时地不合。genre 折算极低，存否本身可疑。多存于裴注（carrier=src:peizhu）。",
       "底本note": "TODO：佚籍，存裴注所引。"
+    },
+    {
+      "source_id": "src:xiangyangji",
+      "title": "襄阳记（习凿齿）",
+      "成书年代": "东晋（习凿齿）",
+      "genre": "纪传",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "晋人所记襄阳人物志，多存于裴注；载马谡临终与诸葛亮书。作为被载原源独立登记、独立计独立性（carrier=src:peizhu，引书 testimony）。",
+      "底本note": "TODO：佚籍，存裴注等所引。"
+    },
+    {
+      "source_id": "src:shuijingzhu",
+      "title": "水经注（郦道元）",
+      "成书年代": "北魏（郦道元，约6世纪）",
+      "genre": "注",
+      "carrier_of": [],
+      "derivation_edges": [],
+      "genre_reliability": "★地理名著，系统考订水道与沿岸地望——赤壁地望之争的主要文献依据（郦道元系赤壁于江夏蒲圻）。地望/place 维的一等来源，直供 MapState 定位。",
+      "底本note": "TODO"
     }
   ]
 }
