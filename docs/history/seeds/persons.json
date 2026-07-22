@@ -365,258 +365,1862 @@
     {
       "person_id": "per:liubei",
       "names_by_source": {
-        "刘备": ["src:sanguozhi"],
-        "先主": ["src:sanguozhi"],
-        "备": ["src:sanguozhi", "src:weilue"]
+        "刘备": [
+          "src:sanguozhi"
+        ],
+        "先主": [
+          "src:sanguozhi"
+        ],
+        "备": [
+          "src:sanguozhi",
+          "src:weilue"
+        ]
       },
       "谥字号": "蜀汉昭烈帝，字玄德",
       "active_range": "公元161–223（隆中对 207 / 赤壁 208）",
-      "force_affiliations": ["fo:liu"]
+      "force_affiliations": [
+        "fo:liu"
+      ]
     },
     {
       "person_id": "per:sunquan",
       "names_by_source": {
-        "孙权": ["src:sanguozhi"],
-        "权": ["src:sanguozhi", "src:jiangbiaozhuan"]
+        "孙权": [
+          "src:sanguozhi"
+        ],
+        "权": [
+          "src:sanguozhi",
+          "src:jiangbiaozhuan"
+        ]
       },
       "谥字号": "吴大帝，字仲谋",
       "active_range": "公元182–252（赤壁 208 为吴主）",
-      "force_affiliations": ["fo:sun"]
+      "force_affiliations": [
+        "fo:sun"
+      ]
     },
     {
       "person_id": "per:zhouyu",
       "names_by_source": {
-        "周瑜": ["src:sanguozhi"],
-        "公瑾": ["src:sanguozhi"]
+        "周瑜": [
+          "src:sanguozhi"
+        ],
+        "公瑾": [
+          "src:sanguozhi"
+        ]
       },
       "谥字号": "字公瑾；赤壁吴军都督",
       "active_range": "公元175–210",
-      "force_affiliations": ["fo:sun"]
+      "force_affiliations": [
+        "fo:sun"
+      ]
     },
     {
       "person_id": "per:zhugeliang",
       "names_by_source": {
-        "诸葛亮": ["src:sanguozhi"],
-        "孔明": ["src:sanguozhi"],
-        "亮": ["src:sanguozhi", "src:weilue", "src:guochong"]
+        "诸葛亮": [
+          "src:sanguozhi"
+        ],
+        "孔明": [
+          "src:sanguozhi"
+        ],
+        "亮": [
+          "src:sanguozhi",
+          "src:weilue",
+          "src:guochong"
+        ]
       },
       "谥字号": "谥忠武，字孔明",
       "active_range": "公元181–234（隆中对 207 / 空城计逸闻属北伐期）",
-      "force_affiliations": ["fo:liu"]
+      "force_affiliations": [
+        "fo:liu"
+      ]
     },
     {
       "person_id": "per:simayi",
       "names_by_source": {
-        "司马懿": ["src:sanguozhi"],
-        "宣王": ["src:guochong", "src:sanguozhi"],
-        "晋宣帝": ["src:sanguozhi"]
+        "司马懿": [
+          "src:sanguozhi"
+        ],
+        "宣王": [
+          "src:guochong",
+          "src:sanguozhi"
+        ],
+        "晋宣帝": [
+          "src:sanguozhi"
+        ]
       },
       "谥字号": "晋宣帝，字仲达；空城计逸闻中被疑退兵者",
       "active_range": "公元179–251",
-      "force_affiliations": ["fo:cao"]
+      "force_affiliations": [
+        "fo:cao"
+      ]
     },
     {
       "person_id": "per:zhouwuwang",
-      "names_by_source": { "武王": ["src:shiji"], "周武王": ["src:shiji"], "发": ["src:shiji"] },
+      "names_by_source": {
+        "武王": [
+          "src:shiji"
+        ],
+        "周武王": [
+          "src:shiji"
+        ],
+        "发": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "周武王，名发；克商",
       "active_range": "克商约前1046（断代工程）",
-      "force_affiliations": ["fo:zhou"]
+      "force_affiliations": [
+        "fo:zhou"
+      ]
     },
     {
       "person_id": "per:dixin",
-      "names_by_source": { "纣": ["src:shiji"], "帝辛": ["src:shiji"], "商纣王": ["src:shiji"] },
+      "names_by_source": {
+        "纣": [
+          "src:shiji"
+        ],
+        "帝辛": [
+          "src:shiji"
+        ],
+        "商纣王": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "商纣王，名辛（帝辛）；牧野败亡",
       "active_range": "至克商（约前1046）",
-      "force_affiliations": ["fo:shang"]
+      "force_affiliations": [
+        "fo:shang"
+      ]
     },
     {
       "person_id": "per:tianchang",
-      "names_by_source": { "田常": ["src:shiji"], "田成子": ["src:shiji"], "陈恒": ["src:zuozhuan"], "陈成子": ["src:zuozhuan"] },
+      "names_by_source": {
+        "田常": [
+          "src:shiji"
+        ],
+        "田成子": [
+          "src:shiji"
+        ],
+        "陈恒": [
+          "src:zuozhuan"
+        ],
+        "陈成子": [
+          "src:zuozhuan"
+        ]
+      },
       "谥字号": "谥成，田氏（陈氏入齐改田）宗主；弑齐简公",
       "active_range": "前481 弑简公",
-      "force_affiliations": ["fo:tianqi"]
+      "force_affiliations": [
+        "fo:tianqi"
+      ]
     },
     {
       "person_id": "per:qijiangong",
-      "names_by_source": { "齐简公": ["src:shiji"], "壬": ["src:zuozhuan", "src:shiji"] },
+      "names_by_source": {
+        "齐简公": [
+          "src:shiji"
+        ],
+        "壬": [
+          "src:zuozhuan",
+          "src:shiji"
+        ]
+      },
       "谥字号": "谥简，名壬；姜齐之君，为田常所弑",
       "active_range": "至前481（被弑）",
-      "force_affiliations": ["fo:jiangqi"]
+      "force_affiliations": [
+        "fo:jiangqi"
+      ]
     },
     {
       "person_id": "per:tianhe",
-      "names_by_source": { "田和": ["src:shiji", "src:zztj"], "田太公": ["src:shiji"] },
+      "names_by_source": {
+        "田和": [
+          "src:shiji",
+          "src:zztj"
+        ],
+        "田太公": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "田太公，名和；前386 列为诸侯（田齐立国）",
       "active_range": "前386 受命为齐侯",
-      "force_affiliations": ["fo:tianqi"]
+      "force_affiliations": [
+        "fo:tianqi"
+      ]
     },
     {
       "person_id": "per:sunbin",
-      "names_by_source": { "孙膑": ["src:shiji"], "孙子": ["src:shiji"] },
+      "names_by_source": {
+        "孙膑": [
+          "src:shiji"
+        ],
+        "孙子": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "齐军师；桂陵/马陵之战谋主",
       "active_range": "战国中期（马陵约前341）",
-      "force_affiliations": ["fo:tianqi"]
+      "force_affiliations": [
+        "fo:tianqi"
+      ]
     },
     {
       "person_id": "per:pangjuan",
-      "names_by_source": { "庞涓": ["src:shiji"] },
+      "names_by_source": {
+        "庞涓": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "魏将；马陵道自刭",
       "active_range": "至前341（马陵败死）",
-      "force_affiliations": ["fo:wei"]
+      "force_affiliations": [
+        "fo:wei"
+      ]
     },
     {
       "person_id": "per:weihuiwang",
-      "names_by_source": { "魏惠王": ["src:shiji"], "梁惠王": ["src:shiji"], "魏罃": ["src:shiji"] },
+      "names_by_source": {
+        "魏惠王": [
+          "src:shiji"
+        ],
+        "梁惠王": [
+          "src:shiji"
+        ],
+        "魏罃": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "谥惠，名罃；★有『后元』改元（史记未分致年表系年偏早，见纪年override）",
       "active_range": "前369–前319（含后元）",
-      "force_affiliations": ["fo:wei"]
+      "force_affiliations": [
+        "fo:wei"
+      ]
     },
     {
       "person_id": "per:xiangyu",
-      "names_by_source": { "项羽": ["src:shiji"], "项籍": ["src:shiji"], "羽": ["src:shiji"] },
+      "names_by_source": {
+        "项羽": [
+          "src:shiji"
+        ],
+        "项籍": [
+          "src:shiji"
+        ],
+        "羽": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "西楚霸王，名籍字羽",
       "active_range": "公元前232–前202（鸿门宴 前206）",
-      "force_affiliations": ["fo:chu"]
+      "force_affiliations": [
+        "fo:chu"
+      ]
     },
     {
       "person_id": "per:liubang",
-      "names_by_source": { "刘邦": ["src:shiji"], "沛公": ["src:shiji"], "高祖": ["src:shiji"], "汉王": ["src:shiji"] },
+      "names_by_source": {
+        "刘邦": [
+          "src:shiji"
+        ],
+        "沛公": [
+          "src:shiji"
+        ],
+        "高祖": [
+          "src:shiji"
+        ],
+        "汉王": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "汉高祖，字季",
       "active_range": "公元前256–前195（鸿门宴 前206 为沛公）",
-      "force_affiliations": ["fo:hanliu"]
+      "force_affiliations": [
+        "fo:hanliu"
+      ]
     },
     {
       "person_id": "per:fanzeng",
-      "names_by_source": { "范增": ["src:shiji"], "亚父": ["src:shiji"] },
+      "names_by_source": {
+        "范增": [
+          "src:shiji"
+        ],
+        "亚父": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "项羽谋主；鸿门举玦",
       "active_range": "秦末（鸿门宴 前206）",
-      "force_affiliations": ["fo:chu"]
+      "force_affiliations": [
+        "fo:chu"
+      ]
     },
     {
       "person_id": "per:fankuai",
-      "names_by_source": { "樊哙": ["src:shiji"] },
+      "names_by_source": {
+        "樊哙": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "刘邦将；鸿门闯帐",
       "active_range": "秦末汉初",
-      "force_affiliations": ["fo:hanliu"]
+      "force_affiliations": [
+        "fo:hanliu"
+      ]
     },
     {
       "person_id": "per:zhouliwang",
-      "names_by_source": { "周厉王": ["src:shiji"], "厉王": ["src:shiji"], "胡": ["src:shiji"] },
+      "names_by_source": {
+        "周厉王": [
+          "src:shiji"
+        ],
+        "厉王": [
+          "src:shiji"
+        ],
+        "胡": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "谥厉，名胡；暴虐，国人暴动奔彘",
       "active_range": "至前842 奔彘（共和前）",
-      "force_affiliations": ["fo:zhou"]
+      "force_affiliations": [
+        "fo:zhou"
+      ]
     },
     {
       "person_id": "per:gongbohe",
-      "names_by_source": { "共伯和": ["src:zhushu-guben"], "卫武公（一说）": ["src:zhushu-guben"] },
+      "names_by_source": {
+        "共伯和": [
+          "src:zhushu-guben"
+        ],
+        "卫武公（一说）": [
+          "src:zhushu-guben"
+        ]
+      },
       "谥字号": "★竹书系『共伯和干王位/摄行天子事』之主；与史记『周召共和』说冲突",
       "active_range": "共和期（前841–前828 诸说）",
-      "force_affiliations": ["fo:zhou"]
+      "force_affiliations": [
+        "fo:zhou"
+      ]
     },
     {
       "person_id": "per:sujin",
-      "names_by_source": { "苏秦": ["src:shiji", "src:zhanguoce"], "季子": ["src:zhanguoce"] },
+      "names_by_source": {
+        "苏秦": [
+          "src:shiji",
+          "src:zhanguoce"
+        ],
+        "季子": [
+          "src:zhanguoce"
+        ]
+      },
       "谥字号": "★纵横家，合纵之主；★生平年代经马王堆帛书《战国纵横家书》出土反证（史记系年错乱）",
       "active_range": "★战国中晚期（帛书证其晚于张仪，非史记所置与张仪对抗之世）",
-      "force_affiliations": ["fo:yan"]
+      "force_affiliations": [
+        "fo:yan"
+      ]
     },
     {
       "person_id": "per:zhangyi",
-      "names_by_source": { "张仪": ["src:shiji", "src:zhanguoce"] },
+      "names_by_source": {
+        "张仪": [
+          "src:shiji",
+          "src:zhanguoce"
+        ]
+      },
       "谥字号": "连横家；史记置其与苏秦对抗，帛书反证二人非同时敌手",
       "active_range": "战国中期（早于苏秦）",
-      "force_affiliations": ["fo:qin"]
+      "force_affiliations": [
+        "fo:qin"
+      ]
     },
     {
       "person_id": "per:baiqi",
-      "names_by_source": { "白起": ["src:shiji"], "武安君": ["src:shiji"] },
+      "names_by_source": {
+        "白起": [
+          "src:shiji"
+        ],
+        "武安君": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "秦将；长平坑赵",
       "active_range": "至前257",
-      "force_affiliations": ["fo:qin"]
+      "force_affiliations": [
+        "fo:qin"
+      ]
     },
     {
       "person_id": "per:zhaokuo",
-      "names_by_source": { "赵括": ["src:shiji"], "马服子": ["src:shiji"] },
+      "names_by_source": {
+        "赵括": [
+          "src:shiji"
+        ],
+        "马服子": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "赵将；纸上谈兵，长平败死",
       "active_range": "至前260（长平战死）",
-      "force_affiliations": ["fo:zhao"]
+      "force_affiliations": [
+        "fo:zhao"
+      ]
     },
     {
       "person_id": "per:lianpo",
-      "names_by_source": { "廉颇": ["src:shiji"] },
+      "names_by_source": {
+        "廉颇": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "赵将；长平前期坚壁，后被赵括代",
       "active_range": "战国中晚期",
-      "force_affiliations": ["fo:zhao"]
+      "force_affiliations": [
+        "fo:zhao"
+      ]
     },
     {
       "person_id": "per:masu",
-      "names_by_source": { "马谡": ["src:sanguozhi"], "幼常": ["src:sanguozhi"] },
+      "names_by_source": {
+        "马谡": [
+          "src:sanguozhi"
+        ],
+        "幼常": [
+          "src:sanguozhi"
+        ]
+      },
       "谥字号": "蜀将；街亭违节度而败，★死状两说（斩 / 下狱物故）",
       "active_range": "至公元228（街亭后卒）",
-      "force_affiliations": ["fo:liu"]
+      "force_affiliations": [
+        "fo:liu"
+      ]
     },
     {
       "person_id": "per:wangping",
-      "names_by_source": { "王平": ["src:sanguozhi"] },
+      "names_by_source": {
+        "王平": [
+          "src:sanguozhi"
+        ]
+      },
       "谥字号": "蜀将；街亭谏马谡不听、敛众而还",
       "active_range": "三国蜀",
-      "force_affiliations": ["fo:liu"]
+      "force_affiliations": [
+        "fo:liu"
+      ]
     },
     {
       "person_id": "per:huanggai",
-      "names_by_source": { "黄盖": ["src:sanguozhi"], "公覆": ["src:sanguozhi"] },
+      "names_by_source": {
+        "黄盖": [
+          "src:sanguozhi"
+        ],
+        "公覆": [
+          "src:sanguozhi"
+        ]
+      },
       "谥字号": "吴将；赤壁诈降火攻",
       "active_range": "赤壁（公元208）",
-      "force_affiliations": ["fo:sun"]
+      "force_affiliations": [
+        "fo:sun"
+      ]
     },
     {
       "person_id": "per:lu-yingong",
-      "names_by_source": { "鲁隐公": ["src:zuozhuan"], "息姑": ["src:shiji"] },
+      "names_by_source": {
+        "鲁隐公": [
+          "src:zuozhuan"
+        ],
+        "息姑": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "谥隐，名息姑（鲁周公世家作息）",
       "active_range": "前722–前712 在位（摄政待桓）",
-      "force_affiliations": ["fo:lu"]
+      "force_affiliations": [
+        "fo:lu"
+      ]
     },
     {
       "person_id": "per:fuchai",
-      "names_by_source": { "夫差": ["src:zuozhuan", "src:shiji"] },
+      "names_by_source": {
+        "夫差": [
+          "src:zuozhuan",
+          "src:shiji"
+        ]
+      },
       "谥字号": "吴王夫差（阖闾子）",
       "active_range": "前495–前473 在位（黄池争霸；越灭吴自刭）",
-      "force_affiliations": ["fo:wu"]
+      "force_affiliations": [
+        "fo:wu"
+      ]
     },
     {
       "person_id": "per:zhixuanzi",
-      "names_by_source": { "智宣子": ["src:guoyu", "src:zztj"], "甲": ["src:guoyu"] },
+      "names_by_source": {
+        "智宣子": [
+          "src:guoyu",
+          "src:zztj"
+        ],
+        "甲": [
+          "src:guoyu"
+        ]
+      },
       "谥字号": "谥宣，名申/甲（智瑶之父）",
       "active_range": "前5世纪初（立瑶为后）",
-      "force_affiliations": ["fo:zhi"]
+      "force_affiliations": [
+        "fo:zhi"
+      ]
     },
     {
       "person_id": "per:zhiguo",
-      "names_by_source": { "智果": ["src:guoyu", "src:zztj"], "辅果": ["src:guoyu"] },
+      "names_by_source": {
+        "智果": [
+          "src:guoyu",
+          "src:zztj"
+        ],
+        "辅果": [
+          "src:guoyu"
+        ]
+      },
       "谥字号": "智氏族人；谏立瑶不听，别族于太史为辅氏（『及智氏之亡也，唯辅果在』）",
       "active_range": "前5世纪初（谏立瑶）至智氏亡（前453）后",
-      "force_affiliations": ["fo:zhi"]
+      "force_affiliations": [
+        "fo:zhi"
+      ]
     },
     {
       "person_id": "per:renzhang",
-      "names_by_source": { "任章": ["src:zhanguoce", "src:zztj"] },
+      "names_by_source": {
+        "任章": [
+          "src:zhanguoce",
+          "src:zztj"
+        ]
+      },
       "谥字号": "魏桓子相（『与之以骄知伯』献策者）",
       "active_range": "前5世纪中（晋阳之战前夕）",
-      "force_affiliations": ["fo:wei"]
+      "force_affiliations": [
+        "fo:wei"
+      ]
     },
     {
       "person_id": "per:zhangmengtan",
-      "names_by_source": { "张孟谈": ["src:zhanguoce", "src:zztj"], "张孟同": ["src:shiji"] },
+      "names_by_source": {
+        "张孟谈": [
+          "src:zhanguoce",
+          "src:zztj"
+        ],
+        "张孟同": [
+          "src:shiji"
+        ]
+      },
       "谥字号": "赵襄子家臣；潜出说韩魏反智（★史记·赵世家作『张孟同』——异名一次归一之例）",
       "active_range": "前455–前453（晋阳之围）",
-      "force_affiliations": ["fo:zhao"]
+      "force_affiliations": [
+        "fo:zhao"
+      ]
     },
     {
       "person_id": "per:simaguang",
-      "names_by_source": { "司马光": ["src:zztj"] },
+      "names_by_source": {
+        "司马光": [
+          "src:zztj"
+        ]
+      },
       "谥字号": "字君实，谥文正；《资治通鉴》作者——『臣光曰』观点主体（R8 观点归属对象）",
       "active_range": "1019–1086（北宋；史论非当世见证）",
       "force_affiliations": []
+    },
+    {
+      "person_id": "per:i4-001",
+      "names_by_source": {
+        "姜氏": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0015",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-002",
+      "names_by_source": {
+        "鬬廉": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0277",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-003",
+      "names_by_source": {
+        "邓养甥": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0277",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-004",
+      "names_by_source": {
+        "聃甥": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0277",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-005",
+      "names_by_source": {
+        "郁人": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0277",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-006",
+      "names_by_source": {
+        "杞伯姬": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0578",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-007",
+      "names_by_source": {
+        "荀息": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0691",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-008",
+      "names_by_source": {
+        "宫之奇": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0691",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-009",
+      "names_by_source": {
+        "丕鄭": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0795",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-010",
+      "names_by_source": {
+        "呂甥": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0795",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-011",
+      "names_by_source": {
+        "郤稱": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0795",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-012",
+      "names_by_source": {
+        "冀芮": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0795",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-013",
+      "names_by_source": {
+        "重耳": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0795",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-014",
+      "names_by_source": {
+        "史苏": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0856",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-015",
+      "names_by_source": {
+        "怀嬴": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0981",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-016",
+      "names_by_source": {
+        "卫子": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1050",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-017",
+      "names_by_source": {
+        "陈侯": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1050",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-018",
+      "names_by_source": {
+        "卫侯郑": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1091",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-019",
+      "names_by_source": {
+        "酆舒": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1229",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-020",
+      "names_by_source": {
+        "贾季": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1229",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-021",
+      "names_by_source": {
+        "赵衰": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1229",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-022",
+      "names_by_source": {
+        "赵盾": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1229",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-023",
+      "names_by_source": {
+        "石楚": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1417",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-024",
+      "names_by_source": {
+        "襄仲": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1417",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-025",
+      "names_by_source": {
+        "臧文仲": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1417",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-026",
+      "names_by_source": {
+        "卫孙桓子": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1492",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-027",
+      "names_by_source": {
+        "郑悼公": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1663",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-028",
+      "names_by_source": {
+        "叔聲伯": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1663",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-029",
+      "names_by_source": {
+        "孟獻子": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1663",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-030",
+      "names_by_source": {
+        "叔孫宣伯": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1663",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-031",
+      "names_by_source": {
+        "楚子重": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1663",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-032",
+      "names_by_source": {
+        "卫侯": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1761",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-033",
+      "names_by_source": {
+        "宋华元": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1761",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-034",
+      "names_by_source": {
+        "尹子": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1761",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-035",
+      "names_by_source": {
+        "齐国佐": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1761",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-036",
+      "names_by_source": {
+        "仲孙蔑": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1813",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-037",
+      "names_by_source": {
+        "齐崔杼": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1813",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-038",
+      "names_by_source": {
+        "穆叔": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1861",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-039",
+      "names_by_source": {
+        "楚子囊": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1861",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-040",
+      "names_by_source": {
+        "范宣子": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1861",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-041",
+      "names_by_source": {
+        "秦右大夫詹": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1934",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-042",
+      "names_by_source": {
+        "宋莊朝": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2000",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-043",
+      "names_by_source": {
+        "司徒卬": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2000",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-044",
+      "names_by_source": {
+        "卫孙蒯": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2000",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-045",
+      "names_by_source": {
+        "卫石买": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2000",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-046",
+      "names_by_source": {
+        "叔孫豹": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2063",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-047",
+      "names_by_source": {
+        "仲孫速": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2063",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-048",
+      "names_by_source": {
+        "宋伯姬": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2141",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-049",
+      "names_by_source": {
+        "叔弓": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2233",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-050",
+      "names_by_source": {
+        "郑子皮": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2323",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-051",
+      "names_by_source": {
+        "子产": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2323",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-052",
+      "names_by_source": {
+        "狐父": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2323",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-053",
+      "names_by_source": {
+        "宋元公": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-054",
+      "names_by_source": {
+        "华亥": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-055",
+      "names_by_source": {
+        "华定": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-056",
+      "names_by_source": {
+        "华向": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-057",
+      "names_by_source": {
+        "向宁": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-058",
+      "names_by_source": {
+        "公子寅": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-059",
+      "names_by_source": {
+        "公子御戎": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-060",
+      "names_by_source": {
+        "公子朱": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-061",
+      "names_by_source": {
+        "公子固": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-062",
+      "names_by_source": {
+        "公孙援": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-063",
+      "names_by_source": {
+        "公孙丁": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-064",
+      "names_by_source": {
+        "向胜": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-065",
+      "names_by_source": {
+        "向行": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-066",
+      "names_by_source": {
+        "母弟辰": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-067",
+      "names_by_source": {
+        "公子地": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-068",
+      "names_by_source": {
+        "华亥之子无慼": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-069",
+      "names_by_source": {
+        "向宁之子罗": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2435",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-070",
+      "names_by_source": {
+        "叔孫婼": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2500",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-071",
+      "names_by_source": {
+        "昭子": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2500",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-072",
+      "names_by_source": {
+        "樂祁": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2500",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-073",
+      "names_by_source": {
+        "薛伯穀": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2574",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-074",
+      "names_by_source": {
+        "荀躒": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2574",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-075",
+      "names_by_source": {
+        "荀寅": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2802",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
+    },
+    {
+      "person_id": "per:i4-076",
+      "names_by_source": {
+        "赵稷": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "(候选·待考)",
+      "active_range": "(候选)",
+      "force_affiliations": [],
+      "intake": {
+        "batch": "W-H1a-4-001",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2802",
+        "method": "qwen3-8b 抽取候选·机械四查过",
+        "status": "candidate-verified"
+      }
     }
   ]
 }
