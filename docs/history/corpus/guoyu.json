@@ -1,0 +1,35 @@
+{
+  "substrate": {
+    "substrate_ulid": "6GB8KKM05W13RWT6A7DRMCXDVB",
+    "source_ref": "src:guoyu",
+    "book": "国语",
+    "base_text": {
+      "url": "https://zh.wikisource.org/wiki/國語 / ctext.org",
+      "license": "CC BY-SA 3.0（维基文库标点白文；晋语九补 ctext）",
+      "fetch_date": "2026-07-22",
+      "char_count": 117,
+      "form": "白文（维基文库标点，CC BY-SA）",
+      "r5": "禁对齐在版点校本；非记忆备录，WebFetch 逐字"
+    },
+    "coverage": "部分（首弧牵引 + fixtures 被引段落）；全书全量入库属后续波次",
+    "ulid_scheme": "substrate ULID = SHA256(src_id) 派生 Crockford base32（稳定可复现，非时序 ULID）"
+  },
+  "paragraphs": [
+    {
+      "para_ulid": "6GB8KKM05W13RWT6A7DRMCXDVB:0001",
+      "chapter": "晋语九",
+      "text": "智宣子將以瑤為後，智果曰：不如宵也。……瑤之賢於人者五，其不逮者一也。……如是而甚不仁。以其五賢陵人，而以不仁行之，其誰能待之？若果立瑤也，智宗必滅。……智果別族于太史為輔氏。及智氏之亡也，唯輔果在。",
+      "backs_fixtures": [
+        "F21"
+      ]
+    },
+    {
+      "para_ulid": "6GB8KKM05W13RWT6A7DRMCXDVB:0002",
+      "chapter": "晋语九·围晋阳",
+      "text": "晉師圍而灌之，沈灶產蛙，民無叛意。",
+      "backs_fixtures": [
+        "F23"
+      ]
+    }
+  ]
+}

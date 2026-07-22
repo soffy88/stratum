@@ -3,18 +3,30 @@
     {
       "event_id": "ev:wu-cheng-han",
       "title": "吴城邗，沟通江淮（邗沟）",
-      "canonical_date": { "type": "year", "value": "前486", "note": "鲁哀公九年秋。" },
+      "canonical_date": {
+        "type": "year",
+        "value": "前486",
+        "note": "鲁哀公九年秋。"
+      },
       "event_type": "其他",
       "actors": [
-        { "person_ref": "per:fuchai", "role": "筑邗城、开邗沟之吴君", "force_ref": "fo:wu" }
+        {
+          "person_ref": "per:fuchai",
+          "role": "筑邗城、开邗沟之吴君",
+          "force_ref": "fo:wu"
+        }
       ],
       "geo": {
-        "place_refs": ["pl:hancheng"],
+        "place_refs": [
+          "pl:hancheng"
+        ],
         "route_hint": "邗沟：自邗城（长江北岸）北通淮河",
         "mapstate_hint": "邗城（今扬州）＝江淮运河南端起点"
       },
       "parent_event": null,
-      "accounts": ["ac:wuchenghan-zuozhuan"],
+      "accounts": [
+        "ac:wuchenghan-zuozhuan"
+      ],
       "conflicts": [],
       "evidence_tier": "E1",
       "mainline_account_ref": "ac:wuchenghan-zuozhuan",
@@ -35,14 +47,17 @@
         "book": "左传",
         "chapter": "哀公九年",
         "section": "秋·吴城邗",
-        "para_ulid": null,
+        "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0002",
         "note": "待补。『秋，吴城邗，沟通江、淮。』"
       },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "鲁哀公九年秋（前486）",
-        "actor_claims": ["吴筑邗城", "开沟以通长江、淮河"],
+        "actor_claims": [
+          "吴筑邗城",
+          "开沟以通长江、淮河"
+        ],
         "causal_claims": [],
         "number_claims": [],
         "dialogue_spans": []

@@ -1,0 +1,44 @@
+{
+  "substrate": {
+    "substrate_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ",
+    "source_ref": "src:zztj",
+    "book": "资治通鉴",
+    "base_text": {
+      "url": "https://zh.wikisource.org/wiki/資治通鑑/卷001",
+      "license": "CC BY-SA 3.0（维基文库标点白文）",
+      "fetch_date": "2026-07-22",
+      "char_count": 97,
+      "form": "白文（维基文库标点，CC BY-SA）",
+      "r5": "禁对齐在版点校本；非记忆备录，WebFetch 逐字"
+    },
+    "coverage": "部分（首弧牵引 + fixtures 被引段落）；全书全量入库属后续波次",
+    "ulid_scheme": "substrate ULID = SHA256(src_id) 派生 Crockford base32（稳定可复现，非时序 ULID）"
+  },
+  "paragraphs": [
+    {
+      "para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0001",
+      "chapter": "周纪一·命侯",
+      "text": "初命晉大夫魏斯、趙籍、韓虔為諸侯。",
+      "backs_fixtures": [
+        "F24"
+      ]
+    },
+    {
+      "para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0002",
+      "chapter": "周纪一·臣光曰",
+      "text": "臣光曰：臣聞天子之職莫大於禮，禮莫大於分，分莫大於名。",
+      "backs_fixtures": [
+        "F24",
+        "arc:jin-decline/thesis:sima-guang"
+      ]
+    },
+    {
+      "para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0003",
+      "chapter": "周纪一·围晋阳",
+      "text": "三家以國人圍而灌之。……智伯行水，魏桓子御，韓康子驂乘。……趙襄子使張孟談潛出見二子，曰：臣聞脣亡則齒寒。",
+      "backs_fixtures": [
+        "F23"
+      ]
+    }
+  ]
+}

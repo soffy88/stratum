@@ -1,0 +1,51 @@
+{
+  "substrate": {
+    "substrate_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE",
+    "source_ref": "src:zuozhuan",
+    "book": "左传（春秋左氏传）",
+    "base_text": {
+      "url": "https://zh.wikisource.org/wiki/春秋左氏傳",
+      "license": "CC BY-SA 3.0（维基文库标点白文）",
+      "fetch_date": "2026-07-22",
+      "char_count": 194,
+      "form": "白文（维基文库标点，CC BY-SA）",
+      "r5": "禁对齐在版点校本；非记忆备录，WebFetch 逐字"
+    },
+    "coverage": "部分（首弧牵引 + fixtures 被引段落）；全书全量入库属后续波次",
+    "ulid_scheme": "substrate ULID = SHA256(src_id) 派生 Crockford base32（稳定可复现，非时序 ULID）"
+  },
+  "paragraphs": [
+    {
+      "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0001",
+      "chapter": "隐公五年",
+      "text": "五年春，公矢魚于棠。……（臧僖伯諫曰：凡物不足以講大事，其材不足以備器用，則君不舉焉。）……書曰「公矢魚于棠」，非禮也，且言遠地也。",
+      "backs_fixtures": [
+        "F19"
+      ]
+    },
+    {
+      "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0002",
+      "chapter": "哀公九年",
+      "text": "秋，吳城邗，溝通江、淮。",
+      "backs_fixtures": [
+        "F20"
+      ]
+    },
+    {
+      "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0003",
+      "chapter": "哀公十四年",
+      "text": "甲午，齊陳恆弒其君壬于舒州。",
+      "backs_fixtures": [
+        "F10"
+      ]
+    },
+    {
+      "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0004",
+      "chapter": "桓公二年",
+      "text": "師服曰：吾聞國家之立也，本大而末小，是以能固。故天子建國，諸侯立家，卿置側室，大夫有貳宗，士有隸子弟，庶人、工、商各有分親，皆有等衰。是以民服事其上，而下無覬覦。今晉，甸侯也，而建國，本既弱矣，其能久乎？",
+      "backs_fixtures": [
+        "arc:jin-decline/thesis:shifu"
+      ]
+    }
+  ]
+}
