@@ -58,7 +58,7 @@
       "registry_resolve": 3,
       "adjudicate": 2,
       "review": 2,
-      "note": "产线首件（P1）。agent 工时非人时——换算口径待产线积累后另裁（CANDIDATES 工时口径注）。"
+      "note": "产线首件（P1）。agent 分钟＝W-H1 排期运营单位（D-016，无换算）。"
     }
   }
 }
