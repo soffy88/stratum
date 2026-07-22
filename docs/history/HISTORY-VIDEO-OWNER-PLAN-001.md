@@ -29,7 +29,9 @@
 - 语料许可（wikisource 标点 CC BY-SA）→ 许可登记 + attribution，R5 纪律不破
 - 深度内容的史论风险 → thesis 归属强制 + "史/论可区分"红线（ARC-SPEC §2）
 
-## 附录 D. 决策日志（顾问维护，Wiki 可否决任何一条）
+## 附录 D. 决策日志（治理线，命名空间 OP-Dxxx；顾问维护，Wiki 可否决任何一条）
+
+> ★账本合并（裁决3）：本附录号 = **OP-Dxxx**；KU 线（KU-Dxxx）在 `DECISIONS.md`。D-023..D-027 曾与 KU 线号碰撞，解消见 `DECISIONS-LEDGER-MAP.md`。
 
 - D-023 闸口顾问化（本文治理节）
 - D-024 主题簇命名定为 **Arc（弧）**，避免与 Stratum 章级 KC 撞名
