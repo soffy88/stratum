@@ -107,8 +107,10 @@
 
 ## 同款扫描清单（D-022 令：全库 narrative cf 复查，候裁）
 
-扫描范围：25 fixtures 全部 conflicts，`dimension=narrative` 共 7 个。真对立主张 5 个成立不动：F2×2（篇内矛盾/搜孤存否）、F4（禅让vs篡夺）、F5（三源异叙）、F13（周召vs共伯和）。**同款嫌疑 1 个，候裁**：
+扫描范围：25 fixtures 全部 conflicts，`dimension=narrative` 共 7 个（扫描时）。真对立主张 5 个成立不动：F2×2（篇内矛盾/搜孤存否）、F4（禅让vs篡夺）、F5（三源异叙）、F13（周召vs共伯和）。**同款嫌疑 1 个——已裁并撤（D-023）**：
 
-| cf | 所在 | 症状 | 候裁问题 |
+| cf | 所在 | 症状 | 处置 |
 |---|---|---|---|
-| `cf:jinyang-independence` | F1（且在冻结契约 sample `sample.sanjiafenjin.json` 内，hint=主线+角标，indep=1.5） | 三源**同说**——对象实为**独立性折算记录**，连侧重差都不是，无对立主张；比 F12 更远离『冲突』语义 | 撤入事件级（同 F12 范式）？但它在 **v0.2 契约冻结 sample 字节内**——动它＝动 G1b 对拍基准，牵 contract tag。处置候 Wiki 裁，**不自动**（U 协议同款：报回不私设） |
+| ~~`cf:jinyang-independence`~~ | F1 + 冻结 sample | 三源**同说**——对象实为**独立性折算记录**，连侧重差都不是，无对立主张；比 F12 更远离『冲突』语义 | ✅ **已撤（D-023）**：折算记录移事件级（mainline_decision + JUDGMENTS#F1 + notes）；sample 字节变 → 契约 **v0.2.2**、G1b 钉点随迁。防倒退点升级＝**凡为侧重差或折算记录立 cf 即倒退信号** |
+
+**扫描后现状**：narrative cf 净剩 **5 个真对立主张**（F2×2/F4/F5/F13），侧重差（F12）与折算记录（F1）均已清出 cf 位。

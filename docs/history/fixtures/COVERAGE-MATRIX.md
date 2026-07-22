@@ -8,7 +8,7 @@
 
 | Fixture | 事件 | dimension(s) | 机制（核心） | 判定人 | 判定日期 | 签署状态 |
 |---|---|---|---|---|---|---|
-| F1 三家分晋 | ev:sanjiafenjin ⊃ 晋阳之战 + 命侯 | narrative | parent 组合 + 同事异述（派生源不重计独立见证：通鉴←史记） | CC | 2026-07-21 | CC 判·冻结 |
+| F1 三家分晋 | ev:sanjiafenjin ⊃ 晋阳之战 + 命侯 | —（折算记录零 cf，v0.3.1） | parent 组合 + 同事异述 + ★独立见证折算 indep≈1.5 移事件级（原 narrative cf 经同款扫描裁撤，D-023；折算记录非冲突） | CC（顾问 Claude 裁修订） | 2026-07-21/22 | CC 判·**v0.3.1 修订**冻结 |
 | **F2 赵氏孤儿** | ev:zhaoshi-zhinan | date · existence · narrative | ★边界案·同事异述 + 史记篇内冲突（locator 到篇）+ 调和说『两次族诛』否弃 | **Wiki（亲裁）** | 2026-07-21 | ✅ **Wiki 亲裁签署 2026-07-21** |
 | F3 官渡兵力+裴按 | ev:guandu | number | carrier/按语（按语=judgment 质疑数字·计0·不改主线）+ 通则a 指涉范围存疑 | CC | 2026-07-21 | CC 判·冻结 |
 | F4 尧舜禅让 | ev:yaoshun-shanrang | narrative | E4 传说层 banner + 竹书 narrative（两说不改 tier）| CC | 2026-07-21 | CC 判·冻结 |
@@ -36,7 +36,7 @@
 | date | F2 · F9 · F11 · F14 | ✅ |
 | number | F3 · F6 · F16 | ✅ |
 | existence | F2 · F5 · F7 · F8 · F15 | ✅ |
-| narrative | F1 · F2 · F4 · F5 · F13 | ✅（F12 v0.3 撤 narrative cf 后不再计入本维；F1 之 cf 在同款候裁清单，见 SPOTCHECK 扫描节） |
+| narrative | F2 · F4 · F5 · F13 | ✅（真对立主张 5 处：F2×2/F4/F5/F13。F12 侧重差[v0.3]、F1 折算记录[v0.3.1，D-023]均已清出 cf 位——见 SPOTCHECK 扫描节） |
 | causality | **F17** | ✅（本批补：赤壁疫退/火攻/曹操书三吃）|
 | place | **F18** | ✅（本批补：v0.2 枚举新增 + 赤壁地望）|
 | **actor** | — | ⚠ **未覆盖 GAP**——**D-012 追认非阻塞**（tag 条件确未含全维闭合）；**平凡批必含 ≥1 个 actor 维 fixture**。候选已钉：**赵盾/赵穿**（左传·宣二，董狐书『赵盾弑其君』vs 实弑者赵穿——源内自我申明的归因分歧 + 『书法 vs 事实』子机制）。CC 判分类：**难例**，入难例份额。 |
