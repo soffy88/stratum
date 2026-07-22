@@ -19,7 +19,7 @@
 | F9 牧野克商 | ev:muye | date | 纪年override（→前1046）+ 考古E0-aspiration（利簋·通则b）| CC | 2026-07-21 | CC 判·冻结 |
 | F10 田氏代齐 | ev:tianshi-daiqi ⊃ 弑简公 + 田和列侯 | —（parent/单述）| parent#2（验 F1 结构可复用）+ succession（姜齐→田齐）·似而非同 | CC | 2026-07-21 | CC 判·冻结 |
 | F11 马陵 | ev:maling | date | ★六国年表 override 实战（魏惠王后元→前341；placeholder→实证）| CC | 2026-07-21 | CC 判·冻结 |
-| F12 鸿门宴 | ev:hongmen | narrative | ★互见法（同源异篇**互补**·indep=1；对照 F2-b/F15 矛盾）| CC | 2026-07-21 | CC 判·冻结 |
+| F12 鸿门宴 | ev:hongmen | —（互补零 cf，v0.3） | ★互见法（同源异篇**互补**·indep=1·事件级拼合表达——原 narrative cf 经抽验裁实质错撤除，D-022）| CC（顾问 Claude 裁修订） | 2026-07-21/22 | CC 判·**v0.3 修订**冻结 |
 | F13 共和行政 | ev:gonghe | narrative | canonical 轴原点（前841）+ 竹书 narrative（周召 vs 共伯和·不动锚点）| CC | 2026-07-21 | CC 判·冻结 |
 | F14 苏秦 | ev:sujin-hezong | date | ★出土反证传世（帛书·(A)代价·考订出处）+ W-H1 系年 override 政策 | CC | 2026-07-21 | CC 判·冻结 |
 | F15 街亭马谡 | ev:jieting | existence | ★硬对（戮⊥物故）+ 可链（逃亡/临终书→物故线）分层·不拍平；carrier×篇间多歧（襄阳记 indep=2）| CC | 2026-07-21 | CC 判·冻结 |
@@ -36,7 +36,7 @@
 | date | F2 · F9 · F11 · F14 | ✅ |
 | number | F3 · F6 · F16 | ✅ |
 | existence | F2 · F5 · F7 · F8 · F15 | ✅ |
-| narrative | F1 · F2 · F4 · F5 · F12 · F13 | ✅ |
+| narrative | F1 · F2 · F4 · F5 · F13 | ✅（F12 v0.3 撤 narrative cf 后不再计入本维；F1 之 cf 在同款候裁清单，见 SPOTCHECK 扫描节） |
 | causality | **F17** | ✅（本批补：赤壁疫退/火攻/曹操书三吃）|
 | place | **F18** | ✅（本批补：v0.2 枚举新增 + 赤壁地望）|
 | **actor** | — | ⚠ **未覆盖 GAP**——**D-012 追认非阻塞**（tag 条件确未含全维闭合）；**平凡批必含 ≥1 个 actor 维 fixture**。候选已钉：**赵盾/赵穿**（左传·宣二，董狐书『赵盾弑其君』vs 实弑者赵穿——源内自我申明的归因分歧 + 『书法 vs 事实』子机制）。CC 判分类：**难例**，入难例份额。 |
@@ -48,6 +48,7 @@
 - **边界案（Wiki 亲裁）**：F2 ✅ 已签署（2026-07-21）。
 - **非边界 gold（判定人 CC，D-003 范式）**：F1 · F3–F18 —— CC 判·冻结。
 - **★tag 状态（D-009 修订）**：`history-fixtures-v0.2` 已打并经 **Wiki 追认**（D-009；原『抽验非阻塞 tag』一句系 CC 自判、与 D-004 门冲突，偏差已入册）。**抽验以补课完成**：F8/F10/F12 打包送验（D-010，`SPOTCHECK-v0.2.md`）；实质错 → v0.3 + v0.2 记 known-deficient。今后凡门槛含 Wiki 动作而 Wiki 缺席，标 **PENDING-GATE**（总则，D-009）。
+- **★抽验结果与 v0.3（D-022）**：F12 实质错（单点 `cf:hongmen-huxian`，余骨架成立）→ 已修并打 **`history-fixtures-v0.3`**；**`history-fixtures-v0.2` 记 known-deficient（缺陷范围＝F12 单点）**。F8 通过（两注记入 notes）。F10 **PENDING**（材料未达裁决方）。判定人＝顾问 Claude（Wiki 授权 2026-07-22），Wiki 保留否决权。
 
 ## 产线批（post-v0.2 tag，不在 v0.2 冻结范围）
 
