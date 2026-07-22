@@ -1,0 +1,189 @@
+{
+  "contract_version": "v0.2",
+  "event": {
+    "event_id": "ev:zhixuanzi-liyao",
+    "title": "智宣子立瑶为后·智果谏（不听，别族辅氏）",
+    "canonical_date": {
+      "type": "fuzzy",
+      "value": "晋阳之战前（前453 前）",
+      "note": "国语不系年；智宣子立后在其卒前、智瑶掌权（前475 顷）之前。"
+    },
+    "event_type": "人事",
+    "actors": [
+      {
+        "person_ref": "per:zhixuanzi",
+        "role": "立后者（智氏宗主）",
+        "force_ref": "fo:zhi"
+      },
+      {
+        "person_ref": "per:zhibo",
+        "role": "被立者（瑶，即智襄子/智伯）",
+        "force_ref": "fo:zhi"
+      },
+      {
+        "person_ref": "per:zhiguo",
+        "role": "谏者（不听，别族于太史为辅氏）",
+        "force_ref": "fo:zhi"
+      }
+    ],
+    "geo": {
+      "place_refs": [
+        "pl:jin"
+      ],
+      "route_hint": null,
+      "mapstate_hint": null
+    },
+    "parent_event": null,
+    "accounts": [
+      "ac:liyao-guoyu"
+    ],
+    "conflicts": [],
+    "evidence_tier": "E2",
+    "mainline_account_ref": "ac:liyao-guoyu",
+    "mainline_decision": {
+      "choice": "ac:liyao-guoyu",
+      "rationale": "平凡例（Gap 批 B02）：单事件·单独立源·零冲突。国语·晋语九为原源；通鉴周纪一采之（派生，不另计、不另立 account）。",
+      "decided_by": "CC",
+      "date": "2026-07-22"
+    }
+  },
+  "accounts": [
+    {
+      "account_id": "ac:liyao-guoyu",
+      "event_ref": "ev:zhixuanzi-liyao",
+      "source_id": "src:guoyu",
+      "locator": {
+        "book": "国语",
+        "chapter": "晋语九",
+        "section": "智果论智瑶必灭宗",
+        "para_ulid": null,
+        "note": "待补。『智宣子將以瑤為後，智果曰：不如宵也。……瑤之賢于人者五，其不逮者一也。……如是而甚不仁。以其五賢陵人，而以不仁行之，其誰能待之？若果立瑤也，智宗必滅。……智果別族于太史為輔氏。及智氏之亡也，唯輔果在。』（原文经 ctext.org 晋语九 逐字核对，2026-07-22。）"
+      },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "（不系年）智宣子立后之际",
+        "actor_claims": [
+          "智宣子将以瑶为后",
+          "智果谏：不如宵也；若果立瑶，智宗必灭",
+          "宣子不听；智果别族于太史为辅氏",
+          "及智氏之亡，唯辅果在"
+        ],
+        "causal_claims": [
+          "智果预判：五贤陵人而以不仁行之→智宗必灭（人物评价型归因，非事件因果链）"
+        ],
+        "number_claims": [],
+        "dialogue_spans": [
+          "智果谏辞全文（五贤一不仁之论——人物评价拍 B02 的 VO 素材，透传不消费）"
+        ]
+      },
+      "genre_note": "国别（国语·晋语九，原源）。通鉴周纪一开篇采此段（『智果曰：不如宵也……』）＝derivation，独立见证不另计。智果后更名辅果（persons 异名归一）。"
+    }
+  ],
+  "conflicts": [],
+  "registry_bundle": {
+    "persons": [
+      {
+        "person_id": "per:zhibo",
+        "names_by_source": {
+          "智伯": [
+            "src:shiji",
+            "src:zhanguoce",
+            "src:zztj"
+          ],
+          "智瑶": [
+            "src:shiji"
+          ],
+          "荀瑶": [
+            "src:zuozhuan"
+          ],
+          "知伯": [
+            "src:zhanguoce"
+          ]
+        },
+        "谥字号": "名瑶，智氏（荀氏别宗）宗主",
+        "active_range": "前5世纪中（晋阳之战被灭）",
+        "force_affiliations": [
+          "fo:zhi"
+        ]
+      },
+      {
+        "person_id": "per:zhiguo",
+        "names_by_source": {
+          "智果": [
+            "src:guoyu",
+            "src:zztj"
+          ],
+          "辅果": [
+            "src:guoyu"
+          ]
+        },
+        "谥字号": "智氏族人；谏立瑶不听，别族于太史为辅氏（『及智氏之亡也，唯辅果在』）",
+        "active_range": "前5世纪初（谏立瑶）至智氏亡（前453）后",
+        "force_affiliations": [
+          "fo:zhi"
+        ]
+      },
+      {
+        "person_id": "per:zhixuanzi",
+        "names_by_source": {
+          "智宣子": [
+            "src:guoyu",
+            "src:zztj"
+          ],
+          "甲": [
+            "src:guoyu"
+          ]
+        },
+        "谥字号": "谥宣，名申/甲（智瑶之父）",
+        "active_range": "前5世纪初（立瑶为后）",
+        "force_affiliations": [
+          "fo:zhi"
+        ]
+      }
+    ],
+    "places": [
+      {
+        "place_id": "pl:jin",
+        "name_by_era": {
+          "春秋": "晋",
+          "战国": "晋（三分前）"
+        },
+        "geo_hint": "今山西大部及河北河南一角",
+        "mapstate_hints": [
+          "三家分晋前的晋国疆域",
+          "分晋后 → 韩/赵/魏 三色"
+        ]
+      }
+    ],
+    "forces": [
+      {
+        "force_id": "fo:zhi",
+        "name_by_era": {
+          "春秋末": "智氏（知氏）"
+        },
+        "active_range": "至前453（晋阳之战被灭）",
+        "succession_edges": [
+          {
+            "from": "fo:zhi",
+            "to": null,
+            "relation": "前453 灭，地为韩赵魏瓜分"
+          }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "source_id": "src:guoyu",
+        "title": "国语",
+        "成书年代": "战国早期",
+        "genre": "国别策论",
+        "carrier_of": [],
+        "derivation_edges": [],
+        "genre_reliability": "国别记言，与左传相辅；晋语部分可与左传互证。",
+        "底本note": "TODO"
+      }
+    ],
+    "chronology": []
+  }
+}
