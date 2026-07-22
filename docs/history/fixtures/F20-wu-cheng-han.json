@@ -1,0 +1,68 @@
+{
+  "events": [
+    {
+      "event_id": "ev:wu-cheng-han",
+      "title": "吴城邗，沟通江淮（邗沟）",
+      "canonical_date": { "type": "year", "value": "前486", "note": "鲁哀公九年秋。" },
+      "event_type": "其他",
+      "actors": [
+        { "person_ref": "per:fuchai", "role": "筑邗城、开邗沟之吴君", "force_ref": "fo:wu" }
+      ],
+      "geo": {
+        "place_refs": ["pl:hancheng"],
+        "route_hint": "邗沟：自邗城（长江北岸）北通淮河",
+        "mapstate_hint": "邗城（今扬州）＝江淮运河南端起点"
+      },
+      "parent_event": null,
+      "accounts": ["ac:wuchenghan-zuozhuan"],
+      "conflicts": [],
+      "evidence_tier": "E1",
+      "mainline_account_ref": "ac:wuchenghan-zuozhuan",
+      "mainline_decision": {
+        "choice": "ac:wuchenghan-zuozhuan",
+        "rationale": "平凡例（假阳性钉子，D-008）：单事件·单述·零机制——左传一句记事，无异说、无冲突对象。",
+        "decided_by": "CC",
+        "date": "2026-07-22"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:wuchenghan-zuozhuan",
+      "event_ref": "ev:wu-cheng-han",
+      "source_id": "src:zuozhuan",
+      "locator": {
+        "book": "左传",
+        "chapter": "哀公九年",
+        "section": "秋·吴城邗",
+        "para_ulid": null,
+        "note": "待补。『秋，吴城邗，沟通江、淮。』"
+      },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "鲁哀公九年秋（前486）",
+        "actor_claims": ["吴筑邗城", "开沟以通长江、淮河"],
+        "causal_claims": [],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "编年单句记事。动机（北上争霸之前置工程）为后世史家通释，传文不言——不入 claim，平凡例守界（宁缺毋附会）。"
+    }
+  ],
+  "conflicts": [],
+  "adjudication": {
+    "adjudicator": "CC",
+    "date": "2026-07-22",
+    "tier_class": "平凡",
+    "work_log": {
+      "unit": "min",
+      "kind": "agent",
+      "extract": 3,
+      "registry_resolve": 3,
+      "adjudicate": 1,
+      "review": 2,
+      "note": "P2。agent 工时非人时。"
+    }
+  }
+}
