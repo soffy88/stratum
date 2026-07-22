@@ -1,0 +1,86 @@
+{
+  "events": [
+    {
+      "event_id": "ev:chibi",
+      "title": "赤壁之战（地望·place 维）",
+      "canonical_date": { "type": "year", "value": "公元208", "note": "★同 F6/F17 之赤壁事件（ev:chibi），本 fixture 专测 place/地望 维（赤壁在何处），一事出多 fixture 各测各维。place 维系 v0.2 契约新增 dimension（D-006），直供 MapState 定位。" },
+      "event_type": "战役",
+      "actors": [
+        { "person_ref": "per:caocao", "role": "败方", "force_ref": "fo:cao" },
+        { "person_ref": "per:zhouyu", "role": "吴军都督", "force_ref": "fo:sun" }
+      ],
+      "geo": { "place_refs": ["pl:chibi"], "route_hint": "赤壁—乌林隔江", "mapstate_hint": "地望取蒲圻说（pl:puqi-chibi）定位" },
+      "parent_event": null,
+      "accounts": ["ac:chibi-p-shuijingzhu", "ac:chibi-p-sanguozhi"],
+      "conflicts": ["cf:chibi-place"],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:chibi-p-shuijingzhu",
+      "mainline_decision": {
+        "choice": "ac:chibi-p-shuijingzhu",
+        "rationale": "★地望取蒲圻赤壁（pl:puqi-chibi，武赤壁，今湖北赤壁市）为主线——水经注系此、与三国志『赤壁乌林隔江』战地相符、学界主流；黄州赤壁（pl:huangzhou-chibi，文赤壁）系苏轼《赤壁赋》文学误认、非战地，MapState 标为否弃项。★事件本身（赤壁之战）与其发生 = E1 稳；『在何处』是 place 冲突、不降事件 tier（通则b）。",
+        "decided_by": "CC",
+        "date": "2026-07-22"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:chibi-p-shuijingzhu",
+      "event_ref": "ev:chibi",
+      "source_id": "src:shuijingzhu",
+      "locator": { "book": "水经注", "chapter": "江水注", "section": "赤壁地望段", "para_ulid": null, "note": "★待补。郦道元系赤壁于江夏蒲圻——长江南岸、与乌林隔江，符合战地地理。地望/place 维一等来源。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "（北魏注前事）",
+        "actor_claims": ["水经注系赤壁于蒲圻（江夏），江南岸与江北乌林相对"],
+        "causal_claims": [],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "★地理注（郦道元），地望考订一等来源；蒲圻说主线依据，直供 MapState。"
+    },
+    {
+      "account_id": "ac:chibi-p-sanguozhi",
+      "event_ref": "ev:chibi",
+      "source_id": "src:sanguozhi",
+      "locator": { "book": "三国志", "chapter": "魏书·武帝纪 / 吴书·周瑜传", "section": "赤壁乌林段", "para_ulid": null, "note": "★待补。三国志给地望线索：曹军自江北、遇于赤壁，进驻乌林，与孙刘隔江——地望约束（江北乌林、江南赤壁）但未直指今地名。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "公元208",
+        "actor_claims": ["战于赤壁，曹军退屯乌林（江北），孙刘在南岸——隔江对峙"],
+        "causal_claims": [],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "近源纪传给地望线索（乌林-赤壁隔江），是判蒲圻/黄州的约束依据——黄州不合『与乌林隔江』。"
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:chibi-place",
+      "event_ref": "ev:chibi",
+      "dimension": "place",
+      "account_refs": ["ac:chibi-p-shuijingzhu", "ac:chibi-p-sanguozhi"],
+      "independence_analysis": {
+        "independent_witness_count": 2,
+        "reasoning": "★place/地望 维（v0.2 新增 dimension，D-006）：赤壁战地何在——诸说以蒲圻赤壁（武赤壁，今赤壁市）与黄州赤壁（文赤壁，今黄冈）为大宗。水经注系蒲圻；三国志『赤壁-乌林隔江』的地理约束支持蒲圻、排除黄州（黄州不合与乌林隔江之势）。黄州赤壁系苏轼《赤壁赋》文学误认，历代传诵而非战地。折算：水经注（注）1 + 三国志（纪传约束）1 = indep 2，同指蒲圻；黄州说为后世文学附会、无战地地理支撑。★place 冲突直供生产端 MapState：主线定位 pl:puqi-chibi，pl:huangzhou-chibi 标否弃项（可作『文赤壁 vs 武赤壁』的科普 S12 内容）。",
+        "derivation_notes": [
+          "蒲圻说：水经注(郦道元) + 三国志地理约束(乌林隔江) → indep=2 同指",
+          "黄州说：苏轼文学误认，无战地地理支撑 → 否弃项(MapState 标注)",
+          "★place 维直供 MapState：mainline=pl:puqi-chibi；pl:huangzhou-chibi 否弃",
+          "★通则b：place 冲突不降事件 tier——赤壁之战存在=E1 稳，『在何处』另论"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "蒲圻赤壁（pl:puqi-chibi，武赤壁）为地望主线；黄州赤壁（pl:huangzhou-chibi）标否弃项",
+        "rationale": "水经注 + 三国志地理约束同指蒲圻；黄州系文学误认。MapState 以蒲圻定位，黄州作科普对照（文赤壁 vs 武赤壁），不作战地。",
+        "decided_by": "CC",
+        "date": "2026-07-22"
+      },
+      "presentation_hint": "S12对勘"
+    }
+  ]
+}

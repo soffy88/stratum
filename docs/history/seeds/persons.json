@@ -561,6 +561,13 @@
       "谥字号": "蜀将；街亭谏马谡不听、敛众而还",
       "active_range": "三国蜀",
       "force_affiliations": ["fo:liu"]
+    },
+    {
+      "person_id": "per:huanggai",
+      "names_by_source": { "黄盖": ["src:sanguozhi"], "公覆": ["src:sanguozhi"] },
+      "谥字号": "吴将；赤壁诈降火攻",
+      "active_range": "赤壁（公元208）",
+      "force_affiliations": ["fo:sun"]
     }
   ]
 }
