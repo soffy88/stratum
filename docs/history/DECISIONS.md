@@ -4,6 +4,15 @@
 
 ---
 
+## D-022 · v0.2 抽验裁决 + F12 修订 → `history-fixtures-v0.3`（v0.2 记 known-deficient）
+
+- **日期**：2026-07-22 · **判定人**：**顾问 Claude（Wiki 授权 2026-07-22，Wiki 保留否决权）** · 执行：CC
+- **裁决登记**（SPOTCHECK-v0.2 登记表已填）：**F12 = 实质错**（单点：`cf:hongmen-huxian`——侧重差无对立主张、不立 cf；余骨架成立）；**F8 = 通过**（两注记：引文压缩 + 按语驳点补注，入 F8 notes）；**F10 = PENDING**（材料未达裁决方，候经 Wiki 通道补送）。
+- **D-010 预定后果执行**：F12 撤 cf 对象；互见互补改**事件级表达**（`mainline_decision` 拼合说明 + account 级 `genre_note` 侧重注记）；JUDGMENTS#F12 与 SPOTCHECK Q2 同步改；回归网防倒退点升级＝**凡为侧重差立 narrative cf 即倒退信号**。→ 打 **`history-fixtures-v0.3`**；**`history-fixtures-v0.2` 记 known-deficient（缺陷范围＝F12 单点）**，tag 不删留痕。
+- **Schema 缺口按 U 协议报回不私设**：『互见/互补关系是否需要一等对象（非 cf）』列 **U7**（spec 附录 A.4）候裁。
+- **引文核对状态更新**：已核条目标『2026-07-22 顾问对原文源核（维基文库/中华文库），异文注记在案』；F8 尾段与 F10 标未核。
+- **★全库同款扫描**（narrative cf 共 7）：真对立 5 个成立（F2×2/F4/F5/F13）；**同款嫌疑 1 个候裁＝F1 `cf:jinyang-independence`**（三源**同说**，对象实为独立性折算记录）——⚠ 它在 **v0.2 契约冻结 sample 字节内**，动它牵 G1b 对拍基准与 contract tag，**报回不私设**（清单见 SPOTCHECK 扫描节）。
+
 ## D-021 · 跨线通知总则（禁写对方仓）+ 通则 c 入 JUDGMENTS 方法论
 
 - **日期**：2026-07-22 · **决策人**：Wiki
