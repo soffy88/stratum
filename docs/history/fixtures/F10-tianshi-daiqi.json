@@ -3,57 +3,149 @@
     {
       "event_id": "ev:tianshi-daiqi",
       "title": "田氏代齐（过程）",
-      "canonical_date": { "type": "range", "value": ["前481", "前386"], "note": "自田常弑齐简公（前481，田氏专齐政）至田和列为诸侯（前386，田齐代姜齐立国）的过程事件。与三家分晋（F1）结构平行。" },
+      "canonical_date": {
+        "type": "range",
+        "value": [
+          "前481",
+          "前386"
+        ],
+        "note": "自田常弑齐简公（前481，田氏专齐政）至田和列为诸侯（前386，田齐代姜齐立国）的过程事件。与三家分晋（F1）结构平行。"
+      },
       "event_type": "制度",
       "actors": [
-        { "person_ref": "per:tianchang", "role": "专齐政之始（弑简公）", "force_ref": "fo:tianqi" },
-        { "person_ref": "per:tianhe", "role": "田齐立国者（列侯）", "force_ref": "fo:tianqi" },
-        { "person_ref": "per:qijiangong", "role": "姜齐末路之君（被弑）", "force_ref": "fo:jiangqi" }
+        {
+          "person_ref": "per:tianchang",
+          "role": "专齐政之始（弑简公）",
+          "force_ref": "fo:tianqi"
+        },
+        {
+          "person_ref": "per:tianhe",
+          "role": "田齐立国者（列侯）",
+          "force_ref": "fo:tianqi"
+        },
+        {
+          "person_ref": "per:qijiangong",
+          "role": "姜齐末路之君（被弑）",
+          "force_ref": "fo:jiangqi"
+        }
       ],
-      "geo": { "place_refs": ["pl:qi"], "route_hint": null, "mapstate_hint": "姜齐 → 田齐（同疆易主）" },
-      "parent_event": { "role": "parent", "parent_event_id": null, "child_event_ids": ["ev:tianchang-shijian", "ev:tianhe-liehou"] },
+      "geo": {
+        "place_refs": [
+          "pl:qi"
+        ],
+        "route_hint": null,
+        "mapstate_hint": "姜齐 → 田齐（同疆易主）"
+      },
+      "parent_event": {
+        "role": "parent",
+        "parent_event_id": null,
+        "child_event_ids": [
+          "ev:tianchang-shijian",
+          "ev:tianhe-liehou"
+        ]
+      },
       "accounts": [],
       "conflicts": [],
       "evidence_tier": "E1",
       "tier_override": null,
       "mainline_account_ref": "ac:tianhe-shiji",
       "mainline_decision": {
-        "choice": "组合叙事：田常弑简公（前481，专政起点）+ 田和列侯（前386，立国终点）为过程两支点", "rationale": "过程事件不单挂一源；以两子事件近源 account 组合。与 F1 三家分晋同构：过程含多事件、不错合为一。", "decided_by": "CC", "date": "2026-07-21" }
+        "choice": "组合叙事：田常弑简公（前481，专政起点）+ 田和列侯（前386，立国终点）为过程两支点",
+        "rationale": "过程事件不单挂一源；以两子事件近源 account 组合。与 F1 三家分晋同构：过程含多事件、不错合为一。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      }
     },
     {
       "event_id": "ev:tianchang-shijian",
       "title": "田常弑齐简公",
-      "canonical_date": { "type": "exact", "value": "前481", "note": "鲁哀公十四年，齐田常（陈恒）弑其君简公（壬），专齐政。孔子闻之请讨（左传/论语）。" },
+      "canonical_date": {
+        "type": "exact",
+        "value": "前481",
+        "note": "鲁哀公十四年，齐田常（陈恒）弑其君简公（壬），专齐政。孔子闻之请讨（左传/论语）。"
+      },
       "event_type": "政变",
       "actors": [
-        { "person_ref": "per:tianchang", "role": "弑君专政者", "force_ref": "fo:tianqi" },
-        { "person_ref": "per:qijiangong", "role": "被弑之君", "force_ref": "fo:jiangqi" }
+        {
+          "person_ref": "per:tianchang",
+          "role": "弑君专政者",
+          "force_ref": "fo:tianqi"
+        },
+        {
+          "person_ref": "per:qijiangong",
+          "role": "被弑之君",
+          "force_ref": "fo:jiangqi"
+        }
       ],
-      "geo": { "place_refs": ["pl:qi"], "route_hint": null, "mapstate_hint": null },
-      "parent_event": { "role": "child", "parent_event_id": "ev:tianshi-daiqi", "child_event_ids": [] },
-      "accounts": ["ac:shijian-zuozhuan", "ac:shijian-shiji"],
+      "geo": {
+        "place_refs": [
+          "pl:qi"
+        ],
+        "route_hint": null,
+        "mapstate_hint": null
+      },
+      "parent_event": {
+        "role": "child",
+        "parent_event_id": "ev:tianshi-daiqi",
+        "child_event_ids": []
+      },
+      "accounts": [
+        "ac:shijian-zuozhuan",
+        "ac:shijian-shiji"
+      ],
       "conflicts": [],
       "evidence_tier": "E1",
       "tier_override": null,
       "mainline_account_ref": "ac:shijian-zuozhuan",
-      "mainline_decision": { "choice": "ac:shijian-zuozhuan", "rationale": "左传哀公十四年近源编年记『陈恒弑其君壬』；史记田敬仲完世家同述（异名田常）。两 account 同事异述，主线取近源左传。", "decided_by": "CC", "date": "2026-07-21" }
+      "mainline_decision": {
+        "choice": "ac:shijian-zuozhuan",
+        "rationale": "左传哀公十四年近源编年记『陈恒弑其君壬』；史记田敬仲完世家同述（异名田常）。两 account 同事异述，主线取近源左传。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      }
     },
     {
       "event_id": "ev:tianhe-liehou",
       "title": "田和列为诸侯（田齐立国）",
-      "canonical_date": { "type": "exact", "value": "前386", "note": "周安王命齐相田和为诸侯，田齐正式代姜齐立国。与三家分晋之命侯（前403）性质同。" },
+      "canonical_date": {
+        "type": "exact",
+        "value": "前386",
+        "note": "周安王命齐相田和为诸侯，田齐正式代姜齐立国。与三家分晋之命侯（前403）性质同。"
+      },
       "event_type": "册命",
       "actors": [
-        { "person_ref": "per:tianhe", "role": "受命为齐侯", "force_ref": "fo:tianqi" }
+        {
+          "person_ref": "per:tianhe",
+          "role": "受命为齐侯",
+          "force_ref": "fo:tianqi"
+        }
       ],
-      "geo": { "place_refs": ["pl:qi"], "route_hint": null, "mapstate_hint": "田齐正式立国" },
-      "parent_event": { "role": "child", "parent_event_id": "ev:tianshi-daiqi", "child_event_ids": [] },
-      "accounts": ["ac:tianhe-shiji", "ac:tianhe-zztj"],
+      "geo": {
+        "place_refs": [
+          "pl:qi"
+        ],
+        "route_hint": null,
+        "mapstate_hint": "田齐正式立国"
+      },
+      "parent_event": {
+        "role": "child",
+        "parent_event_id": "ev:tianshi-daiqi",
+        "child_event_ids": []
+      },
+      "accounts": [
+        "ac:tianhe-shiji",
+        "ac:tianhe-zztj"
+      ],
       "conflicts": [],
       "evidence_tier": "E1",
       "tier_override": null,
       "mainline_account_ref": "ac:tianhe-shiji",
-      "mainline_decision": { "choice": "ac:tianhe-shiji", "rationale": "史记田敬仲完世家/年表系田和列侯于前386；通鉴同。两 account 同述。", "decided_by": "CC", "date": "2026-07-21" }
+      "mainline_decision": {
+        "choice": "ac:tianhe-shiji",
+        "rationale": "史记田敬仲完世家/年表系田和列侯于前386；通鉴同。两 account 同述。",
+        "decided_by": "CC",
+        "date": "2026-07-21"
+      }
     }
   ],
   "accounts": [
@@ -61,13 +153,24 @@
       "account_id": "ac:shijian-zuozhuan",
       "event_ref": "ev:tianchang-shijian",
       "source_id": "src:zuozhuan",
-      "locator": { "book": "左传", "chapter": "哀公十四年", "section": "陈恒弑君段", "para_ulid": null, "note": "待补。齐陈恒弑其君壬于舒州。孔子请讨陈恒。" },
+      "locator": {
+        "book": "左传",
+        "chapter": "哀公十四年",
+        "section": "陈恒弑君段",
+        "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0003",
+        "note": "待补。齐陈恒弑其君壬于舒州。孔子请讨陈恒。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "鲁哀公十四年 = 前481",
-        "actor_claims": ["齐陈恒（田常）弑其君简公（壬）于舒州，专齐政", "孔子沐浴而朝，告于鲁哀公，请讨陈恒（不果）"],
-        "causal_claims": ["田氏累世厚施得齐民 → 弑君专政 → 代齐之渐"],
+        "actor_claims": [
+          "齐陈恒（田常）弑其君简公（壬）于舒州，专齐政",
+          "孔子沐浴而朝，告于鲁哀公，请讨陈恒（不果）"
+        ],
+        "causal_claims": [
+          "田氏累世厚施得齐民 → 弑君专政 → 代齐之渐"
+        ],
         "number_claims": [],
         "dialogue_spans": []
       },
@@ -77,13 +180,24 @@
       "account_id": "ac:shijian-shiji",
       "event_ref": "ev:tianchang-shijian",
       "source_id": "src:shiji",
-      "locator": { "book": "史记", "chapter": "田敬仲完世家", "section": "田常弑简公段", "para_ulid": null, "note": "待补。田常弑简公、专齐政、尽诛鲍晏诸族。" },
+      "locator": {
+        "book": "史记",
+        "chapter": "田敬仲完世家",
+        "section": "田常弑简公段",
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0003",
+        "note": "待补。田常弑简公、专齐政、尽诛鲍晏诸族。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "前481",
-        "actor_claims": ["田常弑齐简公，立平公，专齐国之政", "田常尽诛鲍、晏、监止及公族之强者，割齐自安平以东为田氏封邑"],
-        "causal_claims": ["专政 + 剪除异己 → 田氏坐大"],
+        "actor_claims": [
+          "田常弑齐简公，立平公，专齐国之政",
+          "田常尽诛鲍、晏、监止及公族之强者，割齐自安平以东为田氏封邑"
+        ],
+        "causal_claims": [
+          "专政 + 剪除异己 → 田氏坐大"
+        ],
         "number_claims": [],
         "dialogue_spans": []
       },
@@ -93,13 +207,24 @@
       "account_id": "ac:tianhe-shiji",
       "event_ref": "ev:tianhe-liehou",
       "source_id": "src:shiji",
-      "locator": { "book": "史记", "chapter": "田敬仲完世家 / 六国年表", "section": "田和列侯段", "para_ulid": null, "note": "待补。前386 田和立为齐侯。" },
+      "locator": {
+        "book": "史记",
+        "chapter": "田敬仲完世家 / 六国年表",
+        "section": "田和列侯段",
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0003",
+        "note": "待补。前386 田和立为齐侯。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "前386",
-        "actor_claims": ["田和求为诸侯，魏文侯为之请于周天子", "周安王命田和为齐侯，列于周室，田齐立国"],
-        "causal_claims": ["专政既久 → 名正立国"],
+        "actor_claims": [
+          "田和求为诸侯，魏文侯为之请于周天子",
+          "周安王命田和为齐侯，列于周室，田齐立国"
+        ],
+        "causal_claims": [
+          "专政既久 → 名正立国"
+        ],
         "number_claims": [],
         "dialogue_spans": []
       },
@@ -109,12 +234,20 @@
       "account_id": "ac:tianhe-zztj",
       "event_ref": "ev:tianhe-liehou",
       "source_id": "src:zztj",
-      "locator": { "book": "资治通鉴", "chapter": "周纪（安王十六年前后）", "section": "田和列侯段", "para_ulid": null, "note": "待补。通鉴系田和列侯，取材史记。" },
+      "locator": {
+        "book": "资治通鉴",
+        "chapter": "周纪（安王十六年前后）",
+        "section": "田和列侯段",
+        "para_ulid": null,
+        "note": "待补。通鉴系田和列侯，取材史记。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "前386",
-        "actor_claims": ["初命齐大夫田和为诸侯"],
+        "actor_claims": [
+          "初命齐大夫田和为诸侯"
+        ],
         "causal_claims": [],
         "number_claims": [],
         "dialogue_spans": []
