@@ -26,6 +26,11 @@
 - **『E0-候选 / aspiration』是注记，不是新档**——考古/出土只能**升事件存在性**（并在 Q3/契约 v0.2 前记为 `tier_override` 注记），只**注记 claim**，不给 claim 发 tier。
 - 自查落点：F9/F14/F16 的考古/出土 aspiration 均系事件存在性注记；F14 event tier=E2（苏秦合纵**确有**），其系年之弱走 override + date_claim + narrative 冲突，**不压 event tier**。
 
+### 通则 c · hint 不得私裁（D-017/D-021，2026-07-22 入方法论）
+- `geo.route_hint` / `mapstate_hint` 等提示字段取值涉及**源间分歧**时，只有两条合法路径：①该分歧的冲突对象**已建**，且 hint **跟随 `mainline_decision`**（并注异说 cf）；②置 `null`。**hint 永不承载未裁决的选择。**
+- 判定前置自查：写任何 hint 前问一句『此值有无第二个源说法？』——有则先建 cf 或置 null，绝不顺手挑一个。
+- 首例：B06 晋阳灌城水源（旧 sample route_hint 单方取汾水、手工 VO 取晋水——两端各私裁一边；F23 建 `cf:jinyang-shuiyuan` 后修复）。
+
 ---
 
 ## F1 · 三家分晋 {#F1}
