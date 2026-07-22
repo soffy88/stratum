@@ -1,4 +1,6 @@
-# AII History KU · Decision Trail
+# AII History KU · Decision Trail（KU 线，命名空间 KU-Dxxx）
+
+> ★账本合并（裁决3）：本文号 = **KU-Dxxx** 命名空间；治理线（OP-Dxxx）在 OWNER-PLAN 附录 D。号段碰撞解消见 `DECISIONS-LEDGER-MAP.md`。
 
 > 跨系统决策留痕（spec §8.3 decision_trail 闭合）。凡影响契约钉点、契约形状、gold 判定范式的决策记于此，逆序（新在上）。
 
