@@ -21,7 +21,9 @@
 
 **生产节奏**：范式已签署（D-003）——非边界 gold 由 CC 照范式判、Wiki 验收；按 Tier 分批建（每批 commit + JUDGMENTS 登记供抽验），边界案（若某条出现类 F2 压边界判定）单独提请 Wiki 亲裁。**Tier 1 全建完（F5–F10）**。**Tier 2 已建**：A3 ✅F11 · B2 ✅F12 · D4 ✅F13 · A4 苏秦 ✅F14（出土反证/A）· C5 街亭 ✅F15（篇间三歧）· A5 长平 ✅F16（number+考古aspiration）。**Tier 2 余（纯广度·重复机制）**：C6 七擒孟获 · C7 关羽 · C8 官渡乌巢（parent 子节点）——三者均为已覆盖机制（三国 existence/narrative、parent）的广度补充，非新机制。
 
-> ★**机制覆盖已基本完备**（16 fixtures）：carrier/按语三态(F3/F5/F7/F8)、number(F3/F6/F16)、existence(F7/F8/F15)、date+纪年override(F9/F11)、parent+succession(F1/F10)、互见法矛盾/互补(F2-b/F15 vs F12)、E4(F4)、narrative(F13等)、出土反证/考古E0-aspiration(F9/F14/F16)。**余下 C6/C7/C8 是广度而非机制** —— 是否续建（凑向 30–50 广度）由你定；若只求机制护栏，16 条已成网。
+> ★**剩余批次构成规则（D-008）**：以**平凡事件为主体**（约 **7:3** 平凡:难例）。**平凡 gold = 单事件·单述·零机制触发**——回归网需**假阳性侧的钉子**（全难例只训出草木皆兵的判定器）；这批平凡 gold 顺手即 §9 抽取器评测集 **easy 段**（一鱼两吃）。★**性质切换**：前 18 个是**设计工作**（定机制/钉范式），后面是**产线工作**——**计量单 fixture 工时**（Q5 同款分段：抽取/注册表解析/判定/复核各段），W-H1 灌注预算即指此数。**下批起以平凡事件为主、附工时。**
+
+> ★**机制覆盖已基本完备**（18 fixtures，含 causality/place 补维）：carrier/按语三态(F3/F5/F7/F8)、number(F3/F6/F16)、existence(F7/F8/F15)、date+纪年override(F9/F11)、parent+succession(F1/F10)、互见法矛盾/互补(F2-b/F15 vs F12)、E4(F4)、narrative(F13等)、出土反证/考古E0-aspiration(F9/F14/F16)。**余下 C6/C7/C8 是广度而非机制** —— 是否续建（凑向 30–50 广度）由你定；若只求机制护栏，16 条已成网。
 
 > ✅ **已拍板（D-005，2026-07-21）**：`source.genre` enum **维持不变，取 (A)** —— 考古/金文/经不作一等 Source，以文献 account + `tier_override` E0-候选注记表达。**(B) 扩 enum 的触发条件**＝Q3 考古/金文管线真正落地时，作一次协调的 **v0.2 契约 bump**（`contract_version`↑ + 双端同步 + decision trail）。在此之前一律 (A)。**A4 苏秦帛书按 (A) 建**（帛书《战国纵横家书》作 E0-候选注记，不登记为 Source）。
 

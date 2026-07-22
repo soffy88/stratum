@@ -1,6 +1,6 @@
 # AII History KU · §8 契约冻结包
 
-> **Doc**: AII-HISTORY-KU-SPEC-001 §8 交付物 · v0.1 冻结 · 2026-07-21
+> **Doc**: AII-HISTORY-KU-SPEC-001 §8 交付物 · **v0.2**（v0.1→v0.2：dimension 增 place，D-006）· 2026-07-22
 > **红线**: 这是两仓（AII KU ⇄ tongjian 生产端）**唯一耦合面**。契约先行——生产端 G1a 以手工装配同形数据先跑；KU 实装后 G1b 逐字段对拍此包。
 
 ## 文件
@@ -13,14 +13,15 @@
 
 ## G1b 对拍协议（§8.4）
 
-> **★钉点（pin）**：G1b 对拍 **git tag `history-contract-v0.1`**（annotated tag，非 commit hash）下的 `contracts/{history-query-response.schema.json, sample.sanjiafenjin.json}`。tag 不可变、不惧承载分支后续 rebase/squash。**旧钉点 `ab228ab` 已作废**（其 sample 字节在 `_meta` 迁移中演进；ab228ab 仅存为首个冻结 commit）——改判记入 `docs/history/DECISIONS.md`。
+> **★钉点（pin）**：G1b 对拍 **git tag `history-contract-v0.2`**（annotated tag，非 commit hash）下的 `contracts/{history-query-response.schema.json, sample.sanjiafenjin.json}`。tag 不可变、不惧承载分支 rebase/squash。
+> **版本沿革**：`history-contract-v0.1`（首冻结，2026-07-21）→ **`history-contract-v0.2`**（2026-07-22，`dimension` 增 `place`，`contract_version`→v0.2，D-006）。v0.1→v0.2 差异＝dimension 多 `place` 值 + `contract_version` 值，**加性向后兼容、可解释**。旧钉点 `ab228ab` 早已作废（sample 字节在 `_meta` 迁移中演进）。改判/沿革均记 `docs/history/DECISIONS.md`（D-002 / D-006）。
 
 1. 生产端按 `history-query-response.schema.json` 装配 VisualFact 前的中间态（G1a 手工同形数据）。
 2. KU 实装后，`GET`（§8.1 只读接口：时间窗/人物/势力/event_type/断代）→ 返回体**必须 validate 通过本 schema**。
 3. 与 `sample.sanjiafenjin.json` **逐字段对拍**：一致，或**差异可解释**。已知可解释差异：
    - `locator.para_ulid`：样例为 `null`（语料未入库）；实装后填 `<substrate-ULID>:<para-suffix>`——**填值即可解释**。
    - `mainline_decision.date` / `decided_by`：随实际决策更新。
-   - `contract_version`：必须仍为 `"v0.1"`；升版是显式决策（§8.3），须同步双方。
+   - `contract_version`：当前 `"v0.2"`；升版是显式决策（§8.3 / D-006），须同步双方 + 记 decision trail。
 4. **禁**：任何一方私自增删字段。改契约 = 改 `contract_version` + 双端同步 + 本 README 记变更。
 
 ## 字段映射（→ 生产端 VisualFact，见 spec §8.2）
@@ -29,7 +30,7 @@
 
 ## 版本 / 指纹（§8.3）
 
-- 契约形状版本：`contract_version` 字段（本包 `v0.1`）。
+- 契约形状版本：`contract_version` 字段（本包 `v0.2`；v0.1→v0.2 见 D-006）。
 - KU 内容版本：SHA-256 内容指纹（EpisodePlan 钉指纹集）；**KU 升版不追溯已发布集**。二者正交：形状契约稳定，内容随灌注生长。
 
 ## 校验命令

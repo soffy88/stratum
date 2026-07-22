@@ -1,0 +1,103 @@
+{
+  "events": [
+    {
+      "event_id": "ev:chibi",
+      "title": "赤壁之战（败因·causality 维）",
+      "canonical_date": { "type": "year", "value": "公元208", "note": "★同 F6/F18 之赤壁事件（ev:chibi），本 fixture 专测 causality 维（曹操败因），一事出多 fixture 各测各维（F6 number / F17 causality / F18 place）。" },
+      "event_type": "战役",
+      "actors": [
+        { "person_ref": "per:caocao", "role": "败方（败因两说）", "force_ref": "fo:cao" },
+        { "person_ref": "per:zhouyu", "role": "吴军都督（火攻）", "force_ref": "fo:sun" },
+        { "person_ref": "per:huanggai", "role": "诈降纵火者", "force_ref": "fo:sun" }
+      ],
+      "geo": { "place_refs": ["pl:chibi"], "route_hint": "乌林曹营·黄盖火船", "mapstate_hint": null },
+      "parent_event": null,
+      "accounts": ["ac:chibi-c-zhouyu", "ac:chibi-c-wudiji", "ac:chibi-c-jiangbiao"],
+      "conflicts": ["cf:chibi-causality"],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:chibi-c-zhouyu",
+      "mainline_decision": {
+        "choice": "ac:chibi-c-zhouyu",
+        "rationale": "败因主线取『火攻大破』（周瑜传/黄盖诈降近证；且曹操自述亦承认『烧船』＝其军实已败退）；『疾疫自退』（武帝纪 + 曹操自称孤烧船自退）为并发因素 + 讳败诿辞，并陈。★敌我立场差是本 fixture 焦点：曹操诿于疫、自称主动烧船撤退，讳言被火攻败。",
+        "decided_by": "CC",
+        "date": "2026-07-22"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:chibi-c-zhouyu",
+      "event_ref": "ev:chibi",
+      "source_id": "src:sanguozhi",
+      "locator": { "book": "三国志", "chapter": "吴书·周瑜传", "section": "黄盖火攻段", "para_ulid": null, "note": "待补。黄盖诈降、以蒙冲斗舰载燥荻膏油纵火，风猛火烈，曹军船舰延烧、人马烧溺死者甚众。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "公元208",
+        "actor_claims": ["黄盖诈降，火船冲曹军船舰；时东南风急，火烈风猛，尽烧北船、延及岸上营落", "曹军人马烧溺死者甚众，大败北还"],
+        "causal_claims": ["★吴方立场：火攻（黄盖纵火）为致败主因"],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "近源纪传（吴书）；火攻致败——败因主线。"
+    },
+    {
+      "account_id": "ac:chibi-c-wudiji",
+      "event_ref": "ev:chibi",
+      "source_id": "src:sanguozhi",
+      "locator": { "book": "三国志", "chapter": "魏书·武帝纪", "section": "赤壁段", "para_ulid": null, "note": "★待补。武帝纪：公至赤壁，与备战不利；于是大疫，吏士多死者，乃引军还。★魏书立场：归于疾疫、讳火攻。" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "公元208",
+        "actor_claims": ["公至赤壁，与备战不利；于是大疫，吏士多死者，乃引军还"],
+        "causal_claims": ["★魏方立场：败因＝疾疫（大疫、吏士多死）→ 引军还；不言火攻"],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "★陈寿魏书为曹操讳败：归因疾疫、不书火攻——敌我立场差之一端。"
+    },
+    {
+      "account_id": "ac:chibi-c-jiangbiao",
+      "event_ref": "ev:chibi",
+      "source_id": "src:jiangbiaozhuan",
+      "locator": { "book": "三国志", "chapter": "吴书（裴注引《江表传》）", "section": "曹操遗孙权书", "para_ulid": null, "note": "★待补。carrier=裴注；original=江表传（引书 testimony）。曹操遗孙权书：『赤壁之役，值有疾病，孤烧船自退，横使周瑜虚获此名。』" },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "公元208（战后曹操自述）",
+        "actor_claims": ["曹操遗孙权书自称：赤壁之役值有疾病，孤烧船自退，横使周瑜虚获此名"],
+        "causal_claims": ["★曹操自述立场：败因＝疾病 + 己方主动烧船撤退；否认周瑜火攻之功（诿辞）"],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": "★carrier=裴注引书（江表传，testimony 计入）；内容为曹操自述诿辞——『孤烧船自退』既承认烧船（实败），又诿于疾病、贬周瑜。敌我立场差的最尖锐一端。"
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:chibi-causality",
+      "event_ref": "ev:chibi",
+      "dimension": "causality",
+      "account_refs": ["ac:chibi-c-zhouyu", "ac:chibi-c-wudiji", "ac:chibi-c-jiangbiao"],
+      "independence_analysis": {
+        "independent_witness_count": 2,
+        "reasoning": "★causality 维 + 敌我立场：赤壁曹操败因两说——『火攻大破』（周瑜传·吴方）vs『疾疫自退』（武帝纪·魏方 + 曹操遗孙权书自述『孤烧船自退』）。折算：吴书周瑜传 1；魏方=武帝纪（陈寿讳火攻）+ 江表传曹操书（引书 testimony，曹操自述）——武帝纪与曹操自述同属魏方立场、但江表传是独立引书，故魏方计约 1，合计 indep 2。★关键判读：这不是中性的『两因并列』，而是**敌我立场驱动的归因差**——魏方（含曹操自述）讳言被火攻败、诿于疾疫并称『自烧船』；吴方彰火攻之功。且曹操书『孤烧船自退』**自身即承认烧船/败退**，恰为火攻致败之反证。故主线取火攻为主因，疫为并发 + 诿辞，立场差显式并陈（S12），不取任一方自利叙事为定论。",
+        "derivation_notes": [
+          "causality 冲突：火攻(吴·周瑜传) vs 疾疫自退(魏·武帝纪+曹操书)",
+          "敌我立场：魏方讳火攻诿疫、曹操自称烧船自退(贬周瑜)；吴方彰火攻——归因随立场",
+          "carrier/original：江表传经裴注引书(testimony 计入)；曹操自述『烧船』自证败退",
+          "indep=2：周瑜传(吴)1 + 魏方(武帝纪+江表传曹操书)1"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "主线：火攻为致败主因；疾疫为并发因素 + 曹操诿辞；敌我立场差 S12 并陈",
+        "rationale": "近证(周瑜传火攻)+曹操自承烧船(实败) → 火攻致败为主线；魏方疾疫说与曹操『自退』诿辞并陈、标其立场，不取自利叙事定论。守并陈不合并、不静默取一方。",
+        "decided_by": "CC",
+        "date": "2026-07-22"
+      },
+      "presentation_hint": "S12对勘"
+    }
+  ]
+}

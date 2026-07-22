@@ -73,6 +73,16 @@
           "tradition": "钱穆/杨宽一系",
           "academic_source": "TODO"
         }
+      },
+      {
+        "source_id": "src:shiji",
+        "raw": "苏秦（史记·苏秦列传系年：前4世纪末、与张仪同时对抗）",
+        "canonical": "约前312–前284（override 后）",
+        "override": {
+          "corrected_canonical": "苏秦活动约前312–前284（合纵抗齐为燕，晚于张仪；史记『苏张对抗』系后世编排）",
+          "tradition": "马王堆帛书《战国纵横家书》整理 + 杨宽一系",
+          "academic_source": "马王堆帛书整理小组（唐兰等）；杨宽《战国史》据帛书重订苏秦年世。★W-H1 政策（D-007）：涉苏秦诸事 canonical 系年一律取此 override、史记原系年降为 account.date_claim——此为六国年表 override 政策首次大规模适用，先裁后灌。F14 cf:sujin-date 已用。"
+        }
       }
     ]
   }
