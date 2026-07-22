@@ -933,23 +933,6 @@
     {
       "person_id": "per:i4-001",
       "names_by_source": {
-        "姜氏": [
-          "src:zuozhuan"
-        ]
-      },
-      "谥字号": "(候选·待考)",
-      "active_range": "(候选)",
-      "force_affiliations": [],
-      "intake": {
-        "batch": "W-H1a-4-001",
-        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0015",
-        "method": "qwen3-8b 抽取候选·机械四查过",
-        "status": "candidate-verified"
-      }
-    },
-    {
-      "person_id": "per:i4-002",
-      "names_by_source": {
         "鬬廉": [
           "src:zuozhuan"
         ]
@@ -965,7 +948,7 @@
       }
     },
     {
-      "person_id": "per:i4-003",
+      "person_id": "per:i4-002",
       "names_by_source": {
         "邓养甥": [
           "src:zuozhuan"
@@ -982,7 +965,7 @@
       }
     },
     {
-      "person_id": "per:i4-004",
+      "person_id": "per:i4-003",
       "names_by_source": {
         "聃甥": [
           "src:zuozhuan"
@@ -999,7 +982,7 @@
       }
     },
     {
-      "person_id": "per:i4-005",
+      "person_id": "per:i4-004",
       "names_by_source": {
         "郁人": [
           "src:zuozhuan"
@@ -1016,7 +999,7 @@
       }
     },
     {
-      "person_id": "per:i4-006",
+      "person_id": "per:i4-005",
       "names_by_source": {
         "杞伯姬": [
           "src:zuozhuan"
@@ -1033,7 +1016,7 @@
       }
     },
     {
-      "person_id": "per:i4-007",
+      "person_id": "per:i4-006",
       "names_by_source": {
         "荀息": [
           "src:zuozhuan"
@@ -1050,7 +1033,7 @@
       }
     },
     {
-      "person_id": "per:i4-008",
+      "person_id": "per:i4-007",
       "names_by_source": {
         "宫之奇": [
           "src:zuozhuan"
@@ -1067,7 +1050,7 @@
       }
     },
     {
-      "person_id": "per:i4-009",
+      "person_id": "per:i4-008",
       "names_by_source": {
         "丕鄭": [
           "src:zuozhuan"
@@ -1084,7 +1067,7 @@
       }
     },
     {
-      "person_id": "per:i4-010",
+      "person_id": "per:i4-009",
       "names_by_source": {
         "呂甥": [
           "src:zuozhuan"
@@ -1101,7 +1084,7 @@
       }
     },
     {
-      "person_id": "per:i4-011",
+      "person_id": "per:i4-010",
       "names_by_source": {
         "郤稱": [
           "src:zuozhuan"
@@ -1118,7 +1101,7 @@
       }
     },
     {
-      "person_id": "per:i4-012",
+      "person_id": "per:i4-011",
       "names_by_source": {
         "冀芮": [
           "src:zuozhuan"
@@ -1135,7 +1118,7 @@
       }
     },
     {
-      "person_id": "per:i4-013",
+      "person_id": "per:i4-012",
       "names_by_source": {
         "重耳": [
           "src:zuozhuan"
@@ -1152,7 +1135,7 @@
       }
     },
     {
-      "person_id": "per:i4-014",
+      "person_id": "per:i4-013",
       "names_by_source": {
         "史苏": [
           "src:zuozhuan"
@@ -1169,7 +1152,7 @@
       }
     },
     {
-      "person_id": "per:i4-015",
+      "person_id": "per:i4-014",
       "names_by_source": {
         "怀嬴": [
           "src:zuozhuan"
@@ -1186,58 +1169,7 @@
       }
     },
     {
-      "person_id": "per:i4-016",
-      "names_by_source": {
-        "卫子": [
-          "src:zuozhuan"
-        ]
-      },
-      "谥字号": "(候选·待考)",
-      "active_range": "(候选)",
-      "force_affiliations": [],
-      "intake": {
-        "batch": "W-H1a-4-001",
-        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1050",
-        "method": "qwen3-8b 抽取候选·机械四查过",
-        "status": "candidate-verified"
-      }
-    },
-    {
-      "person_id": "per:i4-017",
-      "names_by_source": {
-        "陈侯": [
-          "src:zuozhuan"
-        ]
-      },
-      "谥字号": "(候选·待考)",
-      "active_range": "(候选)",
-      "force_affiliations": [],
-      "intake": {
-        "batch": "W-H1a-4-001",
-        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1050",
-        "method": "qwen3-8b 抽取候选·机械四查过",
-        "status": "candidate-verified"
-      }
-    },
-    {
-      "person_id": "per:i4-018",
-      "names_by_source": {
-        "卫侯郑": [
-          "src:zuozhuan"
-        ]
-      },
-      "谥字号": "(候选·待考)",
-      "active_range": "(候选)",
-      "force_affiliations": [],
-      "intake": {
-        "batch": "W-H1a-4-001",
-        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1091",
-        "method": "qwen3-8b 抽取候选·机械四查过",
-        "status": "candidate-verified"
-      }
-    },
-    {
-      "person_id": "per:i4-019",
+      "person_id": "per:i4-015",
       "names_by_source": {
         "酆舒": [
           "src:zuozhuan"
@@ -1254,7 +1186,7 @@
       }
     },
     {
-      "person_id": "per:i4-020",
+      "person_id": "per:i4-016",
       "names_by_source": {
         "贾季": [
           "src:zuozhuan"
@@ -1271,7 +1203,7 @@
       }
     },
     {
-      "person_id": "per:i4-021",
+      "person_id": "per:i4-017",
       "names_by_source": {
         "赵衰": [
           "src:zuozhuan"
@@ -1288,7 +1220,7 @@
       }
     },
     {
-      "person_id": "per:i4-022",
+      "person_id": "per:i4-018",
       "names_by_source": {
         "赵盾": [
           "src:zuozhuan"
@@ -1305,7 +1237,7 @@
       }
     },
     {
-      "person_id": "per:i4-023",
+      "person_id": "per:i4-019",
       "names_by_source": {
         "石楚": [
           "src:zuozhuan"
@@ -1322,7 +1254,7 @@
       }
     },
     {
-      "person_id": "per:i4-024",
+      "person_id": "per:i4-020",
       "names_by_source": {
         "襄仲": [
           "src:zuozhuan"
@@ -1339,7 +1271,7 @@
       }
     },
     {
-      "person_id": "per:i4-025",
+      "person_id": "per:i4-021",
       "names_by_source": {
         "臧文仲": [
           "src:zuozhuan"
@@ -1356,7 +1288,7 @@
       }
     },
     {
-      "person_id": "per:i4-026",
+      "person_id": "per:i4-022",
       "names_by_source": {
         "卫孙桓子": [
           "src:zuozhuan"
@@ -1373,7 +1305,7 @@
       }
     },
     {
-      "person_id": "per:i4-027",
+      "person_id": "per:i4-023",
       "names_by_source": {
         "郑悼公": [
           "src:zuozhuan"
@@ -1390,7 +1322,7 @@
       }
     },
     {
-      "person_id": "per:i4-028",
+      "person_id": "per:i4-024",
       "names_by_source": {
         "叔聲伯": [
           "src:zuozhuan"
@@ -1407,7 +1339,7 @@
       }
     },
     {
-      "person_id": "per:i4-029",
+      "person_id": "per:i4-025",
       "names_by_source": {
         "孟獻子": [
           "src:zuozhuan"
@@ -1424,7 +1356,7 @@
       }
     },
     {
-      "person_id": "per:i4-030",
+      "person_id": "per:i4-026",
       "names_by_source": {
         "叔孫宣伯": [
           "src:zuozhuan"
@@ -1441,7 +1373,7 @@
       }
     },
     {
-      "person_id": "per:i4-031",
+      "person_id": "per:i4-027",
       "names_by_source": {
         "楚子重": [
           "src:zuozhuan"
@@ -1458,24 +1390,7 @@
       }
     },
     {
-      "person_id": "per:i4-032",
-      "names_by_source": {
-        "卫侯": [
-          "src:zuozhuan"
-        ]
-      },
-      "谥字号": "(候选·待考)",
-      "active_range": "(候选)",
-      "force_affiliations": [],
-      "intake": {
-        "batch": "W-H1a-4-001",
-        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1761",
-        "method": "qwen3-8b 抽取候选·机械四查过",
-        "status": "candidate-verified"
-      }
-    },
-    {
-      "person_id": "per:i4-033",
+      "person_id": "per:i4-028",
       "names_by_source": {
         "宋华元": [
           "src:zuozhuan"
@@ -1492,7 +1407,7 @@
       }
     },
     {
-      "person_id": "per:i4-034",
+      "person_id": "per:i4-029",
       "names_by_source": {
         "尹子": [
           "src:zuozhuan"
@@ -1509,7 +1424,7 @@
       }
     },
     {
-      "person_id": "per:i4-035",
+      "person_id": "per:i4-030",
       "names_by_source": {
         "齐国佐": [
           "src:zuozhuan"
@@ -1526,7 +1441,7 @@
       }
     },
     {
-      "person_id": "per:i4-036",
+      "person_id": "per:i4-031",
       "names_by_source": {
         "仲孙蔑": [
           "src:zuozhuan"
@@ -1543,7 +1458,7 @@
       }
     },
     {
-      "person_id": "per:i4-037",
+      "person_id": "per:i4-032",
       "names_by_source": {
         "齐崔杼": [
           "src:zuozhuan"
@@ -1560,7 +1475,7 @@
       }
     },
     {
-      "person_id": "per:i4-038",
+      "person_id": "per:i4-033",
       "names_by_source": {
         "穆叔": [
           "src:zuozhuan"
@@ -1577,7 +1492,7 @@
       }
     },
     {
-      "person_id": "per:i4-039",
+      "person_id": "per:i4-034",
       "names_by_source": {
         "楚子囊": [
           "src:zuozhuan"
@@ -1594,7 +1509,7 @@
       }
     },
     {
-      "person_id": "per:i4-040",
+      "person_id": "per:i4-035",
       "names_by_source": {
         "范宣子": [
           "src:zuozhuan"
@@ -1611,7 +1526,7 @@
       }
     },
     {
-      "person_id": "per:i4-041",
+      "person_id": "per:i4-036",
       "names_by_source": {
         "秦右大夫詹": [
           "src:zuozhuan"
@@ -1628,7 +1543,7 @@
       }
     },
     {
-      "person_id": "per:i4-042",
+      "person_id": "per:i4-037",
       "names_by_source": {
         "宋莊朝": [
           "src:zuozhuan"
@@ -1645,7 +1560,7 @@
       }
     },
     {
-      "person_id": "per:i4-043",
+      "person_id": "per:i4-038",
       "names_by_source": {
         "司徒卬": [
           "src:zuozhuan"
@@ -1662,7 +1577,7 @@
       }
     },
     {
-      "person_id": "per:i4-044",
+      "person_id": "per:i4-039",
       "names_by_source": {
         "卫孙蒯": [
           "src:zuozhuan"
@@ -1679,7 +1594,7 @@
       }
     },
     {
-      "person_id": "per:i4-045",
+      "person_id": "per:i4-040",
       "names_by_source": {
         "卫石买": [
           "src:zuozhuan"
@@ -1696,7 +1611,7 @@
       }
     },
     {
-      "person_id": "per:i4-046",
+      "person_id": "per:i4-041",
       "names_by_source": {
         "叔孫豹": [
           "src:zuozhuan"
@@ -1713,7 +1628,7 @@
       }
     },
     {
-      "person_id": "per:i4-047",
+      "person_id": "per:i4-042",
       "names_by_source": {
         "仲孫速": [
           "src:zuozhuan"
@@ -1730,7 +1645,7 @@
       }
     },
     {
-      "person_id": "per:i4-048",
+      "person_id": "per:i4-043",
       "names_by_source": {
         "宋伯姬": [
           "src:zuozhuan"
@@ -1747,7 +1662,7 @@
       }
     },
     {
-      "person_id": "per:i4-049",
+      "person_id": "per:i4-044",
       "names_by_source": {
         "叔弓": [
           "src:zuozhuan"
@@ -1764,7 +1679,7 @@
       }
     },
     {
-      "person_id": "per:i4-050",
+      "person_id": "per:i4-045",
       "names_by_source": {
         "郑子皮": [
           "src:zuozhuan"
@@ -1781,7 +1696,7 @@
       }
     },
     {
-      "person_id": "per:i4-051",
+      "person_id": "per:i4-046",
       "names_by_source": {
         "子产": [
           "src:zuozhuan"
@@ -1798,7 +1713,7 @@
       }
     },
     {
-      "person_id": "per:i4-052",
+      "person_id": "per:i4-047",
       "names_by_source": {
         "狐父": [
           "src:zuozhuan"
@@ -1815,7 +1730,7 @@
       }
     },
     {
-      "person_id": "per:i4-053",
+      "person_id": "per:i4-048",
       "names_by_source": {
         "宋元公": [
           "src:zuozhuan"
@@ -1832,7 +1747,7 @@
       }
     },
     {
-      "person_id": "per:i4-054",
+      "person_id": "per:i4-049",
       "names_by_source": {
         "华亥": [
           "src:zuozhuan"
@@ -1849,7 +1764,7 @@
       }
     },
     {
-      "person_id": "per:i4-055",
+      "person_id": "per:i4-050",
       "names_by_source": {
         "华定": [
           "src:zuozhuan"
@@ -1866,7 +1781,7 @@
       }
     },
     {
-      "person_id": "per:i4-056",
+      "person_id": "per:i4-051",
       "names_by_source": {
         "华向": [
           "src:zuozhuan"
@@ -1883,7 +1798,7 @@
       }
     },
     {
-      "person_id": "per:i4-057",
+      "person_id": "per:i4-052",
       "names_by_source": {
         "向宁": [
           "src:zuozhuan"
@@ -1900,7 +1815,7 @@
       }
     },
     {
-      "person_id": "per:i4-058",
+      "person_id": "per:i4-053",
       "names_by_source": {
         "公子寅": [
           "src:zuozhuan"
@@ -1917,7 +1832,7 @@
       }
     },
     {
-      "person_id": "per:i4-059",
+      "person_id": "per:i4-054",
       "names_by_source": {
         "公子御戎": [
           "src:zuozhuan"
@@ -1934,7 +1849,7 @@
       }
     },
     {
-      "person_id": "per:i4-060",
+      "person_id": "per:i4-055",
       "names_by_source": {
         "公子朱": [
           "src:zuozhuan"
@@ -1951,7 +1866,7 @@
       }
     },
     {
-      "person_id": "per:i4-061",
+      "person_id": "per:i4-056",
       "names_by_source": {
         "公子固": [
           "src:zuozhuan"
@@ -1968,7 +1883,7 @@
       }
     },
     {
-      "person_id": "per:i4-062",
+      "person_id": "per:i4-057",
       "names_by_source": {
         "公孙援": [
           "src:zuozhuan"
@@ -1985,7 +1900,7 @@
       }
     },
     {
-      "person_id": "per:i4-063",
+      "person_id": "per:i4-058",
       "names_by_source": {
         "公孙丁": [
           "src:zuozhuan"
@@ -2002,7 +1917,7 @@
       }
     },
     {
-      "person_id": "per:i4-064",
+      "person_id": "per:i4-059",
       "names_by_source": {
         "向胜": [
           "src:zuozhuan"
@@ -2019,7 +1934,7 @@
       }
     },
     {
-      "person_id": "per:i4-065",
+      "person_id": "per:i4-060",
       "names_by_source": {
         "向行": [
           "src:zuozhuan"
@@ -2036,7 +1951,7 @@
       }
     },
     {
-      "person_id": "per:i4-066",
+      "person_id": "per:i4-061",
       "names_by_source": {
         "母弟辰": [
           "src:zuozhuan"
@@ -2053,7 +1968,7 @@
       }
     },
     {
-      "person_id": "per:i4-067",
+      "person_id": "per:i4-062",
       "names_by_source": {
         "公子地": [
           "src:zuozhuan"
@@ -2070,7 +1985,7 @@
       }
     },
     {
-      "person_id": "per:i4-068",
+      "person_id": "per:i4-063",
       "names_by_source": {
         "华亥之子无慼": [
           "src:zuozhuan"
@@ -2087,7 +2002,7 @@
       }
     },
     {
-      "person_id": "per:i4-069",
+      "person_id": "per:i4-064",
       "names_by_source": {
         "向宁之子罗": [
           "src:zuozhuan"
@@ -2104,7 +2019,7 @@
       }
     },
     {
-      "person_id": "per:i4-070",
+      "person_id": "per:i4-065",
       "names_by_source": {
         "叔孫婼": [
           "src:zuozhuan"
@@ -2121,7 +2036,7 @@
       }
     },
     {
-      "person_id": "per:i4-071",
+      "person_id": "per:i4-066",
       "names_by_source": {
         "昭子": [
           "src:zuozhuan"
@@ -2138,7 +2053,7 @@
       }
     },
     {
-      "person_id": "per:i4-072",
+      "person_id": "per:i4-067",
       "names_by_source": {
         "樂祁": [
           "src:zuozhuan"
@@ -2155,7 +2070,7 @@
       }
     },
     {
-      "person_id": "per:i4-073",
+      "person_id": "per:i4-068",
       "names_by_source": {
         "薛伯穀": [
           "src:zuozhuan"
@@ -2172,7 +2087,7 @@
       }
     },
     {
-      "person_id": "per:i4-074",
+      "person_id": "per:i4-069",
       "names_by_source": {
         "荀躒": [
           "src:zuozhuan"
@@ -2189,7 +2104,7 @@
       }
     },
     {
-      "person_id": "per:i4-075",
+      "person_id": "per:i4-070",
       "names_by_source": {
         "荀寅": [
           "src:zuozhuan"
@@ -2206,7 +2121,7 @@
       }
     },
     {
-      "person_id": "per:i4-076",
+      "person_id": "per:i4-071",
       "names_by_source": {
         "赵稷": [
           "src:zuozhuan"

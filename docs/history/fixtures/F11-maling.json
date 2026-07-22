@@ -10,14 +10,37 @@
       },
       "event_type": "战役",
       "actors": [
-        { "person_ref": "per:sunbin", "role": "齐军师（减灶诱敌）", "force_ref": "fo:tianqi" },
-        { "person_ref": "per:pangjuan", "role": "魏将（马陵道自刭）", "force_ref": "fo:wei" },
-        { "person_ref": "per:weihuiwang", "role": "魏君（系年 override 焦点）", "force_ref": "fo:wei" }
+        {
+          "person_ref": "per:sunbin",
+          "role": "齐军师（减灶诱敌）",
+          "force_ref": "fo:tianqi"
+        },
+        {
+          "person_ref": "per:pangjuan",
+          "role": "魏将（马陵道自刭）",
+          "force_ref": "fo:wei"
+        },
+        {
+          "person_ref": "per:weihuiwang",
+          "role": "魏君（系年 override 焦点）",
+          "force_ref": "fo:wei"
+        }
       ],
-      "geo": { "place_refs": ["pl:maling"], "route_hint": "齐军减灶、马陵道设伏", "mapstate_hint": "齐伏魏于马陵" },
+      "geo": {
+        "place_refs": [
+          "pl:maling"
+        ],
+        "route_hint": "齐军减灶、马陵道设伏",
+        "mapstate_hint": "齐伏魏于马陵"
+      },
       "parent_event": null,
-      "accounts": ["ac:maling-shiji", "ac:maling-zhushu"],
-      "conflicts": ["cf:maling-date"],
+      "accounts": [
+        "ac:maling-shiji",
+        "ac:maling-zhushu"
+      ],
+      "conflicts": [
+        "cf:maling-date"
+      ],
       "evidence_tier": "E1",
       "tier_override": null,
       "mainline_account_ref": "ac:maling-shiji",
@@ -34,15 +57,29 @@
       "account_id": "ac:maling-shiji",
       "event_ref": "ev:maling",
       "source_id": "src:shiji",
-      "locator": { "book": "史记", "chapter": "孙子吴起列传 / 魏世家 / 六国年表", "section": "马陵之战段", "para_ulid": null, "note": "★待补。叙事在孙子吴起列传（减灶、庞涓自刭）；系年在六国年表/魏世家——★年表系年受魏惠王未分后元之累（override 对象）。" },
+      "locator": {
+        "book": "史记",
+        "chapter": "孙子吴起列传 / 魏世家 / 六国年表",
+        "section": "马陵之战段",
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0303",
+        "note": "★待补。叙事在孙子吴起列传（减灶、庞涓自刭）；系年在六国年表/魏世家——★年表系年受魏惠王未分后元之累（override 对象）。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "★史记年表系年（未分魏惠王后元，偏早）——校正后 = 前341",
-        "actor_claims": ["魏伐韩，齐使田忌、孙膑救之", "孙膑减灶诱魏（日减其灶），使魏轻齐冒进", "马陵道狭，齐伏弩夹击；庞涓智穷自刭，齐虏魏太子申"],
-        "causal_claims": ["减灶示弱 → 庞涓轻进 → 马陵伏灭"],
+        "actor_claims": [
+          "魏伐韩，齐使田忌、孙膑救之",
+          "孙膑减灶诱魏（日减其灶），使魏轻齐冒进",
+          "马陵道狭，齐伏弩夹击；庞涓智穷自刭，齐虏魏太子申"
+        ],
+        "causal_claims": [
+          "减灶示弱 → 庞涓轻进 → 马陵伏灭"
+        ],
         "number_claims": [],
-        "dialogue_spans": ["（庞涓『遂成竖子之名』——演绎素材，透传）"]
+        "dialogue_spans": [
+          "（庞涓『遂成竖子之名』——演绎素材，透传）"
+        ]
       },
       "genre_note": "纪传；叙事可据，★系年须经六国年表 override 校正（魏惠王后元）。"
     },
@@ -50,12 +87,20 @@
       "account_id": "ac:maling-zhushu",
       "event_ref": "ev:maling",
       "source_id": "src:zhushu-guben",
-      "locator": { "book": "竹书纪年·古本（辑佚）", "chapter": "（魏纪·辑文）", "section": "魏惠王纪年", "para_ulid": null, "note": "★待补。竹书魏史系年独立于史记，是魏惠王后元校正的重要旁证（学界据竹书等重排战国纪年）。" },
+      "locator": {
+        "book": "竹书纪年·古本（辑佚）",
+        "chapter": "（魏纪·辑文）",
+        "section": "魏惠王纪年",
+        "para_ulid": null,
+        "note": "★待补。竹书魏史系年独立于史记，是魏惠王后元校正的重要旁证（学界据竹书等重排战国纪年）。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "竹书魏惠王系年（分后元）——支持马陵约前341 校正",
-        "actor_claims": ["魏惠王纪年（含后元改元）——史记未分致年表混乱"],
+        "actor_claims": [
+          "魏惠王纪年（含后元改元）——史记未分致年表混乱"
+        ],
         "causal_claims": [],
         "number_claims": [],
         "dialogue_spans": []
@@ -68,7 +113,10 @@
       "conflict_id": "cf:maling-date",
       "event_ref": "ev:maling",
       "dimension": "date",
-      "account_refs": ["ac:maling-shiji", "ac:maling-zhushu"],
+      "account_refs": [
+        "ac:maling-shiji",
+        "ac:maling-zhushu"
+      ],
       "independence_analysis": {
         "independent_witness_count": 2,
         "reasoning": "★六国年表 override 实战：史记·六国年表因魏惠王未分『后元』，战国中期系年整体偏早约十年（系统性误差，非个别抄误）。竹书魏史系年独立，与文献综合成为校正依据。主线不取史记年表原值，取按后元重排的前341（override，academic_source=杨宽《战国史》/钱穆《系年》）。此即 §3.2『系统性误差 override＝考据结论工程化』的首个落地——非本仓考据。",

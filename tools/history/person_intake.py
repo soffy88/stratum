@@ -24,12 +24,25 @@ BLACK_SINGLE = set(
 BLACK_SUFFIX = "師师"
 
 
+def _norm(nm):
+    """OP-D-038：黑名单匹配前 opencc 繁简归一（简→繁）。"""
+    try:
+        from opencc import OpenCC
+
+        return OpenCC("s2t").convert(nm)
+    except Exception:
+        return nm
+
+
 def is_generic(nm):
+    nm = _norm(nm)  # OP-D-038 繁简归一后再查
     if len(nm) == 1 or nm in BLACK_WORD or all(ch in BLACK_SINGLE for ch in nm):
         return True
     if len(nm) <= 3 and nm[-1] in BLACK_SUFFIX:  # 巴師/秦師=军队
         return True
     if len(nm) == 2 and nm[-1] == "人" and nm[0] in BLACK_SINGLE:  # 邾人/戎人=民众
+        return True
+    if nm.endswith("氏"):  # OP-D-038：X氏类=宗族称非个体, 标 referent-ambiguous 不入
         return True
     return False
 
