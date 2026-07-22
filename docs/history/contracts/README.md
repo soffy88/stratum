@@ -13,8 +13,8 @@
 
 ## G1b 对拍协议（§8.4）
 
-> **★钉点（pin）**：G1b 对拍 **git tag `history-contract-v0.2`**（annotated tag，非 commit hash）下的 `contracts/{history-query-response.schema.json, sample.sanjiafenjin.json}`。tag 不可变、不惧承载分支 rebase/squash。
-> **版本沿革**：`history-contract-v0.1`（首冻结，2026-07-21）→ **`history-contract-v0.2`**（2026-07-22，`dimension` 增 `place`，`contract_version`→v0.2，D-006）→ **`history-contract-v0.2.1`**（2026-07-22，**交付集版本**：samples 六件 + 交付单权威版随 tag 冻结，契约**形状**仍 v0.2、`contract_version` 不动，D-020；跨仓钉点协议＝annotated tag 不裸 commit）。v0.1→v0.2 差异＝dimension 多 `place` 值 + `contract_version` 值，**加性向后兼容、可解释**。旧钉点 `ab228ab` 早已作废（sample 字节在 `_meta` 迁移中演进）。改判/沿革均记 `docs/history/DECISIONS.md`（D-002 / D-006）。
+> **★钉点（pin，随迁 v0.2.2）**：G1b 对拍 **git tag `history-contract-v0.2.2`**（annotated tag，非 commit hash）下的 `contracts/{history-query-response.schema.json, sample.sanjiafenjin.json}`。tag 不可变、不惧承载分支 rebase/squash。**沿革**：v0.2（首钉 place 维）→ v0.2.2（sample 撤 `cf:jinyang-independence`、字节变，D-023；schema 字节未变、`contract_version` 仍 v0.2）。⚠ CC-A harness 硬编码 sha256 须更新：`sample.sanjiafenjin.json` 新 = `4126c842aa0fc8f3b22268a0830c4b18e728233ca36f12297e636b0c572c62d9`；`schema` 不变 = `638fc28e7db8bde88dd90309d478a280287a87d0d7b7c7e77d8ff02373ff7b6f`。
+> **版本沿革**：`history-contract-v0.1`（首冻结，2026-07-21）→ **`history-contract-v0.2`**（2026-07-22，`dimension` 增 `place`，`contract_version`→v0.2，D-006）→ **`history-contract-v0.2.1`**（2026-07-22，**交付集版本**：samples 六件 + 交付单权威版随 tag 冻结，契约**形状**仍 v0.2、`contract_version` 不动，D-020；跨仓钉点协议＝annotated tag 不裸 commit）→ **`history-contract-v0.2.2`**（2026-07-22，**sample 字节变**：撤 `cf:jinyang-independence`——三源同说的独立性折算记录误作 narrative cf，抽验裁撤、折算移事件级，D-023；schema 字节未变、`contract_version` 仍 v0.2，撤的是 conflict **实例**非 shape；**G1b 对拍钉点随迁 v0.2.2**）。v0.1→v0.2 差异＝dimension 多 `place` 值 + `contract_version` 值，**加性向后兼容、可解释**。旧钉点 `ab228ab` 早已作废（sample 字节在 `_meta` 迁移中演进）。改判/沿革均记 `docs/history/DECISIONS.md`（D-002 / D-006）。
 
 1. 生产端按 `history-query-response.schema.json` 装配 VisualFact 前的中间态（G1a 手工同形数据）。
 2. KU 实装后，`GET`（§8.1 只读接口：时间窗/人物/势力/event_type/断代）→ 返回体**必须 validate 通过本 schema**。

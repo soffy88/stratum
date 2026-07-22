@@ -51,9 +51,7 @@
       "ac:jinyang-shiji",
       "ac:jinyang-zhanguoce"
     ],
-    "conflicts": [
-      "cf:jinyang-independence"
-    ],
+    "conflicts": [],
     "evidence_tier": "E1",
     "tier_override": null,
     "mainline_account_ref": "ac:jinyang-shiji",
@@ -154,34 +152,7 @@
       "genre_note": "★策士言辞多虚托夸饰（降权）；与史记骨架同而增言辞。"
     }
   ],
-  "conflicts": [
-    {
-      "conflict_id": "cf:jinyang-independence",
-      "event_ref": "ev:jinyang-zhizhan",
-      "dimension": "narrative",
-      "account_refs": [
-        "ac:jinyang-shiji",
-        "ac:jinyang-zztj",
-        "ac:jinyang-zhanguoce"
-      ],
-      "independence_analysis": {
-        "independent_witness_count": 1.5,
-        "reasoning": "三 account 非三重独立见证：通鉴派生自史记（回溯同祖源，不另计），实计约1个独立文献支柱（史记）；战国策虽材料另出但策士敷演、genre 降权，仅作半重旁证。故『三源同说』≈ 1.5 独立见证，非3。",
-        "derivation_notes": [
-          "src:zztj ← src:shiji（战国部分）→ 不另计",
-          "src:zhanguoce genre 降权 → 计 0.5",
-          "src:shiji 计 1"
-        ]
-      },
-      "mainline_decision": {
-        "choice": "ac:jinyang-shiji",
-        "rationale": "同事异述、骨架一致；主线取近祖源史记，通鉴/战国策异述并陈。",
-        "decided_by": "CC",
-        "date": "2026-07-21"
-      },
-      "presentation_hint": "主线+角标"
-    }
-  ],
+  "conflicts": [],
   "registry_bundle": {
     "persons": [
       {
