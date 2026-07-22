@@ -10,13 +10,32 @@
       },
       "event_type": "制度",
       "actors": [
-        { "person_ref": "per:zhouliwang", "role": "被逐之王（奔彘）", "force_ref": "fo:zhou" },
-        { "person_ref": "per:gongbohe", "role": "★竹书说：干王位/摄行天子事者", "force_ref": "fo:zhou" }
+        {
+          "person_ref": "per:zhouliwang",
+          "role": "被逐之王（奔彘）",
+          "force_ref": "fo:zhou"
+        },
+        {
+          "person_ref": "per:gongbohe",
+          "role": "★竹书说：干王位/摄行天子事者",
+          "force_ref": "fo:zhou"
+        }
       ],
-      "geo": { "place_refs": ["pl:zhi"], "route_hint": null, "mapstate_hint": null },
+      "geo": {
+        "place_refs": [
+          "pl:zhi"
+        ],
+        "route_hint": null,
+        "mapstate_hint": null
+      },
       "parent_event": null,
-      "accounts": ["ac:gonghe-shiji", "ac:gonghe-zhushu"],
-      "conflicts": ["cf:gonghe-narrative"],
+      "accounts": [
+        "ac:gonghe-shiji",
+        "ac:gonghe-zhushu"
+      ],
+      "conflicts": [
+        "cf:gonghe-narrative"
+      ],
       "evidence_tier": "E2",
       "tier_override": {
         "rationale": "共和行政为两文献系统（史记 / 竹书古本）所记，但『行政主体』相反、且距事久、无出土直证——就本事取 E2（单一近源文献系统，两说各执）；『前841』这一系年是干支/文献可稽的连续纪年起点，日/年层面无争，争在『谁行政』。",
@@ -37,13 +56,25 @@
       "account_id": "ac:gonghe-shiji",
       "event_ref": "ev:gonghe",
       "source_id": "src:shiji",
-      "locator": { "book": "史记", "chapter": "周本纪", "section": "共和行政段", "para_ulid": null, "note": "待补。厉王奔彘，召公、周公二相行政，号曰共和；共和十四年，厉王死于彘，太子静立（宣王）。" },
+      "locator": {
+        "book": "史记",
+        "chapter": "周本纪",
+        "section": "共和行政段",
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0666",
+        "note": "待补。厉王奔彘，召公、周公二相行政，号曰共和；共和十四年，厉王死于彘，太子静立（宣王）。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "共和元年 = 前841（史记明确系年，连续纪年自此始）",
-        "actor_claims": ["厉王暴虐，国人暴动，厉王出奔于彘", "召公、周公二相行政，号曰共和", "共和十四年，厉王死，宣王立"],
-        "causal_claims": ["★周召共和说：行政主体=召公、周公二相"],
+        "actor_claims": [
+          "厉王暴虐，国人暴动，厉王出奔于彘",
+          "召公、周公二相行政，号曰共和",
+          "共和十四年，厉王死，宣王立"
+        ],
+        "causal_claims": [
+          "★周召共和说：行政主体=召公、周公二相"
+        ],
         "number_claims": [],
         "dialogue_spans": []
       },
@@ -53,13 +84,23 @@
       "account_id": "ac:gonghe-zhushu",
       "event_ref": "ev:gonghe",
       "source_id": "src:zhushu-guben",
-      "locator": { "book": "竹书纪年·古本（辑佚）", "chapter": "（周纪·辑文）", "section": "共伯和干王位", "para_ulid": null, "note": "★待补。古本辑文：『共伯和干王位』/『共伯和摄行天子事』——行政主体为共伯和一人，与史记二相说相反。" },
+      "locator": {
+        "book": "竹书纪年·古本（辑佚）",
+        "chapter": "（周纪·辑文）",
+        "section": "共伯和干王位",
+        "para_ulid": null,
+        "note": "★待补。古本辑文：『共伯和干王位』/『共伯和摄行天子事』——行政主体为共伯和一人，与史记二相说相反。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "共和期（与史记同以前841 为起点，但行政主体异）",
-        "actor_claims": ["共伯和干王位（一说摄行天子事）——一人执政，非周召二相"],
-        "causal_claims": ["★共伯和说：行政主体=共伯和一人"],
+        "actor_claims": [
+          "共伯和干王位（一说摄行天子事）——一人执政，非周召二相"
+        ],
+        "causal_claims": [
+          "★共伯和说：行政主体=共伯和一人"
+        ],
         "number_claims": [],
         "dialogue_spans": []
       },
@@ -71,7 +112,10 @@
       "conflict_id": "cf:gonghe-narrative",
       "event_ref": "ev:gonghe",
       "dimension": "narrative",
-      "account_refs": ["ac:gonghe-shiji", "ac:gonghe-zhushu"],
+      "account_refs": [
+        "ac:gonghe-shiji",
+        "ac:gonghe-zhushu"
+      ],
       "independence_analysis": {
         "independent_witness_count": 2,
         "reasoning": "『共和』行政主体两说：史记『召公周公二相共和』（主流叙事系统）vs 竹书古本『共伯和干王位』（战国魏编年系统），两独立传统各计 1。二说甚至令『共和』一词含义歧异（共同和平 vs 共伯和之名）。★此冲突坐落于 canonical 轴原点（前841），但冲突在『谁行政』而非『何年』——系年（前841）两说共用，故不影响 canonical 轴。与 F4 尧舜（史记 vs 竹书）同类：并存两说不改事件锚点。",

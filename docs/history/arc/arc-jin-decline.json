@@ -89,7 +89,7 @@
         "locator": {
           "book": "左传",
           "chapter": "桓公二年",
-          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0004",
+          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0205",
           "quote": "今晉，甸侯也，而建國，本既弱矣，其能久乎？"
         }
       },
@@ -114,7 +114,7 @@
         "locator": {
           "book": "资治通鉴",
           "chapter": "周纪一",
-          "para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0002",
+          "para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0028",
           "quote": "臣光曰：臣聞天子之職莫大於禮，禮莫大於分，分莫大於名。"
         }
       },
@@ -138,7 +138,7 @@
         "locator": {
           "book": "史记",
           "chapter": "晋世家",
-          "para_ulid": null,
+          "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0142",
           "quote": "（太史公曰·晋世家赞——原文段落待抓入库，PENDING）"
         }
       },
@@ -162,7 +162,7 @@
         "locator": {
           "book": "左传",
           "chapter": "昭公三年",
-          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0005",
+          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2209",
           "quote": "晉之公族盡矣……公室將卑……欒、郤、胥、原、狐、續、慶、伯，降在皁隸，政在家門，民無所依。"
         }
       },
@@ -186,7 +186,7 @@
         "locator": {
           "book": "左传",
           "chapter": "昭公三十二年",
-          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0006",
+          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2592",
           "quote": "社稷無常奉，君臣無常位，自古以然。……三后之姓於今為庶。"
         }
       },
