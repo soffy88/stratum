@@ -23,6 +23,37 @@ QUOTED = re.compile(r"[「『\"]([^」』\"]{6,})[」』\"]")
 # 策展 key 表（设计批 F1–F9 等；原文在全文语料的 account → 繁体原文键）。
 # 仅在 note 无 brackets 时兜底；键取自各篇确定在库的原文片段。
 CURATED = {
+    "ac:jinyang-shiji": "三國攻晉陽",
+    "ac:jinyang-zztj": "三家以國人圍而灌之",
+    "ac:jinyang-zhanguoce": "決晉水而灌之",
+    "ac:minghou-zztj": "初命晉大夫魏斯",
+    "ac:minghou-shiji": "威烈王",
+    "ac:tianhe-zztj": "田和",
+    "ac:zhaonan-shiji-zhaoshijia": "屠岸賈",
+    "ac:zhaonan-shiji-jinshijia": "趙同",
+    "ac:hongmen-xiangyuji": "項莊拔劍起舞",
+    "ac:sujin-shiji": "蘇秦者",
+    "ac:changping-zhaoshijia": "括軍敗",
+    "ac:jieting-masuzhuan": "謖下獄物故",
+    "ac:jieting-xianglang": "馬謖",
+    "ac:jieting-liangzhuan": "戮謖以謝眾",
+    "ac:chibi-c-zhouyu": "蓋放諸船",
+    "ac:chibi-c-wudiji": "公至赤壁",
+    "ac:chibi-p-sanguozhi": "與備戰",
+    "ac:ningwo-shiyu": "太祖過伯奢",
+    "ac:longzhong-liangzhuan": "每自比於管仲",
+    "ac:guandu-sanguozhi": "兵不滿萬",
+    "ac:ningwo-sunsheng": "寧我負人",
+    "ac:ningwo-weishu": "呂伯奢",
+    "ac:longzhong-chushibiao": "三顧臣於草廬",
+    "ac:longzhong-weilue": "亮乃北行見備",
+    "ac:kongcheng-guochong": "偃旗息鼓",
+    "ac:kongcheng-peian": "郭沖",
+    "ac:chibi-wudiji": "公至赤壁",
+    "ac:chibi-zhouyuzhuan": "烏林",
+    "ac:chibi-jiangbiao": "蓋放諸船",
+    "ac:maling-shiji": "龐涓",
+    "ac:guandu-peizhu-an": "臣松之以為",
     "ac:zhaonan-zuozhuan": "晉討趙同",  # 左传成8 下宫之难
     "ac:muye-shiji": "遂率戎車三百乘",  # 史记周本纪 牧野(近似, 兜底)
     "ac:shanrang-shiji": "堯知子丹朱之不肖",  # 史记五帝本纪 禅让
@@ -35,7 +66,6 @@ CURATED = {
     "ac:tianhe-shiji": "田和立為齊侯",  # 史记田完世家
     "ac:minghou-zztj-xushi": "初命晉大夫魏斯",  # 通鉴卷1 命侯
     "ac:wuchenghan-zuozhuan": "吳城邗",  # 左传哀9
-    "ac:maling-shiji": "減竈",  # 史记孙子吴起 马陵(若在库)
 }
 CURATED_THESIS = {
     "thesis:shifu-modabizhe": "本大而末小",

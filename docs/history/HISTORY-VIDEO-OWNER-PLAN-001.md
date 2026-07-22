@@ -39,12 +39,16 @@
 - D-026 抽取器云端 API 默认禁（Stratum 无云端原则），例外需显式裁决入册
 - D-027 现代考订论点以自撰摘述 + 出处登记入 thesis，原文不入语料层（版权）
 
-> ★**D-028～D-032 已权威化（W-H1a-4，2026-07-22）**：经 Wiki 复核采纳，OP-D-028~032 文本**由 CC-B 渲染稿升为权威决策**（不再『待 Wiki 定字』）。**曾用留痕**：本五条初为 CC-B 据 W-H1a-2 指令任务列渲染（『文本我已定』未附逐字时的兜底），Wiki W-H1a-4 复核后采纳为权威；渲染→权威沿革在此留痕。⚠ 若 Wiki 本意为另附逐字文本替换，以后续裁决为准。号段碰撞已由账本合并（裁决3，`DECISIONS-LEDGER-MAP.md`）以命名空间 KU-Dxxx/OP-Dxxx 解消。
+> ★**D-028～D-032 权威文本（W-H1a-5，2026-07-22，Wiki 逐字于 FULL AUTO 块内下达）**。**曾用留痕**：W-H1a-2/4 曾由 CC-B 渲染 D-028~032（『文本我已定』当时未在块内附逐字，OP-D-035 即因此立）；**渲染稿作废、以下逐字为权威**。渲染稿承载的事实（语料库仓内自包含、Qwen3-8B 获取/VRAM 实测）未随号消失，正文仍在 `corpus/SOURCE-MACHINE-CHECK-STATUS.md`（语料/dump）与 `arc/EXTRACTOR-SELECTION-W-H1a.md`（Qwen3/VRAM），只是不再占 OP-D 号。
 
-- D-028 **抽取器 date 不产出**：抽取器只产 事件/人物/地点/类型，**canonical_date 一律走 chronology 注册表 override**，不由白文抽取（W-H1a-1 实测：小模型编造年份，弑简公判前403实前481）。评测不计 date 字段。
-- D-029 **F10 通过 + 抽验门全关 + 年数 cf 追认**：F8/F10/F12 三份抽验门全关（F10 引文改在库原文·史记主语『田氏之徒追执』、弑地舒州/执地徐州入 pl:shuzhou variant）；`cf:jinyang-weicheng-duration`（岁余/三年）追认留存。判定人=顾问 Claude。KU DECISIONS 交叉引本条。
-- D-030 **语料库仓内自包含 + 全书全量入库现实**：语料库为**仓内 committed-bytes 可寻址存储**（不走已崩的 DuckDB/PG 生产管线）；R5 白文（wikisource CC BY-SA 逐字、禁点校本）。★『左传/国语/史记全书』verbatim 全量经 WebFetch **不可行**（逐页有损、体量十万字级）——全书需 wikisource dump/bulk 导入（另立工程事项，PENDING）；本波入库=首弧论点+fixtures 高价值被引段（6 书 19 段）。
-- D-031 **Qwen3-8B 获取路径 + VRAM 实测**：解代理实为 curl 经 `127.0.0.1:7890` 直连 hf-mirror/hf（W-H1a-1 pull 失败系 ollama 进程未走代理）；路径 = hf GGUF（Qwen3-8B-Q4_K_M 5.03GB）→ `ollama create`。★VRAM 实测本机 **RTX 3080 10GB**（纠记忆 1050Ti）、qwen3-8b 负载 5.5GB used/4.4GB free；按令『装不上 14B 就 8B』取 **8B**（14B Q4 ~9GB 太挤未冒险）。
-- D-032 **抽取器定型 = qwen3-8b**：正式评测（12 段 held-out，date 不产出）字段均 **0.94**（vs qwen2.5vl:7b 0.71），title/place/type 达/接近基线。定型为**半自动偏自动**抽取器（产候选经顾问审重入 gold，抽取候选永不直接成 gold）；**全自动**待 ① held-out ≥30 段（本波 12，全书语料 PENDING）② 同一性判定一致率验收。
+- D-028（权威）**canonical_date 永不由抽取器产出**：一律 chronology 注册表查表/override（三模型编年实证，W-H1a-1）。
+- D-029（权威）**抽取器定型 qwen3-8b**（字段均 0.94），档位 = **半自动偏自动**；全自动门 = 注册表解析率稳定 + 同一性判定一致率验收。
+- D-030（权威）**抽验门全关**——F12 实质错已修（v0.3）/ F8 通过 / F10 通过；判定人 = 顾问 Claude（Wiki 授权，D-022/D-023）。
+- D-031（权威）**cf:jinyang-weicheng-duration（岁余/三年）追认成立**——通则 a 下同指涉真冲突。
+- D-032（权威）**舒州/徐州为地名 variant**（音近通假同地，双写署源）；『弑地/执地环节』读法降备注。
 - D-033 **在库源机核 100% 口径 + 源级豁免清单**（W-H1a-4）：『机核 100%』= 有开放白文源且已入库者被引 account 逐字机核（在库源现 100%）；无开放白文源者**显式豁免**——竹书古本（辑佚无 canonical 白文）、战国策（wikisource 仅注本 R5 禁）；三国志/水经注/国语其余/史记卷65 为 **PENDING 续抓**（有白文，本会话限流受阻）。详 `corpus/SOURCE-MACHINE-CHECK-STATUS.md`。
 - D-034 **PERSON-INTAKE 协议**（W-H1a-4）：抽取新人物候选经**机械四查**（(a)实存 (b)泛称黑名单无氏不入 (c)撞名不自动并出 candidate-same (d)批次可回滚）批量入正式注册表（`per:i<批>-NNN`，status=candidate-verified），抽样15+全 candidate-same 送裁。协议 `PERSON-INTAKE-PROTOCOL.md`；首批 W-H1a-4-001 入库 76 条，person 解析率 5%→76%。
+- D-035（权威）**凡指令引用的决策原话必须置于 FULL AUTO 块内**；块外文字视为未传达。本条即因块外原话未达而立。
+- D-036（权威）**P1 出口判据重定域**——『同一性判定一致率』与『全自动放行』移为 **P2 入口件**；**P1 出口 = 语料在库可寻址 + 在库源机核 100%（豁免清单显式）+ 抽取器定型（半自动档）+ 100 新事件送裁 + 回归网零倒退 + PERSON-INTAKE 运转**。理由：同一性管线属 P2 建设内容。
+- D-037（权威）**语料获取主路径改 zhwikisource dump**（一次下载全站白文，根除限流），raw 逐页降为补充。
+- D-038（权威）**PERSON-INTAKE 修订**——黑名单匹配前 opencc 繁简归一；无名单称（X氏类）不作独立 person，标 referent-ambiguous；批内异名归一不由四查承担，归 P2 同一性管线；本批 76 维持 candidate-verified。

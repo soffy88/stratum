@@ -56,7 +56,7 @@
         "book": "三国志",
         "chapter": "魏书·武帝纪",
         "section": "官渡相持段（正文）",
-        "para_ulid": null,
+        "para_ulid": "7RTPSJS9QAKBREZPGTR8DSSV5T:0049",
         "note": "待补。陈寿正文。"
       },
       "白文span_refs": [],
@@ -90,7 +90,7 @@
         "book": "三国志",
         "chapter": "魏书·武帝纪（裴注·臣松之案）",
         "section": "『兵不满万』下裴松之按语",
-        "para_ulid": null,
+        "para_ulid": "7RTPSJS9QAKBREZPGTR8DSSV5T:0134",
         "note": "★待补。carrier=裴注；此为裴松之【按语】（原创观点），非裴注所引之他源（魏略/江表传等）。locator 以 carrier 维度标『注/按』以别于正文。"
       },
       "白文span_refs": [],

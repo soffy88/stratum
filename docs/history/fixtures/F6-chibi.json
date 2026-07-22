@@ -10,15 +10,43 @@
       },
       "event_type": "战役",
       "actors": [
-        { "person_ref": "per:caocao", "role": "南下方主帅（败）", "force_ref": "fo:cao" },
-        { "person_ref": "per:zhouyu", "role": "孙吴前线都督", "force_ref": "fo:sun" },
-        { "person_ref": "per:sunquan", "role": "吴主", "force_ref": "fo:sun" },
-        { "person_ref": "per:liubei", "role": "联刘方", "force_ref": "fo:liu" }
+        {
+          "person_ref": "per:caocao",
+          "role": "南下方主帅（败）",
+          "force_ref": "fo:cao"
+        },
+        {
+          "person_ref": "per:zhouyu",
+          "role": "孙吴前线都督",
+          "force_ref": "fo:sun"
+        },
+        {
+          "person_ref": "per:sunquan",
+          "role": "吴主",
+          "force_ref": "fo:sun"
+        },
+        {
+          "person_ref": "per:liubei",
+          "role": "联刘方",
+          "force_ref": "fo:liu"
+        }
       ],
-      "geo": { "place_refs": ["pl:chibi"], "route_hint": "赤壁—乌林隔江", "mapstate_hint": "曹 vs 孙刘对峙" },
+      "geo": {
+        "place_refs": [
+          "pl:chibi"
+        ],
+        "route_hint": "赤壁—乌林隔江",
+        "mapstate_hint": "曹 vs 孙刘对峙"
+      },
       "parent_event": null,
-      "accounts": ["ac:chibi-zhouyuzhuan", "ac:chibi-jiangbiao", "ac:chibi-wudiji"],
-      "conflicts": ["cf:chibi-bingli"],
+      "accounts": [
+        "ac:chibi-zhouyuzhuan",
+        "ac:chibi-jiangbiao",
+        "ac:chibi-wudiji"
+      ],
+      "conflicts": [
+        "cf:chibi-bingli"
+      ],
       "evidence_tier": "E1",
       "tier_override": null,
       "mainline_account_ref": "ac:chibi-zhouyuzhuan",
@@ -35,16 +63,36 @@
       "account_id": "ac:chibi-zhouyuzhuan",
       "event_ref": "ev:chibi",
       "source_id": "src:sanguozhi",
-      "locator": { "book": "三国志", "chapter": "吴书·周瑜传", "section": "周瑜为孙权析曹军虚实语", "para_ulid": null, "note": "待补。周瑜正文语。" },
+      "locator": {
+        "book": "三国志",
+        "chapter": "吴书·周瑜传",
+        "section": "周瑜为孙权析曹军虚实语",
+        "para_ulid": "7RTPSJS9QAKBREZPGTR8DSSV5T:0182",
+        "note": "待补。周瑜正文语。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "建安十三年 = 公元208",
-        "actor_claims": ["周瑜为孙权析曹军：彼所将中国人不过十五六万，且已久疲；所得表众亦极七八万耳，尚怀狐疑"],
-        "causal_claims": ["曹军疲、疫、不习水战、荆州新附不齐心 → 可击"],
+        "actor_claims": [
+          "周瑜为孙权析曹军：彼所将中国人不过十五六万，且已久疲；所得表众亦极七八万耳，尚怀狐疑"
+        ],
+        "causal_claims": [
+          "曹军疲、疫、不习水战、荆州新附不齐心 → 可击"
+        ],
         "number_claims": [
-          { "value": "十五六万", "unit": "人（曹军中国兵）", "quote_span": "彼所将中国人不过十五六万，且已久疲。", "display": "《三国志·周瑜传》载" },
-          { "value": "七八万", "unit": "人（新附荆州众）", "quote_span": "所得表众亦极七八万耳。", "display": "《三国志·周瑜传》载" }
+          {
+            "value": "十五六万",
+            "unit": "人（曹军中国兵）",
+            "quote_span": "彼所将中国人不过十五六万，且已久疲。",
+            "display": "《三国志·周瑜传》载"
+          },
+          {
+            "value": "七八万",
+            "unit": "人（新附荆州众）",
+            "quote_span": "所得表众亦极七八万耳。",
+            "display": "《三国志·周瑜传》载"
+          }
         ],
         "dialogue_spans": []
       },
@@ -54,15 +102,30 @@
       "account_id": "ac:chibi-jiangbiao",
       "event_ref": "ev:chibi",
       "source_id": "src:jiangbiaozhuan",
-      "locator": { "book": "三国志", "chapter": "吴书（裴注引《江表传》）", "section": "曹操遗孙权书", "para_ulid": null, "note": "★待补。carrier=裴注；original=江表传（被载原源，独立登记）。此为曹操自述之号称。" },
+      "locator": {
+        "book": "三国志",
+        "chapter": "吴书（裴注引《江表传》）",
+        "section": "曹操遗孙权书",
+        "para_ulid": "7RTPSJS9QAKBREZPGTR8DSSV5T:0227",
+        "note": "★待补。carrier=裴注；original=江表传（被载原源，独立登记）。此为曹操自述之号称。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "公元208（战前）",
-        "actor_claims": ["曹操遗孙权书：今治水军八十万众，方与将军会猎于吴"],
-        "causal_claims": ["★号称八十万以震慑孙权（威胁性外交辞令）"],
+        "actor_claims": [
+          "曹操遗孙权书：今治水军八十万众，方与将军会猎于吴"
+        ],
+        "causal_claims": [
+          "★号称八十万以震慑孙权（威胁性外交辞令）"
+        ],
         "number_claims": [
-          { "value": "八十万", "unit": "人（曹操号称）", "quote_span": "今治水军八十万众，方与将军会猎于吴。", "display": "《三国志》裴注引《江表传》载" }
+          {
+            "value": "八十万",
+            "unit": "人（曹操号称）",
+            "quote_span": "今治水军八十万众，方与将军会猎于吴。",
+            "display": "《三国志》裴注引《江表传》载"
+          }
         ],
         "dialogue_spans": []
       },
@@ -72,13 +135,23 @@
       "account_id": "ac:chibi-wudiji",
       "event_ref": "ev:chibi",
       "source_id": "src:sanguozhi",
-      "locator": { "book": "三国志", "chapter": "魏书·武帝纪", "section": "赤壁段", "para_ulid": null, "note": "待补。陈寿正文简。" },
+      "locator": {
+        "book": "三国志",
+        "chapter": "魏书·武帝纪",
+        "section": "赤壁段",
+        "para_ulid": "7RTPSJS9QAKBREZPGTR8DSSV5T:0074",
+        "note": "待补。陈寿正文简。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "公元208",
-        "actor_claims": ["公至赤壁，与备战不利；于是大疫，吏士多死者，乃引军还"],
-        "causal_claims": ["疾疫 + 战不利 → 引还（陈寿讳言败绩，不出曹兵具体数）"],
+        "actor_claims": [
+          "公至赤壁，与备战不利；于是大疫，吏士多死者，乃引军还"
+        ],
+        "causal_claims": [
+          "疾疫 + 战不利 → 引还（陈寿讳言败绩，不出曹兵具体数）"
+        ],
         "number_claims": [],
         "dialogue_spans": []
       },
@@ -90,7 +163,10 @@
       "conflict_id": "cf:chibi-bingli",
       "event_ref": "ev:chibi",
       "dimension": "number",
-      "account_refs": ["ac:chibi-jiangbiao", "ac:chibi-zhouyuzhuan"],
+      "account_refs": [
+        "ac:chibi-jiangbiao",
+        "ac:chibi-zhouyuzhuan"
+      ],
       "independence_analysis": {
         "independent_witness_count": 2,
         "reasoning": "两 account 独立：周瑜传（陈寿正文，敌将实估）与江表传（裴注引书，曹操号称）——carrier/original 侧：江表传是裴注【引书 testimony】，计入（对照 F5 引书侧、F3 按语侧）。但性质迥异：『八十万』是曹操威慑号称（虚），『十五六万+七八万』是周瑜实战估算——非对等两数，主线取实估。曹操实际兵力学界多从周瑜说（约二十余万含荆州新附），八十万为夸辞。",

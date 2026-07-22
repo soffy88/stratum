@@ -116,7 +116,7 @@
         "book": "史记",
         "chapter": "晋世家",
         "section": null,
-        "para_ulid": null,
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0107",
         "note": "★待补。史记·晋世家因袭左传系统：景公时讨赵同赵括、韩厥存赵武，无屠岸贾藏孤。→ 与同书赵世家自相冲突（cf:zhaonan-shiji-internal 首证）。"
       },
       "白文span_refs": [],
@@ -143,7 +143,7 @@
         "book": "史记",
         "chapter": "赵世家",
         "section": null,
-        "para_ulid": null,
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0159",
         "note": "★待补。史记·赵世家戏剧叙事：屠岸贾灭赵氏，程婴与公孙杵臼藏赵武，程婴以己子替死、公孙杵臼就死；后景公立赵武、诛屠岸贾。系于晋景公三年（前597）。→ 与同书晋世家、与左传冲突。★account 全文保留（S12 差异化供给），不因判传说而删。"
       },
       "白文span_refs": [],

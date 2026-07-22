@@ -5,18 +5,38 @@
       "title": "苏秦合纵（及『苏张对抗』叙事）",
       "canonical_date": {
         "type": "range",
-        "value": ["前312", "前284"],
+        "value": [
+          "前312",
+          "前284"
+        ],
         "note": "★canonical 系年取现代考订（override，W-H1 政策 D-007）：苏秦活动实晚（约前312–前284、合纵抗齐为燕，主要在张仪身后）。★考订出处（必带，考据结论工程化、非本仓自读帛书）：马王堆帛书《战国纵横家书》整理（唐兰等整理小组）+ 杨宽《战国史》据帛书重订苏秦年世。史记原系年（前4世纪末、苏张对抗）降为 account.date_claim（见 ac:sujin-shiji），不入 canonical。详 chronology.json 苏秦 override。"
       },
       "event_type": "会盟",
       "actors": [
-        { "person_ref": "per:sujin", "role": "合纵之主", "force_ref": "fo:yan" },
-        { "person_ref": "per:zhangyi", "role": "连横家（史记误置为苏秦同时敌手）", "force_ref": "fo:qin" }
+        {
+          "person_ref": "per:sujin",
+          "role": "合纵之主",
+          "force_ref": "fo:yan"
+        },
+        {
+          "person_ref": "per:zhangyi",
+          "role": "连横家（史记误置为苏秦同时敌手）",
+          "force_ref": "fo:qin"
+        }
       ],
-      "geo": { "place_refs": [], "route_hint": "合纵游说六国", "mapstate_hint": null },
+      "geo": {
+        "place_refs": [],
+        "route_hint": "合纵游说六国",
+        "mapstate_hint": null
+      },
       "parent_event": null,
-      "accounts": ["ac:sujin-shiji", "ac:sujin-zhanguoce"],
-      "conflicts": ["cf:sujin-date"],
+      "accounts": [
+        "ac:sujin-shiji",
+        "ac:sujin-zhanguoce"
+      ],
+      "conflicts": [
+        "cf:sujin-date"
+      ],
       "evidence_tier": "E2",
       "tier_override": {
         "rationale": "★考古E0-aspiration（approach A / D-005）：马王堆帛书《战国纵横家书》（1973 出土）以苏秦本人书信/活动，反证史记苏秦系年错乱、『苏张对抗』为编排——★反证结论之考订出处（必带）：帛书整理小组（唐兰等）+ 杨宽《战国史》据帛书重订，非本仓自读帛书。本可将『苏秦晚出』升 E0（出土反证传世）；但帛书属出土文献，§6 考古 flag Q3 远期、`source.genre` enum 无出土类（D-005 取 A），故帛书不作一等 Source，其反证力记于此 tier_override 与 cf:sujin-date.reasoning。★注意（通则b）：此 tier 属**事件存在性**（苏秦合纵确有其事，E-层不因系年争而降）；『系年』本身不带 tier——系年是 canonical override + account date_claim，不是 E 档。史记对抗叙事之弱，体现在系年降级与 narrative 冲突，非 event tier。",
@@ -37,15 +57,28 @@
       "account_id": "ac:sujin-shiji",
       "event_ref": "ev:sujin-hezong",
       "source_id": "src:shiji",
-      "locator": { "book": "史记", "chapter": "苏秦列传", "section": "合纵六国·与张仪对抗段", "para_ulid": null, "note": "★待补。史记叙苏秦佩六国相印、合纵抗秦，与张仪连横相对——★此对抗系年经帛书反证为编排。" },
+      "locator": {
+        "book": "史记",
+        "chapter": "苏秦列传",
+        "section": "合纵六国·与张仪对抗段",
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0506",
+        "note": "★待补。史记叙苏秦佩六国相印、合纵抗秦，与张仪连横相对——★此对抗系年经帛书反证为编排。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "★史记系于前4世纪末（苏秦与张仪同时）——出土反证为误",
-        "actor_claims": ["苏秦说六国合纵抗秦，佩六国相印", "与张仪连横相角（史记叙事）"],
-        "causal_claims": ["★史记编排：苏张同门（俱事鬼谷）、一纵一横相对——帛书反证二人非同时敌手"],
+        "actor_claims": [
+          "苏秦说六国合纵抗秦，佩六国相印",
+          "与张仪连横相角（史记叙事）"
+        ],
+        "causal_claims": [
+          "★史记编排：苏张同门（俱事鬼谷）、一纵一横相对——帛书反证二人非同时敌手"
+        ],
         "number_claims": [],
-        "dialogue_spans": ["（苏秦合纵游说辞——演绎素材，透传）"]
+        "dialogue_spans": [
+          "（苏秦合纵游说辞——演绎素材，透传）"
+        ]
       },
       "genre_note": "★传世纪传，流传最广；但苏秦系年经马王堆帛书出土反证为错乱，叙事框架（苏张对抗）非史实。"
     },
@@ -53,15 +86,25 @@
       "account_id": "ac:sujin-zhanguoce",
       "event_ref": "ev:sujin-hezong",
       "source_id": "src:zhanguoce",
-      "locator": { "book": "战国策", "chapter": "（苏秦诸篇，散见燕/赵/秦策）", "section": "苏秦说辞", "para_ulid": null, "note": "★待补。战国策苏秦材料亦系年错杂——刘向辑定时已混苏秦与苏代，非独立校正源。" },
+      "locator": {
+        "book": "战国策",
+        "chapter": "（苏秦诸篇，散见燕/赵/秦策）",
+        "section": "苏秦说辞",
+        "para_ulid": null,
+        "note": "★待补。战国策苏秦材料亦系年错杂——刘向辑定时已混苏秦与苏代，非独立校正源。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "（策文不系年，且苏秦/苏代混）",
-        "actor_claims": ["苏秦合纵说辞（多篇）"],
+        "actor_claims": [
+          "苏秦合纵说辞（多篇）"
+        ],
         "causal_claims": [],
         "number_claims": [],
-        "dialogue_spans": ["（策士说辞——演绎素材，透传；genre 降权）"]
+        "dialogue_spans": [
+          "（策士说辞——演绎素材，透传；genre 降权）"
+        ]
       },
       "genre_note": "★策士言辞 + 苏秦/苏代相混（刘向辑），系年不足据；与史记同属传世错乱一系，非帛书之独立校正。"
     }
@@ -71,7 +114,10 @@
       "conflict_id": "cf:sujin-date",
       "event_ref": "ev:sujin-hezong",
       "dimension": "date",
-      "account_refs": ["ac:sujin-shiji", "ac:sujin-zhanguoce"],
+      "account_refs": [
+        "ac:sujin-shiji",
+        "ac:sujin-zhanguoce"
+      ],
       "independence_analysis": {
         "independent_witness_count": 1,
         "reasoning": "★出土反证传世（本条 raison d'être）：史记苏秦列传与战国策苏秦材料同属**传世错乱一系**（战国策苏秦/苏代已混、史记据以编排苏张对抗）——非两独立校正源，就『苏秦系年』的传世共识计约 1。真正的校正来自**马王堆帛书《战国纵横家书》出土**：以苏秦本人书信证其晚于张仪、『苏张对抗』为编排。★但在 (A) 政策下（D-005）帛书不作一等 Source，故不列为 account_ref——其反证力记于本 reasoning 与 event.tier_override（E0-候选）。这正是 (A) 的可见代价：**最强的校正证据（出土）暂无法成为一等见证**；若 Q3 考古管线落地则走 (B)、帛书升 Source、本条 indep 与 tier 重估。",

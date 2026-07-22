@@ -187,7 +187,7 @@
         "book": "史记",
         "chapter": "赵世家",
         "section": null,
-        "para_ulid": null,
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0185",
         "note": "待补：史记·赵世家 晋阳之役段落级 ULID。另见晋世家/魏世家/韩世家互见。"
       },
       "白文span_refs": [],
@@ -217,7 +217,7 @@
         "book": "资治通鉴",
         "chapter": "周纪一",
         "section": null,
-        "para_ulid": null,
+        "para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0036",
         "note": "待补。通鉴此段派生自史记（derivation_edges: src:zztj←src:shiji 战国部分），非独立见证。"
       },
       "白文span_refs": [],
@@ -246,7 +246,7 @@
         "book": "战国策",
         "chapter": "赵策一（知伯帅赵韩魏而伐范中行氏 / 知伯索地）",
         "section": null,
-        "para_ulid": null,
+        "para_ulid": "FR8TKEM3839A5M37HD8MRBT5MP:0001",
         "note": "待补。策士敷演，重言辞。"
       },
       "白文span_refs": [],
@@ -275,7 +275,7 @@
         "book": "资治通鉴",
         "chapter": "周纪一·威烈王二十三年",
         "section": null,
-        "para_ulid": null,
+        "para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0027",
         "note": "待补。通鉴开篇之年。"
       },
       "白文span_refs": [],
@@ -301,7 +301,7 @@
         "book": "史记",
         "chapter": "周本纪 / 六国年表 / 魏世家",
         "section": null,
-        "para_ulid": null,
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0139",
         "note": "待补。年表与世家互见。"
       },
       "白文span_refs": [],
