@@ -1,0 +1,103 @@
+@import "tailwindcss";
+/* @helios/blocks/styles.css and themes/zen.css stubbed out (private package) */
+
+/* Zen theme base variables — substituting for @helios/blocks/themes/zen.css.
+ * TECHNICAL_DEBT: remove when @helios/blocks is available from private registry.
+ */
+/* Light theme (zen is the historical name; 'light' is an alias). */
+[data-theme='zen'],
+[data-theme='light'] {
+  --background: #ffffff;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --text-primary: #111827;
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #4f46e5;
+  --accent: #f3f4f6;
+  --accent-foreground: #111827;
+  --secondary: #f3f4f6;
+  --secondary-foreground: #374151;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  /* --color-* aliases: bridge existing hand-written UI to helios zen vars. */
+  --color-background: var(--background);
+  --color-foreground: var(--text-primary);
+  --color-primary: var(--primary);
+  --color-muted: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+}
+
+/* Dark theme — was previously undefined (settings offered 'dark' but no vars,
+   so dark mode silently fell back to broken/transparent). AII pages match this
+   via @helios's professional theme (driven by the (aii) layout). */
+[data-theme='dark'] {
+  --background: #0f172a;
+  --card: #1e293b;
+  --popover: #1e293b;
+  --text-primary: #f1f5f9;
+  --primary: #818cf8;
+  --primary-foreground: #0f172a;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --border: #334155;
+  --input: #334155;
+  --ring: #818cf8;
+  --accent: #1e293b;
+  --accent-foreground: #f1f5f9;
+  --secondary: #1e293b;
+  --secondary-foreground: #cbd5e1;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --color-background: var(--background);
+  --color-foreground: var(--text-primary);
+  --color-primary: var(--primary);
+  --color-muted: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+}
+
+/* Tailwind v4 @theme inline — maps semantic utility classes (bg-background,
+ * bg-card, border-border, text-muted-foreground, etc.) to CSS variables so
+ * they resolve at runtime from [data-theme='zen'] values. Without this block,
+ * v4 generates no utility for unrecognized color names → transparent output. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--card);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+/* aii mark — two rings (raw text, forming structure) turning around a still
+ * core (the concept's inner essence). See docs/brand/aii-visual-identity.html. */
+.aii-mark-ring { transform-box: fill-box; transform-origin: center; }
+.aii-mark-ring--outer { animation: aii-mark-turn 20s linear infinite; }
+.aii-mark-ring--mid { animation: aii-mark-turn 12s linear infinite reverse; }
+@keyframes aii-mark-turn {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aii-mark-ring--outer, .aii-mark-ring--mid { animation: none; }
+}

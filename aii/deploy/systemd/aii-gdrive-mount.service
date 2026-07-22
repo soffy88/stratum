@@ -1,0 +1,22 @@
+[Unit]
+Description=AII rclone mount — Google Drive 数学文件夹 只读挂到 ~/gdrive
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+# 服务器墙内: rclone 必须走本机代理才能连 Google
+Environment=HTTPS_PROXY=http://127.0.0.1:7890
+Environment=HTTP_PROXY=http://127.0.0.1:7890
+ExecStartPre=/usr/bin/mkdir -p %h/gdrive
+ExecStart=%h/.local/bin/rclone mount \
+  --drive-root-folder-id 1tbxwprHUfM0rjaCtTJGdGah70Pk2Wt-k gdrive: %h/gdrive \
+  --read-only \
+  --vfs-cache-mode full --vfs-cache-max-size 2G --vfs-cache-max-age 24h \
+  --dir-cache-time 1m --poll-interval 1m
+ExecStop=/usr/bin/fusermount3 -u %h/gdrive
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

@@ -30,6 +30,8 @@
 | 5 | **AII-KNOWLEDGE-ADVANCED-DESIGN-001** | 四层总纲（前沿实证支撑）：①有向关系②超边③跨域关系④本性。生长链+关系≠本性。 | 供审 |
 | 6 | **AII-KNOWLEDGE-ADVANCED-IMPL-001** | 四层实现（M0-M4 里程碑，严格依赖顺序）：M0 canonical→M1超边→M2生长→M3跨域关系→M4本性。 | 供审 |
 | 7 | **AII-INVARIANT-LAYER-001** | ★第④层本性权威设计：本性=invariant(道非相)、本性≠本性概念(is_invariant_concept字段)、关系≠本性、两路径、两层独立互证。 | ✅ Wiki 通过 |
+| 8 | **AII-KNOWLEDGE-FIRST-SPEC-001** | 知识优先增强（三个独立改进，外部印证 Graphify）：①God node 检测=本性路径B候选自动发现器 ②Leiden 替换谱社区 KC 算法 ③Query-first 钩子（用 B/C 仓前强制先查，通用知识只做显式标注兜底）。 | ①②已实现；③两侧均已落地（2026-07-20） |
+| 9 | **AII-DOMAIN-ONTOLOGY-SPEC-001** | ★本体定位正名：本体是**被发现**的不是被规定的（实在论派/OBO 正交性胜出工程派），AII 本来就是本体发现机；反增殖规则 R1-R4；外部本体当交叉检验线不当权威（os-taxonomy 首例）。 | 第一/二部分即刻生效；第三部分**前置条件未成立**（os-taxonomy 未在库、M0/4.5 自 07-03 停滞），详见下方缺口表 |
 
 ---
 

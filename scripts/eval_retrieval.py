@@ -75,7 +75,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--golden", required=True, help="path to golden set JSON")
     ap.add_argument("--base-url", default=os.environ.get("STRATUM_EVAL_BASE_URL",
-                    "https://stratum.uex.hk"))
+                    "https://stratum.kanpan.co"))
     ap.add_argument("--token", default=os.environ.get("STRATUM_EVAL_TOKEN", ""))
     ap.add_argument("--top-k", type=int, default=10)
     ap.add_argument("--rerank", action="store_true")

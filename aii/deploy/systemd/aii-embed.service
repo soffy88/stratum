@@ -1,0 +1,17 @@
+[Unit]
+Description=AII shared embedding microservice (BGE-M3, lazy load / idle unload, GPU-or-CPU)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/data/soffy/projects/stratum/aii/aii
+Environment=HF_HUB_OFFLINE=1
+Environment=TRANSFORMERS_OFFLINE=1
+Environment=AII_EMBED_IDLE_SEC=300
+Environment=AII_EMBED_VRAM_MIN_GB=3.5
+ExecStart=/home/soffy/.local/bin/uv run --project /data/soffy/projects/stratum/aii uvicorn aii.api.embed_app:app --host 127.0.0.1 --port 8102
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

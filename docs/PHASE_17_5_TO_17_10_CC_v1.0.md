@@ -184,7 +184,7 @@ git push
 
 #### 真根因 (advisor 前面记的)
 
-WebSocket 鉴权当前用 `wss://stratum.uex.hk/ws?token=<JWT>` URL query 模式. token 被 nginx access log / Cloudflare log / 浏览器 history 真持久化记录, 引流后 100+ 用户 = 100+ token 在日志里泄露.
+WebSocket 鉴权当前用 `wss://stratum.kanpan.co/ws?token=<JWT>` URL query 模式. token 被 nginx access log / Cloudflare log / 浏览器 history 真持久化记录, 引流后 100+ 用户 = 100+ token 在日志里泄露.
 
 #### 修复方案 (选 1)
 
@@ -696,7 +696,7 @@ git push
 
 ## 立即试用
 
-https://stratum.uex.hk (免费 + Plus ¥29/月)
+https://stratum.kanpan.co (免费 + Plus ¥29/月)
 
 ## 跟 obsidian / notion 真区别
 

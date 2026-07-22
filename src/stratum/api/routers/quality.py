@@ -3,6 +3,7 @@
 POST /api/v1/admin/quality-audit   触发全库扫描，写 pq/quality_reason
 GET  /api/v1/admin/quality-report  返回当前 pq 分布 + quarantine/fragment 清单
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -12,6 +13,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 
 from stratum.common import jwt_auth
 from stratum.db import get_conn
+from stratum.utils.user_id_hash import hash_user_id
 
 router = APIRouter(prefix="/api/v1/admin", tags=["quality"])
 log = logging.getLogger(__name__)
@@ -35,8 +37,13 @@ def _run_full_audit() -> dict:
     log.info("quality_audit: starting, %d substrates", len(ids))
 
     results: dict[str, list[str]] = {
-        "ok": [], "quarantine": [], "fragment": [],
-        "scanned": [], "empty": [], "garbled": [], "other": [],
+        "ok": [],
+        "quarantine": [],
+        "fragment": [],
+        "scanned": [],
+        "empty": [],
+        "garbled": [],
+        "other": [],
     }
 
     for sid in ids:
@@ -99,9 +106,7 @@ async def quality_report(_user: str = Depends(jwt_auth)):
 
     return {
         "pq_distribution": {pq: cnt for pq, cnt in pq_rows},
-        "quarantine": [
-            {"id": r[0], "title": r[1], "reason": r[2]} for r in quarantine_rows
-        ],
+        "quarantine": [{"id": r[0], "title": r[1], "reason": r[2]} for r in quarantine_rows],
         "fragment": [{"id": r[0], "title": r[1]} for r in fragment_rows],
     }
 
@@ -119,8 +124,13 @@ async def aii_needs_status(_user: str = Depends(jwt_auth)):
                 " FROM aii_processed_needs ORDER BY processed_at DESC"
             ).fetchall()
             processed = [
-                {"hash": r[0], "topic": r[1], "source_type": r[2],
-                 "ingested": r[3], "at": str(r[4])}
+                {
+                    "hash": r[0],
+                    "topic": r[1],
+                    "source_type": r[2],
+                    "ingested": r[3],
+                    "at": str(r[4]),
+                }
                 for r in rows
             ]
         except Exception as exc:
@@ -141,8 +151,10 @@ async def trigger_aii_tick(
     _user: str = Depends(jwt_auth),
 ):
     """手动触发一次 aii_feedback _tick()（调试用）。"""
+
     async def _do_tick():
         from stratum.services.aii_feedback_service import _tick
+
         try:
             await _tick()
             log.info("aii_tick: manual tick completed")
@@ -163,12 +175,15 @@ async def export_one_substrate(
     sid = body.get("substrate_id", "")
     if not sid:
         from fastapi import HTTPException
+
         raise HTTPException(400, "substrate_id required")
 
     async def _do_export():
         from stratum.services.md_export_service import export_one
+
         try:
-            result = await asyncio.to_thread(export_one, sid)
+            # 手动API触发的重导出=人明确要求, 绕过 exported_at 防重
+            result = await asyncio.to_thread(lambda: export_one(sid, force=True))
             log.info("md_export_one: %s → %s", sid[:12], result)
         except Exception:
             log.exception("md_export_one: failed for %s", sid[:12])
@@ -177,10 +192,23 @@ async def export_one_substrate(
     return {"status": "started", "substrate_id": sid}
 
 
+def _owns_substrate(conn, substrate_id: str, user_id: str) -> bool:
+    """These /admin/* routes have no real admin-role check (none exists in the
+    schema) — they were reachable by any authenticated user against ANY other
+    user's substrates. substrates.user_id is stored either hashed
+    (hash_user_id) or raw depending on ingestion path (same backward-compat
+    duality substrates.py's list endpoint already accounts for), so check both."""
+    row = conn.execute(
+        "SELECT 1 FROM substrates WHERE id = ? AND (user_id = ? OR user_id = ?)",
+        (substrate_id, hash_user_id(user_id), user_id),
+    ).fetchone()
+    return row is not None
+
+
 @router.patch("/derivative-content")
 async def patch_derivative_content(
     payload: dict,
-    _user: str = Depends(jwt_auth),
+    user: str = Depends(jwt_auth),
 ):
     """Overwrite derivative.content for a specific substrate+kind (admin use).
 
@@ -188,14 +216,17 @@ async def patch_derivative_content(
     Used by scripts (e.g. fix_werner_fffd.py) to write fixed content while
     the server holds the DuckDB write lock.
     """
+    from fastapi import HTTPException
+
     sid = payload.get("substrate_id")
     kind = payload.get("kind", "markdown")
     content = payload.get("content")
     if not sid or not content:
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="substrate_id and content required")
 
     with get_conn() as conn:
+        if not _owns_substrate(conn, sid, user):
+            raise HTTPException(status_code=404, detail="substrate not found")
         rows = conn.execute(
             "UPDATE derivative SET content = ? WHERE substrate_id = ? AND kind = ?",
             (content, sid, kind),
@@ -207,45 +238,60 @@ async def patch_derivative_content(
 @router.delete("/substrates/{substrate_id}")
 async def delete_substrate(
     substrate_id: str,
-    _user: str = Depends(jwt_auth),
+    user: str = Depends(jwt_auth),
 ):
     """Hard-delete a substrate and its derivatives (admin use).
 
     Used by scripts/cleanup_library.py for bulk dedup cleanup.
     """
+    from fastapi import HTTPException
+
     with get_conn() as conn:
+        if not _owns_substrate(conn, substrate_id, user):
+            raise HTTPException(status_code=404, detail="substrate not found")
         d_rows = conn.execute(
             "DELETE FROM derivative WHERE substrate_id = ?", (substrate_id,)
         ).rowcount
-        s_rows = conn.execute(
-            "DELETE FROM substrates WHERE id = ?", (substrate_id,)
-        ).rowcount
-    log.info("delete_substrate: %s — substrates=%d derivatives=%d", substrate_id[:12], s_rows, d_rows)
-    return {"deleted_substrates": s_rows, "deleted_derivatives": d_rows, "substrate_id": substrate_id}
+        s_rows = conn.execute("DELETE FROM substrates WHERE id = ?", (substrate_id,)).rowcount
+    log.info(
+        "delete_substrate: %s — substrates=%d derivatives=%d", substrate_id[:12], s_rows, d_rows
+    )
+    return {
+        "deleted_substrates": s_rows,
+        "deleted_derivatives": d_rows,
+        "substrate_id": substrate_id,
+    }
 
 
 @router.patch("/substrates/bulk-title")
 async def bulk_patch_title(
     payload: dict,
-    _user: str = Depends(jwt_auth),
+    user: str = Depends(jwt_auth),
 ):
-    """Bulk-update substrate titles.
+    """Bulk-update substrate titles (only for substrates the caller owns —
+    unowned ids in the batch are skipped, not silently applied).
 
     Body: {"updates": [{"id": "...", "title": "..."}, ...]}
     Used by scripts/cleanup_library.py for z-lib tag stripping.
     """
+    from fastapi import HTTPException
+
     updates = payload.get("updates", [])
     if not updates:
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="updates list required")
 
     count = 0
+    skipped = 0
     with get_conn() as conn:
         for item in updates:
             sid = item.get("id")
             title = item.get("title")
-            if sid and title:
-                conn.execute("UPDATE substrates SET title = ? WHERE id = ?", (title, sid))
-                count += 1
-    log.info("bulk_patch_title: updated %d titles", count)
-    return {"updated": count}
+            if not sid or not title:
+                continue
+            if not _owns_substrate(conn, sid, user):
+                skipped += 1
+                continue
+            conn.execute("UPDATE substrates SET title = ? WHERE id = ?", (title, sid))
+            count += 1
+    log.info("bulk_patch_title: updated %d titles, skipped %d not-owned", count, skipped)
+    return {"updated": count, "skipped_not_owned": skipped}

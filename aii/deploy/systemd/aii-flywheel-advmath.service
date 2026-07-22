@@ -1,0 +1,15 @@
+[Unit]
+Description=AII flywheel — 高级数学经济专用 (讲透至高中生可懂, 深度不减)
+After=network.target aii-backend.service
+
+[Service]
+Type=simple
+WorkingDirectory=/data/soffy/projects/stratum/aii
+ExecStart=/usr/bin/bash scripts/advmath_flywheel_run.sh
+StandardOutput=append:/data/soffy/projects/stratum/aii/advmath_pipeline/flywheel.log
+StandardError=append:/data/soffy/projects/stratum/aii/advmath_pipeline/flywheel.log
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

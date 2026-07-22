@@ -12,6 +12,7 @@
   - evolve() 每 EVOLVE_EVERY 轮跑一次, 失败非致命
   - P2.6 purpose: 只导向主动选源(排序), 不拦手动投递/摄取入库
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -37,9 +38,9 @@ FLYWHEEL_MAX_FILE_MB: float = float(os.getenv("FLYWHEEL_MAX_FILE_MB", "5"))
 # P2.6 purpose目的层选源
 # purpose.md 由人工维护, AII不自生成/不自改
 _PURPOSE_FILE = Path(__file__).parent.parent.parent / "config" / "purpose.md"
-_purpose_text: str | None = None          # 缓存: 每次飞轮启动读一次
+_purpose_text: str | None = None  # 缓存: 每次飞轮启动读一次
 _purpose_embedding: list[float] | None = None  # 缓存: 启动后算一次
-_purpose_title_scores: dict[str, float] = {}   # sid → score 跨轮缓存
+_purpose_title_scores: dict[str, float] = {}  # sid → score 跨轮缓存
 
 # P2.6+ 主动方向缺口: 基于 config/purpose.md 人工整理的核心领域,量化交易重点展开
 # ★命门: AII只声明"需要什么方向的书", 不含获取/下载/找书逻辑(Stratum的事)
@@ -48,8 +49,16 @@ _PURPOSE_DIRECTIONS: list[dict] = [
         "direction": "量化交易",
         "keywords": ["量化交易", "算法交易", "高频交易", "做市", "统计套利"],
         "subtopics": [
-            "高频交易", "做市策略", "统计套利", "市场微观结构",
-            "算法交易", "金融时间序列", "期权定价", "风险管理", "组合优化", "回测方法",
+            "高频交易",
+            "做市策略",
+            "统计套利",
+            "市场微观结构",
+            "算法交易",
+            "金融时间序列",
+            "期权定价",
+            "风险管理",
+            "组合优化",
+            "回测方法",
         ],
         "priority": "high",
         "threshold": 500,
@@ -82,6 +91,131 @@ _PURPOSE_DIRECTIONS: list[dict] = [
         "priority": "medium",
         "threshold": 300,
     },
+    # ── 2026-07-17 相邻学科全覆盖: 从5个量化向扩到全谱, 让找书飞轮拉"各种书"而非只量化 ──
+    {
+        "direction": "经济学",
+        "keywords": ["微观经济学", "宏观经济学", "博弈论", "产业组织", "行为经济学"],
+        "subtopics": [
+            "微观经济学",
+            "宏观经济学",
+            "博弈论",
+            "产业组织",
+            "行为经济学",
+            "发展经济学",
+            "国际经济学",
+            "公共经济学",
+        ],
+        "priority": "high",
+        "threshold": 800,
+    },
+    {
+        "direction": "计量经济学",
+        "keywords": ["计量经济学", "因果推断", "面板数据", "工具变量", "断点回归"],
+        "subtopics": ["因果推断", "面板数据", "工具变量", "断点回归", "结构估计"],
+        "priority": "medium",
+        "threshold": 400,
+    },
+    {
+        "direction": "计算机科学与算法",
+        "keywords": ["算法", "数据结构", "计算复杂性", "分布式系统", "数据库"],
+        "subtopics": [
+            "算法设计",
+            "数据结构",
+            "计算复杂性",
+            "分布式系统",
+            "数据库系统",
+            "操作系统",
+            "编译原理",
+        ],
+        "priority": "medium",
+        "threshold": 500,
+    },
+    {
+        "direction": "纯数学",
+        "keywords": ["抽象代数", "拓扑", "微分几何", "数论", "泛函分析"],
+        "subtopics": [
+            "抽象代数",
+            "拓扑学",
+            "微分几何",
+            "数论",
+            "实分析",
+            "复分析",
+            "泛函分析",
+            "范畴论",
+        ],
+        "priority": "medium",
+        "threshold": 500,
+    },
+    {
+        "direction": "应用统计",
+        "keywords": ["实验设计", "假设检验", "回归分析", "高维统计", "非参数统计"],
+        "subtopics": ["实验设计", "回归分析", "高维统计", "非参数统计", "重抽样方法"],
+        "priority": "medium",
+        "threshold": 400,
+    },
+    {
+        "direction": "物理学",
+        "keywords": ["经典力学", "量子力学", "统计物理", "电动力学", "热力学"],
+        "subtopics": ["经典力学", "量子力学", "统计物理", "电动力学", "热力学", "相对论"],
+        "priority": "medium",
+        "threshold": 400,
+    },
+    {
+        "direction": "信息论与信号处理",
+        "keywords": ["信息论", "编码理论", "信号处理", "傅里叶", "小波"],
+        "subtopics": ["信息论", "编码理论", "数字信号处理", "傅里叶分析", "小波分析"],
+        "priority": "low",
+        "threshold": 300,
+    },
+    {
+        "direction": "控制与动力系统",
+        "keywords": ["控制论", "动力系统", "最优控制", "混沌", "状态空间"],
+        "subtopics": ["最优控制", "动力系统", "混沌理论", "状态空间", "系统辨识"],
+        "priority": "low",
+        "threshold": 300,
+    },
+    {
+        "direction": "运筹与决策科学",
+        "keywords": ["运筹学", "决策论", "排队论", "库存", "网络流"],
+        "subtopics": ["运筹学", "决策论", "排队论", "库存管理", "网络流"],
+        "priority": "low",
+        "threshold": 300,
+    },
+    {
+        "direction": "心理学与认知科学",
+        "keywords": ["心理学", "认知科学", "行为决策", "神经科学", "社会心理"],
+        "subtopics": ["认知心理学", "社会心理学", "行为决策", "神经科学", "发展心理学"],
+        "priority": "medium",
+        "threshold": 400,
+    },
+    {
+        "direction": "哲学与逻辑",
+        "keywords": ["哲学", "逻辑学", "认识论", "伦理学", "科学哲学"],
+        "subtopics": ["认识论", "逻辑学", "伦理学", "科学哲学", "形而上学", "心灵哲学"],
+        "priority": "low",
+        "threshold": 300,
+    },
+    {
+        "direction": "复杂系统与网络科学",
+        "keywords": ["复杂系统", "网络科学", "复杂网络", "涌现", "自组织"],
+        "subtopics": ["复杂网络", "自组织", "涌现", "系统动力学", "多主体建模"],
+        "priority": "low",
+        "threshold": 250,
+    },
+    {
+        "direction": "会计与公司金融",
+        "keywords": ["公司金融", "会计", "估值", "资本结构", "财务报表"],
+        "subtopics": ["公司金融", "财务会计", "估值", "资本结构", "并购"],
+        "priority": "medium",
+        "threshold": 400,
+    },
+    {
+        "direction": "科学史与科普",
+        "keywords": ["科学史", "科普", "科学方法", "科学思想", "科学传记"],
+        "subtopics": ["科学史", "科学方法论", "重大科学思想", "科学传记"],
+        "priority": "low",
+        "threshold": 200,
+    },
 ]
 
 
@@ -96,6 +230,7 @@ def _embed_batch(texts: list[str]) -> list[list[float]]:
     """Embed texts via default provider (sync, run in thread executor)."""
     from oprim import vector_encode
     import numpy as np
+
     raw = vector_encode(texts=texts, provider="default")
     arr = np.array(raw, dtype="float32")
     norms = np.linalg.norm(arr, axis=1, keepdims=True)
@@ -129,14 +264,13 @@ async def _sort_candidates_by_purpose(
             return candidates
 
     # 找需要打分的新候选
-    unscored = [(md, meta, sid) for md, meta, sid in candidates
-                if sid not in _purpose_title_scores]
+    unscored = [(md, meta, sid) for md, meta, sid in candidates if sid not in _purpose_title_scores]
     if unscored:
-        titles = [meta.get("title") or meta.get("name") or md.stem
-                  for md, meta, sid in unscored]
+        titles = [meta.get("title") or meta.get("name") or md.stem for md, meta, sid in unscored]
         try:
             title_embs = await asyncio.to_thread(_embed_batch, titles)
             from oprim import purpose_alignment_score
+
             for (md, meta, sid), emb in zip(unscored, title_embs):
                 title = meta.get("title") or meta.get("name") or md.stem
                 try:
@@ -164,8 +298,21 @@ async def _sort_candidates_by_purpose(
         )
     return scored
 
+
 # 标题关键词过滤: 含这些词的视为合集/套装,跳过等待 Stratum 拆分
-_COLLECTION_KEYWORDS = ("套装", "合集", "全集", "丛书", "系列", "册）", "册)", "全套", "百科全书", "百科辞典", "百科词典")
+_COLLECTION_KEYWORDS = (
+    "套装",
+    "合集",
+    "全集",
+    "丛书",
+    "系列",
+    "册）",
+    "册)",
+    "全套",
+    "百科全书",
+    "百科辞典",
+    "百科词典",
+)
 
 
 def _is_collection(md: Path, meta: dict) -> tuple[bool, str]:
@@ -176,7 +323,7 @@ def _is_collection(md: Path, meta: dict) -> tuple[bool, str]:
         if mb > FLYWHEEL_MAX_FILE_MB:
             return True, f"file_too_large({mb:.1f}MB>{FLYWHEEL_MAX_FILE_MB}MB)"
     # 标题关键词检查
-    title = (meta.get("title") or meta.get("name") or "")
+    title = meta.get("title") or meta.get("name") or ""
     for kw in _COLLECTION_KEYWORDS:
         if kw in title:
             return True, f"collection_keyword({kw!r} in title)"
@@ -207,7 +354,8 @@ def _write_skipped_collections(skipped: list[dict]) -> None:
         if new_entries:
             logger.info(
                 "flywheel: skipped_collections.json updated (+%d new, %d total)",
-                len(new_entries), len(all_entries),
+                len(new_entries),
+                len(all_entries),
             )
     except Exception:
         logger.exception("flywheel: write skipped_collections failed (non-fatal)")
@@ -256,15 +404,19 @@ async def _collect_new_files(backend, limit: int) -> list[Path]:
                 title = (meta.get("title") or meta.get("name") or md.stem)[:80]
                 logger.info(
                     "flywheel: SKIP collection %s (%.1fMB) reason=%s",
-                    title, mb, reason,
+                    title,
+                    mb,
+                    reason,
                 )
-                skipped_collections.append({
-                    "id": sid,
-                    "title": title,
-                    "file": md.name,
-                    "size_mb": round(mb, 1),
-                    "reason": reason,
-                })
+                skipped_collections.append(
+                    {
+                        "id": sid,
+                        "title": title,
+                        "file": md.name,
+                        "size_mb": round(mb, 1),
+                        "reason": reason,
+                    }
+                )
                 continue  # 不加入 found, 不标已摄
 
             found.append(md)
@@ -274,6 +426,59 @@ async def _collect_new_files(backend, limit: int) -> list[Path]:
     # 写合集清单供 Stratum 返工
     _write_skipped_collections(skipped_collections)
     return found
+
+
+_QMD_CONTAINER = "aii-qmd"
+
+
+async def _qmd_search_existing_corpus(keywords: list[str], *, limit: int = 5) -> list[dict]:
+    """查一个 purpose 方向的关键词在 qmd 已索引语料(325本书原始MD)里有没有命中.
+
+    用途: proactive_gap 发现"某方向 KU 太少"时, 顺手看一眼语料库里是不是其实
+    已经有相关书, 只是没抽好/没抽全——给这条本来就在算、但从未被下游消费过的
+    信号补一层"要不要先回去补抽现有书, 而不是急着找新书"的线索。
+
+    用 `qmd search`(纯 BM25, 无 LLM 扩写/重排)而非 `qmd query`(混合检索)——
+    实测 `qmd query` 在这台机器上(CPU-only, 常年高负载)偶发卡住数十秒甚至
+    超时, 而这里只是想要一个粗筛信号, 不需要语义排序的精度, `qmd search`
+    稳定在1秒内返回。多关键词逐个查再按 docid 去重, 而不是拼成一个查询串——
+    `qmd search` 把整个输入当短语/AND匹配, 拼接后几乎搜不到东西(实测验证过)。
+
+    失败(容器没起来/超时/JSON解析失败)返回空列表, 不抛异常——这是锦上添花的
+    信号, 不该因为 qmd 不可用就打断 proactive_gap 本身的计算。
+    """
+    hits_by_docid: dict[str, dict] = {}
+    for kw in keywords[:3]:  # 前3个关键词够用, 不为了齐全把耗时拉长
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "docker",
+                "exec",
+                _QMD_CONTAINER,
+                "qmd",
+                "search",
+                kw,
+                "--json",
+                "-n",
+                str(limit),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=15)
+        except (FileNotFoundError, TimeoutError, asyncio.TimeoutError):
+            continue
+        try:
+            results = json.loads(stdout.decode("utf-8", errors="replace"))
+        except json.JSONDecodeError:
+            continue
+        for r in results:
+            docid = r.get("docid")
+            if docid and docid not in hits_by_docid:
+                hits_by_docid[docid] = {
+                    "file": r.get("file", "").removeprefix("qmd://"),
+                    "title": r.get("title"),
+                    "score": r.get("score"),
+                }
+    return sorted(hits_by_docid.values(), key=lambda h: -(h.get("score") or 0))[:limit]
 
 
 async def _compute_proactive_needs(backend) -> list[dict]:
@@ -288,31 +493,38 @@ async def _compute_proactive_needs(backend) -> list[dict]:
             for d in _PURPOSE_DIRECTIONS:
                 # 参数化 LIKE 查询, 避免字符串拼接
                 params = [f"%{kw}%" for kw in d["keywords"]]
-                conditions = " OR ".join(
-                    f"natural_text LIKE ${i + 1}" for i in range(len(params))
-                )
-                sql = (
-                    f"SELECT count(*) FROM aii.ku_onto "
-                    f"WHERE ({conditions})"
-                )
+                conditions = " OR ".join(f"natural_text LIKE ${i + 1}" for i in range(len(params)))
+                sql = f"SELECT count(*) FROM aii.ku_onto WHERE ({conditions})"
                 ku_count: int = (await conn.fetchval(sql, *params)) or 0
                 if ku_count < d["threshold"]:
-                    needs.append({
-                        "type": "proactive_direction",
-                        "topic": d["direction"],
-                        "subtopics": d["subtopics"],
-                        "reason": f"purpose核心方向,当前覆盖{ku_count}条KU,需补充",
-                        "ku_count": ku_count,
-                        "priority": d["priority"],
-                    })
+                    existing_hits = await _qmd_search_existing_corpus(d["keywords"])
+                    needs.append(
+                        {
+                            "type": "proactive_direction",
+                            "topic": d["direction"],
+                            "subtopics": d["subtopics"],
+                            "reason": f"purpose核心方向,当前覆盖{ku_count}条KU,需补充",
+                            "ku_count": ku_count,
+                            "priority": d["priority"],
+                            # qmd 检索现有325本书原始语料的粗筛信号——空列表=语料库里
+                            # 没搜到相关书, 大概率真需要找新源; 非空=语料库里已经有
+                            # 相关书, 优先看是不是该回去补抽/修复现有书, 而不是急着
+                            # 找新书(qmd 不可用时也是空列表, 不代表语料库没有)。
+                            "existing_corpus_hits": existing_hits,
+                        }
+                    )
                     logger.info(
                         "proactive_gap: %s → %d KU (threshold=%d) → need written",
-                        d["direction"], ku_count, d["threshold"],
+                        d["direction"],
+                        ku_count,
+                        d["threshold"],
                     )
                 else:
                     logger.info(
                         "proactive_gap: %s → %d KU (threshold=%d) → covered",
-                        d["direction"], ku_count, d["threshold"],
+                        d["direction"],
+                        ku_count,
+                        d["threshold"],
                     )
     except Exception:
         logger.exception("proactive_gap: compute failed (non-fatal)")
@@ -333,8 +545,7 @@ def _write_needs(gaps: dict, proactive_needs: list[dict] | None = None) -> None:
                 try:
                     old = json.loads(existing_path.read_text(encoding="utf-8"))
                     existing_proactive = [
-                        n for n in old.get("needs", [])
-                        if n.get("type") == "proactive_direction"
+                        n for n in old.get("needs", []) if n.get("type") == "proactive_direction"
                     ]
                 except Exception:
                     pass
@@ -357,6 +568,7 @@ def _write_needs(gaps: dict, proactive_needs: list[dict] | None = None) -> None:
         # 方向内缺口排前，指导人工找源时优先补方向内知识
         if reactive_needs and _purpose_text:
             from oprim._purpose_alignment_score import _keyword_overlap
+
             for n in reactive_needs:
                 n["purpose_score"] = round(_keyword_overlap(_purpose_text, n["topic"]), 4)
             reactive_needs.sort(key=lambda n: n["purpose_score"], reverse=True)
@@ -370,7 +582,8 @@ def _write_needs(gaps: dict, proactive_needs: list[dict] | None = None) -> None:
         needs = merged_proactive + reactive_needs
         logger.info(
             "proactive_gap: %d direction needs in needs.json (recomputed=%s)",
-            len(merged_proactive), proactive_needs is not None,
+            len(merged_proactive),
+            proactive_needs is not None,
         )
 
         payload = {
@@ -404,7 +617,10 @@ async def flywheel_loop(backend) -> None:
 
     logger.info(
         "flywheel: started (enabled=%s max_files=%d interval=%ds evolve_every=%d)",
-        FLYWHEEL_ENABLED, FLYWHEEL_MAX_FILES_ROUND, FLYWHEEL_INTERVAL, FLYWHEEL_EVOLVE_EVERY,
+        FLYWHEEL_ENABLED,
+        FLYWHEEL_MAX_FILES_ROUND,
+        FLYWHEEL_INTERVAL,
+        FLYWHEEL_EVOLVE_EVERY,
     )
 
     while True:
@@ -434,7 +650,9 @@ async def flywheel_loop(backend) -> None:
                 try:
                     did = await _backfill_deep_one(backend)
                     if did:
-                        logger.info("flywheel: backfill deep understanding done (substrate %d/3)", _bi + 1)
+                        logger.info(
+                            "flywheel: backfill deep understanding done (substrate %d/3)", _bi + 1
+                        )
                     else:
                         break  # 没有待回填的了
                 except Exception:
@@ -463,6 +681,8 @@ async def flywheel_loop(backend) -> None:
             logger.info("flywheel: cancelled, shutting down")
             break
         except Exception:
-            logger.exception("flywheel: round %d unhandled error (non-fatal, continuing)", round_num)
+            logger.exception(
+                "flywheel: round %d unhandled error (non-fatal, continuing)", round_num
+            )
 
         await asyncio.sleep(FLYWHEEL_INTERVAL)

@@ -1,0 +1,69 @@
+{
+  "canonical_axis": {
+    "epoch": "共和元年 = 前841（连续纪年起点）",
+    "fuzzy_before": "前841 之前一律 date.type=fuzzy（如五帝夏商）",
+    "convention": "value 用纪年字面 '前NNN'/'公元NNN'；BC 概念用『前』，勿与天文年号混。"
+  },
+  "resolutions": [
+    {
+      "source_id": "src:zztj",
+      "raw": "周威烈王二十三年",
+      "canonical": "前403",
+      "override": null
+    },
+    {
+      "source_id": "src:shiji",
+      "raw": "晋出公二十二年 / 晋阳之役后二年",
+      "canonical": "前453",
+      "override": null
+    },
+    {
+      "source_id": "src:zuozhuan",
+      "raw": "鲁成公八年",
+      "canonical": "前583",
+      "override": null
+    },
+    {
+      "source_id": "src:shiji",
+      "raw": "晋景公三年",
+      "canonical": "前597",
+      "override": null
+    },
+    {
+      "source_id": "src:sanguozhi",
+      "raw": "建安五年",
+      "canonical": "公元200",
+      "override": null
+    },
+    {
+      "source_id": "src:shiji",
+      "raw": "帝尧/帝舜（五帝本纪）",
+      "canonical": "fuzzy（前841 之前，约前23世纪，不可 canonical 化）",
+      "override": null
+    }
+  ],
+  "sixstates_override_placeholders": {
+    "placeholders": [
+      {
+        "source_id": "src:shiji",
+        "raw": "魏惠王（史记年表在位年数）",
+        "canonical": "TODO",
+        "override": {
+          "corrected_canonical": "TODO：魏惠王有『后元』改元，史记未分致后段系年整体前移，需按后元重排",
+          "tradition": "钱穆/杨宽一系",
+          "academic_source": "TODO：杨宽《战国史》战国纪年校订 / 钱穆《先秦诸子系年》相应条"
+        }
+      },
+      {
+        "source_id": "src:shiji",
+        "raw": "田齐威王/宣王（史记年表）",
+        "canonical": "TODO",
+        "override": {
+          "corrected_canonical": "TODO：田齐威宣年世史记有淆，需按出土/校勘重定",
+          "tradition": "钱穆/杨宽一系",
+          "academic_source": "TODO"
+        }
+      }
+    ]
+  }
+}

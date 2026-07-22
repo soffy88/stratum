@@ -1,0 +1,9 @@
+{
+  "docReading": {
+    "providers": {
+      "fullText": {
+        "pdf": ["pymupdf"]
+      }
+    }
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "forces": [
+    {
+      "force_id": "fo:jin",
+      "name_by_era": {
+        "春秋": "晋"
+      },
+      "active_range": "西周至前376（静公被废、晋绝祀）",
+      "succession_edges": [
+        {
+          "from": "fo:jin",
+          "to": "fo:han",
+          "relation": "三分裂出"
+        },
+        {
+          "from": "fo:jin",
+          "to": "fo:zhao",
+          "relation": "三分裂出"
+        },
+        {
+          "from": "fo:jin",
+          "to": "fo:wei",
+          "relation": "三分裂出"
+        }
+      ]
+    },
+    {
+      "force_id": "fo:zhi",
+      "name_by_era": {
+        "春秋末": "智氏（知氏）"
+      },
+      "active_range": "至前453（晋阳之战被灭）",
+      "succession_edges": [
+        {
+          "from": "fo:zhi",
+          "to": null,
+          "relation": "前453 灭，地为韩赵魏瓜分"
+        }
+      ]
+    },
+    {
+      "force_id": "fo:zhao",
+      "name_by_era": {
+        "春秋": "赵氏（晋卿）",
+        "战国": "赵"
+      },
+      "active_range": "晋卿 → 前403 立为诸侯",
+      "succession_edges": [
+        {
+          "from": "fo:jin",
+          "to": "fo:zhao",
+          "relation": "自晋分立"
+        }
+      ]
+    },
+    {
+      "force_id": "fo:han",
+      "name_by_era": {
+        "春秋": "韩氏（晋卿）",
+        "战国": "韩"
+      },
+      "active_range": "晋卿 → 前403 立为诸侯",
+      "succession_edges": [
+        {
+          "from": "fo:jin",
+          "to": "fo:han",
+          "relation": "自晋分立"
+        }
+      ]
+    },
+    {
+      "force_id": "fo:wei",
+      "name_by_era": {
+        "春秋": "魏氏（晋卿）",
+        "战国": "魏"
+      },
+      "active_range": "晋卿 → 前403 立为诸侯",
+      "succession_edges": [
+        {
+          "from": "fo:jin",
+          "to": "fo:wei",
+          "relation": "自晋分立"
+        }
+      ]
+    },
+    {
+      "force_id": "fo:cao",
+      "name_by_era": {
+        "东汉末": "曹操集团（司空/丞相）",
+        "后": "曹魏"
+      },
+      "active_range": "官渡（公元200）为曹方",
+      "succession_edges": []
+    },
+    {
+      "force_id": "fo:yuan",
+      "name_by_era": {
+        "东汉末": "袁绍集团"
+      },
+      "active_range": "至公元202 袁绍卒、集团瓦解",
+      "succession_edges": [
+        {
+          "from": "fo:yuan",
+          "to": null,
+          "relation": "官渡败后渐灭"
+        }
+      ]
+    }
+  ]
+}

@@ -4,12 +4,12 @@ Auth design: tokens must NOT be passed via query string (logged by every
 reverse proxy and visible in browser history). Two safe options are supported:
 
   1. HttpOnly cookie 'refresh_token' — already set by /api/auth/login.
-     Client connects bare: new WebSocket("wss://stratum.uex.hk/ws")
+     Client connects bare: new WebSocket("wss://stratum.kanpan.co/ws")
      Server reads ws.cookies['access_token'] or ws.cookies['refresh_token'].
 
   2. Short-lived WS ticket — client calls POST /api/v1/ws/ticket (authenticated),
      receives a 30-second single-use ticket, and connects:
-     new WebSocket("wss://stratum.uex.hk/ws?ticket=<ticket>")
+     new WebSocket("wss://stratum.kanpan.co/ws?ticket=<ticket>")
      Ticket is NOT a long-lived JWT; it is a random token stored in DedupCache.
 """
 
@@ -31,7 +31,7 @@ _ALLOWED_ORIGINS: set[str] = {
     o.strip()
     for o in os.environ.get(
         "STRATUM_WS_ALLOWED_ORIGINS",
-        "http://localhost:3000,https://stratum.uex.hk",
+        "http://localhost:3000,https://stratum.kanpan.co",
     ).split(",")
     if o.strip()
 }

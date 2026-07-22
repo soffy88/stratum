@@ -1,0 +1,222 @@
+{
+  "spec": "MINERU-AII-INTEGRATION-SPEC-001 §5.1",
+  "target_per_category": 10,
+  "categories": {
+    "formula_heavy": [
+      {
+        "path": "/home/soffy/books/MD/中文数学/数学分析(第5版) 上 (华东师范大学数学系).md",
+        "title": "数学分析(第5版) 上 (华东师范大学数学系)",
+        "category": "formula_heavy",
+        "source": "quarantine:has_formula",
+        "detail": "content_match=75%<90%(68个key_terms未出现) | has_formula=32%<80% (无公式KU=186: ['定义1', '定义2', '定义1_s4', '定义2_s4', '定义3']) | 真缺facet=87%>10% (240个KU未修复): ['定义1', '定义2', '定义1_s4', '定义2_s4', '定义3']"
+      },
+      {
+        "path": "/home/soffy/books/MD/中文数学/高等数学 上册 第八版 (同济大学数学科学院 编).md",
+        "title": "高等数学 上册 第八版 (同济大学数学科学院 编)",
+        "category": "formula_heavy",
+        "source": "quarantine:has_formula",
+        "detail": "content_match=81%<90%(26个key_terms未出现) | has_formula=47%<80% (无公式KU=74: ['定理2', '推论', '定义1_s15', '定义2_s16', '定理1_s17']) | 真缺facet=86%>10% (119个KU未修复): ['定义2', '定理2', '定理3', '推论', '定义1_s15']"
+      },
+      {
+        "path": "/home/soffy/books/MD/中文数学/高等数学 下册 第八版 (同济大学数学科学学院 编).md",
+        "title": "高等数学 下册 第八版 (同济大学数学科学学院 编)",
+        "category": "formula_heavy",
+        "source": "quarantine:has_formula",
+        "detail": "content_match=79%<90%(32个key_terms未出现) | has_formula=37%<80% (无公式KU=97: ['定理3', '二重积分的概念', '二重积分的性质', '利用直角坐标计算二重积分', '利用极坐标计算二重积分']) | 真缺facet=85%>10% (130个KU未修复): ['定理1', '定理3', '定理4', '二重积分的概念', '二重积分的性质']"
+      },
+      {
+        "path": "/home/soffy/books/MD/中文数学/上帝创造整数.md",
+        "title": "上帝创造整数",
+        "category": "formula_heavy",
+        "source": "quarantine:has_formula",
+        "detail": "content_match=57%<90%(13个key_terms未出现) | has_formula=50%<80% (无公式KU=15: ['命题1', '推论', '定理1_s13', '问题的表述', '势或基数的概念']) | 真缺facet=90%>10% (27个KU未修复): ['命题1', '推论', '定理1', '定理1_s13', '问题的表述']"
+      },
+      {
+        "path": "/home/soffy/books/MD/中文数学/托马斯微积分第十四版Thomas Calculus英文中文双语AI翻译 (Joel R. Hass, Christopher D. Heil etc.).md",
+        "title": "托马斯微积分第十四版Thomas Calculus英文中文双语AI翻译 (Joel R. Hass, Christopher D. Heil etc.)",
+        "category": "formula_heavy",
+        "source": "heuristic:latex_density",
+        "detail": "12322 LaTeX matches"
+      },
+      {
+        "path": "/home/soffy/books/MD/中文数学/微积分和数学分析引论 (第二卷) (Richard Courant,Fritz John).md",
+        "title": "微积分和数学分析引论 (第二卷) (Richard Courant,Fritz John)",
+        "category": "formula_heavy",
+        "source": "heuristic:latex_density",
+        "detail": "5062 LaTeX matches"
+      },
+      {
+        "path": "/home/soffy/books/MD/中文数学/微积分学教程（第 2 卷）.md",
+        "title": "微积分学教程（第 2 卷）",
+        "category": "formula_heavy",
+        "source": "heuristic:latex_density",
+        "detail": "4340 LaTeX matches"
+      },
+      {
+        "path": "/home/soffy/books/MD/中文数学/微积分学教程（第 1 卷）.md",
+        "title": "微积分学教程（第 1 卷）",
+        "category": "formula_heavy",
+        "source": "heuristic:latex_density",
+        "detail": "3109 LaTeX matches"
+      },
+      {
+        "path": "/home/soffy/books/MD/中文数学/华章数学译丛+3+泛函分析 (鲁丁 (作者), 刘培德 (译者)).md",
+        "title": "华章数学译丛+3+泛函分析 (鲁丁 (作者), 刘培德 (译者))",
+        "category": "formula_heavy",
+        "source": "heuristic:latex_density",
+        "detail": "1970 LaTeX matches"
+      },
+      {
+        "path": "/home/soffy/books/MD/中文数学/华章数学译丛+1+数学分析原理 (卢丁 (作者) 赵慈庚 (译者)).md",
+        "title": "华章数学译丛+1+数学分析原理 (卢丁 (作者) 赵慈庚 (译者))",
+        "category": "formula_heavy",
+        "source": "heuristic:latex_density",
+        "detail": "1896 LaTeX matches"
+      }
+    ],
+    "table_dense": [
+      {
+        "path": "/home/soffy/books/MD/其它/托马斯微积分第十四版Thomas_Calculus英文中文双语AI翻译_(Joe_01KWRXP6.md",
+        "title": "托马斯微积分第十四版Thomas_Calculus英文中文双语AI翻译_(Joe_01KWRXP6",
+        "category": "table_dense",
+        "source": "heuristic:table_row_density",
+        "detail": "102856 table-row lines"
+      },
+      {
+        "path": "/home/soffy/books/MD/其它/Precalculus_-_Mathematics_for_Calculus_8_01KWS131.md",
+        "title": "Precalculus_-_Mathematics_for_Calculus_8_01KWS131",
+        "category": "table_dense",
+        "source": "heuristic:table_row_density",
+        "detail": "35007 table-row lines"
+      },
+      {
+        "path": "/home/soffy/books/MD/英文数学/Introduction_to_Probability_and_Statisti_01KWW0XM.md",
+        "title": "Introduction_to_Probability_and_Statisti_01KWW0XM",
+        "category": "table_dense",
+        "source": "heuristic:table_row_density",
+        "detail": "19374 table-row lines"
+      },
+      {
+        "path": "/home/soffy/books/MD/英文数学/An_Introduction_to_Mathematical_Analysis_01KVAJVD.md",
+        "title": "An_Introduction_to_Mathematical_Analysis_01KVAJVD",
+        "category": "table_dense",
+        "source": "heuristic:table_row_density",
+        "detail": "11897 table-row lines"
+      },
+      {
+        "path": "/home/soffy/books/MD/英文数学/Probability_and_Statistics_for_Data_Scie_01KWS29D.md",
+        "title": "Probability_and_Statistics_for_Data_Scie_01KWS29D",
+        "category": "table_dense",
+        "source": "heuristic:table_row_density",
+        "detail": "9924 table-row lines"
+      },
+      {
+        "path": "/home/soffy/books/MD/英文数学/Stochastic_Finance_-_An_Introduction_in__01KVAFVR.md",
+        "title": "Stochastic_Finance_-_An_Introduction_in__01KVAFVR",
+        "category": "table_dense",
+        "source": "heuristic:table_row_density",
+        "detail": "9859 table-row lines"
+      },
+      {
+        "path": "/home/soffy/books/MD/英文数学/Mathematics_for_Machine_Learning_(Marc_P_01KWW0J3.md",
+        "title": "Mathematics_for_Machine_Learning_(Marc_P_01KWW0J3",
+        "category": "table_dense",
+        "source": "heuristic:table_row_density",
+        "detail": "8353 table-row lines"
+      },
+      {
+        "path": "/home/soffy/books/MD/英文数学/Probability_Theory_A_First_Course_in_Pro_01KWS2VQ.md",
+        "title": "Probability_Theory_A_First_Course_in_Pro_01KWS2VQ",
+        "category": "table_dense",
+        "source": "heuristic:table_row_density",
+        "detail": "8176 table-row lines"
+      },
+      {
+        "path": "/home/soffy/books/MD/其它/Collins_Cambridge_International_AS_and_a_01KWW1KC.md",
+        "title": "Collins_Cambridge_International_AS_and_a_01KWW1KC",
+        "category": "table_dense",
+        "source": "heuristic:table_row_density",
+        "detail": "7656 table-row lines"
+      },
+      {
+        "path": "/home/soffy/books/MD/其它/Mathematics_in_Action_An_Introduction_to_01KWW30G.md",
+        "title": "Mathematics_in_Action_An_Introduction_to_01KWW30G",
+        "category": "table_dense",
+        "source": "heuristic:table_row_density",
+        "detail": "7144 table-row lines"
+      }
+    ],
+    "scanned_complex": [
+      {
+        "path": "/home/soffy/books/MD/待OCR/向量微积分、线性代数和微分形式——统一方法 (（美）John Hamal Hubbard etc.).md",
+        "title": "向量微积分、线性代数和微分形式——统一方法 (（美）John Hamal Hubbard etc.)",
+        "category": "scanned_complex",
+        "source": "dir:待OCR",
+        "detail": "位于待OCR目录, 本身就是扫描件标签"
+      },
+      {
+        "path": "/home/soffy/books/MD/经济学/偏好的经济分析_01KVKRW5.md",
+        "title": "偏好的经济分析_01KVKRW5",
+        "category": "scanned_complex",
+        "source": "quarantine:econ:structural_failure",
+        "detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章"
+      },
+      {
+        "path": "/home/soffy/books/MD/经济学/内部流动性与外部流动性_01KVKRX1.md",
+        "title": "内部流动性与外部流动性_01KVKRX1",
+        "category": "scanned_complex",
+        "source": "quarantine:econ:structural_failure",
+        "detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章"
+      },
+      {
+        "path": "/home/soffy/books/MD/经济学/市场结构和对外贸易：报酬递增、不完全竞争和国际经济_01KVKRXJ.md",
+        "title": "市场结构和对外贸易：报酬递增、不完全竞争和国际经济_01KVKRXJ",
+        "category": "scanned_complex",
+        "source": "quarantine:econ:structural_failure",
+        "detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章"
+      },
+      {
+        "path": "/home/soffy/books/MD/经济学/当代经济学系列丛书当代经济学译库 （多部诺奖经济学家经典著作，国内最早大规模系统引进和介绍现代经济学理论的大型丛书，新一代经济学人必读） ( etc.) (1).md",
+        "title": "当代经济学系列丛书当代经济学译库 （多部诺奖经济学家经典著作，国内最早大规模系统引进和介绍现代经济学理论的大型丛书，新一代经济学人必读） ( etc.) (1)",
+        "category": "scanned_complex",
+        "source": "quarantine:econ:structural_failure",
+        "detail": "FAIL:chapter_gap:章号非连续 1..N: [9]"
+      },
+      {
+        "path": "/home/soffy/books/MD/经济学/投资者与市场：组合选择、资产定价及投资建议_01KVKRVX.md",
+        "title": "投资者与市场：组合选择、资产定价及投资建议_01KVKRVX",
+        "category": "scanned_complex",
+        "source": "quarantine:econ:structural_failure",
+        "detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章"
+      },
+      {
+        "path": "/home/soffy/books/MD/经济学/牛奶可乐经济学套装（全四册）（“文津图书奖”获奖升级全套！ 通俗经济学入门就读这四本！） (罗伯特·弗兰克 [罗伯特·弗兰克]).md",
+        "title": "牛奶可乐经济学套装（全四册）（“文津图书奖”获奖升级全套！ 通俗经济学入门就读这四本！） (罗伯特·弗兰克 [罗伯特·弗兰克])",
+        "category": "scanned_complex",
+        "source": "quarantine:econ:structural_failure",
+        "detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章"
+      },
+      {
+        "path": "/home/soffy/books/MD/经济学/贸易政策和市场结构_01KVKRXC.md",
+        "title": "贸易政策和市场结构_01KVKRXC",
+        "category": "scanned_complex",
+        "source": "quarantine:econ:structural_failure",
+        "detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章"
+      },
+      {
+        "path": "/home/soffy/books/MD/经济学/动物精神_01KVKRR3.md",
+        "title": "动物精神_01KVKRR3",
+        "category": "scanned_complex",
+        "source": "quarantine:econ:structural_failure",
+        "detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章"
+      },
+      {
+        "path": "/home/soffy/books/MD/经济学/大繁荣_01KVKRQX.md",
+        "title": "大繁荣_01KVKRQX",
+        "category": "scanned_complex",
+        "source": "quarantine:econ:structural_failure",
+        "detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章"
+      }
+    ]
+  }
+}

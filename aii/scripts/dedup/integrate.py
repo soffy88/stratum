@@ -134,3 +134,35 @@ async def persist_refined_ku(
         decision_id,
     )
     return ku_id
+
+
+async def persist_refined_concept(
+    conn,
+    *,
+    name,
+    name_zh,
+    aliases,
+    discipline,
+    discriminative,
+    embedding=None,
+    sources=None,
+    decision_id=None,
+) -> int:
+    """落 rf.refined_concept(canonical 概念 + B仓独立向量 + 别名/判别维度/出处)。返回 concept_id。"""
+    import json
+
+    return await conn.fetchval(
+        """
+        INSERT INTO rf.refined_concept
+          (name, name_zh, aliases, discipline, discriminative, embedding, sources, decision_id)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING concept_id
+        """,
+        name,
+        name_zh,
+        json.dumps(aliases, ensure_ascii=False) if aliases is not None else None,
+        discipline,
+        json.dumps(discriminative, ensure_ascii=False) if discriminative is not None else None,
+        embedding,
+        json.dumps(sources, ensure_ascii=False) if sources is not None else None,
+        decision_id,
+    )

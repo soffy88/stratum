@@ -1,0 +1,10 @@
+# 看门狗运行时产物(每5min重写/追加), 不入库
+health_report.json
+health_report.tmp
+state.json
+state.tmp
+watchdog.log
+health_actions.jsonl
+action_state.json
+action_state.tmp
+MAINTENANCE

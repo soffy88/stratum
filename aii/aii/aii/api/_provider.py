@@ -15,9 +15,12 @@ _OLLAMA_CALL_LOCK = threading.Lock()
 logger = logging.getLogger(__name__)
 
 
-def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash",
-                          base_url: str = "https://api.deepseek.com/chat/completions",
-                          rpm: float = 0) -> callable:
+def _make_deepseek_caller(
+    api_key: str,
+    model: str = "deepseek-v4-flash",
+    base_url: str = "https://api.deepseek.com/chat/completions",
+    rpm: float = 0,
+) -> callable:
     """Return an async callable compatible with both omodul (messages/system/max_tokens kwargs)
     and the legacy synthesis_engine (single positional prompt string via executor).
 
@@ -39,6 +42,7 @@ def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash",
         if not _min_int:
             return
         import time as _t
+
         with _rl_lock:
             start = max(_t.monotonic(), _rl_next[0])
             _rl_next[0] = start + _min_int
@@ -46,30 +50,43 @@ def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash",
         if w > 0:
             _t.sleep(w)
 
+    def _post_with_retry(payload: dict, max_retries: int = 5):
+        # ★429限流是瞬时的(尤其NIM key被econ_zh/misc/BU等多个进程共用, _throttle()只在
+        # 单进程内生效, 挡不住跨进程撞车), 之前遇到429直接抛异常、整本书(哪怕[1/5]已经
+        # 抽出了几十条好KU)被判 pipeline_error 永久放弃——实测撞过好几次。重试等窗口过去。
+        import time as _t
+
+        for attempt in range(max_retries):
+            resp = _client.post(
+                base_url,
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json=payload,
+            )
+            if resp.status_code == 429 and attempt < max_retries - 1:
+                wait = float(resp.headers.get("retry-after", 0)) or min(15 * (attempt + 1), 60)
+                _t.sleep(wait)
+                continue
+            resp.raise_for_status()
+            return resp
+        resp.raise_for_status()
+        return resp
+
     def _call_sync(prompt: str) -> str:
         """Synchronous DeepSeek call for synthesis (plain text, no JSON mode)."""
         _throttle()
-        resp = _client.post(
-            base_url,
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json={"model": model, "messages": [{"role": "user", "content": prompt}]},
-        )
-        resp.raise_for_status()
+        resp = _post_with_retry({"model": model, "messages": [{"role": "user", "content": prompt}]})
         return resp.json()["choices"][0]["message"]["content"]
 
     def _call_sync_json(prompt: str) -> str:
         """Synchronous DeepSeek call for extraction (JSON mode → eliminates markdown fence retries)."""
         _throttle()
-        resp = _client.post(
-            base_url,
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json={
+        resp = _post_with_retry(
+            {
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}],
                 "response_format": {"type": "json_object"},
-            },
+            }
         )
-        resp.raise_for_status()
         return resp.json()["choices"][0]["message"]["content"]
 
     async def _call_async(messages=None, *, system: str = "", max_tokens: int = 4096, **_):
@@ -78,21 +95,26 @@ def _make_deepseek_caller(api_key: str, model: str = "deepseek-v4-flash",
         parts: list[str] = []
         if system:
             parts.append(system)
-        for msg in (messages or []):
+        for msg in messages or []:
             if isinstance(msg, dict) and msg.get("role") == "user":
                 parts.append(msg.get("content", ""))
         combined = "\n\n".join(p for p in parts if p)
         loop = asyncio.get_event_loop()
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
             answer = await loop.run_in_executor(ex, _call_sync, combined)
-        return {"content": [{"type": "text", "text": answer}]}
+        # ★NIM API偶发返回 message.content=null(见 nemotron-super-49b reasoning 模型),
+        #   None 会一路传到消费方的 "".join(...text...) 直接崩 "expected str, NoneType"。
+        #   在源头挡掉, 消费方多处调用不用各自防御.
+        return {"content": [{"type": "text", "text": answer or ""}]}
 
     # Extraction callers (llm_extract_ku) use call_sync → JSON mode
     _call_async.call_sync = _call_sync_json
     return _call_async
 
 
-def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://localhost:11434") -> callable:
+def _make_ollama_caller(
+    model: str = "qwen2.5:7b", base_url: str = "http://localhost:11434"
+) -> callable:
     """Return a caller backed by local Ollama.
 
     _call_async (synthesis path): plain text, no format=json, 8 k char limit.
@@ -107,7 +129,12 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
         with _OLLAMA_CALL_LOCK:  # ★串行: 单 GPU 并发会让 gemma 输出垃圾
             resp = _client.post(
                 f"{base_url}/api/generate",
-                json={"model": model, "prompt": prompt[:_max_chars], "stream": False, "format": "json"},
+                json={
+                    "model": model,
+                    "prompt": prompt[:_max_chars],
+                    "stream": False,
+                    "format": "json",
+                },
             )
         resp.raise_for_status()
         return resp.json()["response"]
@@ -127,7 +154,7 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
         parts: list[str] = []
         if system:
             parts.append(system)
-        for msg in (messages or []):
+        for msg in messages or []:
             if isinstance(msg, dict) and msg.get("role") == "user":
                 parts.append(msg.get("content", ""))
         combined = "\n\n".join(p for p in parts if p)
@@ -137,11 +164,27 @@ def _make_ollama_caller(model: str = "qwen2.5:7b", base_url: str = "http://local
         loop = asyncio.get_event_loop()
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
             answer = await loop.run_in_executor(ex, caller, combined)
-        return {"content": [{"type": "text", "text": answer}]}
+        return {"content": [{"type": "text", "text": answer or ""}]}
 
-    _call_async.call_sync = _call_sync          # extraction: JSON mode
+    _call_async.call_sync = _call_sync  # extraction: JSON mode
     _call_async.call_sync_plain = _call_sync_plain  # dedup/plain-text
     return _call_async
+
+
+def _pipeline_nim_key(name: str) -> str | None:
+    """从 aii/.pipeline_keys.json 读命名 NIM key(飞轮共用的密钥池)。找不到返回 None。"""
+    import json
+    import pathlib
+
+    for base in pathlib.Path(__file__).resolve().parents:
+        f = base / ".pipeline_keys.json"
+        if f.exists():
+            try:
+                return json.loads(f.read_text()).get(name) or None
+            except Exception:
+                return None
+    return None
+
 
 def register_providers():
     """Register computational providers for AII (A24 Routing).
@@ -156,25 +199,62 @@ def register_providers():
     # 1. LLM Provider (DeepSeek v4) — default=flash (实测够用且最省); pro 备用
     #    deepseek-chat 别名 2026/07/24 下线, 已显式改 deepseek-v4-flash.
     api_key = os.getenv("DEEPSEEK_API_KEY")
-    ProviderRegistry.register("llm", "deepseek-flash", _make_deepseek_caller(api_key, model="deepseek-v4-flash"))
-    ProviderRegistry.register("llm", "deepseek-pro", _make_deepseek_caller(api_key, model="deepseek-v4-pro"))
+    ProviderRegistry.register(
+        "llm", "deepseek-flash", _make_deepseek_caller(api_key, model="deepseek-v4-flash")
+    )
+    ProviderRegistry.register(
+        "llm", "deepseek-pro", _make_deepseek_caller(api_key, model="deepseek-v4-pro")
+    )
 
     # ★NVIDIA NIM (云端 OpenAI 兼容; 快 + 可并发, 避开本地单 GPU 串行瓶颈, 无需 DeepSeek 余额).
-    #   设 NVIDIA_NIM_API_KEY 即作 default(优先于 DeepSeek); 模型经 NIM_MODEL 选(默认 llama-3.3-70b).
+    #   设 NVIDIA_NIM_API_KEY 即作 default(优先于 DeepSeek); 模型经 NIM_MODEL 选.
     nim_key = os.getenv("NVIDIA_NIM_API_KEY")
     use_nim = bool(nim_key) and not use_ollama_as_default
     if nim_key:
-        nim_model = os.getenv("NIM_MODEL", "meta/llama-3.1-70b-instruct")
+        # ★模型选型(2026-07-07实测对比, advmath频道发现): 默认 meta/llama-3.1-70b-instruct 讲得干、
+        #   偶发限流; nemotron-super-49b 明显更好且更快/不容易被限流(小尺寸对同一免费层配额压力小)——
+        #   econ_zh/misc/math_prog/advmath 四飞轮已各自显式设NIM_MODEL对齐, 这里改全局兜底默认值,
+        #   让没显式设的调用方(如未来新脚本)也受益, 不用逐个飞轮脚本单独配.
+        nim_model = os.getenv("NIM_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1.5")
         nim_rpm = float(os.getenv("NIM_RPM", "36"))  # NIM 免费层 40/min, 留余量
-        nim_caller = _make_deepseek_caller(nim_key, model=nim_model,
-                                           base_url="https://integrate.api.nvidia.com/v1/chat/completions",
-                                           rpm=nim_rpm)
+        nim_caller = _make_deepseek_caller(
+            nim_key,
+            model=nim_model,
+            base_url="https://integrate.api.nvidia.com/v1/chat/completions",
+            rpm=nim_rpm,
+        )
         ProviderRegistry.register("llm", "nim", nim_caller)
         if use_nim:
             ProviderRegistry.register("llm", "default", nim_caller)
             logger.info("NVIDIA NIM registered as DEFAULT: %s", nim_model)
     if not use_ollama_as_default and not use_nim:
-        ProviderRegistry.register("llm", "default", _make_deepseek_caller(api_key, model="deepseek-v4-flash"))
+        ProviderRegistry.register(
+            "llm", "default", _make_deepseek_caller(api_key, model="deepseek-v4-flash")
+        )
+
+    # ★学习助手专用 NIM provider(交互式 AI 教练/裁判/出题)——只影响学习模块, 后端 default
+    #   (检索问答/入库/去重)保持不变。learning.py 调 llm("learning"); 未注册时注册表自动回落到
+    #   default(DeepSeek), 安全。key 复用 econ(池在 aii/.pipeline_keys.json 的 learning 槽位, 可换独立key),
+    #   可经 LEARNING_NIM_API_KEY / LEARNING_NIM_MODEL 覆盖。
+    learning_key = (
+        os.getenv("LEARNING_NIM_API_KEY")
+        or _pipeline_nim_key("learning")
+        or _pipeline_nim_key("econ")
+    )
+    if learning_key:
+        learning_model = os.getenv("LEARNING_NIM_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1.5")
+        learning_rpm = float(os.getenv("LEARNING_NIM_RPM", "36"))  # NIM 免费层 40/min, 留余量
+        ProviderRegistry.register(
+            "llm",
+            "learning",
+            _make_deepseek_caller(
+                learning_key,
+                model=learning_model,
+                base_url="https://integrate.api.nvidia.com/v1/chat/completions",
+                rpm=learning_rpm,
+            ),
+        )
+        logger.info("学习助手 NIM provider registered: %s", learning_model)
 
     # 2. LLM Provider (Ollama) — low-trust sources OR local testing (ECON_LLM_PROVIDER=ollama)
     try:
@@ -190,20 +270,33 @@ def register_providers():
         if use_ollama_as_default:
             raise RuntimeError(f"ECON_LLM_PROVIDER=ollama but Ollama unavailable: {e}") from e
 
-    # 3. Embedding Provider (Real BGE-M3)
-    from oprim.embedding.bge_m3 import BgeM3Embedder
+    # 3. Embedding Provider
+    #    设 AII_EMBED_URL → 调共享 aii-embed 微服务(不在本进程加载模型, 去冗余/省内存);
+    #    否则 → 进程内 BGE-M3(单机/服务未起时的兜底).
+    embed_url = os.getenv("AII_EMBED_URL")
     try:
-        embedder = BgeM3Embedder()
-        ProviderRegistry.register("embedding", "default", embedder.embed)
-        logger.info("REAL BGE-M3 Provider registered.")
+        if embed_url:
+            from oprim.embedding.aii_remote import AiiRemoteEmbedder
+
+            embedder = AiiRemoteEmbedder(embed_url)
+            ProviderRegistry.register("embedding", "default", embedder.embed)
+            logger.info("Remote embed Provider registered: %s", embed_url)
+        else:
+            from oprim.embedding.bge_m3 import BgeM3Embedder
+
+            embedder = BgeM3Embedder()
+            ProviderRegistry.register("embedding", "default", embedder.embed)
+            logger.info("REAL BGE-M3 Provider registered (in-process).")
     except Exception as e:
-        logger.error(f"Failed to load REAL BGE-M3: {e}")
+        logger.error(f"Failed to register embedding provider: {e}")
 
     default_lbl = f"Ollama({ollama_model})" if use_ollama_as_default else "DeepSeek"
     logger.info("AII Providers registered: llm/default(%s), embedding/default", default_lbl)
 
+
 if __name__ == "__main__":
     from dotenv import load_dotenv
+
     load_dotenv()
     register_providers()
     print(f"LLM default registered: {ProviderRegistry.has('llm', 'default')}")

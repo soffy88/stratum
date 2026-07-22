@@ -16,8 +16,5 @@ CREATE TABLE IF NOT EXISTS highlights (
 
 CREATE INDEX IF NOT EXISTS idx_hl_user ON highlights(user_id);
 
-CREATE INDEX IF NOT EXISTS idx_hl_content
-    ON highlights(content_id) WHERE content_id IS NOT NULL;
-
 CREATE INDEX IF NOT EXISTS idx_hl_substrate
     ON highlights(substrate_id) WHERE substrate_id IS NOT NULL;
