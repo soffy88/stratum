@@ -1,0 +1,35 @@
+{
+  "substrate": {
+    "substrate_ulid": "7RTPSJS9QAKBREZPGTR8DSSV5T",
+    "source_ref": "src:sanguozhi",
+    "book": "三国志（含裴注）",
+    "base_text": {
+      "url": "https://zh.wikisource.org/wiki/三國志",
+      "license": "CC BY-SA 3.0（维基文库标点白文）",
+      "fetch_date": "2026-07-22",
+      "char_count": 157,
+      "form": "白文（维基文库标点，CC BY-SA）",
+      "r5": "禁对齐在版点校本；非记忆备录，WebFetch 逐字"
+    },
+    "coverage": "部分（首弧牵引 + fixtures 被引段落）；全书全量入库属后续波次",
+    "ulid_scheme": "substrate ULID = SHA256(src_id) 派生 Crockford base32（稳定可复现，非时序 ULID）"
+  },
+  "paragraphs": [
+    {
+      "para_ulid": "7RTPSJS9QAKBREZPGTR8DSSV5T:0001",
+      "chapter": "蜀书·诸葛亮传·裴注引郭冲条亮五事其三",
+      "text": "亮屯於陽平，……司馬宣王率二十萬眾……亮意氣自若，敕軍中皆臥旗息鼓，不得妄出菴幔，又令大開四城門，埽地卻灑。宣王疑其有伏兵，於是引軍北趣山。",
+      "backs_fixtures": [
+        "F8"
+      ]
+    },
+    {
+      "para_ulid": "7RTPSJS9QAKBREZPGTR8DSSV5T:0002",
+      "chapter": "蜀书·诸葛亮传·裴注臣松之案",
+      "text": "案陽平在漢中。亮初屯陽平，宣帝尚為荊州都督，鎮宛城，至曹真死後，始與亮於關中相抗禦耳。……就如沖言，宣帝既舉二十萬眾，已知亮兵少力弱，若疑其有伏兵，正可設防持重，何至便走乎？",
+      "backs_fixtures": [
+        "F8"
+      ]
+    }
+  ]
+}

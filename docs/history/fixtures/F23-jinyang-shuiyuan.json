@@ -3,23 +3,63 @@
     {
       "event_id": "ev:jinyang-zhizhan",
       "title": "晋阳之战·灌城水源与围城年数（B06 补拍）",
-      "canonical_date": { "type": "range", "value": ["前455", "前453"], "note": "前455 智伯率韩魏围赵襄子于晋阳；前453 韩魏反戈，灭智伯，三分其地。（与 F1 同事件——一事多 fixture 各测各维，本 fixture 测 place/number。）" },
+      "canonical_date": {
+        "type": "range",
+        "value": [
+          "前455",
+          "前453"
+        ],
+        "note": "前455 智伯率韩魏围赵襄子于晋阳；前453 韩魏反戈，灭智伯，三分其地。（与 F1 同事件——一事多 fixture 各测各维，本 fixture 测 place/number。）"
+      },
       "event_type": "战役",
       "actors": [
-        { "person_ref": "per:zhibo", "role": "围攻方主谋（被杀）", "force_ref": "fo:zhi" },
-        { "person_ref": "per:zhao-xiangzi", "role": "守方（晋阳）", "force_ref": "fo:zhao" },
-        { "person_ref": "per:hankangzi", "role": "初随智、后反戈", "force_ref": "fo:han" },
-        { "person_ref": "per:weihuanzi", "role": "初随智、后反戈", "force_ref": "fo:wei" },
-        { "person_ref": "per:zhangmengtan", "role": "赵襄子家臣，潜出说韩魏反智（史记作『张孟同』）", "force_ref": "fo:zhao" }
+        {
+          "person_ref": "per:zhibo",
+          "role": "围攻方主谋（被杀）",
+          "force_ref": "fo:zhi"
+        },
+        {
+          "person_ref": "per:zhao-xiangzi",
+          "role": "守方（晋阳）",
+          "force_ref": "fo:zhao"
+        },
+        {
+          "person_ref": "per:hankangzi",
+          "role": "初随智、后反戈",
+          "force_ref": "fo:han"
+        },
+        {
+          "person_ref": "per:weihuanzi",
+          "role": "初随智、后反戈",
+          "force_ref": "fo:wei"
+        },
+        {
+          "person_ref": "per:zhangmengtan",
+          "role": "赵襄子家臣，潜出说韩魏反智（史记作『张孟同』）",
+          "force_ref": "fo:zhao"
+        }
       ],
       "geo": {
-        "place_refs": ["pl:jinyang"],
+        "place_refs": [
+          "pl:jinyang"
+        ],
         "route_hint": "引水灌晋阳——主线（史记·赵世家）作汾水；战国策·赵策一作晋水，S12 并陈见 cf:jinyang-shuiyuan（hint 跟随 mainline_decision，D-017）",
         "mapstate_hint": "晋阳围城"
       },
-      "parent_event": { "role": "child", "parent_event_id": "ev:sanjiafenjin", "child_event_ids": [] },
-      "accounts": ["ac:jinyang-shuiyuan-shiji", "ac:jinyang-shuiyuan-zhanguoce", "ac:jinyang-shuiyuan-zztj"],
-      "conflicts": ["cf:jinyang-shuiyuan", "cf:jinyang-weicheng-duration"],
+      "parent_event": {
+        "role": "child",
+        "parent_event_id": "ev:sanjiafenjin",
+        "child_event_ids": []
+      },
+      "accounts": [
+        "ac:jinyang-shuiyuan-shiji",
+        "ac:jinyang-shuiyuan-zhanguoce",
+        "ac:jinyang-shuiyuan-zztj"
+      ],
+      "conflicts": [
+        "cf:jinyang-shuiyuan",
+        "cf:jinyang-weicheng-duration"
+      ],
       "evidence_tier": "E1",
       "mainline_account_ref": "ac:jinyang-shuiyuan-shiji",
       "mainline_decision": {
@@ -39,17 +79,27 @@
         "book": "史记",
         "chapter": "赵世家",
         "section": "襄子·晋阳之围段",
-        "para_ulid": null,
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0001",
         "note": "待补。『三國攻晉陽，歲餘，引汾水灌其城，城不浸者三版。城中懸釜而炊，易子而食。』又『（襄子）夜使相張孟同私於韓、魏。韓、魏與合謀』。（原文经维基文库·史記/卷043 逐字核对，2026-07-22。）"
       },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "围晋阳岁余（结合出公纪年，约前455–前453）",
-        "actor_claims": ["三国（智韩魏）攻晋阳", "襄子夜使相张孟同私于韩魏，韩魏与合谋"],
-        "causal_claims": ["韩魏与赵合谋反智→三国反灭知氏"],
+        "actor_claims": [
+          "三国（智韩魏）攻晋阳",
+          "襄子夜使相张孟同私于韩魏，韩魏与合谋"
+        ],
+        "causal_claims": [
+          "韩魏与赵合谋反智→三国反灭知氏"
+        ],
         "number_claims": [
-          { "value": "歲餘", "unit": "围城时长", "quote_span": "三國攻晉陽，歲餘，引汾水灌其城", "display": "《史记·赵世家》载" }
+          {
+            "value": "歲餘",
+            "unit": "围城时长",
+            "quote_span": "三國攻晉陽，歲餘，引汾水灌其城",
+            "display": "《史记·赵世家》载"
+          }
         ],
         "dialogue_spans": []
       },
@@ -63,19 +113,31 @@
         "book": "战国策",
         "chapter": "赵策一（知伯帅赵韩魏而伐范中行氏）",
         "section": "围晋阳段",
-        "para_ulid": null,
+        "para_ulid": "FR8TKEM3839A5M37HD8MRBT5MP:0001",
         "note": "待补。『圍晉陽三年，城中巢居而處，懸釜而炊』『決晉水而灌之，城下不沉者三板』；『張孟談於是陰見韓、魏之君』。（原文经维基文库·戰國策/卷18 逐字核对，2026-07-22。）"
       },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "（策文不系年）围晋阳三年",
-        "actor_claims": ["知伯决晋水灌晋阳", "张孟谈阴见韩魏之君说以唇亡齿寒"],
-        "causal_claims": ["张孟谈说韩魏→韩魏反于外赵应于内→知氏亡"],
-        "number_claims": [
-          { "value": "三年", "unit": "围城时长", "quote_span": "圍晉陽三年，城中巢居而處", "display": "《战国策·赵策一》载" }
+        "actor_claims": [
+          "知伯决晋水灌晋阳",
+          "张孟谈阴见韩魏之君说以唇亡齿寒"
         ],
-        "dialogue_spans": ["张孟谈说韩魏之君语（唇亡齿寒之谕，演绎段素材，透传不消费）"]
+        "causal_claims": [
+          "张孟谈说韩魏→韩魏反于外赵应于内→知氏亡"
+        ],
+        "number_claims": [
+          {
+            "value": "三年",
+            "unit": "围城时长",
+            "quote_span": "圍晉陽三年，城中巢居而處",
+            "display": "《战国策·赵策一》载"
+          }
+        ],
+        "dialogue_spans": [
+          "张孟谈说韩魏之君语（唇亡齿寒之谕，演绎段素材，透传不消费）"
+        ]
       },
       "genre_note": "国别策论（genre 降权：策士敷演）。水源作『晋水』、时长作『三年』——晋水/三年为策书一系。★手工 VO 之『晋水』所本即此系。"
     },
@@ -87,17 +149,26 @@
         "book": "资治通鉴",
         "chapter": "周纪一",
         "section": "围晋阳段",
-        "para_ulid": null,
+        "para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0003",
         "note": "待补。『三家以國人圍而灌之』『智伯行水』；『趙襄子使張孟談潛出見二子，曰：臣聞脣亡則齒寒』。（原文经维基文库·資治通鑑/卷001 逐字核对，2026-07-22。）"
       },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "（系年从通鉴编年框架）",
-        "actor_claims": ["三家以国人围而灌之", "智伯行水", "赵襄子使张孟谈潜出见韩魏二君"],
-        "causal_claims": ["唇亡齿寒之说动韩魏→阴谋反智"],
+        "actor_claims": [
+          "三家以国人围而灌之",
+          "智伯行水",
+          "赵襄子使张孟谈潜出见韩魏二君"
+        ],
+        "causal_claims": [
+          "唇亡齿寒之说动韩魏→阴谋反智"
+        ],
         "number_claims": [],
-        "dialogue_spans": ["『臣聞脣亡則齒寒』（张孟谈说辞）", "『智伯行水，魏桓子御，韓康子驂乘』段（演绎素材）"]
+        "dialogue_spans": [
+          "『臣聞脣亡則齒寒』（张孟谈说辞）",
+          "『智伯行水，魏桓子御，韓康子驂乘』段（演绎素材）"
+        ]
       },
       "genre_note": "编年（derivation：通鉴←史记/战国策/国语综合剪裁，独立见证不另计）。★通鉴于水源**不名水**、于时长**不记年数**——两处分歧皆回避，不计为任一端见证。国语·晋语九『晉師圍而灌之，沈灶產蛙』同样不名水（旁证，未入本 fixture account）。"
     }
@@ -107,7 +178,10 @@
       "conflict_id": "cf:jinyang-shuiyuan",
       "event_ref": "ev:jinyang-zhizhan",
       "dimension": "place",
-      "account_refs": ["ac:jinyang-shuiyuan-shiji", "ac:jinyang-shuiyuan-zhanguoce"],
+      "account_refs": [
+        "ac:jinyang-shuiyuan-shiji",
+        "ac:jinyang-shuiyuan-zhanguoce"
+      ],
       "independence_analysis": {
         "independent_witness_count": 2,
         "reasoning": "★place 维第二用户（F18 赤壁地望后）。灌城水源：史记·赵世家明作『引**汾水**灌其城』vs 战国策·赵策一明作『決**晉水**而灌之』——同指涉（灌晋阳之水）、两值对立，真冲突。判定从**实际 locator** 定（维基文库/ctext 逐字核对 2026-07-22，非记忆）。通鉴『圍而灌之』『智伯行水』与国语·晋语九『晉師圍而灌之』皆**不名水**——两不表态源不计冲突端。史记与战国策为两传世系统，此点各执一词、非派生关系，indep=2。",
@@ -130,7 +204,10 @@
       "conflict_id": "cf:jinyang-weicheng-duration",
       "event_ref": "ev:jinyang-zhizhan",
       "dimension": "number",
-      "account_refs": ["ac:jinyang-shuiyuan-shiji", "ac:jinyang-shuiyuan-zhanguoce"],
+      "account_refs": [
+        "ac:jinyang-shuiyuan-shiji",
+        "ac:jinyang-shuiyuan-zhanguoce"
+      ],
       "independence_analysis": {
         "independent_witness_count": 2,
         "reasoning": "★通则 a 同指涉对齐前置：『歲餘』（史记·赵世家）与『三年』（战国策·赵策一）**同指涉**（围晋阳总时长）且不相容（一年余 vs 三年）——真冲突，非确数/约数精粗差（对照 F16 长平 40万/数十万之精粗同源例）。通则 b：数字不带 tier，署源 claim + 冲突对象。通鉴/国语皆不记时长，不计端。史记/战国策两系 indep=2。",

@@ -1,0 +1,35 @@
+{
+  "substrate": {
+    "substrate_ulid": "FR8TKEM3839A5M37HD8MRBT5MP",
+    "source_ref": "src:zhanguoce",
+    "book": "战国策",
+    "base_text": {
+      "url": "https://zh.wikisource.org/wiki/戰國策",
+      "license": "CC BY-SA 3.0（维基文库标点白文）",
+      "fetch_date": "2026-07-22",
+      "char_count": 172,
+      "form": "白文（维基文库标点，CC BY-SA）",
+      "r5": "禁对齐在版点校本；非记忆备录，WebFetch 逐字"
+    },
+    "coverage": "部分（首弧牵引 + fixtures 被引段落）；全书全量入库属后续波次",
+    "ulid_scheme": "substrate ULID = SHA256(src_id) 派生 Crockford base32（稳定可复现，非时序 ULID）"
+  },
+  "paragraphs": [
+    {
+      "para_ulid": "FR8TKEM3839A5M37HD8MRBT5MP:0001",
+      "chapter": "赵策一",
+      "text": "圍晉陽三年，城中巢居而處，懸釜而炊。……決晉水而灌之，城下不沉者三板。……張孟談於是陰見韓、魏之君。",
+      "backs_fixtures": [
+        "F23"
+      ]
+    },
+    {
+      "para_ulid": "FR8TKEM3839A5M37HD8MRBT5MP:0002",
+      "chapter": "魏策一",
+      "text": "知伯索地於魏桓子，魏桓子弗予。任章曰：……無故索地，鄰國必恐；重欲無厭，天下必懼。君予之地，知伯必憍。……君不如與之，以驕知伯。……君曰：善。乃與之萬家之邑一。知伯大說。因索蔡、皋梁於趙，趙弗與，因圍晉陽。韓、魏反於外，趙氏應之於內，知氏遂亡。",
+      "backs_fixtures": [
+        "F22"
+      ]
+    }
+  ]
+}

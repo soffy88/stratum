@@ -1,0 +1,43 @@
+{
+  "substrate": {
+    "substrate_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH",
+    "source_ref": "src:shiji",
+    "book": "史记",
+    "base_text": {
+      "url": "https://zh.wikisource.org/wiki/史記",
+      "license": "CC BY-SA 3.0（维基文库标点白文）",
+      "fetch_date": "2026-07-22",
+      "char_count": 144,
+      "form": "白文（维基文库标点，CC BY-SA）",
+      "r5": "禁对齐在版点校本；非记忆备录，WebFetch 逐字"
+    },
+    "coverage": "部分（首弧牵引 + fixtures 被引段落）；全书全量入库属后续波次",
+    "ulid_scheme": "substrate ULID = SHA256(src_id) 派生 Crockford base32（稳定可复现，非时序 ULID）"
+  },
+  "paragraphs": [
+    {
+      "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0001",
+      "chapter": "赵世家",
+      "text": "三國攻晉陽，歲餘，引汾水灌其城，城不浸者三版。城中懸釜而炊，易子而食。",
+      "backs_fixtures": [
+        "F23"
+      ]
+    },
+    {
+      "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0002",
+      "chapter": "晋世家",
+      "text": "六卿彊，公室卑。……靜公二年，魏武侯、韓哀侯、趙敬侯滅晉後而三分其地，靜公遷為家人，晉絕不祀。",
+      "backs_fixtures": [
+        "F25"
+      ]
+    },
+    {
+      "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0003",
+      "chapter": "田敬仲完世家",
+      "text": "簡公出奔，田氏之徒追執簡公于徐州。……田氏之徒恐簡公復立而誅己，遂殺簡公。……康公之十九年，田和立為齊侯，列於周室，紀元年。",
+      "backs_fixtures": [
+        "F10"
+      ]
+    }
+  ]
+}

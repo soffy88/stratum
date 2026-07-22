@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aii/stratum/history/arc/arc-thesis.schema.json",
+  "title": "Arc（弧）+ Thesis（论点）束 · 仓内 schema（ARC-SPEC-001 §1/§2）",
+  "description": "D-025：Arc/Thesis 为仓内对象，**不进查询契约**（消费面到 P3 才 bump 契约）。本 schema 独立于 history-query-response.schema.json，不参与 G1b 对拍。additionalProperties 全锁、零下划线键。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["arcs", "theses"],
+  "properties": {
+    "arcs": { "type": "array", "items": { "$ref": "#/$defs/h_arc" } },
+    "theses": { "type": "array", "items": { "$ref": "#/$defs/h_thesis" } }
+  },
+  "$defs": {
+    "mainline_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["choice", "rationale", "decided_by", "date"],
+      "properties": {
+        "choice": { "type": "string" },
+        "rationale": { "type": "string" },
+        "decided_by": { "type": "string" },
+        "date": { "type": "string" }
+      }
+    },
+    "h_arc": {
+      "type": "object",
+      "description": "ku:h-arc 跨事件主题簇（§1）。弧≠Stratum 章级 KC。",
+      "additionalProperties": false,
+      "required": ["arc_id", "title", "time_window", "sub_arcs", "member_event_refs", "thesis_refs", "status"],
+      "properties": {
+        "arc_id": { "type": "string" },
+        "title": { "type": "string" },
+        "time_window": { "type": "string" },
+        "sub_arcs": {
+          "type": "array",
+          "description": "有序子簇（时间序）。",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sub_arc_id", "title", "seq"],
+            "properties": {
+              "sub_arc_id": { "type": "string" },
+              "title": { "type": "string" },
+              "seq": { "type": "number" },
+              "member_event_refs": { "type": "array", "items": { "type": "string" } },
+              "membership_decided_by": { "type": "string" }
+            }
+          }
+        },
+        "member_event_refs": { "type": "array", "items": { "type": "string" } },
+        "thesis_refs": { "type": "array", "items": { "type": "string" } },
+        "narrative_note": { "type": "string" },
+        "status": { "enum": ["draft", "curated", "frozen"] },
+        "membership_decision": { "$ref": "#/$defs/mainline_decision" }
+      }
+    },
+    "h_thesis": {
+      "type": "object",
+      "description": "ku:h-thesis 因果论断一等对象（§2）。史/论可区分，论断必带归属。",
+      "additionalProperties": false,
+      "required": ["thesis_id", "claim", "attribution", "evidence_refs"],
+      "properties": {
+        "thesis_id": { "type": "string" },
+        "claim": { "type": "string", "description": "一句因果论断。" },
+        "attribution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type"],
+          "properties": {
+            "type": { "enum": ["源内", "后世公版", "现代考订", "我方"] },
+            "who": { "type": "string", "description": "论者（臣光/太史公/师服/叔向/史墨/考订者/我方）" },
+            "locator": {
+              "type": "object",
+              "description": "源内/后世公版：到篇及 para_ulid。",
+              "additionalProperties": false,
+              "properties": {
+                "book": { "type": "string" },
+                "chapter": { "type": "string" },
+                "para_ulid": { "type": ["string", "null"] },
+                "quote": { "type": "string" }
+              }
+            },
+            "academic_source": { "type": "string", "description": "现代考订：出处登记（D-027，原文不入语料层）。" }
+          }
+        },
+        "evidence_refs": { "type": "array", "items": { "type": "string" }, "description": "支撑 KU（event/account）。" },
+        "counter_refs": { "type": "array", "items": { "type": "string" }, "description": "反证/对立论点 thesis_id。" },
+        "mainline_decision": { "$ref": "#/$defs/mainline_decision" }
+      }
+    }
+  }
+}

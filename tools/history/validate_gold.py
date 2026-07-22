@@ -146,7 +146,62 @@ def main() -> int:
         print(f"samples/{f.parent.name}/{f.name}: {'OK' if not problems else 'FAIL'}")
         failures += [f"{f.name}: {p}" for p in problems]
 
-    print(f"--- {len(fixtures)} fixtures · {len(samples)} samples · registry {len(seed_ids)} ids")
+    # 6. 语料库（corpus/*.json）：para_ulid 格式 + 零下划线（ARC-SPEC §4.2）
+    import re as _re
+
+    PARA_RE = _re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}:[0-9A-HJKMNP-TV-Z]{4,8}$")
+    corpus = sorted((ROOT / "corpus").glob("*.json"))
+    para_index = set()
+    for f in corpus:
+        d = load(f)
+        problems = [f"下划线前缀键: {p}" for p in underscore_keys(d)]
+        sub = d.get("substrate", {}).get("substrate_ulid", "")
+        for p in d.get("paragraphs", []):
+            pu = p.get("para_ulid", "")
+            para_index.add(pu)
+            if not PARA_RE.match(pu):
+                problems.append(f"para_ulid 格式非法: {pu}")
+            if not pu.startswith(sub + ":"):
+                problems.append(f"para_ulid 前缀≠substrate: {pu}")
+        print(f"corpus/{f.name}: {'OK' if not problems else 'FAIL'}")
+        failures += [f"{f.name}: {p}" for p in problems]
+
+    # 7. fixtures 回填的 para_ulid 必须解析到语料库（悬空即 FAIL）
+    for f in fixtures:
+        d = load(f)
+        for a in d.get("accounts", []):
+            pu = a.get("locator", {}).get("para_ulid")
+            if pu and pu not in para_index:
+                failures.append(f"{f.name}: 回填 para_ulid 悬空(不在语料库): {pu}")
+
+    # 8. Arc/Thesis 束（arc/*.json vs arc-thesis.schema.json；仓内, 不进契约 D-025）
+    arc_schema_path = ROOT / "arc" / "arc-thesis.schema.json"
+    n_arc = 0
+    if arc_schema_path.exists():
+        arc_schema = load(arc_schema_path)
+        arc_reg = Registry().with_resources(
+            [(arc_schema["$id"], Resource.from_contents(arc_schema))]
+        )
+        arc_v = Draft202012Validator(arc_schema, registry=arc_reg)
+        for f in sorted((ROOT / "arc").glob("*.json")):
+            if f.name.endswith(".schema.json"):
+                continue
+            n_arc += 1
+            d = load(f)
+            problems = [f"schema: {e.json_path} {e.message}" for e in arc_v.iter_errors(d)]
+            problems += [f"下划线前缀键: {p}" for p in underscore_keys(d)]
+            # thesis 源内/后世公版 locator 若带 para_ulid, 必须解析到语料库
+            for t in d.get("theses", []):
+                pu = (t.get("attribution", {}).get("locator") or {}).get("para_ulid")
+                if pu and pu not in para_index:
+                    problems.append(f"{t.get('thesis_id')} locator para_ulid 悬空: {pu}")
+            print(f"arc/{f.name}: {'OK' if not problems else 'FAIL'}")
+            failures += [f"{f.name}: {p}" for p in problems]
+
+    print(
+        f"--- {len(fixtures)} fixtures · {len(samples)} samples · "
+        f"{len(corpus)} corpus({len(para_index)} paras) · {n_arc} arc · registry {len(seed_ids)} ids"
+    )
     if failures:
         print("\n".join(failures))
         return 1

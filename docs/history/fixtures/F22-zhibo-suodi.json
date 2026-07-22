@@ -3,17 +3,45 @@
     {
       "event_id": "ev:zhibo-suodi",
       "title": "智伯索地（韩魏予地·任章献骄敌之策·赵弗与）",
-      "canonical_date": { "type": "fuzzy", "value": "前455 顷（晋阳之围前夕）", "note": "策文不系年；索地为晋阳之战直接导火索（『因索蔡、皋梁於趙，趙弗與，因圍晉陽』）。" },
+      "canonical_date": {
+        "type": "fuzzy",
+        "value": "前455 顷（晋阳之围前夕）",
+        "note": "策文不系年；索地为晋阳之战直接导火索（『因索蔡、皋梁於趙，趙弗與，因圍晉陽』）。"
+      },
       "event_type": "其他",
       "actors": [
-        { "person_ref": "per:zhibo", "role": "索地者", "force_ref": "fo:zhi" },
-        { "person_ref": "per:weihuanzi", "role": "被索者（初弗予，纳任章策后予万家之邑）", "force_ref": "fo:wei" },
-        { "person_ref": "per:renzhang", "role": "献策者（与之以骄知伯）", "force_ref": "fo:wei" },
-        { "person_ref": "per:zhao-xiangzi", "role": "拒地者（弗与→被围晋阳）", "force_ref": "fo:zhao" }
+        {
+          "person_ref": "per:zhibo",
+          "role": "索地者",
+          "force_ref": "fo:zhi"
+        },
+        {
+          "person_ref": "per:weihuanzi",
+          "role": "被索者（初弗予，纳任章策后予万家之邑）",
+          "force_ref": "fo:wei"
+        },
+        {
+          "person_ref": "per:renzhang",
+          "role": "献策者（与之以骄知伯）",
+          "force_ref": "fo:wei"
+        },
+        {
+          "person_ref": "per:zhao-xiangzi",
+          "role": "拒地者（弗与→被围晋阳）",
+          "force_ref": "fo:zhao"
+        }
       ],
-      "geo": { "place_refs": ["pl:jin"], "route_hint": null, "mapstate_hint": "索地链：智→韩/魏（予）→赵（拒）" },
+      "geo": {
+        "place_refs": [
+          "pl:jin"
+        ],
+        "route_hint": null,
+        "mapstate_hint": "索地链：智→韩/魏（予）→赵（拒）"
+      },
       "parent_event": null,
-      "accounts": ["ac:suodi-zhanguoce"],
+      "accounts": [
+        "ac:suodi-zhanguoce"
+      ],
       "conflicts": [],
       "evidence_tier": "E1",
       "mainline_account_ref": "ac:suodi-zhanguoce",
@@ -34,19 +62,33 @@
         "book": "战国策",
         "chapter": "魏策一（知伯索地于魏桓子）",
         "section": "任章对",
-        "para_ulid": null,
+        "para_ulid": "FR8TKEM3839A5M37HD8MRBT5MP:0002",
         "note": "待补。『知伯索地於魏桓子，魏桓子弗予。』任章对：『無故索地，鄰國必恐；重欲無厭，天下必懼。君予之地，知伯必憍。……君不如與之，以驕知伯。』『君曰：善。乃與之萬家之邑一。知伯大說。因索蔡、皋梁於趙，趙弗與，因圍晉陽。韓、魏反於外，趙氏應之於內，知氏遂亡。』（原文经维基文库·戰國策/卷22 逐字核对，2026-07-22。）"
       },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "（策文不系年）围晋阳前夕",
-        "actor_claims": ["知伯索地于魏桓子，桓子初弗予", "任章献骄敌之策，桓子与万家之邑一", "知伯因索蔡、皋梁于赵，赵弗与", "因围晋阳"],
-        "causal_claims": ["予地骄敌→知伯得寸进尺索赵→赵拒→围晋阳（任章策的因果预设，事后应验）"],
-        "number_claims": [
-          { "value": "萬家之邑一", "unit": "予地规模", "quote_span": "乃與之萬家之邑一", "display": "《战国策·魏策一》载" }
+        "actor_claims": [
+          "知伯索地于魏桓子，桓子初弗予",
+          "任章献骄敌之策，桓子与万家之邑一",
+          "知伯因索蔡、皋梁于赵，赵弗与",
+          "因围晋阳"
         ],
-        "dialogue_spans": ["任章对魏桓子全段（『無故索地，鄰國必恐』——B03 拍 VO 素材，透传不消费）"]
+        "causal_claims": [
+          "予地骄敌→知伯得寸进尺索赵→赵拒→围晋阳（任章策的因果预设，事后应验）"
+        ],
+        "number_claims": [
+          {
+            "value": "萬家之邑一",
+            "unit": "予地规模",
+            "quote_span": "乃與之萬家之邑一",
+            "display": "《战国策·魏策一》载"
+          }
+        ],
+        "dialogue_spans": [
+          "任章对魏桓子全段（『無故索地，鄰國必恐』——B03 拍 VO 素材，透传不消费）"
+        ]
       },
       "genre_note": "国别策论（策士言辞 genre 降权适用于敷演部分；索地—予地—拒地事件骨架两系皆载无歧）。通鉴周纪一采任章语（『無故索地，諸大夫必懼』文字小异）＝derivation 不另计。"
     }
@@ -56,6 +98,14 @@
     "adjudicator": "CC",
     "date": "2026-07-22",
     "tier_class": "平凡",
-    "work_log": { "unit": "min", "kind": "agent", "extract": 5, "registry_resolve": 2, "adjudicate": 2, "review": 2, "note": "Gap 批 B03/B04（一事件覆两拍：索地+拒地）。extract 含魏策一原文网络查证。" }
+    "work_log": {
+      "unit": "min",
+      "kind": "agent",
+      "extract": 5,
+      "registry_resolve": 2,
+      "adjudicate": 2,
+      "review": 2,
+      "note": "Gap 批 B03/B04（一事件覆两拍：索地+拒地）。extract 含魏策一原文网络查证。"
+    }
   }
 }

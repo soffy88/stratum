@@ -3,16 +3,45 @@
     {
       "event_id": "ev:minghou-403",
       "title": "命侯（前403）·臣光曰史论（B10/B11 补拍）",
-      "canonical_date": { "type": "exact", "value": "前403", "note": "周威烈王二十三年，初命晋大夫魏斯、赵籍、韩虔为诸侯。通鉴开篇于此。（与 F1 同事件——本 fixture 补『臣光曰』观点 account，测 R8 观点归属 + judgment 折算。）" },
+      "canonical_date": {
+        "type": "exact",
+        "value": "前403",
+        "note": "周威烈王二十三年，初命晋大夫魏斯、赵籍、韩虔为诸侯。通鉴开篇于此。（与 F1 同事件——本 fixture 补『臣光曰』观点 account，测 R8 观点归属 + judgment 折算。）"
+      },
       "event_type": "册命",
       "actors": [
-        { "person_ref": "per:wei-si", "role": "受命为魏侯", "force_ref": "fo:wei" },
-        { "person_ref": "per:zhao-ji", "role": "受命为赵侯", "force_ref": "fo:zhao" },
-        { "person_ref": "per:han-qian", "role": "受命为韩侯", "force_ref": "fo:han" }
+        {
+          "person_ref": "per:wei-si",
+          "role": "受命为魏侯",
+          "force_ref": "fo:wei"
+        },
+        {
+          "person_ref": "per:zhao-ji",
+          "role": "受命为赵侯",
+          "force_ref": "fo:zhao"
+        },
+        {
+          "person_ref": "per:han-qian",
+          "role": "受命为韩侯",
+          "force_ref": "fo:han"
+        }
       ],
-      "geo": { "place_refs": ["pl:jin"], "route_hint": null, "mapstate_hint": "三晋正式立国" },
-      "parent_event": { "role": "child", "parent_event_id": "ev:sanjiafenjin", "child_event_ids": [] },
-      "accounts": ["ac:minghou-zztj-xushi", "ac:minghou-chenguangyue"],
+      "geo": {
+        "place_refs": [
+          "pl:jin"
+        ],
+        "route_hint": null,
+        "mapstate_hint": "三晋正式立国"
+      },
+      "parent_event": {
+        "role": "child",
+        "parent_event_id": "ev:sanjiafenjin",
+        "child_event_ids": []
+      },
+      "accounts": [
+        "ac:minghou-zztj-xushi",
+        "ac:minghou-chenguangyue"
+      ],
       "conflicts": [],
       "evidence_tier": "E1",
       "mainline_account_ref": "ac:minghou-zztj-xushi",
@@ -33,14 +62,16 @@
         "book": "资治通鉴",
         "chapter": "周纪一·威烈王二十三年",
         "section": "命侯句",
-        "para_ulid": null,
+        "para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0001",
         "note": "待补。『初命晉大夫魏斯、趙籍、韓虔為諸侯。』（原文经维基文库·資治通鑑/卷001 逐字核对，2026-07-22。）"
       },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "前403（威烈王二十三年）",
-        "actor_claims": ["初命晋大夫魏斯、赵籍、韩虔为诸侯"],
+        "actor_claims": [
+          "初命晋大夫魏斯、赵籍、韩虔为诸侯"
+        ],
         "causal_claims": [],
         "number_claims": [],
         "dialogue_spans": []
@@ -55,7 +86,7 @@
         "book": "资治通鉴",
         "chapter": "周纪一·威烈王二十三年",
         "section": "臣光曰",
-        "para_ulid": null,
+        "para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0002",
         "note": "待补。『臣光曰：臣聞天子之職莫大於禮，禮莫大於分，分莫大於名。』（起句；下接名分之论至『非三晋之坏礼，乃天子自坏之也』段。原文起句经维基文库·資治通鑑/卷001 逐字核对，2026-07-22。）"
       },
       "白文span_refs": [],
@@ -63,9 +94,13 @@
       "extraction": {
         "date_claim": "（史论不系年，附于前403条下）",
         "actor_claims": [],
-        "causal_claims": ["★司马光论断：礼坏自天子始——『非三晋之坏礼，乃天子自坏之也』（观点型归因，R8 归司马光，非事件证词）"],
+        "causal_claims": [
+          "★司马光论断：礼坏自天子始——『非三晋之坏礼，乃天子自坏之也』（观点型归因，R8 归司马光，非事件证词）"
+        ],
         "number_claims": [],
-        "dialogue_spans": ["臣光曰全文（B11 拍 VO 素材——引用体例必须显式『司马光曰』，R8）"]
+        "dialogue_spans": [
+          "臣光曰全文（B11 拍 VO 素材——引用体例必须显式『司马光曰』，R8）"
+        ]
       },
       "genre_note": "★史论（judgment，非 testimony）：『臣光曰』是通鉴作者观点，**独立见证计 0、永不入 mainline**——与裴松之按语同一折算类（carrier 三态之外的第四种载体形态：正文内嵌自署史论，无需 carrier 剥离，自带 R8 归属）。观点一律归司马光（1019–1086，距事近 1500 年），供 B11 拍演绎，不得混入事件证词。"
     }
@@ -75,6 +110,14 @@
     "adjudicator": "CC",
     "date": "2026-07-22",
     "tier_class": "难例",
-    "work_log": { "unit": "min", "kind": "agent", "extract": 3, "registry_resolve": 2, "adjudicate": 4, "review": 2, "note": "Gap 批 B10/B11。机制：R8 观点归属 + 史论 judgment 计 0（自署史论≠裴注 carrier，判定见 genre_note/JUDGMENTS#F24）。" }
+    "work_log": {
+      "unit": "min",
+      "kind": "agent",
+      "extract": 3,
+      "registry_resolve": 2,
+      "adjudicate": 4,
+      "review": 2,
+      "note": "Gap 批 B10/B11。机制：R8 观点归属 + 史论 judgment 计 0（自署史论≠裴注 carrier，判定见 genre_note/JUDGMENTS#F24）。"
+    }
   }
 }
