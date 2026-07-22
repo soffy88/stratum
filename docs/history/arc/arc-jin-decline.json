@@ -67,7 +67,8 @@
         "thesis:shuxiang-gongshi-jiang-bei",
         "thesis:shimo-wuchang",
         "thesis:taishigong-jin",
-        "thesis:sima-guang-li"
+        "thesis:sima-guang-li",
+        "thesis:liji-luandi"
       ],
       "narrative_note": "『晋国为何衰亡』非任一史书原文，是解释——本弧以论点层（thesis）承载因果论断，事件层（KU）承载史实。P2 逐子簇入 member_event（本波先钉 s3/s6/s7 已有 KU 事件；s1/s2/s4/s5 待事件抽取）。深度立意：公室分权→卿族坐大→本弱末强（师服『末大必折』一以贯之，前745 预言 / 前403 应验）。",
       "status": "draft",
@@ -197,6 +198,30 @@
       "mainline_decision": {
         "choice": "采为本弧论点(原文已入库)",
         "rationale": "§3 源内论点矿；史墨『无常位』是卿族代兴的最强源内理据、通贯本弧。本波原文未抓（404，PENDING），占位固 thesis_id/归属，换源回填。。原文 W-H1a-2 入库(ctext 逐字), para_ulid 回填。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-22）",
+        "date": "2026-07-22"
+      }
+    },
+    {
+      "thesis_id": "thesis:liji-luandi",
+      "claim": "骊姬乱嫡、谮杀申生、逐重耳夷吾，献公『诅无畜群公子』尽逐公族——晋自此无公族屏藩，卿族坐大之远因。",
+      "attribution": {
+        "type": "我方",
+        "who": "顾问 Claude（据左传庄28/僖4-6 事件综述）",
+        "locator": {
+          "book": "左传",
+          "chapter": "庄公二十八年起（骊姬乱嫡序列）",
+          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586",
+          "quote": "晉獻公娶于賈…又娶二女於戎…（娶骊姬序）"
+        }
+      },
+      "evidence_refs": [
+        "ev:jin-gongshi-bei"
+      ],
+      "counter_refs": [],
+      "mainline_decision": {
+        "choice": "采为骊姬簇 mainline 论点（我方综述型，非源内单句）",
+        "rationale": "骊姬之乱=晋无公族的直接起点，上承师服『末大必折』、下启六卿代兴；系我方综述论点（attribution=我方），据左传事件序，与叔向/史墨源内论点并陈。",
         "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-22）",
         "date": "2026-07-22"
       }
