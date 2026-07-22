@@ -76,7 +76,7 @@
   3. **为何不判似而非同**：若判似而非同则须"禁合并 + candidate-same 链"，会把"赵氏孤儿=赵武"这一确定同一的人物本事**割裂**为两桩，反而失真；且 spec §10 明列本条为 existence/narrative **冲突**（即预设同一 event 上挂冲突），支持同事异述。
   4. **为何不判同述**：D1/D4 实质歧异、屠岸贾/搜孤 existence 存疑，远未达"全维度对齐且文本重合"，故非同述。
   5. **落地**：主线 = 左传（近源，`mainline_account_ref=ac:zhaonan-zuozhuan`）；赵世家 account **全文保留**（S12 供给）+ `genre_note` 标晚出敷演。差异落**四冲突对象**——① `cf:zhaonan-shiji-internal`（史记篇内分裂·归因链首证，`presentation_hint=仅记录`）；三挂 S12：② `cf:zhaonan-date`（597/583）③ `cf:zhaonan-existence`（屠岸贾灭族存否）④ `cf:zhaonan-narrative-souhu`（搜孤救孤存否）。
-- **★调和说否弃（显式在录）**：`rejected_alternatives[reject:zhaonan-tiaohe-two-purges]`——"两次族诛"调和说（谓前597、前583各一次族诛、两说皆真）**否弃**。理由：前597屠岸贾灭族无近源支撑，调和说为消弭14年矛盾**虚构第二次族诛**、增殖无佐证实体（违 parsimony / 宁缺毋附会）。判前597/前583为同一事件之**系年异说**（落 date 冲突），非两桩史实——把系年分歧误当两次真实族诛正是要防的错。
+- **★调和说否弃（显式在录）**：`rejected_alternatives[reject:zhaonan-tiaohe-two-purges]`（锚点 `F2-zhaoshiguer.json:281`，blob `1d23971`@`history-fixtures-v0.1/v0.2` 同字节·D-014 回贴）——"两次族诛"调和说（谓前597、前583各一次族诛、两说皆真）**否弃**。理由：前597屠岸贾灭族无近源支撑，调和说为消弭14年矛盾**虚构第二次族诛**、增殖无佐证实体（违 parsimony / 宁缺毋附会）。判前597/前583为同一事件之**系年异说**（落 date 冲突），非两桩史实——把系年分歧误当两次真实族诛正是要防的错。
 - **命门校验**：判同事异述**不等于合并二叙事**——戏剧情节以 existence + narrative 两冲突显式并陈、各 `independent_witness_count=1`（仅赵世家），**守宁碎片不错合**：不把"晚出敷演"当"史实"并入骨干、亦不虚构第二次族诛。
 
 ### 判定 F2-b：史记·赵世家 与 史记·晋世家，同书篇内冲突（★F2-a 归因链首证）
