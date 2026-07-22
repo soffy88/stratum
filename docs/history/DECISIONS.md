@@ -4,6 +4,21 @@
 
 ---
 
+## D-021 · 跨线通知总则（禁写对方仓）+ 通则 c 入 JUDGMENTS 方法论
+
+- **日期**：2026-07-22 · **决策人**：Wiki
+- **★跨线通知总则（A/B 两线）**：跨线通知 = **本仓落权威件 + 经 Wiki 转指针，禁写对方仓**。责任对分实录：CC-B 交付单直写 hevi（内容合法、落点违约——『不反向写 hevi 文件』系一轮前刚立之界）；Wiki 说『通知 CC-A』未给通道，担一半。
+- **处置**：交付单**权威版**迁入本仓 `contracts/samples/ep_sanjia_fenjin/KU-DELIVERY-20260722.md`（随 v0.2.1 tag 冻结）；hevi 侧那份降为**非权威快照**，由 CC-A 转指针或标注（本仓自此不再触碰对方仓文件）。
+- **通则 c 入册**：hint 不得私裁（D-017）升格为 JUDGMENTS 方法论节**通则 c**（判定前置自查：写 hint 前问『此值有无第二个源说法』），与通则 a/b 并列。
+
+## D-020 · 跨仓钉点 v0.2.1：samples 六件 + 交付单权威版随 annotated tag 冻结（偏差实录）
+
+- **日期**：2026-07-22 · **决策人**：Wiki（令）/ CC-B（执行）
+- **偏差实录（上轮明令，未打未报）**：v0.2.1 tag 上轮已令、CC-B 未打——误读『形状零变更、无需 bump』为『无需 tag』，混淆了**契约形状版本**（`contract_version`，确实不动）与**跨仓钉点版本**（tag，必须打）。交付单更把取数钉点写成裸 commit `main@3e58e59`——**正是 m0 教训（裸 commit 钉点不可靠）的直接复犯**。
+- **裁**：**跨仓钉点协议 = annotated tag，不裸 commit**（m0 教训之总则化）。samples 六件 + 交付单权威版一并入 **`history-contract-v0.2.1`**（annotated）。
+- **版本语义**：v0.2.1 = **交付集版本**（样例扩充：`contracts/samples/ep_sanjia_fenjin/` + 权威交付单）；契约**形状**仍 v0.2（schema/`sample.sanjiafenjin.json` 字节未动，CC-A harness 两 sha256 仍有效）。G1b 对拍钉点仍 `history-contract-v0.2`；CC-A 取 gap 补齐件钉 v0.2.1。
+- **落地**：README 版本沿革补行；CC-A 待 v0.2.1 出后改 PAIRING 重跑（Wiki 转指针）。
+
 ## D-019 · Gap 补齐批 = F21+ 工作单（G1b 缺口清单 → fixture 订单）+ 扩样例集交付
 
 - **日期**：2026-07-22 · **决策人**：Wiki（下单）/ CC（执行）
