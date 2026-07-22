@@ -27,7 +27,7 @@
 
 ## 治理线全表（OP-D023..D-032 · 指针至 OWNER-PLAN 附录 D）
 
-OP-D023 闸口顾问化 · OP-D024 Arc 命名 · OP-D025 Arc/Thesis 仓内 · OP-D026 云端禁 · OP-D027 现代考订不入库 · OP-D028 抽取器 date 不产出 · OP-D029 F10 通过+抽验门全关+年数 cf 追认 · OP-D030 语料库仓内自包含+全书现实 · OP-D031 Qwen3-8B 获取+VRAM 实测 · OP-D032 抽取器定型=qwen3-8b · OP-D033 在库源机核 100% 口径 + 源级豁免清单（无开放白文源者显式列明）。
+OP-D023 闸口顾问化 · OP-D024 Arc 命名 · OP-D025 Arc/Thesis 仓内 · OP-D026 云端禁 · OP-D027 现代考订不入库 · OP-D028 抽取器 date 不产出 · OP-D029 F10 通过+抽验门全关+年数 cf 追认 · OP-D030 语料库仓内自包含+全书现实 · OP-D031 Qwen3-8B 获取+VRAM 实测 · OP-D032 抽取器定型=qwen3-8b · OP-D033 在库源机核100%口径+源级豁免清单 · OP-D034 PERSON-INTAKE协议(四查入库+可回滚)。
 
 > **OP-D028~032 状态（W-H1a-4）**：已 Wiki 复核**权威化**（曾用＝CC-B 渲染稿，沿革留痕于 OWNER-PLAN 附录 D 头）。
 
