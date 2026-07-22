@@ -15,9 +15,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2] / "docs" / "history"
 OLLAMA = "http://localhost:11434/api/generate"
-MODEL = "qwen2.5vl:7b"
+MODEL = "qwen3-8b"
 PROMPT = (
-    "你是文言史料结构化抽取器。从史料抽取, 只输出 JSON 不解释。"
+    "/no_think 你是文言史料结构化抽取器。从史料抽取, 只输出 JSON 不解释。"
     '字段 {"title":事件名,"persons":[人物],"place":地点或null,'
     '"event_type":∈["战役","政变","会盟","册命","迁都","变法","灾异","制度","人事","其他"]}。'
     "不要输出年份。史料:「%s」"
