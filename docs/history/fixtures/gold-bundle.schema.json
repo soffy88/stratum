@@ -38,7 +38,7 @@
     },
     "adjudication": {
       "type": "object",
-      "description": "判定元数据（产线批起）。work_log 四段 = D-011 钉定口径；kind 标 agent/human 不混计（诚实总账：agent 工时≠人时）。",
+      "description": "判定元数据（产线批起）。work_log 四段 = D-011 钉定口径；kind 标 agent/human 分账——agent 分钟即 W-H1 排期运营单位（D-016，无换算），human 仅记 Wiki 闸口动作（亲裁/抽验/签署）。",
       "additionalProperties": false,
       "required": ["adjudicator", "date"],
       "properties": {
