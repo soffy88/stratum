@@ -1,0 +1,64 @@
+{
+  "events": [
+    {
+      "event_id": "ev:shiyu-tang",
+      "title": "公矢鱼于棠（鲁隐公观鱼）",
+      "canonical_date": { "type": "year", "value": "前718", "note": "鲁隐公五年春。" },
+      "event_type": "其他",
+      "actors": [
+        { "person_ref": "per:lu-yingong", "role": "矢鱼者（鲁君；臧僖伯谏不听）", "force_ref": "fo:lu" }
+      ],
+      "geo": { "place_refs": ["pl:tang"], "route_hint": null, "mapstate_hint": null },
+      "parent_event": null,
+      "accounts": ["ac:shiyutang-zuozhuan"],
+      "conflicts": [],
+      "evidence_tier": "E1",
+      "mainline_account_ref": "ac:shiyutang-zuozhuan",
+      "mainline_decision": {
+        "choice": "ac:shiyutang-zuozhuan",
+        "rationale": "平凡例（假阳性钉子，D-008）：单事件·单述·零机制——春秋经+左传传文一体单源，无异说、无冲突对象。抽取器在此产出任何冲突即假阳性。",
+        "decided_by": "CC",
+        "date": "2026-07-22"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:shiyutang-zuozhuan",
+      "event_ref": "ev:shiyu-tang",
+      "source_id": "src:zuozhuan",
+      "locator": {
+        "book": "左传",
+        "chapter": "隐公五年",
+        "section": "春·矢鱼于棠",
+        "para_ulid": null,
+        "note": "待补。经：『五年春，公矢鱼于棠。』传：臧僖伯谏（『凡物不足以讲大事，其材不足以备器用，则君不举焉』），公不听；『书曰「公矢鱼于棠」，非礼也，且言远地也。』"
+      },
+      "白文span_refs": [],
+      "白话ref": null,
+      "extraction": {
+        "date_claim": "鲁隐公五年春（前718）",
+        "actor_claims": ["鲁隐公如棠观鱼（矢鱼）", "臧僖伯谏，公不听"],
+        "causal_claims": [],
+        "number_claims": [],
+        "dialogue_spans": ["臧僖伯谏辞（演绎段素材，透传不消费）"]
+      },
+      "genre_note": "编年（春秋经+左传传文一体，同源单述）。『非礼也』系经之书法评价（对行为的礼制评判），非事实冲突——不产生冲突对象，平凡例守界。"
+    }
+  ],
+  "conflicts": [],
+  "adjudication": {
+    "adjudicator": "CC",
+    "date": "2026-07-22",
+    "tier_class": "平凡",
+    "work_log": {
+      "unit": "min",
+      "kind": "agent",
+      "extract": 4,
+      "registry_resolve": 3,
+      "adjudicate": 2,
+      "review": 2,
+      "note": "产线首件（P1）。agent 工时非人时——换算口径待产线积累后另裁（CANDIDATES 工时口径注）。"
+    }
+  }
+}

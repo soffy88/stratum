@@ -568,6 +568,20 @@
       "谥字号": "吴将；赤壁诈降火攻",
       "active_range": "赤壁（公元208）",
       "force_affiliations": ["fo:sun"]
+    },
+    {
+      "person_id": "per:lu-yingong",
+      "names_by_source": { "鲁隐公": ["src:zuozhuan"], "息姑": ["src:shiji"] },
+      "谥字号": "谥隐，名息姑（鲁周公世家作息）",
+      "active_range": "前722–前712 在位（摄政待桓）",
+      "force_affiliations": ["fo:lu"]
+    },
+    {
+      "person_id": "per:fuchai",
+      "names_by_source": { "夫差": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "吴王夫差（阖闾子）",
+      "active_range": "前495–前473 在位（黄池争霸；越灭吴自刭）",
+      "force_affiliations": ["fo:wu"]
     }
   ]
 }
