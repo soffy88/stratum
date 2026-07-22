@@ -3,17 +3,46 @@
     {
       "event_id": "ev:jieting",
       "title": "街亭之败与马谡之死",
-      "canonical_date": { "type": "year", "value": "公元228", "note": "建兴六年，诸葛亮首次北伐，马谡为先锋，违节度失街亭；亮退军，坐谡。★马谡结局三国志诸篇异说。" },
+      "canonical_date": {
+        "type": "year",
+        "value": "公元228",
+        "note": "建兴六年，诸葛亮首次北伐，马谡为先锋，违节度失街亭；亮退军，坐谡。★马谡结局三国志诸篇异说。"
+      },
       "event_type": "战役",
       "actors": [
-        { "person_ref": "per:masu", "role": "先锋（违节度失街亭，结局异说）", "force_ref": "fo:liu" },
-        { "person_ref": "per:zhugeliang", "role": "统帅（坐谡、自贬三等）", "force_ref": "fo:liu" },
-        { "person_ref": "per:wangping", "role": "谏马谡不听、敛众而还", "force_ref": "fo:liu" }
+        {
+          "person_ref": "per:masu",
+          "role": "先锋（违节度失街亭，结局异说）",
+          "force_ref": "fo:liu"
+        },
+        {
+          "person_ref": "per:zhugeliang",
+          "role": "统帅（坐谡、自贬三等）",
+          "force_ref": "fo:liu"
+        },
+        {
+          "person_ref": "per:wangping",
+          "role": "谏马谡不听、敛众而还",
+          "force_ref": "fo:liu"
+        }
       ],
-      "geo": { "place_refs": ["pl:jieting"], "route_hint": "马谡舍水上山，张郃绝其汲道", "mapstate_hint": null },
+      "geo": {
+        "place_refs": [
+          "pl:jieting"
+        ],
+        "route_hint": "马谡舍水上山，张郃绝其汲道",
+        "mapstate_hint": null
+      },
       "parent_event": null,
-      "accounts": ["ac:jieting-liangzhuan", "ac:jieting-masuzhuan", "ac:jieting-xianglang", "ac:jieting-xiangyangji"],
-      "conflicts": ["cf:jieting-masi-death"],
+      "accounts": [
+        "ac:jieting-liangzhuan",
+        "ac:jieting-masuzhuan",
+        "ac:jieting-xianglang",
+        "ac:jieting-xiangyangji"
+      ],
+      "conflicts": [
+        "cf:jieting-masi-death"
+      ],
       "evidence_tier": "E2",
       "tier_override": {
         "rationale": "街亭失守、马谡违节度为诸篇同述（E2 稳）；分歧在马谡『结局』（斩/狱死/逃亡），落 existence-narrative 冲突，不降事件本身。三说同属三国志（同源篇间），非三独立文献。",
@@ -34,13 +63,25 @@
       "account_id": "ac:jieting-liangzhuan",
       "event_ref": "ev:jieting",
       "source_id": "src:sanguozhi",
-      "locator": { "book": "三国志", "chapter": "蜀书·诸葛亮传", "section": "街亭·戮谡段", "para_ulid": null, "note": "★待补。诸葛亮传：谡违亮节度，举动失宜，大为张郃所破；亮拔西县千余家还汉中，戮谡以谢众，上疏自贬三等。" },
+      "locator": {
+        "book": "三国志",
+        "chapter": "蜀书·诸葛亮传",
+        "section": "街亭·戮谡段",
+        "para_ulid": "7RTPSJS9QAKBREZPGTR8DSSV5T:0146",
+        "note": "★待补。诸葛亮传：谡违亮节度，举动失宜，大为张郃所破；亮拔西县千余家还汉中，戮谡以谢众，上疏自贬三等。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "建兴六年 = 公元228",
-        "actor_claims": ["马谡违亮节度、举动失宜，大为张郃所破，失街亭", "亮进无所据，退还汉中", "★戮谡以谢众；亮上疏自贬三等"],
-        "causal_claims": ["★马谡结局：戮（斩）"],
+        "actor_claims": [
+          "马谡违亮节度、举动失宜，大为张郃所破，失街亭",
+          "亮进无所据，退还汉中",
+          "★戮谡以谢众；亮上疏自贬三等"
+        ],
+        "causal_claims": [
+          "★马谡结局：戮（斩）"
+        ],
         "number_claims": [],
         "dialogue_spans": []
       },
@@ -50,13 +91,23 @@
       "account_id": "ac:jieting-masuzhuan",
       "event_ref": "ev:jieting",
       "source_id": "src:sanguozhi",
-      "locator": { "book": "三国志", "chapter": "蜀书·马良传（附马谡）", "section": "马谡结局段", "para_ulid": null, "note": "★待补。马谡传：谡下狱物故，亮为之流涕。→ 与诸葛亮传『戮谡』相异（同书篇间冲突）。" },
+      "locator": {
+        "book": "三国志",
+        "chapter": "蜀书·马良传（附马谡）",
+        "section": "马谡结局段",
+        "para_ulid": "7RTPSJS9QAKBREZPGTR8DSSV5T:0187",
+        "note": "★待补。马谡传：谡下狱物故，亮为之流涕。→ 与诸葛亮传『戮谡』相异（同书篇间冲突）。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "公元228",
-        "actor_claims": ["★马谡下狱物故（病死狱中），亮为之流涕"],
-        "causal_claims": ["★马谡结局：下狱物故（非被斩）"],
+        "actor_claims": [
+          "★马谡下狱物故（病死狱中），亮为之流涕"
+        ],
+        "causal_claims": [
+          "★马谡结局：下狱物故（非被斩）"
+        ],
         "number_claims": [],
         "dialogue_spans": []
       },
@@ -66,13 +117,23 @@
       "account_id": "ac:jieting-xianglang",
       "event_ref": "ev:jieting",
       "source_id": "src:sanguozhi",
-      "locator": { "book": "三国志", "chapter": "蜀书·向朗传", "section": "朗知谡逃亡段", "para_ulid": null, "note": "★待补。向朗传：朗素与谡善，谡逃亡，朗知情不举，亮恨之，免官还成都。→ 隐含马谡曾逃亡（第三说）。" },
+      "locator": {
+        "book": "三国志",
+        "chapter": "蜀书·向朗传",
+        "section": "朗知谡逃亡段",
+        "para_ulid": "7RTPSJS9QAKBREZPGTR8DSSV5T:0146",
+        "note": "★待补。向朗传：朗素与谡善，谡逃亡，朗知情不举，亮恨之，免官还成都。→ 隐含马谡曾逃亡（第三说）。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "公元228",
-        "actor_claims": ["★向朗与马谡善；谡兵败逃亡，朗知情不举；亮恨之，免朗官"],
-        "causal_claims": ["★隐含第三说：马谡曾逃亡（后或被执/或狱死/或戮）"],
+        "actor_claims": [
+          "★向朗与马谡善；谡兵败逃亡，朗知情不举；亮恨之，免朗官"
+        ],
+        "causal_claims": [
+          "★隐含第三说：马谡曾逃亡（后或被执/或狱死/或戮）"
+        ],
         "number_claims": [],
         "dialogue_spans": []
       },
@@ -82,15 +143,27 @@
       "account_id": "ac:jieting-xiangyangji",
       "event_ref": "ev:jieting",
       "source_id": "src:xiangyangji",
-      "locator": { "book": "三国志", "chapter": "蜀书·马良传（裴注引 习凿齿《襄阳记》）", "section": "马谡临终与亮书", "para_ulid": null, "note": "★待补。carrier=裴注；original=襄阳记（被载原源，引书 testimony）。马谡临终作书与诸葛亮：『明公视谡犹子，谡视明公犹父……』——★临终作书，含时间余裕，链入『下狱物故』一线（非当场戮）。" },
+      "locator": {
+        "book": "三国志",
+        "chapter": "蜀书·马良传（裴注引 习凿齿《襄阳记》）",
+        "section": "马谡临终与亮书",
+        "para_ulid": "7RTPSJS9QAKBREZPGTR8DSSV5T:0187",
+        "note": "★待补。carrier=裴注；original=襄阳记（被载原源，引书 testimony）。马谡临终作书与诸葛亮：『明公视谡犹子，谡视明公犹父……』——★临终作书，含时间余裕，链入『下狱物故』一线（非当场戮）。"
+      },
       "白文span_refs": [],
       "白话ref": null,
       "extraction": {
         "date_claim": "公元228",
-        "actor_claims": ["马谡临终与诸葛亮书：『明公视谡犹子，谡视明公犹父，愿深惟殛鲧兴禹之义，使平生之交不亏于此，谡虽死无恨于黄壤也』"],
-        "causal_claims": ["★临终作书＝死前有余裕（狱中待决/病笃），可链入『下狱物故』线，与『当场戮』张力"],
+        "actor_claims": [
+          "马谡临终与诸葛亮书：『明公视谡犹子，谡视明公犹父，愿深惟殛鲧兴禹之义，使平生之交不亏于此，谡虽死无恨于黄壤也』"
+        ],
+        "causal_claims": [
+          "★临终作书＝死前有余裕（狱中待决/病笃），可链入『下狱物故』线，与『当场戮』张力"
+        ],
         "number_claims": [],
-        "dialogue_spans": ["（马谡临终书——演绎素材，透传）"]
+        "dialogue_spans": [
+          "（马谡临终书——演绎素材，透传）"
+        ]
       },
       "genre_note": "★carrier=裴注引书（襄阳记，testimony 计入独立见证）——★carrier/original × 篇间多歧在同一 fixture 交互：正文三篇同源(计1)，襄阳记引书另计(+1)。内容（临终作书）偏向『物故』线。"
     }
@@ -100,7 +173,12 @@
       "conflict_id": "cf:jieting-masi-death",
       "event_ref": "ev:jieting",
       "dimension": "existence",
-      "account_refs": ["ac:jieting-liangzhuan", "ac:jieting-masuzhuan", "ac:jieting-xianglang", "ac:jieting-xiangyangji"],
+      "account_refs": [
+        "ac:jieting-liangzhuan",
+        "ac:jieting-masuzhuan",
+        "ac:jieting-xianglang",
+        "ac:jieting-xiangyangji"
+      ],
       "independence_analysis": {
         "independent_witness_count": 2,
         "reasoning": "★四说不等价，须先分『硬对』与『可链归因』——拍平成『四歧』会抹掉本 fixture 的分辨率（回归网价值所在）。【硬对＝真冲突】诸葛亮传/王平传『戮谡（斩，处决执行了）』 ⊥ 马谡传『下狱物故（未及行刑而病死狱中）』——二者互斥：处决发生 vs 死于狱中在先，这是唯一硬矛盾。【可链归因＝非独立歧】向朗传『谡逃亡』+ 襄阳记『临终与亮书』可链式并入『物故』一线（逃亡→被执→下狱→临终作书→物故），为同一序列的环节，与『物故』不矛盾、亦不与『戮』直接对立（是物故线的证据补强），故非第三、第四个独立结局。【独立见证折算】正文三篇（诸葛亮传/马谡传/向朗传）同属 src:sanguozhi＝同源计 1；襄阳记经裴注【引书 testimony】另计 1（carrier/original × 篇间多歧在同一 fixture 交互）＝indep 2；襄阳记内容偏『物故』线。【locator】硬对正在三国志两篇之间（诸葛亮传 vs 马谡传），停书级即抹平——再证必到篇（§2.2）。",
