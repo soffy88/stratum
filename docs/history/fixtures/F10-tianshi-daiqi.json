@@ -79,7 +79,8 @@
       ],
       "geo": {
         "place_refs": [
-          "pl:qi"
+          "pl:qi",
+          "pl:shuzhou"
         ],
         "route_hint": null,
         "mapstate_hint": null
@@ -158,7 +159,7 @@
         "chapter": "哀公十四年",
         "section": "陈恒弑君段",
         "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0003",
-        "note": "待补。齐陈恒弑其君壬于舒州。孔子请讨陈恒。"
+        "note": "在库原文(左传·哀公十四年, para_ulid 4YW6S9BRHDQVDGZDYXH2E8Z7HE:0003): 「甲午，齊陳恆弒其君壬于舒州。」——弑地作『舒州』。"
       },
       "白文span_refs": [],
       "白话ref": null,
@@ -185,7 +186,7 @@
         "chapter": "田敬仲完世家",
         "section": "田常弑简公段",
         "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0003",
-        "note": "待补。田常弑简公、专齐政、尽诛鲍晏诸族。"
+        "note": "在库原文(史记·田敬仲完世家, para_ulid 3EX2FF5S4Q1M0K27M27QVNWEYH:0003): 「簡公出奔，田氏之徒追執簡公于徐州……田氏之徒恐簡公復立而誅己，遂殺簡公。」★逐字改从在库: 执/杀之主语为『田氏之徒(追)』非田常本人(田常为宗主主谋); 执地作『徐州』(与左传舒州通假同地, 见 pl:shuzhou)。"
       },
       "白文span_refs": [],
       "白话ref": null,
@@ -212,7 +213,7 @@
         "chapter": "田敬仲完世家 / 六国年表",
         "section": "田和列侯段",
         "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0003",
-        "note": "待补。前386 田和立为齐侯。"
+        "note": "在库原文(史记·田敬仲完世家, para_ulid 3EX2FF5S4Q1M0K27M27QVNWEYH:0003): 「康公之十九年，田和立為齊侯，列於周室，紀元年。」"
       },
       "白文span_refs": [],
       "白话ref": null,
@@ -239,7 +240,7 @@
         "chapter": "周纪（安王十六年前后）",
         "section": "田和列侯段",
         "para_ulid": null,
-        "note": "待补。通鉴系田和列侯，取材史记。"
+        "note": "通鉴系田和列侯、取材史记(派生, 不另计独立见证); 通鉴田和段未入库(点覆盖外), para_ulid 待后续波次。"
       },
       "白文span_refs": [],
       "白话ref": null,

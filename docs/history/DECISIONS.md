@@ -22,6 +22,7 @@
 - **Schema 缺口按 U 协议报回不私设**：『互见/互补关系是否需要一等对象（非 cf）』列 **U7**（spec 附录 A.4）候裁。
 - **引文核对状态更新**：已核条目标『2026-07-22 顾问对原文源核（维基文库/中华文库），异文注记在案』；F8 尾段与 F10 标未核。
 - **★全库同款扫描**（narrative cf 共 7）：真对立 5 个成立（F2×2/F4/F5/F13）；**同款嫌疑 1 个候裁＝F1 `cf:jinyang-independence`**（三源**同说**，对象实为独立性折算记录）——⚠ 它在 **v0.2 契约冻结 sample 字节内**，动它牵 G1b 对拍基准与 contract tag，**报回不私设**（清单见 SPOTCHECK 扫描节）。
+- **★抽验门全关（W-H1a-2 追加，2026-07-22）**：**F8 通过 / F10 通过 / F12 实质错已修** —— 三份抽验门至此**全关**。F10 材料 W-H1a-1 机核毕、W-H1a-2 引文逐字改从在库原文（史记主语『田氏之徒追执』；弑地舒州/执地徐州入 `pl:shuzhou` variant），SPOTCHECK 登记表 F10=通过（判定人=顾问 Claude）。正式记入 OWNER-PLAN 附录D **D-029**（治理层活动决策日志；本条为 KU 线交叉引用）。
 
 ## D-021 · 跨线通知总则（禁写对方仓）+ 通则 c 入 JUDGMENTS 方法论
 
@@ -44,7 +45,7 @@
 - **订单源**：CC-A G1b 首跑 coverage gap 清单（hevi `output/g1b_sanjia_fenjin/G1B_REPORT.md` + `tools/g1b_parity_harness.py::GAPS`）：一集 11 拍 ≈ 5 ev / 7 ac / 2 cf / 8 per。按逐拍清单建，计入 7:3 台账、四段计时照记（多数平凡料）。
 - **交付两面**：① fixtures **F21–F25**（F21 智果谏立瑶·平凡 / F22 智伯索地+任章·平凡 / F23 晋阳水源+围城年数·难例 / F24 命侯+臣光曰·难例 / F25 晋公室卑六卿彊·平凡）+ seeds persons +5。② **响应交付 = 扩样例集不动 schema**：`contracts/samples/ep_sanjia_fenjin/` 每事件一响应文件（生成器 `tools/history/build_ep_samples.py`，samples=f(fixtures,seeds) 零漂移），**形状零变更、无需 bump**；G1b 钉点 `sample.sanjiafenjin.json` 字节不动。
 - **★水源 cf 判定（从实际 locator 定，非记忆）**：查证通道＝维基文库/ctext 原文逐字摘录（2026-07-22）——史记·赵世家『三國攻晉陽，**歲餘**，引**汾水**灌其城』；战国策·赵策一『圍晉陽**三年**』『決**晉水**而灌之』；通鉴『圍而灌之』/『智伯行水』**不名水**、国语·晋语九『晉師圍而灌之，沈灶產蛙』**亦不名水**——两不表态源不计冲突端。`cf:jinyang-shuiyuan`（dimension=**place**，v0.2 新维第二用户，indep=2，S12）主线随事件 mainline（史记）＝汾水。
-- **★超订单 +1 明报**：围城年数 岁余（史记）vs 三年（战国策）**同指涉对立**（围城时长）——通则 a 之下这是真冲突，不建即 gold 自违 P1，故建 `cf:jinyang-weicheng-duration`（number，S12）。订单 2 cf 系 CC-A 密度估算，此为范式必然产物，**Wiki 可否决**。
+- **★超订单 +1 明报**：围城年数 岁余（史记）vs 三年（战国策）**同指涉对立**（围城时长）——通则 a 之下这是真冲突，不建即 gold 自违 P1，故建 `cf:jinyang-weicheng-duration`（number，S12）。订单 2 cf 系 CC-A 密度估算，此为范式必然产物，**Wiki 可否决**。**★追认（W-H1a-2，2026-07-22）**：Wiki 未否决，`cf:jinyang-weicheng-duration` **追认入册**、留存（岁余/三年 S12 并陈）；两端引文 W-H1a-1 机核一致（史记赵世家岁余 / 战国策赵策一三年）。
 - **VO『围两年』核查结论**：史记（岁余）/战国策（三年）/通鉴（无）/国语（无）四系皆无『两年』——**查无实据坐实**，按令登 G1a 打磨清单改署源表述（通知件送 hevi）。
 - **另**：B05 拍级合围路线不入本批——`route_hint` 单值系契约形状，拍级多路线属 G2 口径议题。B02 智果 ac 挂 `ev:zhixuanzi-liyao`（+1 事件对象，超密度估算，明报）。
 
