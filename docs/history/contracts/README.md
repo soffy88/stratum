@@ -14,7 +14,7 @@
 ## G1b 对拍协议（§8.4）
 
 > **★钉点（pin）**：G1b 对拍 **git tag `history-contract-v0.2`**（annotated tag，非 commit hash）下的 `contracts/{history-query-response.schema.json, sample.sanjiafenjin.json}`。tag 不可变、不惧承载分支 rebase/squash。
-> **版本沿革**：`history-contract-v0.1`（首冻结，2026-07-21）→ **`history-contract-v0.2`**（2026-07-22，`dimension` 增 `place`，`contract_version`→v0.2，D-006）。v0.1→v0.2 差异＝dimension 多 `place` 值 + `contract_version` 值，**加性向后兼容、可解释**。旧钉点 `ab228ab` 早已作废（sample 字节在 `_meta` 迁移中演进）。改判/沿革均记 `docs/history/DECISIONS.md`（D-002 / D-006）。
+> **版本沿革**：`history-contract-v0.1`（首冻结，2026-07-21）→ **`history-contract-v0.2`**（2026-07-22，`dimension` 增 `place`，`contract_version`→v0.2，D-006）→ **`history-contract-v0.2.1`**（2026-07-22，**交付集版本**：samples 六件 + 交付单权威版随 tag 冻结，契约**形状**仍 v0.2、`contract_version` 不动，D-020；跨仓钉点协议＝annotated tag 不裸 commit）。v0.1→v0.2 差异＝dimension 多 `place` 值 + `contract_version` 值，**加性向后兼容、可解释**。旧钉点 `ab228ab` 早已作废（sample 字节在 `_meta` 迁移中演进）。改判/沿革均记 `docs/history/DECISIONS.md`（D-002 / D-006）。
 
 1. 生产端按 `history-query-response.schema.json` 装配 VisualFact 前的中间态（G1a 手工同形数据）。
 2. KU 实装后，`GET`（§8.1 只读接口：时间窗/人物/势力/event_type/断代）→ 返回体**必须 validate 通过本 schema**。
