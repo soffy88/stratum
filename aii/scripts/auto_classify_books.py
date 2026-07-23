@@ -40,12 +40,19 @@ def _keyword_hit(name: str, categories: list[dict]) -> str | None:
 
 
 def _llm_classify(names: list[str], categories: list[dict]) -> dict:
-    """一批书名 → {name: folder}。用 default provider(deepseek)按 description 归类。"""
+    """一批书名 → {name: folder}。用 default provider(NIM 优先, deepseek 兜底)按 description 归类。"""
     if not names:
         return {}
-    from aii.api._provider import register_providers
+    from aii.api._provider import _pipeline_nim_key, register_providers
     from obase import ProviderRegistry
 
+    # ★NIM key 固化(仅本进程): deepseek 余额耗尽即 402, register_providers 本就"有 NIM key
+    #   即作 default"。从密钥池兜底注入, 不写 aii/.env——后端 default(检索/入库)保持不变。
+    #   池里加 "classify" 槽可给分类配独立 key, 缺省复用 econ。
+    if not os.getenv("NVIDIA_NIM_API_KEY"):
+        _k = _pipeline_nim_key("classify") or _pipeline_nim_key("econ")
+        if _k:
+            os.environ["NVIDIA_NIM_API_KEY"] = _k
     register_providers()
     llm = ProviderRegistry.get().llm("default")
     cat_desc = "\n".join(f"- {c['folder']}: {c.get('description', '')}" for c in categories)
@@ -54,13 +61,21 @@ def _llm_classify(names: list[str], categories: list[dict]) -> dict:
         '{"完整文件名":"文件夹名", ...}。每个输入文件名都要有一条。分不准就选最接近的, 不要新造文件夹名。\n\n'
         f"可选文件夹:\n{cat_desc}"
     )
-    body = "待分类文件名:\n" + "\n".join(f"- {n}" for n in names)
-    try:
-        raw = json.loads(llm.call_sync(sys + "\n\n" + body))
-        return raw if isinstance(raw, dict) else {}
-    except Exception as e:
-        print(f"  ⚠ LLM 分类失败(这批归空, 留原处): {e}", flush=True)
-        return {}
+    # 分批: 大积压(200+书)单请求会超时/截断 JSON; 单批失败只丢该批, 其余照常
+    out: dict = {}
+    CHUNK = 30
+    for i in range(0, len(names), CHUNK):
+        batch = names[i : i + CHUNK]
+        body = "待分类文件名:\n" + "\n".join(f"- {n}" for n in batch)
+        try:
+            raw = json.loads(llm.call_sync(sys + "\n\n" + body))
+            if isinstance(raw, dict):
+                out.update(raw)
+        except Exception as e:
+            print(
+                f"  ⚠ LLM 分类失败(第{i // CHUNK + 1}批{len(batch)}本归空, 留原处): {e}", flush=True
+            )
+    return out
 
 
 async def run_classify(owner: str = "default", dry: bool = False, force: bool = False) -> dict:
