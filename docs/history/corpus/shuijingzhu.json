@@ -1,0 +1,27 @@
+{
+  "substrate": {
+    "substrate_ulid": "YMVZ9FHEMJTEF77GB9PJ9D826Z",
+    "source_ref": "src:shuijingzhu",
+    "book": "水经注",
+    "base_text": {
+      "url": "https://zh.wikisource.org/wiki/水經注/35",
+      "license": "CC BY-SA 3.0（维基文库标点白文）",
+      "fetch_date": "2026-07-23",
+      "char_count": 162,
+      "form": "白文（维基文库·水經注/35 江水注，郦道元古本非点校本）",
+      "r5": "禁点校本；古本地理注（郦道元）逐字，OP-D-037 dump 定位"
+    },
+    "coverage": "部分（江水注 赤壁/乌林/蒲圻 地望段，F18 被引）；全书后续波",
+    "ulid_scheme": "substrate ULID = SHA256(src_id) 派生 Crockford base32"
+  },
+  "paragraphs": [
+    {
+      "para_ulid": "YMVZ9FHEMJTEF77GB9PJ9D826Z:0001",
+      "chapter": "江水注（卷35·江水三）",
+      "text": "江水左逕上烏林南，村居地名也。又東逕烏黎口，江浦也，即中烏林矣。又東逕下烏林南，吳黃蓋敗魏武于烏林，即是處也。……陸水又入蒲圻縣北，逕呂蒙城西，昔孫權征長沙、零、桂所鎮也。……又東逕蒲磯山北，北對蒲圻洲，亦曰擎洲，又曰南洲。洲頭，即蒲圻縣治也，晉太康元年置。……江水左逕百人山南，右逕赤壁山北，昔周瑜與黃蓋詐魏武大軍處所也。",
+      "backs_fixtures": [
+        "F18"
+      ]
+    }
+  ]
+}
