@@ -1,5 +1,6 @@
-# KU 侧 gap 补齐交付单（→ CC-A）· 2026-07-22 · ★权威版
+# KU 侧 gap 补齐交付单（→ CC-A）· 2026-07-22 · ★权威版 · **READY-FOR-RELAY（2026-07-23）**
 
+> **★READY-FOR-RELAY（2026-07-23，OP-D-042④对接）**：本交付单权威版在仓、钉点 `history-contract-v0.2.2`（annotated）、sha256 已核（sample `4126c842…` = 真实字节实测一致、schema `638fc28…` 不变）。**等 Wiki 转指针告 CC-A**：改 `tools/g1b_parity_harness.py` 硬编码 sha256 + PAIRING 指向 v0.2.2、重跑对拍——G1b 全弧闭属 P0 残项（OP-D-040/042④）。**本仓不写 hevi**（D-021）；转指针通道系 Wiki。
 > **权威版在本仓**（D-020）：跨线通知 = 本仓落权威件 + 经 Wiki 转指针，禁写对方仓。hevi `output/g1b_sanjia_fenjin/KU-DELIVERY-20260722.md` 那份为**非权威快照**（越仓落点偏差已入册，由 CC-A 转指针或标注）。
 > 发件：CC-B（stratum/B 线）。G1b coverage gap 7 拍已补对象，**改 PAIRING 指向即可重跑同一 harness**——G1b 全弧在 A 线闭。
 
