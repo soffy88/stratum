@@ -1,4 +1,6 @@
-# 首弧策展续波 · s3 作三军设六卿 + s4 卿族兼并 + s5 六卿相并（送裁）· 2026-07-23
+# 首弧策展续波 · s3 作三军设六卿 + s4 卿族兼并 + s5 六卿相并· 2026-07-23
+
+> **★终裁已落（2026-07-23）**：7 候选事件全晋级 cand→KU（含 fanzhonghang-benqi 补钉 :2809 转正）、3 新 thesis 裁定入库——见 `arc/ADJUDICATION-s3-s5.md` 与 `arc/arc-jin-decline.json`。下文送裁原件保留、状态就地更新。
 
 > 弧 `arc:jin-decline` 七子簇之 s3–s5（时间序，接 s1/s2 已终裁）。**策展包 = 成员事件（cand + 全 ULID 白文锚）+ mainline 论点 + 并陈项（含检索记录 OP-D-045）+ 证据链全 ULID**。成员系**晋级候选（cand→KU）送裁**；判定人=顾问 Claude（Wiki 全权授权）。节奏每波 2–3 簇。**s3 起 thesis 候选含叔向论（已在库 :2209）**。
 
@@ -36,9 +38,9 @@
 | 候选事件 | 白文证据 para_ulid | 骨架 |
 |---|---|---|
 | cand:fanzhonghang-zhi-luan（范中行之乱起） | `4YW6S…:2712`（左传定13） | 晋荀寅、士吉射入于朝歌以叛，赵鞅归于晋——赵氏 vs 范/中行，六卿内战启 |
-| cand:fanzhonghang-benqi（范中行奔齐·六卿→四卿） | **PENDING-pin**（哀2/5 段待精搜——赵鞅逐范中行、二族奔齐） | 范/中行败奔齐，六卿去二存四（赵韩魏智）——接 s6 晋阳灭智 |
+| ev:fanzhonghang-benqi（范中行奔齐·六卿→四卿） | **`4YW6S…:2809`（左传哀5『荀寅、士吉射奔齊』）★续搜钉定转正** | 范/中行败奔齐，六卿去二存四（赵韩魏智）——接 s6 晋阳灭智 |
 
-**mainline 论点提案**：`thesis:qiangzhe-jianruo`（**新候选·我方综述**：卿族相并至强者兼弱，六卿去范/中行成四卿，四卿再相图终成三家——『强者兼弱』是本弧尾段的动力学）。★我方论点，:2712 已锚；`fanzhonghang-benqi` 锚 **PENDING**（哀公段待搜）→ 按 OP-D-046 **该缺环补齐前不转正**、只送裁。
+**mainline 论点提案**：`thesis:qiangzhe-jianruo`（**新候选·我方综述**：卿族相并至强者兼弱，六卿去范/中行成四卿，四卿再相图终成三家——『强者兼弱』是本弧尾段的动力学）。★我方论点，:2712 已锚；`fanzhonghang-benqi` 锚**补钉 :2809**（哀5）→ 缺环补齐，按 OP-D-046/048 **自动转正**。
 **并陈项（含检索记录）**：史墨『社稷无常奉、君臣无常位』`:2592`（s1 已立 thesis:shimo-changbian）通贯至此为最强源内理据——六卿相并即『无常位』之应验。已扫库，无新增对立。
 **证据链（全 ULID / 诚实标）**：范中行之乱(:2712)→范中行奔齐[PENDING-pin]→[下承 s6 晋阳灭智 ev:jinyang-zhizhan]。
 
@@ -47,5 +49,5 @@
 - s3–s5 共 **7 候选事件**（6 已锚 + 1 PENDING-pin `fanzhonghang-benqi`），送 Wiki 裁 cand→KU。
 - **新 thesis 候选 3**：`thesis:zhongni-shidu`（仲尼失度·源内 :2563）/`thesis:qingzu-jianbing`（卿族兼并·我方，无缺环可即转）/`thesis:qiangzhe-jianruo`（强者兼弱·我方，`fanzhonghang-benqi` 缺环、OP-D-046 缓转）。均**未入 arc theses**（待裁后入，同 s1/s2 纪律）。
 - **检索记录随附（OP-D-045）**：每簇 mainline/并陈均标『已扫库 N theses + 源内候选段』，无『无对立』裸默认。
-- **PENDING-pin 诚实**：`fanzhonghang-benqi`（范中行奔齐、六卿去二）左传哀公段本波未精搜钉定，如实标——按 OP-D-046，其所系我方论点 `qiangzhe-jianruo` 缺环补齐前不转正。
+- **PENDING-pin 全销（2026-07-23 续搜）**：`fanzhonghang-benqi`=`:2809`（左传哀5，『荀寅、士吉射奔齊』命中）→ 其所系我方论点 `qiangzhe-jianruo` 缺环补齐、自动转正。
 - **余簇**：s6 晋阳灭智（`ev:jinyang-zhizhan` 已 KU）/ s7 三家分晋命侯（`ev:sanjiafenjin`/`ev:minghou-403` 已 KU）——七子簇至此策展全覆盖，s6/s7 已有 gold KU、无需再抽。**本波 s3–s5 送裁毕，七簇策展包全数备齐待裁（OP-D-042②）**。
