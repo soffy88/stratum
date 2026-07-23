@@ -27,7 +27,7 @@
 
 ## 治理线全表（OP-D023..D-032 · 指针至 OWNER-PLAN 附录 D）
 
-OP-D023 闸口顾问化 · OP-D024 Arc 命名 · OP-D025 Arc/Thesis 仓内 · OP-D026 云端禁 · OP-D027 现代考订不入库 · **OP-D028 canonical_date 永不由抽取器产出** · **OP-D029 抽取器定型 qwen3-8b·半自动偏自动** · **OP-D030 抽验门全关(F12修/F8/F10)** · **OP-D031 年数cf追认成立** · **OP-D032 舒州/徐州地名variant** · OP-D033 在库源机核100%口径+豁免 · OP-D034 PERSON-INTAKE协议 · **OP-D035 决策原话须在FULL AUTO块内** · **OP-D036 P1出口判据重定域(同一性/全自动移P2)** · **OP-D037 语料主路径改zhwikisource dump** · **OP-D038 PERSON-INTAKE修订** · **OP-D039 外部阻塞归因必附证据** · **OP-D040 P1终裁PASS(GATE-P1)** · **OP-D041 intake转正逐条** · **OP-D042 P2出口判据(5项)** · **OP-D043 存在性核查必以main+tags为据(工作树/分支视野不作证据)**。
+OP-D023 闸口顾问化 · OP-D024 Arc 命名 · OP-D025 Arc/Thesis 仓内 · OP-D026 云端禁 · OP-D027 现代考订不入库 · **OP-D028 canonical_date 永不由抽取器产出** · **OP-D029 抽取器定型 qwen3-8b·半自动偏自动** · **OP-D030 抽验门全关(F12修/F8/F10)** · **OP-D031 年数cf追认成立** · **OP-D032 舒州/徐州地名variant** · OP-D033 在库源机核100%口径+豁免 · OP-D034 PERSON-INTAKE协议 · **OP-D035 决策原话须在FULL AUTO块内** · **OP-D036 P1出口判据重定域(同一性/全自动移P2)** · **OP-D037 语料主路径改zhwikisource dump** · **OP-D038 PERSON-INTAKE修订** · **OP-D039 外部阻塞归因必附证据** · **OP-D040 P1终裁PASS(GATE-P1)** · **OP-D041 intake转正逐条** · **OP-D042 P2出口判据(5项)** · **OP-D043 存在性核查必以main+tags为据(工作树/分支视野不作证据)** · **OP-D044 dump收口水经注/苏秦策入库锚定·PENDING清零·两"无源"误归因证伪(OP-D-039类)**。
 
 > **OP-D028~032 状态（W-H1a-5）**：Wiki 逐字权威文本已下达（FULL AUTO 块内，OP-D035）；**渲染稿作废、标曾用留痕**（OWNER-PLAN 附录 D 头）。⚠ 权威 D-028~032 语义与渲染稿号位不同（如权威 D-030=抽验门全关，渲染 D-030=语料库现实）——以权威为准。
 
