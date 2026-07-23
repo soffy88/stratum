@@ -9,9 +9,9 @@
 ## item15 — P3 前端架构决策
 
 ### 裸真相（实查 2026-07-01）
-- 部署到 `aii.uex.hk` 的 `aii-web` 容器，镜像 `deploy/Dockerfile.aii-web` 实际烤的是
+- 部署到 `aii.kanpan.co` 的 `aii-web` 容器，镜像 `deploy/Dockerfile.aii-web` 实际烤的是
   **`stratum-web/.next/standalone`（基座）**，靠 Next 服务端 `rewrites` 把 `/api/v1/*`→stratum-sl、
-  `/api/*`→stratum-api。实证：`https://aii.uex.hk/api/v1/health` → 200。
+  `/api/*`→stratum-api。实证：`https://aii.kanpan.co/api/v1/health` → 200。
 - `stratum-web` 基座里 `@helios/blocks` 是**桩**（next.config resolveAlias → `src/stubs`）。
 - `aii/aii-web/`（14 页、真 `@helios` tarball、`env.ts` 读 `NEXT_PUBLIC_AII_API_BASE`）是**另一套源**，
   当前**未部署**（部署的是 stratum-web 基座）。
@@ -24,7 +24,7 @@
 
 ### 落地清单（后续执行，非本次）
 1. **修 `NEXT_PUBLIC_AII_API_BASE` 断链**（唯一功能性缺口）：`NEXT_PUBLIC_*` 在 `next build` 时烤死，
-   须在**构建期**注入。做法：在前端 build 前 `export NEXT_PUBLIC_AII_API_BASE=https://aii-api.uex.hk`
+   须在**构建期**注入。做法：在前端 build 前 `export NEXT_PUBLIC_AII_API_BASE=https://aii-api.kanpan.co`
    （该域名本次已接通，实证 200），再 `pnpm build` → 重烤 `aii-web:latest` → recreate。
    `deploy/Dockerfile.aii-web` 因只 COPY 预构建 standalone，须在 build 脚本层注入而非 Dockerfile ARG。
    ⚠️ 盲目重构建有打破当前 200 站点风险，须在 staging 验证浏览器端 API 调用成功后再切。

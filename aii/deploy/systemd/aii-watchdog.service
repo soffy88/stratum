@@ -1,0 +1,10 @@
+[Unit]
+Description=AII watchdog — structured health report (P2a observe-only)
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/data/soffy/projects/stratum/aii
+ExecStart=/data/soffy/projects/stratum/aii/.venv/bin/python3 scripts/watchdog.py
+StandardOutput=append:/data/soffy/projects/stratum/aii/watchdog/watchdog.log
+StandardError=append:/data/soffy/projects/stratum/aii/watchdog/watchdog.log

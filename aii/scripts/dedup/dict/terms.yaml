@@ -1,0 +1,10 @@
+# 术语规范闭集词典（受控对齐，非自由翻译）: 各书原名变体 → 英文 canonical + 中文名。
+# 用途: 判同前把名称对齐到 canonical（跨书/跨语言），不塌缩; 中文名供前端显示。
+# 人工维护，按需扩展; 只收"已确认同一"的规范映射，拿不准的不进（宁碎片）。
+terms:
+  - {canonical_en: "Price Elasticity of Demand",  zh: "需求价格弹性", discipline: economics, aliases: ["price elasticity of demand", "需求的价格弹性", "PED"]}
+  - {canonical_en: "Income Elasticity of Demand", zh: "需求收入弹性", discipline: economics, aliases: ["income elasticity of demand", "需求的收入弹性"]}
+  - {canonical_en: "Cross-Price Elasticity of Demand", zh: "需求交叉价格弹性", discipline: economics, aliases: ["cross-price elasticity of demand", "cross price elasticity"]}
+  - {canonical_en: "Price Elasticity of Supply",  zh: "供给价格弹性", discipline: economics, aliases: ["price elasticity of supply"]}
+  - {canonical_en: "Marginal Cost",     zh: "边际成本",   discipline: economics, aliases: ["marginal cost", "MC"]}
+  - {canonical_en: "Opportunity Cost",  zh: "机会成本",   discipline: economics, aliases: ["opportunity cost", "opportunity costs", "economic cost"]}

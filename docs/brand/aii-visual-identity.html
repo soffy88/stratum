@@ -1,0 +1,472 @@
+<title>aii — visual identity</title>
+<style>
+  :root {
+    --ink: #1c1e29;
+    --paper: #eeece5;
+    --paper-raised: #f6f4ee;
+    --gold: #a9762f;
+    --slate: #7c8394;
+    --brick: #8c3b32;
+    --rule: #dad5c8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #eeece5;
+      --paper: #16171f;
+      --paper-raised: #1d1f29;
+      --gold: #cb9c56;
+      --slate: #96a0b4;
+      --brick: #c17262;
+      --rule: #2d2f3b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #eeece5;
+    --paper: #16171f;
+    --paper-raised: #1d1f29;
+    --gold: #cb9c56;
+    --slate: #96a0b4;
+    --brick: #c17262;
+    --rule: #2d2f3b;
+  }
+  :root[data-theme="light"] {
+    --ink: #1c1e29;
+    --paper: #eeece5;
+    --paper-raised: #f6f4ee;
+    --gold: #a9762f;
+    --slate: #7c8394;
+    --brick: #8c3b32;
+    --rule: #dad5c8;
+  }
+
+  * { box-sizing: border-box; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; }
+  }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Iowan Old Style', 'Palatino Linotype', 'URW Palladio L', Palladio, Georgia, serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 6vw, 6rem) clamp(1.25rem, 5vw, 2.5rem) 4rem;
+  }
+
+  .mono {
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+  }
+  .cjk {
+    font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  }
+
+  .eyebrow-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--slate);
+  }
+
+  /* ---------- hero ---------- */
+  .hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: clamp(3rem, 8vw, 5.5rem) 0 clamp(2rem, 5vw, 3rem);
+  }
+  .mark {
+    display: block;
+    width: clamp(100px, 17vw, 168px);
+    height: auto;
+    overflow: visible;
+  }
+  @keyframes turn {
+    to { transform: rotate(360deg); }
+  }
+  .mark .ring {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .hero .mark .ring-outer {
+    animation: turn 20s linear infinite;
+  }
+  .hero .mark .ring-mid {
+    animation: turn 12s linear infinite reverse;
+  }
+  .wordmark {
+    margin-top: clamp(1.1rem, 3vw, 1.85rem);
+    font-size: clamp(3.5rem, 12vw, 6.5rem);
+    line-height: 1;
+    letter-spacing: -0.01em;
+    font-weight: 400;
+  }
+  .tagline {
+    margin-top: 1.25rem;
+    max-width: 34ch;
+    font-size: 1.05rem;
+    font-style: italic;
+    color: var(--slate);
+    text-wrap: balance;
+  }
+  .subline {
+    margin-top: 0.6rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--slate);
+    opacity: 0.85;
+  }
+
+  hr.rule {
+    border: none;
+    border-top: 1px solid var(--rule);
+    margin: 0;
+  }
+
+  /* ---------- rationale ---------- */
+  .rationale {
+    padding: clamp(2.5rem, 6vw, 3.5rem) 0;
+    display: flex;
+    justify-content: center;
+  }
+  .rationale p {
+    max-width: 62ch;
+    font-size: 1.15rem;
+    line-height: 1.65;
+    text-wrap: balance;
+    margin: 0;
+  }
+  .rationale strong { font-weight: 600; color: var(--gold); }
+
+  /* ---------- lockups ---------- */
+  .section-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin-bottom: 1.25rem;
+  }
+
+  .lockup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+  .lockup-card {
+    background: var(--paper-raised);
+    padding: 2rem 1.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    min-height: 200px;
+    text-align: center;
+  }
+  .lockup-card .cap {
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--slate);
+  }
+  .lockup-card .mark { width: 56px; }
+  .lockup-card .wordmark-sm {
+    font-size: 2.1rem;
+    line-height: 1;
+  }
+  .lockup-h {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+  }
+  .lockup-h .mark { width: 44px; }
+  .lockup-h .wordmark-sm { font-size: 2rem; }
+  .lockup-v {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .on-dark {
+    --ink: #eeece5;
+    --paper-raised: #14151c;
+    --gold: #cb9c56;
+    --slate: #97a0b3;
+    background: var(--paper-raised);
+    color: var(--ink);
+  }
+
+  .size-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 1.75rem;
+  }
+  .size-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .size-item .swatch {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+  }
+  .size-item .swatch.px32 { width: 32px; height: 32px; }
+  .size-item .swatch.px32 .mark { width: 20px; }
+  .size-item .swatch.px16 { width: 16px; height: 16px; }
+  .size-item .swatch.px16 .mark { width: 10px; }
+  .size-item .swatch.px64 { width: 64px; height: 64px; }
+  .size-item .swatch.px64 .mark { width: 40px; }
+  .size-item .label { font-size: 0.65rem; color: var(--slate); }
+
+  /* ---------- grade spectrum ---------- */
+  .grade-strip {
+    padding: clamp(2.5rem, 6vw, 3.5rem) 0;
+  }
+  .grade-caption {
+    max-width: 56ch;
+    font-size: 0.95rem;
+    color: var(--slate);
+    margin: 0 0 1.75rem;
+    line-height: 1.55;
+  }
+  .grades {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+  }
+  .grade {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    position: relative;
+  }
+  .grade::before {
+    content: "";
+    position: absolute;
+    top: 11px;
+    left: -50%;
+    width: 100%;
+    height: 1px;
+    background: var(--rule);
+    z-index: 0;
+  }
+  .grade:first-child::before { display: none; }
+  .grade .dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    z-index: 1;
+    background: var(--paper);
+  }
+  .grade .name {
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--slate);
+    text-align: center;
+  }
+  .grade .name-zh {
+    font-size: 0.68rem;
+    color: var(--slate);
+    opacity: 0.75;
+  }
+
+  /* ---------- footer tokens ---------- */
+  .tokens {
+    border-top: 1px solid var(--rule);
+    padding-top: 2.5rem;
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+  }
+  .token-group .section-label { margin-bottom: 0.9rem; }
+  .swatches { display: flex; flex-direction: column; gap: 0.55rem; }
+  .swatch-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-size: 0.78rem;
+  }
+  .swatch-row .chip {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid var(--rule);
+    flex-shrink: 0;
+  }
+  .type-sample { display: flex; flex-direction: column; gap: 0.9rem; }
+  .type-sample .name { font-size: 0.78rem; color: var(--slate); }
+  .type-sample .demo { font-size: 1.3rem; }
+  .type-sample .demo.mono { font-size: 1rem; }
+</style>
+
+<!-- sprite: symbol defined once, reused everywhere -->
+<svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <symbol id="aii-mark" viewBox="0 0 200 200">
+    <g class="ring ring-outer">
+      <circle cx="100" cy="100" r="86" fill="none" stroke="var(--slate)" stroke-width="2" stroke-dasharray="1.5 11" stroke-linecap="round" opacity="0.5"></circle>
+    </g>
+    <g class="ring ring-mid">
+      <circle cx="100" cy="100" r="60" fill="none" stroke="var(--gold)" stroke-width="3" stroke-dasharray="130 420" stroke-linecap="round" opacity="0.6"></circle>
+    </g>
+    <circle cx="100" cy="100" r="31" fill="var(--gold)"></circle>
+    <circle cx="100" cy="100" r="31" fill="none" stroke="var(--ink)" stroke-width="2" opacity="0.2"></circle>
+  </symbol>
+</svg>
+
+<div class="sheet">
+
+  <div class="eyebrow-row">
+    <span class="eyebrow mono">Visual identity</span>
+    <span class="eyebrow mono">aii — epistemic engine</span>
+  </div>
+
+  <section class="hero">
+    <svg class="mark"><use href="#aii-mark"></use></svg>
+    <div class="wordmark">aii</div>
+    <p class="tagline">Every concept read down to what it actually is — held at a level of confidence, never declared flatly true.</p>
+    <div class="subline mono">本性 · inner essence</div>
+  </section>
+
+  <hr class="rule">
+
+  <section class="rationale">
+    <p>
+      aii doesn't stop at what a passage says — it works toward what a concept <em>is</em>. Every
+      Knowledge Unit is written to the same internal shape: an <strong>inner essence</strong>, a rigorous
+      statement, a plain-language gloss. The mark reads the same way, outside in — the raw sentence,
+      the structure forming around it, and at the center, a nature that holds still.
+    </p>
+  </section>
+
+  <hr class="rule">
+
+  <section style="padding-top: clamp(2.5rem, 6vw, 3.5rem);">
+    <div class="section-label">Lockups</div>
+    <div class="lockup-grid">
+
+      <div class="lockup-card">
+        <svg class="mark"><use href="#aii-mark"></use></svg>
+        <span class="cap mono">Symbol</span>
+      </div>
+
+      <div class="lockup-card">
+        <div class="wordmark-sm">aii</div>
+        <span class="cap mono">Wordmark</span>
+      </div>
+
+      <div class="lockup-card">
+        <div class="lockup-h">
+          <svg class="mark"><use href="#aii-mark"></use></svg>
+          <div class="wordmark-sm">aii</div>
+        </div>
+        <span class="cap mono">Primary lockup</span>
+      </div>
+
+      <div class="lockup-card">
+        <div class="lockup-v">
+          <svg class="mark" style="width:48px"><use href="#aii-mark"></use></svg>
+          <div class="wordmark-sm">aii</div>
+        </div>
+        <span class="cap mono">Stacked</span>
+      </div>
+
+      <div class="lockup-card on-dark">
+        <div class="lockup-h">
+          <svg class="mark"><use href="#aii-mark"></use></svg>
+          <div class="wordmark-sm">aii</div>
+        </div>
+        <span class="cap mono">On dark</span>
+      </div>
+
+      <div class="lockup-card">
+        <div class="size-row">
+          <div class="size-item">
+            <div class="swatch px16"><svg class="mark"><use href="#aii-mark"></use></svg></div>
+            <span class="label mono">16px</span>
+          </div>
+          <div class="size-item">
+            <div class="swatch px32"><svg class="mark"><use href="#aii-mark"></use></svg></div>
+            <span class="label mono">32px</span>
+          </div>
+          <div class="size-item">
+            <div class="swatch px64"><svg class="mark"><use href="#aii-mark"></use></svg></div>
+            <span class="label mono">64px</span>
+          </div>
+        </div>
+        <span class="cap mono">At size</span>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="grade-strip">
+    <div class="section-label">Grade spectrum</div>
+    <p class="grade-caption">
+      Not every claim reaches the center. This is how far each one got on the way in —
+      from proven, at the core, out to contradicted, still on the surface.
+    </p>
+    <div class="grades">
+      <div class="grade"><span class="dot" style="background:var(--gold);border:none"></span><span class="name mono">Proven</span><span class="name-zh cjk">已证实</span></div>
+      <div class="grade"><span class="dot" style="background:var(--gold);opacity:0.7;border:none"></span><span class="name mono">High</span><span class="name-zh cjk">较高</span></div>
+      <div class="grade"><span class="dot" style="background:var(--gold);opacity:0.4;border:none"></span><span class="name mono">Moderate</span><span class="name-zh cjk">中等</span></div>
+      <div class="grade"><span class="dot" style="background:none;border:2px solid var(--slate)"></span><span class="name mono">Low</span><span class="name-zh cjk">较低</span></div>
+      <div class="grade"><span class="dot" style="background:none;border:2px dashed var(--slate)"></span><span class="name mono">Unverified</span><span class="name-zh cjk">未验证</span></div>
+      <div class="grade"><span class="dot" style="background:var(--brick);opacity:0.85;border:none"></span><span class="name mono">Contradicted</span><span class="name-zh cjk">矛盾</span></div>
+    </div>
+  </section>
+
+  <div class="tokens">
+    <div class="token-group">
+      <div class="section-label">Color</div>
+      <div class="swatches">
+        <div class="swatch-row"><span class="chip" style="background:var(--ink)"></span><span class="mono">ink</span></div>
+        <div class="swatch-row"><span class="chip" style="background:var(--paper)"></span><span class="mono">paper</span></div>
+        <div class="swatch-row"><span class="chip" style="background:var(--gold)"></span><span class="mono">gold — proven</span></div>
+        <div class="swatch-row"><span class="chip" style="background:var(--slate)"></span><span class="mono">slate — provisional</span></div>
+        <div class="swatch-row"><span class="chip" style="background:var(--brick)"></span><span class="mono">brick — contradicted</span></div>
+      </div>
+    </div>
+    <div class="token-group">
+      <div class="section-label">Type</div>
+      <div class="type-sample">
+        <div>
+          <div class="name mono">display / wordmark</div>
+          <div class="demo">Iowan Old Style</div>
+        </div>
+        <div>
+          <div class="name mono">labels / data</div>
+          <div class="demo mono">ui-monospace</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

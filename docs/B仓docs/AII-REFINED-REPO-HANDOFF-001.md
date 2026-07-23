@@ -117,7 +117,7 @@ AII 用**两个互相独立、不污染的数据库**：
 - PG：aii-postgres 容器，现有库 aii_kg（A 仓）；B 仓待建 aii_refined。
 - 代码：~/projects/AII/aii 及 /home/soffy/projects/AII；远端 git@github.com:soffy88/aii.git。
 - 书源：/home/soffy/shared/stratum-to-aii/；AII↔Stratum 反馈队列 /home/soffy/shared/aii-to-stratum/md_rework_queue.json。
-- 前端 aii.uex.hk，API:8101，前端:3101。
+- 前端 aii.kanpan.co，API:8101，前端:3101。
 
 ---
 

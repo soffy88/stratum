@@ -39,7 +39,7 @@ except ImportError:
     _HAS_OPRIM_FEEDS = False
 
 try:
-    from omodul import InboxConfig, InboxInput, process_inbox_substrate
+    from omodul.process_inbox_substrate import InboxConfig, InboxInput, process_inbox_substrate
     from stratum.common import sha256_hex, user_inbox_dir, ensure_dir
     from stratum.utils.user_id_hash import hash_user_id
 

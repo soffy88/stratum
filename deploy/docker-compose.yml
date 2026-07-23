@@ -33,12 +33,13 @@ services:
     # Or use the explicit command in Dockerfile.web header comments.
     image: stratum-web:latest
     build:
-      context: /home/soffy/projects/stratum/stratum-web
+      context: /home/soffy/projects/stratum/aii-web
       dockerfile: /home/soffy/projects/stratum/deploy/Dockerfile.web
     container_name: stratum-web
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"
+      # host 3000 is taken by obsv-grafana on this shared host; moved to 3002.
+      - "127.0.0.1:3002:3000"
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
@@ -55,9 +56,9 @@ services:
       retries: 3
       start_period: 15s
 
-  # AII merge P3.5: merged frontend (Stratum base + AII pages) serving aii.uex.hk.
+  # AII merge P3.5: merged frontend (Stratum base + AII pages) serving aii.kanpan.co.
   # Self-contained image baked from the Next standalone build (deploy/Dockerfile.aii-web).
-  # cloudflared (host net) routes aii.uex.hk → 127.0.0.1:3101, aii-api.uex.hk → :8101.
+  # cloudflared (host net) routes aii.kanpan.co → 127.0.0.1:3101, aii-api.kanpan.co → :8101.
   aii-web:
     image: aii-web:latest
     container_name: aii-web
@@ -131,13 +132,31 @@ services:
       - STRATUM_PG_PORT=5435
       - STRATUM_PG_USER=aii
       - STRATUM_PG_DB=aii_kg
-      # Outbound proxy for YouTube/media ingest (Windows Clash via WSL2 bridge — may change on WSL restart)
-      - STRATUM_OUTBOUND_PROXY=http://172.23.224.1:20809
+      # Outbound proxy = sing-box mixed inbound (host 0.0.0.0:10808), reached via docker gateway 172.19.0.1.
+      # (Old WSL Clash 172.23.224.1:20809 died when the box moved to native Linux.)
+      - STRATUM_OUTBOUND_PROXY=http://172.19.0.1:10808
+      # arxiv/gutenberg fetch via urllib → auto-honor standard proxy env. NO_PROXY keeps internal
+      # HTTP (aii backend embed :8101, ollama gateway via aegis-backend, pg, docker service names) off the proxy.
+      - HTTP_PROXY=http://172.19.0.1:10808
+      - HTTPS_PROXY=http://172.19.0.1:10808
+      - http_proxy=http://172.19.0.1:10808
+      - https_proxy=http://172.19.0.1:10808
+      # ★100.68.226.13(tailscale笔记本, aii-embed宿主)必须在NO_PROXY里: httpx尊重代理env,
+      #   不排除的话 embed 请求会被路由进 sing-box 代理而不可达。
+      - NO_PROXY=localhost,127.0.0.1,::1,172.19.0.1,100.68.226.13,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend
+      - no_proxy=localhost,127.0.0.1,::1,172.19.0.1,100.68.226.13,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend
       # PaddleOCR: skip network model-source check, use pre-downloaded models from volume
       - PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
-      # Local embedding via Ollama qwen3-embedding:0.6b (1024-dim, matches DashScope text-embedding-v3)
-      - EMBEDDING_PROVIDER=qwen3_local
-      - OLLAMA_BASE_URL=http://172.19.0.1:11434
+      # ★2026-07-10: 原 qwen3_local→aegis ollama 网关已死(每条入库404×3, 向量从未写入,
+      #   语义检索静默失效)。改走共享 aii-embed BGE-M3 服务(tailscale笔记本), provider
+      #   自带短connect超时+本机CPU兜底(oprim PR#18)。
+      - EMBEDDING_PROVIDER=aii_remote
+      - AII_EMBED_URL=http://100.68.226.13:8102
+      # ★2026-07-10: DuckDB 已弃用。oskill.ingest_substrate/detect_duplicate 走 oprim.meta_db
+      #   的 open_meta_db——原来返回 DuckDB(迁PG后表空, substrate持久化静默死掉)。改用
+      #   META_DB_BACKEND=postgres → PgMetaDB 直接写入 stratum 读的同一个 aii-postgres,
+      #   彻底消灭 DuckDB/PG 双写。连接复用下面的 STRATUM_PG_* env(search_path=stratum)。
+      - META_DB_BACKEND=postgres
       # P1.4b: user-substrate vector search embeds queries via the shared BGE-M3
       # endpoint (AII backend) so query space matches substrate_chunk (BGE-M3).
       - STRATUM_EMBED_URL=http://172.19.0.1:8101/internal/embed
@@ -146,14 +165,16 @@ services:
       - /home/soffy/projects/stratum/src:/app/src
       - /home/soffy/projects/stratum/scripts:/app/scripts:ro
       - /home/soffy/projects/stratum/docs:/app/docs:ro
-      # Platform packages mounted editable — source changes are live without rebuild
-      # Packages live at platform/3O/{pkg} on the host.
-      - /home/soffy/projects/platform/3O/obase:/opt/platform/obase
-      - /home/soffy/projects/platform/3O/oprim:/opt/platform/oprim
-      - /home/soffy/projects/platform/3O/oskill:/opt/platform/oskill
-      - /home/soffy/projects/platform/3O/omodul:/opt/platform/omodul
-      - /home/soffy/projects/platform/3O/oservi:/opt/platform/oservi
-      # Data directory (DuckDB, uploads, etc.)
+      # ★2026-07-10: 生产专用隔离 3O checkout(deploy/3O), NOT 共享的 dev checkout
+      #   (projects/platform/3O)。原因: dev checkout 被并发会话频繁 git checkout/reset 切分支,
+      #   实时挂载导致运行中的 stratum-sl 代码被无声换掉——07-09 03:25 PG持久化猝死、embed被
+      #   回退成"Unknown provider"都是这个机制。生产挂 deploy/3O(受控、pin住), dev随便切不影响。
+      - /home/soffy/deploy/3O/obase:/opt/platform/obase
+      - /home/soffy/deploy/3O/oprim:/opt/platform/oprim
+      - /home/soffy/deploy/3O/oskill:/opt/platform/oskill
+      - /home/soffy/deploy/3O/omodul:/opt/platform/omodul
+      - /home/soffy/deploy/3O/oservi:/opt/platform/oservi
+      # Data directory (uploads, etc.)
       - ~/.stratum:/root/.stratum
       # AII shared export volume — Wave 4
       - /home/soffy/shared/stratum-to-aii:/data/shared/stratum-to-aii:rw
@@ -177,3 +198,4 @@ services:
 networks:
   default:
     name: stratum-net
+    external: true

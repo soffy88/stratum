@@ -1,17 +1,18 @@
 -- ============================================================================
 -- AII B仓（精炼仓 aii_refined）完备 schema — 四层知识有机体
--- Doc: AII-REFINED-REPO-SCHEMA-001 §二 + §6.2(strength) ; 术语: AII-INVARIANT-LAYER-001
--- 库: aii_refined (独立容器 aii-refined-postgres, port 5436) ; schema: rf
--- 固化进 repo(VHDX 教训): DDL 不依赖现库存活, 可重建。
+-- 库: aii_refined（独立容器 aii-refined-postgres:5436）; schema: rf
 --
--- ★忠实修正(报审): SCHEMA-001 §2.1 的 refined_ku 用了示意列名(point/facets/ku_type),
---   与真实 aii.ku_onto 不符。文档原则=「沿用 ku_onto 结构, 不重新设计」, 故 refined_ku
---   镜像真实 ku_onto 的知识承载列(含六类CHECK/生成列 is_positional/fts) + 加 B仓出处字段。
---   按 §6.4 砍掉 A仓的时序/版本列(valid_from/valid_until/superseded_by) 与 A仓专属
---   substrate_id(B仓改用 sources 软溯源指针回查 A仓)。
+-- 两条贯穿 schema 的纪律:
+--   ① KU 真身 = 结构化多源贡献 contributions（各留原语言）; 内容不做 zh↔en 翻译。
+--     natural_text_zh 中文优先视图为显示主视图; natural_text 英文视图（en 源原文保留可展开）。
+--   ② 所有"成员集合"用 junction 关联表, 不用 jsonb id 列表（可加外键、可重放、不漂移）。
 --
--- ★空库不灌数据。表/索引/外键到位即验收, 等去重机制(AII-KU-DEDUP-001)灌入。
--- ★命门: B仓无重复/四层一次预留完备/出处可追溯/A·B职责纯粹/完备不臃肿。
+-- 不变量: B = f(A仓, 决策台账)。每张四层表带 decision_id 回指 rf.decision_ledger,
+--         B仓任意状态可从「A仓 + 台账」确定性重放。
+--
+-- 空库不灌数据。表/索引/外键/台账到位即验收, 等去重机制灌入。
+-- 术语锁定: 本性=invariant（非 nature）; 本性概念=is_invariant_concept 字段（不独立建表）;
+--          本性同一=invariant-identity。
 -- ============================================================================
 
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -19,92 +20,111 @@ CREATE SCHEMA IF NOT EXISTS rf;
 SET search_path TO rf, public;
 
 -- ----------------------------------------------------------------------------
--- ④ 第④层 本性 invariant (预留, M4 才填) — 先建, 供 concept/cross_domain 外键引用
---   术语锁定: 本性=invariant(非nature); 本性概念=is_invariant_concept 字段(不独立建表);
---   本性同一=invariant-identity。
+-- 决策台账 decision_ledger — 地基不变量: 每步深加工决策 append-only 固化, 可重放不重问模型
+--   append-only: 绝不改历史行; 修订 = 追加一条 supersedes 指向旧决策。
+-- ----------------------------------------------------------------------------
+CREATE TABLE rf.decision_ledger (
+  decision_id   bigserial PRIMARY KEY,
+  decision_type text  NOT NULL,          -- ku_dedup/content_merge/concept_merge/hyperedge_grow/
+                                         -- mechanism_merge/invariant_promote/split ...
+  inputs        jsonb NOT NULL,          -- 参与对象 id + 关键判据输入
+  evidence      jsonb,                   -- 原文依据（回指 A仓 raw_ku_id + 片段）
+  model         text,                    -- 模型档位（local-small / frontier-X）
+  llm_raw       jsonb,                   -- ★LLM 原始输出（重放读它, 不重问模型）
+  verdict       jsonb NOT NULL,          -- 最终裁决（same/different/candidate; 合并成哪个; 加哪个成员…）
+  actor         text,                    -- llm / human / program
+  supersedes    bigint REFERENCES rf.decision_ledger(decision_id),  -- 修订指向被改的旧决策
+  created_at    timestamptz DEFAULT now()
+);
+CREATE INDEX idx_ledger_type       ON rf.decision_ledger USING btree(decision_type);
+CREATE INDEX idx_ledger_supersedes ON rf.decision_ledger USING btree(supersedes);
+
+-- ----------------------------------------------------------------------------
+-- 第④层 本性 refined_invariant（预留, M4 填）— 先建, 供 concept↔invariant / cross_domain 引用
 -- ----------------------------------------------------------------------------
 CREATE TABLE rf.refined_invariant (
   invariant_id          bigserial PRIMARY KEY,
-  statement             text,                              -- 本性是什么(道非相)
-  invariant_vector      vector(1024),                      -- 本性向量(同一本性向同处收敛)
-  is_invariant_concept  boolean      DEFAULT false,        -- false=普通本性 / true=升华为本性概念(不独立建表)
-  member_concept_ids    jsonb,                             -- 共有此本性的概念们(≥2 可升华)
-  status                text         DEFAULT 'candidate'   -- candidate/confirmed(宁标未发现)
-                        CHECK (status IN ('candidate','confirmed')),
-  created_at            timestamptz  DEFAULT CURRENT_TIMESTAMP,
-  updated_at            timestamptz  DEFAULT CURRENT_TIMESTAMP
+  statement             text,                              -- 本性是什么（道非相）
+  invariant_vector      vector(1024),                      -- 本性向量（同一本性向同处收敛）
+  is_invariant_concept  boolean DEFAULT false,             -- false=普通本性 / true=升华为本性概念（不独立建表）
+  status                text DEFAULT 'candidate' CHECK (status IN ('candidate','confirmed')),  -- 宁标未发现
+  decision_id           bigint REFERENCES rf.decision_ledger(decision_id),
+  created_at            timestamptz DEFAULT now(),
+  updated_at            timestamptz DEFAULT now()
 );
 
 -- ----------------------------------------------------------------------------
--- ① 去重 KU refined_ku — 镜像真实 aii.ku_onto 知识承载列 + B仓出处字段
+-- 去重 KU refined_ku — 真身 contributions（多源片段）, natural_text 派生渲染
 -- ----------------------------------------------------------------------------
 CREATE TABLE rf.refined_ku (
-  ku_id           text PRIMARY KEY,
-  title           text,
-  natural_text    text NOT NULL,                            -- 讲透正文(英文统一)
-  natural_text_zh text,                                     -- 中文
-  knowledge_type  text NOT NULL
-                  CHECK (knowledge_type IN ('conceptual','rationale','factual','metacognitive','positional','procedural')),
-  sub_type        text
-                  CHECK (sub_type IS NULL OR sub_type IN ('classification','conditional','principle','self_knowledge','skill','strategic','task_knowledge','technique','theory')),
-  is_positional   boolean GENERATED ALWAYS AS ((knowledge_type = 'positional')) STORED,
+  ku_id           text PRIMARY KEY,                        -- 新 ULID（B仓独立 ID 空间, 稳定不复用）
+  point           text,                                    -- 知识点 canonical 名（英文, 跨书/跨语言对齐; 名称=概念或论断）
+  point_zh        text,                                    -- 中文名（显示用）
+  ku_type         text NOT NULL
+                  CHECK (ku_type IN ('factual','conceptual','relational','procedural','rationale')),
+  is_positional   boolean DEFAULT false,                   -- 立场性（正交样态）
+  contributions   jsonb NOT NULL DEFAULT '[]'::jsonb,      -- ★真身: 单一可陈述事项的多源片段（各留原语言）
+                                                           --   [{source_book_id,version,raw_ku_id,facet,fragment_text,lang}]
+  facet_count     integer DEFAULT 0,                       -- 原子性预算监控（越阈值触发拆分）
+  natural_text_zh text,                                    -- ★中文优先视图（显示主视图; zh源直接拼装, en源 en→zh 译）
+  natural_text    text,                                    -- 英文视图（en源=原文保留可展开; zh源不译, 可空）
+  embedding       vector(1024),                            -- 定稿后算（BGE-M3, 干净 KU）
   stance_holder   text,
   opposing_stance text,
   grade           text NOT NULL DEFAULT 'unverified'
-                  CHECK (grade IN ('contradicted','high','low','moderate','pending','refuted','unverified','verified')),
-  grounded_by     jsonb,
-  intuition       text,
-  insight         text,
-  example         text,
-  embedding       vector(1024),                             -- B仓独立向量(BGE-M3 1024维, 干净KU)
-  -- ★B仓出处/去重字段
-  sources         jsonb       DEFAULT '[]'::jsonb,          -- [{book_id,version,extract_batch,chapter,raw_ku_id,contributed}] 多出处,回查A仓
-  is_fragmented   boolean     DEFAULT false,                -- 是否片段化合并产物(多书内容拼成, 越读越厚)
-  merge_count     integer     DEFAULT 1,                    -- B仓去重并入次数
-  provenance      jsonb,
-  fingerprint     text,                                     -- 内容指纹(去重精确匹配)
-  created_at      timestamptz DEFAULT CURRENT_TIMESTAMP,
-  updated_at      timestamptz DEFAULT CURRENT_TIMESTAMP,
-  fts             tsvector GENERATED ALWAYS AS (to_tsvector('english', (COALESCE(title,'') || ' ' || COALESCE(natural_text,'')))) STORED,
-  -- 沿用 ku_onto 的知识完整性约束(六类本体): grade=verified 须有非default方法; positional 须有 stance_holder
-  CONSTRAINT ck_refined_ku_grade_mandate    CHECK ((grade <> 'verified') OR (COALESCE(grounded_by->>'method','default') <> 'default')),
-  CONSTRAINT ck_refined_ku_positional_holder CHECK ((knowledge_type <> 'positional') OR (stance_holder IS NOT NULL AND stance_holder <> ''))
+                  CHECK (grade IN ('unverified','pending','low','moderate','high','verified','contradicted','refuted')),
+  decision_id     bigint REFERENCES rf.decision_ledger(decision_id),
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now(),
+  fts             tsvector GENERATED ALWAYS AS
+                  (to_tsvector('english', COALESCE(point,'') || ' ' || COALESCE(natural_text,''))) STORED,
+  -- 立场性须有持有者（绝不脱离持有者当事实）
+  CONSTRAINT ck_refined_ku_positional_holder
+    CHECK ((NOT is_positional) OR (stance_holder IS NOT NULL AND stance_holder <> ''))
 );
 
 -- ----------------------------------------------------------------------------
--- ② canonical 概念 refined_concept — 归一 + 判别维度(AII-CONCEPT-IDENTITY-001)
+-- canonical 概念 refined_concept — 归一 + 判别维度
 -- ----------------------------------------------------------------------------
 CREATE TABLE rf.refined_concept (
   concept_id      bigserial PRIMARY KEY,
-  name            text,                                     -- canonical 名
+  name            text,                                    -- canonical 名
   name_zh         text,
-  aliases         jsonb,                                    -- 归一并入的别名(各书变体)
-  level           text,                                     -- concrete/abstract
-  discipline      text,                                     -- 学科(硬隔离用)
-  discriminative  jsonb,                                    -- ★判别维度取值(逐维度判同: price≠income 不合并)
-  embedding       vector(1024),                             -- B仓独立概念向量
-  invariant_id    bigint REFERENCES rf.refined_invariant(invariant_id),  -- → 本性(可空; 抽不出留 NULL)
-  sources         jsonb,                                    -- 出现在哪些书
-  created_at      timestamptz DEFAULT CURRENT_TIMESTAMP,
-  updated_at      timestamptz DEFAULT CURRENT_TIMESTAMP
+  aliases         jsonb,                                   -- 归一并入的别名（各书变体）
+  level           text,                                    -- concrete/abstract
+  discipline      text,                                    -- 学科（硬隔离用）
+  discriminative  jsonb,                                   -- ★判别维度取值 {弹性对象:price, 测量法:arc}
+  embedding       vector(1024),                            -- B仓独立概念向量
+  sources         jsonb,                                   -- 出现在哪些书
+  decision_id     bigint REFERENCES rf.decision_ledger(decision_id),
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
+);
+
+-- 概念 ↔ 本性 多对多（junction, 替单值 FK）: 一个概念可承载多条本性
+CREATE TABLE rf.refined_concept_invariant (
+  concept_id   bigint REFERENCES rf.refined_concept(concept_id)   ON DELETE CASCADE,
+  invariant_id bigint REFERENCES rf.refined_invariant(invariant_id) ON DELETE CASCADE,
+  decision_id  bigint REFERENCES rf.decision_ledger(decision_id),
+  PRIMARY KEY (concept_id, invariant_id)
 );
 
 -- ----------------------------------------------------------------------------
--- ③ 主题 KC refined_theme_kc — 谱社区, 跨书(无按章 KC, 按章在 A库)
+-- 主题 KC refined_theme_kc — 谱社区, 跨书; 快照版本化（重聚类产新版, 旧版冻结）
 -- ----------------------------------------------------------------------------
 CREATE TABLE rf.refined_theme_kc (
   kc_id         bigserial PRIMARY KEY,
+  version       integer NOT NULL DEFAULT 1,                -- ★聚类快照版本
+  is_current    boolean DEFAULT true,                      -- 当前版
   theme_name    text,
   theme_name_en text,
   summary       text,
   summary_zh    text,
   embedding     vector(1024),
-  source_books  jsonb,                                      -- 这个主题跨哪些书
-  created_at    timestamptz DEFAULT CURRENT_TIMESTAMP,
-  updated_at    timestamptz DEFAULT CURRENT_TIMESTAMP
+  source_books  jsonb,                                     -- 跨哪些书
+  created_at    timestamptz DEFAULT now()
 );
 
--- 主题 KC ↔ 去重 KU 成员(跨书)
 CREATE TABLE rf.refined_kc_member (
   kc_id bigint REFERENCES rf.refined_theme_kc(kc_id) ON DELETE CASCADE,
   ku_id text   REFERENCES rf.refined_ku(ku_id)       ON DELETE CASCADE,
@@ -112,97 +132,117 @@ CREATE TABLE rf.refined_kc_member (
 );
 
 -- ----------------------------------------------------------------------------
--- KU ↔ 概念 incidence (HyperGraphRAG 式隐式超边, 共现/聚类用)
+-- KU ↔ 概念 incidence（隐式超边, 共现/聚类用）
 -- ----------------------------------------------------------------------------
 CREATE TABLE rf.refined_ku_concept (
-  ku_id      text   REFERENCES rf.refined_ku(ku_id)            ON DELETE CASCADE,
-  concept_id bigint REFERENCES rf.refined_concept(concept_id)  ON DELETE CASCADE,
+  ku_id      text   REFERENCES rf.refined_ku(ku_id)           ON DELETE CASCADE,
+  concept_id bigint REFERENCES rf.refined_concept(concept_id) ON DELETE CASCADE,
   PRIMARY KEY (ku_id, concept_id)
 );
 
 -- ----------------------------------------------------------------------------
--- 第①层 有向关系 refined_directed_edge — 概念骨架(M0 后步骤4.5 readout 建)
---   + §6.2 strength(关系强度)
+-- 第①层 有向关系 refined_directed_edge — 概念骨架（步骤4.5 readout 建）
 -- ----------------------------------------------------------------------------
 CREATE TABLE rf.refined_directed_edge (
   edge_id       bigserial PRIMARY KEY,
   src_concept   bigint REFERENCES rf.refined_concept(concept_id) ON DELETE CASCADE,
   dst_concept   bigint REFERENCES rf.refined_concept(concept_id) ON DELETE CASCADE,
   relation_type text   CHECK (relation_type IN ('derives','subsumes','prerequisite')),
-  strength      real,                                       -- §6.2 关系强度 0-1
-  grade         text   DEFAULT 'unverified',
+  strength      real,                                      -- 关系强度 0-1
+  grade         text DEFAULT 'unverified',
   evidence      jsonb,
-  created_at    timestamptz DEFAULT CURRENT_TIMESTAMP
+  decision_id   bigint REFERENCES rf.decision_ledger(decision_id),
+  created_at    timestamptz DEFAULT now()
 );
 
 -- ----------------------------------------------------------------------------
--- 第②层 有向超边 refined_hyperedge + member — explains n元(M1抽取/M2生长)
---   对齐 AII-HYPEREDGE-EXPLAINS-001(status/evidence/cross_disc) + §6.2 strength
+-- 第②层 有向超边 refined_hyperedge + 多态 member — explains n元（M1 抽取 / M2 生长）
+--   head=单一机制 rationale KU; mechanism_key=机制判别维度（供 head 判同）
 -- ----------------------------------------------------------------------------
 CREATE TABLE rf.refined_hyperedge (
   hyperedge_id   bigserial PRIMARY KEY,
-  relation_type  text DEFAULT 'explains',                   -- 受控, 现 explains
-  head_ku_id     text REFERENCES rf.refined_ku(ku_id) ON DELETE SET NULL,  -- 解释者: rationale KU
-  nl_description text,                                       -- 机制 NL 描述(向量检索)
-  embedding      vector(1024),                              -- nl_description 向量(hyperedge_vdb)
+  relation_type  text DEFAULT 'explains',
+  head_ku_id     text REFERENCES rf.refined_ku(ku_id) ON DELETE SET NULL,
+  mechanism_key  jsonb,                                    -- ★因果变量/作用方向/适用条件/机制类型（head 判同）
+  nl_description text,                                     -- 机制 NL 描述（向量检索）
+  embedding      vector(1024),                             -- nl_description 向量（hyperedge_vdb）
   grade          text DEFAULT 'unverified',
   evidence       jsonb,
-  created_at     timestamptz DEFAULT CURRENT_TIMESTAMP,
-  updated_at     timestamptz DEFAULT CURRENT_TIMESTAMP
+  decision_id    bigint REFERENCES rf.decision_ledger(decision_id),
+  created_at     timestamptz DEFAULT now(),
+  updated_at     timestamptz DEFAULT now()
 );
 
+-- 成员目标多态: 概念 或 命题 KU（把"机制解释命题"收进同一超边模型, 消灭双轨）
 CREATE TABLE rf.refined_hyperedge_member (
-  hyperedge_id bigint REFERENCES rf.refined_hyperedge(hyperedge_id) ON DELETE CASCADE,
-  concept_id   bigint REFERENCES rf.refined_concept(concept_id)     ON DELETE CASCADE,
-  source_ku_id text,
-  status       text    DEFAULT 'confirmed' CHECK (status IN ('confirmed','candidate')),  -- 宁缺毋附会
-  strength     real,                                        -- §6.2 解释强度 0-1(这个机制对这个概念多核心)
-  evidence     jsonb,
-  cross_disc   boolean DEFAULT false,                       -- 跨学科(尤其严, 先 candidate)
-  added_at     timestamptz DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (hyperedge_id, concept_id)
+  member_id     bigserial PRIMARY KEY,
+  hyperedge_id  bigint REFERENCES rf.refined_hyperedge(hyperedge_id) ON DELETE CASCADE,
+  member_kind   text NOT NULL CHECK (member_kind IN ('concept','ku')),
+  concept_id    bigint REFERENCES rf.refined_concept(concept_id) ON DELETE CASCADE,
+  member_ku_id  text   REFERENCES rf.refined_ku(ku_id)           ON DELETE CASCADE,
+  status        text DEFAULT 'confirmed' CHECK (status IN ('confirmed','candidate')),  -- 宁缺毋附会
+  strength      real,                                      -- 解释强度 0-1
+  source_ku_id  text,
+  evidence      jsonb,
+  cross_disc    boolean DEFAULT false,                     -- 跨学科（尤其严, 先 candidate）
+  decision_id   bigint REFERENCES rf.decision_ledger(decision_id),
+  added_at      timestamptz DEFAULT now(),
+  CHECK ( (member_kind='concept' AND concept_id IS NOT NULL AND member_ku_id IS NULL)
+       OR (member_kind='ku'      AND member_ku_id IS NOT NULL AND concept_id IS NULL) )
 );
+CREATE UNIQUE INDEX uq_he_member
+  ON rf.refined_hyperedge_member (hyperedge_id, member_kind, COALESCE(concept_id,-1), COALESCE(member_ku_id,''));
 
 -- ----------------------------------------------------------------------------
--- ★第③层 跨域关系 refined_cross_domain_relation — SME 式⟨M,C,S⟩(预留, M3填)
---   关系层(base↔target 对应), ≠ 本性。提炼出共享内核 → invariant_id 指向第④层。
+-- 第③层 跨域关系 refined_cross_domain_relation — SME 式⟨M,C,S⟩（预留, M3 填）
+--   关系层, ≠ 本性。提炼出共享内核 → invariant_id 指向第④层; 否则 NULL（停在关系）。
 -- ----------------------------------------------------------------------------
 CREATE TABLE rf.refined_cross_domain_relation (
   relation_id          bigserial PRIMARY KEY,
   description          text,
-  source               text,                                -- motif 挖掘 / 结构映射(SME)
+  source               text,                               -- motif 挖掘 / 结构映射(SME)
   base_domain          text,
   target_domain        text,
-  correspondences      jsonb,                               -- ★M: [{base:水压,target:电压}...]
-  member_concept_ids   jsonb,
-  member_disciplines   jsonb,
-  shared_structure     text,                                -- 共享高阶结构(flow)
-  candidate_inferences jsonb,                               -- ★C: 候选推断
-  structure_score      real,                                -- ★S: 结构质量分
+  correspondences      jsonb,                              -- ★M: [{base:水压,target:电压}...]
+  shared_structure     text,                               -- 共享高阶结构（flow）
+  candidate_inferences jsonb,                              -- ★C: 候选推断
+  structure_score      real,                               -- ★S: 结构质量分
   embedding            vector(1024),
-  invariant_id         bigint REFERENCES rf.refined_invariant(invariant_id),  -- 升第④层则指向; 提炼不出留 NULL(停在关系)
+  invariant_id         bigint REFERENCES rf.refined_invariant(invariant_id),  -- 升第④层则指向; 否则 NULL
   status               text DEFAULT 'candidate',
-  created_at           timestamptz DEFAULT CURRENT_TIMESTAMP,
-  updated_at           timestamptz DEFAULT CURRENT_TIMESTAMP
+  decision_id          bigint REFERENCES rf.decision_ledger(decision_id),
+  created_at           timestamptz DEFAULT now(),
+  updated_at           timestamptz DEFAULT now()
+);
+
+-- 跨域关系参与概念（junction, 替 jsonb member_concept_ids）
+CREATE TABLE rf.refined_cdr_member (
+  relation_id bigint REFERENCES rf.refined_cross_domain_relation(relation_id) ON DELETE CASCADE,
+  concept_id  bigint REFERENCES rf.refined_concept(concept_id)                ON DELETE CASCADE,
+  role        text,                                        -- base / target
+  PRIMARY KEY (relation_id, concept_id)
 );
 
 -- ----------------------------------------------------------------------------
--- 向量索引(pgvector HNSW cosine, 对齐 A仓 ku_onto 的 vector_cosine_ops)
+-- 向量索引（pgvector HNSW cosine, 类型隔离由"不同表不同列"达成, 无标记维）
 -- ----------------------------------------------------------------------------
-CREATE INDEX idx_refined_ku_embedding        ON rf.refined_ku                   USING hnsw (embedding vector_cosine_ops);
-CREATE INDEX idx_refined_ku_fts              ON rf.refined_ku                   USING gin  (fts);
-CREATE INDEX idx_refined_ku_type             ON rf.refined_ku                   USING btree(knowledge_type);
-CREATE INDEX idx_refined_concept_embedding   ON rf.refined_concept              USING hnsw (embedding vector_cosine_ops);
-CREATE INDEX idx_refined_concept_discipline  ON rf.refined_concept              USING btree(discipline);
-CREATE INDEX idx_refined_theme_kc_embedding  ON rf.refined_theme_kc             USING hnsw (embedding vector_cosine_ops);
-CREATE INDEX idx_refined_hyperedge_embedding ON rf.refined_hyperedge            USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX idx_refined_ku_embedding        ON rf.refined_ku                    USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX idx_refined_ku_fts              ON rf.refined_ku                    USING gin  (fts);
+CREATE INDEX idx_refined_ku_type             ON rf.refined_ku                    USING btree(ku_type);
+CREATE INDEX idx_refined_concept_embedding   ON rf.refined_concept               USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX idx_refined_concept_discipline  ON rf.refined_concept               USING btree(discipline);
+CREATE INDEX idx_refined_theme_kc_embedding  ON rf.refined_theme_kc              USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX idx_refined_theme_kc_current    ON rf.refined_theme_kc              USING btree(is_current);
+CREATE INDEX idx_refined_hyperedge_embedding ON rf.refined_hyperedge             USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX idx_refined_cdr_embedding       ON rf.refined_cross_domain_relation USING hnsw (embedding vector_cosine_ops);
-CREATE INDEX idx_refined_invariant_vector    ON rf.refined_invariant            USING hnsw (invariant_vector vector_cosine_ops);
+CREATE INDEX idx_refined_invariant_vector    ON rf.refined_invariant             USING hnsw (invariant_vector vector_cosine_ops);
 
--- 关联表常用查询索引
-CREATE INDEX idx_refined_kc_member_ku        ON rf.refined_kc_member            USING btree(ku_id);
-CREATE INDEX idx_refined_ku_concept_concept  ON rf.refined_ku_concept           USING btree(concept_id);
-CREATE INDEX idx_refined_dedge_src           ON rf.refined_directed_edge        USING btree(src_concept);
-CREATE INDEX idx_refined_dedge_dst           ON rf.refined_directed_edge        USING btree(dst_concept);
-CREATE INDEX idx_refined_he_member_concept   ON rf.refined_hyperedge_member     USING btree(concept_id);
-CREATE INDEX idx_refined_concept_invariant   ON rf.refined_concept              USING btree(invariant_id);
+-- 关联/查询索引
+CREATE INDEX idx_refined_kc_member_ku       ON rf.refined_kc_member         USING btree(ku_id);
+CREATE INDEX idx_refined_ku_concept_concept ON rf.refined_ku_concept        USING btree(concept_id);
+CREATE INDEX idx_refined_dedge_src          ON rf.refined_directed_edge     USING btree(src_concept);
+CREATE INDEX idx_refined_dedge_dst          ON rf.refined_directed_edge     USING btree(dst_concept);
+CREATE INDEX idx_refined_he_member_concept  ON rf.refined_hyperedge_member  USING btree(concept_id);
+CREATE INDEX idx_refined_he_member_ku       ON rf.refined_hyperedge_member  USING btree(member_ku_id);
+CREATE INDEX idx_refined_cdr_member_concept ON rf.refined_cdr_member        USING btree(concept_id);
+CREATE INDEX idx_refined_ci_invariant       ON rf.refined_concept_invariant USING btree(invariant_id);

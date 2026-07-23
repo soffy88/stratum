@@ -1,0 +1,15 @@
+[Unit]
+Description=AII feeder — 喂书守护 (PDF→MD 转换 + classify 分拣进四飞轮文件夹)
+After=network.target aii-backend.service
+
+[Service]
+Type=simple
+WorkingDirectory=/data/soffy/projects/stratum/aii
+ExecStart=/usr/bin/bash scripts/feeder_run.sh
+StandardOutput=append:/data/soffy/projects/stratum/aii/econ_pipeline/feeder.log
+StandardError=append:/data/soffy/projects/stratum/aii/econ_pipeline/feeder.log
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
