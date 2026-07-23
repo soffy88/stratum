@@ -30,20 +30,29 @@
           "title": "作三军设六卿",
           "seq": 3,
           "member_event_refs": [
-            "ev:jin-gongshi-bei"
+            "ev:jin-gongshi-bei",
+            "ev:jin-zuo-sanjun",
+            "ev:jin-zuo-wujun"
           ]
         },
         {
           "sub_arc_id": "arc:jin-decline/s4-qingzu",
           "title": "卿族兼并（灭栾郤祁羊舌）",
           "seq": 4,
-          "member_event_refs": []
+          "member_event_refs": [
+            "ev:jin-sha-sanxi",
+            "ev:luanying-zhi-luan",
+            "ev:fen-qi-yangshe"
+          ]
         },
         {
           "sub_arc_id": "arc:jin-decline/s5-liuqing-siqing",
           "title": "六卿相并至四卿",
           "seq": 5,
-          "member_event_refs": []
+          "member_event_refs": [
+            "ev:fanzhonghang-zhi-luan",
+            "ev:fanzhonghang-benqi"
+          ]
         },
         {
           "sub_arc_id": "arc:jin-decline/s6-jinyang",
@@ -72,7 +81,14 @@
         "ev:quwo-wugong-mie-yi",
         "ev:xiangong-qu-liji",
         "ev:liji-zen-shensheng",
-        "ev:chonger-yiwu-chuben"
+        "ev:chonger-yiwu-chuben",
+        "ev:jin-zuo-sanjun",
+        "ev:jin-zuo-wujun",
+        "ev:jin-sha-sanxi",
+        "ev:luanying-zhi-luan",
+        "ev:fen-qi-yangshe",
+        "ev:fanzhonghang-zhi-luan",
+        "ev:fanzhonghang-benqi"
       ],
       "thesis_refs": [
         "thesis:shifu-modabizhe",
@@ -81,7 +97,10 @@
         "thesis:taishigong-jin",
         "thesis:sima-guang-li",
         "thesis:liji-luandi-a",
-        "thesis:liji-luandi-b"
+        "thesis:liji-luandi-b",
+        "thesis:zhongni-shidu",
+        "thesis:qingzu-jianbing",
+        "thesis:qiangzhe-jianruo"
       ],
       "narrative_note": "『晋国为何衰亡』非任一史书原文，是解释——本弧以论点层（thesis）承载因果论断，事件层（KU）承载史实。P2 逐子簇入 member_event（本波先钉 s3/s6/s7 已有 KU 事件；s1/s2/s4/s5 待事件抽取）。深度立意：公室分权→卿族坐大→本弱末强（师服『末大必折』一以贯之，前745 预言 / 前403 应验）。",
       "status": "draft",
@@ -185,14 +204,18 @@
         }
       },
       "evidence_refs": [
+        "ev:jin-zuo-sanjun",
+        "ev:jin-zuo-wujun",
         "ev:jin-gongshi-bei"
       ],
-      "counter_refs": [],
+      "counter_refs": [
+        "thesis:zhongni-shidu"
+      ],
       "mainline_decision": {
-        "choice": "采为本弧论点(原文已入库)",
-        "rationale": "§3 源内论点矿；本波抓取时 wikisource 昭公三年分年页 404，原文未入库（PENDING）。原文 W-H1a-2 入库(ctext 逐字), para_ulid 回填。",
-        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-22）",
-        "date": "2026-07-22"
+        "choice": "采为 s3 作三军设六卿 mainline（源内·公室卑之诊断）；并陈仲尼失度",
+        "rationale": "叔向『公室将卑…政在家门』（昭3 :2209 源内）系六卿制恶果之源内诊断，采 s3 mainline。★并陈 thesis:zhongni-shidu（仲尼『晋其亡乎失其度…民在鼎矣何以尊贵』昭29 :2563 源内·铸刑鼎论）——叔向=公室卑/政在家门，仲尼=失度/贵贱无序，异角并陈。★检索记录（OP-D-045）：库内 theses 全扫 + 昭世源内段扫，仲尼失度命中并陈、无遗漏。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
+        "date": "2026-07-23"
       }
     },
     {
@@ -268,6 +291,86 @@
       "mainline_decision": {
         "choice": "转正（缺环已补，OP-D-046 自动转正）——我方综述型 s2 因果论点",
         "rationale": "我方综述『诅无畜群公子→公族空虚→卿族坐大』；关键源内锚『诅无畜群公子，自是晉無公族』本波续搜钉定 :1454（宣公二年，左传——记忆提示国语晋语一，实搜命中左传，以实搜为准）。缺环补齐，按 OP-D-046 自动转正。与 liji-luandi-a（源内乱嫡）分立：a 记史实、b 记我方因果。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
+        "date": "2026-07-23"
+      }
+    },
+    {
+      "thesis_id": "thesis:zhongni-shidu",
+      "claim": "晋弃唐叔法度、铸刑鼎则民在鼎、贵贱无序——失度则国亡（仲尼论晋铸刑鼎）。",
+      "attribution": {
+        "type": "源内",
+        "who": "仲尼（孔子·左传昭29 引）",
+        "locator": {
+          "book": "左传",
+          "chapter": "昭公二十九年",
+          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2563",
+          "quote": "晉其亡乎！失其度矣……今棄是度也，而為刑鼎，民在鼎矣，何以尊貴？貴賤無序。"
+        }
+      },
+      "evidence_refs": [
+        "ev:jin-zuo-sanjun",
+        "ev:jin-zuo-wujun"
+      ],
+      "counter_refs": [],
+      "mainline_decision": {
+        "choice": "并陈为 s3 制度论（失度视角），与叔向公室卑诊断并列",
+        "rationale": "源内论点、locator 到篇及 :2563；与叔向异框架并陈（失度 vs 公室卑）。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
+        "date": "2026-07-23"
+      }
+    },
+    {
+      "thesis_id": "thesis:qingzu-jianbing",
+      "claim": "公室既卑，卿族转相灭以自大——三郤/栾/祁/羊舌次第夷灭、田邑尽归六卿，公族屏藩荡然（我方综述）。",
+      "attribution": {
+        "type": "我方",
+        "who": "顾问 Claude（据卿族相灭事件序综述）",
+        "locator": {
+          "book": "左传",
+          "chapter": "昭公二十八年（分祁羊舌为十县）",
+          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2543",
+          "quote": "魏獻子為政，分祁氏之田以為七縣，分羊舌氏之田以為三縣。"
+        }
+      },
+      "evidence_refs": [
+        "ev:jin-sha-sanxi",
+        "ev:luanying-zhi-luan",
+        "ev:fen-qi-yangshe"
+      ],
+      "counter_refs": [
+        "thesis:shuxiang-gongshi-jiang-bei"
+      ],
+      "mainline_decision": {
+        "choice": "采为 s4 卿族兼并 mainline（我方综述）；并陈叔向公室将卑（OP-D-050 首例）",
+        "rationale": "我方论点，evidence 全 ULID 锚（:1795/:2038/:2067/:2543 无缺环，OP-D-046 可即转）。★OP-D-050 首例：我方任 mainline 而库内叔向昭3(:2209)『公室将卑…降在皂隶，政在家门』直指同题（卿族坐大/公族尽），故必入并陈（counter_refs）——并陈理由=叔向系此因果的源内先声、我方综述系其展开。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
+        "date": "2026-07-23"
+      }
+    },
+    {
+      "thesis_id": "thesis:qiangzhe-jianruo",
+      "claim": "卿族相并至强者兼弱——范/中行败奔齐、六卿去二存四（赵韩魏智），四卿再相图终成三家（我方综述）。",
+      "attribution": {
+        "type": "我方",
+        "who": "顾问 Claude（据六卿相并事件序综述）",
+        "locator": {
+          "book": "左传",
+          "chapter": "哀公五年（范中行奔齐）",
+          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:2809",
+          "quote": "五年春，晉圍柏人，荀寅、士吉射奔齊。"
+        }
+      },
+      "evidence_refs": [
+        "ev:fanzhonghang-zhi-luan",
+        "ev:fanzhonghang-benqi"
+      ],
+      "counter_refs": [
+        "thesis:shimo-changbian"
+      ],
+      "mainline_decision": {
+        "choice": "转正（缺环已补，OP-D-046/048）——s5 六卿相并 mainline（我方）；并陈史墨无常论（OP-D-050）",
+        "rationale": "关键缺环 ev:fanzhonghang-benqi（范中行奔齐）本波哀公段续搜钉定 :2809（『荀寅、士吉射奔齊』），按 OP-D-048 事件转正、OP-D-046 我方论点缺环补齐自动转正。★OP-D-050：库内史墨无常论(:2592『社稷无常奉、君臣无常位』)直指卿代君同题，必入并陈（counter_refs）。",
         "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
         "date": "2026-07-23"
       }
