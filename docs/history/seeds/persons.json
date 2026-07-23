@@ -1105,9 +1105,12 @@
       "names_by_source": {
         "冀芮": [
           "src:zuozhuan"
+        ],
+        "郤芮": [
+          "src:zuozhuan"
         ]
       },
-      "谥字号": "(候选·待考)",
+      "谥字号": "郤芮=冀芮(食邑冀故称冀芮), 晋惠公臣; candidate-same 准(Wiki 2026-07-23)",
       "active_range": "(候选)",
       "force_affiliations": [],
       "intake": {
@@ -1122,9 +1125,12 @@
       "names_by_source": {
         "重耳": [
           "src:zuozhuan"
+        ],
+        "晉文公": [
+          "src:zuozhuan"
         ]
       },
-      "谥字号": "(候选·待考)",
+      "谥字号": "重耳=晋文公(即位前后异称); candidate-same 准(Wiki 2026-07-23)",
       "active_range": "(候选)",
       "force_affiliations": [],
       "intake": {

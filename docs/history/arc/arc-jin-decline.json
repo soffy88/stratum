@@ -9,14 +9,21 @@
           "sub_arc_id": "arc:jin-decline/s1-quwo",
           "title": "曲沃代翼",
           "seq": 1,
-          "member_event_refs": [],
+          "member_event_refs": [
+            "ev:quwo-feng-huanshu",
+            "ev:quwo-wugong-mie-yi"
+          ],
           "membership_decided_by": "顾问 Claude"
         },
         {
           "sub_arc_id": "arc:jin-decline/s2-liji",
           "title": "骊姬之乱与『诅无畜群公子』",
           "seq": 2,
-          "member_event_refs": []
+          "member_event_refs": [
+            "ev:xiangong-qu-liji",
+            "ev:liji-zen-shensheng",
+            "ev:chonger-yiwu-chuben"
+          ]
         },
         {
           "sub_arc_id": "arc:jin-decline/s3-sanjun-liuqing",
@@ -60,15 +67,21 @@
         "ev:jin-gongshi-bei",
         "ev:jinyang-zhizhan",
         "ev:sanjiafenjin",
-        "ev:minghou-403"
+        "ev:minghou-403",
+        "ev:quwo-feng-huanshu",
+        "ev:quwo-wugong-mie-yi",
+        "ev:xiangong-qu-liji",
+        "ev:liji-zen-shensheng",
+        "ev:chonger-yiwu-chuben"
       ],
       "thesis_refs": [
         "thesis:shifu-modabizhe",
         "thesis:shuxiang-gongshi-jiang-bei",
-        "thesis:shimo-wuchang",
+        "thesis:shimo-changbian",
         "thesis:taishigong-jin",
         "thesis:sima-guang-li",
-        "thesis:liji-luandi"
+        "thesis:liji-luandi-a",
+        "thesis:liji-luandi-b"
       ],
       "narrative_note": "『晋国为何衰亡』非任一史书原文，是解释——本弧以论点层（thesis）承载因果论断，事件层（KU）承载史实。P2 逐子簇入 member_event（本波先钉 s3/s6/s7 已有 KU 事件；s1/s2/s4/s5 待事件抽取）。深度立意：公室分权→卿族坐大→本弱末强（师服『末大必折』一以贯之，前745 预言 / 前403 应验）。",
       "status": "draft",
@@ -95,15 +108,19 @@
         }
       },
       "evidence_refs": [
+        "ev:quwo-feng-huanshu",
+        "ev:quwo-wugong-mie-yi",
         "ev:jin-gongshi-bei",
         "ev:sanjiafenjin"
       ],
-      "counter_refs": [],
+      "counter_refs": [
+        "thesis:shimo-changbian"
+      ],
       "mainline_decision": {
-        "choice": "采为本弧主线论点之源头（前745 预言）",
-        "rationale": "师服语是本弧因果轴的最早源内论断，与末端『六卿彊公室卑』（F25）、三家分晋首尾呼应——源内论点、locator 到篇及 para_ulid，R5 合规。",
-        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-22）",
-        "date": "2026-07-22"
+        "choice": "采为 s1/本弧主线论点之源头（前745 预言）；并陈史墨无常论（异框架，非取代）",
+        "rationale": "师服语是本弧因果轴最早源内论断（本弱末强必乱，晋-specific 结构决定论），locator 到篇及 para_ulid（:0205），R5 合规，采为 s1 mainline。★并陈 thesis:shimo-changbian（史墨『社稷无常奉、君臣无常位、自古以然』，昭32 :2592 源内、ULID 已在库）——史墨系**普遍无常律**框架、师服系**晋一国结构缺陷**框架，二者非对立而**异视角并陈**（记入 counter_refs 以固关联，mainline 仍师服）。★检索记录（OP-D-045，作废旧『无对立论点』结论）：库内 theses 全扫（6 条）+ 源内候选扫（史墨昭32 :2592 命中、叔向昭3 :2209 属 s3+、太史公赞 PENDING）——s1 段确有史墨异框架论点，旧『无对立』系未查默认，已作废。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
+        "date": "2026-07-23"
       }
     },
     {
@@ -179,7 +196,7 @@
       }
     },
     {
-      "thesis_id": "thesis:shimo-wuchang",
+      "thesis_id": "thesis:shimo-changbian",
       "claim": "社稷无常奉、君臣无常位、自古以然——三后之姓于今为庶（史墨论鲁季氏，通于晋卿代兴）。",
       "attribution": {
         "type": "源内",
@@ -203,27 +220,56 @@
       }
     },
     {
-      "thesis_id": "thesis:liji-luandi",
-      "claim": "骊姬乱嫡、谮杀申生、逐重耳夷吾，献公『诅无畜群公子』尽逐公族——晋自此无公族屏藩，卿族坐大之远因。",
+      "thesis_id": "thesis:liji-luandi-a",
+      "claim": "骊姬乱嫡、谮杀申生、逐重耳夷吾——晋献公嫡序自此坏（左传庄28/僖4-6 直接叙事）。",
       "attribution": {
-        "type": "我方",
-        "who": "顾问 Claude（据左传庄28/僖4-6 事件综述）",
+        "type": "源内",
+        "who": "左传（庄28娶骊姬序 / 僖4-5谮杀申生 / 僖6二公子出奔）",
         "locator": {
           "book": "左传",
           "chapter": "庄公二十八年起（骊姬乱嫡序列）",
           "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586",
-          "quote": "晉獻公娶于賈…又娶二女於戎…（娶骊姬序）"
+          "quote": "晉獻公娶于賈，無子。烝于齊姜，生秦穆夫人及大子申生。又娶二女於戎……（娶骊姬·二五譖群公子立奚齊）"
         }
       },
       "evidence_refs": [
+        "ev:xiangong-qu-liji",
+        "ev:liji-zen-shensheng",
+        "ev:chonger-yiwu-chuben"
+      ],
+      "counter_refs": [],
+      "mainline_decision": {
+        "choice": "即刻采为 s2 mainline（源内事实序列，直接入库锚定）",
+        "rationale": "骊姬乱嫡=源内直接叙事（非我方综述），三事件全带 ULID（:0586娶骊姬/:0719谮杀申生缢于新城/:0740二公子出奔），即刻转正。上承师服『末大必折』、下启诅无畜群公子（liji-luandi-b）。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
+        "date": "2026-07-23"
+      }
+    },
+    {
+      "thesis_id": "thesis:liji-luandi-b",
+      "claim": "献公『诅无畜群公子』致晋无公族屏藩、卿族坐大之远因——公族空虚是六卿代兴的制度前提（我方综述）。",
+      "attribution": {
+        "type": "我方",
+        "who": "顾问 Claude（据源内『诅无畜群公子』综述因果）",
+        "locator": {
+          "book": "左传",
+          "chapter": "宣公二年",
+          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1454",
+          "quote": "初，麗姬之亂，詛無畜群公子，自是晉無公族。"
+        }
+      },
+      "evidence_refs": [
+        "ev:xiangong-qu-liji",
+        "ev:liji-zen-shensheng",
+        "ev:chonger-yiwu-chuben",
         "ev:jin-gongshi-bei"
       ],
       "counter_refs": [],
       "mainline_decision": {
-        "choice": "采为骊姬簇 mainline 论点（我方综述型，非源内单句）",
-        "rationale": "骊姬之乱=晋无公族的直接起点，上承师服『末大必折』、下启六卿代兴；系我方综述论点（attribution=我方），据左传事件序，与叔向/史墨源内论点并陈。",
-        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-22）",
-        "date": "2026-07-22"
+        "choice": "转正（缺环已补，OP-D-046 自动转正）——我方综述型 s2 因果论点",
+        "rationale": "我方综述『诅无畜群公子→公族空虚→卿族坐大』；关键源内锚『诅无畜群公子，自是晉無公族』本波续搜钉定 :1454（宣公二年，左传——记忆提示国语晋语一，实搜命中左传，以实搜为准）。缺环补齐，按 OP-D-046 自动转正。与 liji-luandi-a（源内乱嫡）分立：a 记史实、b 记我方因果。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
+        "date": "2026-07-23"
       }
     }
   ]
