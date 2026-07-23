@@ -5,24 +5,22 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-SUPPORTED_EXTENSIONS = {'.pdf', '.epub', '.md', '.txt'}
+SUPPORTED_EXTENSIONS = {".pdf", ".epub", ".md", ".txt"}
 SCAN_INTERVAL_SECONDS = 300
 MAX_FILE_SIZE_MB = 100  # 超过 100MB 跳过
 
 
 def _file_hash_sync(path: Path) -> str:
     h = hashlib.sha256()
-    with open(path, 'rb') as f:
-        for chunk in iter(lambda: f.read(65536), b''):
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
             h.update(chunk)
     return h.hexdigest()
 
 
 async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
     from stratum.db import get_conn
-    from omodul.process_inbox_substrate import (
-        process_inbox_substrate, InboxConfig, InboxInput
-    )
+    from omodul.process_inbox_substrate import process_inbox_substrate, InboxConfig, InboxInput
     from stratum.common import ensure_dir, user_inbox_dir
     from stratum.utils.user_id_hash import hash_user_id
 
@@ -34,8 +32,7 @@ async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
         log.warning("folder_watcher: path not found: %s", path_str)
         return
 
-    files = [f for f in path.rglob('*')
-             if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS]
+    files = [f for f in path.rglob("*") if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS]
 
     total = len(files)
     ingested = 0
@@ -47,7 +44,7 @@ async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
         conn.execute(
             "UPDATE folder_watches SET scan_status='scanning', scanned_count=0, "
             "ingested_count=0, file_count=?, current_file='' WHERE id=?",
-            (total, watch_id)
+            (total, watch_id),
         )
 
     for f in files:
@@ -64,9 +61,9 @@ async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
                         """SELECT id FROM substrates
                            WHERE user_id=? AND (
                                file_hash=?
-                               OR json_extract_string(meta_json, '$.bundle_file_hash')=?
+                               OR meta_json ->> 'bundle_file_hash'=?
                            ) LIMIT 1""",
-                        (user_id_hash, fhash, fhash)
+                        (user_id_hash, fhash, fhash),
                     ).fetchone()
 
                 if not exists:
@@ -93,20 +90,26 @@ async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
                                 _fill_derivative_content,
                                 _extract_id,
                             )
+
                             sid = _extract_id(findings.substrate_id)
                             if sid:
                                 _fill_derivative_content(sid, findings)
                                 from stratum.lib.quality.ingest_quality_gate import run_quality_gate
                                 from stratum.services.md_export_service import export_one
+
                                 sub_ids = getattr(findings, "substrate_ids", None) or [sid]
-                                for _sid in sub_ids:
+                                for _raw_sid in sub_ids:
+                                    # substrate_ids may carry IngestResult reprs (omodul quirk);
+                                    # normalize to the bare ULID like findings.substrate_id above.
+                                    _sid = _extract_id(_raw_sid)
+                                    if not _sid:
+                                        continue
                                     run_quality_gate(_sid)
                                     export_one(_sid)
                         ingested += 1
                         log.info("folder_watcher: ingested %s", f.name)
                     else:
-                        log.warning("folder_watcher: failed %s: %s",
-                                    f.name, result.get("error"))
+                        log.warning("folder_watcher: failed %s: %s", f.name, result.get("error"))
 
         except Exception as e:
             log.warning("folder_watcher: skip %s: %s", f.name, e)
@@ -117,7 +120,7 @@ async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
             conn.execute(
                 "UPDATE folder_watches SET scanned_count=?, ingested_count=?, "
                 "current_file=? WHERE id=?",
-                (scanned, ingested, f.name, watch_id)
+                (scanned, ingested, f.name, watch_id),
             )
 
     # 扫描完成
@@ -125,11 +128,17 @@ async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
         conn.execute(
             "UPDATE folder_watches SET scan_status='completed', last_scan_at=NOW(), "
             "file_count=?, ingested_count=?, scanned_count=?, current_file='' WHERE id=?",
-            (total, ingested, total, watch_id)
+            (total, ingested, total, watch_id),
         )
 
-    log.info("folder_watcher: %s — %d files, %d ingested, %d skipped (>%dMB)",
-             path_str, total, ingested, skipped_large, MAX_FILE_SIZE_MB)
+    log.info(
+        "folder_watcher: %s — %d files, %d ingested, %d skipped (>%dMB)",
+        path_str,
+        total,
+        ingested,
+        skipped_large,
+        MAX_FILE_SIZE_MB,
+    )
 
 
 async def folder_watcher_loop():
@@ -137,10 +146,10 @@ async def folder_watcher_loop():
     while True:
         try:
             from stratum.db import get_conn
+
             with get_conn() as conn:
                 watches = conn.execute(
-                    "SELECT id, user_id, path FROM folder_watches "
-                    "WHERE status='active'"
+                    "SELECT id, user_id, path FROM folder_watches WHERE status='active'"
                 ).fetchall()
             for watch_id, user_id_hash, path_str in watches:
                 await _scan_one_watch(watch_id, user_id_hash, path_str)

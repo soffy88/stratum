@@ -1,0 +1,22 @@
+# 判别维度闭集词典（人工维护，按学科扩展）
+# 与判同共用: 判同关1按"本质维度取值不同→不同概念"，"表述维度不同→可合"。
+# kind: 本质 = 取值不同即不同概念（错合陷阱）; 表述 = 取值不同但本质同（该合）。
+families:
+  弹性:
+    match: [elasticity, 弹性]
+    dimensions:
+      - {key: 弹性对象, kind: 本质, values: [price, income, cross-price, 价格, 收入, 交叉]}
+      - {key: 侧,       kind: 本质, values: [demand, supply, 需求, 供给]}
+      - {key: 测量法,   kind: 表述, values: [arc, point, midpoint, 弧, 点, 中点]}
+      - {key: 时期,     kind: 表述, values: [short-run, long-run, 短期, 长期]}
+  成本:
+    match: [cost, 成本]
+    dimensions:
+      - {key: 成本对象, kind: 本质, values: [opportunity, marginal, average, total, fixed, variable, production, 机会, 边际, 平均, 总, 固定, 可变, 生产]}
+      - {key: 增量性,   kind: 本质, values: [basic, increasing, decreasing, 递增, 递减]}
+      - {key: 时期,     kind: 表述, values: [short-run, long-run, 短期, 长期]}
+  导数:
+    match: [derivative, 导数]
+    dimensions:
+      - {key: 单双侧,   kind: 本质, values: [left, right, two-sided, 左, 右, 双侧]}
+      - {key: 阶,       kind: 本质, values: [first, second, higher, 一阶, 二阶, 高阶]}

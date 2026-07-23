@@ -1,0 +1,37 @@
+# MinerU VLM (opendatalab/MinerU2.5-2509-1.2B) — parallel parsing channel to
+# Unlimited-OCR (ocr-vllm). MINERU-AII-INTEGRATION-SPEC-001 Track B §1/§2.
+#
+# Same base image family as ocr-vllm (vllm/vllm-openai) — vllm serve is the
+# entrypoint, this just adds the mineru_vl_utils logits processor package
+# vllm needs to serve this specific checkpoint correctly (confirmed via
+# `pip install "mineru[vllm]"` — verified locally the CLI/package really
+# exists and installs cleanly, 2026-07-09).
+#
+# R2 (red line, same as qmd): no cloud API — this serves the model locally,
+# no MINERU_API_KEY/mineru-open-sdk involved anywhere in this path.
+FROM vllm/vllm-openai:latest
+
+RUN pip install --no-cache-dir "mineru[vllm]"
+
+EXPOSE 8012
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=120s \
+    CMD curl -sf http://localhost:8012/v1/models -o /dev/null || exit 1
+
+# --gpu-memory-utilization 0.75: copied from ocr-vllm's existing working value
+# (aii/scripts/math_ocr_convert.py) as a starting point, NOT re-derived for
+# this model — GPU is hardware-faulted on this host as of 2026-07-09, so this
+# has not been benchmarked against the real ~8GB VRAM floor MinerU2.5-1.2B's
+# own docs report. Revisit once the card is back and this actually runs.
+#
+# No --quantization flag: unlike ocr-vllm (fp8, confirmed working for
+# baidu/Unlimited-OCR), there is no confirmed first-party quantized build of
+# MinerU2.5-2509-1.2B — starting unquantized/default dtype rather than
+# guessing a quantization scheme that might silently degrade output quality.
+ENTRYPOINT ["vllm", "serve", "opendatalab/MinerU2.5-2509-1.2B", \
+    "--served-model-name", "MinerU-VLM", \
+    "--trust-remote-code", \
+    "--logits-processors", "mineru_vl_utils:MinerULogitsProcessor", \
+    "--gpu-memory-utilization", "0.75", \
+    "--max-model-len", "8192", \
+    "--host", "0.0.0.0", \
+    "--port", "8012"]

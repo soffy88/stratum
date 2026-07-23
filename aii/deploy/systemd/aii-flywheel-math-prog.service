@@ -1,0 +1,15 @@
+[Unit]
+Description=AII flywheel — 数学程序化 B (程序抠陈述+证明, 0 LLM; 取代旧 math-en/zh 的 LLM synth)
+After=network.target aii-backend.service
+
+[Service]
+Type=simple
+WorkingDirectory=/data/soffy/projects/stratum/aii
+ExecStart=/usr/bin/bash scripts/math_flywheel_prog_run.sh
+StandardOutput=append:/data/soffy/projects/stratum/aii/math_pipeline/flywheel_prog.log
+StandardError=append:/data/soffy/projects/stratum/aii/math_pipeline/flywheel_prog.log
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

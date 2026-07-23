@@ -16,7 +16,6 @@ from stratum.utils.user_id_hash import hash_user_id
 log = logging.getLogger(__name__)
 
 
-
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
 
 _MIME_TO_MEDIUM = {
@@ -27,8 +26,20 @@ _MIME_TO_MEDIUM = {
     "text/html": "webpage",
 }
 
+
 def _mime_to_medium(mime: str) -> str:
     return _MIME_TO_MEDIUM.get(mime, "pdf")
+
+
+# Same mapping as _mime_to_medium, as a SQL CASE expression — for filtering at
+# the DB layer (medium isn't a stored column; meta_json.medium overrides it
+# when set, same precedence as the Python-side computation in list_documents).
+_MEDIUM_CASE_SQL = (
+    "CASE mime "
+    + " ".join(f"WHEN '{mime}' THEN '{medium}'" for mime, medium in _MIME_TO_MEDIUM.items())
+    + " ELSE 'pdf' END"
+)
+_MEDIUM_SQL_EXPR = f"COALESCE(NULLIF(meta_json->>'medium', ''), {_MEDIUM_CASE_SQL})"
 
 
 @router.get("")
@@ -78,21 +89,32 @@ async def list_documents(
         filters += " AND id IN (SELECT substrate_id FROM derivative WHERE kind = ?)"
         params.append(kind)
 
+    if medium:
+        filters += f" AND {_MEDIUM_SQL_EXPR} = ANY(?)"
+        params.append(list(medium))
+
+    # tags/tag_exclude: accepted (frontend + saved-view filters already send
+    # them) but there is no tags storage anywhere in substrates.meta_json today
+    # (verified against real data) — silently filtering on a non-existent field
+    # would just return zero results, which is worse than doing nothing. Left
+    # unimplemented on purpose until a real tags data model exists.
+
     # Count total
     with get_conn() as conn:
-        total = conn.execute(
-            f"SELECT COUNT(*) FROM substrates WHERE {filters}", params
-        ).fetchone()[0]
+        total = conn.execute(f"SELECT COUNT(*) FROM substrates WHERE {filters}", params).fetchone()[
+            0
+        ]
 
         data_params = params + [limit, offset]
-        rows = conn.execute(
+        cursor = conn.execute(
             f"SELECT id, user_id, title, mime, source_path, file_hash, "
             f"byte_size, page_count, language, is_pinned, created_at, updated_at, meta_json, parse_quality "
             f"FROM substrates WHERE {filters} "
             f"ORDER BY {sort_by} {sort_order} LIMIT ? OFFSET ?",
             data_params,
-        ).fetchall()
-        col_names = [d[0] for d in conn.description]
+        )
+        rows = cursor.fetchall()
+        col_names = [d[0] for d in cursor.description]
 
     items = []
     for row in rows:
@@ -167,6 +189,7 @@ async def _run_generate(substrate_id: str, user_id_hash: str, kind: str):
     try:
         if kind == "translation":
             from oskill.translate_substrate import translate_substrate
+
             await translate_substrate(
                 substrate_id=substrate_id,
                 target_lang="zh-CN",

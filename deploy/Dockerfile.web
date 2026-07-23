@@ -1,4 +1,4 @@
-# Build context: /home/soffy/projects/stratum/stratum-web
+# Build context: /home/soffy/projects/stratum/aii-web
 #
 # Build command (must use --builder default to access local image cache offline):
 #   BUILDX_BUILDER=default docker compose build stratum-web --no-cache
@@ -17,6 +17,7 @@ RUN npm install -g pnpm@9
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml .npmrc ./
+COPY vendor ./vendor
 RUN pnpm install --no-frozen-lockfile
 
 # ── Builder ───────────────────────────────────────────────────────────────────
@@ -28,9 +29,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Docker-internal API base URLs for Next.js rewrites (RSC server-side fetches)
+# Docker-internal API base URLs for Next.js rewrites (RSC server-side fetches).
+# NOTE: next.config bakes rewrite destinations at BUILD time (routes-manifest),
+# so these MUST be set here, not just at runtime. AII backend runs on the HOST
+# (systemd uvicorn :8101), reachable from containers only via the docker gateway.
 ENV STRATUM_API_BASE=http://stratum-api:9302
 ENV STRATUM_SL_BASE=http://stratum-sl:9304
+ENV AII_API_BASE=http://172.19.0.1:8101
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 

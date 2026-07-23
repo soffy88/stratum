@@ -8,10 +8,12 @@ Limits (per §5.5):
 
 Uses in-memory store (no Redis dependency for MVP).
 """
+
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from fastapi import Request, HTTPException
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
 
 @dataclass
@@ -70,13 +72,13 @@ async def rate_limit_middleware(request: Request, call_next):
     if limit_cfg["key"] == "ip":
         window = _ip_windows[ip][category]
         if window.count_in_window(limit_cfg["window"]) >= limit_cfg["max"]:
-            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+            return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"})
         window.add()
     elif limit_cfg["key"] == "user":
         user_id = getattr(request.state, "user_id", None) or ip
         window = _user_windows[user_id][category]
         if window.count_in_window(limit_cfg["window"]) >= limit_cfg["max"]:
-            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+            return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"})
         window.add()
 
     return await call_next(request)

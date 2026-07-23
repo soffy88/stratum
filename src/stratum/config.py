@@ -46,7 +46,7 @@ SMTP_HOST = os.environ.get("STRATUM_SMTP_HOST", "")
 SMTP_PORT = int(os.environ.get("STRATUM_SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("STRATUM_SMTP_USER", "")
 SMTP_PASS = os.environ.get("STRATUM_SMTP_PASS", "")
-SMTP_FROM = os.environ.get("STRATUM_SMTP_FROM", "noreply@stratum.uex.hk")
+SMTP_FROM = os.environ.get("STRATUM_SMTP_FROM", "noreply@stratum.kanpan.co")
 
 # ── Platform content (Hevi) ───────────────────────────────────────────────────
 HEVI_CONTENT_REPO_URL = os.environ.get("STRATUM_HEVI_CONTENT_REPO", "")

@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "qmd": {
+      "type": "http",
+      "url": "http://localhost:8181/mcp"
+    },
+    "code-review-graph": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["--python", "3.12", "code-review-graph", "serve"],
+      "cwd": "/data/soffy/projects/stratum"
+    }
+  }
+}

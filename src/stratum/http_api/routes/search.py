@@ -12,6 +12,7 @@ router = APIRouter()
 
 def get_db():
     from stratum.db import get_conn
+
     with get_conn() as conn:
         yield conn
 
@@ -48,7 +49,14 @@ async def search(req: SearchRequest, request: Request, db=Depends(get_db)):
         from stratum.service.search import stratum_search
 
         raw = await stratum_search(
-            query=req.query, corpus_id=corpus_id, user_id=user_id, top_k=req.top_k
+            query=req.query,
+            corpus_id=corpus_id,
+            user_id=user_id,
+            top_k=req.top_k,
+            rerank=req.rerank,
+            expand=req.expand,
+            view_id=req.view_id,
+            filter_medium=req.filter_medium,
         )
         results = [
             SearchResultItem(

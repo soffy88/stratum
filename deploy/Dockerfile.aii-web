@@ -1,17 +1,17 @@
-# Merged frontend (Stratum base + AII pages) for aii.uex.hk.
+# Merged frontend (Stratum base + AII pages) for aii.kanpan.co.
 # Bakes the pre-built Next.js standalone output so the image is self-contained
 # (decoupled from the build worktree).
 #
 # Build context = the standalone dir (has no .dockerignore, so .next is included):
 #   docker build -f deploy/Dockerfile.aii-web -t aii-web:latest \
-#     /home/soffy/projects/stratum-fe-wt/stratum-web/.next/standalone
+#     /home/soffy/projects/stratum-fe-wt/aii-web/.next/standalone
 #
-# The app lives under stratum-web/ (pnpm workspace nesting); ../node_modules holds
-# the shared deps. static + public were copied into stratum-web/ before build.
+# The app lives under aii-web/ (pnpm workspace nesting); ../node_modules holds
+# the shared deps. static + public were copied into aii-web/ before build.
 FROM node:24-trixie-slim
 WORKDIR /app
 COPY . ./
-WORKDIR /app/stratum-web
+WORKDIR /app/aii-web
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0

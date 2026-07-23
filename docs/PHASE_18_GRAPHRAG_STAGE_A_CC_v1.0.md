@@ -529,7 +529,7 @@ with get_conn() as conn:
 
 # 3. 上传一个 PDF（触发图构建 background task）:
 TOKEN=<token>
-curl -s -X POST https://stratum.uex.hk/api/v1/inbox/submit \
+curl -s -X POST https://stratum.kanpan.co/api/v1/inbox/submit \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@<PDF>" | jq '{status, substrate_id}'
 
@@ -545,16 +545,16 @@ with get_conn() as conn:
 # 期待: 真实体出现（非空）
 
 # 5. GraphRAG 查询:
-curl -s -X POST https://stratum.uex.hk/api/v1/graph/query \
+curl -s -X POST https://stratum.kanpan.co/api/v1/graph/query \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"question": "这篇文档的核心方法是什么", "max_hops": 2}' | jq '{answer, entities_used}'
 # 期待: 真实 LLM 答案 + 实体列表
 
 # 6. 子图:
-ENTITY_ID=$(curl -s https://stratum.uex.hk/api/v1/graph/entities \
+ENTITY_ID=$(curl -s https://stratum.kanpan.co/api/v1/graph/entities \
   -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id')
-curl -s "https://stratum.uex.hk/api/v1/graph/subgraph/$ENTITY_ID" \
+curl -s "https://stratum.kanpan.co/api/v1/graph/subgraph/$ENTITY_ID" \
   -H "Authorization: Bearer $TOKEN" | jq '{nodes: [.nodes[].name], edges: (.edges | length)}'
 # 期待: nodes 非空 + edges 数
 

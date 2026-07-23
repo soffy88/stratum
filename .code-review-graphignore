@@ -1,0 +1,5 @@
+# Exclude non-source static assets / minified bundles from the code graph.
+# (*.min.js is a CRG default; *.min.mjs is NOT — pdf.worker.min.mjs alone
+#  otherwise explodes into ~2900 bogus nodes, ~44% of the graph.)
+*.min.mjs
+aii-web/public/**
