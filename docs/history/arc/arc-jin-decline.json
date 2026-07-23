@@ -100,7 +100,9 @@
         "thesis:liji-luandi-b",
         "thesis:zhongni-shidu",
         "thesis:qingzu-jianbing",
-        "thesis:qiangzhe-jianruo"
+        "thesis:qiangzhe-jianruo",
+        "thesis:zhibo-caishengde",
+        "thesis:zhang-mengtan-chunwang"
       ],
       "narrative_note": "『晋国为何衰亡』非任一史书原文，是解释——本弧以论点层（thesis）承载因果论断，事件层（KU）承载史实。P2 逐子簇入 member_event（本波先钉 s3/s6/s7 已有 KU 事件；s1/s2/s4/s5 待事件抽取）。深度立意：公室分权→卿族坐大→本弱末强（师服『末大必折』一以贯之，前745 预言 / 前403 应验）。",
       "status": "draft",
@@ -158,12 +160,15 @@
       "evidence_refs": [
         "ev:minghou-403"
       ],
-      "counter_refs": [],
+      "counter_refs": [
+        "thesis:taishigong-jin",
+        "thesis:shimo-changbian"
+      ],
       "mainline_decision": {
-        "choice": "并陈为本弧『制度/礼制视角』论点",
-        "rationale": "臣光曰系自署史论（judgment，见 F24：计 0 见证、R8 归司马光），作论点层一等对象、归属显式——史/论可区分红线（R10）。与师服『末大必折』（形势视角）并陈、不合并。",
-        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-22）",
-        "date": "2026-07-22"
+        "choice": "采为 s7 三家分晋命侯 mainline（制度/礼制视角）；并陈太史公赞+史墨",
+        "rationale": "臣光曰『天子之职莫大于礼…』(通鉴:0028 源内自署史论)采 s7 mainline。★并陈(检索记录 OP-D-045)：库内扫——太史公晋世家赞(:0142『日衰六卿专权』)+史墨无常论(:2592『三后之姓于今为庶』)直指晋衰同题，入并陈；三论异角(礼分名/盛衰史断/无常律)。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
+        "date": "2026-07-23"
       }
     },
     {
@@ -176,18 +181,19 @@
           "book": "史记",
           "chapter": "晋世家",
           "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0142",
-          "quote": "（太史公曰·晋世家赞——原文段落待抓入库，PENDING）"
+          "quote": "晉文公，古所謂明君也……悼公以後日衰，六卿專權。故君道之御其臣下，固不易哉！"
         }
       },
       "evidence_refs": [
-        "ev:jin-gongshi-bei"
+        "ev:jin-gongshi-bei",
+        "ev:sanjiafenjin"
       ],
       "counter_refs": [],
       "mainline_decision": {
-        "choice": "占位·待原文入库",
-        "rationale": "ARC-SPEC §3 列为源内论点矿；太史公曰晋世家赞原文本波未抓（PENDING），para_ulid=null、quote 标待补。占位以固 thesis_id 与归属，原文入库后回填（同 fixture para_ulid 纪律）。",
-        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-22）",
-        "date": "2026-07-22"
+        "choice": "转正（原文入库 :0142）——s7 并陈·太史公史家论断（晋盛衰）",
+        "rationale": "太史公晋世家赞原文本波已在库(:0142『悼公以後日衰，六卿專權』直证晋衰于六卿)，占位缺环补齐、按 OP-D-046/048 转正；作 s7 并陈(与臣光曰礼分名并列)。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
+        "date": "2026-07-23"
       }
     },
     {
@@ -371,6 +377,56 @@
       "mainline_decision": {
         "choice": "转正（缺环已补，OP-D-046/048）——s5 六卿相并 mainline（我方）；并陈史墨无常论（OP-D-050）",
         "rationale": "关键缺环 ev:fanzhonghang-benqi（范中行奔齐）本波哀公段续搜钉定 :2809（『荀寅、士吉射奔齊』），按 OP-D-048 事件转正、OP-D-046 我方论点缺环补齐自动转正。★OP-D-050：库内史墨无常论(:2592『社稷无常奉、君臣无常位』)直指卿代君同题，必入并陈（counter_refs）。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
+        "date": "2026-07-23"
+      }
+    },
+    {
+      "thesis_id": "thesis:zhibo-caishengde",
+      "claim": "智伯之亡在才胜德——聪察强毅之才无正直中和之德以帅之，恃强索地无厌而招韩魏赵联合，晋阳反噬而灭（后世公版·臣光曰）。",
+      "attribution": {
+        "type": "后世公版",
+        "who": "司马光（臣光曰·资治通鉴周纪一）",
+        "locator": {
+          "book": "资治通鉴",
+          "chapter": "周纪一",
+          "para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0038",
+          "quote": "臣光曰：智伯之亡也，才勝德也。夫才與德異……才者，德之資也；德者，才之帥也。"
+        }
+      },
+      "evidence_refs": [
+        "ev:jinyang-zhizhan"
+      ],
+      "counter_refs": [
+        "thesis:zhang-mengtan-chunwang"
+      ],
+      "mainline_decision": {
+        "choice": "提案 s6 晋阳之战 mainline（智伯之亡的最强回顾性论断，通鉴自署史论）；并陈张孟谈唇亡齿寒",
+        "rationale": "臣光曰才德论(:0038 源内自署史论 judgment)系智伯之亡的一等因果论断(才胜德)，采 s6 mainline。★检索记录(OP-D-045)：库内 theses 全扫 + 通鉴周纪一源内段扫——臣光曰才德(:0038)/张孟谈唇亡齿寒(:0037)/段规好利而愎(:0035)命中；张孟谈说辞立 thesis(见并陈项)。事件引既有 gold ev:jinyang-zhizhan(F22/F23)、不重裁。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
+        "date": "2026-07-23"
+      }
+    },
+    {
+      "thesis_id": "thesis:zhang-mengtan-chunwang",
+      "claim": "唇亡齿寒——赵亡则韩魏为之次，故韩魏与赵利害相连、反智存赵（张孟谈说二子辞，源内 proximate 机制）。",
+      "attribution": {
+        "type": "源内",
+        "who": "张孟谈（赵襄子使说韩魏，通鉴引）",
+        "locator": {
+          "book": "资治通鉴",
+          "chapter": "周纪一",
+          "para_ulid": "DKMGQCJ1564XCCQ1MHSAZNNEMJ:0037",
+          "quote": "臣聞脣亡則齒寒。今智伯帥韓、魏而攻趙，趙亡則韓、魏為之次矣。"
+        }
+      },
+      "evidence_refs": [
+        "ev:jinyang-zhizhan"
+      ],
+      "counter_refs": [],
+      "mainline_decision": {
+        "choice": "并陈为 s6 源内 proximate 机制（韩魏为何反智）；★张孟谈说辞立 thesis 之提案=立",
+        "rationale": "张孟谈『唇亡齿寒』是源内因果论断(韩魏与赵利害相连→反智)、非纯叙事敷演，立一等 thesis 送裁；与臣光曰才德论(根因)并陈(proximate 机制 vs 回顾根因)。亦见 zhanguoce:0001『张孟谈阴见韩魏』同事异述。",
         "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
         "date": "2026-07-23"
       }
