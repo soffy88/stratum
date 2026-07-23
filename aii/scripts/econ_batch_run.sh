@@ -26,8 +26,8 @@ cd "$(dirname "$0")/.."
 PY=.venv/bin/python
 ECON_QUAL_DIR="${ECON_QUAL_DIR:-econ_pipeline/qual}"
 ECON_CKPT_DIR="${ECON_CKPT_DIR:-econ_pipeline/ckpts}"
-QUARANTINE_JSON="econ_pipeline/quarantine.json"
-BATCH_REPORT="econ_pipeline/batch_report.json"
+QUARANTINE_JSON="${ECON_QUARANTINE_JSON:-econ_pipeline/quarantine.json}"
+BATCH_REPORT="${ECON_BATCH_REPORT:-econ_pipeline/batch_report.json}"
 DRY_RUN="${ECON_DRY_RUN:-0}"
 FORCE="${ECON_FORCE:-0}"
 STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"  # 1=预检失败时反馈Stratum
@@ -195,13 +195,17 @@ except Exception as e:
         continue
     fi
 
-    # ── 运行经济学管道 ──
-    echo "  [管道] 运行 econ_pipeline.sh..."
+    # ── 运行管道 ── ★PIPELINE_SCRIPT/RUN_LOG_DIR 可覆盖(默认走econ_zh/misc共用的econ_pipeline.sh
+    # +econ_pipeline/, 不设就是原行为不变; advmath等新频道传自己的脚本+目录, 避免log混进econ_pipeline/)
+    PIPELINE_SCRIPT="${ECON_PIPELINE_SCRIPT:-scripts/econ_pipeline.sh}"
+    RUN_LOG_DIR="${ECON_RUN_LOG_DIR:-econ_pipeline}"
+    mkdir -p "$RUN_LOG_DIR"
+    echo "  [管道] 运行 $PIPELINE_SCRIPT..."
     QUAL_JSON="$ECON_QUAL_DIR/${SUBSTRATE}.json"
     export SUBSTRATE AII_MD_FILE="$MD_PATH" ECON_TITLE QUAL_DIR="$ECON_QUAL_DIR" PIPELINE_CKPT_DIR="$ECON_CKPT_DIR"
 
     PIPE_EXIT=0
-    bash scripts/econ_pipeline.sh 2>&1 | tee "econ_pipeline/${SUBSTRATE}_run.log" || PIPE_EXIT=$?
+    bash "$PIPELINE_SCRIPT" 2>&1 | tee "$RUN_LOG_DIR/${SUBSTRATE}_run.log" || PIPE_EXIT=$?
 
     if [ $PIPE_EXIT -eq 2 ]; then
         echo "  ❌ 管道步骤失败(exit=2) → 隔离"
@@ -214,7 +218,7 @@ except Exception as e:
     if [ $PIPE_EXIT -eq 0 ]; then
         # ── 质量门通过 → 自动入库 ──
         echo "  ✅ 质量门通过 → 自动入库..."
-        $PY scripts/econ_register.py "$SUBSTRATE" "$ECON_TITLE" --subject 经济学
+        $PY scripts/econ_register.py "$SUBSTRATE" "$ECON_TITLE" --subject "${ECON_REGISTER_SUBJECT:-经济学}"
         N_PIPELINE_OK=$((N_PIPELINE_OK + 1))
         RESULTS[$SUBSTRATE]="PASS:registered"
         echo "  ✅ 已入正式库: $SUBSTRATE"

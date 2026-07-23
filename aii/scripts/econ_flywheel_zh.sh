@@ -34,9 +34,15 @@ STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"   # 中文书来自本地文件�
 
 # ★NIM key(econ_zh 专属, 4飞轮各自独立: econ/econ_zh/math_en/math_zh) + DB + BGE-M3跑CPU(不抢GPU)
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('econ_zh',''))" 2>/dev/null)"
+# ★模型选型: 同 advmath/math_prog(2026-07-07实测对比) — 默认 meta/llama-3.1-70b-instruct 讲得干,
+#   nemotron-super-49b 明显更好, _plan() 规划知识点这步换掉默认档.
+export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
 export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-4}"   # ★并发度=4(测试定论: 4-5低偶发超时, 6+持续过载)
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:***REMOVED***@localhost:5435/aii_kg}"
-export CUDA_VISIBLE_DEVICES=""
+export CUDA_VISIBLE_DEVICES=""          # 嵌入走 CPU(GPU 让给 math-prog, 防 OOM)
+export HF_HUB_OFFLINE=1                 # ★用本地缓存 BGE-M3, 不连 huggingface(直连超时→卡死)
+export TRANSFORMERS_OFFLINE=1
+export AII_EMBED_URL="${AII_EMBED_URL:-http://100.68.226.13:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU)
 # ★忠实模式: KU只忠实呈现原书内容(概念定义/含义), 少靠LLM判断, 不过度why/how → 快+忠实
 export ECON_FAITHFUL=1
 
@@ -53,11 +59,16 @@ echo "  LIMIT=$ECON_LIMIT  DRY_RUN=${ECON_DRY_RUN:-0}  STRATUM_FEEDBACK=$STRATUM
 echo "════════════════════════════════════════════════════"
 echo ""
 
+# ── Step 0: 主动拉料 ── 别等 feeder 独立时钟才有新书: D盘同步+本地PDF转换+stratum分类
+# 一次做全 (flock 防和其他飞轮/feeder撞车挪同一文件)
+mkdir -p .locks
+flock -w 120 .locks/classify_md.lock -c "timeout 600 bash scripts/pull_ingest.sh" || true
+
 # ── Step 1: 发现未处理的经济书 ──
-echo "[1/4] 发现未处理的【中文】经济书(books/MD/经济学 筛中文)..."
+echo "[1/4] 发现未处理的经济书(books/MD/经济学 全语言,合并版)..."
 LIMIT_ARG=""
 [ "$ECON_LIMIT" -gt 0 ] 2>/dev/null && LIMIT_ARG="--limit $ECON_LIMIT"
-$PY scripts/econ_discover_zh.py \
+$PY scripts/econ_discover_all.py \
     --out "$FLYWHEEL_BOOK_LIST" \
     --state "$FLYWHEEL_STATE" \
     --verbose \

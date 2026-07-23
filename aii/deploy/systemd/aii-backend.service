@@ -1,0 +1,16 @@
+[Unit]
+Description=AII epistemic backend (uvicorn :8101)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/data/soffy/projects/stratum/aii/aii
+# 嵌入走共享 aii-embed 微服务(按需加载/空闲卸载) → aii-backend 自身 0 常驻 BGE-M3, 不占 2.2G RAM/不碰 GPU
+# ★aii-embed 已迁到笔记本GTX1050Ti(禁止用本机GPU), 走tailscale: 100.68.226.13(笔记本Windows主机自己的tailscale身份, 原生跑不经WSL)
+Environment=AII_EMBED_URL=http://100.68.226.13:8102
+ExecStart=/home/soffy/.local/bin/uv run --project /data/soffy/projects/stratum/aii uvicorn aii.api.app:app --host 0.0.0.0 --port 8101
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

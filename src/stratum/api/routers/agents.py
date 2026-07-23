@@ -85,7 +85,7 @@ def _get_researcher_engine():
         if not searxng_url:
             raise RuntimeError("SEARXNG_URL env var not set")
 
-        from oservice import assemble, ServiceManifest
+        from oservi import assemble, ServiceManifest
         from oprim import url_fetch_ssrf_safe
 
         manifest = ServiceManifest(
@@ -152,6 +152,7 @@ try:
     class _EnvSecretsBackend:
         def get(self, name: str):
             return _os.environ.get(name)
+
         def set(self, name: str, value: str) -> None:
             raise NotImplementedError("env backend is read-only")
 
@@ -161,12 +162,14 @@ try:
     # but DashScope /generation returns output.text for qwen-plus. §20-compliant
     # (memory-only override, no source file changes).
     import sys as _sys
-    _oprim_llm_mod = _sys.modules['oprim.llm.llm_call']  # attr import gives function, not module
+
+    _oprim_llm_mod = _sys.modules["oprim.llm.llm_call"]  # attr import gives function, not module
     from oprim.llm._types import LLMResponse as _LLMResponse
     from oprim.errors import LLMError as _LLMError
 
     def _fixed_dashscope(prompt, model, temperature, max_tokens, system):
         import httpx as _hx
+
         _key = _os.getenv("DASHSCOPE_API_KEY", "")
         if not _key:
             raise _LLMError("DASHSCOPE_API_KEY not set")
@@ -178,13 +181,18 @@ try:
         _r = _hx.post(
             "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
             headers={"Authorization": f"Bearer {_key}", "Content-Type": "application/json"},
-            json={"model": _m, "input": {"messages": _msgs},
-                  "parameters": {"max_tokens": max_tokens, "temperature": temperature}},
+            json={
+                "model": _m,
+                "input": {"messages": _msgs},
+                "parameters": {"max_tokens": max_tokens, "temperature": temperature},
+            },
             timeout=60.0,
         )
         _r.raise_for_status()
         _d = _r.json()
-        _text = _d["output"].get("text") or _d["output"].get("choices", [{}])[0].get("message", {}).get("content", "")
+        _text = _d["output"].get("text") or _d["output"].get("choices", [{}])[0].get(
+            "message", {}
+        ).get("content", "")
         return _LLMResponse(text=_text, model=_m)
 
     _oprim_llm_mod._call_dashscope = _fixed_dashscope
@@ -194,6 +202,7 @@ try:
     # output.choices but the /generation endpoint returns output.text for qwen-plus.
     def _qwen3_ds_caller(messages, model="qwen-plus", max_tokens=4096, **_):
         import httpx as _httpx
+
         _api_key = _os.environ.get("DASHSCOPE_API_KEY", "")
         if not _api_key:
             raise RuntimeError("DASHSCOPE_API_KEY not set")
@@ -218,12 +227,14 @@ try:
     # 3. Image provider: wanxiang (needs secrets backend registered above).
     try:
         from obase.providers._image.dashscope_wanxiang import register as _reg_wanx
+
         _reg_wanx(replace=True)
     except Exception as _wx_err:
         _logging.getLogger(__name__).warning("wanxiang provider registration skipped: %s", _wx_err)
 
 except Exception as _pr_err:
     import logging as _logging
+
     _logging.getLogger(__name__).warning("ProviderRegistry bootstrap failed: %s", _pr_err)
 
 router = APIRouter(prefix="/api/v1/agents", tags=["agents"])
@@ -395,12 +406,15 @@ async def agent_run(
 
                         class _E:
                             __slots__ = ("dst_id",)
-                            def __init__(self, d): self.dst_id = d
+
+                            def __init__(self, d):
+                                self.dst_id = d
 
                         with _get_conn() as _c:
                             _seed_rows = _c.execute(
                                 "SELECT id FROM graph_entities WHERE user_id=? "
-                                "ORDER BY mention_count DESC LIMIT 10", (_uh,)
+                                "ORDER BY mention_count DESC LIMIT 10",
+                                (_uh,),
                             ).fetchall()
                         _seed_ids = [r[0] for r in _seed_rows]
 
@@ -410,7 +424,8 @@ async def agent_run(
                                 list_edges=lambda nid: [
                                     _E(n["target"]) for n in get_entity_neighbors(_uh, [nid])
                                 ],
-                                hops=2, top_k=10,
+                                hops=2,
+                                top_k=10,
                             )
                             _top_ids = [r[0] for r in _ranked] if _ranked else _seed_ids[:5]
                             _entities = query_entities_by_ids(_uh, _top_ids)
@@ -425,6 +440,7 @@ async def agent_run(
                             )
                     except Exception as _g_err:
                         import logging as _glog
+
                         _glog.getLogger(__name__).warning(
                             "graph_context injection failed: %s", _g_err
                         )
@@ -553,6 +569,7 @@ async def debug_providers(_: str = Depends(jwt_auth)):
     """Temporary: introspect live provider + module state for illustration_agent diagnosis."""
     import sys as _sys
     from obase import ProviderRegistry as _PR
+
     info: dict = {}
     # ProviderRegistry state
     info["registered_providers"] = [f"{c}:{n}" for c, n in _PR.list_providers()]
@@ -570,6 +587,7 @@ async def debug_providers(_: str = Depends(jwt_auth)):
         info["ia_module_loaded"] = False
     # oprim.image_generate state
     import oprim as _oprim
+
     oprim_ig = getattr(_oprim, "image_generate", None)
     info["oprim_image_generate_type"] = type(oprim_ig).__name__
     info["oprim_image_generate_callable"] = callable(oprim_ig) if oprim_ig else None

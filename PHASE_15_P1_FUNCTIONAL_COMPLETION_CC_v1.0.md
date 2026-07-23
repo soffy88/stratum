@@ -325,7 +325,7 @@ python3 scripts/seed_platform_content.py
 
 ```bash
 # 公网 e2e
-curl -s https://stratum.uex.hk/api/v1/content/feed | jq '.items | length'
+curl -s https://stratum.kanpan.co/api/v1/content/feed | jq '.items | length'
 # 期待 ≥4
 
 # 浏览器: 登录 → /discover 真显示 4 篇内容
@@ -361,8 +361,8 @@ pytest tests/ 2>&1 | tail -10  # 期待 226 + ≥3 新 = ≥229 pass
 python3 scripts/seed_platform_content.py
 
 # 公网验证
-curl -s https://stratum.uex.hk/api/v1/content/feed | jq '.items | length'
-curl -s -X POST https://stratum.uex.hk/api/v1/agents/daily_digest/run -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{}' | jq
+curl -s https://stratum.kanpan.co/api/v1/content/feed | jq '.items | length'
+curl -s -X POST https://stratum.kanpan.co/api/v1/agents/daily_digest/run -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{}' | jq
 
 # 前端 e2e (Playwright)
 cd stratum-web && pnpm test:e2e --grep "Phase 15 Wave 1"
@@ -570,7 +570,7 @@ pytest tests/service_layer/test_agents_run_detail.py -v
 pytest tests/ 2>&1 | tail -10
 
 # 端到端
-curl -s -X POST https://stratum.uex.hk/api/v1/scheduled-jobs -H "Authorization: Bearer $T" -d '{"name":"test","agent_name":"daily_digest","cron_expression":"0 8 * * *"}'
+curl -s -X POST https://stratum.kanpan.co/api/v1/scheduled-jobs -H "Authorization: Bearer $T" -d '{"name":"test","agent_name":"daily_digest","cron_expression":"0 8 * * *"}'
 
 git add -A && git commit -m "Phase 15 Wave 2 (P1-B): Scheduler CRUD + Agent run detail + changefeed 13 events"
 ```
@@ -706,8 +706,8 @@ cd stratum-web && pnpm test --run 2>&1 | tail -3
 pnpm test:e2e 2>&1 | tail -10
 
 # 公网验证 (alpha v0.7 ready)
-curl -s https://stratum.uex.hk/api/v1/health
-curl -s https://stratum.uex.hk/api/v1/content/feed | jq '.items | length'  # ≥4
+curl -s https://stratum.kanpan.co/api/v1/health
+curl -s https://stratum.kanpan.co/api/v1/content/feed | jq '.items | length'  # ≥4
 
 # tag
 git tag phase15-v0.7-alpha
@@ -731,7 +731,7 @@ git push
 ✅ /discover 显示 ≥4 篇真内容 (Stratum 任务书 build in public)
 ✅ Agent run history + detail UI
 
-公网: https://stratum.uex.hk
+公网: https://stratum.kanpan.co
 版本: v0.7-alpha (phase15-v0.7-alpha tag)
 测试: ≥240 pytest + ≥84 vitest + ≥48 e2e
 
