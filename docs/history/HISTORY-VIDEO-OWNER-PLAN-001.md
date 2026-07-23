@@ -56,3 +56,4 @@
 - D-040（权威）**P1 终裁 PASS**，签字工件见 `docs/signoffs/GATE-P1-20260722.md`；P0 残项（F1/U7/契约 tag/G1b 重跑）并入 P2 首波补执行。
 - D-041（权威）**PERSON-INTAKE 71 条维持 candidate-verified**；转正逐条发生于同一性管线通过之后，不整批转。
 - D-042（权威）**P2 出口判据** = ①同一性管线一致率实测报数且回归网零倒退 ②七子簇策展包全数过裁 ③首弧全对象 harness 绿 ④G1b 全弧闭（P0 残项）⑤子簇→EpisodePlan 映射草案成文（契约 bump 仍留 P3，D-025 不变）。
+- D-043（权威）**核查任何『已执行/未执行』论断必以 main 与 annotated tags 为据，工作树与分支视野不得作为存在性证据**；本条因工具分支视野差点误报失单而立。**落地**：执行状态核查一律对 `main` + tags（`git ls-tree main`/`git show main:<path>`/只读 worktree），禁以当前 checkout 工作树为据；与 m0 陈旧字节（D-018）、五波"tag 未动"失单误判同族——分支视野差是该族病的共因。

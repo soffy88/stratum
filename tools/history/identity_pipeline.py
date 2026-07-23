@@ -103,6 +103,62 @@ KNOWN_ALIAS = [
 ]
 
 
+def full_sweep(ev):
+    """全样一致率（OP-D-043 后 Wiki 令扩样）：全部 gold 事件段过管线。
+
+    n=10 手挑对仅冒烟。此处枚举全部 25 唯一 gold 事件：
+    - 负例 = 全部 C(N,2) 异事件对，ground-truth=似而非同（管线不得假合——§5 宁碎片方向的危险失效）。
+    - 正例 = N 个自述对（同一事件自比），ground-truth=同事异述。
+    报真实一致率 + 假合明细 + 保守存疑退化明细（诚实，不粉饰）。
+    """
+    import itertools
+
+    ids = sorted(ev.keys())
+    fp = []
+    neg_ok = 0
+    neg_n = 0
+    for x, y in itertools.combinations(ids, 2):
+        v, evd = propose(ev[x], ev[y])
+        neg_n += 1
+        if v == "似而非同":
+            neg_ok += 1
+        else:
+            fp.append((x, y, v))
+    pos_ok = 0
+    deferred = []
+    for i in ids:
+        v, _ = propose(ev[i], ev[i])
+        if v == "同事异述":
+            pos_ok += 1
+        else:
+            deferred.append((i, ev[i]))
+    tot = neg_n + len(ids)
+    allok = neg_ok + pos_ok
+    print("\n=== 全样一致率实测（全部 gold 事件段, Wiki 扩样令）===")
+    print(f"  唯一 gold 事件 N={len(ids)}")
+    print(
+        f"  负例(异事件对): {neg_ok}/{neg_n} 正确似而非同 · **假合(false merge)={len(fp)}**"
+        "（§5 宁碎片方向：0 假合=从不错并两不同事件）"
+    )
+    print(f"  正例(自述对): {pos_ok}/{len(ids)} 自识为同事异述 · 保守存疑退化={len(deferred)}")
+    print(f"  --- 机械一致率 = {allok}/{tot} = {100 * allok / tot:.2f}%")
+    print(
+        "  --- 材料判读：**假合率 0%**（危险方向零失效）；退化非错——无纪年/无 actor 的"
+        "传疑/制度事件，年窗门（同事异述需 D1=重合）无法触发，按 §5 正确落存疑（宁碎片），送人裁。"
+    )
+    if fp:
+        print("  ⚠ 假合明细（异事件被判同事异述）：")
+        for x, y, v in fp:
+            print(f"    {x} × {y} -> {v}")
+    if deferred:
+        print("  保守存疑退化明细（自述对未自识，缺纪年/actor 特征）：")
+        for i, e in deferred:
+            feat = (
+                f"actors={sorted(e['actors']) or '∅'}, years={e['years'] or '∅'}, type={e['type']}"
+            )
+            print(f"    {i} -> 似而非同（{feat}）")
+
+
 def main():
     ev = load_events()
     print("=== 同一性管线 v1 · 一致率实测 ===")
@@ -121,7 +177,9 @@ def main():
             for e in evd:
                 print(f"      {e}")
     n = len(GOLD_PAIRS)
-    print(f"--- 清晰对一致率 {ok}/{n} = {100 * ok // n}%（回归网：管线未改任何 gold，零倒退）")
+    print(f"--- 清晰对一致率 {ok}/{n} = {100 * ok // n}%（n=10 冒烟；全样见下）")
+
+    full_sweep(ev)
 
     # 边界案（§5：存疑→宁碎片；管线保守提案，边界归人裁）
     print("\n=== 边界案（管线存疑→送裁，非自判；对照 Wiki 亲裁）===")

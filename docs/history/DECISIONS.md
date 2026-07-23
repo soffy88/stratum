@@ -10,7 +10,7 @@
 
 - **日期**：2026-07-22 · **判定人**：**顾问 Claude（Wiki 授权 2026-07-22，Wiki 保留否决权）** · 执行：CC-B（FULL AUTO）
 - **F1 撤 cf（D-022 同款扫描候裁项落地）**：`cf:jinyang-independence`（dimension=narrative，hint=主线+角标）撤——三 account 系**同说**（无对立主张），该对象实为**独立性折算记录**，比 F12 侧重差更远离『冲突』语义；立作 cf 污染 narrative 语义。折算记录（indep≈1.5：史记计1 / 通鉴派生不另计 / 战国策降权计0.5）移**事件级**：`mainline_decision.rationale` + `JUDGMENTS.md#F1` + F1/sample `.notes.md` 事件注记，**不占 cf 对象位**。F1 fixture 与 `sample.sanjiafenjin.json` 同步改（event.conflicts=[]、conflicts=[]）。
-- **★契约 v0.2.2（sample 字节变，走契约纪律）**：sample 撤 conflict 实例 → 字节变 → 新 annotated tag **`history-contract-v0.2.2`**；**schema 字节未变、`contract_version` 仍 v0.2**（撤的是 conflict **实例**非 **shape**——形状仍含 conflicts 数组、place 维等）。**G1b 对拍钉点随迁 v0.2.2**（README + 本条）。sha256：sample 新 `0431038…`（全值见 README/交付单），schema 不变 `638fc28…`。冲突形态样例演示角色迁至 `contracts/samples/ep_sanjia_fenjin/`（cf:jinyang-shuiyuan 等 S12 富例）。
+- **★契约 v0.2.2（sample 字节变，走契约纪律）**：sample 撤 conflict 实例 → 字节变 → 新 annotated tag **`history-contract-v0.2.2`**；**schema 字节未变、`contract_version` 仍 v0.2**（撤的是 conflict **实例**非 **shape**——形状仍含 conflicts 数组、place 维等）。**G1b 对拍钉点随迁 v0.2.2**（README + 本条）。sha256：sample 新 `4126c842…`（全值见 README/交付单；~~曾误写 `0431038…`，与真实字节不符，OP-D-043 同轮 follow-up 更正~~），schema 不变 `638fc28…`。冲突形态样例演示角色迁至 `contracts/samples/ep_sanjia_fenjin/`（cf:jinyang-shuiyuan 等 S12 富例）。
 - **U7 关闭（入 spec A.4）**：互见/互补关系**暂不设一等对象**（同源同说的叙事侧重差、非冲突非独立实体；事件级已完整承载；无 live 消费者）。裁决原文 + 三条重开条件入 A.4。
 - **★防倒退点升级（并入通则）**：**凡为侧重差（F12）或折算记录（F1）立 cf 即倒退信号**——narrative cf 只挂真对立主张（现存正例 F2×2/F4/F5/F13）。
 - **跨线通知**：G1b 交付单权威版更新 sha256/钉点（`contracts/samples/ep_sanjia_fenjin/KU-DELIVERY-20260722.md`，随 v0.2.2 冻结），经 Wiki 转指针告 CC-A 更新 harness sha256、重跑对拍——本仓落权威件、**不写 hevi**（D-021）。
