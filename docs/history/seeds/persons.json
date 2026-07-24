@@ -2407,6 +2407,30 @@
       "force_affiliations": [
         "fo:zheng"
       ]
+    },
+    {
+      "person_id": "per:zhou-pingwang",
+      "names_by_source": { "周平王": ["src:shiji"] },
+      "谥字号": "谥平，东周首王",
+      "active_range": "前770—前720在位（传统纪年）",
+      "force_affiliations": ["fo:zhou"],
+      "intake": { "batch": "registry-backfill-001", "source_para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0015", "method": "四查·手工核对（回流补料，OP-D-059核视野轮）", "status": "verified" }
+    },
+    {
+      "person_id": "per:zhou-xiwang",
+      "names_by_source": { "周釐王": ["src:shiji"] },
+      "谥字号": "谥釐（僖），东周王",
+      "active_range": "史记『晋侯二十八年』（前678前后）在位，命曲沃武公为晋君",
+      "force_affiliations": ["fo:zhou"],
+      "intake": { "batch": "registry-backfill-001", "source_para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0020", "method": "四查·手工核对（回流补料，OP-D-059核视野轮）", "status": "verified" }
+    },
+    {
+      "person_id": "per:luan-gongshu",
+      "names_by_source": { "欒共叔": ["src:zuozhuan"] },
+      "谥字号": "栾氏，与翼侯同时被曲沃武公虏获",
+      "active_range": "桓公三年（前709）随哀侯被虏",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-001", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0217", "method": "四查·手工核对（回流补料，OP-D-059核视野轮）", "status": "verified" }
     }
   ]
 }
