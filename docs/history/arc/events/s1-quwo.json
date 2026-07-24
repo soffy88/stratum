@@ -57,7 +57,10 @@
         { "person_ref": "per:quwo-zhuangbo", "role": "累次伐翼", "force_ref": "fo:jin" },
         { "person_ref": "per:referent-ambiguous", "role": "翼侯，战败奔隨（左传:0083 未指名具体是哪位翼侯，referent-ambiguous 占位，G4 收尾）", "force_ref": "fo:jin" },
         { "person_ref": "per:jin-aihou", "role": "晋人后立新君", "force_ref": "fo:jin" },
-        { "person_ref": "per:zhou-pingwang", "role": "使虢公伐庄伯（史记明载）", "force_ref": "fo:zhou" }
+        { "person_ref": "per:zhou-pingwang", "role": "使虢公伐庄伯（史记明载）", "force_ref": "fo:zhou" },
+        { "person_ref": "per:referent-ambiguous", "role": "虢公，奉王命伐曲沃（左传:0086/史记:0015 均只称『虢公』未指名具体是虢国哪位国君，referent-ambiguous 占位，registry补料G4收尾；force_ref 沿用 per:guozhong 既有惯例记 fo:zhou——此类角色本仓统一按『受王命行事』记，非独立 fo:guo 势力线）", "force_ref": "fo:zhou" },
+        { "person_ref": "per:referent-ambiguous", "role": "尹氏，助翼（左传:0083『王使尹氏、武氏助之』，仅称氏未指名个体，referent-ambiguous 占位）", "force_ref": "fo:zhou" },
+        { "person_ref": "per:referent-ambiguous", "role": "武氏，助翼（左传:0083『王使尹氏、武氏助之』，仅称氏未指名个体，referent-ambiguous 占位）", "force_ref": "fo:zhou" }
       ],
       "geo": { "place_refs": ["pl:yi-jin", "pl:sui-jin", "pl:e-jin", "pl:quwo"], "route_hint": null, "mapstate_hint": "翼侯败退路线：翼→隨；晋人拥立地：鄂" },
       "parent_event": null,
@@ -155,7 +158,8 @@
       "actors": [
         { "person_ref": "per:quwo-wugong", "role": "灭缗，受周王命列诸侯", "force_ref": "fo:jin" },
         { "person_ref": "per:jin-hou-min", "role": "被灭", "force_ref": "fo:jin" },
-        { "person_ref": "per:zhou-xiwang", "role": "受赂宝器，命曲沃武公为晋君列诸侯（registry 回流补料新增，2026-07-24）", "force_ref": "fo:zhou" }
+        { "person_ref": "per:zhou-xiwang", "role": "受赂宝器，命曲沃武公为晋君列诸侯（registry 回流补料新增，2026-07-24）", "force_ref": "fo:zhou" },
+        { "person_ref": "per:referent-ambiguous", "role": "虢公，奉王命以一军命曲沃伯为晋侯（左传:0500，只称『虢公』未指名；与 ev:zhuangbo-lei-fa-yi 的虢公相隔约26年，非同一次占位可推定为同一人，各自独立占位，registry补料G4收尾）", "force_ref": "fo:zhou" }
       ],
       "geo": { "place_refs": ["pl:yi-jin", "pl:quwo"], "route_hint": null, "mapstate_hint": "曲沃尽并晋地" },
       "parent_event": null,
