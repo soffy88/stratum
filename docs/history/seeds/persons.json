@@ -2431,6 +2431,14 @@
       "active_range": "桓公三年（前709）随哀侯被虏",
       "force_affiliations": ["fo:jin"],
       "intake": { "batch": "registry-backfill-001", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0217", "method": "四查·手工核对（回流补料，OP-D-059核视野轮）", "status": "verified" }
+    },
+    {
+      "person_id": "per:referent-ambiguous",
+      "names_by_source": {},
+      "谥字号": "★哨兵占位值（非真实人物）——泛称/职称型条目（如『翼侯』『晋侯』等无指名的头衔）在源文本未指名具体个体时，actors.person_ref 用此占位，取代此前『不入 actors』的做法，使『此处确有一头衔持有者、但身份不明』这一事实本身可被结构化解析（供下游消费方解析用；H4 层具体消费方式本仓未定义/未见——本仓无 H4 相关规格文档，此占位机制为本仓自定的通用惯例，供后续对齐）；role 字段须补充具体头衔+来源 locator，说明何以不明。禁止：不得为图方便而滥用本占位掩盖『本可查实而未查』的懒惰——仅在源文本确实未指名时使用（同 PERSON-INTAKE 协议『referent-ambiguous』条）。",
+      "active_range": "N/A（哨兵值，非历史人物，无 active_range）",
+      "force_affiliations": [],
+      "intake": { "batch": "registry-backfill-002", "method": "协议扩定（G4收尾），非四查产物", "status": "sentinel-placeholder" }
     }
   ]
 }
