@@ -1019,17 +1019,18 @@
       "person_id": "per:i4-006",
       "names_by_source": {
         "荀息": [
-          "src:zuozhuan"
+          "src:zuozhuan",
+          "src:shiji"
         ]
       },
-      "谥字号": "(候选·待考)",
-      "active_range": "(候选)",
-      "force_affiliations": [],
+      "谥字号": "晋大夫，假道伐虢献计者（僖2，:0691）；后受献公托孤奚齐、死节（下一子簇事件，s2弧灌注未结构化其死节情节）",
+      "active_range": "前658起见载",
+      "force_affiliations": ["fo:jin"],
       "intake": {
-        "batch": "W-H1a-4-001",
+        "batch": "W-H1a-4-001/registry-backfill-005",
         "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0691",
-        "method": "qwen3-8b 抽取候选·机械四查过",
-        "status": "candidate-verified"
+        "method": "qwen3-8b抽取候选·机械四查过(W-H1a-4-001)；s2弧灌注(registry-backfill-005)任务指名前置扫描确认在库，id沿用不改",
+        "status": "verified"
       }
     },
     {
@@ -1110,34 +1111,36 @@
           "src:zuozhuan"
         ]
       },
-      "谥字号": "郤芮=冀芮(食邑冀故称冀芮), 晋惠公臣; candidate-same 准(Wiki 2026-07-23)",
-      "active_range": "(候选)",
-      "force_affiliations": [],
+      "谥字号": "郤芮=冀芮(食邑冀故称冀芮)，晋惠公臣，s2弧灌注中为夷吾谋臣，谏夷吾弃屈改奔梁(candidate-same 准，Wiki 2026-07-23)",
+      "active_range": "前654见载（后续晋惠公朝仍任事）",
+      "force_affiliations": ["fo:jin"],
       "intake": {
-        "batch": "W-H1a-4-001",
-        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0795",
-        "method": "qwen3-8b 抽取候选·机械四查过",
-        "status": "candidate-verified"
+        "batch": "W-H1a-4-001/registry-backfill-005",
+        "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0740",
+        "method": "qwen3-8b抽取候选·机械四查过(W-H1a-4-001)；s2弧灌注(registry-backfill-005)确认为ev:chonger-yiwu-chuben的actor，id沿用不改",
+        "status": "verified"
       }
     },
     {
       "person_id": "per:i4-012",
       "names_by_source": {
         "重耳": [
-          "src:zuozhuan"
+          "src:zuozhuan",
+          "src:shiji"
         ],
         "晉文公": [
-          "src:zuozhuan"
+          "src:zuozhuan",
+          "src:shiji"
         ]
       },
-      "谥字号": "重耳=晋文公(即位前后异称); candidate-same 准(Wiki 2026-07-23)",
-      "active_range": "(候选)",
-      "force_affiliations": [],
+      "谥字号": "晋献公与狐姬之子，公子，骊姬之乱后出奔（蒲→狄），后即位为晋文公；即位前后异称(candidate-same 准，Wiki 2026-07-23)",
+      "active_range": "前697?—前628（晋文公）",
+      "force_affiliations": ["fo:jin"],
       "intake": {
-        "batch": "W-H1a-4-001",
+        "batch": "W-H1a-4-001/registry-backfill-005",
         "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0795",
-        "method": "qwen3-8b 抽取候选·机械四查过",
-        "status": "candidate-verified"
+        "method": "qwen3-8b抽取候选·机械四查过(W-H1a-4-001)；s2弧灌注(registry-backfill-005)确认为s2三事件核心actor，补充史记同名attestation+丰满谥字号，id沿用不改（已被多处文档引用）",
+        "status": "verified"
       }
     },
     {
@@ -2447,6 +2450,198 @@
       "active_range": "前685—前643在位；史记:0020 系年参照点『晉侯二十八年，齊桓公始霸』",
       "force_affiliations": ["fo:jiangqi"],
       "intake": { "batch": "registry-backfill-004", "source_para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0020", "method": "四查·全量白文扫描（OP-D-071 覆盖模型前移，G4 终批）", "status": "verified" }
+    },
+    {
+      "person_id": "per:jin-xiangong",
+      "names_by_source": { "晉獻公": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "谥献，晋武公子，娶骊姬乱嫡",
+      "active_range": "前676—前651在位",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586", "method": "四查·s2弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:qijiang",
+      "names_by_source": { "齊姜": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "献公所烝（武公妾），生秦穆夫人及申生",
+      "active_range": "早死（史记:0026明载）",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586", "method": "四查·s2弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:qinmu-furen",
+      "names_by_source": { "秦穆夫人": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "齐姜所生，申生同母姊妹，后为秦穆公夫人；仅系年提及,非s2三事件之actor",
+      "active_range": "N/A（仅系谱提及）",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586", "method": "四查·s2弧灌注前置扫描(OP-D-071),白文提及即入但非actor", "status": "verified" }
+    },
+    {
+      "person_id": "per:shensheng",
+      "names_by_source": { "申生": ["src:zuozhuan", "src:shiji"], "大子申生": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "晋献公与齐姜之子，太子，为骊姬所谮，缢于新城",
+      "active_range": "?—前656（僖公四年卒）",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586", "method": "四查·s2弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:huji",
+      "names_by_source": { "狐姬": ["src:zuozhuan"], "大戎狐姬": ["src:zuozhuan"] },
+      "谥字号": "大戎之女，献公娶为妾，生重耳",
+      "active_range": "前666前后（庄28）",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586", "method": "四查·s2弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:xiaorongzi",
+      "names_by_source": { "小戎子": ["src:zuozhuan"] },
+      "谥字号": "小戎之女，献公娶为妾，生夷吾",
+      "active_range": "前666前后（庄28）",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586", "method": "四查·s2弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:yiwu",
+      "names_by_source": { "夷吾": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "晋献公与小戎子之子，公子，后即位为晋惠公",
+      "active_range": "?—前637（晋惠公）",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586", "method": "四查·s2弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:liji",
+      "names_by_source": { "驪姬": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "骊戎男之女，献公嬖妾，欲立其子奚齐，谮杀申生、逐重耳夷吾",
+      "active_range": "前666起见载",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586", "method": "四查·s2弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:xiqi",
+      "names_by_source": { "奚齊": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "献公与骊姬之子",
+      "active_range": "前651见弑（里克弑之，另事）",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586", "method": "四查·s2弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:zhuozi",
+      "names_by_source": { "卓子": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "献公与骊姬娣之子",
+      "active_range": "前651见弑（另事）",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586", "method": "四查·s2弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:liangwu",
+      "names_by_source": { "梁五": ["src:zuozhuan"] },
+      "谥字号": "献公外嬖，受骊姬贿，进言分置三公子外邑",
+      "active_range": "前666见载",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586", "method": "四查·s2弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:dongguan-biwu",
+      "names_by_source": { "東關嬖五": ["src:zuozhuan"] },
+      "谥字号": "献公外嬖，与梁五同受骊姬贿，同进言",
+      "active_range": "前666见载",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586", "method": "四查·s2弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:du-yuankuan",
+      "names_by_source": { "杜原款": ["src:zuozhuan"] },
+      "谥字号": "太子申生之傅，申生奔新城后为献公所杀",
+      "active_range": "?—前656",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0719", "method": "四查·s2弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:jiahua",
+      "names_by_source": { "賈華": ["src:zuozhuan"] },
+      "谥字号": "晋大夫，奉献公命伐屈（逐夷吾）",
+      "active_range": "前654见载",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0740", "method": "四查·s2弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:shiwei",
+      "names_by_source": { "士蒍": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "晋大夫，奉命为二公子筑蒲屈城，敷衍不慎，谏献公修德固宗子，赋『一国三公』之歌",
+      "active_range": "前655见载（左传僖5·:0727）",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0727", "method": "四查·s2弧灌注前置扫描(OP-D-071),原拟仅见于史记后核实左传:0727亦载，非史记独有", "status": "verified" }
+    },
+    {
+      "person_id": "per:shiren-pi",
+      "names_by_source": { "寺人披": ["src:zuozhuan"] },
+      "谥字号": "献公宦者，奉命伐蒲追杀重耳，斩其祛，重耳逾垣出奔狄",
+      "active_range": "前655见载",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0727", "method": "四查·s2弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:like",
+      "names_by_source": { "里克": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "晋大夫，谏献公太子不可帅师；后续弑奚齐卓子（下一子簇事件，本轮未结构化）",
+      "active_range": "前661起见载（左传闵2·:0663）",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0663", "method": "四查·任务指名前置扫描(OP-D-071)；仅registry登记，非s2三事件actor——里克弑二君属下一子簇，本轮不虚构事件", "status": "verified" }
+    },
+    {
+      "person_id": "per:youshi",
+      "names_by_source": { "優施": ["src:zuoshiboyi"] },
+      "谥字号": "骊姬所使说客（优伶），以言说动里克使持中立，促成新城之难（左传本身未见此名，仅见于左氏博议卷9引及）",
+      "active_range": "前656前后（申生死前）",
+      "force_affiliations": [],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "0HA7NN34RNSZ694T5WNT1DXKHJ:0043", "method": "四查·任务指名前置扫描(OP-D-071)；全库8corpus扫描仅左氏博议(卷9《衞懿公好鶴》引及)命中，左传/史记正文均查无此名——如实注记来源为次级评论引及、非本仓一手叙事史料；仅registry登记，非s2三事件actor", "status": "verified" }
+    },
+    {
+      "person_id": "per:weixuangong",
+      "names_by_source": { "衞宣公": ["src:zuozhuan"] },
+      "谥字号": "卫国国君，烝夷姜生急子，后娶宣姜自纳，酿嫡庶相残",
+      "active_range": "前718—前700在位",
+      "force_affiliations": ["fo:wey"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0344", "method": "同构候选扫描(OP-D-061,s2 counterpoint而入)", "status": "verified" }
+    },
+    {
+      "person_id": "per:yijiang",
+      "names_by_source": { "夷姜": ["src:zuozhuan"] },
+      "谥字号": "卫宣公所烝，生急子，后自缢",
+      "active_range": "前718前后—?（缢，先于急子死）",
+      "force_affiliations": ["fo:wey"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0344", "method": "同构候选扫描(OP-D-061,s2 counterpoint而入)", "status": "verified" }
+    },
+    {
+      "person_id": "per:jizi",
+      "names_by_source": { "急子": ["src:zuozhuan"] },
+      "谥字号": "卫宣公与夷姜之子，太子，为宣姜与公子朔所构，被杀",
+      "active_range": "?—前700前后",
+      "force_affiliations": ["fo:wey"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0344", "method": "同构候选扫描(OP-D-061,s2 counterpoint而入)", "status": "verified" }
+    },
+    {
+      "person_id": "per:xuanjiang",
+      "names_by_source": { "宣姜": ["src:zuozhuan"] },
+      "谥字号": "本为急子所娶，美，宣公自取之，生寿与朔；与公子朔构陷急子",
+      "active_range": "前718前后见载",
+      "force_affiliations": ["fo:wey"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0344", "method": "同构候选扫描(OP-D-061,s2 counterpoint而入)", "status": "verified" }
+    },
+    {
+      "person_id": "per:shouzi",
+      "names_by_source": { "壽": ["src:zuozhuan"], "壽子": ["src:zuozhuan"] },
+      "谥字号": "宣姜与宣公之子，告急子使行，代兄受死",
+      "active_range": "?—前700前后",
+      "force_affiliations": ["fo:wey"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0344", "method": "同构候选扫描(OP-D-061,s2 counterpoint而入)", "status": "verified" }
+    },
+    {
+      "person_id": "per:gongzi-shuo",
+      "names_by_source": { "朔": ["src:zuozhuan"], "公子朔": ["src:zuozhuan"] },
+      "谥字号": "宣姜与宣公之子，与宣姜构急子，后即位为卫惠公",
+      "active_range": "前699—前696在位（初立）",
+      "force_affiliations": ["fo:wey"],
+      "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0344", "method": "同构候选扫描(OP-D-061,s2 counterpoint而入)", "status": "verified" }
     }
   ]
 }

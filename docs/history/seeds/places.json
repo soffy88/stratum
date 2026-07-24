@@ -333,6 +333,42 @@
       "name_by_era": { "春秋": "陘庭", "今": "考订不一（晋南陉山一带诸说）" },
       "geo_hint": "曲沃武公伐翼次于此，前进至汾隰虏哀侯（左传:0217『次于陘庭』）；与史记『陘廷』同地异写（哀侯八年晋侵陉廷段），全量白文扫描时补入（OP-D-071，G4 终批）",
       "mapstate_hints": ["曲沃武公伐翼行军驻次地"]
+    },
+    {
+      "place_id": "pl:jia",
+      "name_by_era": { "春秋": "賈" },
+      "geo_hint": "小国，晋献公首娶之国（无子）",
+      "mapstate_hints": ["献公首任夫人所出国"]
+    },
+    {
+      "place_id": "pl:pu",
+      "name_by_era": { "春秋": "蒲" },
+      "geo_hint": "晋边邑，近狄；重耳所主/所奔之地",
+      "mapstate_hints": ["重耳出奔驻地", "士蒍为二公子筑城之一"]
+    },
+    {
+      "place_id": "pl:qu",
+      "name_by_era": { "春秋": "屈（二屈）" },
+      "geo_hint": "晋边邑，近秦（一说近翟）；夷吾所主/所奔之地",
+      "mapstate_hints": ["夷吾出奔驻地", "士蒍为二公子筑城之一"]
+    },
+    {
+      "place_id": "pl:xincheng",
+      "name_by_era": { "春秋": "新城（曲沃境内）" },
+      "geo_hint": "申生祭曲沃归胙受谮之处、缢死处",
+      "mapstate_hints": ["申生自缢处"]
+    },
+    {
+      "place_id": "pl:liang",
+      "name_by_era": { "春秋": "梁" },
+      "geo_hint": "小国，近秦，夷吾弃屈后改投之地",
+      "mapstate_hints": ["夷吾避难终点（僖6）"]
+    },
+    {
+      "place_id": "pl:wey",
+      "name_by_era": { "春秋": "衞" },
+      "geo_hint": "卫宣公烝夷姜、宣姜构急子案发生国（s2 counterpoint）",
+      "mapstate_hints": ["卫宣公朝嫡庶相残案发生国"]
     }
   ]
 }
