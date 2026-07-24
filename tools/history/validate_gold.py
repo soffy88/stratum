@@ -198,9 +198,49 @@ def main() -> int:
             print(f"arc/{f.name}: {'OK' if not problems else 'FAIL'}")
             failures += [f"{f.name}: {p}" for p in problems]
 
+    # 9. Arc 事件层灌注束（arc/events/*.json；OP-D-064 弧灌注）：不新造 schema，复用
+    #    gold-bundle.schema.json（同 fixtures）；registry 引用零悬空 + 束内闭合同 fixtures 纪律；
+    #    account.locator.para_ulid 须解析到语料库。
+    events_dir = ROOT / "arc" / "events"
+    event_bundles = sorted(events_dir.glob("*.json")) if events_dir.is_dir() else []
+    for f in event_bundles:
+        d = load(f)
+        problems = [f"schema: {e.json_path} {e.message}" for e in bundle_v.iter_errors(d)]
+
+        dangling = {r for r in REF_RE.findall(f.read_text(encoding="utf-8")) if r not in seed_ids}
+        if dangling:
+            problems.append(f"悬空注册表引用: {sorted(dangling)}")
+
+        ev_ids = {e.get("event_id") for e in d.get("events", [])}
+        ac_ids = {a.get("account_id") for a in d.get("accounts", [])}
+        cf_ids = {c.get("conflict_id") for c in d.get("conflicts", [])}
+        for e in d.get("events", []):
+            missing = [r for r in e.get("accounts", []) if r not in ac_ids]
+            missing += [r for r in e.get("conflicts", []) if r not in cf_ids]
+            if e.get("mainline_account_ref") not in ac_ids:
+                missing.append(e.get("mainline_account_ref"))
+            if missing:
+                problems.append(f"{e.get('event_id')} 束内引用未闭合: {missing}")
+        for a in d.get("accounts", []):
+            if a.get("event_ref") not in ev_ids:
+                problems.append(f"{a.get('account_id')} event_ref 未闭合: {a.get('event_ref')}")
+            pu = a.get("locator", {}).get("para_ulid")
+            if pu and pu not in para_index:
+                problems.append(f"{a.get('account_id')} locator para_ulid 悬空(不在语料库): {pu}")
+        for c in d.get("conflicts", []):
+            missing = [r for r in c.get("account_refs", []) if r not in ac_ids]
+            if missing:
+                problems.append(f"{c.get('conflict_id')} account_refs 未闭合: {missing}")
+
+        problems += [f"下划线前缀键: {p}" for p in underscore_keys(d)]
+
+        print(f"arc/events/{f.name}: {'OK' if not problems else 'FAIL'}")
+        failures += [f"events/{f.name}: {p}" for p in problems]
+
     print(
         f"--- {len(fixtures)} fixtures · {len(samples)} samples · "
-        f"{len(corpus)} corpus({len(para_index)} paras) · {n_arc} arc · registry {len(seed_ids)} ids"
+        f"{len(corpus)} corpus({len(para_index)} paras) · {n_arc} arc · "
+        f"{len(event_bundles)} event-bundles · registry {len(seed_ids)} ids"
     )
     if failures:
         print("\n".join(failures))
