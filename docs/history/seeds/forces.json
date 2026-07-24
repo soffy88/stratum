@@ -197,6 +197,24 @@
       "name_by_era": { "春秋": "郑" },
       "active_range": "西周末封至战国初为韩所灭",
       "succession_edges": []
+    },
+    {
+      "force_id": "fo:lirong",
+      "name_by_era": { "春秋": "驪戎（戎人小国）" },
+      "active_range": "前666前后（晋伐骊戎，得骊姬）",
+      "succession_edges": []
+    },
+    {
+      "force_id": "fo:di",
+      "name_by_era": { "春秋": "狄（翟）" },
+      "active_range": "春秋（晋北边异族，重耳出奔终点）",
+      "succession_edges": []
+    },
+    {
+      "force_id": "fo:wey",
+      "name_by_era": { "春秋": "衞" },
+      "active_range": "西周初封至前209为秦所并（春秋时期一直存续）",
+      "succession_edges": []
     }
   ]
 }

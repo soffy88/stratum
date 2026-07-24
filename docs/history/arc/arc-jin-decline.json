@@ -28,7 +28,8 @@
             "ev:xiangong-qu-liji",
             "ev:liji-zen-shensheng",
             "ev:chonger-yiwu-chuben"
-          ]
+          ],
+          "membership_decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24 弧灌注三事件 full KU 化〔actors/places/canonical_date/geo 结构化，account 带 extraction+dialogue_spans〕，事件层真冲突落 cf:sanzi-fenju-yuanqi/cf:liji-zenci-neirong/cf:erzi-chuben-yuanyou〔均 OP-D-064〕；ev:chonger-yiwu-chuben 锚点经 OP-D-071 全account扫描核实补正〔原任务指名:0740不足以覆盖事件全貌,补入僖5:0727〕，见 arc/events/s2-liji.json）"
         },
         {
           "sub_arc_id": "arc:jin-decline/s3-sanjun-liuqing",
@@ -109,6 +110,7 @@
         "thesis:sima-guang-li",
         "thesis:liji-luandi-a",
         "thesis:liji-luandi-b",
+        "thesis:weixuangong-goujizi",
         "thesis:zhongni-shidu",
         "thesis:qingzu-jianbing",
         "thesis:qiangzhe-jianruo",
@@ -302,12 +304,14 @@
         "ev:liji-zen-shensheng",
         "ev:chonger-yiwu-chuben"
       ],
-      "counter_refs": [],
+      "counter_refs": [
+        "thesis:weixuangong-goujizi"
+      ],
       "mainline_decision": {
         "choice": "即刻采为 s2 mainline（源内事实序列，直接入库锚定）",
-        "rationale": "骊姬乱嫡=源内直接叙事（非我方综述），三事件全带 ULID（:0586娶骊姬/:0719谮杀申生缢于新城/:0740二公子出奔），即刻转正。上承师服『末大必折』、下启诅无畜群公子（liji-luandi-b）。",
-        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
-        "date": "2026-07-23"
+        "rationale": "骊姬乱嫡=源内直接叙事（非我方综述），三事件全带 ULID（:0586娶骊姬/:0719谮杀申生缢于新城/:0740二公子出奔），即刻转正。上承师服『末大必折』、下启诅无畜群公子（liji-luandi-b）。★弧灌注补记（2026-07-24，OP-D-064）：三事件已 full KU 化（actors/places/canonical_date/geo 结构化，account 带 extraction+dialogue_spans，真冲突落 cf 对象），见 arc/events/s2-liji.json；claim 中『僖4-6』系早期粗略时间窗表述，精算后三事件分别为前666/前656/前654–656（ev:chonger-yiwu-chuben 时间窗因锚点补正为前656–前654区间，见该事件 mainline_decision），claim 字面未改（不改字节），精确时间窗以 s2-liji.json 为准。★counterpoint（OP-D-045/050/061 检索）：库内检索（现有 thesis 除已用于 s1 的 zhengbo-ke-duan 外无同题）+ 源内关键词检索（全8corpus扫『廢適/立庶/譖殺/一國三公』等）+ 同构候选扫描（非关键词，按叙事骨架比对）——命中左传桓16 :0344（卫宣公朝嫡庶相残），与本 thesis 同构（嬖宠/庶母谗构嫡子致死）、异国异代，采为 counterpoint（thesis:weixuangong-goujizi）。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23，弧灌注补记 2026-07-24）",
+        "date": "2026-07-24"
       }
     },
     {
@@ -332,9 +336,33 @@
       "counter_refs": [],
       "mainline_decision": {
         "choice": "转正（缺环已补，OP-D-046 自动转正）——我方综述型 s2 因果论点",
-        "rationale": "我方综述『诅无畜群公子→公族空虚→卿族坐大』；关键源内锚『诅无畜群公子，自是晉無公族』本波续搜钉定 :1454（宣公二年，左传——记忆提示国语晋语一，实搜命中左传，以实搜为准）。缺环补齐，按 OP-D-046 自动转正。与 liji-luandi-a（源内乱嫡）分立：a 记史实、b 记我方因果。",
-        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
-        "date": "2026-07-23"
+        "rationale": "我方综述『诅无畜群公子→公族空虚→卿族坐大』；关键源内锚『诅无畜群公子，自是晉無公族』本波续搜钉定 :1454（宣公二年，左传——记忆提示国语晋语一，实搜命中左传，以实搜为准）。缺环补齐，按 OP-D-046 自动转正。与 liji-luandi-a（源内乱嫡）分立：a 记史实、b 记我方因果。★弧灌注补记（2026-07-24）：evidence_refs 三事件已 full KU 化，见 arc/events/s2-liji.json；本 thesis 论域为『公族制度真空的远因』，与 liji-luandi-a 的 counterpoint（thesis:weixuangong-goujizi，论域为『嫡庶谗构结构对照』）不同轴，不重复挂载 counter_refs。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23，弧灌注补记 2026-07-24）",
+        "date": "2026-07-24"
+      }
+    },
+    {
+      "thesis_id": "thesis:weixuangong-goujizi",
+      "claim": "宠妾/庶母谗构嫡子，致其枉死——卫宣公朝（夷姜缢、宣姜与公子朔构急子、寿子代死、急子仍被杀）与晋献公朝（骊姬构申生、申生缢新城）同构：嬖宠谗构嫡子亡身，非晋独有的孤立个案。",
+      "attribution": {
+        "type": "源内",
+        "who": "左传（桓公十六年）",
+        "locator": {
+          "book": "左传",
+          "chapter": "桓公十六年",
+          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0344",
+          "quote": "初，衞宣公烝于夷姜，生急子，屬諸右公子。為之娶于齊，而美，公取之，生壽及朔，屬壽于左公子。夷姜縊。宣姜與公子朔構急子。公使諸齊，使盜待諸莘，將殺之。壽子告之，使行。不可，曰：「棄父之命，惡用子矣！有無父之國則可也。」及行，飲以酒，壽子載其旌以先，盜殺之。急子至，曰：「我之求也。此何罪？請殺我乎！」又殺之。"
+        }
+      },
+      "evidence_refs": [
+        "ev:weixuangong-goujizi"
+      ],
+      "counter_refs": [],
+      "mainline_decision": {
+        "choice": "采为 thesis:liji-luandi-a 的 counterpoint（跨国结构对照，非对立论点，同 thesis:zhengbo-ke-duan/s1 先例）",
+        "rationale": "s2 counterpoint 检索（OP-D-045/050/061）：库内检索——现有 thesis 中仅 thesis:zhengbo-ke-duan 已用作 s1 counterpoint，不可复用（本条为独立新检索所得，非借用）；源内关键词检索——全8corpus扫描『廢適/立庶/譖殺/一國三公』等词，命中史记:0030/:0032（骊姬案自身）与本条锚点；同构候选扫描（非关键词，按叙事骨架比对）——命中左传桓16 :0344，与骊姬乱嫡结构同题（嬖宠/庶母谗构嫡子致死）、异国（卫vs晋）异代（桓16前696 vs 庄28-僖6前666-654，卫案早约30-42年），非对立而结构对照，同 s1『郑伯克段』先例采为 counterpoint。evidence_refs 承载于独立事件 ev:weixuangong-goujizi（不入 arc:jin-decline.member_event_refs，跨国比对素材，非本弧成员，同 OP-D-062 精神）。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
       }
     },
     {
