@@ -14,8 +14,9 @@
 | 国语 | src:guoyu | 6GB8KKM05W13RWT6A7DRMCXDVB | 2 | 117 | 部分（首弧牵引+fixtures被引段落）；全书全量入库仍 PENDING | wikisource/ctext | CC BY-SA 3.0 | 2026-07-22 |
 | 战国策 | src:zhanguoce | FR8TKEM3839A5M37HD8MRBT5MP | 3 | 172 | 部分（赵策一/魏策一/秦策一苏秦始将连横）；全书全量入库仍 PENDING | wikisource 戰國策 | CC BY-SA 3.0 | 2026-07-22 |
 | 水经注 | src:shuijingzhu | YMVZ9FHEMJTEF77GB9PJ9D826Z | 1 | 162 | 部分（江水注·赤壁/乌林/蒲圻地望段，F18 被引）；全书后续波 | wikisource 水經注 | CC BY-SA 3.0 | 2026-07-23 |
+| 左氏博议（东莱博议，吕祖谦） | src:zuoshiboyi | 0HA7NN34RNSZ694T5WNT1DXKHJ | 2 | 856 | 部分（四库提要 + 原序，讲史方法论前置扫描）；正文25卷全量入库仍 PENDING | wikisource 左氏博議 (四庫全書本) | CC BY-SA 3.0 + PD-old | 2026-07-24 |
 
-**合计**：7 substrate · 5487 段 · 446659 字（harness `validate_gold.py` 实测口径：7 corpus/5487 paras，registry 190 ids）。**旧表（6 substrate·16 段·881 字）已作废、非本表基准**——旧表系 W-H1a-1 首波逐段 WebFetch 快照，D-037 起主路径改 zhwikisource 整卷 dump，左传/史记/资治通鉴/三国志已转全量，旧表未随之刷新即为 OP-D-063 所立之因。
+**合计**：8 substrate · 5489 段 · 447515 字（harness `validate_gold.py` 实测口径：8 corpus/5489 paras，registry 222 ids）。**旧表（6 substrate·16 段·881 字）已作废、非本表基准**——旧表系 W-H1a-1 首波逐段 WebFetch 快照，D-037 起主路径改 zhwikisource 整卷 dump，左传/史记/资治通鉴/三国志已转全量，旧表未随之刷新即为 OP-D-063 所立之因。
 
 ## 诚实总账
 
