@@ -1,6 +1,6 @@
 # 语料库·书目在库登记（ARC-SPEC §4.1/§4.2）· W-H1a-1
 
-> **R5 纪律**：底本一律**维基文库白文**（CC BY-SA 3.0 + attribution），**禁对齐在版点校本**；入库文字系 WebFetch 逐字摘录（会话可溯），**非记忆备录**。抓取限开放源（wikisource / ctext）。
+> **R5 纪律**：底本一律**维基文库白文**（CC BY-SA 3.0 + attribution），**禁对齐在版点校本**；入库文字系 WebFetch 逐字摘录（会话可溯），**非记忆备录**。抓取限开放源（wikisource / ctext）。**生僻字占位（OP-D-072）**：遇 wikisource 生僻字模板（`{{SKchar|N}}`/`{{SKchar2|N}}`，底本扫描字形无对应 Unicode 或模板未剥出），一律以 `【SKchar:N】`/`【SKchar2:N】` 占位保留，**不臆断替代**；占位不计入逐字机核失败（客观不可得，非抄录疏漏）。
 > **★本表为派生视图（OP-D-063，OP-D-060 同族）：每次语料入库同轮刷新，不得滞留旧快照**。substrate ULID = SHA256(src_id) 确定性派生（稳定可复现，非时序 ULID）。**2026-07-24 刷新**：下表按 `docs/history/corpus/*.json` 实测重算（左传/史记/资治通鉴/三国志已由 D-037 zhwikisource dump 波次转全量，旧表仍记 W-H1a-1 首波 WebFetch 逐段快照，早已滞后）。
 
 ## 在库表（2026-07-24 实测）
@@ -14,9 +14,9 @@
 | 国语 | src:guoyu | 6GB8KKM05W13RWT6A7DRMCXDVB | 2 | 117 | 部分（首弧牵引+fixtures被引段落）；全书全量入库仍 PENDING | wikisource/ctext | CC BY-SA 3.0 | 2026-07-22 |
 | 战国策 | src:zhanguoce | FR8TKEM3839A5M37HD8MRBT5MP | 3 | 172 | 部分（赵策一/魏策一/秦策一苏秦始将连横）；全书全量入库仍 PENDING | wikisource 戰國策 | CC BY-SA 3.0 | 2026-07-22 |
 | 水经注 | src:shuijingzhu | YMVZ9FHEMJTEF77GB9PJ9D826Z | 1 | 162 | 部分（江水注·赤壁/乌林/蒲圻地望段，F18 被引）；全书后续波 | wikisource 水經注 | CC BY-SA 3.0 | 2026-07-23 |
-| 左氏博议（东莱博议，吕祖谦） | src:zuoshiboyi | 0HA7NN34RNSZ694T5WNT1DXKHJ | 2 | 856 | 部分（四库提要 + 原序，讲史方法论前置扫描）；正文25卷全量入库仍 PENDING | wikisource 左氏博議 (四庫全書本) | CC BY-SA 3.0 + PD-old | 2026-07-24 |
+| 左氏博议（东莱博议，吕祖谦） | src:zuoshiboyi | 0HA7NN34RNSZ694T5WNT1DXKHJ | 128 | 190464 | **全量（提要+原序+正文25卷，实测126篇+2＝128段；四库提要『168篇』系《通考》二十卷本篇数、非本SKQS二十五卷本篇目切分，如实注记非误差强合）** | wikisource 左氏博議 (四庫全書本)（含 /卷01–/卷25 子页） | CC BY-SA 3.0 + PD-old | 2026-07-24 |
 
-**合计**：8 substrate · 5489 段 · 447515 字（harness `validate_gold.py` 实测口径：8 corpus/5489 paras，registry 222 ids）。**旧表（6 substrate·16 段·881 字）已作废、非本表基准**——旧表系 W-H1a-1 首波逐段 WebFetch 快照，D-037 起主路径改 zhwikisource 整卷 dump，左传/史记/资治通鉴/三国志已转全量，旧表未随之刷新即为 OP-D-063 所立之因。
+**合计**：8 substrate · 5615 段 · 637123 字（harness `validate_gold.py` 实测口径：8 corpus/5615 paras，registry 222 ids）。**旧表（6 substrate·16 段·881 字）已作废、非本表基准**——旧表系 W-H1a-1 首波逐段 WebFetch 快照，D-037 起主路径改 zhwikisource 整卷 dump，左传/史记/资治通鉴/三国志已转全量，旧表未随之刷新即为 OP-D-063 所立之因。
 
 ## 诚实总账
 
