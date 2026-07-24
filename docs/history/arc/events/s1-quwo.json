@@ -55,6 +55,7 @@
       "event_type": "战役",
       "actors": [
         { "person_ref": "per:quwo-zhuangbo", "role": "累次伐翼", "force_ref": "fo:jin" },
+        { "person_ref": "per:referent-ambiguous", "role": "翼侯，战败奔隨（左传:0083 未指名具体是哪位翼侯，referent-ambiguous 占位，G4 收尾）", "force_ref": "fo:jin" },
         { "person_ref": "per:jin-aihou", "role": "晋人后立新君", "force_ref": "fo:jin" },
         { "person_ref": "per:zhou-pingwang", "role": "使虢公伐庄伯（史记明载）", "force_ref": "fo:zhou" }
       ],
@@ -67,7 +68,7 @@
       "mainline_account_ref": "ac:zuozhuan-zhuangbo-leifa",
       "mainline_decision": {
         "choice": "左传三段（:0083/:0086/:0097）合并叙事为主线，史记单段并陈；三段间的精确因果对应未坐实，如实注记于 locator.note，不强行精确切分",
-        "rationale": "左传三段骨架清晰（伐翼→翼侯奔隨→王命助翼未果→曲沃叛王败退→立哀侯于翼），与史记压缩单段（庄伯闻鄂侯卒兴兵→王使虢公伐庄伯→庄伯败退→晋人立哀侯）大方向一致，逐年精确对齐超出本波核实能力，诚实标注不平滑。★registry 回流补料更正（2026-07-24）：本 actors 原含 per:jin-ehou（role='翼侯（战败奔隨）'，对应左传:0083『翼侯奔隨』）——:0083 原文未指名具体是哪位翼侯，先前推断为鄂侯系无字面依据的臆断，按 PERSON-INTAKE『职称型条目、非个体者标 referent-ambiguous』改为不入 actors 结构化字段（原文仍完整保留于账户 extraction.dialogue_spans，不删信息，只是不再假冒结构化人物断言）。原 actors 另含 per:zhou-huanwang（周桓王）——经核对账户 ac:shiji-zhuangbo-leifa 原文『周平王使虢公将兵伐曲沃庄伯』，明载为周平王而非周桓王，先前误代入，已更正为 per:zhou-pingwang（新增注册 registry-backfill-001）。★年代张力（精化标注，OP-D-067 同轮）：周平王卒于前720（传统纪年），而左传:0083 系隐公五年（前718），史记:0015 作『周平王使虢公』——二者不合；可能为追述旧称或文本讹误。本条标为**待外部考订项**，已登 `seeds/chronology.json::resolutions[7]`（chronology override 候选位，`canonical`=『TODO（待外部考订）』），**不自行判定**孰是；`per:zhou-pingwang` 的采用理由是其有史记:0015 字面依据（非按在位区间反推，OP-D-067 合规），与此处标注的张力是两件事——前者是『字面依据是否存在』的合规判断（存在，已过），后者是『该字面依据本身与传统纪年是否自洽』的史学问题（不合，留待外部考订，本仓不裁）。",
+        "rationale": "左传三段骨架清晰（伐翼→翼侯奔隨→王命助翼未果→曲沃叛王败退→立哀侯于翼），与史记压缩单段（庄伯闻鄂侯卒兴兵→王使虢公伐庄伯→庄伯败退→晋人立哀侯）大方向一致，逐年精确对齐超出本波核实能力，诚实标注不平滑。★registry 回流补料更正（2026-07-24）：本 actors 原含 per:jin-ehou（role='翼侯（战败奔隨）'，对应左传:0083『翼侯奔隨』）——:0083 原文未指名具体是哪位翼侯，先前推断为鄂侯系无字面依据的臆断，按 PERSON-INTAKE『职称型条目、非个体者标 referent-ambiguous』改判处理。★G4 收尾（同日晚些）二次修订：referent-ambiguous 的落地方式由『不入 actors』改为『占位哨兵 per:referent-ambiguous 入 actors，role 字段说明头衔+未指名理由』——前者会让『此处确有一位翼侯』这一事实从结构化层完全消失（对下游解析不友好，占位机制供后续对齐消费），后者显式结构化『有头衔持有者、身份不明』本身，同时不伪造具体个体（原文仍完整保留于账户 extraction.dialogue_spans，双重保险不丢信息）；口径写入 `PERSON-INTAKE-PROTOCOL.md`。原 actors 另含 per:zhou-huanwang（周桓王）——经核对账户 ac:shiji-zhuangbo-leifa 原文『周平王使虢公将兵伐曲沃庄伯』，明载为周平王而非周桓王，先前误代入，已更正为 per:zhou-pingwang（新增注册 registry-backfill-001）。★年代张力（精化标注，OP-D-067 同轮）：周平王卒于前720（传统纪年），而左传:0083 系隐公五年（前718），史记:0015 作『周平王使虢公』——二者不合；可能为追述旧称或文本讹误。本条标为**待外部考订项**，已登 `seeds/chronology.json::resolutions[7]`（chronology override 候选位，`canonical`=『TODO（待外部考订）』），**不自行判定**孰是；`per:zhou-pingwang` 的采用理由是其有史记:0015 字面依据（非按在位区间反推，OP-D-067 合规），与此处标注的张力是两件事——前者是『字面依据是否存在』的合规判断（存在，已过），后者是『该字面依据本身与传统纪年是否自洽』的史学问题（不合，留待外部考订，本仓不裁）。",
         "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
         "date": "2026-07-24"
       }
