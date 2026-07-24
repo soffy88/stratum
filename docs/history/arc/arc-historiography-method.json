@@ -1,0 +1,71 @@
+{
+ "arcs": [
+  {
+   "arc_id": "arc:historiography-method",
+   "title": "讲史方法论弧",
+   "time_window": "跨代收纳，不限先秦（论域=讲史/治学之法本身，非某一断代史事；首批源内材料属南宋）",
+   "sub_arcs": [],
+   "member_event_refs": [],
+   "thesis_refs": [
+    "thesis:zuqian-lihuandeshi",
+    "thesis:zuqian-yangjiyipiao"
+   ],
+   "narrative_note": "本弧论域为『讲史/治学之法』本身（如何取材立论、如何论断人物、如何求证），与晋国衰亡等断代事件弧（arc:jin-decline）不同轴——不收 h_event 成员，纯由 h_thesis 承载方法论论断。跨代收纳：不限先秦材料，凡源内学者对『讲史之法』的明文论断均可收（首批为南宋吕祖谦《左氏博议》原序）。",
+   "status": "draft",
+   "membership_decision": {
+    "choice": "正式开立 arc:historiography-method，收纳两条转正 thesis；四条正文新候选（OP-D-061 同构候选扫描所得）暂不收，留后续裁决",
+    "rationale": "任务显式指令『开立 arc:historiography-method(讲史方法论弧),两候选转正...弧论域=讲史/治学之法,跨代收纳,不限先秦』——两候选（源自原序，已逐字核对）转正条件已满足（源内、locator到段、非转述）；正文25卷全量入库后按 OP-D-061 另得4条候选（讀史者奪於其辭/觀人之術在隱不在顯/操當罰之柄者但當核其有無/書法不隠），证据链完整但本轮任务未明确指名转正，按候选送裁纪律（同 CURATION-s1-s2.md）暂留 status=draft、不收入 thesis_refs，详见 ADJUDICATION-methodology-arc-open.md",
+    "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+    "date": "2026-07-24"
+   }
+  }
+ ],
+ "theses": [
+  {
+   "thesis_id": "thesis:zuqian-lihuandeshi",
+   "claim": "讲/读史之法：治史当『取书理乱得失之迹，疏说于下』——以理乱（治乱）、得失（成败）为纲纪立论，而非徒记事迹本身。",
+   "attribution": {
+    "type": "源内",
+    "who": "吕祖谦",
+    "locator": {
+     "book": "左氏博議",
+     "chapter": "原序",
+     "para_ulid": "0HA7NN34RNSZ694T5WNT1DXKHJ:0002",
+     "quote": "予思有以佐其筆端，乃取左氏書理亂得失之蹟，䟽其說於下，旬儲月積，浸就編帙。"
+    }
+   },
+   "evidence_refs": [
+    "0HA7NN34RNSZ694T5WNT1DXKHJ:0002"
+   ],
+   "mainline_decision": {
+    "choice": "候选转正为本弧 thesis",
+    "rationale": "任务显式指令『两候选转正:thesis:zuqian-lihuandeshi(取史事疏论断)』；原逐字摘出于 `CURATION-methodology-precursor.md` §三，attribution=源内、locator 到段，符合转正条件。",
+    "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+    "date": "2026-07-24"
+   }
+  },
+  {
+   "thesis_id": "thesis:zuqian-yangjiyipiao",
+   "claim": "论断当公诸于众、使人得而正之，不讳言己失——以公开求正为治学之益，非自珍其说。",
+   "attribution": {
+    "type": "源内",
+    "who": "吕祖谦",
+    "locator": {
+     "book": "左氏博議",
+     "chapter": "原序",
+     "para_ulid": "0HA7NN34RNSZ694T5WNT1DXKHJ:0002",
+     "quote": "又幸而假課試以為媒，借逢掖以為郵，徧致於諸公長者之側，或矜而鐫，或愠而讁，或侮而譙，一語聞則一病瘳，其獲不既豐矣乎！傳愈【SKchar:3001】，病愈白，益愈衆於予也，奚損？"
+    }
+   },
+   "evidence_refs": [
+    "0HA7NN34RNSZ694T5WNT1DXKHJ:0002"
+   ],
+   "mainline_decision": {
+    "choice": "候选转正为本弧 thesis",
+    "rationale": "任务显式指令『两候选转正:thesis:zuqian-yangjiyipiao(论断当公诸求正)』；原逐字摘出于 `CURATION-methodology-precursor.md` §三，attribution=源内、locator 到段，符合转正条件。",
+    "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+    "date": "2026-07-24"
+   }
+  }
+ ]
+}
