@@ -25,8 +25,10 @@
 
 ## 二、子簇 → EpisodePlan 映射范式（以已终裁 s1/s2 为例）
 
-- **s1 曲沃代翼** → `ep:jin-decline-s1`：throughline=`thesis:shifu-modabizhe`（师服『末大必折』预言）；counterpoint=`thesis:shimo-changbian`（史墨无常律，异框架对照）；beats=[封桓叔(:0205)→武公灭翼(:0217)]；证据链逐字白文 span；无 place 冲突。
+- **s1 曲沃代翼** → `ep:jin-decline-s1`：throughline=`thesis:shifu-modabizhe`（师服『末大必折』预言）；counterpoint=**显式无**（检索记录见 hevi QNLR-EP-jin-decline-s1 定稿；`thesis:shimo-changbian` 经 OP-D-057 否决嫁接，详下注）；beats=[封桓叔(:0205)→武公灭翼(:0217)]；证据链逐字白文 span；无 place 冲突。
 - **s2 骊姬之乱** → `ep:jin-decline-s2`：throughline=`thesis:liji-luandi-a`（源内乱嫡）；副线=`thesis:liji-luandi-b`（我方『诅无畜群公子→卿族坐大』，:1454 keystone）；beats=[娶骊姬(:0586)→谮杀申生缢新城(:0719)→二公子出奔(:0740)→诅无畜群公子(:1454)]；异名归一（郤芮=冀芮）供人物标注一致。
+
+> **★s1 counterpoint 更正（OP-D-057，2026-07-24）**：原稿 counterpoint=`thesis:shimo-changbian`（史墨『物生有两』无常论，昭公三十二年〔前 510〕）经复核为**嫁接误植**——史墨所论时代为晋六卿坐大期（对应本弧 s3+），距曲沃代翼（前 745–前 678 一线）逾两百年，非同题异框架、系装饰性并陈（违 OP-D-051③"counterpoint 非装饰"）。裁定：s1 判**显式无对立论点**（检索记录见 hevi QNLR-EP-jin-decline-s1 定稿）；`thesis:shimo-changbian` 改列 **arc 级 / s3+ 在题位置**（六卿期子簇落地时另行编入其 counterpoint，非 s1）。**矛盾来源**：本更正前 `arc/CURATION-s1-s2.md`（s1 原已标『无对立论点（师服说为主流）』，2026-07-22）与本件（曾标 `thesis:shimo-changbian`，源自 OP-D-045 补并陈）互不一致；本裁以 CURATION 侧结论为准，消解该不一致。
 
 > **★粒度（OP-D-051②）**：默认**一子簇一集**（sub_arc → episode），**可并可拆**（多子簇合一集 / 一子簇拆多段，按叙事需要）；映射**只读 arc、不回写**（arc 是权威源，EpisodePlan 是下游派生）。
 > **映射不变式**：① 一 beat 至少一条逐字白文 evidence_span（无锚不成拍——OP-D-046 精神下推至消费层）；② thesis 分 throughline/counterpoint 双轨（史/论可区分 R10 落到 beat 级）；③ place 冲突→并陈两说不私裁（D-017）；④ **★counterpoint 非装饰（OP-D-051③）**：每集 counterpoint **至少出现一次**，或**附检索记录的显式无**（『已扫库+源、确无同题异框架论点』），不得静默省略。
