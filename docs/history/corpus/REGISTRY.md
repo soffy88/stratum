@@ -1,20 +1,21 @@
 # 语料库·书目在库登记（ARC-SPEC §4.1/§4.2）· W-H1a-1
 
 > **R5 纪律**：底本一律**维基文库白文**（CC BY-SA 3.0 + attribution），**禁对齐在版点校本**；入库文字系 WebFetch 逐字摘录（会话可溯），**非记忆备录**。抓取限开放源（wikisource / ctext）。
-> **诚实覆盖标注**：本波次 = **部分入库**（首弧牵引 + 25 fixtures 被引段落之已抓子集）。§4.1『全书』全量入库属**后续波次**，未完成即标未完成。substrate ULID = SHA256(src_id) 确定性派生（稳定可复现，非时序 ULID）。
+> **★本表为派生视图（OP-D-063，OP-D-060 同族）：每次语料入库同轮刷新，不得滞留旧快照**。substrate ULID = SHA256(src_id) 确定性派生（稳定可复现，非时序 ULID）。**2026-07-24 刷新**：下表按 `docs/history/corpus/*.json` 实测重算（左传/史记/资治通鉴/三国志已由 D-037 zhwikisource dump 波次转全量，旧表仍记 W-H1a-1 首波 WebFetch 逐段快照，早已滞后）。
 
-## 在库表
+## 在库表（2026-07-24 实测）
 
-| 书 | src | substrate ULID | 已入段 | 字数 | §4.1 目标范围 | 覆盖 | 底本 URL | 许可 | 抓取日 |
-|---|---|---|---|---|---|---|---|---|---|
-| 左传 | src:zuozhuan | 4YW6S9BRHDQVDGZDYXH2E8Z7HE | 4（隐5/哀9/哀14/桓2） | 194 | 全书 | **部分** | wikisource 春秋左氏傳 | CC BY-SA 3.0 | 2026-07-22 |
-| 史记 | src:shiji | 3EX2FF5S4Q1M0K27M27QVNWEYH | 3（赵/晋/田完世家） | 144 | 晋·赵韩魏世家+年表 | **部分** | wikisource 史記 | CC BY-SA 3.0 | 2026-07-22 |
-| 国语 | src:guoyu | 6GB8KKM05W13RWT6A7DRMCXDVB | 2（晋语九×2） | 117 | 全书（晋语核心） | **部分** | wikisource/ctext | CC BY-SA 3.0 | 2026-07-22 |
-| 战国策 | src:zhanguoce | FR8TKEM3839A5M37HD8MRBT5MP | 2（赵策一/魏策一） | 172 | 赵魏韩策 | **部分** | wikisource 戰國策 | CC BY-SA 3.0 | 2026-07-22 |
-| 资治通鉴 | src:zztj | DKMGQCJ1564XCCQ1MHSAZNNEMJ | 3（周纪一×3） | 97 | 卷一 | **接近全（卷一节点）** | wikisource 資治通鑑/卷001 | CC BY-SA 3.0 | 2026-07-22 |
-| 三国志 | src:sanguozhi | 7RTPSJS9QAKBREZPGTR8DSSV5T | 2（诸葛亮传裴注×2） | 157 | 首弧不涉（F8 机核用） | **点覆盖** | wikisource 三國志 | CC BY-SA 3.0 | 2026-07-22 |
+| 书 | src | substrate ULID | 段数 | 字数 | 覆盖 | 底本 URL | 许可 | 抓取日 |
+|---|---|---|---|---|---|---|---|---|
+| 左传 | src:zuozhuan | 4YW6S9BRHDQVDGZDYXH2E8Z7HE | 2954 | 242692 | **12/12 页（全量，dump）** | wikisource 春秋左氏傳 | CC BY-SA 3.0 | 2026-07-22 |
+| 史记 | src:shiji | 3EX2FF5S4Q1M0K27M27QVNWEYH | 2148 | 121759 | **14/14 页（全量，dump）** | wikisource 史記 | CC BY-SA 3.0 | 2026-07-22 |
+| 资治通鉴 | src:zztj | DKMGQCJ1564XCCQ1MHSAZNNEMJ | 118 | 9116 | **1/1 页（全量，dump）** | wikisource 資治通鑑/卷001 | CC BY-SA 3.0 | 2026-07-22 |
+| 三国志（含裴注） | src:sanguozhi | 7RTPSJS9QAKBREZPGTR8DSSV5T | 261 | 72641 | **5/5 页（全量，dump）** | wikisource 三國志 | CC BY-SA 3.0 | 2026-07-22 |
+| 国语 | src:guoyu | 6GB8KKM05W13RWT6A7DRMCXDVB | 2 | 117 | 部分（首弧牵引+fixtures被引段落）；全书全量入库仍 PENDING | wikisource/ctext | CC BY-SA 3.0 | 2026-07-22 |
+| 战国策 | src:zhanguoce | FR8TKEM3839A5M37HD8MRBT5MP | 3 | 172 | 部分（赵策一/魏策一/秦策一苏秦始将连横）；全书全量入库仍 PENDING | wikisource 戰國策 | CC BY-SA 3.0 | 2026-07-22 |
+| 水经注 | src:shuijingzhu | YMVZ9FHEMJTEF77GB9PJ9D826Z | 1 | 162 | 部分（江水注·赤壁/乌林/蒲圻地望段，F18 被引）；全书后续波 | wikisource 水經注 | CC BY-SA 3.0 | 2026-07-23 |
 
-**合计**：6 substrate · 16 段 · 881 字 · para_ulid 已回填 fixtures 15/60 account（25%）。
+**合计**：7 substrate · 5487 段 · 446659 字（harness `validate_gold.py` 实测口径：7 corpus/5487 paras，registry 190 ids）。**旧表（6 substrate·16 段·881 字）已作废、非本表基准**——旧表系 W-H1a-1 首波逐段 WebFetch 快照，D-037 起主路径改 zhwikisource 整卷 dump，左传/史记/资治通鉴/三国志已转全量，旧表未随之刷新即为 OP-D-063 所立之因。
 
 ## 诚实总账
 

@@ -76,3 +76,6 @@
 - D-058（权威）**裁决署名格式统一为"顾问 Claude（经 Wiki 授权，裁决见对话记录）"**；不得以执行方（CC-A/CC-B）名义追认其未做出的判断。
 - D-059（权威）**新会话开工前须核视野（branch + origin/main + tags），核毕方执行；合流/切换后工作分支归位 main 为收尾动作**。本条因合流后分支未归位、新会话在偏离分支上核查得零命中而立。
 - D-060（权威）**阶段状态以签字工件为唯一真理源；OWNER-PLAN 总表为派生视图，每次 GATE cut 后同轮刷新**。本条因总表滞留 P1（P2/P0 已 PASS/闭多轮，表头仍显 P1"本轮启动"）而立。落地：§1 总表加"据"列、P0–P4 状态随 GATE-P1/GATE-P2 刷新（本轮同步执行）。
+- D-061（权威）**结构性可比案的检索不得仅依关键词——论点同构判定为必需步骤；OP-D-045 检索记录须含"同构候选扫描"一项**。本条因 G3（s1 补料）关键词层扫描『大宗/小宗/贰宗/侧室/支庶/本大末小』查无独立对照对象、而结构判定层（叙事骨架比对，非关键词）扫描查有郑伯克段于鄢（同题异国结构对照）而立——两层扫描口径不同、结论不同，关键词层单独检索不足以支撑"确无对照"之诚实结论。
+- D-062（权威）**s1 counterpoint 由"显式无"（OP-D-057 临时状态）改判为 `thesis:zhengbo-ke-duan`（郑伯克段于鄢，同期同题结构对照）；`thesis:shimo-changbian` 否决维持不变（OP-D-057 未变）**。落地：`arc-jin-decline.json` 新立 `thesis:zhengbo-ke-duan`（源内，祭仲谏语，左传 `:0004`/`:0012`–`:0014`），`thesis:shifu-modabizhe.counter_refs` 由 `[thesis:shimo-changbian]` 改 `[thesis:zhengbo-ke-duan]`；`EPISODEPLAN-MAPPING-DRAFT.md` s1 counterpoint 同步刷新。
+- D-063（权威）**`corpus/REGISTRY.md` 为派生视图，每次语料入库同轮刷新**（OP-D-060 同族）。本条因该表滞留 W-H1a-1 首波逐段 WebFetch 快照（6 substrate·16 段·881 字）、D-037 起 zhwikisource dump 已令左传/史记/资治通鉴/三国志转全量（合计 7 substrate·5487 段·446659 字）而未同步刷新而立。落地：REGISTRY.md 本轮按 corpus/*.json 实测重算（本轮同步执行）。
