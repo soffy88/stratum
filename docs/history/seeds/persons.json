@@ -2439,6 +2439,14 @@
       "active_range": "N/A（哨兵值，非历史人物，无 active_range）",
       "force_affiliations": [],
       "intake": { "batch": "registry-backfill-002", "method": "协议扩定（G4收尾），非四查产物", "status": "sentinel-placeholder" }
+    },
+    {
+      "person_id": "per:qi-huangong",
+      "names_by_source": { "齊桓公": ["src:shiji"] },
+      "谥字号": "谥桓，齐国国君，春秋首霸",
+      "active_range": "前685—前643在位；史记:0020 系年参照点『晉侯二十八年，齊桓公始霸』",
+      "force_affiliations": ["fo:jiangqi"],
+      "intake": { "batch": "registry-backfill-004", "source_para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0020", "method": "四查·全量白文扫描（OP-D-071 覆盖模型前移，G4 终批）", "status": "verified" }
     }
   ]
 }
