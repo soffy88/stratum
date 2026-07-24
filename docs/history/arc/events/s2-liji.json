@@ -1,0 +1,694 @@
+{
+  "events": [
+    {
+      "event_id": "ev:xiangong-qu-liji",
+      "title": "献公娶骊姬·乱嫡序",
+      "canonical_date": {
+        "type": "year",
+        "value": "前666",
+        "note": "左传庄公二十八年（鲁庄公元年前693起算，28年=前666）。★精度校正：ADJUDICATION-s1-s2.md 早前 D1 初筛表曾粗记『前672』（仅供候选去重用，非精算）；本轮弧灌注按标准鲁国纪年（隐722/桓711/庄693）重算收窄为前666，属结构化精度校正，非重新裁决。"
+      },
+      "event_type": "人事",
+      "actors": [
+        {
+          "person_ref": "per:jin-xiangong",
+          "role": "娶贾无子，烝齐姜，娶戎女，伐骊戎娶骊姬，纳梁五等言而许诸子分主曲沃蒲屈",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:qijiang",
+          "role": "献公所烝，生秦穆夫人及申生",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:shensheng",
+          "role": "齐姜所生大子，被议主曲沃",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:huji",
+          "role": "大戎女，生重耳",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:i4-012",
+          "role": "狐姬所生，被议主蒲",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:xiaorongzi",
+          "role": "小戎女，生夷吾",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:yiwu",
+          "role": "小戎子所生，被议主屈",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:referent-ambiguous",
+          "role": "驪戎男，骊戎国君，献女骊姬于晋（左传仅称爵位『男』未指名个体）",
+          "force_ref": "fo:lirong"
+        },
+        {
+          "person_ref": "per:liji",
+          "role": "骊戎男之女，嬖于献公，欲立其子，主导贿赂进言",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:xiqi",
+          "role": "骊姬子",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:zhuozi",
+          "role": "骊姬娣之子",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:liangwu",
+          "role": "受骊姬贿，进言以边防为由分置三公子外邑",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:dongguan-biwu",
+          "role": "同上，与梁五同进言",
+          "force_ref": "fo:jin"
+        }
+      ],
+      "geo": {
+        "place_refs": [
+          "pl:jia",
+          "pl:quwo",
+          "pl:pu",
+          "pl:qu"
+        ],
+        "route_hint": null,
+        "mapstate_hint": "晋献公朝内婚配谱系→骊姬受宠→梁五/东关嬖五献策，以『实边、威民惧戎』为由分置三公子于曲沃/蒲/屈外邑，为后续谗害铺垫"
+      },
+      "parent_event": null,
+      "accounts": [
+        "ac:zuozhuan-xiangong-quliji",
+        "ac:shiji-xiangong-fenju"
+      ],
+      "conflicts": [
+        "cf:sanzi-fenju-yuanqi"
+      ],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:zuozhuan-xiangong-quliji",
+      "mainline_decision": {
+        "choice": "主线取左传（骊姬集团贿赂进言机制）；史记『献公自陈边防理由』异说落 cf:sanzi-fenju-yuanqi 并陈，不作调和",
+        "rationale": "本事件是 thesis:liji-luandi-a 既有 locator 锚点（:0586），左传贿赂进言叙事与『乱嫡』因果脉络（骊姬集团主动构陷）更贴合；史记异说见 cf。OP-D-071 全account白文人名地名扫描：本段(：0586)全部具名人物（含齐姜/秦穆夫人/狐姬/小戎子等母系人物，非仅主角）均已按『白文提及即入』入 registry（registry-backfill-005）；驪戎男（骊戎国君，仅称爵位未指名）按 referent-ambiguous 占位处理，同既有惯例（不臆造具体人名）。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      }
+    },
+    {
+      "event_id": "ev:liji-zen-shensheng",
+      "title": "骊姬谮杀申生·缢于新城",
+      "canonical_date": {
+        "type": "year",
+        "value": "前656",
+        "note": "左传僖公四年（鲁僖公元年前659起算，4年=前656）『十二月，戊申，縊于新城』。与 ADJUDICATION-s1-s2.md 早前 D1 初筛表『前656（僖4-5）』一致，本轮弧灌注确认精算无误。"
+      },
+      "event_type": "人事",
+      "actors": [
+        {
+          "person_ref": "per:jin-xiangong",
+          "role": "先卜筮立骊姬为夫人不听卜人谏，后误信谗言杀申生傅杜原款",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:liji",
+          "role": "设局：令申生祭曲沃归胙，下毒嫁祸，谮'贼由大子'，后又谮二公子'皆知之'",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:shensheng",
+          "role": "祭曲沃归胙于公被下毒嫁祸，不自辩，缢于新城",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:du-yuankuan",
+          "role": "申生傅，申生奔新城后为献公所杀",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:xiqi",
+          "role": "骊姬子，谋立之对象（背景重申）",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:zhuozi",
+          "role": "骊姬娣之子（背景重申）",
+          "force_ref": "fo:jin"
+        }
+      ],
+      "geo": {
+        "place_refs": [
+          "pl:quwo",
+          "pl:xincheng"
+        ],
+        "route_hint": null,
+        "mapstate_hint": "申生祭于曲沃→归胙于新城附近为骊姬下毒嫁祸→不自辩而缢死于新城"
+      },
+      "parent_event": null,
+      "accounts": [
+        "ac:zuozhuan-liji-zenshen",
+        "ac:shiji-liji-zenshen"
+      ],
+      "conflicts": [
+        "cf:liji-zenci-neirong"
+      ],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:zuozhuan-liji-zenshen",
+      "mainline_decision": {
+        "choice": "主线取左传（谮辞极简版：『贼由大子』）；史记详版（含献公私议废立+骊姬佯拒以退为进的完整戏剧化铺垫）落 cf:liji-zenci-neirong 并陈",
+        "rationale": "本事件是 thesis:liji-luandi-a 已有 locator 锚点（:0719）。★死法核对（OP-D-045 检索记录）：左传『縊于新城』（明确上吊）vs 史记『自殺於新城』（未指明具体方式）——经核对，史记的『自殺』与左传『縊』兼容（自杀的一种具体方式），非实质冲突，未落 cf；真冲突仅在骊姬谮辞内容/铺垫情节的详略与结构差异，见 cf:liji-zenci-neirong。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      }
+    },
+    {
+      "event_id": "ev:chonger-yiwu-chuben",
+      "title": "重耳夷吾出奔",
+      "canonical_date": {
+        "type": "range",
+        "value": [
+          "前656",
+          "前654"
+        ],
+        "note": "★锚点核实更正：任务原文将本事件锚定于『:0740』单段，经核实原文后 :0740（僖公六年）仅载夷吾自屈改奔梁的后续改道，『重耳奔蒲，夷吾奔屈』的出奔本身实记于 :0719 尾句（前656，与 ev:liji-zen-shensheng 同段不同焦点）；重耳自蒲出奔狄的完整经过（寺人披伐蒲、逾垣而走）另见于 :0727（僖公五年，前655）——任务原点名的 :0740 仅是本出奔叙事链条的最后一环（夷吾改奔梁），非事件全貌唯一锚。本条时间窗因而定为『前656–前654』区间（首见出奔前656 至夷吾改奔梁前654），三段账户如实分列，不假装单段覆盖全貌。"
+      },
+      "event_type": "人事",
+      "actors": [
+        {
+          "person_ref": "per:jin-xiangong",
+          "role": "使贾华伐屈（逐夷吾）；先前默许骊姬谮二公子",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:liji",
+          "role": "谮二公子'皆知之'，致二人出奔（承 ev:liji-zen-shensheng）",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:i4-012",
+          "role": "奔蒲；献公使寺人披伐蒲，重耳逾垣而走，遂出奔狄",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:yiwu",
+          "role": "奔屈；后献公使贾华伐屈，不能守，弃屈将奔狄，从郤芮谏改奔梁",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:shiwei",
+          "role": "奉命为二公子筑蒲屈城，敷衍不慎，谏献公修德固宗子，赋『一国三公』之歌",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:shiren-pi",
+          "role": "奉献公命伐蒲追杀重耳，斩其祛",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:jiahua",
+          "role": "奉献公命伐屈",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:i4-011",
+          "role": "谏夷吾弃屈后改奔梁（近秦）而非狄",
+          "force_ref": "fo:jin"
+        }
+      ],
+      "geo": {
+        "place_refs": [
+          "pl:pu",
+          "pl:qu",
+          "pl:liang"
+        ],
+        "route_hint": "重耳：蒲→（逾垣）→狄；夷吾：屈→（原拟奔狄，改）→梁",
+        "mapstate_hint": "二公子分别出奔蒲/屈避祸，其后各自再度迁徙（重耳蒲→狄，夷吾屈→梁）"
+      },
+      "parent_event": null,
+      "accounts": [
+        "ac:zuozhuan-chuben-initial",
+        "ac:zuozhuan-chonger-fenpu",
+        "ac:zuozhuan-yiwu-zhiliang",
+        "ac:shiji-erzi-chuben"
+      ],
+      "conflicts": [
+        "cf:erzi-chuben-yuanyou"
+      ],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:zuozhuan-chuben-initial",
+      "mainline_decision": {
+        "choice": "维持既有 id/题目（不改字节引用，同 D-018 类精神）；三账户（:0719尾句出奔本身 + :0727重耳奔狄 + :0740夷吾奔梁）如实分列，不强并为单段",
+        "rationale": "OP-D-071 全account白文人名地名扫描过程中发现：僖公五年 :0727（士蒍筑蒲屈城、寺人披伐蒲、重耳逾垣出奔狄）是本事件『重耳』一支更完整/更贴题的白文锚，原任务指名的 :0740 仅覆盖『夷吾』一支的后续改道（弃屈奔梁），二者均非事件全貌的唯一锚——本轮补入 :0727，三段并列如实反映『出奔』事件横跨三个时间点（前656/前655/前654）的实际叙事结构，不假装收窄。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      }
+    },
+    {
+      "event_id": "ev:weixuangong-goujizi",
+      "title": "卫宣公朝嫡庶相残（夷姜缢·宣姜构急子·寿子代死·急子被杀）",
+      "canonical_date": {
+        "type": "year",
+        "value": "前696",
+        "note": "左传桓公十六年（鲁桓公元年前711起算，16年=前696）。本事件为跨国结构对照素材，非 arc:jin-decline 成员。"
+      },
+      "event_type": "人事",
+      "actors": [
+        {
+          "person_ref": "per:weixuangong",
+          "role": "烝夷姜生急子，后为急子娶齐女而自纳（即宣姜），酿嫡庶相残",
+          "force_ref": "fo:wey"
+        },
+        {
+          "person_ref": "per:yijiang",
+          "role": "宣公所烝，生急子，后自缢",
+          "force_ref": "fo:wey"
+        },
+        {
+          "person_ref": "per:jizi",
+          "role": "夷姜之子，太子，为宣姜与公子朔所构，被杀",
+          "force_ref": "fo:wey"
+        },
+        {
+          "person_ref": "per:xuanjiang",
+          "role": "本为急子所娶，宣公自纳，生寿及朔，与公子朔构陷急子",
+          "force_ref": "fo:wey"
+        },
+        {
+          "person_ref": "per:shouzi",
+          "role": "宣姜之子，告急子使行以避祸，代兄受死",
+          "force_ref": "fo:wey"
+        },
+        {
+          "person_ref": "per:gongzi-shuo",
+          "role": "宣姜之子，与宣姜构急子，后即位为卫惠公",
+          "force_ref": "fo:wey"
+        }
+      ],
+      "geo": {
+        "place_refs": [
+          "pl:wey"
+        ],
+        "route_hint": null,
+        "mapstate_hint": "卫宣公朝内嫁娶乱伦（烝夷姜、纳急子妻）→嫡庶相残→太子与代死之弟先后被杀"
+      },
+      "parent_event": null,
+      "accounts": [
+        "ac:zuozhuan-weixuangong-goujizi"
+      ],
+      "conflicts": [],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:zuozhuan-weixuangong-goujizi",
+      "mainline_decision": {
+        "choice": "建为独立事件对象，仅供 thesis:weixuangong-goujizi.evidence_refs 承载，不入 arc:jin-decline.member_event_refs（跨国比对素材，非本弧成员，同 OP-D-062/ev:zhengbo-ke-duan 先例）",
+        "rationale": "s2 counterpoint 检索（OP-D-045/050/061）：库内检索——现有 thesis 中仅 thesis:zhengbo-ke-duan 已用作 s1 counterpoint，不可复用；源内关键词检索——全8corpus扫描'廢適/立庶/譖殺/一國三公'等词；同构候选扫描（非关键词，按叙事骨架比对）——命中左传桓16 :0344（卫宣公烝夷姜生急子、宣姜与公子朔构急子、寿子代死、急子仍被杀），与骊姬乱嫡（嬖宠/庶母谗构嫡子致死）结构同题、非同一事件（异国：卫vs晋；异代：桓16前696 vs 庄28-僖6前666-654，卫案早于晋案约30-42年）。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:zuozhuan-xiangong-quliji",
+      "event_ref": "ev:xiangong-qu-liji",
+      "source_id": "src:zuozhuan",
+      "locator": {
+        "book": "左传",
+        "chapter": "庄公二十八年",
+        "section": null,
+        "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0586",
+        "note": "全段含献公婚配谱系（贾/齐姜/戎女）+ 伐骊戎得骊姬 + 梁五/东关嬖五受贿进言全文"
+      },
+      "extraction": {
+        "date_claim": "庄公二十八年（前666）",
+        "actor_claims": [
+          "晋献公娶贾无子，烝齐姜生秦穆夫人及申生",
+          "又娶戎女生重耳、夷吾",
+          "晋伐骊戎，骊戎男以骊姬献",
+          "骊姬嬖，欲立其子，贿梁五、东关嬖五进言"
+        ],
+        "causal_claims": [
+          "以『实边、威民惧戎』为由分置太子申生主曲沃、重耳主蒲、夷吾主屈，实为骊姬集团为乱嫡预先布局"
+        ],
+        "number_claims": [],
+        "dialogue_spans": [
+          "曲沃，君之宗也。蒲與二屈，君之疆也。不可以無主。宗邑無主則民不威，疆埸無主則啟戎心。戎之生心，民慢其政，國之患也。若使大子主曲沃，而重耳、夷吾主蒲與屈，則可以威民而懼戎，且旌君伐。",
+          "狄之廣莫，于晉爲都。晉之啟土，不亦宜乎？"
+        ]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:shiji-xiangong-fenju",
+      "event_ref": "ev:xiangong-qu-liji",
+      "source_id": "src:shiji",
+      "locator": {
+        "book": "史记",
+        "chapter": "晋世家·晋献公",
+        "section": null,
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0026",
+        "note": "献公十二年，骊姬生奚齐后献公自陈边防理由分置三公子；同段另载三公子生母谱系"
+      },
+      "extraction": {
+        "date_claim": "献公十二年",
+        "actor_claims": [
+          "献公自称因宗庙/边防之虑分置三公子于曲沃/蒲/屈",
+          "国人以此知太子不立"
+        ],
+        "causal_claims": [
+          "与左传异：本段未见梁五/东关嬖五受贿进言情节，边防理由径出献公之口"
+        ],
+        "number_claims": [],
+        "dialogue_spans": [
+          "曲沃吾先祖宗廟所在，而蒲邊秦，屈邊翟，不使諸子居之，我懼焉。"
+        ]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:zuozhuan-liji-zenshen",
+      "event_ref": "ev:liji-zen-shensheng",
+      "source_id": "src:zuozhuan",
+      "locator": {
+        "book": "左传",
+        "chapter": "僖公四年",
+        "section": null,
+        "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0719",
+        "note": "全段自『初，晉獻公欲以驪姬為夫人』起至『重耳奔蒲，夷吾奔屈』止；本事件取申生受谮致死主干，二公子出奔尾句另见 ev:chonger-yiwu-chuben 的 ac:zuozhuan-chuben-initial（同段不同焦点，不重复计段）"
+      },
+      "extraction": {
+        "date_claim": "僖公四年十二月戊申（前656）",
+        "actor_claims": [
+          "献公立骊姬为夫人（卜不吉筮吉，不听卜人谏）",
+          "骊姬令太子祭曲沃归胙，置毒宫中嫁祸",
+          "献公杀太子傅杜原款",
+          "太子不自辩，缢于新城"
+        ],
+        "causal_claims": [
+          "骊姬先谮『贼由大子』致献公怒杀傅，太子明知冤屈仍不自辩（恐姬获罪、恐君不乐）而自尽"
+        ],
+        "number_claims": [
+          {
+            "value": "六",
+            "unit": "日",
+            "quote_span": "六日，公至，毒而獻之",
+            "display": "祭肉置宫中六日后献公归"
+          },
+          {
+            "value": "十二月戊申",
+            "unit": "日期",
+            "quote_span": "十二月，戊申，縊于新城",
+            "display": "申生缢于新城之日"
+          }
+        ],
+        "dialogue_spans": [
+          "君夢齊姜，必速祭之。",
+          "賊由大子。",
+          "君非姬氏，居不安，食不飽。我辭，姬必有罪。君老矣，吾又不樂。",
+          "君實不察其罪，被此名也以出，人誰納我？"
+        ]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:shiji-liji-zenshen",
+      "event_ref": "ev:liji-zen-shensheng",
+      "source_id": "src:shiji",
+      "locator": {
+        "book": "史记",
+        "chapter": "晋世家·晋献公",
+        "section": null,
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0031",
+        "note": "同段前有献公私议废立、骊姬佯拒以退为进的完整场景（:0030，同章紧邻段，为该谮杀情节的铺垫）"
+      },
+      "extraction": {
+        "date_claim": "献公二十一年，十二月戊申",
+        "actor_claims": [
+          "献公私谓骊姬欲废太子立奚齐，骊姬佯拒以退为进（前置铺垫，:0030）",
+          "骊姬令太子祭齐姜于曲沃归胙下毒",
+          "骊姬多层谮语诬指太子欲弑父夺位",
+          "太子奔新城，献公诛傅杜原款",
+          "太子自杀于新城"
+        ],
+        "causal_claims": [
+          "史记多一层『献公私议废立→骊姬佯拒』的铺垫场景（左传无），且谮辞内容远较左传详细、具体指控太子弑父意图"
+        ],
+        "number_claims": [
+          {
+            "value": "二",
+            "unit": "日",
+            "quote_span": "居二日，獻公從獵來還",
+            "display": "祭肉置宫中二日后献公归（史记版，与左传'六日'异）"
+          },
+          {
+            "value": "十二月戊申",
+            "unit": "日期",
+            "quote_span": "十二月，戊申，縊于新城",
+            "display": "申生缢于新城之日"
+          }
+        ],
+        "dialogue_spans": [
+          "吾欲廢太子，以奚齊代之。",
+          "君夢見齊姜，太子速祭曲沃，歸釐於君。",
+          "太子何忍也！其父而欲弒代之，況他人乎？且君老矣，旦暮之人，曾不能待而欲弒之！",
+          "太子所以然者，不過以妾及奚齊之故。妾願子母辟之他國，若早自殺，毋徒使母子爲太子所魚肉也。始君欲廢之，妾猶恨之；至於今，妾殊自失於此。"
+        ]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:zuozhuan-chuben-initial",
+      "event_ref": "ev:chonger-yiwu-chuben",
+      "source_id": "src:zuozhuan",
+      "locator": {
+        "book": "左传",
+        "chapter": "僖公四年",
+        "section": null,
+        "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0719",
+        "note": "本段尾句，紧接 ev:liji-zen-shensheng 谮杀申生叙事之后，同段不同焦点，不重复计段"
+      },
+      "extraction": {
+        "date_claim": "僖公四年（前656），申生死后",
+        "actor_claims": [
+          "骊姬谮二公子'皆知之'",
+          "重耳奔蒲，夷吾奔屈"
+        ],
+        "causal_claims": [
+          "申生死后骊姬恐二公子知情不利于己，谮之，二公子随即出奔"
+        ],
+        "number_claims": [],
+        "dialogue_spans": [
+          "皆知之。"
+        ]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:zuozhuan-chonger-fenpu",
+      "event_ref": "ev:chonger-yiwu-chuben",
+      "source_id": "src:zuozhuan",
+      "locator": {
+        "book": "左传",
+        "chapter": "僖公五年",
+        "section": null,
+        "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0727",
+        "note": "士蒍筑蒲屈城敷衍谏献公 + 寺人披伐蒲，重耳逾垣出奔狄；OP-D-071扫描补入，任务原指名 :0740 未含此段"
+      },
+      "extraction": {
+        "date_claim": "僖公五年（前655）",
+        "actor_claims": [
+          "献公使士蒍为二公子筑蒲屈城，士蒍敷衍寘薪不慎",
+          "夷吾诉之，公让士蒍",
+          "士蒍谏献公修德固宗子，退赋'一国三公'之歌",
+          "及难，献公使寺人披伐蒲，重耳逾垣而走，出奔狄"
+        ],
+        "causal_claims": [
+          "士蒍以'无丧而戚，忧必仇焉；无戎而城，仇必保焉'预见蒲屈二城终将成为公子拒君之地，谏而不听"
+        ],
+        "number_claims": [],
+        "dialogue_spans": [
+          "無喪而慼，憂必讎焉；無戎而城，讎必保焉。",
+          "君其脩德而固宗子，何城如之？三年將尋師焉，焉用慎？",
+          "狐裘尨茸，一國三公，吾誰適從？",
+          "君父之命不校。"
+        ]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:zuozhuan-yiwu-zhiliang",
+      "event_ref": "ev:chonger-yiwu-chuben",
+      "source_id": "src:zuozhuan",
+      "locator": {
+        "book": "左传",
+        "chapter": "僖公六年",
+        "section": null,
+        "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0740"
+      },
+      "extraction": {
+        "date_claim": "僖公六年春（前654）",
+        "actor_claims": [
+          "献公使贾华伐屈，夷吾不能守，盟而行，将奔狄",
+          "郤芮谏改奔梁（近秦而幸）",
+          "乃之梁"
+        ],
+        "causal_claims": [
+          "郤芮以'后出同走,罪也'谏夷吾勿随重耳同奔狄，改投近秦之梁以自异"
+        ],
+        "number_claims": [],
+        "dialogue_spans": [
+          "後出同走，罪也。不如之梁，梁近秦而幸焉。"
+        ]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:shiji-erzi-chuben",
+      "event_ref": "ev:chonger-yiwu-chuben",
+      "source_id": "src:shiji",
+      "locator": {
+        "book": "史记",
+        "chapter": "晋世家·晋献公",
+        "section": null,
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0032"
+      },
+      "extraction": {
+        "date_claim": "申生死后（未系具体年）",
+        "actor_claims": [
+          "二公子来朝，有人告骊姬'二公子怨骊姬谮杀太子'",
+          "骊姬恐，反谮'申生之药胙，二公子知之'",
+          "二子闻之恐，重耳走蒲，夷吾走屈，保其城自备守",
+          "士蒍为二公子筑蒲屈城不就，赋'一国三公'之歌",
+          "申生死，二子亦归保其城"
+        ],
+        "causal_claims": [
+          "史记多一层'有人告发→骊姬恐→反谮'的因果环节，左传（:0719尾句+:0727）未见此环节，径以骊姬谮'皆知之'直接触发出奔"
+        ],
+        "number_claims": [],
+        "dialogue_spans": [
+          "二公子怨驪姬譖殺太子。",
+          "申生之藥胙，二公子知之。",
+          "狐裘蒙茸，一國三公，吾誰適從！"
+        ]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:zuozhuan-weixuangong-goujizi",
+      "event_ref": "ev:weixuangong-goujizi",
+      "source_id": "src:zuozhuan",
+      "locator": {
+        "book": "左传",
+        "chapter": "桓公十六年",
+        "section": null,
+        "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0344"
+      },
+      "extraction": {
+        "date_claim": "桓公十六年（前696）",
+        "actor_claims": [
+          "卫宣公烝于夷姜生急子，为其娶齐女而自纳（即后来的宣姜），生寿及朔",
+          "夷姜缢",
+          "宣姜与公子朔构急子",
+          "宣公使盗待杀急子于莘",
+          "寿子告之使行，急子不可",
+          "寿子载其旌以先，盗杀之",
+          "急子至，自请代死，又杀之"
+        ],
+        "causal_claims": [
+          "宣姜/公子朔构陷太子急子致其被杀，寿子代兄受死而先亡，两子皆丧命"
+        ],
+        "number_claims": [],
+        "dialogue_spans": [
+          "棄父之命，惡用子矣！有無父之國則可也。",
+          "我之求也。此何罪？請殺我乎！"
+        ]
+      },
+      "genre_note": null
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:sanzi-fenju-yuanqi",
+      "event_ref": "ev:xiangong-qu-liji",
+      "dimension": "causality",
+      "account_refs": [
+        "ac:zuozhuan-xiangong-quliji",
+        "ac:shiji-xiangong-fenju"
+      ],
+      "independence_analysis": {
+        "independent_witness_count": 2,
+        "reasoning": "左传：骊姬贿赂梁五、东关嬖五进言，以『戎之生心、民慢其政』为由怂恿献公分置三公子——骊姬集团主导构陷。史记：边防理由径系献公本人之口（『曲沃吾先祖宗廟所在……我懼焉』），未见贿赂/进言中间人角色。两源对『三公子外置究竟出于谁的主张、何种动机机制』给出不同叙事结构（佞臣谗言构陷 vs 国君自主决策），真冲突（非精粗差——非史记省略贿赂细节，而是叙事因果链整体不同）。",
+        "derivation_notes": [
+          "通则a同指涉对齐前置：两源均指同一『三公子分置曲沃/蒲/屈』事件，指涉对象一致，仅因果机制/主导者归属互斥",
+          "左传（春秋经传体系）与史记（世家纪传体系）为两条独立传世谱系，indep=2"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "主线取左传（骊姬集团贿赂进言说）；史记『献公自主边防说』并陈，不判一方为误",
+        "rationale": "左传版更贴合本弧『骊姬乱嫡』的因果主线（乱嫡之因在于骊姬集团主动构陷）；史记版本亦为源内正式记载，非考据层调和对象，S12 并陈供观众自行判断。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      },
+      "presentation_hint": "S12对勘"
+    },
+    {
+      "conflict_id": "cf:liji-zenci-neirong",
+      "event_ref": "ev:liji-zen-shensheng",
+      "dimension": "narrative",
+      "account_refs": [
+        "ac:zuozhuan-liji-zenshen",
+        "ac:shiji-liji-zenshen"
+      ],
+      "independence_analysis": {
+        "independent_witness_count": 2,
+        "reasoning": "左传骊姬谮辞极简（『賊由大子』三字，报案式），史记详载骊姬多层次谮语及此前『献公私议废立、骊姬佯拒以退为进』的完整戏剧化铺垫场景（史记:0030，左传无对应段）。两源对『骊姬究竟说了什么、谮害过程有多复杂/是否有前置铺垫』给出实质不同的内容，真冲突（非死法精粗差，死法见本事件 mainline_decision.rationale 已列检索记录：'縊'/'自殺'兼容非冲突）。★补充实质异文（number）：左传『六日，公至』（祭肉置宫六日后献公归）vs 史记『居二日，獻公從獵來還』（二日）——同一叙事节点的具体天数亦不同（6 vs 2），与谮辞内容详略差异同属本 cf 覆盖范围（同一对账户间的多处实质异文，未因已记一处而略去他处，如实并记）。",
+        "derivation_notes": [
+          "两源均指同一『申生受谮致死、缢/自尽于新城』事件骨架一致（同人物同地同大致时间十二月戊申），仅谮害具体台词内容/是否有前置铺垫场景实质异",
+          "左传/史记为两条独立传世谱系，indep=2"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "主线取左传（谮辞极简版）；史记详版（含铺垫场景）并陈供对照",
+        "rationale": "左传是本事件唯一直锚段落（thesis:liji-luandi-a 既有 locator），为叙事线性推进之主线；史记详版更具戏剧张力但为独立传世系统之扩写，不判一方虚构，S12 并陈。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      },
+      "presentation_hint": "S12对勘"
+    },
+    {
+      "conflict_id": "cf:erzi-chuben-yuanyou",
+      "event_ref": "ev:chonger-yiwu-chuben",
+      "dimension": "causality",
+      "account_refs": [
+        "ac:zuozhuan-chuben-initial",
+        "ac:shiji-erzi-chuben"
+      ],
+      "independence_analysis": {
+        "independent_witness_count": 2,
+        "reasoning": "左传（:0719尾句+:0727合观）：骊姬谮'皆知之'三字直接触发二公子出奔，未见更早的告发环节。史记（:0032）：另有'有人先告发二公子怨骊姬→骊姬恐而反谮'一道中间环节。两源对出奔的直接触发链条给出不同因果序列（环节数不同），真冲突（非单纯精粗省略——是否存在'有人告发'这一中间人环节属实质分歧）。★士蒍'一国三公'之歌左传（:0727『狐裘尨茸』）与史记（:0032『狐裘蒙茸』）字句几乎全同仅'尨茸/蒙茸'一字之异——判文本传抄异文、非真冲突（同 OP-D-032 舒州/徐州地名variant类精神），不另立 cf。",
+        "derivation_notes": [
+          "两源均指同一'二公子出奔蒲屈'事件骨架一致，仅触发链条环节数与'一国三公'之歌归属（左传原有，非史记独有）有出入",
+          "左传/史记为两条独立传世谱系，indep=2"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "主线取左传（骊姬直接谮告版）；史记'有人告发在先'版并陈",
+        "rationale": "左传是本事件三主账户之一、叙事最简洁直接；史记多一层因果环节但为独立传世系统之扩写，不判一方虚构，S12 并陈。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      },
+      "presentation_hint": "S12对勘"
+    }
+  ]
+}
