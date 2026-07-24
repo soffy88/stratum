@@ -369,6 +369,30 @@
       "name_by_era": { "春秋": "衞" },
       "geo_hint": "卫宣公烝夷姜、宣姜构急子案发生国（s2 counterpoint）",
       "mapstate_hints": ["卫宣公朝嫡庶相残案发生国"]
+    },
+    {
+      "place_id": "pl:beilu",
+      "name_by_era": { "春秋": "被庐" },
+      "geo_hint": "晋文公蒐（阅兵整军）作三军之地，具体地望不详",
+      "mapstate_hints": ["晋作三军蒐地"]
+    },
+    {
+      "place_id": "pl:song",
+      "name_by_era": { "春秋": "宋" },
+      "geo_hint": "楚僖27年围宋，宋告急于晋，晋作三军救宋之由",
+      "mapstate_hints": ["楚围宋之国"]
+    },
+    {
+      "place_id": "pl:caoguo",
+      "name_by_era": { "春秋": "曹" },
+      "geo_hint": "狐偃建言伐曹以解宋围之国（与三国志时代曹操集团 fo:cao 无关，另立地名id避免混淆）",
+      "mapstate_hints": ["狐偃伐曹卫之策所指国"]
+    },
+    {
+      "place_id": "pl:qingyuan",
+      "name_by_era": { "春秋": "清原" },
+      "geo_hint": "晋蒐作五军以御狄之地，具体地望不详",
+      "mapstate_hints": ["晋作五军蒐地"]
     }
   ]
 }
