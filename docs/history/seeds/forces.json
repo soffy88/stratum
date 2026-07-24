@@ -191,6 +191,12 @@
       "name_by_era": { "春秋": "吴" },
       "active_range": "至前473（越灭吴）",
       "succession_edges": []
+    },
+    {
+      "force_id": "fo:zheng",
+      "name_by_era": { "春秋": "郑" },
+      "active_range": "西周末封至战国初为韩所灭",
+      "succession_edges": []
     }
   ]
 }

@@ -43,3 +43,20 @@
 - G3 `ac:zhengbo-ke-duan-jishi` 同理——郑事不入 `arc:jin-decline` 之 member_event（跨国比对素材，非弧内成员），evidence_refs 用此 informal id 占位，事件层对象留后续（如需正式独立弧再建）。
 - `corpus/REGISTRY.md` 已按 OP-D-063 刷新至实测（另见该文件本轮编辑）。
 - harness `validate_gold.py` **ALL GREEN**（25 fixtures · 6 samples · 7 corpus/5487 段 · 1 arc · registry 190 ids）——`arc-jin-decline.json` 改动通过 schema 校验，回归网零倒退。
+
+## 五、弧灌注追记（OP-D-064，2026-07-24 同日后续）
+
+> 本节因 OP-D-064 立而补——上节"未做的事"（4 事件未 JSON 化、2 处冲突未落正式 cf）本轮全部落地，见 `arc/events/s1-quwo.json`。
+
+- **事件层 JSON 化**：s1 全 7 member 事件（含既有 `ev:quwo-feng-huanshu`/`ev:quwo-wugong-mie-yi`，此前二者亦未结构化）+ 1 外部对照事件 `ev:zhengbo-ke-duan`，共 8 事件、11 账户、2 冲突，落 `arc/events/s1-quwo.json`（复用 gold-bundle.schema.json 顶层形状，内层 $ref 契约 h_event/h_account/h_conflict，不新造 schema）。
+- **registry 新增 26 条**（人 17 / 地 8 / 势力 1，seeds/persons.json+places.json+forces.json）——s1 全体角色此前从未入注册表（含既有 2 KU 的师服/桓叔/栾宾/武公/翼侯/韩万/梁弘，一并补齐）。
+- **正式 cf 对象落地**：
+  - `cf:egou-di-vs-zi`（dimension=actor）：鄂侯与孝侯血缘关系，左传『弟』vs 史记『子』，indep=2（两传世系统各执一词），S12 并陈不坐实。
+  - `cf:cebming-fanwei`（dimension=narrative）：册命范围，左传『一军为晋侯』vs 史记『尽并晋地』，indep=2；顾问候选解释（编制/领土非互斥）已如实注记为候选、未采信为 mainline 依据。
+- **★重大发现（结构化副产品）**：为 `ev:quwo-wugong-mie-yi` 填 canonical_date 时，核实其唯一白文锚（左传:0217）地名『汾隰』与史记『虏哀侯』段之『汾旁』相合，确认该事件实指**武公伐翼虏获哀侯（前709）**，非既往（`ADJUDICATION-s1-s2.md`，2026-07-23）所定题旨"武公灭翼·代晋"之终局——终局（灭缗、赂宝器受命列诸侯，前678）另立为新事件 `ev:quwo-mie-min-liehou`，原挂靠该既有事件的 G1 account（`ac:shiji-wugong-huilu-mingzhu`）随之改挂新事件。**id 不动、题目与时间窗注记更正**（成本考量，见该事件 mainline_decision）；member_event_refs 顺序同轮调整（`ev:quwo-wugong-mie-yi` 前移至 `ev:zhuangbo-lei-fa-yi` 与 `ev:wugong-you-sha-xiaozihou` 之间）。
+- **identity_pipeline.py 本体复核**（`load_events()` 扩展读取 `arc/events/`，非手工）：
+  - 全样 N=33（gold 25 + 本轮新增 8）：机械一致率 **557/561 = 99.29%**。
+  - **假合 1 处**：`ev:quwo-wugong-mie-yi` × `ev:zhuangbo-lei-fa-yi` 被误判『同事异述』——归因：两事件共享行动者 `per:jin-aihou`（哀侯，先被庄伯一系拥立、后被武公所虏，是两事件的天然"交接点"角色）+ 事件类型均"战役" + 标题词重合（"伐翼"）+ canonical_date 因 `zhuangbo-lei-fa-yi` 用 `range` 类型致年窗宽泛重合——四项凑巧同时触发 D1/D2/D4 判准。**复核结论：两事件实为独立**（一为晋人拥立哀侯前的庄伯多次征伐、一为武公其后虏获哀侯，非同一事件重述），不合并、`member_event_refs` 维持两条独立记录。本发现印证 §5"假合率 0%"红线的价值——机械规则对"相邻事件共享交接角色"这类边界情形有已知盲区，属管线局限的诚实记录，非本次转正出错。
+  - 正例自识 30/33，退化 3（`ev:jin-gongshi-bei`/`ev:kongchengji`/`ev:yaoshun-shanrang`，与既往报告一致，非本轮新增，无纪年/actor 特征之保守退化）。
+- **`tools/history/validate_gold.py` 扩第 9 项**：`arc/events/*.json` 对 gold-bundle.schema.json + registry 零悬空 + 束内闭合 + para_ulid 语料库解析，纳入常规 harness（此前该目录不存在、无校验路径）。
+- harness **ALL GREEN**（本轮）：25 fixtures · 6 samples · 7 corpus/5487 段 · 1 arc · **1 event-bundle**(8 事件/11 账户/2 冲突) · registry **216** ids（190+26）。

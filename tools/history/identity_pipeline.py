@@ -18,25 +18,27 @@ ROOT = Path(__file__).resolve().parents[2] / "docs" / "history"
 
 def load_events():
     ev = {}
-    for ff in (ROOT / "fixtures").glob("F*.json"):
-        d = json.loads(ff.read_text(encoding="utf-8"))
-        for e in d.get("events", []):
-            cd = e.get("canonical_date", {}).get("value")
-            years = re.findall(r"前?(\d+)", str(cd))
-            years = [int(y) for y in years]
-            ev.setdefault(
-                e["event_id"],
-                {
-                    "id": e["event_id"],
-                    "title": e.get("title", ""),
-                    "years": years,
-                    "actors": set(
-                        a.get("person_ref") for a in e.get("actors", []) if a.get("person_ref")
-                    ),
-                    "places": set(e.get("geo", {}).get("place_refs", [])),
-                    "type": e.get("event_type"),
-                },
-            )
+    bundle_globs = [(ROOT / "fixtures").glob("F*.json"), (ROOT / "arc" / "events").glob("*.json")]
+    for glob in bundle_globs:
+        for ff in glob:
+            d = json.loads(ff.read_text(encoding="utf-8"))
+            for e in d.get("events", []):
+                cd = e.get("canonical_date", {}).get("value")
+                years = re.findall(r"前?(\d+)", str(cd))
+                years = [int(y) for y in years]
+                ev.setdefault(
+                    e["event_id"],
+                    {
+                        "id": e["event_id"],
+                        "title": e.get("title", ""),
+                        "years": years,
+                        "actors": set(
+                            a.get("person_ref") for a in e.get("actors", []) if a.get("person_ref")
+                        ),
+                        "places": set(e.get("geo", {}).get("place_refs", [])),
+                        "type": e.get("event_type"),
+                    },
+                )
     return ev
 
 
