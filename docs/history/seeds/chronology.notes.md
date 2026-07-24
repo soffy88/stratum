@@ -31,5 +31,8 @@
 ### /resolutions[5] · _note  ·  source_id=src:shiji, raw=帝尧/帝舜（五帝本纪）, canonical=fuzzy（前841 之前，约前23世纪，不可 canonical 化）
 ★E4 传说层。date.type=fuzzy，屏幕 banner 显式标传说，不假装精确纪年。
 
+### /resolutions[7] · _note  ·  source_id=src:zuozhuan, raw=左传:0083 隐公五年（前718）涉周王身份, canonical=TODO（待外部考订）
+★s1 曲沃代翼弧灌注（`arc/events/s1-quwo.json` `ev:zhuangbo-lei-fa-yi`）回流补料途中发现：传统纪年周平王卒于前720，早于左传:0083 系年（隐公五年，前718）约2年；而账户唯一明载周王身份的字面依据（史记:0015）作『周平王使虢公将兵伐曲沃庄伯』。二者字面不合，可能为追述旧称（周王已卒、史料仍沿用旧称）或文本讹误，本仓不展开考订、不自行判定孰是——候选位先立（OP-D-067 同轮：结构化字段现用 `per:zhou-pingwang` 系因其有史记:0015 字面依据，非按在位区间反推，合规；此张力本身留待外部学术核实）。
+
 ### /sixstates_override_placeholders · _note
 ★六国年表系统性误差 override 占位。史记·六国年表战国纪年有已知系统性错误，学界（钱穆《先秦诸子系年》、杨宽《战国史》一系）有校正传统。此处结构先立，academic_source 待逐条落实（TODO）——这是『考据结论的工程化』，非我们自搞考据。灌注战国全量（W-H1）前逐条补全（见 spec Q2）。

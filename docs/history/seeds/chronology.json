@@ -50,6 +50,16 @@
         "tradition": "夏商周断代工程",
         "academic_source": "夏商周断代工程 1996–2000 结论（利簋『甲子』金文 + 天象 + 文献综合）。诸说另有前1027 等 —— 克商年在共和（前841）之前的 fuzzy 区，override 系将学术定年工程化，非本仓考据；诸说并陈见 F9 cf:muye-date。"
       }
+    },
+    {
+      "source_id": "src:zuozhuan",
+      "raw": "左传:0083（隐公五年，前718，庄伯以郑人邢人伐翼，王使尹氏、武氏助之，翼侯奔隨）所涉周王身份，对读史记:0015（周平王使虢公将兵伐曲沃庄伯）",
+      "canonical": "TODO（待外部考订，不自行判定）",
+      "override": {
+        "corrected_canonical": "TODO——周平王卒于前720（传统纪年），而左传:0083 系隐公五年（前718），史记:0015 作『周平王使虢公』——二者不合；可能为追述旧称或文本讹误。",
+        "tradition": "TODO（待考订传统标注）",
+        "academic_source": "TODO——本仓未展开考订，待外部学术核实。现状：`arc/events/s1-quwo.json` 的 `ev:zhuangbo-lei-fa-yi` 暂用 `per:zhou-pingwang`（史记 :0015 字面明载），已在该事件 mainline_decision.rationale 注记此张力，不因此撤回该 actor（有字面依据，OP-D-067 合规）；本条只固『二者不合、待考』的候选位，不裁定孰是（回流补料·registry-backfill-001 续，2026-07-24）。"
+      }
     }
   ],
   "sixstates_override_placeholders": {
