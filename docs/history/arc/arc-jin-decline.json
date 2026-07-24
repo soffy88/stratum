@@ -13,11 +13,12 @@
             "ev:quwo-feng-huanshu",
             "ev:zhuangbo-shi-xiaohou",
             "ev:zhuangbo-lei-fa-yi",
+            "ev:quwo-wugong-mie-yi",
             "ev:wugong-you-sha-xiaozihou",
             "ev:huanwang-ming-min",
-            "ev:quwo-wugong-mie-yi"
+            "ev:quwo-mie-min-liehou"
           ],
-          "membership_decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24 终裁落地 4 事件，见 arc/ADJUDICATION-s1-supplement.md）"
+          "membership_decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24 终裁落地 4 事件 + 弧灌注新立 ev:quwo-mie-min-liehou、修正 ev:quwo-wugong-mie-yi 排序与题旨，OP-D-064，见 arc/ADJUDICATION-s1-supplement.md 与 arc/events/s1-quwo.json）"
         },
         {
           "sub_arc_id": "arc:jin-decline/s2-liji",
@@ -84,9 +85,10 @@
         "ev:quwo-feng-huanshu",
         "ev:zhuangbo-shi-xiaohou",
         "ev:zhuangbo-lei-fa-yi",
+        "ev:quwo-wugong-mie-yi",
         "ev:wugong-you-sha-xiaozihou",
         "ev:huanwang-ming-min",
-        "ev:quwo-wugong-mie-yi",
+        "ev:quwo-mie-min-liehou",
         "ev:xiangong-qu-liji",
         "ev:liji-zen-shensheng",
         "ev:chonger-yiwu-chuben",
@@ -140,6 +142,7 @@
       "evidence_refs": [
         "ev:quwo-feng-huanshu",
         "ev:quwo-wugong-mie-yi",
+        "ev:quwo-mie-min-liehou",
         "ev:jin-gongshi-bei",
         "ev:sanjiafenjin"
       ],

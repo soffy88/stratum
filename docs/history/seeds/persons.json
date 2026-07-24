@@ -2142,6 +2142,271 @@
         "method": "qwen3-8b 抽取候选·机械四查过",
         "status": "candidate-verified"
       }
+    },
+    {
+      "person_id": "per:jin-zhaohou",
+      "names_by_source": {
+        "晉昭侯": [
+          "src:zuozhuan",
+          "src:shiji"
+        ]
+      },
+      "谥字号": "谥昭，晋文侯子",
+      "active_range": "前745封桓叔于曲沃当代君主",
+      "force_affiliations": [
+        "fo:jin"
+      ]
+    },
+    {
+      "person_id": "per:quwo-huanshu",
+      "names_by_source": {
+        "桓叔": [
+          "src:zuozhuan",
+          "src:shiji"
+        ],
+        "成师": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "名成师，晋穆侯少子，昭侯元年封曲沃",
+      "active_range": "前745起（封曲沃）",
+      "force_affiliations": [
+        "fo:jin"
+      ]
+    },
+    {
+      "person_id": "per:luanbin",
+      "names_by_source": {
+        "栾宾": [
+          "src:zuozhuan",
+          "src:shiji"
+        ]
+      },
+      "谥字号": "靖侯庶孙，桓叔之傅",
+      "active_range": "前745（傅桓叔）",
+      "force_affiliations": [
+        "fo:jin"
+      ]
+    },
+    {
+      "person_id": "per:jin-xiaohou",
+      "names_by_source": {
+        "晉孝侯": [
+          "src:zuozhuan",
+          "src:shiji"
+        ],
+        "平": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "谥孝，昭侯子，为庄伯所弑",
+      "active_range": "前739前后即位—前725前后被弑（据左传惠45年推）",
+      "force_affiliations": [
+        "fo:jin"
+      ]
+    },
+    {
+      "person_id": "per:quwo-zhuangbo",
+      "names_by_source": {
+        "庄伯": [
+          "src:zuozhuan",
+          "src:shiji"
+        ],
+        "鳝": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "桓叔子，弑孝侯于翼",
+      "active_range": "前725前后弑孝侯—哀侯二年（史记）卒",
+      "force_affiliations": [
+        "fo:jin"
+      ]
+    },
+    {
+      "person_id": "per:jin-ehou",
+      "names_by_source": {
+        "晉鄂侯": [
+          "src:zuozhuan",
+          "src:shiji"
+        ],
+        "郄": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "谥鄂。★谱系真冲突（cf:egou-di-vs-zi）：左传作孝侯弟、史记作孝侯子，未坐实",
+      "active_range": "孝侯被弑后即位—卒后哀侯继",
+      "force_affiliations": [
+        "fo:jin"
+      ]
+    },
+    {
+      "person_id": "per:jin-aihou",
+      "names_by_source": {
+        "晉哀侯": [
+          "src:zuozhuan",
+          "src:shiji"
+        ],
+        "光": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "谥哀，鄂侯子",
+      "active_range": "鄂侯卒后即位—桓公三年前后被曲沃武公虏（左传:0217）",
+      "force_affiliations": [
+        "fo:jin"
+      ]
+    },
+    {
+      "person_id": "per:jin-xiaozihou",
+      "names_by_source": {
+        "晉小子侯": [
+          "src:zuozhuan",
+          "src:shiji"
+        ]
+      },
+      "谥字号": "哀侯子，被曲沃伯诱杀",
+      "active_range": "哀侯被虏后即位—桓公七年冬被诱杀（左传:0262）",
+      "force_affiliations": [
+        "fo:jin"
+      ]
+    },
+    {
+      "person_id": "per:jin-hou-min",
+      "names_by_source": {
+        "晉侯緡": [
+          "src:zuozhuan",
+          "src:shiji"
+        ],
+        "緡": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "哀侯弟，末代翼系晋侯",
+      "active_range": "桓公八年由王命虢仲立—晋侯缗二十八年为曲沃武公所灭（史记:0020）",
+      "force_affiliations": [
+        "fo:jin"
+      ]
+    },
+    {
+      "person_id": "per:quwo-wugong",
+      "names_by_source": {
+        "曲沃武公": [
+          "src:zuozhuan",
+          "src:shiji"
+        ],
+        "晉武公": [
+          "src:shiji"
+        ],
+        "稱": [
+          "src:shiji"
+        ]
+      },
+      "谥字号": "谥武，庄伯子，终代晋为诸侯",
+      "active_range": "哀侯二年（史记）即位曲沃—通年三十八年代晋，卒后献公立",
+      "force_affiliations": [
+        "fo:jin"
+      ]
+    },
+    {
+      "person_id": "per:zhou-huanwang",
+      "names_by_source": {
+        "周桓王": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "谥桓，东周王",
+      "active_range": "前719—前697在位",
+      "force_affiliations": [
+        "fo:zhou"
+      ]
+    },
+    {
+      "person_id": "per:guozhong",
+      "names_by_source": {
+        "虢仲": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "虢国之君，受王命立晋侯缗",
+      "active_range": "桓公八年（前704）奉命立缗",
+      "force_affiliations": [
+        "fo:zhou"
+      ]
+    },
+    {
+      "person_id": "per:hanwan",
+      "names_by_source": {
+        "韩萬": [
+          "src:zuozhuan",
+          "src:shiji"
+        ]
+      },
+      "谥字号": "曲沃武公御戎，后韩氏之祖",
+      "active_range": "桓公三年（前709）伐翼御戎",
+      "force_affiliations": [
+        "fo:jin"
+      ]
+    },
+    {
+      "person_id": "per:lianghong",
+      "names_by_source": {
+        "梁弘": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "曲沃武公伐翼车右",
+      "active_range": "桓公三年（前709）伐翼为右",
+      "force_affiliations": [
+        "fo:jin"
+      ]
+    },
+    {
+      "person_id": "per:jizhong",
+      "names_by_source": {
+        "祭仲": [
+          "src:zuozhuan"
+        ],
+        "祭足": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "郑大夫，谏庄公早为共叔段所",
+      "active_range": "郑庄公朝（隐公元年前后）",
+      "force_affiliations": [
+        "fo:zheng"
+      ]
+    },
+    {
+      "person_id": "per:zheng-zhuanggong",
+      "names_by_source": {
+        "鄭莊公": [
+          "src:zuozhuan"
+        ],
+        "寤生": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "谥庄，郑武公子，克段于鄢",
+      "active_range": "前743—前701在位",
+      "force_affiliations": [
+        "fo:zheng"
+      ]
+    },
+    {
+      "person_id": "per:gongshu-duan",
+      "names_by_source": {
+        "共叔段": [
+          "src:zuozhuan"
+        ],
+        "京城大叔": [
+          "src:zuozhuan"
+        ]
+      },
+      "谥字号": "郑庄公弟，封京，坐大后举兵败奔",
+      "active_range": "隐公元年（前722）京叛出奔",
+      "force_affiliations": [
+        "fo:zheng"
+      ]
     }
   ]
 }

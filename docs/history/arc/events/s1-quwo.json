@@ -1,0 +1,399 @@
+{
+  "events": [
+    {
+      "event_id": "ev:quwo-feng-huanshu",
+      "title": "曲沃封桓叔·晋始乱",
+      "canonical_date": { "type": "year", "value": "前745", "note": "鲁惠公二十四年（左传原文『惠之二十四年』——经核实『惠』指鲁惠公非周王，段落追叙于左传桓公二年之内，非该段实际系年）；晋昭侯元年。与 arc.time_window 起点一致。" },
+      "event_type": "制度",
+      "actors": [
+        { "person_ref": "per:jin-zhaohou", "role": "晋君，封桓叔于曲沃", "force_ref": "fo:jin" },
+        { "person_ref": "per:quwo-huanshu", "role": "受封曲沃", "force_ref": "fo:jin" },
+        { "person_ref": "per:luanbin", "role": "傅桓叔", "force_ref": "fo:jin" }
+      ],
+      "geo": { "place_refs": ["pl:quwo", "pl:yi-jin"], "route_hint": null, "mapstate_hint": "晋本宗（翼）与支庶封邑（曲沃）并立" },
+      "parent_event": null,
+      "accounts": ["ac:zuozhuan-fengquwo"],
+      "conflicts": [],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:zuozhuan-fengquwo",
+      "mainline_decision": {
+        "choice": "以左传桓2段（师服语所在段）为唯一账户，师服『本大而末小』预言即系本事件之因果起点",
+        "rationale": "该段落已是 thesis:shifu-modabizhe 的 locator 锚点，事件与论点共享同一白文段，R5 合规；史记世家亦载同一封事（『昭侯元年，封文侯弟成师于曲沃』）但未见独立成段可另立账户之实质异文，暂不并列。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24，弧灌注 OP-D-064）",
+        "date": "2026-07-24"
+      }
+    },
+    {
+      "event_id": "ev:zhuangbo-shi-xiaohou",
+      "title": "庄伯弑孝侯于翼，翼人立鄂侯",
+      "canonical_date": { "type": "year", "value": "前725", "note": "左传『惠之四十五年』（鲁惠公四十五年，惠公元年前769起算）" },
+      "event_type": "政变",
+      "actors": [
+        { "person_ref": "per:quwo-zhuangbo", "role": "弑孝侯", "force_ref": "fo:jin" },
+        { "person_ref": "per:jin-xiaohou", "role": "被弑", "force_ref": "fo:jin" },
+        { "person_ref": "per:jin-ehou", "role": "翼人所立新君", "force_ref": "fo:jin" }
+      ],
+      "geo": { "place_refs": ["pl:yi-jin", "pl:quwo"], "route_hint": null, "mapstate_hint": null },
+      "parent_event": null,
+      "accounts": ["ac:zuozhuan-zhuangbo-shixiaohou", "ac:shiji-zhuangbo-shixiaohou"],
+      "conflicts": ["cf:egou-di-vs-zi"],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:zuozhuan-zhuangbo-shixiaohou",
+      "mainline_decision": {
+        "choice": "主线取左传（弑君+翼人拥立骨架一致）；鄂侯与孝侯血缘关系（弟/子）两说并存，见 cf:egou-di-vs-zi，不择一坐实",
+        "rationale": "两源对『弑孝侯、翼人立新君』骨架一致，仅对新君与孝侯关系记载互斥（左传：弟；史记：子）——真冲突入 cf，不影响事件本体骨架的转正。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      }
+    },
+    {
+      "event_id": "ev:zhuangbo-lei-fa-yi",
+      "title": "庄伯累次伐翼：逐翼侯奔隨 / 曲沃叛王败退，晋人历次拥立",
+      "canonical_date": { "type": "range", "value": ["前718", "前711"], "note": "左传:0083 系隐公五年(前718)『伐翼，翼侯奔隨』；:0086/:0097 稍后（哀侯拥立，据史记:0015『鄂侯卒』后庄伯再举兵推算，绝对年未逐年互证，见 cf 候选待建·本波未升正式 cf——排序分歧已在 arc/ADJUDICATION-s1-supplement.md 诚实标注，事件转正不因此受阻，同 OP-D-046 精神）。" },
+      "event_type": "战役",
+      "actors": [
+        { "person_ref": "per:quwo-zhuangbo", "role": "累次伐翼", "force_ref": "fo:jin" },
+        { "person_ref": "per:jin-ehou", "role": "翼侯（战败奔隨）", "force_ref": "fo:jin" },
+        { "person_ref": "per:jin-aihou", "role": "晋人后立新君", "force_ref": "fo:jin" },
+        { "person_ref": "per:zhou-huanwang", "role": "王命虢公助翼", "force_ref": "fo:zhou" }
+      ],
+      "geo": { "place_refs": ["pl:yi-jin", "pl:sui-jin", "pl:e-jin", "pl:quwo"], "route_hint": null, "mapstate_hint": "翼侯败退路线：翼→隨；晋人拥立地：鄂" },
+      "parent_event": null,
+      "accounts": ["ac:zuozhuan-zhuangbo-leifa", "ac:shiji-zhuangbo-leifa"],
+      "conflicts": [],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:zuozhuan-zhuangbo-leifa",
+      "mainline_decision": {
+        "choice": "左传三段（:0083/:0086/:0097）合并叙事为主线，史记单段并陈；三段间的精确因果对应未坐实，如实注记于 locator.note，不强行精确切分",
+        "rationale": "左传三段骨架清晰（伐翼→翼侯奔隨→王命助翼未果→曲沃叛王败退→立哀侯于翼），与史记压缩单段（庄伯闻鄂侯卒兴兵→王使虢公伐庄伯→庄伯败退→晋人立哀侯）大方向一致，逐年精确对齐超出本波核实能力，诚实标注不平滑。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      }
+    },
+    {
+      "event_id": "ev:quwo-wugong-mie-yi",
+      "title": "曲沃武公伐翼虏哀侯",
+      "canonical_date": { "type": "year", "value": "前709", "note": "左传桓公三年『三年春』。★沿革：本事件既往（ADJUDICATION-s1-s2.md，2026-07-23）曾以『曲沃武公灭翼·代晋』定题、D1 泛称『前716–679』——弧灌注结构化后核实：本事件唯一白文锚（:0217）实际所载为武公伐翼虏获哀侯（与史记『哀侯……九年，伐晉于汾旁，虜哀侯』之『汾旁』/本段『汾隰』地名相合，确系同事），非武公代晋称侯之终局（终局见新立 ev:quwo-mie-min-liehou，前678）。题目/时间窗因而收窄更正，member_event_refs 顺序同轮调整（详 arc/ADJUDICATION-s1-supplement.md 本轮追记）。" },
+      "event_type": "战役",
+      "actors": [
+        { "person_ref": "per:quwo-wugong", "role": "伐翼", "force_ref": "fo:jin" },
+        { "person_ref": "per:jin-aihou", "role": "翼侯，被虏", "force_ref": "fo:jin" },
+        { "person_ref": "per:hanwan", "role": "御戎", "force_ref": "fo:jin" },
+        { "person_ref": "per:lianghong", "role": "车右", "force_ref": "fo:jin" }
+      ],
+      "geo": { "place_refs": ["pl:yi-jin", "pl:fenpang"], "route_hint": null, "mapstate_hint": null },
+      "parent_event": null,
+      "accounts": ["ac:zuozhuan-wugong-mieyi"],
+      "conflicts": [],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:zuozhuan-wugong-mieyi",
+      "mainline_decision": {
+        "choice": "维持既有 id/锚（不改字节引用），题目与时间窗按本轮结构化核实结果收窄注记（非重新裁决，属既有裁决的精度补正）",
+        "rationale": "id 变更成本高（已被 EPISODEPLAN/thesis 等多处引用），采『id 不动、canonical_date+title 注记更正』的最小侵入处置，同 D-018 类『字节不改、语义以刷新表为准』的既有纪律。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24，弧灌注核实而修）",
+        "date": "2026-07-24"
+      }
+    },
+    {
+      "event_id": "ev:wugong-you-sha-xiaozihou",
+      "title": "曲沃武公诱杀晋小子侯",
+      "canonical_date": { "type": "year", "value": "前705", "note": "左传桓公七年冬" },
+      "event_type": "政变",
+      "actors": [
+        { "person_ref": "per:quwo-wugong", "role": "诱杀", "force_ref": "fo:jin" },
+        { "person_ref": "per:jin-xiaozihou", "role": "被诱杀", "force_ref": "fo:jin" }
+      ],
+      "geo": { "place_refs": ["pl:quwo", "pl:yi-jin"], "route_hint": null, "mapstate_hint": null },
+      "parent_event": null,
+      "accounts": ["ac:zuozhuan-wugong-yousha"],
+      "conflicts": [],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:zuozhuan-wugong-yousha",
+      "mainline_decision": {
+        "choice": "左传单条已足自证（骨架简明、与史记『武公使韩万殺所虏晋哀侯』系另一环节，非本条异文——本条对应史记『晋小子之四年，曲沃武公诱召晋小子杀之』）",
+        "rationale": "左传:0262『冬，曲沃伯诱晋小子侯，杀之』与史记对应段骨架一致，非冲突，单账户即可。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      }
+    },
+    {
+      "event_id": "ev:huanwang-ming-min",
+      "title": "曲沃灭翼（桓8年春）· 周王命虢仲立晋侯缗（同年冬）",
+      "canonical_date": { "type": "year", "value": "前704", "note": "左传桓公八年：『八年，春，滅翼』（:0267）+ 『冬，王命虢仲立晉哀侯之弟緡于晉』（:0270），同年两事，弧灌注核实后合一事件呈现（原候选仅锚 :0270，本轮补 :0267）。" },
+      "event_type": "册命",
+      "actors": [
+        { "person_ref": "per:zhou-huanwang", "role": "王命虢仲立缗", "force_ref": "fo:zhou" },
+        { "person_ref": "per:guozhong", "role": "奉命册立", "force_ref": "fo:zhou" },
+        { "person_ref": "per:jin-hou-min", "role": "被立为晋侯", "force_ref": "fo:jin" },
+        { "person_ref": "per:quwo-wugong", "role": "灭翼（春），退保曲沃", "force_ref": "fo:jin" }
+      ],
+      "geo": { "place_refs": ["pl:yi-jin", "pl:quwo"], "route_hint": null, "mapstate_hint": null },
+      "parent_event": null,
+      "accounts": ["ac:zuozhuan-huanwang-mingmin"],
+      "conflicts": [],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:zuozhuan-huanwang-mingmin",
+      "mainline_decision": {
+        "choice": "左传经传两条同年合一呈现（春灭翼、冬立缗），非冲突、系同年因果相续两幕",
+        "rationale": "『灭翼』与『立缗』紧邻同年、因果相续（曲沃取翼→王室补立傀儡维持晋祀），弧灌注结构化时一并收入本事件，非新增独立事件（避免过度切分）。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24，弧灌注补 :0267）",
+        "date": "2026-07-24"
+      }
+    },
+    {
+      "event_id": "ev:quwo-mie-min-liehou",
+      "title": "曲沃武公灭晋侯缗，赂周釐王受命列为诸侯",
+      "canonical_date": { "type": "year", "value": "前678", "note": "史记『晋侯二十八年』；左传:0500（一军为晋侯）紧邻『同盟于幽』（庄公十六年，标准编年前678）年份簇，推定同期，见 cf:cebming-fanwei。" },
+      "event_type": "册命",
+      "actors": [
+        { "person_ref": "per:quwo-wugong", "role": "灭缗，受周王命列诸侯", "force_ref": "fo:jin" },
+        { "person_ref": "per:jin-hou-min", "role": "被灭", "force_ref": "fo:jin" }
+      ],
+      "geo": { "place_refs": ["pl:yi-jin", "pl:quwo"], "route_hint": null, "mapstate_hint": "曲沃尽并晋地" },
+      "parent_event": null,
+      "accounts": ["ac:shiji-wugong-huilu-mingzhu", "ac:zuozhuan-yijun-mingjin"],
+      "conflicts": ["cf:cebming-fanwei"],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:shiji-wugong-huilu-mingzhu",
+      "mainline_decision": {
+        "choice": "主线取史记（灭缗+赂宝器+命为晋君列诸侯+尽并晋地，叙事完整）；左传『一军为晋侯』作 S12 并陈，册命范围分歧入 cf 不坐实",
+        "rationale": "史记段落是本弧『曲沃代翼』收官叙事的唯一完整来源；左传:0500 极简（仅八字）且『一军』编制限定与史记『尽并』语义分歧显著，宁碎片、不择一。本事件为 s1 新立第 7 个member（原 G1 account 挂靠既有 ev:quwo-wugong-mie-yi 系临时处置，弧灌注核实该既有事件实指前709 虏哀侯后，本裁改为独立新事件承载，见 ev:quwo-wugong-mie-yi 本轮 title/date 更正说明）。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24，弧灌注新立）",
+        "date": "2026-07-24"
+      }
+    },
+    {
+      "event_id": "ev:zhengbo-ke-duan",
+      "title": "郑伯克段于鄢（外部结构对照事件，非 arc:jin-decline 成员）",
+      "canonical_date": { "type": "year", "value": "前722", "note": "左传隐公元年" },
+      "event_type": "政变",
+      "actors": [
+        { "person_ref": "per:zheng-zhuanggong", "role": "克段于鄢", "force_ref": "fo:zheng" },
+        { "person_ref": "per:gongshu-duan", "role": "封京坐大，兵败出奔", "force_ref": "fo:zheng" },
+        { "person_ref": "per:jizhong", "role": "谏『大都耦国』", "force_ref": "fo:zheng" }
+      ],
+      "geo": { "place_refs": ["pl:zheng", "pl:jing-zheng", "pl:yan-zheng"], "route_hint": null, "mapstate_hint": null },
+      "parent_event": null,
+      "accounts": ["ac:zhengbo-ke-duan-jishi"],
+      "conflicts": [],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:zhengbo-ke-duan-jishi",
+      "mainline_decision": {
+        "choice": "建为独立事件对象，仅供 thesis:zhengbo-ke-duan.evidence_refs 承载、不入 arc:jin-decline.member_event_refs（跨国比对素材，非本弧成员，OP-D-062/G3 既定）",
+        "rationale": "h_account.event_ref 为必需字段，需要一个真实存在的 event_id 承载——本事件按 h_event 完整形状建立，但明确排除于 arc:jin-decline 的 member_event_refs 之外，避免'为满足 schema 而混入弧内成员'的越界。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24，为消除 ac:zhengbo-ke-duan-jishi 占位悬空而建）",
+        "date": "2026-07-24"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:zuozhuan-fengquwo",
+      "event_ref": "ev:quwo-feng-huanshu",
+      "source_id": "src:zuozhuan",
+      "locator": { "book": "左传", "chapter": "桓公二年", "section": null, "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0205", "note": "段内含『惠之二十四年』追叙 + 师服谏语全文（含宗法层级句，同 thesis:shifu-modabizhe locator）" },
+      "extraction": {
+        "date_claim": "惠之二十四年（鲁惠公24年，前745）",
+        "actor_claims": ["晋昭侯封桓叔于曲沃", "栾宾傅桓叔", "师服谏"],
+        "causal_claims": ["本大而末小是以能固——晋建国于甸服而本已弱，师服断其必乱"],
+        "number_claims": [],
+        "dialogue_spans": ["吾聞國家之立也，本大而末小，是以能固。……今晉，甸侯也，而建國，本既弱矣，其能久乎？"]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:zuozhuan-zhuangbo-shixiaohou",
+      "event_ref": "ev:zhuangbo-shi-xiaohou",
+      "source_id": "src:zuozhuan",
+      "locator": { "book": "左传", "chapter": "桓公二年", "section": null, "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0207" },
+      "extraction": {
+        "date_claim": "惠之四十五年（鲁惠公45年，前725）",
+        "actor_claims": ["曲沃庄伯伐翼弑孝侯", "翼人立孝侯弟鄂侯"],
+        "causal_claims": [],
+        "number_claims": [],
+        "dialogue_spans": ["惠之四十五年，曲沃莊伯伐翼，弒孝侯。翼人立其弟鄂侯。鄂侯生哀侯。"]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:shiji-zhuangbo-shixiaohou",
+      "event_ref": "ev:zhuangbo-shi-xiaohou",
+      "source_id": "src:shiji",
+      "locator": { "book": "史记", "chapter": "晋世家", "section": null, "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0013" },
+      "extraction": {
+        "date_claim": "孝侯十五年",
+        "actor_claims": ["曲沃庄伯弑孝侯于翼", "晋人复立孝侯子郄为君（是为鄂侯）"],
+        "causal_claims": [],
+        "number_claims": [],
+        "dialogue_spans": ["孝侯十五年，曲沃莊伯弒其君晉孝侯于翼。晉人攻曲沃莊伯，莊伯復入曲沃。晉人復立孝侯子郄爲君，是爲鄂侯。"]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:zuozhuan-zhuangbo-leifa",
+      "event_ref": "ev:zhuangbo-lei-fa-yi",
+      "source_id": "src:zuozhuan",
+      "locator": { "book": "左传", "chapter": "隐公五年前后", "section": null, "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0083", "note": "同事另两段 :0086（曲沃叛王，王命虢公伐曲沃，立哀侯于翼）/ :0097（翼九宗迎晋侯于隨纳诸鄂，称鄂侯）——三段与本条同一事件序列，locator 仅钉首段，全序见 ADJUDICATION-s1-supplement.md" },
+      "extraction": {
+        "date_claim": "隐公五年（前718）起",
+        "actor_claims": ["曲沃庄伯以郑人邢人伐翼", "王使尹氏武氏助翼", "翼侯奔隨"],
+        "causal_claims": [],
+        "number_claims": [],
+        "dialogue_spans": ["曲沃莊伯以鄭人、邢人伐翼，王使尹氏、武氏助之。翼侯奔隨。"]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:shiji-zhuangbo-leifa",
+      "event_ref": "ev:zhuangbo-lei-fa-yi",
+      "source_id": "src:shiji",
+      "locator": { "book": "史记", "chapter": "晋世家", "section": null, "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0015" },
+      "extraction": {
+        "date_claim": "鄂侯六年卒后",
+        "actor_claims": ["曲沃庄伯闻鄂侯卒兴兵伐晋", "周平王使虢公伐庄伯", "庄伯败退保曲沃", "晋人共立鄂侯子光（哀侯）"],
+        "causal_claims": [],
+        "number_claims": [],
+        "dialogue_spans": ["鄂侯六年卒。曲沃莊伯聞晉鄂侯卒，乃興兵伐晉。周平王使虢公將兵伐曲沃莊伯，莊伯走保曲沃。晉人共立鄂侯子光，是爲哀侯。"]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:zuozhuan-wugong-mieyi",
+      "event_ref": "ev:quwo-wugong-mie-yi",
+      "source_id": "src:zuozhuan",
+      "locator": { "book": "左传", "chapter": "桓公三年", "section": null, "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0217", "note": "地名『汾隰』与史记『汾旁』相合，确认同事——本事件即史记『虏哀侯』一节" },
+      "extraction": {
+        "date_claim": "三年春（桓公三年，前709）",
+        "actor_claims": ["曲沃武公伐翼", "韩万御戎", "梁弘为右", "逐翼侯于汾隰，夜获之，及栾共叔"],
+        "causal_claims": [],
+        "number_claims": [],
+        "dialogue_spans": ["三年春，曲沃武公伐翼，次于陘庭，韓萬御戎，梁弘為右，逐翼侯于汾隰，驂絓而止。夜獲之，及欒共叔。"]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:zuozhuan-wugong-yousha",
+      "event_ref": "ev:wugong-you-sha-xiaozihou",
+      "source_id": "src:zuozhuan",
+      "locator": { "book": "左传", "chapter": "桓公七年", "section": null, "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0262" },
+      "extraction": {
+        "date_claim": "桓公七年冬（前705）",
+        "actor_claims": ["曲沃伯诱晋小子侯，杀之"],
+        "causal_claims": [],
+        "number_claims": [],
+        "dialogue_spans": ["冬，曲沃伯誘晉小子侯，殺之。"]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:zuozhuan-huanwang-mingmin",
+      "event_ref": "ev:huanwang-ming-min",
+      "source_id": "src:zuozhuan",
+      "locator": { "book": "左传", "chapter": "桓公八年", "section": null, "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0270", "note": "同年春另有 :0267『八年，春，滅翼』，本事件合并呈现两条同年记事" },
+      "extraction": {
+        "date_claim": "桓公八年冬（前704）",
+        "actor_claims": ["王命虢仲立晋哀侯之弟缗于晋"],
+        "causal_claims": [],
+        "number_claims": [],
+        "dialogue_spans": ["冬，王命虢仲立晉哀侯之弟緡于晉。"]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:shiji-wugong-huilu-mingzhu",
+      "event_ref": "ev:quwo-mie-min-liehou",
+      "source_id": "src:shiji",
+      "locator": { "book": "史记", "chapter": "晋世家", "section": null, "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0020" },
+      "extraction": {
+        "date_claim": "晋侯（缗）二十八年",
+        "actor_claims": ["曲沃武公伐晋侯缗，灭之", "以宝器赂献于周釐王", "釐王命曲沃武公为晋君，列为诸侯"],
+        "causal_claims": ["赂宝器→周王正式承认→尽并晋地"],
+        "number_claims": [],
+        "dialogue_spans": ["晉侯二十八年，齊桓公始霸。曲沃武公伐晉侯緡，滅之，盡以其寶器賂獻于周釐王。釐王命曲沃武公爲晉君，列爲諸侯，於是盡併晉地而有之。"]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:zuozhuan-yijun-mingjin",
+      "event_ref": "ev:quwo-mie-min-liehou",
+      "source_id": "src:zuozhuan",
+      "locator": { "book": "左传", "chapter": "庄公十六年", "section": null, "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0500", "note": "紧邻『同盟于幽』（庄16年，前678）年份簇，推定同期" },
+      "extraction": {
+        "date_claim": "紧邻同盟于幽（庄公十六年，前678）",
+        "actor_claims": ["王使虢公命曲沃伯以一军为晋侯"],
+        "causal_claims": [],
+        "number_claims": [{"value": "一", "unit": "军", "quote_span": "以一軍爲晉侯", "display": "《左传》载『以一军为晋侯』"}],
+        "dialogue_spans": ["王使虢公命曲沃伯以一軍爲晉侯。"]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:zhengbo-ke-duan-jishi",
+      "event_ref": "ev:zhengbo-ke-duan",
+      "source_id": "src:zuozhuan",
+      "locator": { "book": "左传", "chapter": "隐公元年", "section": null, "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0004", "note": "经文极简（『郑伯克段于鄢』），全叙事见 :0012（祭仲谏语）–:0013（共叔段坐大兴兵）–:0014（『书曰』释例）" },
+      "extraction": {
+        "date_claim": "隐公元年（前722）",
+        "actor_claims": ["郑庄公克段于鄢", "共叔段封京坐大", "祭仲谏『大都耦国，国之害也』"],
+        "causal_claims": ["支庶封大邑不受制→坐大→终威胁本宗，先兆有识者谏而不听"],
+        "number_claims": [],
+        "dialogue_spans": ["夏，五月，鄭伯克段于鄢。", "都城過百雉，國之害也。先王之制：大都不過參國之一，中五之一，小九之一。今京不度，非制也，君將不堪。"]
+      },
+      "genre_note": null
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:egou-di-vs-zi",
+      "event_ref": "ev:zhuangbo-shi-xiaohou",
+      "dimension": "actor",
+      "account_refs": ["ac:zuozhuan-zhuangbo-shixiaohou", "ac:shiji-zhuangbo-shixiaohou"],
+      "independence_analysis": {
+        "independent_witness_count": 2,
+        "reasoning": "左传『翼人立其弟鄂侯』（鄂侯=孝侯弟）与史记『晋人复立孝侯子郄为君，是为鄂侯』（鄂侯=孝侯子）——对鄂侯与孝侯血缘关系给出互斥断言，真冲突（非精粗差）。左传/史记为两传世系统，此点各执一词、非派生关系，indep=2。",
+        "derivation_notes": [
+          "通则a同指涉对齐前置：两源均指同一继位事件（弑孝侯、翼人拥立新君鄂侯），指涉对象一致，仅血缘关系描述互斥，非不同事件误合",
+          "★按源系谱折算（任务指定口径）：左传系（春秋经传体系）与史记系（世家纪传体系）为两条独立传世谱系，无证据表明一方转抄另一方于此细节，indep=2、非同源降权",
+          "本冲突为弧灌注（OP-D-064）结构化 ev:zhuangbo-shi-xiaohou 时首次正式落 cf 对象；此前（ADJUDICATION-s1-supplement.md，2026-07-24稍早）已作 prose 诚实标注、未建正式对象——本条即完成该标注的 schema 化"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "主线取左传『弟』说（左传为春秋经传体系近源、编年体裁一贯性较强）；史记『子』说 S12 并陈，不作定论、不判一方为误",
+        "rationale": "两说均为源内正式记载，非考据层调和对象；主线仅取一说供叙事线性推进，S12 角标呈现两说供观众自行判断，符合『宁碎片不错合』纪律。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      },
+      "presentation_hint": "S12对勘"
+    },
+    {
+      "conflict_id": "cf:cebming-fanwei",
+      "event_ref": "ev:quwo-mie-min-liehou",
+      "dimension": "narrative",
+      "account_refs": ["ac:zuozhuan-yijun-mingjin", "ac:shiji-wugong-huilu-mingzhu"],
+      "independence_analysis": {
+        "independent_witness_count": 2,
+        "reasoning": "左传『以一军为晋侯』（编制/等级受限的册命用语）与史记『列为诸侯……尽并晋地而有之』（无保留全兼并叙事）——对周王册命的范围/性质记载不一致，真分歧、非详略差。左传/史记两传世系统，indep=2。",
+        "derivation_notes": [
+          "★顾问候选解释（任务指定，注记不坐实）：两说或非互斥——『一军』言军事编制等级（王室对曲沃新政权军力规格的限定性承认），『尽并』言领土范围（曲沃对晋地的实际控制范围）——二者所指维度不同，理论上可并存不矛盾（编制受限但领土已尽并）；但本裁未能核实这是否即左传/史记作者本意，故仅列为候选解释、不据此坐实『两说本不冲突』的调和结论",
+          "同盟于幽（庄16年，前678）年份簇邻近性支持左传:0500与史记:0020系同一册命事件之两侧写（而非先后两次独立册命）之假说，但邻近不等于确证同指涉，仍判真冲突处置",
+          "本冲突为弧灌注首次正式落 cf 对象；此前 ADJUDICATION-s1-supplement.md 已 prose 标注『册命两阶段/军制分歧』"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "主线取史记（尽并晋地，叙事完整、承前启后本弧收官）；左传『一军』S12 并陈，顾问候选解释（编制/领土非互斥）仅供参考、不作 mainline 依据",
+        "rationale": "史记段落是本弧收官唯一完整叙事来源，采为主线；左传极简八字记载信息量不足以独立支撑叙事线，作角标并陈保留真实分歧，不采信未坐实的『非互斥』候选解释为定论（避免顾问自造调和说逃避真冲突判断之嫌）。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      },
+      "presentation_hint": "S12对勘"
+    }
+  ]
+}
