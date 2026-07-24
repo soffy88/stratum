@@ -1215,17 +1215,18 @@
       "person_id": "per:i4-017",
       "names_by_source": {
         "赵衰": [
-          "src:zuozhuan"
+          "src:zuozhuan",
+          "src:shiji"
         ]
       },
-      "谥字号": "(候选·待考)",
-      "active_range": "(候选)",
-      "force_affiliations": [],
+      "谥字号": "晋大夫，晋文公功臣，僖27年荐郤縠将中军、命为卿让于栾枝先轸；僖31年为卿（作五军）",
+      "active_range": "前633—前629见载（s3弧灌注核实在库）",
+      "force_affiliations": ["fo:jin"],
       "intake": {
-        "batch": "W-H1a-4-001",
+        "batch": "W-H1a-4-001/registry-backfill-006",
         "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1229",
-        "method": "qwen3-8b 抽取候选·机械四查过",
-        "status": "candidate-verified"
+        "method": "qwen3-8b抽取候选·机械四查过(W-H1a-4-001)；s3弧灌注(registry-backfill-006)确认为ev:jin-zuo-sanjun/ev:jin-zuo-wujun核心actor，补充史记同名attestation，id沿用不改",
+        "status": "verified"
       }
     },
     {
@@ -2642,6 +2643,86 @@
       "active_range": "前699—前696在位（初立）",
       "force_affiliations": ["fo:wey"],
       "intake": { "batch": "registry-backfill-005", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0344", "method": "同构候选扫描(OP-D-061,s2 counterpoint而入)", "status": "verified" }
+    },
+    {
+      "person_id": "per:chu-chenggong",
+      "names_by_source": { "楚成王": ["src:shiji"], "楚子": ["src:zuozhuan"] },
+      "谥字号": "楚国国君，僖27年伐宋围宋，触发晋作三军救宋（左传『楚子』/史记『楚成王』互证同一人）",
+      "active_range": "前671—前626在位",
+      "force_affiliations": ["fo:chu"],
+      "intake": { "batch": "registry-backfill-006", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1045", "method": "四查·s3弧灌注前置扫描(OP-D-071)，左传『楚子』经史记明载『楚成王』交叉印证，非referent-ambiguous情形", "status": "verified" }
+    },
+    {
+      "person_id": "per:gongsun-gu",
+      "names_by_source": { "公孫固": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "宋大夫，僖27年如晋告急（求救于晋文公）",
+      "active_range": "前633见载",
+      "force_affiliations": ["fo:song"],
+      "intake": { "batch": "registry-backfill-006", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1045", "method": "四查·s3弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:xianzhen",
+      "names_by_source": { "先軫": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "晋大夫，建言『报施救患，取威定霸』，作三军时佐下军",
+      "active_range": "前633起见载",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-006", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1045", "method": "四查·s3弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:huyan",
+      "names_by_source": { "狐偃": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "晋大夫，晋文公舅犯，建言伐曹卫解宋围；作三军上军归属左传/史记异载(见cf:shangjun-jiangshuai-guishu)",
+      "active_range": "前633起见载",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-006", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1045", "method": "四查·s3弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:xihu",
+      "names_by_source": { "郤縠": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "晋大夫，赵衰以德义荐为将，作三军时将中军",
+      "active_range": "前633见载",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-006", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1045", "method": "四查·s3弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:xizhen",
+      "names_by_source": { "郤溱": ["src:zuozhuan"], "郤臻": ["src:shiji"] },
+      "谥字号": "晋大夫，作三军时佐中军（左传『郤溱』/史记『郤臻』，同音异写，非真冲突）",
+      "active_range": "前633见载",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-006", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1045", "method": "四查·s3弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:humao",
+      "names_by_source": { "狐毛": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "晋大夫，狐偃之兄，作三军时上军归属左传/史记异载(见cf:shangjun-jiangshuai-guishu)",
+      "active_range": "前633见载",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-006", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1045", "method": "四查·s3弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:luanzhi",
+      "names_by_source": { "欒枝": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "晋大夫，作三军时将下军（赵衰让卿位于此）",
+      "active_range": "前633见载",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-006", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1045", "method": "四查·s3弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:xunlinfu",
+      "names_by_source": { "荀林父": ["src:zuozhuan", "src:shiji"] },
+      "谥字号": "晋大夫，作三军时御戎",
+      "active_range": "前633见载",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-006", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1045", "method": "四查·s3弧灌注前置扫描(OP-D-071)", "status": "verified" }
+    },
+    {
+      "person_id": "per:weichou",
+      "names_by_source": { "魏犨": ["src:zuozhuan"], "魏犫": ["src:shiji"] },
+      "谥字号": "晋大夫，作三军时为右（左传『魏犨』/史记『魏犫』，同音异写，非真冲突）",
+      "active_range": "前633见载",
+      "force_affiliations": ["fo:jin"],
+      "intake": { "batch": "registry-backfill-006", "source_para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1045", "method": "四查·s3弧灌注前置扫描(OP-D-071)", "status": "verified" }
     }
   ]
 }

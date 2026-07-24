@@ -1,0 +1,250 @@
+{
+  "events": [
+    {
+      "event_id": "ev:jin-zuo-sanjun",
+      "title": "晋作三军·蒐于被庐",
+      "canonical_date": {
+        "type": "year",
+        "value": "前633",
+        "note": "左传僖公二十七年（鲁僖公元年前659起算，27年=前633）。"
+      },
+      "event_type": "制度",
+      "actors": [
+        {
+          "person_ref": "per:chu-chenggong",
+          "role": "伐宋围宋，触发晋作三军以救宋（左传仅称『楚子』，史记明载『楚成王』，两源互证身份）",
+          "force_ref": "fo:chu"
+        },
+        {
+          "person_ref": "per:gongsun-gu",
+          "role": "宋大夫，如晋告急",
+          "force_ref": "fo:song"
+        },
+        {
+          "person_ref": "per:xianzhen",
+          "role": "建言『报施救患，取威定霸』，后佐下军",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:huyan",
+          "role": "建言伐曹卫以解宋围，本将上军，让于狐毛而佐之（左传）/史记异载：狐偃将上军、狐毛佐之，见 cf:shangjun-jiangshuai-guishu",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:i4-017",
+          "role": "荐郤縠以德义为帅，命为卿，让于栾枝、先轸",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:xihu",
+          "role": "将中军（赵衰所荐）",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:xizhen",
+          "role": "佐中军",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:humao",
+          "role": "佐上军受让为将（左传：狐偃让上军将位于狐毛，狐毛遂将上军）；史记异载见 cf",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:luanzhi",
+          "role": "将下军",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:xunlinfu",
+          "role": "御戎",
+          "force_ref": "fo:jin"
+        },
+        {
+          "person_ref": "per:weichou",
+          "role": "为右",
+          "force_ref": "fo:jin"
+        }
+      ],
+      "geo": {
+        "place_refs": [
+          "pl:beilu",
+          "pl:song",
+          "pl:caoguo",
+          "pl:wey"
+        ],
+        "route_hint": null,
+        "mapstate_hint": "楚伐宋，宋告急于晋；晋蒐于被庐，作三军谋元帅，以德义为荐将标准（赵衰荐郤縠）"
+      },
+      "parent_event": null,
+      "accounts": [
+        "ac:zuozhuan-zuosanjun",
+        "ac:shiji-zuosanjun"
+      ],
+      "conflicts": [
+        "cf:shangjun-jiangshuai-guishu"
+      ],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:zuozhuan-zuosanjun",
+      "mainline_decision": {
+        "choice": "主线取左传；史记同episode异载（上军主帅归属真冲突）落 cf:shangjun-jiangshuai-guishu 并陈",
+        "rationale": "本事件是 thesis:shuxiang-gongshi-jiang-bei/thesis:zhongni-shidu 共同 evidence_refs 锚点。OP-D-071 全account白文人名地名扫描：本段(:1045)全部具名人物（楚子/公孙固/先轸/狐偃/赵衰/郤縠/郤溱/狐毛/栾枝/荀林父/魏犨）均已按『白文提及即入』入 registry（registry-backfill-006）；『楚子』经史记:0066『楚成王及诸侯围宋』明确交叉印证为楚成王，非referent-ambiguous情形（两源互证同一具体历史身份，非泛称）。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      }
+    },
+    {
+      "event_id": "ev:jin-zuo-wujun",
+      "title": "晋作五军以御狄·蒐于清原",
+      "canonical_date": {
+        "type": "year",
+        "value": "前629",
+        "note": "左传僖公三十一年（鲁僖公元年前659起算，31年=前629）。"
+      },
+      "event_type": "制度",
+      "actors": [
+        {
+          "person_ref": "per:i4-017",
+          "role": "为卿",
+          "force_ref": "fo:jin"
+        }
+      ],
+      "geo": {
+        "place_refs": [
+          "pl:qingyuan"
+        ],
+        "route_hint": null,
+        "mapstate_hint": "晋蒐于清原，扩三军为五军以御狄"
+      },
+      "parent_event": null,
+      "accounts": [
+        "ac:zuozhuan-zuowujun"
+      ],
+      "conflicts": [],
+      "evidence_tier": "E1",
+      "tier_override": null,
+      "mainline_account_ref": "ac:zuozhuan-zuowujun",
+      "mainline_decision": {
+        "choice": "左传单源，无史记等异源并陈",
+        "rationale": "全库检索（OP-D-045）：史记『作五军』『清原』均查无对应记载，非本仓漏检——如实记录零命中，非强行调和或沉默略过。本事件是 thesis:shuxiang-gongshi-jiang-bei/thesis:zhongni-shidu 共同 evidence_refs 锚点之一。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      }
+    }
+  ],
+  "accounts": [
+    {
+      "account_id": "ac:zuozhuan-zuosanjun",
+      "event_ref": "ev:jin-zuo-sanjun",
+      "source_id": "src:zuozhuan",
+      "locator": {
+        "book": "左传",
+        "chapter": "僖公二十七年",
+        "section": null,
+        "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1045"
+      },
+      "extraction": {
+        "date_claim": "僖公二十七年冬（前633）",
+        "actor_claims": [
+          "楚子及诸侯围宋，宋公孙固如晋告急",
+          "先轸建言报施救患取威定霸",
+          "狐偃建言伐曹卫以解宋齐之围",
+          "蒐于被庐，作三军，谋元帅",
+          "赵衰荐郤縠（说礼乐敦诗书，德义之本）",
+          "郤縠将中军郤溱佐之，狐偃让上军于狐毛而佐之，赵衰让卿位于栾枝先轸，栾枝将下军先轸佐之，荀林父御戎魏犨为右"
+        ],
+        "causal_claims": [
+          "以德义（郤縠说礼乐敦诗书）为荐将标准，非徒以亲贵或武勇"
+        ],
+        "number_claims": [],
+        "dialogue_spans": [
+          "報施救患，取威定霸，於是乎在矣。",
+          "楚始得曹，而新昏於衛，若伐曹、衛，楚必救之，則齊、宋免矣。",
+          "郤縠可。臣亟聞其言矣，說《禮》、《樂》而敦《詩》、《書》。《詩》、《書》，義之府也；《禮》、《樂》，德之則也；德、義，利之本也。《夏書》曰：『賦納以言，明試以功，車服以庸。』君其試之。"
+        ]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:shiji-zuosanjun",
+      "event_ref": "ev:jin-zuo-sanjun",
+      "source_id": "src:shiji",
+      "locator": {
+        "book": "史记",
+        "chapter": "晋世家·晋文公",
+        "section": null,
+        "para_ulid": "3EX2FF5S4Q1M0K27M27QVNWEYH:0066"
+      },
+      "extraction": {
+        "date_claim": "晋文公四年",
+        "actor_claims": [
+          "楚成王及诸侯围宋，宋公孙固如晋告急",
+          "先轸建言报施定霸",
+          "狐偃建言伐曹卫以救宋",
+          "晋作三军：赵衰举郤縠将中军郤臻佐之，狐偃将上军狐毛佐之，命赵衰为卿，栾枝将下军先轸佐之，荀林父御戎魏犫为右",
+          "冬十二月，晋兵先下山东，以原封赵衰"
+        ],
+        "causal_claims": [
+          "与左传异：本段狐偃径将上军、狐毛佐之，未见『狐偃让于狐毛』情节——真冲突，见 cf:shangjun-jiangshuai-guishu"
+        ],
+        "number_claims": [],
+        "dialogue_spans": [
+          "報施定霸，於今在矣。",
+          "楚新得曹而初婚於衞，若伐曹、衞，楚必救之，則宋免矣。"
+        ]
+      },
+      "genre_note": null
+    },
+    {
+      "account_id": "ac:zuozhuan-zuowujun",
+      "event_ref": "ev:jin-zuo-wujun",
+      "source_id": "src:zuozhuan",
+      "locator": {
+        "book": "左传",
+        "chapter": "僖公三十一年",
+        "section": null,
+        "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:1108"
+      },
+      "extraction": {
+        "date_claim": "僖公三十一年秋（前629）",
+        "actor_claims": [
+          "晋蒐于清原，作五军以御狄",
+          "赵衰为卿"
+        ],
+        "causal_claims": [
+          "扩军以应对狄患（背景：晋北边异族威胁持续）"
+        ],
+        "number_claims": [],
+        "dialogue_spans": []
+      },
+      "genre_note": null
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:shangjun-jiangshuai-guishu",
+      "event_ref": "ev:jin-zuo-sanjun",
+      "dimension": "actor",
+      "account_refs": [
+        "ac:zuozhuan-zuosanjun",
+        "ac:shiji-zuosanjun"
+      ],
+      "independence_analysis": {
+        "independent_witness_count": 2,
+        "reasoning": "左传：『使狐偃將上軍，讓於狐毛而佐之』——狐偃本被命将上军，让位于狐毛，狐毛遂为上军主帅、狐偃佐之。史记：『使狐偃將上軍，狐毛佐之』——狐偃径为上军主帅，狐毛为佐，未见让位情节。两源对『上军主帅究竟是狐毛还是狐偃』给出互斥断言，真冲突（非精粗差——是完全相反的主帅归属）。★另两处orthographic异写（郤溱/郤臻，魏犨/魏犫）判文本传抄变体、非真冲突，同 OP-D-032 精神不另立 cf。★先轸/狐偃谏辞用字亦有出入（左传『報施救患，取威定霸』/『則齊、宋免矣』多『救患』『取威』『齊』字样，史记省作『報施定霸』/『則宋免矣』）——精粗差非实质冲突，不另立 cf，仅记录于账户 extraction。",
+        "derivation_notes": [
+          "两源均指同一『晋作三军蒐于被庐』事件骨架一致，仅上军主帅人选互斥",
+          "左传/史记为两条独立传世谱系，indep=2"
+        ]
+      },
+      "mainline_decision": {
+        "choice": "主线取左传（狐毛为上军主帅、狐偃佐之）；史记异说并陈，不判一方为误",
+        "rationale": "左传是本事件唯一直锚段落（thesis 既有 locator），叙事更详（含让位情节因果说明）；史记为独立传世系统之异载，S12 并陈供观众自行判断。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      },
+      "presentation_hint": "S12对勘"
+    }
+  ]
+}

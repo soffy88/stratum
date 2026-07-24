@@ -215,6 +215,12 @@
       "name_by_era": { "春秋": "衞" },
       "active_range": "西周初封至前209为秦所并（春秋时期一直存续）",
       "succession_edges": []
+    },
+    {
+      "force_id": "fo:song",
+      "name_by_era": { "春秋": "宋" },
+      "active_range": "西周初封至前286为齐楚魏三分",
+      "succession_edges": []
     }
   ]
 }

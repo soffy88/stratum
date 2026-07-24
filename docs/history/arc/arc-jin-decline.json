@@ -39,7 +39,8 @@
             "ev:jin-gongshi-bei",
             "ev:jin-zuo-sanjun",
             "ev:jin-zuo-wujun"
-          ]
+          ],
+          "membership_decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24 弧灌注 ev:jin-zuo-sanjun/ev:jin-zuo-wujun 两事件 full KU 化〔actors/places/canonical_date/geo 结构化，account 带 extraction+dialogue_spans〕，事件层真冲突落 cf:shangjun-jiangshuai-guishu（OP-D-064，上军主帅归属左传/史记互斥）；ev:jin-gongshi-bei 既有 full KU 见 fixtures/F25-jin-liuqing.json，本轮未改动；见 arc/events/s3-liujing.json）"
         },
         {
           "sub_arc_id": "arc:jin-decline/s4-qingzu",
@@ -257,9 +258,9 @@
       ],
       "mainline_decision": {
         "choice": "采为 s3 作三军设六卿 mainline（源内·公室卑之诊断）；并陈仲尼失度",
-        "rationale": "叔向『公室将卑…政在家门』（昭3 :2209 源内）系六卿制恶果之源内诊断，采 s3 mainline。★并陈 thesis:zhongni-shidu（仲尼『晋其亡乎失其度…民在鼎矣何以尊贵』昭29 :2563 源内·铸刑鼎论）——叔向=公室卑/政在家门，仲尼=失度/贵贱无序，异角并陈。★检索记录（OP-D-045）：库内 theses 全扫 + 昭世源内段扫，仲尼失度命中并陈、无遗漏。",
-        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
-        "date": "2026-07-23"
+        "rationale": "叔向『公室将卑…政在家门』（昭3 :2209 源内）系六卿制恶果之源内诊断，采 s3 mainline。★并陈 thesis:zhongni-shidu（仲尼『晋其亡乎失其度…民在鼎矣何以尊贵』昭29 :2563 源内·铸刑鼎论）——叔向=公室卑/政在家门，仲尼=失度/贵贱无序，异角并陈。★检索记录（OP-D-045）：库内 theses 全扫 + 昭世源内段扫，仲尼失度命中并陈、无遗漏。★弧灌注补记（2026-07-24，OP-D-064）：evidence_refs 三事件中 ev:jin-zuo-sanjun/ev:jin-zuo-wujun 已 full KU 化（见 arc/events/s3-liujing.json），ev:jin-gongshi-bei 既有 full KU 见 fixtures/F25-jin-liuqing.json；事件层真冲突（上军主帅归属左传/史记互斥）落 cf:shangjun-jiangshuai-guishu。★counterpoint 新检索（OP-D-045/061，本轮）：库内检索——现有 counter_refs 已挂 thesis:zhongni-shidu（并陈，非本轮新增）；源内关键词检索——全8corpus扫描『政在家门/降在皂隶/公族尽』仅命中本句 :2209，另发现史记晋世家 :0122『政在私门』系同一叔向论晋季世对话之史记侧平行记载（非独立对照，是同一诊断的另一来源，未另立新thesis）；同构候选扫描（非关键词，按叙事骨架比对）——命中鲁国『三桓专权』现象多处（宣18 :1594 公孙归父欲去三桓、定8 :2674 阳虎欲去三桓等），与晋『六卿代兴、公室卑弱』结构类似（私门/卿族专权），但**均为叙事层面的权力斗争记述，未见与叔向对等的source-internal诊断式quote**（无一句鲁国大夫明确诊断『鲁公室将卑、政在私门』），不足以建同等质量的counterpoint thesis对象——**显式无**，如实记录检索证据（不强凑叙事片段充当论断，违R5）。",
+        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23，弧灌注补记 2026-07-24）",
+        "date": "2026-07-24"
       }
     },
     {
