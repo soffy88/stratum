@@ -11,9 +11,13 @@
           "seq": 1,
           "member_event_refs": [
             "ev:quwo-feng-huanshu",
+            "ev:zhuangbo-shi-xiaohou",
+            "ev:zhuangbo-lei-fa-yi",
+            "ev:wugong-you-sha-xiaozihou",
+            "ev:huanwang-ming-min",
             "ev:quwo-wugong-mie-yi"
           ],
-          "membership_decided_by": "顾问 Claude"
+          "membership_decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24 终裁落地 4 事件，见 arc/ADJUDICATION-s1-supplement.md）"
         },
         {
           "sub_arc_id": "arc:jin-decline/s2-liji",
@@ -78,6 +82,10 @@
         "ev:sanjiafenjin",
         "ev:minghou-403",
         "ev:quwo-feng-huanshu",
+        "ev:zhuangbo-shi-xiaohou",
+        "ev:zhuangbo-lei-fa-yi",
+        "ev:wugong-you-sha-xiaozihou",
+        "ev:huanwang-ming-min",
         "ev:quwo-wugong-mie-yi",
         "ev:xiangong-qu-liji",
         "ev:liji-zen-shensheng",
@@ -92,6 +100,7 @@
       ],
       "thesis_refs": [
         "thesis:shifu-modabizhe",
+        "thesis:zhengbo-ke-duan",
         "thesis:shuxiang-gongshi-jiang-bei",
         "thesis:shimo-changbian",
         "thesis:taishigong-jin",
@@ -125,7 +134,7 @@
           "book": "左传",
           "chapter": "桓公二年",
           "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0205",
-          "quote": "今晉，甸侯也，而建國，本既弱矣，其能久乎？"
+          "quote": "吾聞國家之立也，本大而末小，是以能固。故天子建國，諸侯立家，卿置側室，大夫有貳宗，士有隸子弟，庶人、工、商各有分親，皆有等衰。是以民服事其上，而下無覬覦。今晉，甸侯也，而建國，本既弱矣，其能久乎？"
         }
       },
       "evidence_refs": [
@@ -135,13 +144,37 @@
         "ev:sanjiafenjin"
       ],
       "counter_refs": [
-        "thesis:shimo-changbian"
+        "thesis:zhengbo-ke-duan"
       ],
       "mainline_decision": {
-        "choice": "采为 s1/本弧主线论点之源头（前745 预言）；并陈史墨无常论（异框架，非取代）",
-        "rationale": "师服语是本弧因果轴最早源内论断（本弱末强必乱，晋-specific 结构决定论），locator 到篇及 para_ulid（:0205），R5 合规，采为 s1 mainline。★并陈 thesis:shimo-changbian（史墨『社稷无常奉、君臣无常位、自古以然』，昭32 :2592 源内、ULID 已在库）——史墨系**普遍无常律**框架、师服系**晋一国结构缺陷**框架，二者非对立而**异视角并陈**（记入 counter_refs 以固关联，mainline 仍师服）。★检索记录（OP-D-045，作废旧『无对立论点』结论）：库内 theses 全扫（6 条）+ 源内候选扫（史墨昭32 :2592 命中、叔向昭3 :2209 属 s3+、太史公赞 PENDING）——s1 段确有史墨异框架论点，旧『无对立』系未查默认，已作废。",
-        "decided_by": "顾问 Claude（Wiki 全权授权 2026-07-23）",
-        "date": "2026-07-23"
+        "choice": "采为 s1/本弧主线论点之源头（前745 预言）；★locator.quote 补全宗法层级前件（G3，OP-D-063 同轮，2026-07-24）：原引仅尾句结论，今补前半『天子建國，諸侯立家，卿置側室，大夫有貳宗……皆有等衰』宗法公理句——同段（:0205）内，非新增引证，只是补全同一 locator 已锚定的段落全量引用；★counterpoint 由 thesis:shimo-changbian 改判 thesis:zhengbo-ke-duan（OP-D-062）",
+        "rationale": "师服语是本弧因果轴最早源内论断（本弱末强必乱，晋-specific 结构决定论），locator 到篇及 para_ulid（:0205），R5 合规，采为 s1 mainline。★shimo-changbian 否决维持（OP-D-057 未变）：史墨昭32 :2592 晚于曲沃代翼逾两百年、所论为六卿期，嫁接作 s1 对立论点系装饰（违 OP-D-051③），已否决、改列 arc 级/s3+ 在题位置，不复入 s1 counter_refs。★counterpoint 由『显式无』（OP-D-057 临时状态）改判 thesis:zhengbo-ke-duan（OP-D-062）：G3 补料按 OP-D-061『同构候选扫描』（关键词扫描之外必需步骤，本条因关键词层查无、结构判定层查有而立）复核——郑伯克段于鄢（左传隐元年 :0004/:0012–14）与本 thesis 系同一条『支庶建大邑・尾大不掉・终威胁本宗』公理的另一国个案（祭仲谏『大都耦国，国之害也』同构于师服『本大而末小』），同题异国、非对立而结构对照，采为 counterpoint。★检索记录更新（OP-D-045+OP-D-061）：库内 theses 全扫（7 条，含新增 zhengbo-ke-duan）+ 源内候选扫（史墨昭32 :2592 命中已否决、叔向昭3 :2209 属 s3+、太史公赞已转正 s7 并陈）+ **同构候选扫描**（全 7 corpus 逐段关键词『大宗/小宗/貳宗/側室/支庶/本大末小』扫描仅命中 :0205 本句 + 2 处同形异义〔:1357『趙有側室曰穿』人名、:2544『以獄上其大宗』魏氏内部宗支，均非独立对照对象〕，**关键词层面查无对照**；结构判定层扫描〔非关键词、按叙事骨架比对〕命中郑伯克段——两层扫描口径不同结论不同，按 OP-D-061 以结构层结论为准，s1 counterpoint 非『显式无』而是郑伯克段）。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24）",
+        "date": "2026-07-24"
+      }
+    },
+    {
+      "thesis_id": "thesis:zhengbo-ke-duan",
+      "claim": "支庶封大邑、坐大不受制、终威胁本宗——郑伯克段于鄢示同构之祸，先兆有识者谏而不听（祭仲『大都耦国，国之害也』）。",
+      "attribution": {
+        "type": "源内",
+        "who": "祭仲（郑大夫，谏语）",
+        "locator": {
+          "book": "左传",
+          "chapter": "隐公元年",
+          "para_ulid": "4YW6S9BRHDQVDGZDYXH2E8Z7HE:0012",
+          "quote": "都城過百雉，國之害也。先王之制：大都不過參國之一，中五之一，小九之一。今京不度，非制也，君將不堪。"
+        }
+      },
+      "evidence_refs": [
+        "ac:zhengbo-ke-duan-jishi"
+      ],
+      "counter_refs": [],
+      "mainline_decision": {
+        "choice": "建为 thesis 对象，充 s1 counterpoint（同题异国结构对照，非取代 thesis:shifu-modabizhe）",
+        "rationale": "OP-D-062：s1 counterpoint 由『显式无对立论点』（OP-D-057 临时状态）改判为本条。G3 补料（`arc/CURATION-s1-supplement.md`）按 OP-D-061『同构候选扫描』发现：祭仲谏语『大都耦国，国之害也……今京不度非制也』与师服『本大而末小』系同一条『尾大不掉』公理的另一国表述——郑伯克段（隐元年，前722）与曲沃代翼（惠24年，前745起）系**两国独立个案、非同一事件**，结构同题（支庶封大邑→坐大→威胁本宗，先兆有识者谏而不听）供并置对照。★evidence_refs 诚实标注：`ac:zhengbo-ke-duan-jishi` 为本裁新提出之引证 account，尚未有独立事件层 KU 对象承载（郑事不入 `arc:jin-decline` 之 member_event——该弧仅收晋国衰亡序列，郑事系跨国结构比对素材，非弧内成员）；account 的结构化对象（actors/places/canonical_date）留待后续如需正式建『郑伯克段』独立弧/事件时再灌注，本裁只固 thesis 对象 + locator 锚 + counterpoint 归属，同 `ADJUDICATION-s1-s2.md` 既有『本裁只固 id+锚+归属』纪律。",
+        "decided_by": "顾问 Claude（Wiki 全权授权，2026-07-24，提案来自 G3 补料）",
+        "date": "2026-07-24"
       }
     },
     {
