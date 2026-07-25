@@ -42,6 +42,10 @@ _TYPE_MAP = {
     "method": "procedural",
 }
 _CJK = re.compile(r"[一-鿿]")
+# LLM 偶尔把双语小节标题("Source:"/"Gloss:"/"Notes:"/"Examples:"等)单独起一行
+# 且该行本身不含CJK → 被 _split_bilingual 误当成"英文正文"整段, 而真内容全在zh里
+# (2026-07-25 抽查发现 advmath_zh/en 45条 natural_text 只剩这类残片标签)。
+_LABEL_ONLY = re.compile(r"^[A-Za-z][A-Za-z \-']{0,25}[:.]?$")
 
 
 def _split_bilingual(body: str):
@@ -49,7 +53,11 @@ def _split_bilingual(body: str):
     en, zh = [], []
     for line in body.split("\n"):
         (zh if _CJK.search(line) else en).append(line)
-    return "\n".join(en).strip(), "\n".join(zh).strip()
+    en_text = "\n".join(en).strip()
+    zh_text = "\n".join(zh).strip()
+    if zh_text and _LABEL_ONLY.match(en_text):
+        en_text = ""  # 纯标签残片, 不是真英文内容, 弃之而非当正文持久化
+    return en_text, zh_text
 
 
 async def synth_chapter(llm, n):
