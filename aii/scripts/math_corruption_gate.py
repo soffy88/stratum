@@ -9,6 +9,9 @@
   4.(同上, 及中文OCR"抽象代数(陈猛等)"一案) 多栏排版/公式被误判为markdown表格,
     整段陈述被打碎成大量短碎片单元格(中文OCR还会在字与字间插入多余空格),
     如 "| Proof.  | Immediate |  | from Lemma |...|" 或 "| 基础 学 科 | ..."
+  5.(同上) 词间空格丢失, 多个单词连写成一长串无空格字母(与 4 常同源但不同段落,
+    KU 粒度上二者不总是同时出现, 需独立判定), 如
+    "Acategoryissaidtobelocallysmall"
 0-LLM程序抽取(math_program_ingest.py)没有LLM去"看懂"这些伪影替换回正确内容——
 原样抠出来就是乱码KU。阈值凭实测样本(见 quarantine_corrupted_md 分析,
 以及 2026-07-25 对 15 本随机抽样对照书的复核)取宽松线, 不误伤正常書
@@ -24,6 +27,7 @@ _SUP = re.compile(r"</?sup>|</?sub>")
 _REPLACEMENT = "�"
 _CID_LEAK = re.compile(r"\(cid:\d+\)")
 _TABLE_SHRED_ROW = re.compile(r"^\s*\|[^|]{1,20}\|[^|]{1,20}\|", re.M)
+_LONG_RUN = re.compile(r"[A-Za-z]{28,}")  # 连续28+字母无空格, 正常英文单词不会这么长
 
 MIN_LINES_FOR_RATIO = 200  # 太短的文件(误判风险高)不判定, 交给下游正常流程
 
@@ -37,6 +41,7 @@ def corruption_signals(text: str) -> dict:
         "replacement_hits": text.count(_REPLACEMENT),
         "cid_hits": len(_CID_LEAK.findall(text)),
         "table_shred_hits": len(_TABLE_SHRED_ROW.findall(text)),
+        "long_run_hits": len(_LONG_RUN.findall(text)),
         "n_lines": n_lines,
     }
 
@@ -61,12 +66,20 @@ def is_corrupted(text: str) -> tuple[bool, dict]:
     # ~0.01~0.011; 已知坏书(含中文OCR"抽象代数"一案, 无cid泄漏但表格碎片率0.48)
     # 0.22~0.48。阈值取0.05, 二者间隔清楚, 且不与cid_ratio耦合判定(表格打碎可独立
     # 于字形泄漏发生, 如中文OCR案).
+    long_run_ratio = sig["long_run_hits"] / sig["n_lines"]
+    # long_run_ratio: 15本对照样本全为0(连28+字母都没有); 已知坏书0.009~0.028。
+    # 阈值取0.003——这是本轮(2026-07-25)补的第三种独立伪影(词间空格丢失),
+    # 事出"Group Chunks"一书内仍有82条KU(全书291条里的28%)既不含cid泄漏、
+    # 也不含表格打碎、但逐条抽查确认同样是乱码("Acategoryissaidtobelocallysmall"
+    # 这类连写), 说明前两个信号在 KU 粒度(而非整书粒度)下不足以覆盖同一本
+    # 坏书的所有段落——三信号独立判定, 不互相依赖.
     bad = (
         omitted_ratio > 0.01
         or sup_ratio > 0.05
         or replacement_ratio > 0.05
         or cid_ratio > 0.005
         or table_shred_ratio > 0.05
+        or long_run_ratio > 0.003
     )
     return bad, sig
 
