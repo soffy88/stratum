@@ -216,9 +216,11 @@
           "扩军以应对狄患（背景：晋北边异族威胁持续）"
         ],
         "number_claims": [],
-        "dialogue_spans": []
+        "dialogue_spans": [
+          "秋，晉蒐于清原，作五軍似禦狄。趙衰為卿。"
+        ]
       },
-      "genre_note": null
+      "genre_note": "本段无人物对话，dialogue_spans 存整句白文陈述（非引语）以补白文供给，同 §4.2 演绎段素材接口用途。"
     }
   ],
   "conflicts": [
