@@ -1,0 +1,17 @@
+[Unit]
+Description=AII B仓增量同步 — A→B singletons + M0 + readout (AII-REFINED-REPO)
+After=network.target docker.service aii-embed.service
+Wants=aii-embed.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/data/soffy/projects/stratum/aii
+Environment=AII_EMBED_URL=http://127.0.0.1:8102
+Environment=AII_KG_URL=postgresql://aii:aii_safe_pass@localhost:5435/aii_kg
+Environment=REFINED_URL=postgresql://aii:aii_safe_pass@localhost:5436/aii_refined
+Environment=PYTHONUNBUFFERED=1
+# 每学科每轮上限, 避免一次吃光 GPU/时间; 落后大时多轮追上
+ExecStart=/usr/bin/bash /data/soffy/projects/stratum/aii/scripts/b_repo_sync.sh --max-new 800 --readout-limit 100
+StandardOutput=append:/home/soffy/aii-backups/b_repo_sync.log
+StandardError=append:/home/soffy/aii-backups/b_repo_sync.log
+TimeoutStartSec=3h

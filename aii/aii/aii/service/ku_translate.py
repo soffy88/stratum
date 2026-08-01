@@ -78,6 +78,16 @@ def translate_ku_to_zh(natural_text: str, has_formula: bool = False) -> str:
             },
             timeout=_TIMEOUT,
         )
+        if resp.status_code >= 400:
+            # 2026-07-26: 批量回填期间大量400, 此前只记异常字符串看不到body,
+            # 补上响应体方便定位(如 context 超限/参数不支持等)。
+            logger.warning(
+                "ku_translate: HTTP %s for '%s...': %s",
+                resp.status_code,
+                text[:40],
+                resp.text[:300],
+            )
+            return ""
         resp.raise_for_status()
         zh = resp.json()["message"]["content"].strip()
         # Strip thinking tags if model outputs them

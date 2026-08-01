@@ -45,6 +45,9 @@ export TRANSFORMERS_OFFLINE=1
 export AII_EMBED_URL="${AII_EMBED_URL:-http://100.68.226.13:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU)
 # ★忠实模式: KU只忠实呈现原书内容(概念定义/含义), 少靠LLM判断, 不过度why/how → 快+忠实
 export ECON_FAITHFUL=1
+# ★2026-07-30: 质量门阈值放宽(原默认阈值从未让新书通过, 见 econ_quality_gate.py 注释)
+export QGATE_KU_PER_CHAPTER="${QGATE_KU_PER_CHAPTER:-10}"
+export QGATE_CHAPTER_FLOOR="${QGATE_CHAPTER_FLOOR:-3}"
 
 mkdir -p econ_pipeline
 

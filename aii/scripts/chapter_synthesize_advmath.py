@@ -25,6 +25,10 @@ from chapter_synthesize_llm_v1 import (
 PLAN_SYS = (
     "You identify the knowledge points a textbook chapter DIRECTLY AND SUBSTANTIVELY teaches, "
     "classified by ontological type (conceptual / rationale / procedural / positional / factual). "
+    "★RATIONALE EXTRACTION (critical): advanced texts contain many causal/why reasoning steps "
+    "(proofs, theorems, 'why X implies Y', 'the reason this construction works is...'). "
+    "Actively extract these as rationale — a typical chapter should have 2-5 rationale KUs. "
+    "If you find none, you are likely under-extracting. "
     "★FAITHFUL TO THE TEXT: for rationale, give ONLY the causal mechanism/justification the text "
     "actually states — never invent causation the text doesn't say. For positional, mark ONLY genuine "
     "disputes the text presents — never turn a settled result into a 'dispute'. Types reflect what the "

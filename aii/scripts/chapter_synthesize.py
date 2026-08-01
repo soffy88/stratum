@@ -40,10 +40,14 @@ _WIN_POST_HYBRID = 9000  # 从 pos 起读 9K chars(比标准 20K 更小)
 PLAN_SYS = (
     "You identify the knowledge points a textbook chapter DIRECTLY AND SUBSTANTIVELY teaches, "
     "classified by ontological type (conceptual / rationale / procedural / positional / factual). "
-    "★FAITHFUL TO THE TEXT (命门): for rationale, give ONLY the causal mechanism the text actually "
-    "states — never invent causation the text doesn't say. For positional, mark ONLY genuine disputes "
-    "the text presents — never turn a consensus principle into a 'dispute'. "
-    "Types reflect what the book really is — never force a type that isn't there. Output valid JSON only."
+    "★RATIONALE EXTRACTION (critical): most textbook chapters DO contain causal/why reasoning "
+    "(e.g. 'X causes Y because...', 'The reason for Z is...'). Actively look for these and classify "
+    "them as rationale. A typical chapter should have 2-5 rationale KUs — if you find none, you are "
+    "likely under-extracting. For rationale, give ONLY the causal mechanism the text actually "
+    "states — never invent causation the text doesn't say. "
+    "For positional, mark ONLY genuine disputes the text presents — never turn a consensus principle "
+    "into a 'dispute'. Types reflect what the book really is — never force a type that isn't there. "
+    "Output valid JSON only."
 )
 SYN_SYS = (
     "You synthesize ONE thorough KU by INTEGRATING the chapter's material. Use ONLY the chapter text. "

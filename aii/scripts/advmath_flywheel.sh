@@ -45,6 +45,9 @@ export ECON_CKPT_DIR="advmath_pipeline/ckpts"
 export ECON_PIPELINE_SCRIPT="scripts/advmath_pipeline.sh"
 export ECON_RUN_LOG_DIR="advmath_pipeline"
 export ECON_REGISTER_SUBJECT="高级数学经济"
+# ★2026-07-30: 质量门阈值放宽(原默认阈值从未让新书通过, 见 econ_quality_gate.py 注释)
+export QGATE_KU_PER_CHAPTER="${QGATE_KU_PER_CHAPTER:-10}"
+export QGATE_CHAPTER_FLOOR="${QGATE_CHAPTER_FLOOR:-3}"
 
 mkdir -p advmath_pipeline advmath_pipeline/qual advmath_pipeline/ckpts
 

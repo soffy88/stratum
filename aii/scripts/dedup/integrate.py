@@ -92,9 +92,14 @@ def render_zh(contributions: list) -> str:
     return "\n".join(parts)
 
 
-def embed_text(contributions: list) -> str:
-    """B仓独立向量的编码输入: 合并后干净内容(原语言片段, BGE-M3 多语种直接编)。"""
-    return " ".join((c.get("fragment_text") or "").strip() for c in contributions).strip()
+def embed_text(contributions: list, *, max_chars: int = 4000) -> str:
+    """B仓独立向量的编码输入: 合并后干净内容(原语言片段, BGE-M3 多语种直接编)。
+
+    max_chars 截断: 长 KU 全量进 batch 会在 10G 卡上 CUDA OOM(2026-07-29 实测
+    batch=64 长文爆显存); 语义近邻主要靠前段, 截断优先保可完成。
+    """
+    t = " ".join((c.get("fragment_text") or "").strip() for c in contributions).strip()
+    return t[:max_chars] if t else " "
 
 
 async def persist_refined_ku(

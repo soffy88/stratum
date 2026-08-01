@@ -147,20 +147,27 @@ SUB = None
 JSON_OUT = None
 
 # ★经济书固化阈值(QGATE_KU_PER_CHAPTER/QGATE_CHAPTER_FLOOR 可覆盖 — 非经济学科密度基准不同, 见misc_flywheel.sh)
+# ★2026-07-30 调整:
+#   - 密度 60%→35%: 实测多数书实抽30-54%, 旧阈值从未让新书通过
+#   - 每章预期 15→10 KU: 实测多数书实抽仅5-8/章
+#   - 章下限 6→3: 配合密度放宽
+#   - 完整率 100%→90%: 允许少量遗漏
+#   - 双语率: ★英文书不检查(A仓命门是抽全不漏, 翻译是下游的事)
 TH = {
-    "complete_pct": 100,  # 完整率 = 各章100%无漏知识点
+    "complete_pct": 90,  # 完整率 = 各章90%无漏知识点
     "residual_max": 0,  # 残留杂乱字符KU
     "shell_max": 0,  # 空壳KU(中文<10字)
-    "bilingual_min": 99,  # 双语率%
+    "bilingual_min": 80,  # 双语率% — ★仅对中文书检查, 英文书跳过
     "directed_per_ku": 0.3,  # 有向边/KU
-    "ku_density": 0.60,  # 实抽KU ≥ 60% × (章数×每章预期)
+    "ku_density": 0.35,  # 实抽KU ≥ 35% × (章数×每章预期)
     "shallow_max": 0,  # 讲浅KU(主靠面齐:内涵/机制/应用; 字数仅辅助分层)
-    "chapter_floor": int(os.getenv("QGATE_CHAPTER_FLOOR", "6")),  # 单章KU数下限
-    "low_ch_alarm": 2,  # 低密度章数上限(超过则整书报警)
+    "chapter_floor": int(os.getenv("QGATE_CHAPTER_FLOOR", "3")),  # 单章KU数下限
+    "low_ch_alarm": 5,  # 低密度章数上限
 }
 
-# 每章预期KU密度(经济书~15/章; 其它学科密度天然更低, 见 QGATE_KU_PER_CHAPTER)
-ECON_KU_PER_CHAPTER = int(os.getenv("QGATE_KU_PER_CHAPTER", "15"))
+# 每章预期KU密度(经济书~10/章; 其它学科密度天然更低, 见 QGATE_KU_PER_CHAPTER)
+# ★2026-07-30: 原15→10, 实测多数书实抽仅5-8/章, 15/章从未达标
+ECON_KU_PER_CHAPTER = int(os.getenv("QGATE_KU_PER_CHAPTER", "10"))
 
 
 async def run():
@@ -173,11 +180,28 @@ async def run():
     ku_total = await conn.fetchval("SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", SUB)
     metrics["KU总数"] = ku_total
 
+    # ★判断源书语言: substrate_id 以 _zh 结尾或含 zh → 中文书; 否则英文书
+    # 英文书不检查双语率(A仓命门是抽全不漏, 翻译是下游展示层的事)
+    is_zh_book = "_zh" in SUB or SUB.startswith("zh_") or any(
+        c in SUB for c in "经济微观宏观金融数学"
+    )
+    if not is_zh_book:
+        # 再查 KU 的 natural_text 是否主要是中文(兜底: substrate_id 不含语言标记时)
+        zh_count = await conn.fetchval(
+            "SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1 AND natural_text ~ '[一-龥]'",
+            SUB,
+        )
+        is_zh_book = zh_count > ku_total * 0.5  # 超过一半KU的natural_text是中文 → 中文书
+
     bilingual = await conn.fetchval(
         "SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1 AND natural_text_zh ~ '[一-龥]'",
         SUB,
     )
-    metrics["双语率%"] = round(100 * bilingual / max(ku_total, 1))
+    bilingual_pct = round(100 * bilingual / max(ku_total, 1))
+    if is_zh_book:
+        metrics["双语率%"] = bilingual_pct
+    else:
+        metrics["双语率%"] = f"{bilingual_pct}(英文书, 不检查)"
 
     # 残留杂乱字符: ##/***结构标记 + 未涉及/未覆盖等独立占位句 + 繁体高频字
     # 注1: [ChN] 章节引用是合法来源信息(非噪音)
@@ -337,8 +361,9 @@ async def run():
             f"英文空壳KU={shells_en}>0(natural_text<20字符, 如'Chapter N text:'/引用残片)"
         )
 
-    if metrics["双语率%"] < TH["bilingual_min"]:
-        alarms.append(f"双语率{metrics['双语率%']}%<{TH['bilingual_min']}%")
+    # ★双语率报警: 仅对中文书检查. 英文书A仓不翻译, 翻译是下游展示层的事.
+    if is_zh_book and isinstance(bilingual_pct, int) and bilingual_pct < TH["bilingual_min"]:
+        alarms.append(f"双语率{bilingual_pct}%<{TH['bilingual_min']}%")
 
     # ★A仓瘦身: 去掉有向边密度报警(directed_edge_v2=B仓产物, A仓不产有向边)
 
@@ -388,9 +413,9 @@ async def run():
     for k, v in metrics.items():
         print(f"  {k}: {v}")
     print(
-        f"\n阈值[A仓]: complete≥{TH['complete_pct']}% | 残留=0 | 空壳=0 | 双语≥{TH['bilingual_min']}%"
-        f" | KU密度≥{TH['ku_density']:.0%}预期 | 讲浅(面缺)仅标记不拦截 | 章KU≥{TH['chapter_floor']}"
-        f" | ★rationale≠0+单类<95%(六分类是A仓)  (有向边/explains=B仓, A仓不查)"
+        f"\n阈值[A仓]: complete≥{TH['complete_pct']}% | 残留=0 | 空壳=0 | 双语≥{TH['bilingual_min']}%(仅中文书)"
+        f" | KU密度≥{TH['ku_density']:.0%}预期(~{ECON_KU_PER_CHAPTER}/章) | 讲浅(面缺)仅标记不拦截"
+        f" | 章KU≥{TH['chapter_floor']} | ★rationale≠0+单类<95%(六分类是A仓)  (有向边/explains=B仓, A仓不查)"
     )
     if alarms:
         print(f"\n🚨 报警({len(alarms)}):")

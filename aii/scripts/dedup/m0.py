@@ -53,42 +53,83 @@ USE_LEDGER = "--no-ledger" not in sys.argv
 _CJK = lambda s: any("一" <= ch <= "鿿" for ch in (s or ""))
 
 
-async def scope_concepts(rf, kg):
-    """B仓已入 raw_ku_id → A仓涉及概念(有向量)。返回 {a_cid: {name,name_zh,discipline,aliases,vec}}。"""
+async def existing_a2r(rf):
+    """已在 B仓 的 A concept_id → refined_concept_id(从 sources.a_concept_ids 反查)。
+
+    幂等关键: 增量补灌后 M0 不能把已归一概念再插一遍。
+    """
+    async with rf.acquire() as rc:
+        rows = await rc.fetch(
+            "SELECT concept_id, sources FROM rf.refined_concept WHERE sources IS NOT NULL"
+        )
+    a2r = {}
+    for r in rows:
+        src = r["sources"]
+        if isinstance(src, str):
+            import json as _j
+
+            try:
+                src = _j.loads(src)
+            except Exception:
+                continue
+        if not isinstance(src, dict):
+            continue
+        for acid in src.get("a_concept_ids") or []:
+            try:
+                a2r[int(acid)] = r["concept_id"]
+            except (TypeError, ValueError):
+                pass
+    return a2r
+
+
+async def scope_concepts(rf, kg, *, skip_a_cids=None):
+    """B仓已入 raw_ku_id → A仓涉及概念(有向量)。返回 {a_cid: {...}}, raw2cid。
+
+    skip_a_cids: 已映射到 B 的 A concept_id, 不再参与判同/落库(只保留 incidence 反查)。
+    """
+    skip_a_cids = set(skip_a_cids or ())
     async with rf.acquire() as rc:
         rows = await rc.fetch(
             "SELECT DISTINCT jsonb_array_elements(contributions)->>'raw_ku_id' AS rid FROM rf.refined_ku"
         )
     raw_ids = [r["rid"] for r in rows if r["rid"]]
+    # 分块: 2万+ raw_id 一次 ANY 会很沉
+    concepts = {}
+    raw2cid = defaultdict(list)
+    CHUNK = 5000
     async with kg.acquire() as kc:
         await register_vector(kc)
-        crows = await kc.fetch(
-            """
-            SELECT DISTINCT c.concept_id, c.name, c.name_zh, c.discipline, c.aliases::text AS aliases, c.vector
-            FROM aii.concept_onto c
-            JOIN aii.ku_concept_onto kc ON kc.concept_id=c.concept_id
-            WHERE kc.ku_id = ANY($1::text[])
-            """,
-            raw_ids,
-        )
-        # incidence 用: raw_ku_id → [a_cid]
-        inc = await kc.fetch(
-            "SELECT ku_id, concept_id FROM aii.ku_concept_onto WHERE ku_id = ANY($1::text[])",
-            raw_ids,
-        )
-    concepts = {
-        r["concept_id"]: {
-            "name": r["name"],
-            "name_zh": r["name_zh"],
-            "discipline": r["discipline"],
-            "aliases": r["aliases"],
-            "vec": np.asarray(r["vector"], dtype=np.float32) if r["vector"] is not None else None,
-        }
-        for r in crows
-    }
-    raw2cid = defaultdict(list)
-    for r in inc:
-        raw2cid[r["ku_id"]].append(r["concept_id"])
+        for off in range(0, len(raw_ids), CHUNK):
+            chunk = raw_ids[off : off + CHUNK]
+            crows = await kc.fetch(
+                """
+                SELECT DISTINCT c.concept_id, c.name, c.name_zh, c.discipline, c.aliases::text AS aliases, c.vector
+                FROM aii.concept_onto c
+                JOIN aii.ku_concept_onto kc ON kc.concept_id=c.concept_id
+                WHERE kc.ku_id = ANY($1::text[])
+                """,
+                chunk,
+            )
+            for r in crows:
+                if r["concept_id"] in skip_a_cids:
+                    continue
+                if r["concept_id"] in concepts:
+                    continue
+                concepts[r["concept_id"]] = {
+                    "name": r["name"],
+                    "name_zh": r["name_zh"],
+                    "discipline": r["discipline"],
+                    "aliases": r["aliases"],
+                    "vec": np.asarray(r["vector"], dtype=np.float32)
+                    if r["vector"] is not None
+                    else None,
+                }
+            inc = await kc.fetch(
+                "SELECT ku_id, concept_id FROM aii.ku_concept_onto WHERE ku_id = ANY($1::text[])",
+                chunk,
+            )
+            for r in inc:
+                raw2cid[r["ku_id"]].append(r["concept_id"])
     return concepts, raw2cid
 
 
@@ -131,11 +172,43 @@ async def main():
     kg = await asyncpg.create_pool(KG_URL, min_size=1, max_size=CONC + 2)
     rf = await asyncpg.create_pool(REFINED_URL, min_size=1, max_size=CONC + 2, init=register_vector)
 
-    concepts, raw2cid = await scope_concepts(rf, kg)
+    a2r_existing = await existing_a2r(rf)
+    print(f"幂等: B仓已映射 {len(a2r_existing)} 个 A仓 concept, 本轮跳过", flush=True)
+    concepts, raw2cid = await scope_concepts(rf, kg, skip_a_cids=set(a2r_existing))
+    if not concepts:
+        print("[M0] 无新增概念, 只补 KU↔概念 incidence(若有)")
+        # 仍要把新 refined_ku 挂到已有概念上
+        async with rf.acquire() as rc:
+            kurows = await rc.fetch(
+                "SELECT ku_id, jsonb_path_query_array(contributions,'$[*].raw_ku_id') AS raws "
+                "FROM rf.refined_ku"
+            )
+            import json as _j
+
+            links = set()
+            for r in kurows:
+                raws = r["raws"] if isinstance(r["raws"], list) else _j.loads(r["raws"])
+                for raw in raws:
+                    for acid in raw2cid.get(raw, []):
+                        if acid in a2r_existing:
+                            links.add((r["ku_id"], a2r_existing[acid]))
+            if APPLY and links:
+                await rc.executemany(
+                    "INSERT INTO rf.refined_ku_concept(ku_id,concept_id) VALUES($1,$2) "
+                    "ON CONFLICT DO NOTHING",
+                    list(links),
+                )
+                print(f"✓ 补 incidence {len(links)} 条")
+            else:
+                print(f"DRY/空: incidence 候选 {len(links)}")
+        await kg.close()
+        await rf.close()
+        return
+
     cands, dropped = nn_pairs(concepts, SIM, CAP)
     mode = "APPLY(落库)" if APPLY else "DRY-RUN(不落库)"
     print(
-        f"[M0 {mode}] 范围概念 {len(concepts)} 个, 候选 {len(cands)} 对"
+        f"[M0 {mode}] 新增概念 {len(concepts)} 个, 候选 {len(cands)} 对"
         + (f"(超cap丢弃{dropped})" if dropped else "")
         + f" | 关3弱={WEAK} 升级强={STRONG}",
         flush=True,
@@ -231,7 +304,7 @@ async def main():
             provider="default",
         ),
     )
-    a2r = {}  # A仓 concept_id → refined_concept_id
+    a2r = dict(a2r_existing)  # 保留已有映射, 新写入叠加
     async with rf.acquire() as rc:
         for u, can, emb in zip(units, canons, embs):
             rcid = await persist_refined_concept(
@@ -246,7 +319,7 @@ async def main():
             )
             for m in u:
                 a2r[m["cid"]] = rcid
-    print(f"✓ 落库 refined_concept: {len(units)} 个 (含 B仓独立向量)")
+    print(f"✓ 落库 refined_concept: {len(units)} 个新增 (含 B仓独立向量)")
 
     # ---- KU↔概念 incidence: refined_ku → raw → A仓概念 → refined_concept ----
     async with rf.acquire() as rc:
@@ -262,10 +335,13 @@ async def main():
                 for acid in raw2cid.get(raw, []):
                     if acid in a2r:
                         links.add((r["ku_id"], a2r[acid]))
-        await rc.executemany(
-            "INSERT INTO rf.refined_ku_concept(ku_id,concept_id) VALUES($1,$2) ON CONFLICT DO NOTHING",
-            list(links),
-        )
+        # 分块写, 避免超大 executemany
+        link_list = list(links)
+        for off in range(0, len(link_list), 5000):
+            await rc.executemany(
+                "INSERT INTO rf.refined_ku_concept(ku_id,concept_id) VALUES($1,$2) ON CONFLICT DO NOTHING",
+                link_list[off : off + 5000],
+            )
     print(f"✓ 落库 KU↔概念 incidence: {len(links)} 条")
     await kg.close()
     await rf.close()

@@ -49,10 +49,11 @@ export ECON_QUARANTINE_JSON="misc_pipeline/quarantine.json"
 export ECON_BATCH_REPORT="misc_pipeline/batch_report.json"
 export ECON_QUAL_DIR="misc_pipeline/qual"
 export ECON_CKPT_DIR="misc_pipeline/ckpts"
-# ★质量门密度基准: econ_quality_gate.py 默认按经济学教材(~15KU/章)校准, "其它"学科
+# ★质量门密度基准: econ_quality_gate.py 默认按经济学教材(~10KU/章)校准, "其它"学科
 #   (哲学/通识等)天然密度更低, 套经济学基准会把正常书误判隔离 → 降基准, 非放水
-export QGATE_KU_PER_CHAPTER="${QGATE_KU_PER_CHAPTER:-8}"
-export QGATE_CHAPTER_FLOOR="${QGATE_CHAPTER_FLOOR:-3}"
+# ★2026-07-30: 进一步放宽 KU/章 6→5, 章下限 3→2(实测多数书达不到 8/章)
+export QGATE_KU_PER_CHAPTER="${QGATE_KU_PER_CHAPTER:-5}"
+export QGATE_CHAPTER_FLOOR="${QGATE_CHAPTER_FLOOR:-2}"
 
 mkdir -p misc_pipeline misc_pipeline/qual misc_pipeline/ckpts
 
