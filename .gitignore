@@ -83,6 +83,8 @@ tmp_pdfjs/
 
 # AII pipeline 生成产物 (可重建)
 aii/*_pipeline/batch_report.json
+aii/*_pipeline/batch_report_worker*.json
+aii/*_pipeline/worker*.log
 aii/*_pipeline/quarantine.json
 aii/*_pipeline/quarantine.json.bak
 aii/*_pipeline/quarantine_worker*.json
@@ -90,6 +92,7 @@ aii/*_pipeline/recall_audit/
 aii/*_pipeline/archive_registry.sqlite
 aii/*_pipeline/archive_report.json
 aii/*_pipeline/compile_report.json
+aii/*_pipeline/.last_split_epub
 aii/.locks/
 aii/*_pipeline/flywheel_*
 aii/*_pipeline/booklist_*.txt
@@ -99,6 +102,10 @@ aii/*_pipeline/staging/
 aii/*_pipeline/待补/
 aii/*_pipeline/ocr_cache/
 aii/quarantine_corrupted_md/
+# AII 书库镜像 (大, 可重建; feeders/flywheel 从 /home/soffy/books 消费)
+aii/books/
+# 一次性修复脚本 (已应用的临时工具, 留档不入库)
+aii/scripts/_tmp_*.py
 deploy/logs/*.log
 scripts/*.log
 # code-review-graph local graph DB (rebuilt from source, not committed)
