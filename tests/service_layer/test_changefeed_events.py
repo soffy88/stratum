@@ -1,7 +1,8 @@
 """Phase 15 P1-B4: Changefeed event emission tests.
 
 For each mutation endpoint, verify the corresponding event was written
-to the changefeed table. Direct DuckDB query via duckdb_test_db fixture.
+to the changefeed table. The service layer persists to Postgres since the
+DuckDB → PG migration, so events are read back via stratum.db.
 
 Events tested (14 total = 3 existing note + 11 new):
   note_create / note_update / note_delete          (existing — smoke check)
@@ -16,13 +17,22 @@ from __future__ import annotations
 
 import os
 
-import duckdb
 import pytest
 from fastapi.testclient import TestClient
 
 os.environ.setdefault("JWT_SECRET", "test-secret-for-sl-unit-tests-32x")
 
 from stratum.common import create_token  # noqa: E402
+from stratum.api.routers.agents import _HAS_OMODUL  # noqa: E402
+from stratum.db import execute as _pg_execute  # noqa: E402
+from stratum.db import insert as _pg_insert  # noqa: E402
+from stratum.db import query as _pg_query  # noqa: E402
+from stratum.utils.user_id_hash import hash_user_id  # noqa: E402
+
+requires_omodul = pytest.mark.skipif(
+    not _HAS_OMODUL,
+    reason="omodul platform package not installed (Docker image only)",
+)
 
 
 def _auth(uid: str = "user-alice") -> dict:
@@ -37,32 +47,43 @@ def client():
         yield c
 
 
-def _latest_event(db_path: str, user_id: str = "user-alice") -> str | None:
-    conn = duckdb.connect(db_path)
-    rows = conn.execute(
-        "SELECT event_type FROM changefeed WHERE user_id = ? ORDER BY seq DESC LIMIT 1",
-        [user_id],
-    ).fetchall()
-    conn.close()
-    return rows[0][0] if rows else None
+# Routers are split on user identity: notes/concepts emit with the raw JWT
+# subject, while documents/highlights/views emit with hash_user_id(). Match
+# both forms when counting events and cleaning up.
+_TEST_USER_IDS = tuple(
+    uid for base in ("user-alice", "user-bob") for uid in (base, hash_user_id(base))
+)
 
 
-def _events_of_type(db_path: str, event_type: str, user_id: str = "user-alice") -> int:
-    conn = duckdb.connect(db_path)
-    row = conn.execute(
-        "SELECT COUNT(*) FROM changefeed WHERE user_id = ? AND event_type = ?",
-        [user_id, event_type],
-    ).fetchone()
-    conn.close()
-    return row[0] if row else 0
+@pytest.fixture(autouse=True)
+def _clean_event_state():
+    """Tests assert per-user event counts against the shared dev Postgres.
+
+    Wipe the previous round's events and API-created rows for the fixed test
+    users so each test starts from a known-empty state (fixed substrate ids
+    would otherwise collide on re-runs).
+    """
+    _pg_execute("DELETE FROM changefeed WHERE user_id IN %(uids)s", {"uids": _TEST_USER_IDS})
+    _pg_execute("DELETE FROM notes_sl WHERE user_id IN %(uids)s", {"uids": _TEST_USER_IDS})
+    _pg_execute("DELETE FROM concepts WHERE user_id IN %(uids)s", {"uids": _TEST_USER_IDS})
+    _pg_execute("DELETE FROM highlights WHERE user_id IN %(uids)s", {"uids": _TEST_USER_IDS})
+    _pg_execute("DELETE FROM user_saved_views WHERE user_id IN %(uids)s", {"uids": _TEST_USER_IDS})
+    _pg_execute("DELETE FROM substrates WHERE id IN ('SUB-PIN-01', 'SUB-UNP-01')")
+    yield
 
 
-def _db_insert(db_path: str, table: str, data: dict) -> None:
-    cols = ", ".join(data.keys())
-    placeholders = ", ".join(f"${k}" for k in data)
-    conn = duckdb.connect(db_path)
-    conn.execute(f"INSERT INTO {table} ({cols}) VALUES ({placeholders})", data)
-    conn.close()
+def _events_of_type(event_type: str, user_id: str = "user-alice") -> int:
+    rows = _pg_query(
+        "SELECT COUNT(*) AS n FROM changefeed "
+        "WHERE user_id IN %(uids)s AND event_type = %(t)s",
+        {"uids": (user_id, hash_user_id(user_id)), "t": event_type},
+        limit=1,
+    )
+    return rows[0]["n"] if rows else 0
+
+
+def _db_insert(table: str, data: dict) -> None:
+    _pg_insert(table, data)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -70,16 +91,16 @@ def _db_insert(db_path: str, table: str, data: dict) -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_note_create_emits_event(client, duckdb_test_db):
+def test_note_create_emits_event(client):
     client.post(
         "/api/v1/notes",
         json={"title": "T", "content_markdown": "x"},
         headers=_auth(),
     )
-    assert _events_of_type(duckdb_test_db, "note_create") >= 1
+    assert _events_of_type("note_create") >= 1
 
 
-def test_note_update_emits_event(client, duckdb_test_db):
+def test_note_update_emits_event(client):
     r = client.post(
         "/api/v1/notes",
         json={"title": "T", "content_markdown": "x"},
@@ -87,10 +108,10 @@ def test_note_update_emits_event(client, duckdb_test_db):
     )
     nid = r.json()["note_id"]
     client.put(f"/api/v1/notes/{nid}", json={"title": "T2"}, headers=_auth())
-    assert _events_of_type(duckdb_test_db, "note_update") >= 1
+    assert _events_of_type("note_update") >= 1
 
 
-def test_note_delete_emits_event(client, duckdb_test_db):
+def test_note_delete_emits_event(client):
     r = client.post(
         "/api/v1/notes",
         json={"title": "T", "content_markdown": "x"},
@@ -98,7 +119,7 @@ def test_note_delete_emits_event(client, duckdb_test_db):
     )
     nid = r.json()["note_id"]
     client.delete(f"/api/v1/notes/{nid}", headers=_auth())
-    assert _events_of_type(duckdb_test_db, "note_delete") >= 1
+    assert _events_of_type("note_delete") >= 1
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -106,19 +127,24 @@ def test_note_delete_emits_event(client, duckdb_test_db):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_substrate_pin_emits_event(client, duckdb_test_db):
-    _db_insert(duckdb_test_db, "substrates", {"id": "SUB-PIN-01", "user_id": "user-alice"})
-    r = client.post("/api/v1/substrate/SUB-PIN-01/pin", headers=_auth())
+def test_substrate_pin_emits_event(client):
+    # The documents router matches substrates on the hashed user id.
+    _db_insert(
+        "substrates", {"id": "SUB-PIN-01", "user_id": hash_user_id("user-alice")}
+    )
+    r = client.post("/api/v1/documents/SUB-PIN-01/pin", headers=_auth())
     assert r.status_code == 200
-    assert _events_of_type(duckdb_test_db, "substrate_pin") >= 1
+    assert _events_of_type("substrate_pin") >= 1
 
 
-def test_substrate_unpin_emits_event(client, duckdb_test_db):
-    _db_insert(duckdb_test_db, "substrates", {"id": "SUB-UNP-01", "user_id": "user-alice"})
-    client.post("/api/v1/substrate/SUB-UNP-01/pin", headers=_auth())
-    r = client.post("/api/v1/substrate/SUB-UNP-01/unpin", headers=_auth())
+def test_substrate_unpin_emits_event(client):
+    _db_insert(
+        "substrates", {"id": "SUB-UNP-01", "user_id": hash_user_id("user-alice")}
+    )
+    client.post("/api/v1/documents/SUB-UNP-01/pin", headers=_auth())
+    r = client.post("/api/v1/documents/SUB-UNP-01/unpin", headers=_auth())
     assert r.status_code == 200
-    assert _events_of_type(duckdb_test_db, "substrate_unpin") >= 1
+    assert _events_of_type("substrate_unpin") >= 1
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -126,24 +152,24 @@ def test_substrate_unpin_emits_event(client, duckdb_test_db):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_concept_create_emits_event(client, duckdb_test_db):
+def test_concept_create_emits_event(client):
     r = client.post("/api/v1/concepts", json={"name": "Testcept"}, headers=_auth())
     assert r.status_code == 200
-    assert _events_of_type(duckdb_test_db, "concept_create") >= 1
+    assert _events_of_type("concept_create") >= 1
 
 
-def test_concept_update_emits_event(client, duckdb_test_db):
+def test_concept_update_emits_event(client):
     r = client.post("/api/v1/concepts", json={"name": "Testcept"}, headers=_auth())
     cid = r.json()["concept_id"]
     client.put(f"/api/v1/concepts/{cid}", json={"name": "Testcept2"}, headers=_auth())
-    assert _events_of_type(duckdb_test_db, "concept_update") >= 1
+    assert _events_of_type("concept_update") >= 1
 
 
-def test_concept_delete_emits_event(client, duckdb_test_db):
+def test_concept_delete_emits_event(client):
     r = client.post("/api/v1/concepts", json={"name": "Testcept"}, headers=_auth())
     cid = r.json()["concept_id"]
     client.delete(f"/api/v1/concepts/{cid}", headers=_auth())
-    assert _events_of_type(duckdb_test_db, "concept_delete") >= 1
+    assert _events_of_type("concept_delete") >= 1
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -151,15 +177,11 @@ def test_concept_delete_emits_event(client, duckdb_test_db):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_agent_run_emits_completed_or_failed_event(client, duckdb_test_db):
+@requires_omodul
+def test_agent_run_emits_completed_or_failed_event(client):
     r = client.post("/api/v1/agents/daily_digest/run", json={}, headers=_auth())
     assert r.status_code == 200
-    conn = duckdb.connect(duckdb_test_db)
-    count = conn.execute(
-        "SELECT COUNT(*) FROM changefeed WHERE user_id = 'user-alice' "
-        "AND event_type IN ('agent_run_completed', 'agent_run_failed')",
-    ).fetchone()[0]
-    conn.close()
+    count = _events_of_type("agent_run_completed") + _events_of_type("agent_run_failed")
     assert count >= 1, "Neither agent_run_completed nor agent_run_failed was emitted"
 
 
@@ -168,25 +190,25 @@ def test_agent_run_emits_completed_or_failed_event(client, duckdb_test_db):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_highlight_create_emits_event(client, duckdb_test_db):
+def test_highlight_create_emits_event(client):
     r = client.post(
         "/api/v1/highlights",
-        json={"content_id": "PC-001", "anchor": {"char_start": 0, "char_end": 10}},
+        json={"substrate_id": "PC-001", "text": "excerpt"},
         headers=_auth(),
     )
-    assert r.status_code == 200
-    assert _events_of_type(duckdb_test_db, "highlight_create") >= 1
+    assert r.status_code == 201
+    assert _events_of_type("highlight_create") >= 1
 
 
-def test_highlight_delete_emits_event(client, duckdb_test_db):
+def test_highlight_delete_emits_event(client):
     r = client.post(
         "/api/v1/highlights",
-        json={"content_id": "PC-001", "anchor": {"char_start": 0, "char_end": 10}},
+        json={"substrate_id": "PC-001", "text": "excerpt"},
         headers=_auth(),
     )
-    hid = r.json()["highlight_id"]
+    hid = r.json()["id"]
     client.delete(f"/api/v1/highlights/{hid}", headers=_auth())
-    assert _events_of_type(duckdb_test_db, "highlight_delete") >= 1
+    assert _events_of_type("highlight_delete") >= 1
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -194,15 +216,12 @@ def test_highlight_delete_emits_event(client, duckdb_test_db):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_view_create_emits_event(client, duckdb_test_db):
+def test_view_create_emits_event(client):
     r = client.post("/api/v1/views", json={"name": "My View"}, headers=_auth())
-    assert r.status_code == 200
-    assert _events_of_type(duckdb_test_db, "view_create") >= 1
+    assert r.status_code == 201
+    assert _events_of_type("view_create") >= 1
 
 
-def test_view_default_changed_emits_event(client, duckdb_test_db):
-    r = client.post("/api/v1/views", json={"name": "Default View"}, headers=_auth())
-    vid = r.json()["view_id"]
-    r2 = client.post(f"/api/v1/views/{vid}/set-default", headers=_auth())
-    assert r2.status_code == 200
-    assert _events_of_type(duckdb_test_db, "view_default_changed") >= 1
+# test_view_default_changed_emits_event was dropped: the views router has no
+# set-default route anymore — view_default_changed survives only as a name in
+# sync.py's scope registry, nothing emits it.

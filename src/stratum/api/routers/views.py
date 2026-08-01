@@ -177,6 +177,9 @@ async def create_view(body: ViewCreate, user=Depends(get_current_user)):
             ),
         )
         r = conn.execute(f"SELECT {_COLS} FROM user_saved_views WHERE id=?", (vid,)).fetchone()
+    from stratum.changefeed import emit_event
+
+    await emit_event(uh, "view_create", {"view_id": vid})
     return _row_to_view(r)
 
 

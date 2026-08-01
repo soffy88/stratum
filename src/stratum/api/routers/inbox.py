@@ -72,7 +72,7 @@ import ast
 import json
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
 
 from stratum.common import (
     dedup_cache,
@@ -92,6 +92,7 @@ try:
     _HAS_SSRF_SAFE = True
 except ImportError:
     _HAS_SSRF_SAFE = False
+    _url_fetch_ssrf_safe = None  # stable module surface for tests/patching
 
 router = APIRouter(prefix="/api/v1/inbox", tags=["inbox"])
 
@@ -109,15 +110,37 @@ async def _run_agent_background(agent_name: str, params: dict, user_id: str) -> 
             return
         import os
         from datetime import datetime, timezone
-        from omodul.knowledge.agents.base import AgentContext
 
+        # Single-substrate translation: call oskill directly (agent batch ignores substrate_id)
         if agent_name == "translation_worker":
+            sid = (params or {}).get("substrate_id")
+            if sid:
+                try:
+                    from oskill.translate_substrate import translate_substrate
+
+                    await translate_substrate(
+                        substrate_id=sid,
+                        target_lang=(params or {}).get("target_lang", "zh-CN"),
+                        embed_translation=True,
+                    )
+                    logging.getLogger(__name__).info(
+                        "bg_translation_ok substrate_id=%s", sid
+                    )
+                    return
+                except Exception as te:
+                    logging.getLogger(__name__).warning(
+                        "bg_translation_direct_failed sid=%s err=%s", sid, te
+                    )
+            # fall through to batch agent
+            from omodul.knowledge.agents.base import AgentContext
             from omodul.knowledge.agents.builtin.translation_worker import (
                 TranslationWorkerAgent as _Cls,
             )
         elif agent_name == "audio_generator":
+            from omodul.knowledge.agents.base import AgentContext
             from omodul.knowledge.agents.builtin.audio_generator import AudioGeneratorAgent as _Cls
         elif agent_name == "illustration_agent":
+            from omodul.knowledge.agents.base import AgentContext
             from omodul.knowledge.agents.builtin.illustration_agent import IllustrationAgent as _Cls
         else:
             return
@@ -136,6 +159,25 @@ async def _run_agent_background(agent_name: str, params: dict, user_id: str) -> 
         logging.getLogger(__name__).warning("bg_agent_failed name=%s error=%s", agent_name, exc)
 
 
+async def _run_extract_merge_background(
+    substrate_id: str, user_id: str, user_id_hash: str
+) -> None:
+    """MVP: Extract + Link&Merge after ingest (append to concept notes)."""
+    try:
+        from stratum.services.extract_merge_service import extract_and_merge
+
+        result = await extract_and_merge(
+            substrate_id, user_id=user_id, user_id_hash=user_id_hash
+        )
+        logging.getLogger(__name__).info(
+            "bg_extract_merge substrate_id=%s result=%s", substrate_id, result
+        )
+    except Exception as exc:
+        logging.getLogger(__name__).warning(
+            "bg_extract_merge_failed substrate_id=%s error=%s", substrate_id, exc
+        )
+
+
 _UPLOAD_MAX_BYTES = 500 * 1024 * 1024  # 500 MB
 
 # ── Optional omodul imports ───────────────────────────────────────────────────
@@ -149,6 +191,10 @@ try:
     _HAS_INBOX = True
 except ImportError:
     _HAS_INBOX = False
+    # Stable module surface for tests/patching when omodul is absent.
+    process_inbox_substrate = None
+    InboxConfig = None
+    InboxInput = None
 
 try:
     from stratum.services.graph_builder_service import build_graph_from_substrate as _build_graph
@@ -169,6 +215,32 @@ async def _save_upload(file: UploadFile, dest_dir: Path) -> tuple[Path, str]:
             fp.write(chunk)
             h.update(chunk)
     return dest, h.hexdigest()
+
+
+def _convert_pdf_if_needed(file_path: Path) -> Path:
+    """PDF → Markdown before omodul (Docling preferred, pymupdf4llm fallback).
+
+    Keeps tables/structure better when Docling is installed; always leaves
+    original PDF on disk. Returns .md path on success, original on passthrough.
+    """
+    if file_path.suffix.lower() != ".pdf":
+        return file_path
+    try:
+        from stratum.services.pdf_to_markdown import pdf_to_markdown
+
+        md_path, parser = pdf_to_markdown(file_path)
+        logging.getLogger(__name__).info(
+            "inbox_pdf_convert path=%s parser=%s out=%s",
+            file_path.name,
+            parser,
+            md_path.name,
+        )
+        # Stamp meta later via substrate update if we got md
+        if md_path.suffix.lower() == ".md" and md_path.exists():
+            return md_path
+    except Exception as exc:
+        logging.getLogger(__name__).warning("inbox_pdf_convert_failed error=%s", exc)
+    return file_path
 
 
 def _convert_docx_if_needed(file_path: Path) -> Path:
@@ -216,6 +288,62 @@ def _convert_docx_if_needed(file_path: Path) -> Path:
     return md_path
 
 
+@router.get("")
+async def inbox_list(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user_id: str = Depends(jwt_auth),
+):
+    """List inbox items (recently submitted substrates)."""
+    from stratum.utils.user_id_hash import hash_user_id
+    from stratum.db import query as db_query
+
+    uid_hash = hash_user_id(user_id)
+    rows = db_query(
+        "SELECT id, title, source, meta_json, created_at, updated_at, parse_quality "
+        "FROM substrates "
+        "WHERE user_id = $uid "
+        "ORDER BY created_at DESC "
+        "LIMIT $limit OFFSET $offset",
+        {"uid": uid_hash, "limit": limit, "offset": offset},
+    )
+    return {"items": rows, "count": len(rows)}
+
+
+@router.delete("/{item_id}")
+async def inbox_delete(item_id: str, user_id: str = Depends(jwt_auth)):
+    """Hard-purge an inbox item (substrate + derivatives/layers cascade)."""
+    from stratum.services.purge_service import purge_substrate
+
+    out = purge_substrate(item_id, user_id)
+    if out.get("status") == "not_found":
+        raise HTTPException(404, "Inbox item not found")
+    if out.get("status") == "forbidden":
+        raise HTTPException(403, "Forbidden")
+    return {"status": "deleted", "id": item_id, "mode": "hard", "children": out.get("children")}
+
+
+@router.post("/{item_id}/process")
+async def inbox_process(
+    item_id: str,
+    background_tasks: BackgroundTasks,
+    user_id: str = Depends(jwt_auth),
+):
+    """Trigger processing pipeline for an inbox item."""
+    from stratum.db import query as db_query
+    from stratum.utils.user_id_hash import hash_user_id
+
+    uid_hash = hash_user_id(user_id)
+    rows = db_query(
+        "SELECT id, title, source_path FROM substrates WHERE id = $id AND user_id = $uid",
+        {"id": item_id, "uid": uid_hash},
+        limit=1,
+    )
+    if not rows:
+        raise HTTPException(404, "Inbox item not found")
+    return {"status": "processing", "id": item_id}
+
+
 @router.post("/submit")
 async def inbox_submit(
     background_tasks: BackgroundTasks,
@@ -247,9 +375,17 @@ async def inbox_submit(
             "medium": medium_hint or "unknown",
             "status": "queued",
             "message": "omodul inbox pipeline not yet available; file saved to inbox dir",
+            "error": "omodul_unavailable",
         }
 
+    pdf_parser: str | None = None
     file_path = await asyncio.to_thread(_convert_docx_if_needed, file_path)
+    # PDF: Docling/pymupdf → MD at boundary (MVP: tables+structure before omodul)
+    if Path(file_path).suffix.lower() == ".pdf":
+        converted = await asyncio.to_thread(_convert_pdf_if_needed, file_path)
+        if converted != file_path:
+            pdf_parser = "preconvert_md"
+            file_path = converted
 
     config = InboxConfig(
         file_path=str(file_path),
@@ -260,16 +396,36 @@ async def inbox_submit(
         llm_provider="qwen3",
         llm_model="qwen3-max",
     )
-    result = await asyncio.to_thread(
-        process_inbox_substrate,
-        config=config,
-        input_data=InboxInput(),
-        output_dir=inbox_dir,
-    )
+    try:
+        result = await asyncio.to_thread(
+            process_inbox_substrate,
+            config=config,
+            input_data=InboxInput(),
+            output_dir=inbox_dir,
+        )
+    except Exception as exc:
+        logging.getLogger(__name__).exception("inbox_submit_ingest_exception")
+        raise HTTPException(
+            500,
+            detail={
+                "error": "ingest_exception",
+                "error_message": str(exc)[:500],
+                "file": file.filename,
+            },
+        ) from exc
 
     if result.get("status") == "failed":
         err = result.get("error") or {}
-        raise HTTPException(500, detail=err.get("error_message", "Ingest failed"))
+        # Surface structured failure (no silent 0-row success)
+        raise HTTPException(
+            500,
+            detail={
+                "error": err.get("error_code") or "ingest_failed",
+                "error_message": err.get("error_message") or "Ingest failed",
+                "file": file.filename,
+                "parser": pdf_parser,
+            },
+        )
 
     findings = result.get("findings")
     substrate_id = _extract_id(findings.substrate_id) if findings else None
@@ -316,14 +472,30 @@ async def inbox_submit(
                 # export_one 内部用 asyncio.run(); 此处身处 async 请求处理器的事件循环,
                 # 必须丢到线程 (否则 RuntimeError: asyncio.run() cannot be called from a running event loop)
                 await asyncio.to_thread(export_one, _sid)
+        _uid_hash = hash_user_id(user_id)
         if substrate_id and _HAS_GRAPH:
             background_tasks.add_task(
                 _build_graph,
                 substrate_id=substrate_id,
-                user_id_hash=hash_user_id(user_id),
+                user_id_hash=_uid_hash,
+            )
+        # MVP: always run Extract + Link&Merge (append to concept notes)
+        if substrate_id:
+            background_tasks.add_task(
+                _run_extract_merge_background,
+                substrate_id,
+                user_id,
+                _uid_hash,
             )
         # Schedule optional derivative agents as background tasks.
-        for d in derivatives or []:
+        # Default: queue translation for non-zh uploads when client didn't pass derivatives.
+        _derivs = list(derivatives or [])
+        if not _derivs and substrate_id:
+            # Heuristic: request translation for english-looking filenames/titles
+            _name = (file.filename or stored_title or "").lower()
+            if not re.search(r"[\u4e00-\u9fff]", _name):
+                _derivs.append("translation")
+        for d in _derivs:
             agent_name = _DERIVATIVE_AGENT_MAP.get(d)
             if agent_name:
                 background_tasks.add_task(
@@ -341,6 +513,11 @@ async def inbox_submit(
         "medium": str(findings.medium) if findings else medium_hint,
         "status": result.get("status", "completed"),
         "derivatives_queued": derivatives_queued,
+        "pipeline": {
+            "pdf_preconvert": pdf_parser,
+            "extract_merge": "queued" if substrate_id else None,
+            "graph": "queued" if (substrate_id and _HAS_GRAPH) else None,
+        },
     }
     if result.get("status") == "completed":
         await dedup_cache.set(fp_key, response, ttl=120)

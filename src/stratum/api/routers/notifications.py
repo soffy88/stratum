@@ -1,12 +1,39 @@
 """Notification dispatch."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from stratum.common import generate_ulid, jwt_auth, now_utc
-from stratum.db import insert
+from stratum.db import insert, query as db_query
 
 router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
+
+
+@router.get("")
+async def list_notifications(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user_id: str = Depends(jwt_auth),
+):
+    """List notification events from changefeed."""
+    rows = db_query(
+        "SELECT event_id AS id, payload, created_at "
+        "FROM changefeed "
+        "WHERE user_id = $uid AND event_type = 'notification' "
+        "ORDER BY created_at DESC "
+        "LIMIT $limit OFFSET $offset",
+        {"uid": user_id, "limit": limit, "offset": offset},
+    )
+    items = []
+    for r in rows:
+        payload = r.get("payload") or {}
+        items.append({
+            "id": r["id"],
+            "title": payload.get("title", ""),
+            "body": payload.get("body", ""),
+            "created_at": r["created_at"],
+        })
+    return {"items": items, "count": len(items)}
 
 
 class NotificationSend(BaseModel):

@@ -162,14 +162,13 @@ async def test_user_A_cannot_search_user_B_content(two_users):
     uA, uB, db = two_users
     sid_a = str(ulid_mod.ULID())
     sid_b = str(ulid_mod.ULID())
-    db.execute(
-        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
-        (sid_a, hash_user_id(uA.id), "A doc"),
-    )
-    db.execute(
-        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
-        (sid_b, hash_user_id(uB.id), "B doc"),
-    )
+    # The post-filter resolves substrates in Postgres (service-layer store
+    # since the DuckDB → PG migration) — seed both owners there so the test
+    # verifies A's row survives and B's row is filtered out.
+    from stratum.db import insert as pg_insert, hard_delete as pg_hard_delete
+
+    pg_insert("substrates", {"id": sid_a, "user_id": hash_user_id(uA.id), "title": "A doc"})
+    pg_insert("substrates", {"id": sid_b, "user_id": hash_user_id(uB.id), "title": "B doc"})
 
     from unittest.mock import patch, AsyncMock
     from types import SimpleNamespace
@@ -178,17 +177,19 @@ async def test_user_A_cannot_search_user_B_content(two_users):
         SimpleNamespace(type="substrate", id=sid_a, title="A", score=0.9, highlight=None),
         SimpleNamespace(type="substrate", id=sid_b, title="B", score=0.8, highlight=None),
     ]
-    with patch(
-        "stratum.service.search.hybrid_search", new_callable=AsyncMock, return_value=mock_results
-    ):
-        with patch("stratum.service.search.duckdb") as mock_duckdb:
-            mock_duckdb.connect.return_value = db
+    try:
+        with patch(
+            "stratum.service.search.hybrid_search", new_callable=AsyncMock, return_value=mock_results
+        ):
             from stratum.service.search import stratum_search
 
             results = await stratum_search(query="test", corpus_id=uA.corpus_id, user_id=uA.id)
             ids = [r.id for r in results]
             assert sid_a in ids
             assert sid_b not in ids
+    finally:
+        pg_hard_delete("substrates", sid_a)
+        pg_hard_delete("substrates", sid_b)
 
 
 # --- Injection attack tests ---

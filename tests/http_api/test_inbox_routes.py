@@ -4,6 +4,8 @@ SSRF protection is now delegated to oprim.url_fetch_ssrf_safe (DNS-pinned transp
 Tests verify that _fetch_url_html correctly maps oprim results to HTTP exceptions.
 """
 
+import sys
+
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
 from fastapi import FastAPI, HTTPException
@@ -126,7 +128,32 @@ async def test_fetch_url_html_no_oprim():
 def _mock_process_result(substrate_id="01ARZ3NDEKTSV4RRFFQ69G5FAV"):
     findings = MagicMock()
     findings.substrate_id = substrate_id
+    # MagicMock auto-attributes are truthy/non-iterable; pin the ones the
+    # route iterates over so the post-process flow stays on the happy path.
+    findings.substrate_ids = None  # → route falls back to [substrate_id]
+    findings.derivative_ids = None  # → _fill_derivative_content no-ops
+    findings.title = "Test"
+    findings.medium = "webpage"
     return {"status": "completed", "findings": findings}
+
+
+def _platform_stubs():
+    """Stubs for the omodul-backed post-process steps (absent on dev hosts).
+
+    md_export_service imports omodul at module level, so it must be stubbed in
+    sys.modules — the route's function-local import resolves against that.
+    Returns a single ExitStack so it can be one item in a `with (...)` block.
+    """
+    from contextlib import ExitStack
+
+    stack = ExitStack()
+    stack.enter_context(patch("stratum.api.routers.inbox.InboxConfig", MagicMock()))
+    stack.enter_context(patch("stratum.api.routers.inbox.InboxInput", MagicMock()))
+    stack.enter_context(patch("stratum.lib.quality.ingest_quality_gate.run_quality_gate"))
+    stack.enter_context(
+        patch.dict(sys.modules, {"stratum.services.md_export_service": MagicMock()})
+    )
+    return stack
 
 
 def test_webclip_with_html_provided(client):
@@ -141,6 +168,7 @@ def test_webclip_with_html_provided(client):
         patch("pathlib.Path.read_text", return_value="<html></html>"),
         patch("stratum.api.routers.inbox.sha256_hex", return_value="abc123"),
         patch("stratum.api.routers.inbox.generate_ulid", return_value="01ARZ3NDEKTSV4RRFFQ69G5FAV"),
+        _platform_stubs(),
     ):
         r = client.post(
             "/api/v1/inbox/web-clip",
@@ -167,6 +195,7 @@ def test_webclip_url_only_fetches_server_side(client):
         patch("pathlib.Path.read_text", return_value="<html></html>"),
         patch("stratum.api.routers.inbox.sha256_hex", return_value="abc123"),
         patch("stratum.api.routers.inbox.generate_ulid", return_value="01ARZ3NDEKTSV4RRFFQ69G5FAV"),
+        _platform_stubs(),
     ):
         r = client.post("/api/v1/inbox/web-clip", data={"url": "https://example.com"})
     assert r.status_code == 200

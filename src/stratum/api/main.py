@@ -145,11 +145,31 @@ async def _aii_feedback_loop() -> None:
 async def _lifespan(app: FastAPI):
     run_migrations()  # 启动时自动建表
     _register_providers()
+
+    # P2: Initialize AII backend (asyncpg pool + providers)
+    from stratum.api.routers.aii_mount import (
+        apply_aii_monkeypatch,
+        register_aii_providers,
+        init_aii_backend,
+        shutdown_aii_backend,
+    )
+    apply_aii_monkeypatch()
+    register_aii_providers()
+    await init_aii_backend()
+
     task = asyncio.create_task(_feed_tracker_loop())
     fw_task = asyncio.create_task(_folder_watcher_loop())
     cw_task = asyncio.create_task(_channel_watcher_loop())
     sw_task = asyncio.create_task(_source_watcher_loop())
     aii_task = asyncio.create_task(_aii_feedback_loop())
+
+    # P2: AII semantic dedup loop (cross-book dedup, log-only for cross-book)
+    dedup_task = None
+    try:
+        from aii.service.dedup_semantic import dedup_semantic_loop
+        dedup_task = asyncio.create_task(dedup_semantic_loop(), name="aii-dedup-semantic")
+    except ImportError:
+        pass
 
     from stratum.scheduler.runtime import scheduler, load_all_enabled_jobs
 
@@ -163,14 +183,28 @@ async def _lifespan(app: FastAPI):
     cw_task.cancel()
     sw_task.cancel()
     aii_task.cancel()
+    if dedup_task:
+        dedup_task.cancel()
+        try:
+            await dedup_task
+        except asyncio.CancelledError:
+            pass
     scheduler.shutdown(wait=False)
+    await shutdown_aii_backend()
 
 
 app = FastAPI(title="Stratum Service Layer", version="0.5.0", lifespan=_lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://stratum.kanpan.co"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3101",
+        "https://stratum.kanpan.co",
+        "https://aii.kanpan.co",
+        "https://aiinote.com",
+        "https://www.aiinote.com",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -301,6 +335,31 @@ app.include_router(bundle_split.router)
 from stratum.api.routers import quality
 
 app.include_router(quality.router)
+
+from stratum.api.routers import layers
+
+app.include_router(layers.router)
+
+from stratum.api.routers import retrieval
+
+app.include_router(retrieval.router)
+
+from stratum.api.routers import sessions
+
+app.include_router(sessions.router)
+
+from stratum.api.routers import metrics
+
+app.include_router(metrics.router)
+
+from stratum.api.routers import cornell
+
+app.include_router(cornell.router)
+
+# ── P2: AII routes (mounted under /api/aii/*) ────────────────────────────────
+from stratum.api.routers.aii_mount import mount_aii_routes
+
+mount_aii_routes(app)
 
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 from stratum.api.ws import router as ws_router

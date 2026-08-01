@@ -52,7 +52,7 @@ def _dsn_kwargs() -> dict[str, Any]:
         "password": os.environ.get("STRATUM_PG_PASSWORD", ""),
         "dbname": os.environ.get("STRATUM_PG_DB", "aii_kg"),
         # Resolve unqualified table names to the stratum schema (aii.* stays explicit).
-        "options": "-c search_path=stratum",
+        "options": "-c search_path=stratum,public",
     }
 
 
@@ -101,6 +101,12 @@ def _conn():
     try:
         raw.autocommit = True
         yield _ConnWrapper(raw)
+    except Exception:
+        try:
+            raw.rollback()
+        except Exception:
+            pass
+        raise
     finally:
         pool.putconn(raw)
 
@@ -136,6 +142,12 @@ def _cursor(commit: bool = False):
         cur = raw.cursor()
         try:
             yield cur
+        except Exception:
+            try:
+                raw.rollback()
+            except Exception:
+                pass
+            raise
         finally:
             cur.close()
     finally:
@@ -218,6 +230,13 @@ def update(table: str, rid: str, data: dict[str, Any], id_column: str = "id") ->
 def soft_delete(table: str, rid: str, deleted_at_column: str = "deleted_at") -> None:
     """SET deleted_at = NOW() for a row."""
     sql = f"UPDATE {table} SET {deleted_at_column} = NOW() WHERE id = %(rid)s"
+    with _cursor() as cur:
+        cur.execute(sql, {"rid": rid})
+
+
+def hard_delete(table: str, rid: str, id_column: str = "id") -> None:
+    """Permanently DELETE a row by id (MVP 真删)."""
+    sql = f"DELETE FROM {table} WHERE {id_column} = %(rid)s"
     with _cursor() as cur:
         cur.execute(sql, {"rid": rid})
 
