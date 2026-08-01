@@ -39,3 +39,25 @@ ECON_LLM_PROVIDER=... uv run python scripts/dedup/run_gold.py --model <judge>
 ## 落库路线（后续 步骤3）
 `candidates(粗筛) → judge_pair(逐对，台账) → cluster_same → build_contributions → persist_refined_ku`，
 全程写台账；错合修复 = 改台账 + 重放受影响子图。**先过金集再全量。**
+
+## 增量止血（2026-07-29）
+A 仓飞轮持续灌库、B 仓无常驻 ETL 时会严重落后。推荐路径：
+
+```bash
+# 单例补灌(宁冗余不误删; 复用 A 仓向量, 不调 LLM 并簇)
+uv run python scripts/dedup/orchestrate.py --disc econ|math|misc --singletons-only --apply
+# 概念层 M0(幂等: 跳过 sources 已映射的 A concept)
+uv run python scripts/dedup/m0.py --apply
+# 有向关系 4.5(默认 NIM 多 key 池, 见 .pipeline_keys.json)
+uv run python scripts/dedup/readout.py --limit 200 --apply
+# 旧 DeepSeek 路: --provider deepseek --model deepseek-flash
+# 学科标签清洗
+uv run python scripts/dedup/normalize_discipline.py --apply
+# 或一键(systemd timer 每日 04:30 也跑这个)
+bash scripts/b_repo_sync.sh --max-new 800
+```
+
+关键 flag：
+- `--singletons-only`：跳过判同，每条未入 B 的 A-KU 各成 refined_ku
+- `--max-new N`：定时器安全阀
+- `--disc econ|math|misc|all`：动态发现 substrate（不再靠会过期的硬编码书单）

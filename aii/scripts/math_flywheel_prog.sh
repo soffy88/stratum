@@ -8,6 +8,10 @@
 #   规划审核+质检共用同一个独立key(math_prog_verify), 无key则两步都fail-open跳过.
 set -uo pipefail
 cd "$(dirname "$0")/.."
+: "${RCLONE_PROXY=http://127.0.0.1:7890}"
+if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
+  export HTTPS_PROXY="${RCLONE_PROXY}" HTTP_PROXY="${RCLONE_PROXY}"
+fi
 PY=.venv/bin/python
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1   # 用本地缓存 BGE-M3, 不连 huggingface
@@ -62,7 +66,17 @@ for f in /home/soffy/books/MD/英文数学/*.md /home/soffy/books/MD/中文数�
     $PY scripts/math_program_ingest.py "$f" "$sub" 2>&1 | tail -2
     ingest_out=$($PY scripts/math_ingest.py --substrate "$sub" --staging "$STAGING_BASE/$sub" 2>&1)
     echo "$ingest_out" | grep -E '入库完成|准备入库' || true
-    echo "$ingest_out" | grep -qE '入库完成: ok=[0-9]+ skip=[0-9]+ err=0$' && touch "$STAGING_BASE/$sub/.done"
+    if echo "$ingest_out" | grep -qE '入库完成: ok=[0-9]+ skip=[0-9]+ err=0$'; then
+        touch "$STAGING_BASE/$sub/.done"
+        # ★用户指令(2026-07-23): 抽完KU的源MD是资产, 不能只留本地——按本地MD池子分类
+        # (中文数学/英文数学)同名归档到Drive, 不删本地。
+        MD_SUBJECT_DIR=$(basename "$(dirname "$f")")
+        if rclone copy "$f" "gdrive-rw:aii-已入库源MD/$MD_SUBJECT_DIR/" --drive-chunk-size 64M 2>/dev/null; then
+            echo "  📦 已归档源MD到 Drive(aii-已入库源MD/$MD_SUBJECT_DIR/)"
+        else
+            echo "  ⚠ 归档到 Drive 失败(本地MD保留, 不影响入库结果)"
+        fi
+    fi
     SUBSTRATE="$sub" $PY scripts/math_prog_verify.py 2>&1 || echo "  ⚠ 判官调用异常(非致命, 继续)"
     processed=$((processed + 1))
 done

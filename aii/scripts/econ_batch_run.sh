@@ -23,6 +23,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+: "${RCLONE_PROXY=http://127.0.0.1:7890}"
+if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
+  export HTTPS_PROXY="${RCLONE_PROXY}" HTTP_PROXY="${RCLONE_PROXY}"
+fi
+
 PY=.venv/bin/python
 ECON_QUAL_DIR="${ECON_QUAL_DIR:-econ_pipeline/qual}"
 ECON_CKPT_DIR="${ECON_CKPT_DIR:-econ_pipeline/ckpts}"
@@ -222,6 +227,16 @@ except Exception as e:
         N_PIPELINE_OK=$((N_PIPELINE_OK + 1))
         RESULTS[$SUBSTRATE]="PASS:registered"
         echo "  ✅ 已入正式库: $SUBSTRATE"
+        # ★用户指令(2026-07-23): 抽完KU的源MD是资产, 不能只留本地——按本地MD池子分类
+        # (经济学/中文数学/英文数学/其它)同名归档到Drive。不删本地, 失败下轮 econ_register
+        # 幂等重跑时不会再碰这段(只在本次成功分支跑一次), 但下次批量遇到同名文件 rclone
+        # 会按checksum跳过, 不重复上传。
+        MD_SUBJECT_DIR=$(basename "$(dirname "$MD_PATH")")
+        if rclone copy "$MD_PATH" "gdrive-rw:aii-已入库源MD/$MD_SUBJECT_DIR/" --drive-chunk-size 64M 2>/dev/null; then
+            echo "  📦 已归档源MD到 Drive(aii-已入库源MD/$MD_SUBJECT_DIR/)"
+        else
+            echo "  ⚠ 归档到 Drive 失败(本地MD保留, 不影响入库结果)"
+        fi
     else
         # ── 质量门报警 → 隔离等人工 ──
         echo "  🚨 质量门报警(exit=$PIPE_EXIT) → 隔离等人工审查"

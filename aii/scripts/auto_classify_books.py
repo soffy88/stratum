@@ -13,6 +13,7 @@ import asyncio
 import json
 import os
 import subprocess
+import unicodedata
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -28,6 +29,15 @@ def _rclone(*a):
 
 def _lsf(source: str) -> list[str]:
     return [x for x in _rclone("lsf", source).stdout.splitlines() if x.strip()]
+
+
+def _norm_name(name: str) -> str:
+    s = unicodedata.normalize("NFKC", name)
+    for pre in ("(NEW)", "(new)", "(New)"):
+        if s.startswith(pre):
+            s = s[len(pre) :]
+            break
+    return s
 
 
 def _keyword_hit(name: str, categories: list[dict]) -> str | None:
@@ -70,6 +80,10 @@ def _llm_classify(names: list[str], categories: list[dict]) -> dict:
         try:
             raw = json.loads(llm.call_sync(sys + "\n\n" + body))
             if isinstance(raw, dict):
+                # 偶发: LLM把系统提示里的JSON模板键"完整文件名"当字面输出, 套一层
+                # {"完整文件名": {真实文件名: 文件夹, ...}}——解一层壳再合并
+                if len(raw) == 1 and isinstance(next(iter(raw.values())), dict):
+                    raw = next(iter(raw.values()))
                 out.update(raw)
         except Exception as e:
             print(
@@ -121,8 +135,11 @@ async def run_classify(owner: str = "default", dry: bool = False, force: bool = 
         else:
             llm_pending.append(f)
     llm_map = {} if dry else _llm_classify(llm_pending, categories)
+    # LLM偶发"清理"文件名再回传(全角/半角标点不一致, 或整段丢掉"(NEW)"前缀),
+    # 原样查表会对不上——归一化(NFKC + 剥掉常见前缀)后兜底再查一次
+    llm_map_norm = {_norm_name(k): v for k, v in llm_map.items()}
     for f in llm_pending:
-        folder = llm_map.get(f)
+        folder = llm_map.get(f) or llm_map_norm.get(_norm_name(f))
         plan.append((f, folder if folder in valid_folders else None, "llm"))
 
     moved = skipped = failed = 0
