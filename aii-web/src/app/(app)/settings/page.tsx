@@ -102,6 +102,20 @@ function SessionsTab() {
     queryFn: () => apiClient.get<SessionListResponse>("/api/users/me/sessions"),
   });
 
+  const convSessionsLink = (
+    <div className="mb-4 p-3 border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/5 rounded-lg">
+      <p className="text-sm">
+        对话与上下文管理请前往{' '}
+        <a href="/sessions" className="text-[var(--color-primary)] font-medium hover:underline">
+          会话管理 →
+        </a>
+      </p>
+      <p className="text-xs text-[var(--color-muted)] mt-1">
+        查看对话历史、上下文窗口、记忆提取
+      </p>
+    </div>
+  );
+
   const revoke = useMutation({
     mutationFn: (sessionId: string) =>
       apiClient.delete<{ status: string }>(`/api/users/me/sessions/${sessionId}`),
@@ -117,6 +131,7 @@ function SessionsTab() {
 
   return (
     <div className="space-y-3">
+      {convSessionsLink}
       <p className="text-xs text-[var(--color-muted)]">以下为当前活跃的登录会话</p>
       {sessions.length === 0 && (
         <p className="text-sm text-[var(--color-muted)]">暂无活跃会话</p>
