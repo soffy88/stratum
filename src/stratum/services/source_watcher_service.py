@@ -162,6 +162,41 @@ async def _ingest_item(result, user_id_hash: str, sub_id: str) -> str | None:
         except Exception as exc:
             log.warning("source_watcher: md_export failed sid=%s: %s", sid, exc)
 
+        # Phase 1: Generate L0/L1 layers for substrate
+        try:
+            from stratum.services.layer_generator import generate_substrate_layers
+            with get_conn() as _c:
+                _row = _c.execute(
+                    "SELECT title FROM substrates WHERE id=?", (sid,)
+                ).fetchone()
+            _title = _row[0] if _row else None
+            generate_substrate_layers(sid, title=_title, content=None)
+        except Exception as exc:
+            log.warning("source_watcher: layer generation failed sid=%s: %s", sid, exc)
+
+        # Phase 2: Register in directory tree (incremental update)
+        try:
+            from stratum.services.directory_builder import register_substrate
+            with get_conn() as _c:
+                _row = _c.execute(
+                    "SELECT title, COALESCE(meta_json->>'discipline', '') FROM substrates WHERE id=?",
+                    (sid,),
+                ).fetchone()
+            if _row:
+                _title = _row[0] or sid[:16]
+                _disc = _row[1] or None
+                _l0 = None
+                with get_conn() as _c2:
+                    _l0_row = _c2.execute(
+                        "SELECT content FROM substrate_layers WHERE substrate_id=? AND layer='L0'",
+                        (sid,),
+                    ).fetchone()
+                    if _l0_row:
+                        _l0 = _l0_row[0]
+                register_substrate(sid, _title, _disc, _l0)
+        except Exception as exc:
+            log.warning("source_watcher: directory registration failed sid=%s: %s", sid, exc)
+
         return sid
 
 

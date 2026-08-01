@@ -106,6 +106,40 @@ async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
                                         continue
                                     run_quality_gate(_sid)
                                     export_one(_sid)
+                                    # Phase 1: Generate L0/L1 layers
+                                    try:
+                                        from stratum.services.layer_generator import generate_substrate_layers
+                                        with get_conn() as _c:
+                                            _row = _c.execute(
+                                                "SELECT title FROM substrates WHERE id=?", (_sid,)
+                                            ).fetchone()
+                                        _title = _row[0] if _row else None
+                                        generate_substrate_layers(_sid, title=_title, content=None)
+                                    except Exception:
+                                        log.warning("folder_watcher: layer generation failed sid=%s", _sid)
+                                    # Phase 2: Register in directory tree
+                                    try:
+                                        from stratum.services.directory_builder import register_substrate
+                                        with get_conn() as _c:
+                                            _row = _c.execute(
+                                                "SELECT title, COALESCE(meta_json->>'discipline', '') FROM substrates WHERE id=?",
+                                                (_sid,),
+                                            ).fetchone()
+                                        if _row:
+                                            _title = _row[0] or f.name
+                                            _disc = _row[1] or None
+                                            # Get L0 if available
+                                            _l0 = None
+                                            with get_conn() as _c2:
+                                                _l0_row = _c2.execute(
+                                                    "SELECT content FROM substrate_layers WHERE substrate_id=? AND layer='L0'",
+                                                    (_sid,),
+                                                ).fetchone()
+                                                if _l0_row:
+                                                    _l0 = _l0_row[0]
+                                            register_substrate(_sid, _title, _disc, _l0)
+                                    except Exception:
+                                        log.warning("folder_watcher: directory registration failed sid=%s", _sid)
                         ingested += 1
                         log.info("folder_watcher: ingested %s", f.name)
                     else:
