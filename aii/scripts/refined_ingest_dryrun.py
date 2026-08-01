@@ -196,7 +196,7 @@ def _build_nim_pool():
             k,
             model=os.getenv("NIM_MODEL", "meta/llama-3.1-70b-instruct"),
             base_url="https://integrate.api.nvidia.com/v1/chat/completions",
-            rpm=36,
+            rpm=float(os.getenv("NIM_RPM", "40")),  # NIM 免费层硬顶 40/key·min
         )
         for k in keys.values()
     ]
