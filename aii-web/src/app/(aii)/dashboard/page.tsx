@@ -8,7 +8,7 @@
  */
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   OGridFrame,
   OKPICard,
@@ -20,6 +20,14 @@ import {
 import { useApiNoArg } from '@/aii/hooks/useApi';
 import { AnimatedNumber, useStaggerReveal } from '@/aii/components/motion/Motion';
 import * as api from '@/aii/lib/api-client';
+import {
+  getIngestionMetrics,
+  getSearchMetrics,
+  getAgentMetrics,
+  type IngestionMetrics,
+  type SearchMetrics,
+  type AgentMetrics,
+} from '@/lib/adapters/metrics';
 
 function Card({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -33,6 +41,15 @@ function Card({ title, hint, children }: { title: string; hint?: string; childre
   );
 }
 
+function StratumKPI({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-3">
+      <div className="text-xs text-[color:var(--text-secondary)]">{label}</div>
+      <div className="text-lg font-semibold tabular-nums">{value}</div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const [overview, runOverview] = useApiNoArg(api.getStatsOverview);
   const [ingestion, runIngestion] = useApiNoArg(api.getStatsIngestion);
@@ -42,11 +59,139 @@ export default function DashboardPage() {
   // 数据到达后,区块卡片交错入场(降级安全:未装 animejs / reduced-motion 时元素本就可见)
   useStaggerReveal('.dash-card', [overview.data], { delay: 70, translateY: 14 });
 
+  // ── Stratum metrics state ────────────────────────────────────────────────────
+  const [stratumIng, setStratumIng] = useState<IngestionMetrics | null>(null);
+  const [stratumSearch, setStratumSearch] = useState<SearchMetrics | null>(null);
+  const [stratumAgent, setStratumAgent] = useState<AgentMetrics | null>(null);
+
+  useEffect(() => {
+    void getIngestionMetrics().then(setStratumIng);
+    void getSearchMetrics().then(setStratumSearch);
+    void getAgentMetrics().then(setStratumAgent);
+  }, []);
+
   const d = overview.data;
   const ing = ingestion.data;
 
   return (
     <div className="aii-page-content flex flex-col gap-5 max-w-6xl mx-auto">
+      {/* ── Stratum 服务指标 ─────────────────────────────────────────────────── */}
+      <section className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-lg font-semibold">Stratum 服务指标</h2>
+          <p className="text-xs text-[color:var(--text-secondary)]">摄取 · 搜索 · 代理 —— 底层基础设施运行状态</p>
+        </div>
+
+        {/* Group 1 · 摄取管线 */}
+        {stratumIng && (
+          <div className="flex flex-col gap-3">
+            <h3 className="text-sm font-medium text-[color:var(--text-secondary)]">摄取管线 / Ingestion</h3>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <StratumKPI label="基底总数" value={stratumIng.summary.total_substrate_count.toLocaleString()} />
+              <StratumKPI
+                label="L0/L1/L2 覆盖"
+                value={`${stratumIng.summary.with_l0_pct}% / ${stratumIng.summary.with_l1_pct}% / ${stratumIng.summary.with_l2_pct}%`}
+              />
+              <StratumKPI label="Embedding 覆盖" value={`${stratumIng.summary.with_embedding_pct}%`} />
+              <StratumKPI label="近24h新增" value={stratumIng.summary.new_last_24h.toLocaleString()} />
+            </div>
+            {stratumIng.time_series.length > 0 && (
+              <div className="dash-card rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-4">
+                <p className="text-xs text-[color:var(--text-secondary)] mb-2">近14天摄取量</p>
+                <div className="flex items-end gap-1 h-16">
+                  {stratumIng.time_series.slice(-14).map((pt) => {
+                    const max = Math.max(...stratumIng.time_series.slice(-14).map((p) => p.count), 1);
+                    return (
+                      <div
+                        key={pt.date}
+                        title={`${pt.date}: ${pt.count}`}
+                        className="flex-1 rounded-t bg-[color:var(--accent,#2563eb)]"
+                        style={{ height: `${(pt.count / max) * 100}%`, minHeight: pt.count > 0 ? '2px' : '0' }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Group 2 · 搜索质量 */}
+        {stratumSearch && (
+          <div className="flex flex-col gap-3">
+            <h3 className="text-sm font-medium text-[color:var(--text-secondary)]">搜索质量 / Search</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StratumKPI label="总查询数" value={stratumSearch.summary.total_queries.toLocaleString()} />
+              <StratumKPI label="平均延迟" value={`${Math.round(stratumSearch.summary.avg_latency_ms)}ms`} />
+              <StratumKPI label="P95延迟" value={`${Math.round(stratumSearch.summary.p95_latency_ms)}ms`} />
+              <StratumKPI label="近24h查询" value={stratumSearch.summary.queries_last_24h.toLocaleString()} />
+            </div>
+            {stratumSearch.latency_histogram.length > 0 && (
+              <div className="dash-card rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-4">
+                <p className="text-xs text-[color:var(--text-secondary)] mb-2">延迟分布</p>
+                <ul className="flex flex-col gap-1.5">
+                  {stratumSearch.latency_histogram.map((b) => {
+                    const max = Math.max(...stratumSearch.latency_histogram.map((x) => x.count), 1);
+                    return (
+                      <li key={b.bucket} className="flex items-center gap-2 text-xs">
+                        <span className="w-20 shrink-0">{b.bucket}</span>
+                        <span className="flex-1 h-2 rounded-full bg-[color:var(--muted,#222)] overflow-hidden">
+                          <span
+                            className="block h-full rounded-full bg-[color:var(--accent,#2563eb)]"
+                            style={{ width: `${(b.count / max) * 100}%` }}
+                          />
+                        </span>
+                        <span className="w-10 text-right tabular-nums text-[color:var(--text-secondary)]">{b.count}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Group 3 · 代理运行 */}
+        {stratumAgent && (
+          <div className="flex flex-col gap-3">
+            <h3 className="text-sm font-medium text-[color:var(--text-secondary)]">代理运行 / Agents</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StratumKPI label="总运行数" value={stratumAgent.summary.total_runs.toLocaleString()} />
+              <StratumKPI label="成功率" value={`${Math.round(stratumAgent.summary.success_rate * 100)}%`} />
+              <StratumKPI label="平均耗时" value={`${Math.round(stratumAgent.summary.avg_duration_sec)}s`} />
+              <StratumKPI label="近24h运行" value={stratumAgent.summary.runs_last_24h.toLocaleString()} />
+            </div>
+            {stratumAgent.by_agent.length > 0 && (
+              <div className="dash-card rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-4 overflow-x-auto">
+                <p className="text-xs text-[color:var(--text-secondary)] mb-2">各代理明细</p>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-[color:var(--text-tertiary,#888)] border-b border-[color:var(--border)]">
+                      <th className="py-1 pr-4 font-medium">代理</th>
+                      <th className="py-1 pr-4 font-medium text-right">运行数</th>
+                      <th className="py-1 pr-4 font-medium text-right">成功率</th>
+                      <th className="py-1 font-medium text-right">平均耗时</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stratumAgent.by_agent.map((a) => (
+                      <tr key={a.agent} className="border-b border-[color:var(--border)] last:border-0">
+                        <td className="py-1.5 pr-4 font-medium">{a.agent}</td>
+                        <td className="py-1.5 pr-4 text-right tabular-nums">{a.runs}</td>
+                        <td className="py-1.5 pr-4 text-right tabular-nums">{Math.round(a.success_rate * 100)}%</td>
+                        <td className="py-1.5 text-right tabular-nums">{Math.round(a.avg_duration)}s</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      <hr className="border-[color:var(--border)]" />
+
       <header className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">概览 / Knowledge Overview</h1>
         <p className="text-sm text-[color:var(--text-secondary)]">
