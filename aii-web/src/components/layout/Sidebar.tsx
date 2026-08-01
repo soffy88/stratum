@@ -83,13 +83,16 @@ const NAV: NavGroup[] = [
   ] },
   { title: '知识获取', items: [
     { href: '/documents', label: '文档', icon: FileText },
+    { href: '/inbox', label: '收件箱', icon: Upload },
     { href: '/feeds', label: '订阅源', icon: Rss },
   ] },
   { title: '知识整理', items: [
     { href: '/highlights', label: '高亮', icon: Highlighter },
     { href: '/notes', label: '笔记', icon: StickyNote },
+    { href: '/bookmarks', label: '书签', icon: Compass },
     { href: '/concepts', label: '概念', icon: Network },
-    { href: '/graph', label: '知识图谱', icon: Share2 },  // 新增
+    { href: '/graph', label: '知识图谱', icon: Share2 },
+    { href: '/layers', label: '层级浏览', icon: Layers },
   ] },
   { title: '视图', items: [
     { href: '/views', label: '视图', icon: LayoutGrid },
@@ -97,6 +100,7 @@ const NAV: NavGroup[] = [
   ] },
   { title: 'AI', items: [
     { href: '/ai', label: 'AI 助手', icon: Sparkles },
+    { href: '/sessions', label: '会话管理', icon: MessageSquare },
   ] },
   { title: 'AII 认知引擎', items: [
     { href: '/pipelines', label: '管线通道', icon: Activity },
@@ -116,6 +120,7 @@ const NAV: NavGroup[] = [
     { href: '/health', label: '图谱健康', icon: HeartPulse },
   ] },
   { title: '系统', items: [
+    { href: '/notifications', label: '通知', icon: Activity },
     { href: '/jobs', label: '定时任务', icon: CheckSquare },
     { href: '/profile', label: '我的', icon: User },
     { href: '/admin', label: '管理', icon: Shield },
@@ -188,7 +193,7 @@ export function Sidebar() {
         <div className="flex items-center justify-between px-5 py-4">
           <span className="flex items-center gap-2">
             <AiiMark />
-            <span className="font-bold text-lg">aii</span>
+            <span className="font-bold text-lg">AII Note</span>
           </span>
           <button
             onClick={toggle}

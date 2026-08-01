@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { listDocuments, type Substrate } from '@/lib/documents';
 import { cleanTitle, classifySubstrate, ALL_SUBJECTS, type Subject } from '@/lib/classify';
+import { apiClient } from '@/lib/api-client';
 import { UploadDialog } from '@/components/UploadDialog';
 import { UrlIngestDialog } from '@/components/UrlIngestDialog';
 import { FolderIngestDialog } from '@/components/FolderIngestDialog';
@@ -147,6 +148,19 @@ export default function DocumentsPage() {
           <button onClick={() => setShowVideo(true)}  className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">视频 URL</button>
           <button onClick={() => setShowChannel(true)}className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">订阅频道</button>
           <button onClick={() => setShowArxiv(true)}  className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">订阅资料源</button>
+          <button onClick={async () => {
+            try {
+              const data = await apiClient.get<{ count: number; items: unknown[] }>('/api/v1/export/markdown');
+              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `stratum-export-${new Date().toISOString().slice(0, 10)}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+              toast.success(`导出 ${data?.count ?? 0} 条`);
+            } catch { toast.error('导出失败'); }
+          }} className="px-3 py-2 text-sm border border-border rounded-lg min-h-11 hover:bg-muted">导出 Markdown</button>
         </div>
       </div>
 

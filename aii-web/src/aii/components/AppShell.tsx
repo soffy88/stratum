@@ -62,7 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <OAppShell
       topbarProps={{
-        title: 'AII',
+        title: 'AII Note',
         logo: (
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2, 8px)' }}>
             <button
@@ -86,7 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               ))}
             </button>
             <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)', letterSpacing: 'var(--ls-snug)' }}>
-              AII
+              AII Note
             </span>
           </div>
         ),
