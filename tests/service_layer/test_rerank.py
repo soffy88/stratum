@@ -5,13 +5,29 @@ inert /search `rerank` and `expand` paths now actually reorder / expand.
 """
 from types import SimpleNamespace
 
+import pytest
+
 from stratum.service.rerank import expand_query, rerank_results
+
+try:
+    import oprim  # noqa: F401
+
+    _HAS_OPRIM = True
+except ImportError:
+    _HAS_OPRIM = False
+
+# The judge-rerank path calls oprim.llm_call; without the platform package it
+# falls back to the original order and the reorder assertions cannot hold.
+requires_oprim = pytest.mark.skipif(
+    not _HAS_OPRIM, reason="oprim platform package not installed (Docker image only)"
+)
 
 
 def _result(rid, title, highlight, score=0.0):
     return SimpleNamespace(id=rid, title=title, highlight=highlight, score=score)
 
 
+@requires_oprim
 def test_rerank_reorders_by_judge_scores():
     # llm_judge_rerank parses lines "index: score"; give doc1 the high score.
     def fake_llm(*, messages, **_):

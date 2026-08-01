@@ -1,6 +1,6 @@
 """Notes CRUD — PostgreSQL service layer."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from stratum.changefeed import emit_event
@@ -76,13 +76,28 @@ async def update_note(note_id: str, body: NoteUpdate, user_id: str = Depends(jwt
 
 
 @router.delete("/notes/{note_id}")
-async def delete_note(note_id: str, user_id: str = Depends(jwt_auth)):
+async def delete_note(
+    note_id: str,
+    soft: bool = Query(False, description="If true, soft-delete; default is hard purge (真删)"),
+    user_id: str = Depends(jwt_auth),
+):
     existing = read("notes_sl", note_id)
-    if not existing or existing.get("user_id") != user_id or existing.get("deleted_at"):
+    if not existing or existing.get("user_id") != user_id:
         raise HTTPException(404, "Note not found")
-    soft_delete("notes_sl", note_id)
-    await emit_event(user_id, "note_delete", {"note_id": note_id})
-    return {"note_id": note_id, "status": "deleted"}
+    if existing.get("deleted_at") and soft:
+        raise HTTPException(404, "Note not found")
+    if soft:
+        soft_delete("notes_sl", note_id)
+        mode = "soft"
+    else:
+        from stratum.services.purge_service import purge_note
+
+        out = purge_note(note_id, user_id)
+        if out.get("status") == "not_found":
+            raise HTTPException(404, "Note not found")
+        mode = "hard"
+    await emit_event(user_id, "note_delete", {"note_id": note_id, "mode": mode})
+    return {"note_id": note_id, "status": "deleted", "mode": mode}
 
 
 @router.get("/notes/{note_id}/backlinks")

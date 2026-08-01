@@ -25,6 +25,14 @@ from fastapi.testclient import TestClient
 os.environ.setdefault("JWT_SECRET", "test-secret-for-sl-unit-tests-32x")
 
 from stratum.common import create_token  # noqa: E402
+from stratum.api.routers.agents import _HAS_OMODUL  # noqa: E402
+
+# run-now executes the job's agent; daily_digest/audio_generator live in the
+# omodul platform package, which only exists in the Docker image.
+requires_omodul = pytest.mark.skipif(
+    not _HAS_OMODUL,
+    reason="omodul platform package not installed (Docker image only)",
+)
 
 
 def _auth(uid: str = "user-alice") -> dict:
@@ -50,6 +58,20 @@ def client():
 
     with TestClient(app, raise_server_exceptions=True) as c:
         yield c
+
+
+@pytest.fixture(autouse=True)
+def _clean_test_jobs():
+    """Wipe this module's fixed test users' jobs before each test.
+
+    The free tier caps scheduled jobs at 2 per user (routers/scheduled_jobs.py),
+    and these tests reuse user-alice/user-bob against the shared dev database,
+    so rows from earlier runs would otherwise trip the 402 quota.
+    """
+    from stratum.db import execute
+
+    execute("DELETE FROM scheduled_jobs_sl WHERE user_id IN ('user-alice', 'user-bob')")
+    yield
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -198,6 +220,7 @@ def test_delete_job_cross_user_404(client):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+@requires_omodul
 def test_run_now_daily_digest(client):
     jid = _create(client)
     r = client.post(f"/api/v1/scheduled-jobs/{jid}/run-now", headers=_auth())
@@ -225,6 +248,7 @@ def test_run_now_cross_user_404(client):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+@requires_omodul
 def test_run_now_audio_generator_200(client):
     """audio_generator is no longer a stub — all agents return 200 as of obase v0.9.0."""
     jid = _create(client, body=_STUB_JOB_BODY)
