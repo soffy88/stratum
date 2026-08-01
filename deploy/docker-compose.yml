@@ -56,9 +56,13 @@ services:
       retries: 3
       start_period: 15s
 
-  # AII merge P3.5: merged frontend (Stratum base + AII pages) serving aii.kanpan.co.
-  # Self-contained image baked from the Next standalone build (deploy/Dockerfile.aii-web).
-  # cloudflared (host net) routes aii.kanpan.co → 127.0.0.1:3101, aii-api.kanpan.co → :8101.
+  # AII Note 前端 (Stratum base + AII pages). 镜像 Dockerfile.aii-web。
+  # 公网入口在 **aegis** 栈, 不要直连本容器端口做公网:
+  #   aiinote.com / aii.kanpan.co
+  #     → CF tunnel aegis-prod
+  #     → aegis-caddy:8086  (aegis/Caddyfile)
+  #     → aii-web:3101      (本服务, stratum-net 上被 caddy 反代)
+  # P2: AII API routes now served by stratum-sl (:9304), standalone AII backend retired.
   aii-web:
     image: aii-web:latest
     container_name: aii-web
@@ -72,8 +76,8 @@ services:
       # Stratum backends (same docker network, by service name).
       - STRATUM_SL_BASE=http://stratum-sl:9304
       - STRATUM_API_BASE=http://stratum-api:9302
-      # AII epistemic-engine backend runs on the host (uvicorn :8101) → via gateway.
-      - AII_API_BASE=http://172.19.0.1:8101
+      # P2: AII routes merged into stratum-sl. AII_API_BASE unset → defaults to
+      # /api/aii (same-origin rewrite → STRATUM_SL_BASE). AII_API_KEY from env_file.
     env_file:
       - ./aii-secrets.conf
     depends_on:
@@ -159,7 +163,17 @@ services:
       - META_DB_BACKEND=postgres
       # P1.4b: user-substrate vector search embeds queries via the shared BGE-M3
       # endpoint (AII backend) so query space matches substrate_chunk (BGE-M3).
-      - STRATUM_EMBED_URL=http://172.19.0.1:8101/internal/embed
+      - STRATUM_EMBED_URL=http://100.68.226.13:8102/embed
+      # P2: AII backend merged into stratum-sl — needs AII's PG DSN for asyncpg pool.
+      # Password matches STRATUM_PG_PASSWORD in aii-secrets.conf.
+      - AII_DATABASE_URL=postgresql://aii:aii_safe_pass@172.19.0.1:5435/aii_kg
+      # P2: AII provider env vars (DeepSeek/NIM/Ollama for AII's LLM routes)
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - NVIDIA_NIM_API_KEY=${NVIDIA_NIM_API_KEY:-}
+      - OLLAMA_BASE_URL=http://172.19.0.1:11434
+      - STRATUM_LLM_MODEL=qwen3-8b
+      # Flywheel disabled in merged backend (handled by standalone systemd services)
+      - FLYWHEEL_ENABLED=0
     volumes:
       # Stratum source mounted live — code changes take effect after container restart, no rebuild.
       - /home/soffy/projects/stratum/src:/app/src
@@ -174,6 +188,8 @@ services:
       - /home/soffy/deploy/3O/oskill:/opt/platform/oskill
       - /home/soffy/deploy/3O/omodul:/opt/platform/omodul
       - /home/soffy/deploy/3O/oservi:/opt/platform/oservi
+      # P2: AII source code — bind-mounted for import as `aii.*` Python package
+      - /home/soffy/projects/stratum/aii/aii:/opt/aii:ro
       # Data directory (uploads, etc.)
       - ~/.stratum:/root/.stratum
       # AII shared export volume — Wave 4

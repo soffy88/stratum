@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
-// STRATUM_API_BASE / STRATUM_SL_BASE: full URL overrides for Docker environments.
-// Falls back to localhost:{port} for host dev server and tests.
+// STRATUM_API_BASE / STRATUM_SL_BASE: full URL for API rewrites.
+// ⚠ Next bakes these at *build* time into routes-manifest.json.
+// Production Docker must either:
+//   1) build with STRATUM_API_BASE=http://stratum-api:9302 (and SL similarly), or
+//   2) run deploy/aii-web-entrypoint.sh which rewrites localhost → service names at start.
+// Runtime env alone does NOT update already-baked rewrites.
 // STRATUM_API_PORT: port for the legacy DuckDB API (default 9302).
 // STRATUM_SL_PORT:  port for the new service layer (default 9304).
 // Tests override STRATUM_API_PORT to 9311 for an isolated uvicorn server.
@@ -11,11 +15,9 @@ const apiBase =
 const slBase =
   process.env.STRATUM_SL_BASE ??
   `http://localhost:${process.env.STRATUM_SL_PORT ?? "9304"}`;
-// AII merge P3.2: ported AII pages call the AII backend (epistemic knowledge engine)
-// via the same-origin /api/aii/* proxy → AII FastAPI (:8101 dev / aii-api.kanpan.co prod).
-const aiiBase =
-  process.env.AII_API_BASE ??
-  `http://localhost:${process.env.AII_API_PORT ?? "8101"}`;
+// P2: AII routes now served by Stratum SL under /api/aii/* (unified backend).
+// The aiiBase points to slBase so all backend traffic goes through one process.
+const aiiBase = slBase;
 
 const config: NextConfig = {
   reactStrictMode: true,
