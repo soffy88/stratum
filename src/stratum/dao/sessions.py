@@ -71,14 +71,21 @@ class SessionDAO:
         )
 
     def _row_to_session(self, row):
+        # DuckDB TIMESTAMP columns strip tzinfo on read; the DAO writes aware
+        # UTC, so re-attach it here — consumers compare against aware now().
+        def _aware(dt: datetime | None) -> datetime | None:
+            if dt is not None and dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt
+
         return Session(
             id=row[0],
             user_id=row[1],
             refresh_token_hash=row[2],
             user_agent=row[3],
             ip_address=row[4],
-            expires_at=row[5],
-            revoked_at=row[6],
-            created_at=row[7],
-            last_used_at=row[8],
+            expires_at=_aware(row[5]),
+            revoked_at=_aware(row[6]),
+            created_at=_aware(row[7]),
+            last_used_at=_aware(row[8]),
         )

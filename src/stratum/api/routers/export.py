@@ -1,8 +1,9 @@
-"""Export router — AII integration: stream substrate markdown to shared volume."""
+"""Export router — AII integration + 整库 Markdown vault 导出."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 
 from stratum.common import jwt_auth
 from stratum.db import _conn
@@ -77,3 +78,29 @@ async def export_markdown(
         )
 
     return {"count": len(items), "items": items}
+
+
+@router.get("/vault/preview")
+async def export_vault_preview(user_id: str = Depends(jwt_auth)):
+    """Preview counts for full knowledge-base vault export."""
+    from stratum.services.vault_export_service import vault_stats
+
+    return {"status": "ok", "stats": vault_stats(user_id)}
+
+
+@router.get("/vault")
+async def export_vault_zip(user_id: str = Depends(jwt_auth)):
+    """Download migratable Markdown vault as ZIP (notes + concepts + sources).
+
+    MVP 验收 #4: 一键导出整个知识库为可迁移的 Markdown 文件夹。
+    """
+    from stratum.services.vault_export_service import build_vault_zip
+
+    data = build_vault_zip(user_id)
+    return Response(
+        content=data,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": 'attachment; filename="aii-note-vault.zip"',
+        },
+    )

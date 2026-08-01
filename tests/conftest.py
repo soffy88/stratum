@@ -7,6 +7,10 @@ import os
 os.environ.setdefault("JWT_SECRET", "test-only-insecure-key-do-not-use-in-prod-padding")
 os.environ.setdefault("COOKIE_SECRET", "test-only-cookie-secret-do-not-use-in-prod-pad")
 os.environ.setdefault("ADMIN_SECRET", "test-admin-secret-do-not-use-in-prod-padding00")
+# Dev Postgres credentials — match aii-postgres in deploy/docker-compose.yml.
+# stratum.db defaults to 127.0.0.1:5435 user=aii dbname=aii_kg with an empty
+# password, which the dev server rejects (fe_sendauth).
+os.environ.setdefault("STRATUM_PG_PASSWORD", "aii_safe_pass")
 
 import pytest
 import duckdb
@@ -139,6 +143,20 @@ CREATE TABLE IF NOT EXISTS feedback (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    """Rate limiter windows are process-global; clear them between tests.
+
+    The middleware keeps sliding-window counters in module-level dicts, so a
+    full-suite run would otherwise accumulate requests across tests and trip
+    the per-user/per-IP limits (429).
+    """
+    from stratum.middleware.rate_limit import reset_rate_limits
+
+    reset_rate_limits()
+    yield
 
 
 @pytest.fixture

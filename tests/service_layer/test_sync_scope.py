@@ -18,13 +18,15 @@ from __future__ import annotations
 
 import os
 
-import duckdb
 import pytest
 from fastapi.testclient import TestClient
 
 os.environ.setdefault("JWT_SECRET", "test-secret-for-sl-unit-tests-32x")
 
 from stratum.common import create_token  # noqa: E402
+from stratum.db import hard_delete as _pg_hard_delete  # noqa: E402
+from stratum.db import insert as _pg_insert  # noqa: E402
+from stratum.utils.user_id_hash import hash_user_id  # noqa: E402
 
 
 def _auth(uid: str = "user-alice") -> dict:
@@ -39,12 +41,10 @@ def client():
         yield c
 
 
-def _db_insert(db_path: str, table: str, data: dict) -> None:
-    cols = ", ".join(data.keys())
-    placeholders = ", ".join(f"${k}" for k in data)
-    conn = duckdb.connect(db_path)
-    conn.execute(f"INSERT INTO {table} ({cols}) VALUES ({placeholders})", data)
-    conn.close()
+def _seed_substrate_row(sid: str) -> None:
+    """Seed a substrate in Postgres — the documents router resolves ownership
+    there and matches on the hashed user id."""
+    _pg_insert("substrates", {"id": sid, "user_id": hash_user_id("user-alice")})
 
 
 def _pull(client, scope: str, since: int = 0) -> list[dict]:
@@ -65,21 +65,24 @@ def _seed_note(client) -> None:
     client.post("/api/v1/notes", json={"title": "T", "content_markdown": "x"}, headers=_auth())
 
 
-def _seed_substrate_pin(client, duckdb_test_db) -> None:
-    _db_insert(duckdb_test_db, "substrates", {"id": "SUB-SCOPE-01", "user_id": "user-alice"})
-    client.post("/api/v1/substrate/SUB-SCOPE-01/pin", headers=_auth())
+def _seed_substrate_pin(client, sid: str) -> None:
+    _seed_substrate_row(sid)
+    r = client.post(f"/api/v1/documents/{sid}/pin", headers=_auth())
+    assert r.status_code == 200, r.text
 
 
 def _seed_concept(client) -> None:
     client.post("/api/v1/concepts", json={"name": "ScopeCept"}, headers=_auth())
 
 
-def _seed_highlight(client) -> None:
-    client.post(
+def _seed_highlight(client, sid: str) -> str:
+    r = client.post(
         "/api/v1/highlights",
-        json={"content_id": "PC-SCOPE-01", "anchor": {"char_start": 0, "char_end": 5}},
+        json={"substrate_id": sid, "text": "scope highlight"},
         headers=_auth(),
     )
+    assert r.status_code == 201, r.text
+    return r.json()["id"]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -87,9 +90,12 @@ def _seed_highlight(client) -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_scope_notes_only(client, duckdb_test_db):
+def test_scope_notes_only(client):
     _seed_note(client)
-    _seed_substrate_pin(client, duckdb_test_db)
+    try:
+        _seed_substrate_pin(client, "SUB-SCOPE-01")
+    finally:
+        _pg_hard_delete("substrates", "SUB-SCOPE-01")
 
     events = _pull(client, "notes")
     types = {e["event_type"] for e in events}
@@ -104,10 +110,12 @@ def test_scope_notes_only(client, duckdb_test_db):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_scope_substrates_only(client, duckdb_test_db):
+def test_scope_substrates_only(client):
     _seed_note(client)
-    _db_insert(duckdb_test_db, "substrates", {"id": "SUB-SCOPE-02", "user_id": "user-alice"})
-    client.post("/api/v1/substrate/SUB-SCOPE-02/pin", headers=_auth())
+    try:
+        _seed_substrate_pin(client, "SUB-SCOPE-02")
+    finally:
+        _pg_hard_delete("substrates", "SUB-SCOPE-02")
 
     events = _pull(client, "substrates")
     types = {e["event_type"] for e in events}
@@ -139,10 +147,12 @@ def test_scope_concepts_only(client, duckdb_test_db):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_scope_notes_and_substrates(client, duckdb_test_db):
+def test_scope_notes_and_substrates(client):
     _seed_note(client)
-    _db_insert(duckdb_test_db, "substrates", {"id": "SUB-SCOPE-03", "user_id": "user-alice"})
-    client.post("/api/v1/substrate/SUB-SCOPE-03/pin", headers=_auth())
+    try:
+        _seed_substrate_pin(client, "SUB-SCOPE-03")
+    finally:
+        _pg_hard_delete("substrates", "SUB-SCOPE-03")
     _seed_concept(client)
 
     events = _pull(client, "notes,substrates")
@@ -157,12 +167,19 @@ def test_scope_notes_and_substrates(client, duckdb_test_db):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_scope_default_four_scopes(client, duckdb_test_db):
+def test_scope_default_four_scopes(client):
     _seed_note(client)
-    _db_insert(duckdb_test_db, "substrates", {"id": "SUB-SCOPE-04", "user_id": "user-alice"})
-    client.post("/api/v1/substrate/SUB-SCOPE-04/pin", headers=_auth())
-    _seed_concept(client)
-    _seed_highlight(client)
+    highlight_id = None
+    try:
+        _seed_substrate_pin(client, "SUB-SCOPE-04")
+        _seed_concept(client)
+        highlight_id = _seed_highlight(client, "SUB-SCOPE-04")
+    finally:
+        # The legacy http_api suite asserts user-alice's highlights are empty,
+        # so don't leave the seeded row behind in the shared dev database.
+        if highlight_id:
+            _pg_hard_delete("highlights", highlight_id)
+        _pg_hard_delete("substrates", "SUB-SCOPE-04")
 
     events = _pull(client, "notes,substrates,highlights,concepts")
     types = {e["event_type"] for e in events}

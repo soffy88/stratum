@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import io
 import os
+import sys
 import time
 from unittest.mock import MagicMock, patch
 
@@ -30,6 +31,12 @@ from fastapi.testclient import TestClient
 os.environ.setdefault("JWT_SECRET", "test-secret-for-sl-unit-tests-32x")
 
 from stratum.common import create_token  # noqa: E402
+from stratum.api.routers.agents import _HAS_OMODUL  # noqa: E402
+
+requires_omodul = pytest.mark.skipif(
+    not _HAS_OMODUL,
+    reason="omodul platform package not installed (Docker image only)",
+)
 
 
 # ─────────────────────────────── helpers ────────────────────────────────────
@@ -113,20 +120,24 @@ def test_get_note_cross_user_isolation(client, duckdb_test_db):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_delete_note_then_get_is_404(client, duckdb_test_db):
-    # Pre-insert Alice's note
-    _db_insert(
-        duckdb_test_db,
-        "notes",
-        {"id": "NOTE-002", "user_id": "user-alice", "title": "Alice note", "content_markdown": "x"},
+def test_delete_note_then_get_is_404(client):
+    # Create via the API — the service layer persists to Postgres since the
+    # DuckDB → PG migration, so the legacy DuckDB pre-insert helper no longer
+    # seeds data the routes can see.
+    create_r = client.post(
+        "/api/v1/notes",
+        json={"title": "To delete", "content_markdown": "x"},
+        headers=_auth("user-alice"),
     )
+    assert create_r.status_code == 200
+    note_id = create_r.json()["note_id"]
 
-    del_r = client.delete("/api/v1/notes/NOTE-002", headers=_auth("user-alice"))
+    del_r = client.delete(f"/api/v1/notes/{note_id}", headers=_auth("user-alice"))
     assert del_r.status_code == 200
     assert del_r.json()["status"] == "deleted"
 
-    # After soft_delete (deleted_at = NOW()), GET must return 404
-    get_r = client.get("/api/v1/notes/NOTE-002", headers=_auth("user-alice"))
+    # Default delete is a hard purge; GET must return 404 afterwards
+    get_r = client.get(f"/api/v1/notes/{note_id}", headers=_auth("user-alice"))
     assert get_r.status_code == 404
 
 
@@ -135,6 +146,7 @@ def test_delete_note_then_get_is_404(client, duckdb_test_db):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+@requires_omodul
 def test_agent_run_returns_agent_name(client):
     r = client.post(
         "/api/v1/agents/daily_digest/run",
@@ -152,13 +164,23 @@ def test_agent_run_returns_agent_name(client):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def test_inbox_submit_returns_upload_id_and_status(client):
+def test_inbox_submit_returns_upload_id_and_status(client, tmp_path):
+    # The real inbox dir (~/.stratum/users/...) is root-owned (created by the
+    # docker stack), so redirect the upload into tmp_path.
+    inbox_dir = tmp_path / "inbox"
     content = b"hello world test content"
-    r = client.post(
-        "/api/v1/inbox/submit",
-        files={"file": ("test.txt", io.BytesIO(content), "text/plain")},
-        headers=_auth(),
-    )
+    with (
+        patch("stratum.api.routers.inbox.user_inbox_dir", return_value=inbox_dir),
+        patch(
+            "stratum.api.routers.inbox.ensure_dir",
+            side_effect=lambda p: (os.makedirs(p, exist_ok=True), p)[1],
+        ),
+    ):
+        r = client.post(
+            "/api/v1/inbox/submit",
+            files={"file": ("test.txt", io.BytesIO(content), "text/plain")},
+            headers=_auth(),
+        )
     assert r.status_code == 200
     body = r.json()
     assert "upload_id" in body
@@ -193,9 +215,13 @@ def test_search_idor_post_filter(client):
     fake_output.search_time_ms = 5
     fake_output.scope_hit_counts = {}
 
+    # search_utils imports oprim/oskill at module level (absent on dev hosts);
+    # the route's function-local import resolves against this stub.
+    search_utils_stub = MagicMock()
     with (
         patch("stratum.api.routers.search._HAS_SEARCH", True),
         patch("stratum.api.routers.search.cross_layer_search", return_value=fake_output),
+        patch.dict(sys.modules, {"stratum.api.search_utils": search_utils_stub}),
     ):
         r = client.post("/api/v1/search", json={"query": "test"}, headers=_auth("user-alice"))
 
