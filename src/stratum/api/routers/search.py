@@ -36,9 +36,9 @@ async def search(req: SearchRequest, user_id: str = Depends(jwt_auth)):
     if not _HAS_SEARCH:
         return {"results": [], "citations": [], "search_time_ms": 0, "scope_hits": {}}
 
-    from stratum.api.search_utils import get_tantivy_mgr, get_lancedb_mgr
+    from stratum.api.search_utils import get_tantivy_mgr, get_pgvector_user_mgr
 
-    lancedb_mgr = get_lancedb_mgr()
+    lancedb_mgr = get_pgvector_user_mgr(user_id)
     tantivy_mgr = get_tantivy_mgr()
 
     async def _run(q: str):
