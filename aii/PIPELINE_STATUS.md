@@ -118,7 +118,7 @@ NVRM: GPU 0000:01:00.0: GPU has fallen off the bus.
 - **aii-ocr-daemon的linger自启会覆盖人工stop的意图**(本次已复现一次): 若GPU长期不可用, 应考虑`systemctl --user disable aii-ocr-daemon`而非仅`stop`, 否则每次host重启都会重新空转重试`ocr-vllm`
 
 <!-- WATCHDOG:START -->
-## 🚨 Needs Human (看门狗自动维护, 2026-08-02T00:27:18Z)
+## 🚨 Needs Human (看门狗自动维护, 2026-08-02T01:39:06Z)
 
 - ✅ 无严重项 (overall=degraded)
 
