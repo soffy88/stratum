@@ -29,7 +29,7 @@ export default function FlashcardsPage() {
   if (isLoading) return <p className="text-[var(--color-muted)]">加载中...</p>;
 
   const dueCount = due?.due_count ?? 0;
-  const card = cards[current];
+  const card = cards[current] ?? null;
 
   const handleRating = (rating: Rating) => {
     if (!card) return;
@@ -86,7 +86,7 @@ export default function FlashcardsPage() {
       </div>
 
       {/* 复习区 */}
-      {cards.length === 0 ? (
+      {!card || cards.length === 0 ? (
         <p className="text-center text-[var(--color-muted)] py-12">
           {dueOnly ? "没有到期卡片。可切换查看全部。" : "还没有闪卡。"}
         </p>

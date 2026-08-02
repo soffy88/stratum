@@ -35,10 +35,9 @@ export function useFlashcards(dueOnly = true, limit = 50) {
   return useQuery({
     queryKey: ["flashcards", dueOnly, limit],
     queryFn: () =>
-      apiClient.get<Flashcard[]>("/api/v1/flashcards", {
-        due_only: dueOnly,
-        limit,
-      }),
+      apiClient.get<Flashcard[]>(
+        `/api/v1/flashcards?due_only=${dueOnly}&limit=${limit}`
+      ),
   });
 }
 
