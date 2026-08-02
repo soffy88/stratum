@@ -8,7 +8,7 @@ import {
   Highlighter, LayoutGrid, Share2, Sparkles, CheckSquare, User, Shield, Settings,
   Menu, PanelLeftClose, Brain, Layers, TrendingUp, ShieldCheck, Gauge, Sun, Moon,
   Library, Activity, Upload, SearchCode, MessageSquare, Stethoscope, HeartPulse, GraduationCap,
-  FolderCog, Waypoints,
+  FolderCog, Waypoints, ListChecks,
 } from 'lucide-react';
 import { create } from 'zustand';
 import { getTheme, setTheme, type Theme } from '@/lib/theme';
@@ -93,6 +93,7 @@ const NAV: NavGroup[] = [
     { href: '/concepts', label: '概念', icon: Network },
     { href: '/graph', label: '知识图谱', icon: Share2 },
     { href: '/layers', label: '层级浏览', icon: Layers },
+    { href: '/flashcards', label: '闪卡复习', icon: ListChecks },
   ] },
   { title: '视图', items: [
     { href: '/views', label: '视图', icon: LayoutGrid },

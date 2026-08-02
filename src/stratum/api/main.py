@@ -356,6 +356,10 @@ from stratum.api.routers import cornell
 
 app.include_router(cornell.router)
 
+from stratum.api.routers import flashcards
+
+app.include_router(flashcards.router)
+
 # ── P2: AII routes (mounted under /api/aii/*) ────────────────────────────────
 from stratum.api.routers.aii_mount import mount_aii_routes
 
