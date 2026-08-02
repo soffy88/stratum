@@ -1,14 +1,15 @@
 """Agent run endpoint tests.
 
 Phase 15 P1-A (Wave 1): 3 workflow agents (daily_digest/weekly_review/knowledge_curator)
-Phase 15 P1-C (Wave 5): +3 Agent-class agents activated (translation_worker/reading_companion/lint_bot)
-                          audio_generator remains 501 (oprim.tts_synthesize not exported).
+Phase 15 P1-C (Wave 5): +5 Agent-class agents activated (translation_worker/reading_companion/
+                          lint_bot/audio_generator/illustration_agent)
+All 12 agents implemented — no 501 stubs remain (obase v0.9.0 activated audio_generator TTS).
 
 Coverage:
   1. POST /{agent_name}/run — daily_digest returns status in (completed, failed), not pending
   2. POST /unknown/run — 404
-  3. POST /audio_generator/run — 501 (TTS deferred, oprim provider missing)
-  4. POST /translation_worker|reading_companion|lint_bot/run — 200 (Agent-class, may fail on dep)
+  3. no agent returns 501 (all activated)
+  4. POST /translation_worker|reading_companion|lint_bot|audio_generator/run — 200 (Agent-class, may fail on dep)
   5. run record persisted; GET /runs/{run_id} returns it with non-pending status
   6. GET /runs returns paginated list for authenticated user
   7. GET /runs/{run_id} — cross-user 404 isolation
