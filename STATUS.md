@@ -1,6 +1,6 @@
 # STATUS — AII Note MVP
 
-最后更新：2026-07-31（健康检查修复两轮完成：构建恢复 + 依赖回灌 + 测试套件 62 failed → 0 failed / 341 passed / 17 skipped；代码审计续篇见 docs/design/MVP_CODE_AUDIT_2026-07-29.md）
+最后更新：2026-08-02（锚点闭环前端完成；docling 入镜像、E2E 全链、定时调度、剪藏/转写文档化，详见 In Progress）
 
 ## 🔒 Never
 
@@ -12,9 +12,11 @@
 ## 🔄 In Progress
 
 - [x] **安全审计 P0/P1 修复**（2026-07-29）：sessions/trajectory/layers/retrieval 所有权；folder_watch+vault 路径 allowlist；export 防 `..` 逃逸；cornell 机器笔记不可删；metrics admin；concepts user_id 双匹配。单测 `test_mvp_security_idor.py` 25 passed。剩余：vfs tree 全局目录仍弱隔离（context_directory 无 user 列）。详见审计文档。
-- [ ] Docling 包装入 stratum-sl 镜像（代码已支持，运行时 fallback pymupdf4llm）
-- [ ] 主链路人工 E2E：上传 → 翻译 → 问答出处 → 概念页追加 → 整库导出 → vault 同步 → 真删 → Lint/日报
-- [ ] 定时调度：`daily_digest_simple` / `knowledge_lint` 挂 scheduled_jobs（可选）
+- [x] **Docling 包装入 stratum-sl 镜像**（2026-08-01）：`docker compose build stratum-sl` 完成，容器内 `docling 2.117.0` 实测 PDF 链全 PASS。
+- [x] **主链路人工 E2E**（2026-08-01）：`scripts/e2e_mvp_chain.py` 15 步全链（web + PDF 两链 15/15 PASS）；顺带修复 5 个真 bug（translate 所有权/AgentContext、concepts substrate_refs、图谱注入污染 question、db list[dict] 序列化）。
+- [x] **定时调度**（2026-08-01）：`daily_digest_simple` / `knowledge_lint` 种子任务挂 scheduled_jobs；run-now 实测 ok。
+- [x] **锚点闭环前端**（2026-08-02）：文档页段落锚点 `#p{n}` 跳转+高亮；高级检索卡片深链；基础搜索 citation 携带 paragraph anchor（SPA 跳转）。后端 /retrieve 仍 0 命中，卡片深链待 pgvector 修复后见效。
+- [ ] 问答接 web（SEARXNG_URL 占位，等可用端点）
 
 ## ✅ Done
 
@@ -66,10 +68,10 @@
 
 ## 📋 MVP Backlog（剩余）
 
-1. 镜像内安装 `docling`（体积决策）  
-2. 端到端手测 / 带鉴权集成测试  
-3. Companion snippet 路径复核  
-4. （可选）scheduled_jobs 挂日报/Lint  
+1. ~~镜像内安装 `docling`~~（2026-08-01 已入镜像）
+2. ~~端到端手测 / 带鉴权集成测试~~（E2E 全链已跑通）
+3. Companion snippet 路径复核
+4. ~~（可选）scheduled_jobs 挂日报/Lint~~（已挂种子任务）
 5. 账户删除仍 soft+30 天 grace（与「笔记真删」策略并存，可后收紧）  
 
 ## 🚨 Needs Human
@@ -88,8 +90,8 @@
     - `CNAME  www  →  3ea896f2-5be2-448e-ad27-338cdf3da4b1.cfargotunnel.com`
   - 或发 `CLOUDFLARE_API_TOKEN`（Zone.DNS Edit + Zone Read on aiinote.com）后跑：
     `python3 scripts/setup_aiinote_dns.py`
-- [ ] stratum-sl 是否安装 docling  
-- [ ] 人工 E2E 验收（含 vault 目录挂载路径）  
+- [x] stratum-sl 是否安装 docling — 2026-08-01 已入镜像（docling 2.117.0），容器实测 PASS
+- [x] 人工 E2E 验收（含 vault 目录挂载路径） — `scripts/e2e_mvp_chain.py` 15 步两链全 PASS
 - [ ] 若网盘挂载点不在默认 roots：设置 `STRATUM_VAULT_SYNC_ROOTS`  
 - [x] **测试套件剩余失配（2026-07-31）** — 已全部修复，见 Done「测试套件第二轮」。`api/mcp.py` 的 `list_recent_changes` 同类双 id 问题也已修（`IN (raw, hash)`，开发库实测可见 hashed-id 事件）。
 
