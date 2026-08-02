@@ -24,6 +24,8 @@ export interface RetrievalResult {
   l1_summary: string | null;
   title: string;
   source_path: string;
+  paragraph_index?: number | null;
+  deep_link?: string | null;
 }
 
 export interface TrajectoryStep {
