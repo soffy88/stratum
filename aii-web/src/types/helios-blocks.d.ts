@@ -48,11 +48,17 @@ declare module '@helios/blocks' {
     created_at: string;
   }
 
+  export interface FragmentAnchor {
+    section: string | null;
+    char_start: number;
+    char_end: number;
+  }
+
   export interface Citation {
     substrate_id: string;
     title?: string;
     fragment_id?: string | null;
-    anchor?: string | null;
+    anchor?: FragmentAnchor | null;
     deep_link?: string | null;
     [key: string]: unknown;
   }
