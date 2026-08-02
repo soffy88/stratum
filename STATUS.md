@@ -16,7 +16,7 @@
 - [x] **主链路人工 E2E**（2026-08-01）：`scripts/e2e_mvp_chain.py` 15 步全链（web + PDF 两链 15/15 PASS）；顺带修复 5 个真 bug（translate 所有权/AgentContext、concepts substrate_refs、图谱注入污染 question、db list[dict] 序列化）。
 - [x] **定时调度**（2026-08-01）：`daily_digest_simple` / `knowledge_lint` 种子任务挂 scheduled_jobs；run-now 实测 ok。
 - [x] **锚点闭环前端**（2026-08-02）：文档页段落锚点 `#p{n}` 跳转+高亮；高级检索卡片深链；基础搜索 citation 携带 paragraph anchor（SPA 跳转）。后端 /retrieve 仍 0 命中，卡片深链待 pgvector 修复后见效。
-- [ ] 问答接 web（SEARXNG_URL 占位，等可用端点）
+- [ ] 问答接 web（SEARXNG_URL 占位，2026-08-02 确认无可用端点 → 记为人工项，见 Needs Human）
 
 ## ✅ Done
 
@@ -92,6 +92,7 @@
     `python3 scripts/setup_aiinote_dns.py`
 - [x] stratum-sl 是否安装 docling — 2026-08-01 已入镜像（docling 2.117.0），容器实测 PASS
 - [x] 人工 E2E 验收（含 vault 目录挂载路径） — `scripts/e2e_mvp_chain.py` 15 步两链全 PASS
+- [ ] **问答接 web（SEARXNG）** — 2026-08-02 确认暂无可用 searxng 端点；`SEARXNG_URL` 保持 REPLACE 占位，agents.py `_make_searxng_adapter` 已就绪。有自建 searxng 实例后填 env + restart 即可启用。
 - [ ] 若网盘挂载点不在默认 roots：设置 `STRATUM_VAULT_SYNC_ROOTS`  
 - [x] **测试套件剩余失配（2026-07-31）** — 已全部修复，见 Done「测试套件第二轮」。`api/mcp.py` 的 `list_recent_changes` 同类双 id 问题也已修（`IN (raw, hash)`，开发库实测可见 hashed-id 事件）。
 
