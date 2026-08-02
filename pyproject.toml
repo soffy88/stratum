@@ -34,7 +34,8 @@ dependencies = [
 # 以下为预期依赖, 实际选型见批 2 实证结果
 # [PENDING_VALIDATION]
 ingest-pdf = [
-    "pymupdf4llm",
+    "docling>=2,<3",  # MIT — 默认 PDF 解析器 (表格+代码保留), 替换 AGPL pymupdf4llm
+    "pymupdf4llm",    # AGPL — 仅作 fallback, 镜像内可选裁剪
     # "unstructured",  # 实证后选一
     # "marker-pdf",
 ]
