@@ -15,7 +15,8 @@
 - [x] **Docling 包装入 stratum-sl 镜像**（2026-08-01）：`docker compose build stratum-sl` 完成，容器内 `docling 2.117.0` 实测 PDF 链全 PASS。
 - [x] **主链路人工 E2E**（2026-08-01）：`scripts/e2e_mvp_chain.py` 15 步全链（web + PDF 两链 15/15 PASS）；顺带修复 5 个真 bug（translate 所有权/AgentContext、concepts substrate_refs、图谱注入污染 question、db list[dict] 序列化）。
 - [x] **定时调度**（2026-08-01）：`daily_digest_simple` / `knowledge_lint` 种子任务挂 scheduled_jobs；run-now 实测 ok。
-- [x] **锚点闭环前端**（2026-08-02）：文档页段落锚点 `#p{n}` 跳转+高亮；高级检索卡片深链；基础搜索 citation 携带 paragraph anchor（SPA 跳转）。后端 /retrieve 仍 0 命中，卡片深链待 pgvector 修复后见效。
+- [x] **锚点闭环前端**（2026-08-02）：文档页段落锚点 `#p{n}` 跳转+高亮；高级检索卡片深链；基础搜索 citation 携带 paragraph anchor（SPA 跳转）。
+- [x] **/retrieve 修通**（2026-08-02）：根因=API 入库链路从不生成 substrate_layers（仅 watcher 生成）→ inbox/webclip/media 三处入库钩子补分层生成；layer_generator qwen3 补 `think:false`（否则 400）；/retrieve 响应补 title（ref_id→substrate_id 前端适配）。实测 10 结果/真实标题/深链，Attention 文章 0.67 居首。
 - [ ] 问答接 web（SEARXNG_URL 占位，2026-08-02 确认无可用端点 → 记为人工项，见 Needs Human）
 
 ## ✅ Done
