@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: test-secret-for-sl-unit-tests-32x
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install Python
+        run: uv python install 3.12
+      - name: Sync deps
+        run: uv sync --frozen
+      - name: Run tests
+        run: |
+          uv run python -m pytest tests/ -q --timeout=600
+
+  frontend:
+    name: Frontend (vitest + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: aii-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: aii-web/package-lock.json
+      - name: Install deps
+        run: npm ci
+      - name: Unit tests
+        run: npm run test -- --run
+      - name: Production build
+        run: npm run build
