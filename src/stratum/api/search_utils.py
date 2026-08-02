@@ -120,7 +120,10 @@ def get_lancedb_mgr():
             
             if query_embedding is None:
                 from oprim.embedding import embed_text
-                query_embedding = embed_text([query])[0]
+                from oprim._config import cfg
+
+                provider = str(cfg.get("EMBEDDING_PROVIDER", "qwen3_dashscope"))
+                query_embedding = embed_text([query], provider=provider)[0]
                 
             if hasattr(db, "_table"):
                 tbl = db._table
