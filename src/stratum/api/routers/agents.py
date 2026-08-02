@@ -86,14 +86,14 @@ def _get_researcher_engine():
             raise RuntimeError("SEARXNG_URL env var not set")
 
         from oservi import assemble, ServiceManifest
-        from oprim import url_fetch_ssrf_safe
+        from stratum.services.web_fetch import fetch_url_ssrf_safe
 
         manifest = ServiceManifest(
             name="stratum-researcher",
             skeleton="researcher",
             inject={
                 "search_oprim": [_make_searxng_adapter(searxng_url)],
-                "fetch_oprim": [url_fetch_ssrf_safe],
+                "fetch_oprim": [fetch_url_ssrf_safe],
                 "llm_caller": [_make_oprim_llm_adapter(_DEFAULT_LLM_PROVIDER, _DEFAULT_LLM_MODEL)],
                 # ingest_omodul omitted (cardinality=0..1): returns results without DB ingestion.
                 # Enable when omodul ships a kwargs-compatible ingest callable.
