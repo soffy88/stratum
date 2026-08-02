@@ -31,6 +31,7 @@ RUN pip install --no-cache-dir \
         alembic \
         python-frontmatter \
         pymupdf4llm \
+        docling \
         lancedb \
         tantivy \
         pymupdf \
