@@ -20,6 +20,7 @@
 - [x] **中文检索修复**（2026-08-02）：tantivy Python 绑定无 CJK tokenizer（报 unknown tokenizer）→ oprim `fulltext/tantivy.py` 应用层 `_space_cjk()`（CJK 字符间插空格，add/search 双端）；重建索引 5797 docs。实测中文 50 hits、英文不退化。prod `/home/soffy/deploy/3O` 与 dev `/home/soffy/projects/platform/3O` 双副本已同步。
 - [x] **/search 用户隔离**（2026-08-02）：FusedResult 无 user_id 字段，路由层旧防御过滤全放行（probe2 能搜到主用户文档）→ oskill `cross_layer_search.py` FusedResult 补 `user_id` 透传（search_utils 已按 DB 归属挂哈希 id）；路由比较 `IN (raw, hash)` 双值。实测 probe2 只看到自己文档。单测 `test_search_idor_post_filter` 按属性过滤契约保持绿。
 - [x] **Companion 出处复核**（2026-08-02）：reading_companion sources[] 现从 derivative + locate_anchor 富化 snippet/fragment_id/deep_link；实测 5 sources/5 citations，标题+片段+锚点齐全。
+- [x] **全库 L0 覆盖回填**（2026-08-02）：主用户 5786 substrate 中 ~94 个历史 API 入库项缺 L0 分层（JOIN 计数曾误报为 1.1 万）→ `scripts/backfill_l0_layers.py` L0-only 回填（title/前200字 + 本地 qwen3-embedding，无需 LLM）。现全员 100% L0 覆盖（5786/10/1）；主用户 /retrieve 抽查 transformer/diffusion 均命中相关论文。dense 路径顺带修复：search_utils lancedb_mgr 尊重 `EMBEDDING_PROVIDER`（不再硬编码 DashScope）。
 - [ ] 问答接 web（SEARXNG_URL 占位，2026-08-02 确认无可用端点 → 记为人工项，见 Needs Human）
 
 ## ✅ Done
