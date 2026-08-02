@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { OSemanticSearch } from "@helios/blocks";
+import { useRouter } from "next/navigation";
+import { OSemanticSearch, type SearchResult } from "@helios/blocks";
 import { useStratumSearch } from "@/lib/adapters/search";
 import { SearchPanel } from "@/components/SearchPanel";
 import { ViewSwitcher } from "@/components/ViewSwitcher";
@@ -11,6 +12,13 @@ import type {
   RetrievalResult,
   TrajectoryStep,
 } from "@/lib/adapters/retrieval";
+
+/** stratum://substrate/{id}#p{n} → /documents/{id}#p{n} */
+function deepLinkToHref(link: string): string | null {
+  const m = link.match(/^stratum:\/\/substrate\/([^#]+)(#p\d+)?$/);
+  if (!m) return null;
+  return `/documents/${m[1]}${m[2] ?? ""}`;
+}
 
 type SearchMode = "simple" | "advanced";
 type AdvancedMode = "search" | "retrieval";
@@ -227,8 +235,19 @@ function RetrievalPanel() {
 
 export default function SearchPage() {
   const onSearch = useStratumSearch();
+  const router = useRouter();
   const [mode, setMode] = useState<SearchMode>("simple");
   const [advancedMode, setAdvancedMode] = useState<AdvancedMode>("search");
+
+  const handleResultClick = (result: SearchResult) => {
+    const href =
+      result.citation?.deep_link
+        ? deepLinkToHref(result.citation.deep_link)
+        : result.id
+          ? `/documents/${result.id}`
+          : null;
+    if (href) router.push(href);
+  };
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -247,7 +266,11 @@ export default function SearchPage() {
 
       {/* simple mode */}
       {mode === "simple" && (
-        <OSemanticSearch onSearch={onSearch} placeholder="输入搜索内容..." />
+        <OSemanticSearch
+          onSearch={onSearch}
+          onResultClick={handleResultClick}
+          placeholder="输入搜索内容..."
+        />
       )}
 
       {/* advanced mode */}

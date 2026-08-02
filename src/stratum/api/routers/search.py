@@ -78,10 +78,15 @@ async def search(req: SearchRequest, user_id: str = Depends(jwt_auth)):
         result = await _run(req.query)
         pool = list(result.results)
 
-    # Defensive post-filter: when a result carries user_id (set by user-scoped
-    # backends), reject rows that don't belong to the authenticated user.
-    # Rows without user_id pass through — isolation is then the manager's job.
-    own = [r for r in pool if getattr(r, "user_id", None) in (None, user_id)]
+    # Ownership enforcement at the boundary. User-scoped managers (incl. the
+    # shared tantivy/lance managers in search_utils) attach user_id to every
+    # result — resolved from substrates.user_id, i.e. the HASHED id, so both
+    # the raw JWT subject and its hash count as "self". Shared content and
+    # backends that don't attach it (user_id=None) pass through.
+    from stratum.utils.user_id_hash import hash_user_id as _hash_uid
+
+    _self_ids = {user_id, _hash_uid(user_id)}
+    own = [r for r in pool if getattr(r, "user_id", None) in (None, *_self_ids)]
 
     # LLM-judge rerank (opt-in). Runs on the candidate pool before truncation.
     if req.rerank and own:

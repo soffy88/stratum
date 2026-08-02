@@ -1,6 +1,6 @@
 # STATUS — AII Note MVP
 
-最后更新：2026-08-02（锚点闭环前端完成；docling 入镜像、E2E 全链、定时调度、剪藏/转写文档化，详见 In Progress）
+最后更新：2026-08-02（/retrieve 修通 + 中文检索 + /search 用户隔离，详见 In Progress）
 
 ## 🔒 Never
 
@@ -17,6 +17,9 @@
 - [x] **定时调度**（2026-08-01）：`daily_digest_simple` / `knowledge_lint` 种子任务挂 scheduled_jobs；run-now 实测 ok。
 - [x] **锚点闭环前端**（2026-08-02）：文档页段落锚点 `#p{n}` 跳转+高亮；高级检索卡片深链；基础搜索 citation 携带 paragraph anchor（SPA 跳转）。
 - [x] **/retrieve 修通**（2026-08-02）：根因=API 入库链路从不生成 substrate_layers（仅 watcher 生成）→ inbox/webclip/media 三处入库钩子补分层生成；layer_generator qwen3 补 `think:false`（否则 400）；/retrieve 响应补 title（ref_id→substrate_id 前端适配）。实测 10 结果/真实标题/深链，Attention 文章 0.67 居首。
+- [x] **中文检索修复**（2026-08-02）：tantivy Python 绑定无 CJK tokenizer（报 unknown tokenizer）→ oprim `fulltext/tantivy.py` 应用层 `_space_cjk()`（CJK 字符间插空格，add/search 双端）；重建索引 5797 docs。实测中文 50 hits、英文不退化。prod `/home/soffy/deploy/3O` 与 dev `/home/soffy/projects/platform/3O` 双副本已同步。
+- [x] **/search 用户隔离**（2026-08-02）：FusedResult 无 user_id 字段，路由层旧防御过滤全放行（probe2 能搜到主用户文档）→ oskill `cross_layer_search.py` FusedResult 补 `user_id` 透传（search_utils 已按 DB 归属挂哈希 id）；路由比较 `IN (raw, hash)` 双值。实测 probe2 只看到自己文档。单测 `test_search_idor_post_filter` 按属性过滤契约保持绿。
+- [x] **Companion 出处复核**（2026-08-02）：reading_companion sources[] 现从 derivative + locate_anchor 富化 snippet/fragment_id/deep_link；实测 5 sources/5 citations，标题+片段+锚点齐全。
 - [ ] 问答接 web（SEARXNG_URL 占位，2026-08-02 确认无可用端点 → 记为人工项，见 Needs Human）
 
 ## ✅ Done
@@ -71,7 +74,7 @@
 
 1. ~~镜像内安装 `docling`~~（2026-08-01 已入镜像）
 2. ~~端到端手测 / 带鉴权集成测试~~（E2E 全链已跑通）
-3. Companion snippet 路径复核
+3. ~~Companion snippet 路径复核~~（2026-08-02 sources[] 已带 snippet/锚点）
 4. ~~（可选）scheduled_jobs 挂日报/Lint~~（已挂种子任务）
 5. 账户删除仍 soft+30 天 grace（与「笔记真删」策略并存，可后收紧）  
 
