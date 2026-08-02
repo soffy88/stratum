@@ -74,6 +74,7 @@ def _call_llm(system_prompt: str, user_content: str, max_tokens: int = 2048) -> 
                     {"role": "user", "content": content},
                 ],
                 "stream": False,
+                "think": False,
             },
             timeout=_TIMEOUT,
         )
@@ -103,6 +104,7 @@ async def _call_llm_async(system_prompt: str, user_content: str, max_tokens: int
                         {"role": "user", "content": content},
                     ],
                     "stream": False,
+                    "think": False,
                 },
             )
             resp.raise_for_status()

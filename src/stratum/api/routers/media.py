@@ -113,6 +113,31 @@ def _run_ingest(
             except Exception as exc:
                 log.warning("media_ingest: md_export failed sid=%s: %s", sid, exc)
 
+            # Generate L0/L1/L2 layers (retrieval /api/v1/retrieve depends on substrate_layers)
+            try:
+                from stratum.db import get_conn
+                from stratum.services.layer_generator import generate_substrate_layers
+                with get_conn() as conn:
+                    trow = conn.execute(
+                        "SELECT title FROM substrates WHERE id=?", (sid,)
+                    ).fetchone()
+                    crow = conn.execute(
+                        """SELECT content FROM derivative
+                           WHERE substrate_id=? AND content IS NOT NULL AND content <> ''
+                           ORDER BY CASE WHEN kind='markdown' THEN 0
+                                WHEN kind LIKE 'translation%%zh%%' THEN 1 ELSE 2 END
+                           LIMIT 1""",
+                        (sid,),
+                    ).fetchone()
+                generate_substrate_layers(
+                    sid,
+                    title=(trow[0] if trow else None),
+                    content=(crow[0] if crow else None),
+                )
+                log.info("media_ingest: layers generated sid=%s", sid)
+            except Exception as exc:
+                log.warning("media_ingest: layer generation failed sid=%s: %s", sid, exc)
+
 
 @router.post("/api/v1/media/ingest", status_code=202, response_model=MediaIngestResponse)
 async def ingest_media(

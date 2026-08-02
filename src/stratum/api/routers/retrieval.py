@@ -34,15 +34,32 @@ async def retrieve_endpoint(req: RetrieveRequest, user_id: str = Depends(jwt_aut
 
     from stratum.services.search_anchors import locate_anchor
 
+    # Batch-fetch titles for ref_ids (retrieval results carry no title)
+    from stratum.db import query as db_query
+
+    ref_ids = [r.ref_id for r in response.results if r.ref_id is not None]
+    title_map: dict[str, str] = {}
+    if ref_ids:
+        try:
+            _rows = db_query(
+                "SELECT id, title FROM substrates WHERE id = ANY(%(ids)s)",
+                {"ids": ref_ids},
+            )
+            title_map = {r["id"]: r["title"] or r["id"] for r in _rows}
+        except Exception:
+            title_map = {}
+
     results_out = []
     sources = []
     for r in response.results:
         anchor = locate_anchor(r.content or "", None)
         preview = r.content[:300] if len(r.content) > 300 else r.content
+        _title = title_map.get(r.ref_id) if r.ref_id else (r.uri or r.ref_id)
         item = {
             "uri": r.uri,
             "node_type": r.node_type,
             "ref_id": r.ref_id,
+            "title": _title,
             "layer": r.layer,
             "score": round(r.score, 4),
             "token_count": r.token_count,
@@ -62,7 +79,7 @@ async def retrieve_endpoint(req: RetrieveRequest, user_id: str = Depends(jwt_aut
             sources.append(
                 {
                     "substrate_id": r.ref_id,
-                    "title": r.uri,
+                    "title": _title,
                     "snippet": item["snippet"],
                     "paragraph_index": item["paragraph_index"],
                     "score": item["score"],
