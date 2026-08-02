@@ -85,9 +85,12 @@ class _ConnWrapper:
         # `?` → `%s` (positional); `$name` → `%(name)s` (named). A query uses one
         # style, matching whether params is a tuple/list or a dict.
         if params is not None and "?" in sql:
-            sql = sql.replace("?", "%s")
+            # Escape literal `%` first (LIKE patterns e.g. 'translation%zh%'):
+            # psycopg2 would otherwise treat them as format specifiers.
+            sql = sql.replace("%", "%%").replace("?", "%s")
         elif "$" in sql:
-            sql = _to_pyformat(sql)
+            # Escape stray % (LIKE literals) but keep %(name)s markers intact.
+            sql = re.sub(r"%(?!\()", "%%", _to_pyformat(sql))
         cur = self._raw.cursor()
         cur.execute(sql, params)
         return cur
