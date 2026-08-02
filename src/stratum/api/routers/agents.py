@@ -550,6 +550,7 @@ async def agent_run(
             if agent_name == "reading_companion" and sources:
                 try:
                     from stratum.db import query as _q
+                    from stratum.services.search_anchors import locate_anchor
 
                     ids = [s["substrate_id"] for s in sources[:8]]
                     rows = _q(
@@ -557,9 +558,31 @@ async def agent_run(
                         {"ids": ids},
                     )
                     title_map = {r["id"]: r.get("title") for r in rows}
+                    crows = _q(
+                        """SELECT DISTINCT ON (substrate_id) substrate_id, content
+                           FROM derivative
+                           WHERE substrate_id = ANY(%(ids)s)
+                             AND content IS NOT NULL AND content <> ''
+                           ORDER BY substrate_id,
+                             CASE WHEN kind='markdown' THEN 0
+                                  WHEN kind LIKE 'translation%%zh%%' THEN 1 ELSE 2 END""",
+                        {"ids": ids},
+                    )
+                    content_map = {r["substrate_id"]: r["content"] or "" for r in crows}
                     for s in sources:
                         if title_map.get(s["substrate_id"]):
                             s["title"] = title_map[s["substrate_id"]]
+                        full = content_map.get(s["substrate_id"], "")
+                        if full:
+                            anch = locate_anchor(full, None)
+                            s["snippet"] = anch.get("snippet") or full[:300]
+                            if anch.get("paragraph_index") is not None:
+                                if not s["fragment_id"]:
+                                    s["fragment_id"] = f"p{anch['paragraph_index']}"
+                                s["deep_link"] = (
+                                    f"stratum://substrate/{s['substrate_id']}"
+                                    f"#p{anch['paragraph_index']}"
+                                )
                 except Exception:
                     pass
             # Companion without citations is a soft failure signal
