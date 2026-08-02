@@ -469,7 +469,9 @@ async def agent_run(
             enriched_params = dict(params or {})
             enriched_params.setdefault("corpus_id", f"user_{user_id}")
 
-            # Stage B: inject graph context for reading_companion
+            # Stage B: inject graph context for reading_companion.
+            # 只放 graph_context 参数, 绝不污染 question —— ReadingCompanionAgent 用
+            # question 同时做 hybrid_search 查询 (tantivy 对 [方括号] 会 Syntax Error)。
             if agent_name == "reading_companion":
                 _question = enriched_params.get("question", "")
                 if _question:
@@ -510,11 +512,7 @@ async def agent_run(
                                 f"- {e['name']} ({e['type']}): {e['description'] or ''}"
                                 for e in _entities[:5]
                             )
-                            # ReadingCompanionAgent uses params["question"] in LLM prompt;
-                            # prepend graph context so LLM sees known entities (§20 compliant).
-                            enriched_params["question"] = (
-                                f"[知识图谱背景]\n{_graph_lines}\n\n问题: {_question}"
-                            )
+                            enriched_params["graph_context"] = _graph_lines
                     except Exception as _g_err:
                         import logging as _glog
 
