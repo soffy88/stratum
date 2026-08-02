@@ -23,8 +23,21 @@ function adaptSearchResult(item: SearchResultItem): SearchResult {
       domain: null,
       created_at: null,
     },
-    citation: null,
-  };
+    citation:
+      item.paragraph_index != null
+        ? {
+            substrate_id: item.id,
+            fragment_id: `p${item.paragraph_index}`,
+            anchor: {
+              section: null,
+              char_start: item.char_start ?? 0,
+              char_end: item.char_end ?? 0,
+            },
+            deep_link:
+              item.deep_link ??
+              `/documents/${item.id}#p${item.paragraph_index}`,
+          }
+        : null,  };
 }
 
 /**
