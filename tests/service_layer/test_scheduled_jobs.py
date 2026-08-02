@@ -11,8 +11,9 @@ Coverage (≥10 tests):
   9.     DELETE cross-user → 404
   10.    POST run-now valid job (daily_digest) → run_id + non-pending status
   11.    POST run-now cross-user job → 404
-  12.    POST run-now not-implemented agent → 501
+  12.    POST run-now audio_generator → 200 (activated since obase v0.9.0, no 501)
   13.    GET /{id}/runs → list (may be empty)
+  14.    GET list auto-seeds default jobs (daily_digest_simple + knowledge_lint) for new users
 """
 
 from __future__ import annotations
@@ -269,3 +270,26 @@ def test_list_job_runs(client):
     r = client.get(f"/api/v1/scheduled-jobs/{jid}/runs", headers=_auth())
     assert r.status_code == 200
     assert isinstance(r.json(), list)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 14. GET list auto-seeds default jobs for a new user (幂等)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def test_list_seeds_default_jobs_once(client):
+    from stratum.db import execute, query
+
+    uid = "user-seed-test"
+    execute("DELETE FROM scheduled_jobs_sl WHERE user_id = %(uid)s", {"uid": uid})
+    try:
+        r = client.get("/api/v1/scheduled-jobs", headers=_auth(uid))
+        assert r.status_code == 200
+        agents = {j["agent_name"] for j in r.json()}
+        assert {"daily_digest_simple", "knowledge_lint"} <= agents, agents
+
+        # 幂等: 第二次列出不再追加
+        r2 = client.get("/api/v1/scheduled-jobs", headers=_auth(uid))
+        assert len(r2.json()) == len(r.json())
+    finally:
+        execute("DELETE FROM scheduled_jobs_sl WHERE user_id = %(uid)s", {"uid": uid})
