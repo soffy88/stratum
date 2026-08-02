@@ -25,7 +25,7 @@ from stratum.utils.user_id_hash import hash_user_id
 router = APIRouter()
 log = logging.getLogger(__name__)
 
-_PROXY = "socks5://100.73.220.5:21080"
+_PROXY = "socks5h://172.19.0.1:10808"  # sing-box mixed inbound (host 0.0.0.0:10808), WSL clash 已死
 
 
 class MediaIngestRequest(BaseModel):
