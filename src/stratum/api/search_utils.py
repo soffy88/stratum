@@ -109,6 +109,44 @@ def get_tantivy_mgr():
             return []
     return tantivy_mgr
 
+def get_pgvector_user_mgr(user_id: str):
+    """User-scoped semantic dense source backed by PG substrate_layers (L0).
+
+    Replaces the abandoned lancedb index: the current ingest pipeline maintains
+    L0 embeddings in PG (same qwen3-embedding model /retrieve uses), so query
+    embeddings come from the identical model → consistent cosine space.
+    Satisfies the LanceDBMgr protocol (query_embedding/query/top_k/filters).
+    """
+    def pgvector_user_mgr(*, query_embedding: list[float] | None, query: str,
+                          top_k: int, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        from stratum.services.retrieval_engine import _vector_search_layers, get_embedding
+
+        if query_embedding is None:
+            query_embedding = get_embedding(query)
+        if not query_embedding:
+            return []
+        hits = _vector_search_layers(
+            query_embedding, layer="L0", top_k=max(top_k * 2, 20), user_id=user_id
+        )
+        if not hits:
+            return []
+        meta_map = _fetch_meta([h["substrate_id"] for h in hits])
+        results = []
+        for h in hits:
+            sid = h["substrate_id"]
+            if sid not in meta_map:
+                continue  # stale layer row, substrate gone
+            results.append({
+                "id": sid,
+                "type": "user_substrate",
+                "title": meta_map[sid].get("title") or sid,
+                "highlight": meta_map[sid].get("snippet", ""),
+                "user_id": meta_map[sid].get("user_id"),
+            })
+        return results
+    return pgvector_user_mgr
+
+
 def get_lancedb_mgr():
     def lancedb_mgr(*, query_embedding: list[float] | None, query: str, top_k: int, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         path = lancedb_path()
