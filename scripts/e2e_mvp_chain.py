@@ -328,15 +328,26 @@ def main() -> int:
     step("日报", "PASS" if d_code == 200 and d_status == "ok" else "FAIL",
          f"status={d_status} note_id={d_body.get('note_id')}")
 
-    # 13. 旧 pgvector 检索路径 (WARN 级, 已知未接 BGE-M3)
-    try:
-        code, body = _request(
-            "POST", f"{SL_BASE}/api/v1/retrieve",
-            json.dumps({"query": query}).encode(), h,
-        )
-        step("retrieve(旧路径)", "WARN", f"result_count={body.get('result_count', '?')}")
-    except Exception as exc:  # noqa: BLE001
-        step("retrieve(旧路径)", "WARN", str(exc)[:120])
+    # 13. 分层检索 (后台生成 L0/L1/L2 是异步任务, 轮询等它就位)
+    import time as _time
+
+    retr_count = 0
+    for _attempt in range(12):
+        try:
+            code, body = _request(
+                "POST", f"{SL_BASE}/api/v1/retrieve",
+                json.dumps({"query": query, "max_depth": 2, "top_k": 5}).encode(), h,
+            )
+            retr_count = body.get("result_count", 0) or 0
+            if code == 200 and retr_count > 0:
+                break
+        except Exception:  # noqa: BLE001
+            pass
+        _time.sleep(5)
+    step(
+        "retrieve分层检索", "PASS" if retr_count > 0 else "WARN",
+        f"result_count={retr_count}",
+    )
 
     # 14. 真删 (substrate + concept)
     code, body = _request("DELETE", f"{SL_BASE}/api/v1/inbox/{sid}", headers=h)
