@@ -60,10 +60,15 @@ async def concept_detail(concept_id: str, user_id: str = Depends(jwt_auth)):
         raise HTTPException(404, "Concept not found")
 
     uh = hash_user_id(user_id)
-    related_subs = query(
-        "SELECT id, title FROM substrates "
-        "WHERE $cid = ANY(concept_refs) AND (user_id = $uid OR user_id = $uh) LIMIT 20",
-        {"cid": concept_id, "uid": user_id, "uh": uh},
+    refs = concept.get("substrate_refs") or []
+    related_subs = (
+        query(
+            "SELECT id, title FROM substrates "
+            "WHERE id = ANY(%(ids)s) AND (user_id = %(uid)s OR user_id = %(uh)s) LIMIT 20",
+            {"ids": refs, "uid": user_id, "uh": uh},
+        )
+        if refs
+        else []
     )
     platform = read("platform_concepts", concept_id)
 
@@ -95,10 +100,15 @@ async def concept_graph(concept_id: str, depth: int = 2, user_id: str = Depends(
             edges.append({"from": concept_id, "to": rel_id, "type": "related_concept"})
 
     uh = hash_user_id(user_id)
-    subs = query(
-        "SELECT id, title FROM substrates "
-        "WHERE $cid = ANY(concept_refs) AND (user_id = $uid OR user_id = $uh) LIMIT 20",
-        {"cid": concept_id, "uid": user_id, "uh": uh},
+    refs = concept.get("substrate_refs") or []
+    subs = (
+        query(
+            "SELECT id, title FROM substrates "
+            "WHERE id = ANY(%(ids)s) AND (user_id = %(uid)s OR user_id = %(uh)s) LIMIT 20",
+            {"ids": refs, "uid": user_id, "uh": uh},
+        )
+        if refs
+        else []
     )
     for s in subs:
         nodes.append({"id": s["id"], "type": "substrate", "title": s["title"]})

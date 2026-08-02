@@ -118,8 +118,11 @@ get_conn = _conn
 
 
 def _serialize(v: Any) -> Any:
-    """Dicts → jsonb (psycopg2 Json adapter); lists pass through as PG arrays."""
+    """Dicts → jsonb (psycopg2 Json adapter); lists of dicts → jsonb too
+    (bare lists pass through as PG arrays, which can't adapt dict elements)."""
     if isinstance(v, dict):
+        return psycopg2.extras.Json(v)
+    if isinstance(v, list) and any(isinstance(x, dict) for x in v):
         return psycopg2.extras.Json(v)
     return v
 
