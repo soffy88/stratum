@@ -116,10 +116,11 @@ NVRM: GPU 0000:01:00.0: GPU has fallen off the bus.
 - OCR降并发(8→4)是否彻底解决OOM还没跑完全部45本验证过(GPU故障中断了验证), 需要GPU恢复后继续观察; 如果4还不够稳, 下一步应该是降`--gpu-memory-utilization`或`--max-num-seqs`而不是继续降并发(并发再降会拖慢~80min/大书的处理时间)
 - **GPU硬件故障: reboot已试过且未解决**(10:18已重启host, `nvidia-smi`仍不可用)——下一步不再是"要不要重启"的问题, 需要人工判断是否要开始查硬件本身(排线/PCIe插槽/电源, 甚至联系硬件支持), 这已超出软件层面能处理的范围
 - **aii-ocr-daemon的linger自启会覆盖人工stop的意图**(本次已复现一次): 若GPU长期不可用, 应考虑`systemctl --user disable aii-ocr-daemon`而非仅`stop`, 否则每次host重启都会重新空转重试`ocr-vllm`
+- **宿主机内存告急导致 econ-zh 飞轮持续 OOM kill**（2026-08-02 观察）: 30G RAM 用 24G、**31G swap 全满**；`aii-flywheel-econ-zh` 重启计数已达 45（今日 07:02–08:42 被 OOM kill 8 次），今日 0 KU 入库。内存大头是跨项目 `platform-postgres` 容器（8.8G，helios/selene/aegis 共享库），非 AII 代码问题。若要让 econ-zh 稳定跑，需要人工决定释放/限制内存（如给 platform-postgres 设内存上限、或暂时停掉非关键容器），或提高宿主 RAM/swap 上限——这超出 AII 软件层面可处理范围
 
 <!-- WATCHDOG:START -->
-## 🚨 Needs Human (看门狗自动维护, 2026-08-02T01:39:06Z)
+## 🚨 Needs Human (看门狗自动维护, 2026-08-02T08:42:29Z)
 
-- ✅ 无严重项 (overall=degraded)
+- svc:aii-flywheel-econ-zh.service: enabled但未运行 → systemctl --user start aii-flywheel-econ-zh.service
 
 <!-- WATCHDOG:END -->
