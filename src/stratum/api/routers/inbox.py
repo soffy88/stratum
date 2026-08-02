@@ -344,6 +344,35 @@ async def inbox_process(
     return {"status": "processing", "id": item_id}
 
 
+async def _generate_layers_background(substrate_id: str) -> None:
+    """Generate L0/L1/L2 layers for retrieval (substrate_layers)."""
+    _log = logging.getLogger(__name__)
+    try:
+        from stratum.db import get_conn
+        from stratum.services.layer_generator import generate_substrate_layers
+
+        with get_conn() as _c:
+            _t = _c.execute(
+                "SELECT title FROM substrates WHERE id=?", (substrate_id,)
+            ).fetchone()
+            _content = _c.execute(
+                """SELECT content FROM derivative
+                   WHERE substrate_id=? AND content IS NOT NULL AND content <> ''
+                   ORDER BY CASE WHEN kind='markdown' THEN 0
+                        WHEN kind LIKE 'translation%%zh%%' THEN 1 ELSE 2 END
+                   LIMIT 1""",
+                (substrate_id,),
+            ).fetchone()
+        title = _t[0] if _t else None
+        content = _content[0] if _content else None
+        await asyncio.to_thread(
+            generate_substrate_layers, substrate_id, title, content,
+        )
+        _log.info("inbox: layers generated sid=%s", substrate_id)
+    except Exception as exc:
+        _log.warning("inbox: layer generation failed sid=%s: %s", substrate_id, exc)
+
+
 @router.post("/submit")
 async def inbox_submit(
     background_tasks: BackgroundTasks,
@@ -487,6 +516,9 @@ async def inbox_submit(
                 user_id,
                 _uid_hash,
             )
+        # Generate L0/L1/L2 layers (retrieval /api/v1/retrieve depends on substrate_layers)
+        if substrate_id:
+            background_tasks.add_task(_generate_layers_background, substrate_id)
         # Schedule optional derivative agents as background tasks.
         # Default: queue translation for non-zh uploads when client didn't pass derivatives.
         _derivs = list(derivatives or [])
@@ -684,6 +716,11 @@ async def inbox_webclip(
                 _build_graph,
                 substrate_id=substrate_id,
                 user_id_hash=hash_user_id(user_id),
+            )
+        # Generate L0/L1/L2 layers (retrieval depends on substrate_layers)
+        if substrate_id:
+            background_tasks.add_task(
+                _generate_layers_background, substrate_id,
             )
 
     return {

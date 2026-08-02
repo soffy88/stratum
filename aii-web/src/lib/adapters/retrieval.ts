@@ -18,11 +18,12 @@ export interface RetrieveOptions {
 
 export interface RetrievalResult {
   substrate_id: string;
+  ref_id?: string | null;
+  title: string;
   score: number;
   rerank_score: number | null;
   l0_summary: string;
   l1_summary: string | null;
-  title: string;
   source_path: string;
   paragraph_index?: number | null;
   deep_link?: string | null;
@@ -56,13 +57,22 @@ export async function retrieve(
   opts?: Partial<RetrieveOptions>
 ): Promise<RetrieveResponse | null> {
   try {
-    return await apiClient.post<RetrieveResponse>("/api/v1/retrieve", {
+    const res = await apiClient.post<RetrieveResponse>("/api/v1/retrieve", {
       query,
       substrate_ids: opts?.substrate_ids,
       max_results: opts?.max_results ?? 10,
       min_score: opts?.min_score ?? 0.1,
       use_rerank: opts?.use_rerank ?? true,
     });
+    return {
+      ...res,
+      results: (res.results ?? []).map((item) => ({
+        ...item,
+        substrate_id: item.ref_id ?? item.substrate_id,
+        paragraph_index: item.paragraph_index ?? null,
+        deep_link: item.deep_link ?? null,
+      })),
+    };
   } catch {
     return null;
   }
