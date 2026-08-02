@@ -87,7 +87,7 @@ from stratum.utils.user_id_hash import hash_user_id
 from stratum.db import execute as db_execute, insert as db_insert, update as db_update
 
 try:
-    from oprim import url_fetch_ssrf_safe as _url_fetch_ssrf_safe
+    from stratum.services.web_fetch import fetch_url_ssrf_safe as _url_fetch_ssrf_safe
 
     _HAS_SSRF_SAFE = True
 except ImportError:
@@ -551,6 +551,8 @@ async def _fetch_url_html(url: str) -> str:
     err = result.get("error")
     if err == "ssrf_blocked":
         raise HTTPException(403, "URL resolves to a disallowed address")
+    if err == "ssrf_transport_unavailable":
+        raise HTTPException(503, "URL fetch unavailable: obase not installed")
     if err and "timed out" in err:
         log.warning("web_clip_timeout url=%s", url)
         raise HTTPException(504, "URL fetch timed out")
