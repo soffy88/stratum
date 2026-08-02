@@ -87,10 +87,25 @@ function RerankBadge({ score }: { score: number | null }) {
 // ---------------------------------------------------------------------------
 
 function RetrievalCard({ item, useRerank }: { item: RetrievalResult; useRerank: boolean }) {
+  const href =
+    item.substrate_id && item.paragraph_index != null
+      ? `/documents/${item.substrate_id}#p${item.paragraph_index}`
+      : item.substrate_id
+        ? `/documents/${item.substrate_id}`
+        : null;
   return (
     <div className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
       <div className="flex items-start justify-between gap-2">
-        <span className="font-medium text-[var(--color-foreground)]">{item.title}</span>
+        {href ? (
+          <a href={href} className="font-medium text-[var(--color-foreground)] hover:underline">
+            {item.title}
+          </a>
+        ) : (
+          <span className="font-medium text-[var(--color-foreground)]">{item.title}</span>
+        )}
+        {item.paragraph_index != null && (
+          <span className="text-xs text-[var(--color-muted)] font-mono shrink-0">¶{item.paragraph_index}</span>
+        )}
         <div className="flex items-center gap-2 shrink-0">
           {useRerank && <RerankBadge score={item.rerank_score} />}
           <span className="text-xs text-[var(--color-muted)] font-mono">
