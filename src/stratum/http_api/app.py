@@ -127,9 +127,18 @@ def health_check(response: Response):
 
 
 # MCP SSE endpoint — for Claude Desktop / MCP clients
+# mcp 2.0: mount 的子 app lifespan 不会自动运行 (task group 500) — 父 app 手动托管
 try:
+    from contextlib import asynccontextmanager
+
     from stratum.api.mcp import mcp_app
 
+    @asynccontextmanager
+    async def _lifespan(application):
+        async with mcp_app.router.lifespan_context(application):
+            yield
+
+    app.router.lifespan_context = _lifespan
     app.mount("/mcp", mcp_app)
 except Exception:
     pass  # mcp optional; skip if fastmcp not installed

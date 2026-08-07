@@ -16,7 +16,15 @@ from stratum.utils.user_id_hash import hash_user_id
 
 _MCP_USER_ID = os.environ.get("STRATUM_MCP_USER_ID", "")
 
-mcp = FastMCP("stratum")
+# DNS rebinding 防护默认拒非 localhost Host — stratum-api 容器名访问需放行
+from mcp.server.transport_security import TransportSecuritySettings
+
+mcp = FastMCP(
+    "stratum",
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=False,   # 容器内网服务, 无 rebinding 面
+    ),
+)
 
 
 def _require_user() -> str:
@@ -169,20 +177,26 @@ async def viking_grep(pattern: str, scope: str = "viking://resources/",
 
 
 @mcp.tool()
-async def retrieve_context(query_text: str, max_depth: int = 2, top_k: int = 10) -> dict:
+async def retrieve_context(query_text: str, max_depth: int = 2, top_k: int = 10,
+                           namespace: str = "global",
+                           budget_tokens: int | None = None) -> dict:
     """Tiered retrieval with trajectory tracking.
     Searches L0→L1→L2 layers with directory-recursive drill-down.
+    namespace: global(权威知识库) | personal(个人草稿) | all(联邦合并).
     Returns results with viking:// URIs and retrieval trajectory."""
     user_id = _require_user()
     from stratum.services.retrieval_engine import retrieve
-    response = retrieve(query=query_text, max_depth=max_depth, top_k=top_k, user_id=user_id)
+    response = retrieve(query=query_text, max_depth=max_depth, top_k=top_k,
+                        user_id=user_id, namespace=namespace,
+                        budget_tokens=budget_tokens)
     return {
         "query": response.query,
         "total_ms": response.total_ms,
         "result_count": len(response.results),
         "results": [
             {"uri": r.uri, "layer": r.layer, "score": round(r.score, 4),
-             "content_preview": r.content[:300], "token_count": r.token_count}
+             "content_preview": r.content[:300], "token_count": r.token_count,
+             "namespace": r.namespace}
             for r in response.results
         ],
         "trajectory": [
