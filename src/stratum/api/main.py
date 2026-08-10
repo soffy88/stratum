@@ -222,6 +222,8 @@ async def rate_limit_mw(request, call_next):
 from stratum.api.routers import notes
 
 app.include_router(notes.router)
+from stratum.api.routers import graph as _graph
+app.include_router(_graph.router)
 
 from stratum.api.routers import agents
 
@@ -357,8 +359,10 @@ from stratum.api.routers import cornell
 app.include_router(cornell.router)
 
 from stratum.api.routers import flashcards
+from stratum.api.routers import decision as _decision
 
 app.include_router(flashcards.router)
+app.include_router(_decision.router)
 
 # ── P2: AII routes (mounted under /api/aii/*) ────────────────────────────────
 from stratum.api.routers.aii_mount import mount_aii_routes

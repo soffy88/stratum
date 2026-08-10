@@ -296,5 +296,74 @@ async def build_context(
     return ctx.to_dict()
 
 
+
+
+# ── 决策智能 (semantica 能力 3O 化) ───────────────────────────────────
+@mcp.tool()
+async def record_decision(category: str, scenario: str, outcome: str,
+                          reasoning: str = "", confidence: float = 0.5,
+                          decision_maker: str = "master") -> dict:
+    """记录一次决策 (一等对象): category/scenario/reasoning/outcome/confidence。
+    之后可因果链接、先例检索、策略校验、审计导出。"""
+    user_id = _require_user()
+    try:
+        from omodul.decision_ledger import DecisionLedgerConfig, DecisionLedgerInput, decision_ledger
+        from stratum.dao.decision_intelligence import DecisionLedgerBackend
+    except ImportError:
+        return {"error": "omodul/stratum decision 未装配"}
+    r = decision_ledger(
+        DecisionLedgerConfig(),
+        DecisionLedgerInput(action="record", category=category, scenario=scenario,
+                            outcome=outcome, reasoning=reasoning,
+                            confidence=confidence, decision_maker=decision_maker,
+                            backend=DecisionLedgerBackend(user_id)),
+    )
+    return r["findings"]
+
+
+@mcp.tool()
+async def query_decisions(query_text: str, max_results: int = 5) -> dict:
+    """按场景检索历史决策 (先例检索): 返回最相似的已记录决策。"""
+    user_id = _require_user()
+    try:
+        from omodul.decision_ledger import DecisionLedgerConfig, DecisionLedgerInput, decision_ledger
+        from stratum.dao.decision_intelligence import DecisionLedgerBackend
+    except ImportError:
+        return {"error": "omodul/stratum decision 未装配"}
+    r = decision_ledger(
+        DecisionLedgerConfig(),
+        DecisionLedgerInput(action="query_similar", query_text=query_text,
+                            max_results=max_results,
+                            backend=DecisionLedgerBackend(user_id)),
+    )
+    return r["findings"]
+
+
+@mcp.tool()
+async def run_reasoning(rules: list[str], query: str = "") -> dict:
+    """确定性前向推理 (Datalog): 概念图 facts + 规则 → 推导事实 + 可解释链。"""
+    user_id = _require_user()
+    try:
+        from omodul.kg_reasoning import KgReasoningConfig, KgReasoningInput, kg_reasoning
+        from stratum.dao.decision_intelligence import list_concept_triples
+    except ImportError:
+        return {"error": "omodul 未装配"}
+    r = kg_reasoning(
+        KgReasoningConfig(),
+        KgReasoningInput(facts=[], rules=rules, query=query,
+                         backend=_TripleSource(user_id)),
+    )
+    return r["findings"]
+
+
+class _TripleSource:
+    def __init__(self, user_id: str) -> None:
+        self._uid = user_id
+
+    def list_triples(self):
+        return list_concept_triples(self._uid)
+
+
 # ASGI app — mounted at /mcp in api/main.py and http_api/app.py
 mcp_app = mcp.streamable_http_app()
+
