@@ -6,15 +6,22 @@ services:
     container_name: stratum-api
     restart: unless-stopped
     ports:
-      - "127.0.0.1:9309:9302"
+      - "0.0.0.0:9309:9302"
     volumes:
       - ~/.stratum:/root/.stratum
       # Live source mount — auth.py path change takes effect without image rebuild
       - /home/soffy/projects/stratum/src:/app/src
+      # 3O 包 (omodul 决策 operator 等) — 与 stratum-sl 一致
+      - /home/soffy/deploy/3O/omodul:/opt/platform/omodul
+      - /home/soffy/deploy/3O/obase:/opt/platform/obase
+      - /home/soffy/deploy/3O/oservi:/opt/platform/oservi
+      - /home/soffy/deploy/3O/oprim:/opt/platform/oprim
+      - /home/soffy/deploy/3O/oskill:/opt/platform/oskill
     env_file:
       - /home/soffy/.config/keys/.env
       - ./aii-secrets.conf
     environment:
+      - PYTHONPATH=/app/src:/opt/platform/omodul:/opt/platform/obase:/opt/platform/oservi:/opt/platform/oprim:/opt/platform/oskill
       - STRATUM_ENV=production
       - DATABASE_PATH=/data/stratum/meta.duckdb
       # AII merge P1.5: service-layer store moved DuckDB → aii-postgres stratum schema.
