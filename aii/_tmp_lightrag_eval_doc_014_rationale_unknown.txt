@@ -1,0 +1,43 @@
+# Welfare Implications of Information Asymmetry (信息不对称的福利影响)
+
+Type: rationale | Subject: unknown
+
+Mathematical Definition:
+For adverse selection, the expected cost of insurance is calculated as the average risk in the pooled market. In Chapter 22, the equilibrium premium \( p^* \) satisfies:
+\[
+p^* = \gamma \cdot MC^{\delta} + (1-\gamma) \cdot MC^{\theta}
+\]
+where \(\gamma\) is the proportion of low-risk (\(\delta\)), \(MC^{\delta}\) is marginal cost of insuring \(\delta\), and \(MC^{\theta}\) for high-risk (\(\theta\)).
+Information asymmetry leads to market failures because it distorts decisions and reduces social welfare:
+1. Inefficiency from Adverse Selection:
+In the grade insurance example, low-risk students (e.g., B or C grades) drop out as premiums rise to cover high-risk students (F or D), reducing overall welfare.
+Formal result: The market may collapse entirely if adverse selection is severe (e.g., no equilibrium exists for A-insurance).
+2. Moral Hazard Costs:
+Behavioral changes (e.g., reduced effort after obtaining insurance) increase insurers' costs, raising premiums further and reducing participation.
+insurers use group averages (e.g., gender, race) to set prices due to lack of individual information. This can be rational (e.g., women live longer) but perpetuates inequalities.
+Mathematical Example:
+In the self-selecting equilibrium for insurance (Section 22B.2), low-risk types accept less-than-full coverage to signal their type. For \(\delta = 0.25\), optimal contract satisfies:
+\[
+U^{\delta}(b, p) = \alpha \delta \ln(x_1 + b - p) + \alpha (1-\delta) \ln(x_2 - p)
+\]
+and the contract \((b, p)\) solves this maximization problem under constraints.
+Solutions and implications include:
+Individuals reveal private information through costly signals (e.g., education as a signal of productivity).
+Example: Low-risk drivers might purchase safety features to signal their type.
+Insurers invest in information (e.g., credit checks, medical exams) to distinguish types.
+Welfare impact: Screening costs may offset gains, but can restore efficiency if costs are low.
+3. Market Institutions:
+Reputational Markets: Brands and warranties reduce information asymmetry (e.g., certified used cars).
+Third-Party Verification: Institutions like Consumer Reports provide independent quality assessments.
+4. Government Intervention:
+Mandatory Coverage: Requires all individuals to buy insurance (e.g., health insurance) to avoid adverse selection.
+Anti-Discrimination Laws: Prohibit pricing based on protected attributes (e.g., race, gender), but may reduce efficiency if statistical discrimination is rational.
+Welfare Result:
+Information asymmetry reduces total welfare due to reduced trade and moral hazard (e.g., the "net loss" in Figure 22-1(c)).
+Solutions like signaling/screening can improve welfare but often involve trade-offs (costs of signaling, reduced efficiency if policies misallocate resources).
+\[
+p^* = \gamma \cdot MC^{\delta} + (1-\gamma) \cdot MC^{\theta}
+\]
+\[
+U^{\delta}(b, p) = \alpha \delta \ln(x_1 + b - p) + \alpha (1-\delta) \ln(x_2 - p)
+\]

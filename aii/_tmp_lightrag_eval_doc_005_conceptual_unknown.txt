@@ -1,0 +1,26 @@
+# Optimal controlled trajectories must belong to Case B
+
+Type: conceptual | Subject: unknown
+
+Optimal Controlled Trajectories Must Belong to Case B
+Type: Conceptual
+Optimal controlled trajectories must belong to Case B.
+Gloss:
+Case B: A class of dynamical systems where the system’s long-term behavior is neither entirely stable nor unstable (i.e., not *hyperbolic*), allowing flexibility for optimization.
+Hyperbolic system: A system where solutions near an equilibrium split into stable (converging) and unstable (diverging) directions, and these properties are structurally stable under small perturbations.
+Rigorous Statement
+From, Proposition 4.2 implies that if the uncontrolled system is in *Case C* (defined by the existence of a set of positive Lebesgue measure where the control input \( u > 0 \)), and a control \( u \) drives the system to *Case A* (a hyperbolic regime), then \( u \) cannot be optimal. By contrapositive, optimality requires the controlled system to avoid *Case A*, i.e., to belong to *Case B*.
+Because systems in Case A are hyperbolic, and hyperbolicity guarantees the existence of better controls via perturbations.
+Gloss:
+Lebesgue measure: A mathematical way to assign a "size" (e.g., length, area) to sets, generalizing volume in infinite-dimensional spaces.
+Robustness under perturbations: If a system’s behavior remains qualitatively unchanged under small parameter changes, it is robust. Hyperbolic systems are robust.
+Rigorous Argument
+Let the uncontrolled system be in *Case C*. If a control \( u \) induces *Case A* (hyperbolic), then by Theorem 3.5, the system is hyperbolic. By Proposition 3.3, hyperbolic systems are robust: small perturbations \( \epsilon \in (0, \delta) \) preserve hyperbolicity. This implies \( u \) cannot be optimal because perturbing \( u \) would still yield a hyperbolic system, contradicting optimality (Proposition 4.2 proof,). Thus, optimal controls must avoid *Case A* (hyperbolic), leaving *Case B* as the only viable option.
+By reformulating the optimal control problem (OCP) into an unconstrained optimization problem and ensuring the control avoids Case A.
+Gloss:
+Unconstrained optimization: Optimizing without restrictions (e.g., no inequality constraints like \( u \geq 0 \)).
+Robustness: Solutions that remain valid even if inputs are slightly perturbed.
+Rigorous Procedure
+1. Reformulate (OCP) into an unconstrained problem using dynamical properties of optimal controls.
+2. Approximate the optimal control as \( \tilde{u}(t) = \alpha(t) - g(t, \tilde{K}(g)) \), where \( \tilde{K}(g) \) captures system dynamics and \( g(t, \cdot) \) penalizes deviations from optimality.
+3. Compare this approximation with IPOPT-generated solutions (constrained optimization) to verify that trajectories remain in *Case B* (non-hyperbolic) and avoid *Case A* (hyperbolic).

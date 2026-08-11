@@ -16,6 +16,7 @@ import asyncpg
 import opencc
 from chapter_ingest import slice_chapter, SM, chapter_numbers
 from chapter_synthesize_llm_v1 import _plan, _synth, _CTX, _find_pos
+from ku_schema import build_grounded_by, ku_fingerprint, validate_ku_point
 from clean_ku import clean, is_empty_shell, is_junk
 from aii.api._provider import register_providers
 from aii.service.planning_completeness import check_completeness
@@ -45,6 +46,29 @@ _TYPE_MAP = {
 }
 _CJK = re.compile(r"[一-鿿]")
 
+# ★2026-08-09 修复: llm_v1(英文书分支)缺少 synthesize_book.py 里的这些定义,
+#   ch9/10/11 报 "name '_traj_sync' is not defined" 整章 FAILED
+_PER_SOURCE_BUDGET = int(os.getenv("KU_REPAIR_SOURCE_BUDGET", "5"))  # 每源失败预算
+_FAIL_COUNT = [0]  # 跨章累计
+
+
+def _traj_sync(phase: str, failure_mode: str, error_sig: str, context: dict | None = None) -> None:
+    """海关拒绝事件静默落 trajectory_logs。"""
+    import importlib.util as _ilu
+    from pathlib import Path as _P
+    try:
+        p = _P(__file__).resolve().parent / "traj_log.py"
+        if not p.exists():
+            return
+        spec = _ilu.spec_from_file_location("traj_log_sb", p)
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        import os as _os
+        flywheel = _os.getenv("AII_FLYWHEEL", "unknown")
+        mod.traj_log_sync(flywheel, phase, failure_mode, error_sig, context or {})
+    except Exception:  # noqa: BLE001
+        pass
+
 
 def _split_bilingual(body: str):
     """按行 CJK 分英/中. 返回 (en, zh)."""
@@ -61,9 +85,20 @@ async def synth_chapter(llm, n):
 
     async def s(p):
         async with sem:
-            _, body = await _synth(
+            _n, body, quotes, wtext = await _synth(
                 llm, text, n, p["name"], p.get("type", "concept"), p.get("pos", 0)
             )
+            if not quotes:
+                try:
+                    _n2, body2, quotes2, wtext2 = await _synth(
+                        llm, text, n, p["name"], p.get("type", "concept"),
+                        p.get("pos", 0), narrow=True)
+                    if quotes2:
+                        body, quotes, wtext = body2, quotes2, wtext2
+                except Exception:
+                    pass
+            p["_quotes"] = quotes
+            p["_wtext"] = wtext
             return p, body
 
     kus = await asyncio.gather(*(s(p) for p in points))
@@ -126,15 +161,55 @@ async def persist(conn, n, kus):
             "citations": sorted(set(en_cites + zh_cites)),
             "source_lang": "mixed",
         }
+        # ★统一质检链(规格 6)
+        from ku_pipeline import evaluate_ku_chain, choose_repair_action
+        quotes = p.get("_quotes") or []
+        chain = await evaluate_ku_chain(
+            ku_id, zh or en, name, quotes, p.get("_wtext") or "",
+            ku_type=kt, source_type="misc_llm",
+        )
+        if chain["status"] != "pass":
+            sig = chain["signatures"][0] if chain["signatures"] else "REJECT"
+            _traj_sync("persist", sig, f"{chain['quality']['checks'][:2]}",
+                       {"ku_id": ku_id, "chapter": n,
+                        "repair": await choose_repair_action(chain["signatures"], "misc_llm")
+                        if chain["status"] == "repair" else None})
+            print(f"  ⚠ {sig} {ku_id}: {name[:30]} ({chain['status']})", flush=True)
+            _FAIL_COUNT[0] += 1
+            if _FAIL_COUNT[0] >= _PER_SOURCE_BUDGET:
+                from ku_pipeline import investigate_fallback
+                await investigate_fallback(
+                    f"substrate {SUB} 质量失败预算耗尽", {"chapter": n})
+                raise RuntimeError(f"源失败预算耗尽({_PER_SOURCE_BUDGET})")
+            continue
+        quality = chain["quality"]
+        fp = ku_fingerprint(zh or en)
+        dup = await conn.fetchval(
+            "SELECT 1 FROM aii.ku_onto WHERE fingerprint=$1 AND ku_id <> $2 LIMIT 1",
+            fp, ku_id)
+        if dup:
+            _traj_sync("persist", "DUPLICATE", f"fingerprint 已存在: {fp[:16]}...",
+                       {"ku_id": ku_id, "chapter": n})
+            print(f"  ⚠ DUPLICATE {ku_id}", flush=True)
+            continue
+        grounded_by = build_grounded_by(SUB, f"ch{n}",
+                                        evidence_quotes=[
+                                            {"chunk_id": f"ch{n}", **q} for q in quotes
+                                        ])
         await conn.execute(
             """
             INSERT INTO aii.ku_onto (ku_id, substrate_id, title, natural_text, natural_text_zh,
-                knowledge_type, stance_holder, opposing_stance, grade, provenance, embedding)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'unverified',$9,$10)
+                knowledge_type, stance_holder, opposing_stance, grade, provenance, embedding,
+                grounded_by, fingerprint, sources, quality, created_by, claim_type)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'unverified',$9,$10,$11,$12,'[]'::jsonb,
+                    $13,$14,$15)
             ON CONFLICT (ku_id) DO UPDATE SET natural_text=EXCLUDED.natural_text,
                 natural_text_zh=EXCLUDED.natural_text_zh, knowledge_type=EXCLUDED.knowledge_type,
                 stance_holder=EXCLUDED.stance_holder, opposing_stance=EXCLUDED.opposing_stance,
-                provenance=EXCLUDED.provenance, embedding=EXCLUDED.embedding""",
+                provenance=EXCLUDED.provenance, embedding=EXCLUDED.embedding,
+                grounded_by=EXCLUDED.grounded_by, fingerprint=EXCLUDED.fingerprint,
+                quality=EXCLUDED.quality, created_by=EXCLUDED.created_by,
+                claim_type=EXCLUDED.claim_type""",
             ku_id,
             SUB,
             name[:200],
@@ -145,6 +220,11 @@ async def persist(conn, n, kus):
             opposing,
             json.dumps(prov),
             emb,
+            json.dumps(grounded_by, ensure_ascii=False),
+            fp,
+            json.dumps(quality, ensure_ascii=False),
+            f"flywheel:{os.getenv('AII_FLYWHEEL', 'misc-llm')}",
+            quality.get("claim_type"),
         )
 
 

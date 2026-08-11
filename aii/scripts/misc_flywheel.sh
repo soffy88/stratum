@@ -34,11 +34,22 @@ STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"   # 英文书来自本地文件�
 
 # ★NIM key(免费) + DB + BGE-M3跑CPU(不抢aii-api的GPU)
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('econ',''))" 2>/dev/null)"
+# ★2026-08-10 多 key 池轮询: 单 key 免费层 40/min → misc 单进程 4 并发 + BU 撞车 → 781次504。
+#   池化 3 key = 120/min, 并发可提到 6。_provider.py 的 NIM_KEY_POOL 轮换实现。
+export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));print(','.join(x for x in (d.get('econ'),d.get('math_zh'),d.get('advmath_2')) if x))" 2>/dev/null)"
+
+# ★2026-08-10 opencode 网关 fallback: NIM 504 过载时切 gpt-5.6-sol(ChatGPT Codex key, 实测可用)
+export OPENCODE_API_KEY=""  # 留空 → 读 ~/.pi/agent/opencode-keys.txt
+export OPENCODE_MODEL="${OPENCODE_MODEL:-deepseek-v4-flash}"
 # ★模型选型: 同 advmath/math_prog(2026-07-07实测对比) — 默认 meta/llama-3.1-70b-instruct 讲得干,
 #   nemotron-super-49b 明显更好, _plan() 规划知识点这步换掉默认档.
 export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
-export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-4}"   # ★并发度=4(测试定论: 4-5低偶发超时, 6+持续过载)
+export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-6}"   # ★并发度=6(2026-08-10: NIM 3-key 池 120/min 后从 4 提到 6; 单 key 时代 4-5 低偶发超时, 6+ 过载)
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
+# ★本地/tailscale 服务直连不代理(embed/postgres): 缺 NO_PROXY 会整章 embed 502 FAILED
+#   (2026-08-09 事故: 继承 econ_batch_run.sh 的 7890 代理但丢 no_proxy)
+export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+export no_proxy="${NO_PROXY}"
 export CUDA_VISIBLE_DEVICES=""          # 嵌入走 CPU(GPU 让给 math-prog, 防 OOM)
 export HF_HUB_OFFLINE=1                 # ★用本地缓存 BGE-M3, 不连 huggingface(直连超时→卡死)
 export TRANSFORMERS_OFFLINE=1

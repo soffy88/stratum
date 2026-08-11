@@ -23,21 +23,10 @@ from chapter_synthesize_llm_v1 import (
 )  # noqa: F401
 
 PLAN_SYS = (
-    "You identify the knowledge points a textbook chapter DIRECTLY AND SUBSTANTIVELY teaches, "
-    "classified by ontological type (conceptual / rationale / procedural / positional / factual). "
-    "★RATIONALE EXTRACTION (critical): advanced texts contain many causal/why reasoning steps "
-    "(proofs, theorems, 'why X implies Y', 'the reason this construction works is...'). "
-    "Actively extract these as rationale — a typical chapter should have 2-5 rationale KUs. "
-    "If you find none, you are likely under-extracting. "
-    "★FAITHFUL TO THE TEXT: for rationale, give ONLY the causal mechanism/justification the text "
-    "actually states — never invent causation the text doesn't say. For positional, mark ONLY genuine "
-    "disputes the text presents — never turn a settled result into a 'dispute'. Types reflect what the "
-    "book really is — never force a type that isn't there. "
-    "This is an advanced graduate-level math/economics text (e.g. advanced microeconomics, algebraic "
-    "geometry, topology, recursive macroeconomics) — do not skip a concept just because it looks hard; "
-    "if the chapter substantively develops it, list it. Output valid JSON only."
-)
-# ★_plan() 引用的是它自己模块里的全局 PLAN_SYS/_PLAN_TYPES(不是参数), 要在这里覆盖模块属性
+    "You identify the knowledge points a textbook chapter DIRECTLY AND SUBSTANTIALLY teaches. "
+    f"★Select at MOST {os.getenv('KU_MAX_POINTS_PER_CHAPTER', '40')} points — keep only the "
+    "most important, prefer atomic points over umbrella topics. Output valid JSON only."
+)# ★_plan() 引用的是它自己模块里的全局 PLAN_SYS/_PLAN_TYPES(不是参数), 要在这里覆盖模块属性
 # 才能生效——否则 import 进来的 _plan 会悄悄继续用 chapter_synthesize_llm_v1 自己的默认版本。
 # ⚠2026-07-11修复: 之前只覆盖了PLAN_SYS, 漏了_PLAN_TYPES——LLM被_plan()里硬编码的窄枚举
 # (concept|principle|method)限死, rationale永远选不到, 而下面_TYPE_MAP明明按五分类写的,
@@ -77,14 +66,16 @@ SYN_SYS = (
     'gets squashed to zero volume) [Ch3]."\n'
     "Notice: the good version LOSES NOTHING — the formula, the recursion, the citation are all still "
     "there. It just ALSO tells you plainly what the object means before the symbols land."
+ "\n★ANCHOR PROTOCOL: your synthesis MUST open with a verbatim sentence or term from the given section (anchor), then expand around it — never invent content absent from the section."
 )
 
 
-async def _synth(llm, text, n, name, typ, pos: int = 0):
+async def _synth(llm, text, n, name, typ, pos: int = 0, narrow: bool = False):
     """定向窗口合成, 同 chapter_synthesize_llm_v1._synth, 换 SYN_SYS(高中生讲透版)."""
     if pos > 0:
         intro = text[:1000]
-        section = text[max(0, pos - _WIN_PRE) : pos + _WIN_POST]
+        win_post = _WIN_POST // 2 if narrow else _WIN_POST
+        section = text[max(0, pos - _WIN_PRE) : pos + win_post]
         context = (
             f"Chapter {n} opening (notation/context):\n\n{intro}\n\nRelevant section:\n\n{section}"
         )
@@ -104,4 +95,11 @@ async def _synth(llm, text, n, name, typ, pos: int = 0):
         system=SYN_SYS.format(n=n),
         max_tokens=3200,  # ★比默认1100高很多: 完整推导+双语讲透都要, 实测1400/2200都还会被截断
     )
-    return name, "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
+    text_out = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
+    # ★Grounded 协议(A1): 从合成窗口原文确定性提取证据句(零 LLM)
+    from ku_schema import extract_evidence_quotes
+    try:
+        quotes = extract_evidence_quotes(section if pos > 0 else text[:_WIN_FALLBACK], name)
+    except Exception:
+        quotes = []
+    return name, text_out, quotes, (section if pos > 0 else text[:_WIN_FALLBACK])

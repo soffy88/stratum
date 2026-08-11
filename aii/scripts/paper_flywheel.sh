@@ -85,3 +85,8 @@ echo ""
 echo "════════════════════════════════════════════════════"
 echo "★ 论文飞轮完成 $(date '+%Y-%m-%d %H:%M') — 成功 $ok / 失败 $fail"
 echo "════════════════════════════════════════════════════"
+
+# ★2026-08-10 论文精髓 → Agent Skill 自动导出(book-to-skill + cangjie V3)
+#   增量幂等: 只导出新入库的 worth_as_skill 论文到 ~/.agents/skills/
+echo "[skill] 导出本轮新论文技能..."
+$PY scripts/paper_skill_export.py 2>&1 | tail -2

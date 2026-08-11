@@ -17,11 +17,19 @@ import sys
 import tempfile
 from pathlib import Path
 
-from omodul.export_substrate_markdown import (
-    ExportSubstrateMarkdownConfig,
-    ExportSubstrateMarkdownInput,
-    export_substrate_markdown,
-)
+try:
+    from omodul.export_substrate_markdown import (
+        ExportSubstrateMarkdownConfig,
+        ExportSubstrateMarkdownInput,
+        export_substrate_markdown,
+    )
+
+    _HAS_EXPORT_OMODUL = True
+except ImportError:  # pragma: no cover — 平台包仅部署于容器 /opt/platform
+    _HAS_EXPORT_OMODUL = False
+    ExportSubstrateMarkdownConfig = None
+    ExportSubstrateMarkdownInput = None
+    export_substrate_markdown = None
 
 from stratum.db import get_conn
 
@@ -127,6 +135,14 @@ def export_one(substrate_id: str, *, force: bool = False) -> dict:
 
     if row[7] is not None and not force:
         return {"status": "skipped", "reason": "already exported", "substrate_id": substrate_id}
+
+    if not _HAS_EXPORT_OMODUL:
+        log.warning("md_export: omodul platform unavailable (no /opt/platform); skip %s", substrate_id)
+        return {
+            "status": "failed",
+            "error": "omodul platform package unavailable (no /opt/platform)",
+            "substrate_id": substrate_id,
+        }
 
     sid, title, mime, language, meta_json, content, file_path = row[:7]
     if isinstance(meta_json, str):

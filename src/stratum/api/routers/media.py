@@ -43,9 +43,16 @@ class MediaIngestResponse(BaseModel):
 def _run_ingest(
     video_url: str, user_id_hash: str, kind: str, asr_backend: str, transcribe: bool,
 ) -> None:
-    from omodul.process_media_substrate import (
-        MediaConfig, MediaInput, process_media_substrate,
-    )
+    try:
+        from omodul.process_media_substrate import (
+            MediaConfig, MediaInput, process_media_substrate,
+        )
+    except ImportError:  # pragma: no cover — 平台包仅部署于容器 /opt/platform
+        log.error(
+            "media_ingest: omodul platform unavailable (no /opt/platform); skipped url=%s",
+            video_url,
+        )
+        return
 
     config = MediaConfig(
         video_url=video_url,

@@ -1,4 +1,4 @@
-"""Unified source watcher: arXiv / Gutenberg / OAPEN.
+"""Unified source watcher: arXiv / Gutenberg / OAPEN / WeChat / Twitter.
 
 Pipeline per subscription:
   search (oprim) → diff vs processed_ids → download → process_inbox_substrate → md_export → mark_processed
@@ -25,6 +25,8 @@ SCAN_INTERVALS = {
     "oapen": 30 * 86400,
     "openstax": 30 * 86400,
     "mit_ocw": 30 * 86400,
+    "wechat": 6 * 3600,   # 微信: 每 6h (手动 URL 列表)
+    "twitter": 3 * 3600,  # Twitter: 每 3h (用户名/关键词)
 }
 SOURCE_WATCHER_TICK = 3600  # check every hour which subscriptions are due
 
@@ -47,27 +49,39 @@ async def _ingest_item(result, user_id_hash: str, sub_id: str) -> str | None:
         log.warning("source_watcher: SKIP quarantined ext_id=%s", result.external_id)
         return None
 
-    file_type = result.file_type  # "pdf" | "epub" | "txt"
+    file_type = result.file_type  # "pdf" | "epub" | "txt" | "html"
     # 书源的下载物是"书"不是"论文": medium 直接沿用 file_type 时, md_export 的
     # pdf→paper 映射会把 PDF 教材打成 doc_type:paper, aii 侧 classify 一律扔低质堆
     # (2026-07-11 实测 openstax《Principles of Finance 2e》如此报废, 历史 gutenberg
     # PDF 同理)。arxiv 论文仍走 file_type(pdf→paper 正确)。
     medium_hint = (
-        "book" if source_type in ("gutenberg", "oapen", "openstax", "mit_ocw") else file_type
+        "book" if source_type in ("gutenberg", "oapen", "openstax", "mit_ocw") else
+        "webpage" if source_type in ("wechat", "twitter") else file_type
     )
 
+    # ★2026-08-07: web sources (wechat/twitter) already have content via enhanced fetcher
+    # 直接写入 HTML 文件, 跳过 binary download
+    is_web_source = source_type in ("wechat", "twitter")
+    content_preview = (result.metadata or {}).get("content_preview", "")
+
     with tempfile.TemporaryDirectory(prefix="srcwatch_") as tmpdir:
-        ext = {"pdf": ".pdf", "epub": ".epub", "txt": ".txt"}.get(file_type, ".bin")
+        ext = {"pdf": ".pdf", "epub": ".epub", "txt": ".txt", "html": ".html"}.get(file_type, ".bin")
         safe_id = re.sub(r"[^A-Za-z0-9_-]", "_", result.external_id)
         file_path = Path(tmpdir) / f"{safe_id}{ext}"
 
-        ok = await asyncio.to_thread(
-            http_download_file,
-            result.download_url,
-            str(file_path),
-            rate_limit_sleep=2.0,
-            timeout=90,
-        )
+        # Web source: 直接写入 HTML 内容 (已通过 enhanced fetcher 抓取)
+        if is_web_source and content_preview:
+            file_path.write_text(
+                f"<html><body>{content_preview}</body></html>", encoding="utf-8")
+            ok = True
+        else:
+            ok = await asyncio.to_thread(
+                http_download_file,
+                result.download_url,
+                str(file_path),
+                rate_limit_sleep=2.0,
+                timeout=90,
+            )
         if not ok:
             log.warning(
                 "source_watcher: download failed ext_id=%s url=%s",
@@ -291,6 +305,23 @@ async def _check_one_subscription(
                 max_courses=query.get("max_courses", 20),
                 max_pdfs_per_course=query.get("max_pdfs_per_course", 8),
                 rate_limit_sleep=1.5,
+            )
+        elif source_type == "wechat":
+            from stratum.services.web_source_handlers import wechat_fetch_articles
+
+            results = await wechat_fetch_articles(
+                urls=query.get("urls") or [],
+                keyword=query.get("keyword"),
+                max_results=max_results,
+            )
+        elif source_type == "twitter":
+            from stratum.services.web_source_handlers import twitter_fetch_threads
+
+            results = await twitter_fetch_threads(
+                usernames=query.get("usernames") or [],
+                keyword=query.get("keyword"),
+                max_results=max_results,
+                urls=query.get("urls") or [],
             )
         else:
             log.error("source_watcher: unknown source_type=%s", source_type)

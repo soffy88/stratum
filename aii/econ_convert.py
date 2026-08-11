@@ -9,6 +9,18 @@ import fitz  # pymupdf
 from pathlib import Path
 from collections import Counter
 
+def _rm_src(path) -> None:
+    """★2026-08-10 转换成功删源文件省空间(磁盘94%)。KEEP_SRC=1 时保留。"""
+    import os as _os
+    if _os.getenv("KEEP_SRC") == "1":
+        return
+    try:
+        _os.remove(path)
+        print(f"  🗑 已删源文件: {Path(path).name[:50]}")
+    except OSError as e:
+        print(f"  ⚠ 删源失败 {Path(path).name[:40]}: {e}")
+
+
 SRC = "/home/soffy/books/Economic"
 DST = "/home/soffy/books/MD/经济学"
 DO = "--do" in sys.argv
@@ -106,8 +118,12 @@ def matched(stem):
 
 
 def chapters(text):
+    # ★2026-08-10 修复: 前导空格("  第一章")匹配不到; 扩展教辅结构, 与 misc/chapter_ingest 对齐
     return len(
-        re.findall(r"(?m)^#\s+Chapter\s+\d|^第[一二三四五六七八九十百\d]+章|^Chapter\s+\d", text)
+        re.findall(
+            r"(?m)^\s*#\s+Chapter\s+\d|^\s*第[一二三四五六七八九十百千0-9]+(章|单元|讲|课|节|部分|回|篇)|^\s*Chapter\s+\d",
+            text,
+        )
     )
 
 
@@ -142,10 +158,27 @@ def convert(path):
     不像 fitz 那样有天然页边界, 页眉页脚剔除从"按页首尾行频率"改成"全文行频率", 阈值沿用
     原有的 0.12*页数(页数仍用 fitz 快速取一次, 比按总行数算更准——总行数会随大部头/合集类
     书暴涨, 稀释掉真正逐页重复的页眉页脚)。"""
-    from markitdown import MarkItDown
+    # ★2026-08-07 全面接入 opendataloader(benchmark#1 表格/无cid), PDF 优先; 失败回退 markitdown
+    text = None
+    if str(path).lower().endswith(".pdf"):
+        try:
+            from oprim.parser.parse_pdf import parse_pdf
+            # ★2026-08-07: 默认 pdf_inspector(firecrawl, benchmark 0.875/表格0.814/0.47s,
+            # 原生 CID 解码); ODL_HYBRID=1 时走 opendataloader hybrid(公式 LaTeX 深加工)
+            if os.getenv("ODL_HYBRID") == "1":
+                pc = parse_pdf(path, provider="opendataloader", hint={"hybrid": True})
+            else:
+                pc = parse_pdf(path, provider="pdf_inspector")
+            text = pc.markdown
+        except Exception as e:  # noqa: BLE001
+            print(f"  ⚠ pdf_inspector 回退 markitdown: {str(e)[:80]}", flush=True)
+    if text is None:
+        from markitdown import MarkItDown
+        # ★2026-08-09 修复: 原调用在 if 外 → pdf_inspector 成功时 MarkItDown 未 import
+        #   UnboundLocalError 全文件转换失败; 且成功结果被 markitdown 覆盖(违背 PDF 优先)
+        text = MarkItDown().convert(path).text_content
 
     npg = fitz.open(path).page_count
-    text = MarkItDown().convert(path).text_content
     lines = text.split("\n")
     cnt = Counter(l.strip() for l in lines if l.strip())
     thresh = max(3, int(npg * 0.12))
@@ -218,7 +251,8 @@ if DO:
         except Exception as e:
             print(f"  ✗ 转换失败 {stem[:40]}: {e}")
             continue
-        _write_if_econ_textbook(stem, text)
+        if _write_if_econ_textbook(stem, text):
+            _rm_src(path)  # ★2026-08-10 转换成功删源省空间(KEEP_SRC=1 跳过)
 
     # ★自主OCR(与math_convert.py同款, 复用同一套vLLM容器逻辑): 默认关, 只在
     # scripts/ocr_daemon.sh 那条独立慢节奏循环里打开, 别塞进三个飞轮每轮调的

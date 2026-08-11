@@ -10,6 +10,12 @@
 # 可选:  ECON_IDLE_SLEEP=600(无书时sleep秒, 默认600)
 set -uo pipefail
 cd "$(dirname "$0")/.."
+# ★单实例锁: 防止 systemd 服务 + 手动 nohup 双跑(实测双实例同 key 打 NIM → 限流风暴
+# → ReadTimeout 重试地狱 → 整批隔离, 零入库)。已持锁实例正常跑, 新实例立即退出。
+mkdir -p .locks
+exec 9>.locks/misc_flywheel.lock
+flock -n 9 || { echo "⚠ 已有实例在运行({lock}), 本次启动退出"; exit 0; }
+
 IDLE="${ECON_IDLE_SLEEP:-600}"
 BOOKLIST="misc_pipeline/flywheel_misc_booklist.txt"
 
@@ -22,6 +28,8 @@ while true; do
     bash scripts/misc_flywheel.sh || echo "  ⚠️ 本轮飞轮异常(继续循环) $(date '+%H:%M')"
     # 本轮没发现新书 → sleep 后再查; 有书已在上面逐本处理完(每本质量门确认)
     if [ ! -s "$BOOKLIST" ]; then
+        # ★断料主动补料: 空转时立刻触发夸克盘同步, 不等 2h timer(2026-08-09)
+        bash scripts/refill_feed.sh || true
         echo "── [连续] 无新其它书, sleep ${IDLE}s 后再发现… $(date '+%H:%M') ──"
         sleep "$IDLE"
     fi

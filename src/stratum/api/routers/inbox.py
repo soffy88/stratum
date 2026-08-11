@@ -94,6 +94,13 @@ except ImportError:
     _HAS_SSRF_SAFE = False
     _url_fetch_ssrf_safe = None  # stable module surface for tests/patching
 
+try:
+    from stratum.services.web_fetch_enhanced import fetch_url_enhanced as _url_fetch_enhanced
+    _HAS_ENHANCED = True
+except ImportError:
+    _HAS_ENHANCED = False
+    _url_fetch_enhanced = None
+
 router = APIRouter(prefix="/api/v1/inbox", tags=["inbox"])
 
 _DERIVATIVE_AGENT_MAP: dict[str, str] = {
@@ -561,15 +568,26 @@ _WEB_CLIP_TIMEOUT = 30  # seconds (int for url_fetch_ssrf_safe)
 
 
 async def _fetch_url_html(url: str) -> str:
-    """Fetch URL via oprim.url_fetch_ssrf_safe (DNS-pinned, SSRF-safe).
+    """Enhanced URL fetch: 付费墙绕过 + 多源适配 + SSRF 安全.
 
-    Raises HTTPException on fetch failure with generic messages to avoid
-    leaking internal network topology.
+    ★2026-08-07: 集成 oprim.fetch_url_with_bypass (qiaomu 策略内化)
+    策略: 微信/推特 → jina.ai 代理 | 付费墙 → Bot UA/AMP/archive 级联 | 普通 → SSRF-safe
+    Raises HTTPException on fetch failure with generic messages.
     """
     import logging
 
     log = logging.getLogger(__name__)
 
+    if _HAS_ENHANCED and _url_fetch_enhanced:
+        result = await _url_fetch_enhanced(url, timeout=_WEB_CLIP_TIMEOUT, max_bytes=_WEB_CLIP_MAX_BYTES)
+        if result.success and result.html:
+            log.info("enhanced_fetch url=%s strategy=%s len=%d",
+                     url[:80], result.strategy_used, len(result.html))
+            return result.html
+        log.warning("enhanced_fetch_failed url=%s strategy=%s error=%s",
+                    url[:80], result.strategy_used, result.error)
+
+    # Fallback: SSRF-safe direct
     if not _HAS_SSRF_SAFE:
         raise HTTPException(503, "URL fetch unavailable: oprim not installed")
 

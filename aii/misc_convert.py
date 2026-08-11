@@ -11,8 +11,9 @@ import fitz  # pymupdf
 from pathlib import Path
 from collections import Counter
 
-SRC = "/home/soffy/books/其它"
-DST = "/home/soffy/books/MD/其它"
+SRC = os.getenv("CONVERT_SRC", "/home/soffy/books/其它")
+DST = os.getenv("CONVERT_DST", "/home/soffy/books/MD/其它")
+TAG = os.getenv("CONVERT_TAG", "其它")
 DO = "--do" in sys.argv
 
 
@@ -69,8 +70,13 @@ def matched(stem):
 
 
 def chapters(text):
+    # ★2026-08-10 修复: PDF 提取行常带前导空格("  第一章"), ^第 匹配不到→全判无章节;
+    #   扩展教辅结构(单元/讲/课/节/部分)与 chapter_ingest 对齐。
     return len(
-        re.findall(r"(?m)^#\s+Chapter\s+\d|^第[一二三四五六七八九十百\d]+章|^Chapter\s+\d", text)
+        re.findall(
+            r"(?m)^\s*#\s+Chapter\s+\d|^\s*第[一二三四五六七八九十百千0-9]+(章|单元|讲|课|节|部分|回|篇)|^\s*Chapter\s+\d",
+            text,
+        )
     )
 
 
@@ -101,10 +107,27 @@ def analyze(path):
 
 def convert(path):
     """PDF/EPUB → 清洗后的 MD 文本(去页眉页脚/页码, 章节行提升为 # 标题). 同 econ_convert."""
-    from markitdown import MarkItDown
+    # ★2026-08-07 全面接入 opendataloader(benchmark#1 表格/无cid), PDF 优先; 失败回退 markitdown
+    text = None
+    if str(path).lower().endswith(".pdf"):
+        try:
+            from oprim.parser.parse_pdf import parse_pdf
+            # ★2026-08-07: 默认 pdf_inspector(firecrawl, benchmark 0.875/表格0.814/0.47s,
+            # 原生 CID 解码); ODL_HYBRID=1 时走 opendataloader hybrid(公式 LaTeX 深加工)
+            if os.getenv("ODL_HYBRID") == "1":
+                pc = parse_pdf(path, provider="opendataloader", hint={"hybrid": True})
+            else:
+                pc = parse_pdf(path, provider="pdf_inspector")
+            text = pc.markdown
+        except Exception as e:  # noqa: BLE001
+            print(f"  ⚠ pdf_inspector 回退 markitdown: {str(e)[:80]}", flush=True)
+    if text is None:
+        from markitdown import MarkItDown
+        # ★2026-08-09 修复: 原调用在 if 外 → pdf_inspector 成功时 MarkItDown 未 import
+        #   UnboundLocalError 全文件转换失败; 且成功结果被 markitdown 覆盖(违背 PDF 优先)
+        text = MarkItDown().convert(path).text_content
 
     npg = fitz.open(path).page_count
-    text = MarkItDown().convert(path).text_content
     lines = text.split("\n")
     cnt = Counter(l.strip() for l in lines if l.strip())
     thresh = max(3, int(npg * 0.12))
@@ -147,11 +170,12 @@ def _write(stem, text, force=False):
         return False
     open(dst, "w", encoding="utf-8").write(text)
     existing.add(norm(clean))  # 记入, 防同轮后续重复
-    print(f"  ✓ [其它] {clean[:45]} ({len(text) // 1024}KB)")
+    print(f"  ✓ [{TAG}] {clean[:45]} ({len(text) // 1024}KB)")
     return True
 
 
 if DO:
+    os.makedirs(DST, exist_ok=True)  # ★2026-08-10 教辅/计算机等新 DST 目录可能不存在, 先建
     print("\n=== 转换「可转」+ 入 其它 文件夹 ===")
     for stem, npg, path in results.get("可转", []):
         try:
@@ -159,7 +183,8 @@ if DO:
         except Exception as e:
             print(f"  ✗ 转换失败 {stem[:40]}: {e}")
             continue
-        _write(stem, text)
+        if _write(stem, text):
+            _rm_src(path)  # ★2026-08-10 转换成功删源省空间(KEEP_SRC=1 跳过)
 
     # ★自主OCR(与math_convert.py/econ_convert.py同款, 复用同一套vLLM容器逻辑): 默认关,
     # 只在 scripts/ocr_daemon.sh 那条独立慢节奏循环里打开(若日后接入), 别塞进
@@ -207,3 +232,15 @@ if DO:
             print("  ✗ vLLM 容器未就绪(显存不足或启动失败), 本轮跳过 OCR")
 
     print("✓ 完成. 需OCR/无章节 的未处理(见上).")
+
+
+def _rm_src(path) -> None:
+    """★2026-08-10 转换成功删源文件省空间(磁盘94%)。KEEP_SRC=1 时保留。"""
+    import os as _os
+    if _os.getenv("KEEP_SRC") == "1":
+        return
+    try:
+        _os.remove(path)
+        print(f"  🗑 已删源文件: {Path(path).name[:50]}")
+    except OSError as e:
+        print(f"  ⚠ 删源失败 {Path(path).name[:40]}: {e}")

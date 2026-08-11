@@ -1,0 +1,36 @@
+{
+  "status": "failed",
+  "error": null,
+  "output": {
+    "research": "ERROR: API key not set for provider 'dashscope'",
+    "plan": "ERROR: API key not set for provider 'dashscope'",
+    "execute": null
+  },
+  "cost_usd": 0.0,
+  "squads": [
+    {
+      "id": "research",
+      "role": "research",
+      "status": "success",
+      "output": "ERROR: API key not set for provider 'dashscope'",
+      "error": null,
+      "cost_usd": 0.0
+    },
+    {
+      "id": "plan",
+      "role": "plan",
+      "status": "success",
+      "output": "ERROR: API key not set for provider 'dashscope'",
+      "error": null,
+      "cost_usd": 0.0
+    },
+    {
+      "id": "execute",
+      "role": "execute",
+      "status": "failed",
+      "output": null,
+      "error": "Task timed out after 30.0s",
+      "cost_usd": 0.0
+    }
+  ]
+}
