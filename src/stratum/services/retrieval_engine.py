@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 import re
 import time
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -64,6 +65,7 @@ class RetrievalResult:
     content: str
     score: float
     token_count: int = 0
+    namespace: str = "global"   # global=权威库(B仓/项目) | personal=个人草稿
 
 
 @dataclass
@@ -245,6 +247,44 @@ def _text_search_layers(query: str, layer: str = "L0",
 
 # ── Directory-aware retrieval ────────────────────────────────────────────────
 
+def _search_personal_notes(query: str, top_k: int = 5) -> list[RetrievalResult]:
+    """个人草稿区检索(~/.stratum/notes/*.md) — 关键词匹配 + 简单评分。
+
+    设计(P3): 低门槛碎片区, 不做向量/不做图谱; 结果标注 namespace=personal,
+    权重上限 0.6(低于 global 权威命中), 防污染核心库。
+    """
+    notes_dir = Path.home() / ".stratum" / "notes"
+    if not notes_dir.is_dir():
+        return []
+    terms = [t.lower() for t in re.findall(r"[\w\u4e00-\u9fff]{2,}", query or "")]
+    if not terms:
+        return []
+    hits: list[RetrievalResult] = []
+    for f in sorted(notes_dir.glob("*.md"))[:200]:
+        try:
+            text = f.read_text(encoding="utf-8", errors="ignore")[:20000]
+        except OSError:
+            continue
+        low = text.lower()
+        matched = sum(1 for t in terms if t in low)
+        if matched == 0:
+            continue
+        score = min(0.6, 0.25 + 0.07 * matched + 0.01 * min(len(text) // 500, 3))
+        snippet = text[:400].replace("\n", " ")[:300]
+        hits.append(RetrievalResult(
+            uri=f"pnote://{f.stem}",
+            node_type="note",
+            ref_id=f.stem,
+            layer="L0",
+            content=snippet,
+            score=score,
+            token_count=len(snippet) // 4,
+            namespace="personal",
+        ))
+    hits.sort(key=lambda r: r.score, reverse=True)
+    return hits[:top_k]
+
+
 def _get_directory_context(substrate_id: str) -> dict[str, Any] | None:
     """Get directory context for a substrate."""
     with get_conn() as conn:
@@ -407,7 +447,9 @@ def _llm_rerank(query: str, candidates: list[RetrievalResult],
 def retrieve(query: str, max_depth: int = 2, top_k: int = 10,
              layers: list[str] | None = None,
              rerank: bool = False,
-             user_id: str = "default") -> RetrievalResponse:
+             user_id: str = "default",
+             namespace: str = "global",
+             budget_tokens: int | None = None) -> RetrievalResponse:
     """Directory-recursive retrieval with trajectory tracking.
 
     Args:
@@ -417,6 +459,9 @@ def retrieve(query: str, max_depth: int = 2, top_k: int = 10,
         layers: Specific layers to retrieve (overrides max_depth)
         rerank: Whether to apply LLM reranking
         user_id: User ID for trajectory logging
+        namespace: "global"(权威库) | "personal"(个人草稿) | "all"(联邦合并)
+        budget_tokens: 结果 token 预算(book-to-skill 启发: 查询成本与答案成正比,
+            默认 None=不限制; 超预算截断低分项)
 
     Returns:
         RetrievalResponse with results and trajectory
@@ -586,9 +631,44 @@ def retrieve(query: str, max_depth: int = 2, top_k: int = 10,
                 scores=[r.score for r in reranked[:10]],
             ))
 
-    # Sort by score and limit
+    # Step 5b: Personal 层联邦检索(P3) — namespace ∈ {personal, all}
+    # 个人草稿(~/.stratum/notes/*.md)低门槛碎片区: 只做关键词匹配, 结果标注
+    # namespace=personal 且权重打折(global 权威优先); 永不进入图谱/规范构建。
+    if namespace in ("personal", "all"):
+        personal_hits = _search_personal_notes(query, top_k=5)
+        if personal_hits:
+            trajectory.append(RetrievalStep(
+                phase="personal",
+                candidates=len(personal_hits),
+                hits=len(personal_hits),
+                scores=[r.score for r in personal_hits[:10]],
+                details={"namespace": "personal"},
+            ))
+            enriched_results.extend(personal_hits)
+    if namespace == "personal":
+        enriched_results = [r for r in enriched_results if r.namespace == "personal"]
+
+    # Sort by score and limit (global 权威 + personal 草稿混排时 global 权重已内建)
     enriched_results.sort(key=lambda r: r.score, reverse=True)
     final_results = enriched_results[:top_k * len(layers)]
+    # ★Token 预算(book-to-skill 启发 P1): 查询成本与答案成正比
+    # 按 score 顺序累计 token_count, 超预算截断低分项(保高分权威内容)
+    if budget_tokens and budget_tokens > 0:
+        used = 0
+        kept: list[RetrievalResult] = []
+        for r in final_results:
+            if used + (r.token_count or 0) > budget_tokens and kept:
+                trajectory.append(RetrievalStep(
+                    phase="budget",
+                    candidates=len(final_results),
+                    hits=len(kept),
+                    details={"budget_tokens": budget_tokens, "used_tokens": used,
+                             "truncated": len(final_results) - len(kept)},
+                ))
+                break
+            used += r.token_count or 0
+            kept.append(r)
+        final_results = kept
 
     total_ms = int((time.time() - start_time) * 1000)
 

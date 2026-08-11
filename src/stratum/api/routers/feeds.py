@@ -304,12 +304,21 @@ async def check_feed_now(feed_id: str, user_id: str = Depends(jwt_auth)):
                     llm_provider="qwen3",
                     llm_model="qwen3-max",
                 )
-                await asyncio.to_thread(
+                # omodul 契约：失败不 raise，仅 status='failed' —— 必须消费返回字典，
+                # 否则入库失败会被静默吞掉（见 SPEC v3.0 §5.4）。
+                result = await asyncio.to_thread(
                     process_inbox_substrate,
                     config=config,
                     input_data=InboxInput(),
                     output_dir=inbox_dir,
                 )
+                if not result or result.get("status") == "failed":
+                    log.warning(
+                        "feed_item_ingest_failed url=%s error=%s",
+                        item_url,
+                        (result or {}).get("error"),
+                    )
+                    continue
                 ingested += 1
             except Exception as exc:
                 log.warning("feed_item_ingest_error url=%s error=%s", item_url, exc)

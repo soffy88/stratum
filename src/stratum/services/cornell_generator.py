@@ -302,10 +302,10 @@ def build_cornell_content(bundle: dict[str, Any]) -> dict[str, Any]:
             f"「{name}」目前有哪些材料？",
         )
 
-    # 保证 4–12 线索：不够则从 point 补问
-    if len(cues) < 4:
+    # 保证 8–12 线索(mneme 交互契约): 不够则从 point 补问
+    if len(cues) < 8:
         for k in kus:
-            if len(cues) >= 6:
+            if len(cues) >= 12:
                 break
             pt = k.get("point_zh") or k.get("point") or name
             mid = modules[min(len(cues), len(modules) - 1)]["id"]
@@ -317,6 +317,29 @@ def build_cornell_content(bundle: dict[str, Any]) -> dict[str, Any]:
                     "hint": _hint(k.get("ku_type") or "conceptual"),
                 }
             )
+
+    # 保证 4–8 模块(mneme 契约): 不足时从 KU 要点建"要点模块"
+    if len(modules) < 4:
+        used_pts = {k.get("point_zh") or k.get("point") for k in kus[:4]}
+        for k in kus:
+            if len(modules) >= 4:
+                break
+            pt = k.get("point_zh") or k.get("point") or ""
+            if not pt or pt in used_pts:
+                continue
+            used_pts.add(pt)
+            body = _body_from_ku(k) or pt
+            mod_i += 1
+            mid = f"m{mod_i}"
+            modules.append({"id": mid, "title": f"要点：{str(pt)[:24]}",
+                            "body": body, "kind": k.get("ku_type") or "conceptual"})
+            if len(cues) < 12:
+                cues.append({
+                    "id": f"q{len(cues) + 1}",
+                    "mod": mid,
+                    "text": f"关于「{str(pt)[:40]}」你能说出什么？",
+                    "hint": _hint(k.get("ku_type") or "conceptual"),
+                })
 
     # 总结
     pts = [k.get("point_zh") or k.get("point") for k in kus[:4] if k.get("point_zh") or k.get("point")]

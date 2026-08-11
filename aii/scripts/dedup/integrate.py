@@ -63,14 +63,21 @@ def build_contributions(members: list[dict]) -> tuple[list, int]:
                     break
             continue
         seen_facets.add(key)
+        # ★P1 溯源增强: 从 raw_ku_id 确定性解析 chapter_anchor(引用链完整化)
+        import sys as _sys
+        from pathlib import Path as _P
+        _sys.path.insert(0, str(_P(__file__).resolve().parents[1]))
+        from ku_schema import parse_chapter_anchor
         contribs.append(
             {
                 "source_book_id": m.get("book"),
                 "version": m.get("version", 1),
                 "raw_ku_id": m.get("raw_ku_id"),
+                "chapter_anchor": parse_chapter_anchor(m.get("raw_ku_id") or ""),
                 "facet": facet,
                 "fragment_text": m.get("text"),
                 "lang": _lang(m.get("text")),
+                "parser_version": "markitdown-v0.5",
             }
         )
     facet_count = len({c["facet"] for c in contribs})

@@ -73,7 +73,12 @@ def _find_source_pdf(sid):
 path = Path(sys.argv[1])
 text = path.read_text(encoding="utf-8", errors="replace")
 
-bad, sig = is_corrupted(text)
+# ★2026-08-10 arXiv 数学论文直接放行乱码门: 论文公式/表格密集, _TABLE_SHRED_ROW
+#   误判(实测 table_shred_ratio 0.073>0.05); arXiv 渲染 PDF 文字层可靠, 不需要乱码门。
+if not path.stem.startswith("arxiv_"):
+    bad, sig = is_corrupted(text)
+else:
+    bad, sig = False, {}
 if bad:
     from markitdown import MarkItDown
 

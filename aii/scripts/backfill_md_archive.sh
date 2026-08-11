@@ -14,6 +14,8 @@ cd "$(dirname "$0")/.."
 : "${RCLONE_PROXY=http://127.0.0.1:7890}"
 if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
   export HTTPS_PROXY="${RCLONE_PROXY}" HTTP_PROXY="${RCLONE_PROXY}"
+  export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+  export no_proxy="${NO_PROXY}"
 fi
 
 for sub in 经济学 中文数学 英文数学 其它; do

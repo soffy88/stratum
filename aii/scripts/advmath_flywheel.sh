@@ -79,6 +79,8 @@ if [ ! -s "$FLYWHEEL_BOOK_LIST" ]; then
     echo "  ✅ 没有新书需要处理(全部已处理或未发现候选书)"
     echo "════════════════════════════════════════════════════"
     echo "飞轮完成: 无新书"
+    # ★断料主动补料: 空转时立刻触发夸克盘同步, 不等 2h timer(2026-08-09)
+    bash scripts/refill_feed.sh || true
     exit 0
 fi
 
@@ -92,6 +94,14 @@ echo "[2/4] 批量预检 + 管道(讲透+完整性校验+概念/KC/BU/质量门)
 # /RUN_LOG_DIR按substrate命名天然不会撞, 可以共用), 跑完合并。econ_batch_run.sh本身不改
 # (econ_zh/misc还在单进程顺序用它), 只是这里并行发起多份.
 WORKER_KEYS=(math_en advmath_2 advmath_3)
+# ★2026-08-05: advmath_3 已移出密钥池(转 Genesis 专属), 动态过滤不存在的槽位, worker 数自适应
+_AVAILABLE_KEYS=()
+for _k in "${WORKER_KEYS[@]}"; do
+    if [ -n "$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('$_k',''))" 2>/dev/null)" ]; then
+        _AVAILABLE_KEYS+=("$_k")
+    fi
+done
+WORKER_KEYS=("${_AVAILABLE_KEYS[@]}")
 NW=${#WORKER_KEYS[@]}
 rm -f advmath_pipeline/booklist_worker*.txt advmath_pipeline/quarantine_worker*.json advmath_pipeline/batch_report_worker*.json
 for i in "${!WORKER_KEYS[@]}"; do : > "advmath_pipeline/booklist_worker${i}.txt"; done

@@ -294,6 +294,14 @@ async def audit_plan(kus, chapter_n):
 
 def _clean(s):
     s = s.replace("\x00", "")  # PDF抽取偶发NUL字节, postgres text字段直接拒绝插入(非法UTF8)
+    # ★(cid:NNN) 是 PDF 嵌入字体映射失败的残留码点(markitdown 对部分嵌入字体 PDF 会输出原始
+    # glyph 序号而非 Unicode 字符)——实测 math_prog 大量 KU 含 "(cid:101)" 等污染。
+    # 没有可靠到字符级的映射表, 保守策略: 整个 (cid:…) 括号段丢弃(宁可少字不留乱码)。
+    s = re.sub(r"\(cid:\d+\)", "", s)
+    # ★字母粘连启发式: markitdown 对无空格字体(数学文档常见)会丢单词间空格,
+    # 如 "ForanytwoeventsAandB"。在 小写→大写 交界处补空格(camelCase 边界),
+    # 不碰 LaTeX 命令/公式(那些以 \ 或 $ 包围, 不受影响)。
+    s = re.sub(r"([a-z])([A-Z])", r"\1 \2", s)
     out = []
     for ln in s.split("\n"):
         t = ln.strip()
