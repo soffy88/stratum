@@ -110,3 +110,4 @@ deploy/logs/*.log
 scripts/*.log
 # code-review-graph local graph DB (rebuilt from source, not committed)
 .code-review-graph/
+paperclip/
