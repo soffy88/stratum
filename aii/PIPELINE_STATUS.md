@@ -119,7 +119,7 @@ NVRM: GPU 0000:01:00.0: GPU has fallen off the bus.
 - **宿主机内存告急导致 econ-zh 飞轮持续 OOM kill**（2026-08-02 观察）: 30G RAM 用 24G、**31G swap 全满**；`aii-flywheel-econ-zh` 重启计数已达 45（今日 07:02–08:42 被 OOM kill 8 次），今日 0 KU 入库。内存大头是跨项目 `platform-postgres` 容器（8.8G，helios/selene/aegis 共享库），非 AII 代码问题。若要让 econ-zh 稳定跑，需要人工决定释放/限制内存（如给 platform-postgres 设内存上限、或暂时停掉非关键容器），或提高宿主 RAM/swap 上限——这超出 AII 软件层面可处理范围
 
 <!-- WATCHDOG:START -->
-## 🚨 Needs Human (看门狗自动维护, 2026-08-11T02:49:56Z)
+## 🚨 Needs Human (看门狗自动维护, 2026-08-11T03:19:56Z)
 
 - ✅ 无严重项 (overall=degraded)
 
