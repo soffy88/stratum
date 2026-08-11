@@ -1,0 +1,29 @@
+# Total Probability Rule for Distributions
+
+Type: rationale | Subject: unknown
+
+Lemma 3.6 (Total Probability Rule for Distributions) Let . f X|A (x)and . f X|Ac (x)be
+the conditional density functions with respect to an event A and its complement. Then, the
+| unconditional density function f |     |     | .          | X (x) is given by the following:  |                 |     |     |          |     |
+| -------------------------------- | --- | --- | ---------- | --------------------------------- | --------------- | --- | --- | -------- | --- |
+|                                  |     | f   | (x)=P(A)·f |                                   | X|A (x)+P(Ac)·f |     |     | X|Ac (x) |     |
+.   X
+The result can also be generalized to discrete random variables by substituting the probability
+density functions in the above equation with probability mass functions:
+|     |     | p     | (x)=P(A)·p |     | (x)+P(Ac)·p |     |     | (x)  |     |
+| --- | --- | ----- | ---------- | --- | ----------- | --- | --- | ---- | --- |
+|     |     | .   X |            |     | X|A         |     |     | X|Ac |     |
+In the case of the salmon example discussed above, the length of all fish will be given by
+the following distribution:
+|     |          | exp(−(x−27)2/2) |     |     |       | exp(−(x−30)2/2) |     |      |       |
+| --- | -------- | --------------- | --- | --- | ----- | --------------- | --- | ---- | ----- |
+|     | (x)=0.7∗ |                 | √   |     | +0.3∗ |                 | √   |      |       |
+|     | .  f X   |                 |     |     |       |                 |     | [All | fish] |
+|     |          |                 |     | 2π  |       |                 |     | 2π   |       |
+The distributions of freshwater fish, seawater fish, and all fish are shown in Figure 3.5. This
+particular form of the unconditional distribution (as a weighted combination of conditional
+distributions) is referred to as a mixture model, and it is ubiquitous for modeling observed
+data in probability, statistics, and machine learning. A significant amount of focus will be
+placed on such models in subsequent chapters.
+Just as the total probability rule can be generalized to distributions, the Bayes rule can
+also be generalized to probability distributions:

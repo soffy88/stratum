@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -321,13 +322,16 @@ def check_embed() -> list[dict]:
     import urllib.request
 
     try:
+        # ★2026-08-10: urllib 的 no_proxy 不支持 CIDR(100.64.0.0/10 被无视→tailscale 走代理→502 误报)
+        #   监控探针一律显式直连(不走环境代理), 本地/内网探针绝不该绕代理
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         req = urllib.request.Request(
             f"{AII_EMBED_URL}/embed",
             data=json.dumps({"texts": ["体检"]}).encode(),
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with opener.open(req, timeout=30) as resp:
             # urlopen raises on 4xx/5xx, so reaching here means 2xx.
             has_vec = b"embedding" in resp.read(400).lower()
         detail = "真实/embed调用200" + ("" if has_vec else "(200但响应无embeddings字段)")
@@ -427,9 +431,195 @@ def check_stuck_pulls() -> list[dict]:
 # ── assemble + write ──────────────────────────────────────────────────────────
 
 
+def check_convert_output() -> list[dict]:
+    """断料哨兵: convert 是否异常(故障) vs 供应质量(无教材可转, 不算故障)。
+    - feeder.log 最近输出有 Traceback/UnboundLocal/NameError → crit(2026-08-08 MarkItDown bug 同类)
+    - 无异常但新转 0 且 books/MD 池快空 → warn(供料质量问题, 需换书源)
+    - 其余 → info"""
+    try:
+        log = ROOT / "econ_pipeline/feeder.log"
+        if not log.exists():
+            return [{"name": "convert-output", "status": "unknown", "severity": "info",
+                     "detail": "feeder.log 不存在"}]
+        recent = log.read_text(encoding="utf-8", errors="replace").splitlines()[-200:]
+        bad = [l for l in recent if re.search(
+            r"Traceback|UnboundLocal|cannot access|NameError|Error:", l)]
+        if bad:
+            return [{"name": "convert-output", "status": "error", "severity": "crit",
+                     "detail": f"convert 最近输出异常: {bad[-1][:110]}"}]
+        tots = [int(m.group(1)) for l in recent
+                for m in [re.search(r"新转: (\d+)", l)] if m]
+        pool = sum(
+            len(list(d.glob("*.pdf"))) + len(list(d.glob("*.epub")))
+            for d in (Path("/home/soffy/books/数学"), Path("/home/soffy/books/Economic"),
+                      Path("/home/soffy/books/其它"))
+            if d.exists()
+        )
+        md_pool = sum(
+            len(list(d.glob("*.md")))
+            for d in (Path("/home/soffy/books/MD/经济学"), Path("/home/soffy/books/MD/中文数学"),
+                      Path("/home/soffy/books/MD/英文数学"), Path("/home/soffy/books/MD/其它"))
+            if d.exists()
+        )
+        if not tots:
+            return [{"name": "convert-output", "status": "unknown", "severity": "info",
+                     "detail": f"feeder 近期无 convert 统计; 待转池{pool}, books/MD池{md_pool}"}]
+        recent_sum = sum(tots[-3:])
+        if recent_sum == 0 and pool > 10 and md_pool < 10:
+            return [{"name": "convert-output", "status": "starving", "severity": "warn",
+                     "detail": f"convert 最近3轮新转和=0, books/MD池仅{md_pool}本且待转池{pool} — 供料质量不足(待转多为非教材), 需补教材源"}]
+        return [{"name": "convert-output", "status": "ok", "severity": "info",
+                 "detail": f"最近3轮新转和={recent_sum}, 待转池{pool}, books/MD池{md_pool}"}]
+    except Exception as e:
+        return [{"name": "convert-output", "status": "error", "severity": "info", "detail": str(e)[:60]}]
+
+
+def check_repeat_extraction() -> list[dict]:
+    """重复抽取检测: 同一 substrate 日志里 'sub=xxx' 出现≥3次/近2000行 = 入库未成功反复重跑
+    (2026-08-09 math 887次《抽象代数》0入库事故)。触发 mark-done 动作自动翻篇。"""
+    out = []
+    targets = (
+        ("math", ROOT / "math_pipeline/flywheel_prog.log", "scripts/_staging/math_prog"),
+        ("advmath", ROOT / "advmath_pipeline/flywheel.log", "scripts/_staging/math_prog"),
+    )
+    for name, logpath, stagebase in targets:
+        try:
+            if not logpath.exists():
+                continue
+            lines = logpath.read_text(encoding="utf-8", errors="replace").splitlines()[-2000:]
+            from collections import Counter
+
+            cnt: Counter = Counter()
+            for l in lines:
+                m = re.search(r"sub=([a-f0-9]{10})", l)
+                if m:
+                    cnt[m.group(1)] += 1
+            for sub, n in cnt.most_common(3):
+                if n >= 3:
+                    stage = ROOT / stagebase / sub
+                    out.append({
+                        "name": f"repeat-extract:{name}",
+                        "status": "spinning",
+                        "severity": "crit",
+                        "sub": sub,
+                        "stage": str(stage),
+                        "detail": f"{sub} 近日志抽取 {n} 次(≥3) — 入库未成功反复重跑, 自动 touch .done 翻篇",
+                    })
+        except Exception as e:
+            out.append({"name": f"repeat-extract:{name}", "status": "error", "severity": "info",
+                        "detail": str(e)[:60]})
+    if not out:
+        out.append({"name": "repeat-extract", "status": "ok", "severity": "info", "detail": "无重复抽取"})
+    return out
+
+
+def diagnose_llm(report: dict) -> str | None:
+    """crit 时用 NIM 免费 key 生成根因诊断(显式走 7890 代理出网)。失败静默返回 None。"""
+    crits = [f"- {c['name']}: {c['detail']}" for c in report["checks"] if c["severity"] == "crit"]
+    if not crits:
+        return None
+    try:
+        import urllib.request
+
+        keys = json.loads((ROOT / ".pipeline_keys.json").read_text())
+        key = keys.get("math_en") or keys.get("econ") or next(iter(keys.values()))
+        body = json.dumps({
+            "model": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+            "messages": [
+                {"role": "system", "content": (
+                    "你是AII知识飞轮系统运维诊断专家。根据看门狗告警, 给出最可能的根因、"
+                    "验证命令、修复动作。简洁中文, 不超过150字。")},
+                {"role": "user", "content": "看门狗告警:\n" + "\n".join(crits)},
+            ],
+            "max_tokens": 300,
+        }).encode()
+        req = urllib.request.Request(
+            "https://integrate.api.nvidia.com/v1/chat/completions",
+            data=body, method="POST",
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        )
+        # 显式代理(7890 sing-box), 不依赖进程环境
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({"http": "http://127.0.0.1:7890",
+                                          "https": "http://127.0.0.1:7890"}))
+        with opener.open(req, timeout=60) as resp:
+            data = json.loads(resp.read().decode())
+        msg = data["choices"][0]["message"]
+        # nemotron 是 reasoning 模型: content 可能为 None, 回答在 reasoning_content/reasoning
+        content = (msg.get("content") or msg.get("reasoning_content")
+                   or msg.get("reasoning") or "")[:600]
+        return content or None
+    except Exception as e:
+        return f"(LLM诊断失败: {str(e)[:80]})"
+
+
+def notify_crit(report: dict) -> None:
+    """crit 时写 changefeed notification(aii-web 前端可见), 静默失败。"""
+    if not report["needs_human"]:
+        return
+    try:
+        import urllib.request  # noqa: F401
+
+        async def _run():
+            import asyncpg
+
+            conn = await asyncpg.connect(DSN, timeout=10)
+            try:
+                row = await conn.fetchrow("SELECT id FROM stratum.users ORDER BY created_at LIMIT 1")
+                uid = str(row["id"]) if row else None
+                await conn.execute(
+                    "INSERT INTO stratum.changefeed (event_id, user_id, device_id, timestamp, event_type, payload) "
+                    "VALUES ($1,$2,'server',now(),'notification',$3)",
+                    f"watchdog-{int(time.time())}", uid,
+                    json.dumps({
+                        "title": f"🚨 AII看门狗: {len(report['needs_human'])}项严重",
+                        "body": "\n".join(report["needs_human"])[:500],
+                        "channels": ["web"],
+                    }, ensure_ascii=False),
+                )
+            finally:
+                await conn.close()
+
+        asyncio.run(_run())
+    except Exception:
+        pass
+
+
+def check_ku_growth() -> list[dict]:
+    """KU 产能哨兵: 按 ku_onto.created_at 统计 6h/24h 增量(用户核心指标)。
+    24h 增量 < 50 = 产能异常(历史正常 400-700/天); 归零 = 严重。"""
+    try:
+        import asyncpg
+
+        async def _run():
+            conn = await asyncpg.connect(DSN, timeout=10)
+            try:
+                row = await conn.fetchrow(
+                    "SELECT count(*) FILTER (WHERE created_at > now() - interval '6 hours') AS h6, "
+                    "       count(*) FILTER (WHERE created_at > now() - interval '24 hours') AS h24 "
+                    "FROM aii.ku_onto"
+                )
+                return int(row["h6"]), int(row["h24"])
+            finally:
+                await conn.close()
+
+        h6, h24 = asyncio.run(_run())
+        if h24 == 0:
+            return [{"name": "ku-growth", "status": "zero", "severity": "crit",
+                     "detail": f"24h KU 增量=0(历史正常 400-700/天) — 产能停摆, 查飞轮/入库"}]
+        if h24 < 50:
+            return [{"name": "ku-growth", "status": "low", "severity": "warn",
+                     "detail": f"24h KU 增量={h24}(6h={h6}), 历史正常 400-700 — 产能偏低"}]
+        return [{"name": "ku-growth", "status": "ok", "severity": "info",
+                 "detail": f"24h KU 增量={h24}(6h={h6})"}]
+    except Exception as e:
+        return [{"name": "ku-growth", "status": "error", "severity": "info", "detail": str(e)[:60]}]
+
+
 def build_report(state: dict) -> dict:
     checks: list[dict] = []
-    for fn in (check_services, check_gpu, check_embed, check_backlog, check_stuck_pulls):
+    for fn in (check_services, check_gpu, check_embed, check_backlog, check_stuck_pulls,
+               check_convert_output, check_repeat_extraction, check_ku_growth):
         try:
             checks += fn()
         except Exception as e:
@@ -449,15 +639,35 @@ def build_report(state: dict) -> dict:
             {"name": "db-checks", "status": "error", "severity": "warn", "detail": str(e)[:80]}
         )
 
+    # ★供料哨兵: ≥3 个飞轮同时 idle(无新书) = 供料不足, 触发主动找料(2026-08-10)
+    idle_fw = [c for c in checks
+               if c.get("name", "").startswith("flywheel:") and c.get("status") == "idle"]
+    if len(idle_fw) >= 3:
+        checks.append({
+            "name": "flywheel-idle-count",
+            "status": "starving",
+            "severity": "warn",
+            "idle_count": len(idle_fw),
+            "detail": f"{len(idle_fw)} 个飞轮同时无新书: {', '.join(c['name'].split(':')[-1] for c in idle_fw)} — 供料不足, 触发主动找料",
+        })
+    else:
+        checks.append({
+            "name": "flywheel-idle-count",
+            "status": "ok",
+            "severity": "info",
+            "detail": f"空闲飞轮 {len(idle_fw)} 个(<3 供料充足)",
+        })
+
     worst = max((SEV.get(c["severity"], 0) for c in checks), default=0)
     overall = ["ok", "degraded", "critical"][worst]
     needs_human = [f"{c['name']}: {c['detail']}" for c in checks if c["severity"] == "crit"]
+    mode = "self-healing" if os.getenv("WATCHDOG_REMEDIATE") == "1" else "observe-only"
     return {
         "generated_at": _now(),
         "overall": overall,
         "checks": checks,
         "needs_human": needs_human,
-        "mode": "observe-only (P2a, no auto-remediation)",
+        "mode": mode,
     }
 
 
@@ -565,6 +775,12 @@ def _actions_for(report: dict) -> list[dict]:
             acts.append({"action": "quarantine-poison", "target": "stratum-sl", "why": c["detail"]})
         elif c["name"] == "stuck-pull" and c.get("pid"):
             acts.append({"action": "kill-process", "target": str(c["pid"]), "why": c["detail"]})
+        elif c["name"].startswith("repeat-extract:") and c.get("stage"):
+            # 重复抽取翻篇: touch .done, 让飞轮下一轮跳过(2026-08-09 math 887次事故)
+            acts.append({"action": "mark-done", "target": c["stage"], "why": c["detail"]})
+        elif c["name"] == "flywheel-idle-count" and c.get("status") == "starving":
+            # 供料不足 → 主动找料(OAPEN 按需 + veya 异步派活), 2026-08-10
+            acts.append({"action": "fetch-materials", "target": "supply", "why": c["detail"]})
     return acts
 
 
@@ -609,6 +825,23 @@ def _execute(action: str, target: str) -> tuple[bool, str]:
     if action == "kill-process":
         rc, out = _sh(["kill", "-9", target])
         return rc == 0, out[:120] or "killed"
+    if action == "mark-done":
+        # target = staging 目录绝对路径; touch .done 翻篇(飞轮下一轮跳过该书)
+        p = Path(target) / ".done"
+        try:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.touch()
+            return True, f"touch {p} (翻篇, 防重复抽取)"
+        except Exception as e:
+            return False, f"mark-done失败: {str(e)[:80]}"
+    if action == "fetch-materials":
+        # 断料主动找料: OAPEN 按需 + veya 异步派活(内部 flock/限速)
+        try:
+            rc, out = _sh([str(ROOT / ".venv/bin/python"), "scripts/source_hunt.py"],
+                          timeout=60)
+            return rc == 0, out[:150] or "source_hunt done"
+        except Exception as e:
+            return False, f"找料异常: {str(e)[:80]}"
     if action == "quarantine-poison":
         return _quarantine_crash_loop_item()
     return False, f"unknown action {action}"
@@ -639,7 +872,18 @@ def remediate(report: dict, astate: dict) -> None:
 def main() -> int:
     state = _load_state()
     report = build_report(state)
+    # ★LLM 智能诊断 + 通知(crit 时)
+    try:
+        diag = diagnose_llm(report)
+        if diag:
+            report["llm_diagnosis"] = diag
+    except Exception:
+        pass
     write_report(report)
+    try:
+        notify_crit(report)
+    except Exception:
+        pass
     _save_state(state)
     try:
         update_pipeline_status(report)

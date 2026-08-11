@@ -1,0 +1,65 @@
+# Gaussian Asset Pricing Model with Quadratic Utility
+
+Type: procedural | Subject: unknown
+
+Let the state variable $ s_t $ follow a Gaussian Markov process:
+$$
+s_{t+1} = A s_t + C w_{t+1}, \quad w_{t+1} \sim \mathcal{N}(0, I),
+$$
+where $ A $ is a matrix with spectral radius $ \leq 1/\sqrt{\beta} $, $ C $ is a covariance matrix.
+The representative consumer has quadratic utility:
+$$
+u(c_t) = -\frac{1}{2}(c_t - b)^2, \quad b > 0.
+$$
+The equilibrium consumption process $ \{c_t\} $ is linear in $ s_t $:
+$$
+c_t = S_c s_t.
+$$
+Asset prices are derived from the inner product of discounted marginal utility and dividend processes (see HOW for details).
+The marginal cost of business cycles is linked to the covariance between consumption and marginal utility:
+$$
+\text{Cov}_{t-1}(c_t, m_t) < 0 \impl \text{Risk Premium} = - \frac{\text{Cov}_{t-1}(c_t, m_t)}{E_{t-1}[m_t c_t]}.
+$$
+(See equations 7.48-7.50 for derivation.)
+$$
+s_{t+1} = A s_t + C w_{t+1}, \quad w_{t+1} \sim \mathcal{N}(0, I).
+$$
+$$
+c_t = S_c s_t.
+$$
+$$
+u'(c_t) = b - S_c s_t.
+$$
+$$
+a_0 = \frac{E_0 \sum_{t=0}^\infty \beta^t (b - S_c s_t) d_t(s_t)}{b - S_c s_0},
+$$
+$$
+a_0 = \frac{s_0' \mu s_0 + \sigma}{s_0' S_b},
+$$
+$$
+\mu = S_p' S_d + \beta A' \mu A, \quad \sigma = \beta \sigma + \beta \text{trace}(\mu C C') \tag{7.64}.
+$$
+$$
+s_{t+1} = A s_t + C w_{t+1}, \quad w_{t+1} \sim \mathcal{N}(0, I).
+$$
+$$
+c_t = S_c s_t.
+$$
+$$
+u'(c_t) = b - S_c s_t.
+$$
+$$
+a_0 = \frac{E_0 \sum_{t=0}^\infty \beta^t (b - S_c s_t) d_t(s_t)}{b - S_c s_0}.
+$$
+$$
+a_0 = \frac{s_0' \mu s_0 + \sigma}{s_0' S_b},
+$$
+$$
+\mu = S_p' S_d + \beta A' \mu A, \quad \sigma = \beta \sigma + \beta \text{trace}(\mu C C') \tag{7.64}.
+$$
+$$
+a_0 = \sum_{t=0}^\infty \sum_{s^t} q_t^0(s^t) \cdot 1.
+$$
+$$
+a_0 = \frac{1}{b - S_c s_0} E_0 \sum_{t=0}^\infty \beta^t (b - S_c s_t).
+$$

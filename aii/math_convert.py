@@ -3,7 +3,8 @@
       math_convert.py --do     # 转换可转的(文字层+章节)并入文件夹
 """
 
-import os, re, sys, glob, unicodedata, subprocess
+import os
+import sys, re, sys, glob, unicodedata, subprocess
 import fitz  # pymupdf
 from pathlib import Path
 
@@ -112,9 +113,17 @@ def chapters(text):
     # 章节行统一提升成"# 标题"markdown格式, 导致新鲜OCR出来的中文书章节行变成"# 第N章",
     # 恰好只有英文分支认这个前缀, 中文分支永远算0章(实测斯图尔特今晚OCR复现: 0章被拒,
     # 而同一本书旧版手工转换的MD因为没有"#"前缀反而能通过). 中文分支也加上同样的可选前缀.
-    return len(
-        re.findall(r"(?m)^(?:#\s+)?Chapter\s+\d|^(?:#\s+)?第[一二三四五六七八九十百\d]+\s*章", text)
+    n = len(
+        re.findall(r"(?m)^(?:#\s+)?Chapter\s+\d|^(?:#\s+)?第[一二三四五六七八九十百\d]+\s*章"
+                   r"|^\d{1,2}\.\s+[A-Z][A-Za-z]{2,}",  # ★2026-08-10 arXiv 论文 "1. Introduction" 式
+                   text)
     )
+    if n >= 3:
+        return n
+    # ★opendataloader 输出数字编号章节(如 "1.2 完备性", "1.1.1 邻域和邻域基")
+    n = len(re.findall(
+        r"(?m)^\d{1,2}(?:\.\d{1,2}){0,2}\s+[^\n。！？.!?]{2,40}$", text))
+    return n
 
 
 def analyze(path):
@@ -148,19 +157,68 @@ def analyze(path):
 
 from collections import Counter
 
+def _rm_src(path) -> None:
+    """★2026-08-10 转换成功删源文件省空间(磁盘94%)。KEEP_SRC=1 时保留。"""
+    import os as _os
+    if _os.getenv("KEEP_SRC") == "1":
+        return
+    try:
+        _os.remove(path)
+        print(f"  🗑 已删源文件: {Path(path).name[:50]}")
+    except OSError as e:
+        print(f"  ⚠ 删源失败 {Path(path).name[:40]}: {e}")
+
+
+
+def _convert_odl(path):
+    """opendataloader 本地模式 PDF→MD(benchmark #1: 表格 0.928 / 无 cid 污染)。
+
+    数学书表格密集(定理/推导表), markitdown 表格 0 而 odl 213+。失败返回 None(回退 markitdown)。
+    依赖: ~/jdk(JAVA), opendataloader-pdf pip 包。
+    """
+    import subprocess
+    import tempfile
+
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            r = subprocess.run(
+                ["opendataloader-pdf", "convert", str(path), "-o", td, "-f", "markdown"],
+                capture_output=True, text=True, timeout=240,
+                env={**os.environ,
+                     "PATH": f"{Path.home() / 'jdk' / 'bin'}:"
+                             f"{str(Path(sys.executable).parent)}:{os.environ.get('PATH', '')}"},
+            )
+            mds = list(Path(td).rglob("*.md")) if r.returncode in (0, 1) else []
+            if not mds:
+                return None
+            return mds[0].read_text(encoding="utf-8", errors="ignore")
+    except Exception:  # noqa: BLE001
+        return None
+
 
 def convert(path):
     """PDF/EPUB → 清洗后的 MD 文本(去页眉页脚/页码, 章节行提升为 # 标题).
-    ★2026-07-07: 正文抽取换成 markitdown(pdfminer.six/pdfplumber), 换掉裸 fitz.get_text()
-    ——统一转换工具链, 见 platform/3O/oprim/parser/parse_pdf.py 的同步改动(那边的
-    pymupdf4llm 复现过整段内容按固定字符间隔重复的bug, 这边虽未复现但一起换)。markitdown
-    不像 fitz 那样有天然页边界, 页眉页脚剔除从"按页首尾行频率"改成"全文行频率", 阈值沿用
-    原有的 0.12*页数(页数仍用 fitz 快速取一次, 比按总行数算更准——总行数会随大部头/合集类
-    书暴涨, 稀释掉真正逐页重复的页眉页脚)。"""
+    ★2026-08-07: PDF 优先 opendataloader(benchmark #1 表格提取, 数学书表格密集);
+      失败/EPUB 回退 markitdown。页眉页脚剔除用"全文行频率"阈值 0.12*页数。"""
     from markitdown import MarkItDown
 
     npg = fitz.open(path).page_count
-    text = MarkItDown().convert(path).text_content
+    # ★2026-08-07 全面接入 opendataloader(平台层 oprim.parser), PDF 优先; 失败回退 markitdown
+    text = None
+    if str(path).lower().endswith(".pdf"):
+        try:
+            from oprim.parser.parse_pdf import parse_pdf
+            # ★2026-08-07: 默认 pdf_inspector(firecrawl, benchmark 0.875/表格0.814/0.47s,
+            # 原生 CID 解码); ODL_HYBRID=1 时走 opendataloader hybrid(公式 LaTeX 深加工)
+            if os.getenv("ODL_HYBRID") == "1":
+                pc = parse_pdf(path, provider="opendataloader", hint={"hybrid": True})
+            else:
+                pc = parse_pdf(path, provider="pdf_inspector")
+            text = pc.markdown
+        except Exception as e:  # noqa: BLE001
+            print(f"  ⚠ pdf_inspector 回退 markitdown: {str(e)[:80]}", flush=True)
+    if text is None:
+        text = MarkItDown().convert(path).text_content
     lines = text.split("\n")
     cnt = Counter(l.strip() for l in lines if l.strip())
     thresh = max(3, int(npg * 0.12))
@@ -269,7 +327,8 @@ if DO:
         except Exception as e:
             print(f"  ✗ 转换失败 {stem[:40]}: {e}")
             continue
-        _write_if_math_textbook(stem, text, path)
+        if _write_if_math_textbook(stem, text, path):
+            _rm_src(path)  # ★2026-08-10 转换成功删源省空间(KEEP_SRC=1 跳过)
 
     # ★自主 OCR: 遇到烂文本层/无文字层的数学扫描书, 自己拉起 vLLM 容器转清后再入常规流程,
     # 不需要人工干预. 只在确有此类书时才启动容器(不白占 GPU); 处理完统一释放.

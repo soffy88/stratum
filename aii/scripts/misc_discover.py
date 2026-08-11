@@ -1,6 +1,6 @@
 """★其它飞轮 — 发现未处理的书(任意学科,有章节结构).
 扫 /home/soffy/books/MD/其它/ → ≥3 章(第N章 或 # Chapter N)→
-排除已入库(ingested_substrate ku>100)→ 排除 flywheel 终态 → 输出书单.
+排除已入库(ingested_substrate 已登记, 不限KU数)→ 排除 flywheel 终态 → 输出书单.
 
 收录经济/数学之外、有章节结构的教材(心理/哲学/科普等)。
 substrate_id: 中文→misc_zh_<hash>,英文→misc_en_<hash>。
@@ -38,9 +38,15 @@ def _chapters(text: str) -> int:
 
 
 def discover() -> list[dict]:
+    # ★2026-08-10 非教材预筛: 夸克大量拉入励志/文学/传记(有3+章但无KU密度),
+    #   misc 啃它们 0 产出白烧算力。确定性黑名单词直接跳过(保守, 只过滤极明显的)。
+    _SKIP_WORDS = ("创业", "情商", "成功学", "散文", "小说", "漫画", "随笔",
+                   "传记", "精选", "合集", "情商课", "励志")
     out = []
     for md in sorted(glob.glob(f"{MISC_DIR}/*.md")):
         stem = Path(md).stem
+        if any(w in stem for w in _SKIP_WORDS):
+            continue
         try:
             text = open(md, encoding="utf-8", errors="replace").read()
         except Exception:
@@ -57,7 +63,7 @@ async def _ingested(ids):
         return set()
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
     rows = await conn.fetch(
-        "SELECT substrate_id FROM aii.ingested_substrate WHERE substrate_id=ANY($1::text[]) AND ku_count>100",
+        "SELECT substrate_id FROM aii.ingested_substrate WHERE substrate_id=ANY($1::text[])",
         ids,
     )
     await conn.close()

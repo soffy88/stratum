@@ -16,17 +16,27 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from omodul.daily_digest_workflow import (
-    DailyDigestConfig,
-    DailyDigestInput,
-    daily_digest_workflow,
-)
-from omodul.weekly_review_workflow import (
-    WeeklyReviewConfig,
-    WeeklyReviewInput,
-    weekly_review_workflow,
-)
-from omodul.process_inbox_substrate import InboxConfig, InboxInput, process_inbox_substrate
+# 3O 平台包仅部署于容器 /opt/platform（dev 副本在 /platform），本机可能没有。
+# 必须保证 import 本模块不崩；平台缺失时 execute_builtin_job 返回 status='failed'。
+try:
+    from omodul.daily_digest_workflow import (
+        DailyDigestConfig,
+        DailyDigestInput,
+        daily_digest_workflow,
+    )
+    from omodul.weekly_review_workflow import (
+        WeeklyReviewConfig,
+        WeeklyReviewInput,
+        weekly_review_workflow,
+    )
+    from omodul.process_inbox_substrate import InboxConfig, InboxInput, process_inbox_substrate
+
+    _HAS_OMODUL = True
+except ImportError:  # pragma: no cover — 平台包仅部署于容器
+    _HAS_OMODUL = False
+    DailyDigestConfig = DailyDigestInput = daily_digest_workflow = None
+    WeeklyReviewConfig = WeeklyReviewInput = weekly_review_workflow = None
+    InboxConfig = InboxInput = process_inbox_substrate = None
 
 BUILTIN_JOBS: list[dict[str, Any]] = [
     {
@@ -60,6 +70,14 @@ def _output_dir(user_id: str, job_name: str) -> Path:
 def execute_builtin_job(job: dict[str, Any], user_id: str = "system") -> dict:
     """Run a builtin job synchronously. Called by APScheduler or run-now."""
     name = job["agent_name"]
+
+    # 3 个内置 job 全部依赖 omodul 平台包——缺失时直接返回失败，不触碰文件系统
+    if not _HAS_OMODUL:
+        return {
+            "status": "failed",
+            "error": f"omodul platform package unavailable (no /opt/platform); job '{name}' requires it",
+        }
+
     out_dir = _output_dir(user_id, name)
     out_dir.mkdir(parents=True, exist_ok=True)
 

@@ -43,6 +43,10 @@ export CUDA_VISIBLE_DEVICES=""          # 嵌入走 CPU(GPU 让给 math-prog, �
 export HF_HUB_OFFLINE=1                 # ★用本地缓存 BGE-M3, 不连 huggingface(直连超时→卡死)
 export TRANSFORMERS_OFFLINE=1
 export AII_EMBED_URL="${AII_EMBED_URL:-http://100.68.226.13:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU)
+
+# ★2026-08-10 opencode 网关 fallback: NIM 504 过载时切 gpt-5.6-sol
+export OPENCODE_API_KEY=""  # 留空 → 读 ~/.pi/agent/opencode-keys.txt
+export OPENCODE_MODEL="${OPENCODE_MODEL:-deepseek-v4-flash}"
 # ★忠实模式: KU只忠实呈现原书内容(概念定义/含义), 少靠LLM判断, 不过度why/how → 快+忠实
 export ECON_FAITHFUL=1
 # ★2026-07-30: 质量门阈值放宽(原默认阈值从未让新书通过, 见 econ_quality_gate.py 注释)
@@ -81,6 +85,8 @@ if [ ! -s "$FLYWHEEL_BOOK_LIST" ]; then
     echo "  ✅ 没有新书需要处理(全部已处理或未发现经济书)"
     echo "════════════════════════════════════════════════════"
     echo "飞轮完成: 无新书"
+    # ★断料主动补料: 空转时立刻触发夸克盘同步, 不等 2h timer(2026-08-09)
+    bash scripts/refill_feed.sh || true
     exit 0
 fi
 

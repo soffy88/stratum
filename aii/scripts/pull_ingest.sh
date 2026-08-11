@@ -74,6 +74,9 @@ fi
 $PY math_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  math_convert 新转: /'
 $PY econ_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  econ_convert 新转: /'
 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  misc_convert 新转: /'
+# ★2026-08-10 教辅/计算机目录(夸克分流) — 复用 misc_convert(章节结构门禁), 只换目录
+CONVERT_SRC=/home/soffy/books/教辅 CONVERT_DST=/home/soffy/books/MD/教辅 CONVERT_TAG=教辅 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  edu_convert 新转: /'
+CONVERT_SRC=/home/soffy/books/计算机 CONVERT_DST=/home/soffy/books/MD/计算机 CONVERT_TAG=计算机 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  cs_convert 新转: /'
 
 # 2. stratum 抓好的 MD(/shared/stratum-to-aii) → 分类入 books/MD/{经济学|中英文数学|其它}
 $PY classify_md.py --do 2>&1 | tail -1

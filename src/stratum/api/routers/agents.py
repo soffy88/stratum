@@ -704,9 +704,13 @@ async def list_agent_runs(agent_name: str, user_id: str = Depends(jwt_auth)):
 async def debug_providers(_: str = Depends(jwt_auth)):
     """Temporary: introspect live provider + module state for illustration_agent diagnosis."""
     import sys as _sys
-    from obase import ProviderRegistry as _PR
 
     info: dict = {}
+    try:
+        from obase import ProviderRegistry as _PR
+    except ImportError:  # pragma: no cover — 平台包仅部署于容器
+        info["error"] = "3O platform unavailable (no /opt/platform)"
+        return info
     # ProviderRegistry state
     info["registered_providers"] = [f"{c}:{n}" for c, n in _PR.list_providers()]
     wanx = _PR._providers.get(("image_gen", "wanxiang"))

@@ -63,7 +63,22 @@ echo "════════════════════════�
 #    有向关系readout / 节点归一normalize / KU内部逻辑structure / 共现 / 谱社区 / 概念归一 / 超边 / 本性.
 echo ""
 echo "[1/5] 逐章讲透 KU + ★完整性校验严(应有清单, A仓命门:不漏) + 打磨(去脚手架/空壳/残留)"
-$PY scripts/synthesize_book.py || { echo "❌ [1/5] 失败"; exit 2; }
+# ★语言路由(2026-08-06 修复): 中文书 → 0LLM 程序抠(中文直接可用);
+#   英文散文书 → LLM 讲透双语版(0LLM 抠英文无中文 → 中文门禁全滤 + 质量门双语率 ALARM, 0 入库)
+SYNTH_SCRIPT="scripts/synthesize_book.py"
+if [ -n "${AII_MD_FILE:-}" ] && [ -f "$AII_MD_FILE" ]; then
+  BOOK_LANG_DETECT=$($PY -c "
+import re, sys
+text = open(sys.argv[1], encoding='utf-8', errors='replace').read()[:50000]
+zh = len(re.findall(r'[一-鿿]', text)); en = len(re.findall(r'[A-Za-z]', text))
+print('zh' if zh > en else 'en')
+" "$AII_MD_FILE" 2>/dev/null || echo en)
+  if [ "$BOOK_LANG_DETECT" = "en" ]; then
+    SYNTH_SCRIPT="scripts/synthesize_book_llm_v1.py"
+    echo "  → 英文书: 走 LLM 讲透双语版 ($SYNTH_SCRIPT)"
+  fi
+fi
+$PY $SYNTH_SCRIPT || { echo "❌ [1/5] 失败"; exit 2; }
 # ★书内去重(防同概念跨章重抽: 同title+余弦>0.80 留最长; 同名不同内容不动)
 $PY scripts/dedup_within_book.py "$SUBSTRATE" 2>/dev/null || echo "  ⚠ 书内去重跳过(非致命)"
 

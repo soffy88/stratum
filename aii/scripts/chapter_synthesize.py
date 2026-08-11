@@ -531,7 +531,7 @@ async def _plan(llm, text, n):
     return out
 
 
-async def _synth(llm, text, n, name, typ, pos: int = 0):
+async def _synth(llm, text, n, name, typ, pos: int = 0, narrow: bool = False):
     """★程序抽取(0 LLM):按 LLM 规划的 KU + 程序定位的 pos,从原文逐字抠
     定义句 + 例子 + 公式/表(_extract_skeleton),拼成 KU。忠实原文不让 LLM 重写。
     无骨架但定位到 → 逐字切该知识点所在小节(pos→节边界)。定位不到 → 空(宁缺)。
@@ -549,7 +549,24 @@ async def _synth(llm, text, n, name, typ, pos: int = 0):
         if len(seg) >= 40:
             parts.append(seg)
     content = "\n".join(p for p in parts if p).strip()
-    return name, content
+    # ★Grounded 协议(A1): 骨架本身就是原文逐字(bold_def/examples/seg) → 直接作证据
+    quotes = []
+    if bold_def and len(bold_def.strip()) >= 10:
+        quotes.append({"quote": bold_def.strip()[:400], "span": [0, 0], "kind": "definition"})
+    for e in examples[:2]:
+        es = e.strip()
+        if len(es) >= 10 and len(quotes) < 3:
+            quotes.append({"quote": es[:400], "span": [0, 0], "kind": "example"})
+    if not quotes and content and len(content) >= 40:
+        from ku_schema import extract_evidence_quotes
+        try:
+            quotes = extract_evidence_quotes(content, name)
+        except Exception:
+            quotes = []
+    window_text = ""
+    if pos > 0:
+        window_text = text[max(0, pos - 500) : min(len(text), pos + _WIN_POST_HYBRID)]
+    return name, content, quotes, window_text
 
 
 async def main():
@@ -571,7 +588,7 @@ async def main():
             return await _synth(llm, text, n, p["name"], p.get("type", "concept"), p.get("pos", 0))
 
     kus = await asyncio.gather(*(s(p) for p in points))
-    names = [k for k, _ in kus]
+    names = [k for k, *_ in kus]
     # ★防漏: 完整性校验
     comp = check_completeness(text, names)
     print(

@@ -119,8 +119,36 @@ NVRM: GPU 0000:01:00.0: GPU has fallen off the bus.
 - **宿主机内存告急导致 econ-zh 飞轮持续 OOM kill**（2026-08-02 观察）: 30G RAM 用 24G、**31G swap 全满**；`aii-flywheel-econ-zh` 重启计数已达 45（今日 07:02–08:42 被 OOM kill 8 次），今日 0 KU 入库。内存大头是跨项目 `platform-postgres` 容器（8.8G，helios/selene/aegis 共享库），非 AII 代码问题。若要让 econ-zh 稳定跑，需要人工决定释放/限制内存（如给 platform-postgres 设内存上限、或暂时停掉非关键容器），或提高宿主 RAM/swap 上限——这超出 AII 软件层面可处理范围
 
 <!-- WATCHDOG:START -->
-## 🚨 Needs Human (看门狗自动维护, 2026-08-02T08:42:29Z)
+## 🚨 Needs Human (看门狗自动维护, 2026-08-11T02:49:56Z)
 
-- svc:aii-flywheel-econ-zh.service: enabled但未运行 → systemctl --user start aii-flywheel-econ-zh.service
+- ✅ 无严重项 (overall=degraded)
 
 <!-- WATCHDOG:END -->
+
+---
+## 2026-08-06 运维加固（故障复盘 + 自愈挂载）
+
+### 故障链复盘
+- 8/2 主机重启 → /mnt/d(NTFS) 挂载失败(superblock 错误) → D 盘书源断料
+- ~/.stratum 悬空符号链接 → stratum-api/sl 容器 docker start 全部失败(mount source 报错)
+- 8/2-8/4 内存压力(30G 仅余 ~7G) → econ-zh/feeder/math-prog/paper 连环 OOM 重启
+- misc 飞轮存在手动 nohup 残留实例 → 与 systemd 实例双跑(8 并发同 key 打 NIM)
+  → 免费层限流 → ReadTimeout/504 重试风暴 → 章节合成失败 → 质量门整批隔离
+  → 7/27 后 ku_onto 零新增(235h 停滞, 8/6 04:38 检测)
+
+### 本次修复
+1. 单实例锁: 5 个 flywheel_run.sh 统一 flock(防双跑重演)
+2. NIM client timeout 240s→600s(_provider.py); 7 个 key 验证全有效
+3. 内存治理: 7 个服务加 MemoryMax=6G/MemoryHigh=4G
+4. aii-backend 拉起(on-failure 策略对 SIGTERM 不重启, 人工 start)
+5. 存量清洗: cleanup_ku_cid.py 清 2337 条 (cid:) 污染 + 字母粘连修复
+6. enrichment 二期: ku_enrich.py(intuition/insight/example/sources/fingerprint
+   + grade→moderate), 挂 aii-ku-enrich.timer 每 2h 300 条, 独立 key(advmath_verify)
+7. 自愈: aii-healer.timer 15min 一轮(服务重启/容器 docker start/D盘检测
+   /KU 新鲜度/飞轮心跳, 日志 aii_pipeline/healer.log)
+
+### 待人工(需 root)
+- sudo ntfsfix /dev/nvme0n1p1 && sudo mount /mnt/d   (挂载后 healer 自动拉起 stratum 容器)
+- 可选自动挂载: echo "soffy ALL=(root) NOPASSWD: /usr/bin/systemctl start mnt-d.mount, /bin/mount" \
+  | sudo tee /etc/sudoers.d/aii-healer
+- misc 质量门拦截 18 本 + advmath quarantine 129 本: 按既有规则人工 review 或放弃

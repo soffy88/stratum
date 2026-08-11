@@ -11,6 +11,8 @@ cd "$(dirname "$0")/.."
 : "${RCLONE_PROXY=http://127.0.0.1:7890}"
 if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
   export HTTPS_PROXY="${RCLONE_PROXY}" HTTP_PROXY="${RCLONE_PROXY}"
+  export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+  export no_proxy="${NO_PROXY}"
 fi
 PY=.venv/bin/python
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
@@ -53,7 +55,9 @@ for f in /home/soffy/books/MD/英文数学/*.md /home/soffy/books/MD/中文数�
     # 察觉自己失败(粘连整句会被当成概念名放行)。实测 76% 粘连的书 ①②双双归零。
     # 不抽, 退回 Stratum 返工——粘连是上游 PDF→MD 的病, 自弃等于替上游背账。
     # 卡在②【之前】, 顺带省下 ~240s/章 的 49B 成本。阈值 MD_GLUE_THRESHOLD 可调。
-    if ! $PY scripts/md_glue_gate.py "$f" --substrate "$sub" --title "$stem" --report; then
+    # ★2026-08-10: 阈值 0.30→0.40 — OCR 粘连 30-40% 的好教材(ML概率统计35%/Stewart微积分)
+    #   被 gate 拒后 math 彻底空转; 40% 内程序抠仍可用, math_route_or_skip 编号定理门禁兜底。
+    if ! MD_GLUE_THRESHOLD=0.40 $PY scripts/md_glue_gate.py "$f" --substrate "$sub" --title "$stem" --report; then
         echo "  ⏭ 粘连超阈值, 跳过并已反馈 Stratum: $stem"
         continue
     fi
