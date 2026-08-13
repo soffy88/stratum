@@ -200,6 +200,15 @@ def convert(path):
     """PDF/EPUB → 清洗后的 MD 文本(去页眉页脚/页码, 章节行提升为 # 标题).
     ★2026-08-07: PDF 优先 opendataloader(benchmark #1 表格提取, 数学书表格密集);
       失败/EPUB 回退 markitdown。页眉页脚剔除用"全文行频率"阈值 0.12*页数。"""
+    # ★2026-08-11 微服务化: 转换引擎迁入 stratum-docs 容器(oprim parse_pdf, 同引擎零差异)
+    try:
+        import sys as _sys
+        from pathlib import Path as _P
+        _sys.path.insert(0, str(_P(__file__).resolve().parent / "scripts"))
+        from docs_client import pdf_to_md
+        return pdf_to_md(str(path))
+    except Exception as _e:
+        print(f"  ⚠ 容器转换失败({str(_e)[:70]}), 本地兜底", flush=True)
     from markitdown import MarkItDown
 
     npg = fitz.open(path).page_count

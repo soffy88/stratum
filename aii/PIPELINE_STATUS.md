@@ -97,6 +97,11 @@ NVRM: GPU 0000:01:00.0: GPU has fallen off the bus.
 - 重启前建议先确认没有其它重要的、未保存状态的工作跑在这台host上(这台机器同时扛着经济学/数学飞轮以外的一大堆容器: aegis/helios/tide/quant/selene/mneme等)
 - GPU恢复后, `aii-ocr-daemon` 需要手动 `systemctl --user start aii-ocr-daemon` 才会重新开始(不会自愈启动, 这是刻意的——不想在GPU状态不明时又自动开始猛跑)
 
+## 2026-08-13 体检/同步链路修复（评估修复）
+
+- **b_repo_sync.sh embed 端点失配修复**：`ensure_embed()` 原指向本机 `127.0.0.1:8102` 并尝试 `systemctl --user start aii-embed`——自 embed 迁笔记本后（100.68.226.13:8102），每日 04:30 timer 触发必失败（embed 不可达 + 本机单元 disabled 起不来）。已对齐其他飞轮脚本：默认走 `http://100.68.226.13:8102`，不可达时直接报错不再尝试启动本机单元。手动小批量验证通过（embed/readout 正常）。附带发现 m0 步骤偶发 `numpy AxisError: axis 1 out of bounds`（WARN 降级不阻塞，待查）。
+- **pipeline_health_check.sh 覆盖扩到 11 个服务**（新增 extract/gdrive-mount/advmath/cs/edu/paper），ocr-vllm 降为 ⚠️（GPU 故障期刻意停用，不再误报 🚨）；清理 aii-embed/aii-ku-enrich/aii-b-repo-sync 三个 failed 残留（reset-failed）。
+
 ## 2026-07-06 10:25 GPU故障后续: 已重启host, 但硬件仍未恢复 + aii-embed一度真实故障(已修) + aii-ocr-daemon被linger误唤醒(已再停)
 
 距06:35 Xid 79记录约4小时后发现host已被重启(`uptime`显示仅运行5分钟), 但`nvidia-smi`重启后依然报`Unable to determine the device handle`/`No devices were found`——**说明这次GPU故障不是简单的驱动挂起, `sudo systemctl reboot`这条"通常有效"的修复手段已经试过且未生效, 硬件层面的问题比预想的更严重**。
@@ -119,9 +124,9 @@ NVRM: GPU 0000:01:00.0: GPU has fallen off the bus.
 - **宿主机内存告急导致 econ-zh 飞轮持续 OOM kill**（2026-08-02 观察）: 30G RAM 用 24G、**31G swap 全满**；`aii-flywheel-econ-zh` 重启计数已达 45（今日 07:02–08:42 被 OOM kill 8 次），今日 0 KU 入库。内存大头是跨项目 `platform-postgres` 容器（8.8G，helios/selene/aegis 共享库），非 AII 代码问题。若要让 econ-zh 稳定跑，需要人工决定释放/限制内存（如给 platform-postgres 设内存上限、或暂时停掉非关键容器），或提高宿主 RAM/swap 上限——这超出 AII 软件层面可处理范围
 
 <!-- WATCHDOG:START -->
-## 🚨 Needs Human (看门狗自动维护, 2026-08-11T03:19:56Z)
+## 🚨 Needs Human (看门狗自动维护, 2026-08-13T01:13:16Z)
 
-- ✅ 无严重项 (overall=degraded)
+- ku-growth: 24h KU 增量=0(历史正常 400-700/天) — 产能停摆, 查飞轮/入库
 
 <!-- WATCHDOG:END -->
 

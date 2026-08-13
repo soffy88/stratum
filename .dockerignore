@@ -20,7 +20,9 @@ concepts/
 substrate/
 experiments/
 notes/
-services/
+services/scheduler/
+services/tts/
+services/wechat_mp/
 
 # Test / CI artifacts
 .coverage
