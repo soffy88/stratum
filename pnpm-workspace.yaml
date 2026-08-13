@@ -1,5 +1,7 @@
 packages:
   - 'aii-web'
-allowBuilds:
-  '@sentry/cli': set this to true or false
-  sharp: set this to true or false
+# pnpm 11: 需要执行 postinstall 构建脚本的依赖白名单
+# (esbuild/sharp 等不构建则 next build 会挂; 从 package.json pnpm.onlyBuiltDependencies 迁移)
+onlyBuiltDependencies:
+  - esbuild
+  - sharp

@@ -226,6 +226,34 @@ services:
       timeout: 5s
       retries: 3
 
+  stratum-docs:
+    build:
+      context: ..
+      dockerfile: deploy/docs_service/Dockerfile
+    container_name: stratum-docs
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8300:8300"
+    volumes:
+      - /home/soffy/deploy/3O:/opt/platform:ro
+    environment:
+      - ODL_HYBRID=0
+      # ★2026-08-11 officecli(NIM 端点)经宿主机 sing-box 代理出网
+      - HTTP_PROXY=http://172.19.0.1:10808
+      - HTTPS_PROXY=http://172.19.0.1:10808
+      - NO_PROXY=localhost,127.0.0.1,172.19.0.1
+      # LangExtract grounded extraction LLM(NIM, 经代理出网) — 密钥经 deploy/.env 插值, 不入库
+      - LX_API_KEY=${LX_API_KEY:?set LX_API_KEY in deploy/.env}
+      - LX_API_BASE=https://integrate.api.nvidia.com/v1
+      - LX_MODEL=nvidia/llama-3.3-nemotron-super-49b-v1.5
+    mem_limit: 6g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8300/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
 networks:
   default:
     name: stratum-net

@@ -201,6 +201,10 @@ asyncio.run(chk())
         N_PIPELINE_OK=$((N_PIPELINE_OK + 1))
         RESULTS[$SUBSTRATE]="PASS:registered"
         echo "  ✅ 已入正式库: $SUBSTRATE"
+        # ★P2(2026-08-12): 生成 KU 证据审查 HTML(字符级高亮, 人工抽查 A 仓质量用)
+        $PY scripts/ku_visualize.py --substrate "$SUBSTRATE" --limit 60 \
+            --out "$(dirname "$QUAL_JSON" 2>/dev/null || echo econ_pipeline/qual)/${SUBSTRATE}_ku_review.html" 2>/dev/null \
+            || echo "  ⚠ KU 审查 HTML 生成失败(非致命)"
         # ★用户指令(2026-07-23): 抽完KU的源MD是资产, 不能只留本地——按本地MD池子分类
         # (经济学/中文数学/英文数学/其它)同名归档到Drive。不删本地, 失败下轮 econ_register
         # 幂等重跑时不会再碰这段(只在本次成功分支跑一次), 但下次批量遇到同名文件 rclone

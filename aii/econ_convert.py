@@ -158,6 +158,15 @@ def convert(path):
     不像 fitz 那样有天然页边界, 页眉页脚剔除从"按页首尾行频率"改成"全文行频率", 阈值沿用
     原有的 0.12*页数(页数仍用 fitz 快速取一次, 比按总行数算更准——总行数会随大部头/合集类
     书暴涨, 稀释掉真正逐页重复的页眉页脚)。"""
+    # ★2026-08-11 微服务化: 转换引擎迁入 stratum-docs 容器(oprim parse_pdf, 同引擎零差异)
+    try:
+        import sys as _sys
+        from pathlib import Path as _P
+        _sys.path.insert(0, str(_P(__file__).resolve().parent / "scripts"))
+        from docs_client import pdf_to_md
+        return pdf_to_md(str(path))
+    except Exception as _e:
+        print(f"  ⚠ 容器转换失败({str(_e)[:70]}), 本地兜底", flush=True)
     # ★2026-08-07 全面接入 opendataloader(benchmark#1 表格/无cid), PDF 优先; 失败回退 markitdown
     text = None
     if str(path).lower().endswith(".pdf"):

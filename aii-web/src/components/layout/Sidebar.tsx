@@ -83,6 +83,7 @@ const NAV: NavGroup[] = [
   ] },
   { title: '知识获取', items: [
     { href: '/documents', label: '文档', icon: FileText },
+    { href: '/doc-tools', label: '文档工具', icon: FileText },
     { href: '/inbox', label: '收件箱', icon: Upload },
     { href: '/clip', label: '网页剪藏', icon: LinkIcon },
     { href: '/feeds', label: '订阅源', icon: Rss },

@@ -78,5 +78,105 @@
       "英文数学": 43,
       "其它": 278
     }
+  },
+  {
+    "ts": "2026-08-12T19:18:28.481388+00:00",
+    "stage": "veya",
+    "result": {
+      "status": "failed",
+      "error": null,
+      "output": {
+        "research": "ERROR: API key not set for provider 'dashscope'",
+        "plan": "ERROR: API key not set for provider 'dashscope'",
+        "execute": null
+      },
+      "cost_usd": 0.0,
+      "squads": [
+        {
+          "id": "research",
+          "role": "research",
+          "status": "success",
+          "output": "ERROR: API key not set for provider 'dashscope'",
+          "error": null,
+          "cost_usd": 0.0
+        },
+        {
+          "id": "plan",
+          "role": "plan",
+          "status": "success",
+          "output": "ERROR: API key not set for provider 'dashscope'",
+          "error": null,
+          "cost_usd": 0.0
+        },
+        {
+          "id": "execute",
+          "role": "execute",
+          "status": "failed",
+          "output": null,
+          "error": "Task timed out after 30.0s",
+          "cost_usd": 0.0
+        }
+      ]
+    }
+  },
+  {
+    "ts": "2026-08-12T19:18:28.488537+00:00",
+    "stage": "oapen",
+    "started": true
+  },
+  {
+    "ts": "2026-08-12T19:18:28.543253+00:00",
+    "stage": "veya",
+    "started": true
+  },
+  {
+    "ts": "2026-08-12T19:18:28.545372+00:00",
+    "stage": "snapshot",
+    "books_md_pools": {
+      "经济": 105,
+      "中文数学": 31,
+      "英文数学": 54,
+      "其它": 393
+    }
+  },
+  {
+    "ts": "2026-08-12T20:19:21.721785+00:00",
+    "stage": "oapen",
+    "started": true
+  },
+  {
+    "ts": "2026-08-12T20:19:21.722125+00:00",
+    "stage": "veya",
+    "skipped": "距上次 60min < 6h 限速"
+  },
+  {
+    "ts": "2026-08-12T20:19:21.724467+00:00",
+    "stage": "snapshot",
+    "books_md_pools": {
+      "经济": 105,
+      "中文数学": 31,
+      "英文数学": 54,
+      "其它": 393
+    }
+  },
+  {
+    "ts": "2026-08-12T21:24:25.886659+00:00",
+    "stage": "oapen",
+    "started": true
+  },
+  {
+    "ts": "2026-08-12T21:24:25.887065+00:00",
+    "stage": "veya",
+    "skipped": "距上次 125min < 6h 限速"
+  },
+  {
+    "ts": "2026-08-12T21:24:25.888914+00:00",
+    "stage": "snapshot",
+    "books_md_pools": {
+      "经济": 105,
+      "中文数学": 31,
+      "英文数学": 54,
+      "其它": 393
+    }
   }
 ]

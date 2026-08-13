@@ -431,6 +431,35 @@ def check_stuck_pulls() -> list[dict]:
 # ── assemble + write ──────────────────────────────────────────────────────────
 
 
+def check_docs_service() -> list[dict]:
+    """stratum-docs 转换容器健康(2026-08-11 微服务化后 convert 走它)。"""
+    import urllib.request
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:8300/health", timeout=5) as r:
+            ok = r.status == 200
+        return [{"name": "docs-service", "status": "ok" if ok else "down",
+                 "severity": "info" if ok else "crit",
+                 "detail": "stratum-docs 转换服务 OK" if ok
+                 else "stratum-docs 状态异常(convert 已回退本地兜底)"}]
+    except Exception as e:
+        return [{"name": "docs-service", "status": "down", "severity": "crit",
+                 "detail": f"stratum-docs 不可达: {str(e)[:60]}(convert 已回退本地兜底, 需检查容器)"}]
+
+
+def check_extract_service() -> list[dict]:
+    """宿主 LangExtract grounded extraction 服务(:8301, 2026-08-12 内化)。"""
+    import urllib.request
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:8301/health", timeout=5) as r:
+            ok = r.status == 200
+        return [{"name": "extract-service", "status": "ok" if ok else "down",
+                 "severity": "info" if ok else "crit",
+                 "detail": "LangExtract 提取服务 OK" if ok else "LangExtract 提取服务不可达"}]
+    except Exception as e:
+        return [{"name": "extract-service", "status": "down", "severity": "crit",
+                 "detail": f"LangExtract 不可达: {str(e)[:60]}"}]
+
+
 def check_convert_output() -> list[dict]:
     """断料哨兵: convert 是否异常(故障) vs 供应质量(无教材可转, 不算故障)。
     - feeder.log 最近输出有 Traceback/UnboundLocal/NameError → crit(2026-08-08 MarkItDown bug 同类)
@@ -619,7 +648,7 @@ def check_ku_growth() -> list[dict]:
 def build_report(state: dict) -> dict:
     checks: list[dict] = []
     for fn in (check_services, check_gpu, check_embed, check_backlog, check_stuck_pulls,
-               check_convert_output, check_repeat_extraction, check_ku_growth):
+               check_convert_output, check_repeat_extraction, check_ku_growth, check_docs_service, check_extract_service):
         try:
             checks += fn()
         except Exception as e:

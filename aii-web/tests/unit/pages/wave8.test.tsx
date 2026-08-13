@@ -195,9 +195,17 @@ describe("DocumentsPage", () => {
 
   it("shows substrate list", async () => {
     const { apiClient } = await import("@/lib/api-client");
-    vi.mocked(apiClient.get).mockResolvedValue({
-      items: [{ id: "s1", title: "My PDF", mime: "application/pdf", language: "zh", page_count: 10 }],
-      total: 1,
+    // apiClient.ts 包装层会自动包一层 data; mock 需返回原始形状。
+    // BackgroundTasksPanel 走同一条包装链, folder-watch/channels/sources 需返回数组。
+    vi.mocked(apiClient.get).mockImplementation((url: string) => {
+      if (url.startsWith("/api/v1/documents") && !url.includes("kind=")) {
+        return Promise.resolve({
+          items: [{ id: "s1", title: "My PDF", mime: "application/pdf", language: "zh", page_count: 10, medium: "pdf", source: "upload", created_at: "2026-01-01T00:00:00", is_pinned: false }],
+          total: 1,
+        });
+      }
+      if (url.startsWith("/api/v1/documents")) return Promise.resolve({ items: [], total: 0 });
+      return Promise.resolve([]);
     });
     render(<DocumentsPage />, { wrapper: W });
     await waitFor(() => expect(screen.getByText("My PDF")).toBeDefined());
@@ -205,16 +213,25 @@ describe("DocumentsPage", () => {
 
   it("shows empty state", async () => {
     const { apiClient } = await import("@/lib/api-client");
-    vi.mocked(apiClient.get).mockResolvedValue({ items: [], total: 0 });
+    vi.mocked(apiClient.get).mockImplementation((url: string) => {
+      if (url.startsWith("/api/v1/documents")) return Promise.resolve({ items: [], total: 0 });
+      return Promise.resolve([]);
+    });
     render(<DocumentsPage />, { wrapper: W });
     await waitFor(() => expect(screen.getByText(/暂无文档/)).toBeDefined());
   });
 
   it("clicking doc navigates to /documents/:id", async () => {
     const { apiClient } = await import("@/lib/api-client");
-    vi.mocked(apiClient.get).mockResolvedValue({
-      items: [{ id: "doc1", title: "Doc", mime: null, language: null, page_count: null }],
-      total: 1,
+    vi.mocked(apiClient.get).mockImplementation((url: string) => {
+      if (url.startsWith("/api/v1/documents") && !url.includes("kind=")) {
+        return Promise.resolve({
+          items: [{ id: "doc1", title: "Doc", mime: null, language: null, page_count: null, medium: "text", source: "upload", created_at: "2026-01-01T00:00:00", is_pinned: false }],
+          total: 1,
+        });
+      }
+      if (url.startsWith("/api/v1/documents")) return Promise.resolve({ items: [], total: 0 });
+      return Promise.resolve([]);
     });
     render(<DocumentsPage />, { wrapper: W });
     await waitFor(() => screen.getByText("Doc"));

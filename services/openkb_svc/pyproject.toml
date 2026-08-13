@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openkb-stratum"
+version = "0.3.0"
+description = "OpenKB (Apache-2.0) — inalized into stratum/3O: LLM wiki compile + Skill Factory"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+dependencies = [
+    "litellm>=1.40",
+    "rich>=13.0",
+    "typer>=0.12",
+    "pydantic>=2.0",
+    "jinja2>=3.0",
+    "python-dotenv>=1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["openkb"]
+
+[project.scripts]
+openkb = "openkb.cli:cli"
