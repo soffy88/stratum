@@ -1,6 +1,16 @@
 # STATUS — AII Note MVP
 
-最后更新：2026-08-02（/retrieve 修通 + 中文检索 + /search 用户隔离，详见 In Progress）
+最后更新：2026-08-13（安全加固 + CI/测试门禁修复 + docs_service 并发修复，详见下方）
+
+## 🛡️ 2026-08-13 评估修复记录
+
+- [x] **P0 密钥轮换**：`deploy/.env.bak.0810` 被 git 追踪且含与线上一致的 JWT/COOKIE/ADMIN/STRATUM_API_KEY → 四密钥全部轮换（新值在 `/home/soffy/.config/keys/.env`，旧值备份 `.env.rotated-20260813.bak`）；stratum-api/stratum-sl 已重建，认证路径验证 401/200 正常。泄漏文件从未推送到 GitHub（远端分支历史无此文件），本地历史已 filter-branch 清除 + 对象 prune；备份移至 `/home/soffy/.config/keys/backups/`。
+- [x] **P0 硬编码密钥清除**：`deploy/docker-compose.yml` LX_API_KEY 改 `${LX_API_KEY}` 插值（值入 deploy/.env，已 gitignore）；`extract_server.py` 硬编码 key 删除，改 systemd EnvironmentFile（`/home/soffy/.config/keys/aii-extract.env`）；`officecli_config.json` 入 .gitignore。⚠️ nvapi/openCode 两个外部 key 需在服务商后台自行轮换。
+- [x] **P1 CI 修复**：前端 job 原用 npm ci + 不存在的 package-lock.json（必挂）→ 改 pnpm 11 + frozen-lockfile；`pnpm-workspace.yaml` 补 onlyBuiltDependencies（esbuild/sharp，修复占位符残留）；uv.lock 同步（websockets 17→16.1.1 + xlsxwriter）。
+- [x] **P1 MCP 单例修复**：`StreamableHTTPSessionManager.run()` 每进程只能跑一次 → `http_api/app.py` lifespan 加 `_MCP_LIFESPAN_RUN` 首次运行守卫。后端测试 363+4err → **367 passed / 17 skipped / 0 errors**。
+- [x] **P1 前端测试同步**：url-ingest-dialog 12 个旧 UI 测试重写（Dialog 版组件）；wave8 DocumentsPage mock 形状修正（apiClient 包装层 + BackgroundTasksPanel 需数组）+ kind 参数区分；theme.ts 改 window.localStorage（Node 26 实验性全局遮蔽 jsdom）。**91/91 passed**，`pnpm build` 通过。
+- [x] **P2 docs_service 事件循环饿死**：所有阻塞转换改 `asyncio.to_thread` + 并发信号量(2)，/health 不再被长任务拖超时（容器 13h unhealthy → healthy，压测 6s 内 /health 均 <15ms）。
+- [x] **P2 体检脚本与现状对齐**：覆盖 11 个在跑服务（新增 extract/gdrive-mount/advmath/cs/edu/paper）；ocr-vllm 降为 ⚠️ 提示（GPU 故障期刻意停用）；清理 failed 残留（aii-embed/aii-ku-enrich/aii-b-repo-sync reset-failed）；**b_repo_sync.sh embed 端点从本机 127.0.0.1 改笔记本 100.68.226.13**（迁移后遗留的唯一失配，曾致每日 04:30 同步必失败）。
 
 ## 🔒 Never
 

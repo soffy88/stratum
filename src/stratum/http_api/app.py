@@ -133,9 +133,20 @@ try:
 
     from stratum.api.mcp import mcp_app
 
+    # StreamableHTTPSessionManager.run() 每进程只能跑一次(内部 _has_started 单例)。
+    # 生产: uvicorn 单进程, lifespan 只跑一次 → 正常托管。
+    # 测试: 每个 TestClient 重跑 lifespan → 首次后跳过, 避免
+    #   "StreamableHTTPSessionManager .run() can only be called once per instance"。
+    _MCP_LIFESPAN_RUN = False
+
     @asynccontextmanager
     async def _lifespan(application):
-        async with mcp_app.router.lifespan_context(application):
+        global _MCP_LIFESPAN_RUN
+        if not _MCP_LIFESPAN_RUN:
+            _MCP_LIFESPAN_RUN = True
+            async with mcp_app.router.lifespan_context(application):
+                yield
+        else:
             yield
 
     app.router.lifespan_context = _lifespan

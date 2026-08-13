@@ -111,3 +111,11 @@ scripts/*.log
 # code-review-graph local graph DB (rebuilt from source, not committed)
 .code-review-graph/
 paperclip/
+
+# 密钥备份/工具配置 — 禁止入库
+*.env.bak
+*.env.bak.*
+*.env.old
+*.env.save
+deploy/docs_service/officecli_config.json
+officecli-*.tgz

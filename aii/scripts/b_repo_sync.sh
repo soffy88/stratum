@@ -27,8 +27,9 @@ SKIP_M0=0
 SKIP_READOUT=0
 READOUT_LIMIT=200
 CONC=4
-# 本机 embed(systemd aii-embed :8102); 勿走 100.68 笔记本默认, 见 orchestrate 注释
-export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"
+# ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU); 勿再 systemctl start 本机单元
+#   (与 advmath/cs/econ 等飞轮脚本一致)
+export AII_EMBED_URL="${AII_EMBED_URL:-http://100.68.226.13:8102}"
 export AII_KG_URL="${AII_KG_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
 export REFINED_URL="${REFINED_URL:-postgresql://aii:aii_safe_pass@localhost:5436/aii_refined}"
 
@@ -61,16 +62,8 @@ ensure_embed() {
   if curl -sf --max-time 3 "${AII_EMBED_URL}/health" >/dev/null 2>&1; then
     return 0
   fi
-  log "aii-embed 不可达, 尝试 systemctl --user start aii-embed"
-  systemctl --user start aii-embed.service || true
-  for i in 1 2 3 4 5 6 7 8 9 10; do
-    sleep 2
-    if curl -sf --max-time 3 "${AII_EMBED_URL}/health" >/dev/null 2>&1; then
-      log "aii-embed ok"
-      return 0
-    fi
-  done
-  log "ERROR: aii-embed still down at ${AII_EMBED_URL}"
+  # embed 已迁笔记本(100.68.x), 本机无对应单元可启动 — 直接报错等人工/自愈
+  log "ERROR: aii-embed(${AII_EMBED_URL}) 不可达 — 检查笔记本WSL的 aii-embed.service 与 tailscale"
   return 1
 }
 
