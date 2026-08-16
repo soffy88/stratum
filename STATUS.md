@@ -1,6 +1,20 @@
 # STATUS — AII Note MVP
 
-最后更新：2026-08-16（paper 飞轮 LLM 提供方修复 + 4390 篇卡死论文解锁 + BU 学习层上线，详见下方）
+最后更新：2026-08-16（paper 飞轮提速 ~19×：并发 worker + opencode 2-key 池 + LLM 提供方修复，详见下方）
+
+## 🚀 2026-08-16 晚间 paper 飞轮提速（0.15 → 2.9 篇/min, ~19×）
+
+- [x] **串行 → 并发**：`paper_flywheel.sh` Step 2 改 `xargs -P 6` 多 worker（新 `paper_worker.sh`），
+  每篇产物按 SUBSTRATE 隔离（bu json / bu_onto / v3 标注 / jsonl 单行原子写），结果汇总后
+  统一写 state（避免并发写损坏）；xargs 加 3600s 超时保险。`PAPER_WORKERS` / `PAPER_LIMIT`
+  （120）可调。
+- [x] **opencode 2-key 池化**：`_provider.py` 原只读 opencode-keys.txt **第一行** key（所有飞轮
+  共用 1 key → 并发 429 静默重试 → NIM fallback 拖慢）；新增 `_read_opencode_keys()` 读全部
+  key，`_make_deepseek_caller` 加 `key_pool_env` 参数，opencode-go 主 provider 用
+  `OPENCODE_KEY_POOL` 轮换（注意 setdefault 必须在 caller 创建前）。
+- [x] **实测**：DB 时间戳 15:04-15:11 八分钟 23 篇 ≈ 2.9 篇/min（对比修复前 ~0.15）；最近
+  300 行日志 0 fallback（key 池生效后主 provider 全直连）；剩余 4385 篇 ≈ 25 小时跑完
+  （原估计 ~19 天）。
 
 ## 🔧 2026-08-16 下午 paper 飞轮修复（4390 篇论文解锁）
 
