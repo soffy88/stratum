@@ -32,7 +32,7 @@ for svc in aii-backend aii-feeder aii-extract aii-gdrive-mount \
 
 echo
 echo "[2/6] aii-embed 真调用(★已迁笔记本GTX1050Ti, 禁止用本机GPU; 走tailscale, 不只看进程活着, 实际打一次embed)"
-AII_EMBED_URL_CHECK="${AII_EMBED_URL:-http://100.68.226.13:8102}"
+AII_EMBED_URL_CHECK="${AII_EMBED_URL:-http://100.119.113.90:8102}"
 if curl -s -m 10 -o /dev/null -w "" "$AII_EMBED_URL_CHECK/health" 2>/dev/null; then
     EMBED_OUT=$(curl -s -m 30 -X POST "$AII_EMBED_URL_CHECK/embed" -H "Content-Type: application/json" -d '{"texts":["体检"]}' 2>&1)
     if echo "$EMBED_OUT" | grep -q '"embeddings"'; then

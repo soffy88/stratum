@@ -1,6 +1,20 @@
 # STATUS — AII Note MVP
 
-最后更新：2026-08-13（安全加固 + CI/测试门禁修复 + docs_service 并发修复，详见下方）
+最后更新：2026-08-16（BU 学习层上线 + 证据挂接真实批次 + 管线修复，详见下方）
+
+## 🧠 2026-08-16 BU 学习层上线（按 su-learning-map 标准）
+
+- [x] **真实批次生成**：`generate_bu.py && persist_bu.py` 真实 LLM 跑出两本证据挂接七项 + 学习层：
+  `econ_zh_2726f38224`（产业经济学, legacy_ingest 逐字分支）与 `math_prog_2ee1b2936e`
+  （凸优化讲义, **evidence_quotes 定理原文逐字分支**）各 7/7 七项 + 5 路径/10 卡, 审计 CLI 均 ok。
+- [x] **部署**：stratum-sl 重启（display.py 新字段 facets_grounded/learning_paths/deep_cards/bu_quality
+  已在线返回）、aii-web 镜像重建（LearningLayer.tsx chunk 已入镜像）；经 aii-web 代理全链验证通过。
+- [x] **真实运行暴露并修复 3 个确定性 bug**（详见 aii/docs/AII-BU-LEARNING-LAYER-001.md「本轮修复」）：
+  quote 路径 excerpt 截断错位（全部 no_verbatim 误杀）、落库后审计复验前缀不匹配、审计 CLI jsonb 未解析。
+- [x] **paper 飞轮分隔符 bug**：md 文件名含 `|`（`…$2|E_01KZB25B.md`）把 `IFS='|'` 书单读错位，
+  substrate 错成文件名、正确 id 落进 title → 污染 ingested_substrate（8-06 首犯、8-16 复发）。
+  paper_discover.py 与 paper_flywheel.sh 改 TAB 协议；污染行（E_01KZB25B.md 的 bu_onto + ingested_substrate）
+  已删，下一轮飞轮会用正确 id `paper_768cde938b` 重处理。
 
 ## 🛡️ 2026-08-13 评估修复记录
 

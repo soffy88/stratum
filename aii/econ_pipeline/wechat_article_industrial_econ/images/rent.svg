@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#F7F3EA"/>
+  <text x="48" y="52" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="26" font-weight="bold" fill="#3A352F">租金由四个因素共同决定</text>
+  <g transform="translate(60,110)">
+    <rect x="60" y="60" width="200" height="80" rx="10" fill="#FFFFFF" stroke="#8D7C64" stroke-width="2"/>
+    <rect x="340" y="60" width="200" height="80" rx="10" fill="#FFFFFF" stroke="#8D7C64" stroke-width="2"/>
+    <rect x="60" y="200" width="200" height="80" rx="10" fill="#FFFFFF" stroke="#8D7C64" stroke-width="2"/>
+    <rect x="340" y="200" width="200" height="80" rx="10" fill="#FFFFFF" stroke="#8D7C64" stroke-width="2"/>
+    <text x="160" y="108" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="22" text-anchor="middle" fill="#3A352F">价值</text>
+    <text x="440" y="108" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="22" text-anchor="middle" fill="#3A352F">需求</text>
+    <text x="160" y="248" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="22" text-anchor="middle" fill="#3A352F">供给</text>
+    <text x="440" y="248" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="22" text-anchor="middle" fill="#3A352F">时间</text>
+    <line x1="160" y1="140" x2="300" y2="170" stroke="#8D7C64" stroke-width="2"/>
+    <line x1="440" y1="140" x2="300" y2="170" stroke="#8D7C64" stroke-width="2"/>
+    <line x1="160" y1="200" x2="300" y2="170" stroke="#8D7C64" stroke-width="2"/>
+    <line x1="440" y1="200" x2="300" y2="170" stroke="#8D7C64" stroke-width="2"/>
+    <circle cx="300" cy="170" r="52" fill="#8D7C64"/>
+    <text x="300" y="180" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#FFFDF8">租金</text>
+  </g>
+  <text x="48" y="470" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="15" fill="#766E64">第 12 章：价值、需求、供给、时间——四个因素决定租金水平</text>
+</svg>

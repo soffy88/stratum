@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#F7F3EA"/>
+  <text x="48" y="52" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="26" font-weight="bold" fill="#3A352F">需求定理与供给定理</text>
+  <g transform="translate(80,80)">
+    <line x1="0" y1="340" x2="640" y2="340" stroke="#3A352F" stroke-width="2"/>
+    <line x1="0" y1="340" x2="0" y2="0" stroke="#3A352F" stroke-width="2"/>
+    <path d="M 20 30 Q 140 150 320 270" fill="none" stroke="#B4574A" stroke-width="4"/>
+    <path d="M 24 300 Q 190 170 560 50" fill="none" stroke="#4A6B8A" stroke-width="4"/>
+    <circle cx="185" cy="172" r="8" fill="#8D7C64"/>
+    <line x1="185" y1="172" x2="185" y2="340" stroke="#8D7C64" stroke-width="1.5" stroke-dasharray="5 5"/>
+    <line x1="185" y1="172" x2="0" y2="172" stroke="#8D7C64" stroke-width="1.5" stroke-dasharray="5 5"/>
+    <text x="500" y="322" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="18" fill="#3A352F">数量 Q</text>
+    <text x="12" y="22" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="18" fill="#3A352F">价格 P</text>
+    <text x="350" y="300" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="20" fill="#B4574A">供给：价格↑ 供给量↑</text>
+    <text x="300" y="86" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="20" fill="#4A6B8A">需求：价格↑ 需求量↓</text>
+    <text x="204" y="160" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="20" font-weight="bold" fill="#8D7C64">均衡 E</text>
+  </g>
+  <text x="48" y="470" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="15" fill="#766E64">两者共同决定市场均衡价格——本书第 10、11 章的核心判断</text>
+</svg>

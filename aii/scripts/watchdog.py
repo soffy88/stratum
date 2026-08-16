@@ -47,7 +47,7 @@ except Exception:
     pass
 
 DSN = os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
-AII_EMBED_URL = os.getenv("AII_EMBED_URL", "http://100.68.226.13:8102")
+AII_EMBED_URL = os.getenv("AII_EMBED_URL", "http://100.119.113.90:8102")
 SHARED_INBOX = Path("/home/soffy/shared/stratum-to-aii")
 
 FLYWHEELS = {

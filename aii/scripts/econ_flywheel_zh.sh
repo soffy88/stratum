@@ -42,7 +42,7 @@ export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:54
 export CUDA_VISIBLE_DEVICES=""          # 嵌入走 CPU(GPU 让给 math-prog, 防 OOM)
 export HF_HUB_OFFLINE=1                 # ★用本地缓存 BGE-M3, 不连 huggingface(直连超时→卡死)
 export TRANSFORMERS_OFFLINE=1
-export AII_EMBED_URL="${AII_EMBED_URL:-http://100.68.226.13:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU)
+export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU)
 
 # ★2026-08-10 opencode 网关 fallback: NIM 504 过载时切 gpt-5.6-sol
 export OPENCODE_API_KEY=""  # 留空 → 读 ~/.pi/agent/opencode-keys.txt

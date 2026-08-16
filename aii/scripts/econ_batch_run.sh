@@ -26,7 +26,7 @@ cd "$(dirname "$0")/.."
 : "${RCLONE_PROXY=http://127.0.0.1:7890}"
 if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
   export HTTPS_PROXY="${RCLONE_PROXY}" HTTP_PROXY="${RCLONE_PROXY}"
-  # ★本地/tailscale 服务(embed 100.68.226.13:8102 / postgres)必须直连:
+  # ★本地/tailscale 服务(embed 100.119.113.90:8102 / postgres)必须直连:
   #   缺 NO_PROXY 会让 embed 请求也走代理 → sing-box 拨号回环/内网失败
   #   → "aii-embed unreachable ... 502" 整章 FAILED(2026-08-09 事故根因)
   export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"

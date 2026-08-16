@@ -277,7 +277,7 @@ async def main():
     # ★跟其它管道统一走共享 aii-embed 服务(笔记本GPU), 不在本进程加载本地BGE-M3——
     # 本地GPU常被 ocr-vllm 占满(9.65G卡装不下两个都要显存的模型), 之前直接在这里
     # local-load 会跟正在跑的 OCR daemon 撞显存 OOM(实测复现)。
-    embed_url = os.getenv("AII_EMBED_URL", "http://100.68.226.13:8102")
+    embed_url = os.getenv("AII_EMBED_URL", "http://100.119.113.90:8102")
     from oprim.embedding.aii_remote import AiiRemoteEmbedder
 
     embedder = AiiRemoteEmbedder(embed_url)

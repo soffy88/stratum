@@ -135,13 +135,18 @@ async def go():
     c = await asyncpg.connect(os.getenv("DATABASE_URL"))
     await c.execute("ALTER TABLE aii.bu_onto ADD COLUMN IF NOT EXISTS facets_zh jsonb")
     await c.execute("ALTER TABLE aii.bu_onto ADD COLUMN IF NOT EXISTS facets_en jsonb")
+    await c.execute("ALTER TABLE aii.bu_onto ADD COLUMN IF NOT EXISTS learning_paths jsonb")
+    await c.execute("ALTER TABLE aii.bu_onto ADD COLUMN IF NOT EXISTS deep_cards jsonb")
+    await c.execute("ALTER TABLE aii.bu_onto ADD COLUMN IF NOT EXISTS bu_quality jsonb")
+    await c.execute("ALTER TABLE aii.bu_onto ADD COLUMN IF NOT EXISTS facets_grounded jsonb")
     await c.execute("DELETE FROM aii.bu_onto WHERE substrate_id=$1", SUB)
     nkc = await c.fetchval("SELECT count(*) FROM aii.kc_onto WHERE substrate_id=$1", SUB)
     grade = "pending" if insufficient else "unverified"
     await c.execute(
         """INSERT INTO aii.bu_onto(substrate_id,doc_type,overview_oneline,problem_statement,learning_thread,
-        facets_zh,facets_en,main_claims,argument_structure,grade,synthesis_marker)
-        VALUES($1,'textbook',$2,$3,$4,$5,$6,$7,$8,$9,'AII综合-书级理解,非原文断言')""",
+        facets_zh,facets_en,main_claims,argument_structure,learning_paths,deep_cards,bu_quality,facets_grounded,
+        grade,synthesis_marker)
+        VALUES($1,'textbook',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'AII综合-书级理解,非原文断言')""",
         SUB,
         zh["soul"],
         zh["question"],
@@ -150,11 +155,23 @@ async def go():
         json.dumps(en, ensure_ascii=False),
         json.dumps(bu.get("main_claims", []), ensure_ascii=False),
         json.dumps(bu.get("argument_structure", []), ensure_ascii=False),
+        json.dumps(bu.get("learning_paths") or [], ensure_ascii=False),
+        json.dumps(bu.get("deep_cards") or [], ensure_ascii=False),
+        json.dumps(bu.get("bu_quality") or {}, ensure_ascii=False),
+        json.dumps(bu.get("facets_grounded") or [], ensure_ascii=False),
         grade,
     )
     print(
         f"BU入库(校验版) + 双语 ✓ (关联 {nkc} KC, {len(bu.get('main_claims', []))} main_claims, "
         f"{len(bu.get('argument_structure', []))} argument_structure)"
+    )
+    print(
+        f"  学习层: 路径 {len(bu.get('learning_paths') or [])} 条 / 深卡 {len(bu.get('deep_cards') or [])} 张 / "
+        f"状态 {(bu.get('bu_quality') or {}).get('status', 'n/a')}"
+    )
+    print(
+        f"  七项(证据挂接): {len(bu.get('facets_grounded') or [])}/7 项存活 / "
+        f"丢弃 {len(((bu.get('bu_quality') or {}).get('facets') or {}).get('dropped', []))}"
     )
     print("boundary_zh:", zh["boundary"][:60])
     print("soul_en:", en.get("soul", "")[:80])
