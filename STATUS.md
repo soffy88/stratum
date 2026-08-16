@@ -1,6 +1,23 @@
 # STATUS — AII Note MVP
 
-最后更新：2026-08-16（BU 学习层上线 + 证据挂接真实批次 + 管线修复，详见下方）
+最后更新：2026-08-16（paper 飞轮 LLM 提供方修复 + 4390 篇卡死论文解锁 + BU 学习层上线，详见下方）
+
+## 🔧 2026-08-16 下午 paper 飞轮修复（4390 篇论文解锁）
+
+- [x] **根因**：paper 飞轮是唯一不带 NIM/opencode env 的飞轮 → `generate_bu.py` 落到
+  `aii/aii/.env` 里**已失效的 DEEPSEEK_API_KEY**（07-19 起 401/402）→ 每篇论文都
+  “LLM 主 provider 失败且无 fallback” → 被永久标记 `precheck_fail`。全库 4390 篇论文卡死
+  （DB 中无任何记录），飞轮空转“无新论文”约一个月。
+- [x] **修复**：`paper_flywheel.sh` 补 env 块（对齐 econ/cs 飞轮）：
+  `NVIDIA_NIM_API_KEY`（econ_zh 槽）+ `NIM_KEY_POOL` 三 key 池 + opencode-go 主 provider
+  （deepseek-v4-flash）+ 本机 7890 代理（直连 opencode.ai 被 RST，代理稳定 2-4s）。
+- [x] **解锁**：`flywheel_state.json` 4390 条 `precheck_fail` → `retry`（paper_discover 的
+  done 集合不含 retry → 重新发现；备份在 /tmp）。已入库 1158 篇不受影响。
+- [x] **验证**：真实跑通 3 篇（Dragon_Slayer / $L^p$-Integrability / $\mathbb Q\setminus\mathbb Z$），
+  BU 两层理解 + 技能检索向量 + v3_gate(worth_as_skill) + 入库全链路 OK；修复后无 fallback 消息、
+  无 embed 跳过。`paper_768cde938b`（`|` 文件名那篇）已在重试池，按序重处理。
+- [x] 顺带发现：cs 飞轮 PoolTimeout 同根因（直连 opencode.ai 被墙）——本次只修 paper 飞轮，
+  cs/misc 等其他飞轮如需提速可同样加 7890 代理（未动，避免影响在跑批次）。
 
 ## 🧠 2026-08-16 BU 学习层上线（按 su-learning-map 标准）
 
@@ -14,7 +31,7 @@
 - [x] **paper 飞轮分隔符 bug**：md 文件名含 `|`（`…$2|E_01KZB25B.md`）把 `IFS='|'` 书单读错位，
   substrate 错成文件名、正确 id 落进 title → 污染 ingested_substrate（8-06 首犯、8-16 复发）。
   paper_discover.py 与 paper_flywheel.sh 改 TAB 协议；污染行（E_01KZB25B.md 的 bu_onto + ingested_substrate）
-  已删，下一轮飞轮会用正确 id `paper_768cde938b` 重处理。
+  已删，`paper_768cde938b` 已入重试池按序重处理（见上方下午修复）。
 
 ## 🛡️ 2026-08-13 评估修复记录
 
