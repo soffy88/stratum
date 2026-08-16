@@ -55,7 +55,7 @@ echo ""
 # ── Step 2: 逐篇跑轻量管道 ──
 echo "[2/2] 逐篇跑论文轻量管道..."
 ok=0; fail=0
-while IFS='|' read -r md_path substrate title; do
+while IFS=$'\t' read -r md_path substrate title; do  # ★2026-08-16: 与 paper_discover.py 的 TAB 协议对齐(`|` 会与文件名冲突)
     [ -z "$substrate" ] && continue
     echo "  → $substrate ($title)"
     if SUBSTRATE="$substrate" AII_MD_FILE="$md_path" PAPER_TITLE="$title" \

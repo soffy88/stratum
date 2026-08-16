@@ -115,7 +115,7 @@ async def main(substrate: str, staging_dir: Path, dry_run: bool = False):
 
     # ── 阶段2: 批量嵌入(分块调共享服务; 整块失败降级逐条, 保证不整批挂) ──
     embs = []
-    B = 64
+    B = 16  # 2026-08-16: 64→16. embed 迁笔记本 CPU 模式(BGE-M3), 大批次 CPU 编码超时; 16条/批 ~2min < 客户端400s 窗口
     for i in range(0, len(rows), B):
         chunk = [t for _, t in rows[i : i + B]]
         try:

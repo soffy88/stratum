@@ -82,7 +82,11 @@ async def main():
         print(f"排已入库/终态后: {len(cands)} 篇", file=sys.stderr)
     if args.limit > 0:
         cands = cands[: args.limit]
-    lines = [f"{c['md_path']}|{c['id']}|{c['title']}" for c in cands]
+    # ★2026-08-16: 分隔符从 `|` 改 TAB — 实测论文 md 文件名含 `|`(如
+    #   All_parallel_chip-firing_games_with_$2|E_01KZB25B.md)会把 `|` 协议读错位,
+    #   substrate 错成文件名尾段、正确 id 落进 title 字段, 污染 ingested_substrate。
+    #   TAB 不可能出现在文件路径/名中, 解析不再可能错位。
+    lines = [f"{c['md_path']}\t{c['id']}\t{c['title']}" for c in cands]
     if args.out:
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)
         Path(args.out).write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")

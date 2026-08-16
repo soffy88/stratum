@@ -10,7 +10,7 @@ Environment=PATH=/home/soffy/.local/bin:/usr/local/bin:/usr/bin:/bin
 # 墙内: rclone 连 Google API 必须走本机代理(同 aii-gdrive-mount 单元); LLM 分类走 NIM 同理
 Environment=HTTPS_PROXY=http://127.0.0.1:7890
 Environment=HTTP_PROXY=http://127.0.0.1:7890
-Environment=NO_PROXY=localhost,127.0.0.1,172.19.0.1,100.68.226.13
+Environment=NO_PROXY=localhost,127.0.0.1,172.19.0.1,100.119.113.90
 WorkingDirectory=/data/soffy/projects/stratum/aii
 # flock 防与手动跑重入(-n: 拿不到锁直接跳过本轮, 等下个定时)
 ExecStart=/usr/bin/flock -n /data/soffy/projects/stratum/aii/.locks/context_archiver.lock \
