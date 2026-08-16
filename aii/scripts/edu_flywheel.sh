@@ -46,8 +46,12 @@ export OPENCODE_MODEL="${OPENCODE_MODEL:-deepseek-v4-flash}"
 export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
 export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-6}"   # ★并发度=6(2026-08-10: NIM 3-key 池 120/min 后从 4 提到 6; 单 key 时代 4-5 低偶发超时, 6+ 过载)
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
-# ★本地/tailscale 服务直连不代理(embed/postgres): 缺 NO_PROXY 会整章 embed 502 FAILED
-#   (2026-08-09 事故: 继承 econ_batch_run.sh 的 7890 代理但丢 no_proxy)
+# ★2026-08-16 提速: 本机 7890 代理(opencode-go 直连被 RST → PoolTimeout → NIM fallback 拖慢,
+#   实测代理后 2-4s 稳定; 缺 NO_PROXY 会整章 embed 502, 白名单保本地服务)
+export http_proxy="${HTTP_PROXY:-http://127.0.0.1:7890}"
+export https_proxy="${HTTPS_PROXY:-http://127.0.0.1:7890}"
+export HTTP_PROXY="${http_proxy}"
+export HTTPS_PROXY="${https_proxy}"
 export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
 export no_proxy="${NO_PROXY}"
 export CUDA_VISIBLE_DEVICES=""          # 嵌入走 CPU(GPU 让给 math-prog, 防 OOM)
