@@ -475,7 +475,8 @@ async def book_bu(substrate_id: str):
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT facets_zh, facets_en, grade, synthesis_marker FROM aii.bu_onto WHERE substrate_id=$1",
+                "SELECT facets_zh, facets_en, facets_grounded, learning_paths, deep_cards, bu_quality, grade, synthesis_marker "
+                "FROM aii.bu_onto WHERE substrate_id=$1",
                 substrate_id,
             )
             nku = await conn.fetchval(
@@ -496,6 +497,10 @@ async def book_bu(substrate_id: str):
                 "substrate_id": substrate_id,
                 "facets_zh": _jsonb(row["facets_zh"]),
                 "facets_en": _jsonb(row["facets_en"]),
+                "facets_grounded": _jsonb(row["facets_grounded"]),
+                "learning_paths": _jsonb(row["learning_paths"]),
+                "deep_cards": _jsonb(row["deep_cards"]),
+                "bu_quality": _jsonb(row["bu_quality"]),
                 "grade": row["grade"],
                 "synthesis_marker": row["synthesis_marker"],
                 "n_ku": nku,
@@ -649,6 +654,9 @@ async def bu_detail(bu_id: str):
                 "argument_structure": argument_structure,
                 "structure": structure_raw,
                 "key_concepts": key_concepts,
+                "learning_paths": _jsonb(row["learning_paths"]) or [],
+                "deep_cards": _jsonb(row["deep_cards"]) or [],
+                "bu_quality": _jsonb(row["bu_quality"]) or {},
             }
         )
     except Exception as e:

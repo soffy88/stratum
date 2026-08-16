@@ -152,10 +152,10 @@ services:
       - HTTPS_PROXY=http://172.19.0.1:10808
       - http_proxy=http://172.19.0.1:10808
       - https_proxy=http://172.19.0.1:10808
-      # ★100.68.226.13(tailscale笔记本, aii-embed宿主)必须在NO_PROXY里: httpx尊重代理env,
+      # ★100.119.113.90(tailscale笔记本, aii-embed宿主)必须在NO_PROXY里: httpx尊重代理env,
       #   不排除的话 embed 请求会被路由进 sing-box 代理而不可达。
-      - NO_PROXY=localhost,127.0.0.1,::1,172.19.0.1,100.68.226.13,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend
-      - no_proxy=localhost,127.0.0.1,::1,172.19.0.1,100.68.226.13,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend
+      - NO_PROXY=localhost,127.0.0.1,::1,172.19.0.1,100.119.113.90,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend
+      - no_proxy=localhost,127.0.0.1,::1,172.19.0.1,100.119.113.90,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend
       # PaddleOCR: skip network model-source check, use pre-downloaded models from volume
       - PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
       # ★2026-07-10: 原 qwen3_local→aegis ollama 网关已死(每条入库404×3, 向量从未写入,

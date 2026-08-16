@@ -95,7 +95,7 @@ echo "[3/5] 按章KC(书内结构, 给人按书读) + 双语簇摘要"
 $PY scripts/persist_chapter_kc.py && $PY scripts/fix_kc_labels_summaries.py || { echo "❌ [3/5] 失败"; exit 2; }
 
 echo ""
-echo "[4/5] BU 书级理解(七项; ★单本枢纽=ku_concept度数+按章KC, 不碰B仓概念图) 入库"
+echo "[4/5] BU 书级理解(七项 + ★学习层: 能力路径/深卡/证据分级/质量门; 单本枢纽=ku_concept度数+按章KC) 入库"
 # ★BU生成用独立NIM key(math_zh, 闲置未用——math-prog飞轮0-LLM设计不需要key),
 #   避免和本飞轮[1/5]_plan/_synth共享同一把econ_zh key的40/min限流排队.
 NIM_BU_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('math_zh',''))" 2>/dev/null)"

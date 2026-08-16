@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="383" viewBox="0 0 900 383">
+  <rect width="900" height="383" fill="#EFEAE0"/>
+  <rect x="0" y="0" width="14" height="383" fill="#8D7C64"/>
+  <text x="72" y="86" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="64" font-weight="bold" fill="#3A352F">产业经济学</text>
+  <text x="74" y="132" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="24" fill="#766E64">供求如何决定价值、分配与工资</text>
+  <g transform="translate(560,40)">
+    <line x1="0" y1="260" x2="280" y2="260" stroke="#3A352F" stroke-width="2"/>
+    <line x1="0" y1="260" x2="0" y2="0" stroke="#3A352F" stroke-width="2"/>
+    <path d="M 12 30 Q 90 120 200 200" fill="none" stroke="#B4574A" stroke-width="4"/>
+    <path d="M 16 220 Q 120 120 262 40" fill="none" stroke="#4A6B8A" stroke-width="4"/>
+    <circle cx="118" cy="122" r="7" fill="#8D7C64"/>
+    <line x1="118" y1="122" x2="118" y2="260" stroke="#8D7C64" stroke-width="1.5" stroke-dasharray="5 5"/>
+    <line x1="118" y1="122" x2="0" y2="122" stroke="#8D7C64" stroke-width="1.5" stroke-dasharray="5 5"/>
+    <text x="132" y="238" font-family="sans-serif" font-size="15" fill="#3A352F">数量 Q</text>
+    <text x="10" y="20" font-family="sans-serif" font-size="15" fill="#3A352F">价格 P</text>
+    <text x="228" y="218" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="17" fill="#B4574A">供给 S</text>
+    <text x="188" y="58" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="17" fill="#4A6B8A">需求 D</text>
+    <text x="126" y="112" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="17" fill="#8D7C64">E</text>
+  </g>
+  <text x="72" y="330" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="15" fill="#8D7C64">AII · 书级理解 BU · 一篇文章读懂一本书</text>
+</svg>

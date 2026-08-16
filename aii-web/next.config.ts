@@ -45,7 +45,8 @@ const config: NextConfig = {
     return [
       // AII epistemic-engine backend — must come before the catch-alls below.
       // AII's api-client paths already include the `/api` prefix (e.g.
-      // /api/stats/overview), so forward verbatim — do NOT add another /api.
+      // /api/stats/overview → browser 请求 /api/aii/api/stats/overview), so forward
+      // verbatim — do NOT add another /api. path* = "api/..." 正好落到 SL 的 /api/* 路由。
       { source: "/api/aii/:path*", destination: `${aiiBase}/:path*` },
       // Service layer (v1 routes) — must come before the catch-all below.
       { source: "/api/v1/:path*", destination: `${slBase}/api/v1/:path*` },
