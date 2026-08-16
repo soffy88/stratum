@@ -13,7 +13,8 @@ cd "$(dirname "$0")/.."
 PY=.venv/bin/python
 FLYWHEEL_STATE="paper_pipeline/flywheel_state.json"
 FLYWHEEL_BOOK_LIST="paper_pipeline/flywheel_booklist.txt"
-PAPER_LIMIT="${PAPER_LIMIT:-20}"
+PAPER_LIMIT="${PAPER_LIMIT:-120}"         # 每轮上限(120: 摊薄每轮 Step0 pull_ingest 固定开销; 并发 6 下 120 篇≈7min/轮)
+PAPER_WORKERS="${PAPER_WORKERS:-6}"   # ★2026-08-16 提速: 并发 worker 数(opencode-go 主 provider 无 rpm 限制; NIM 仅 fallback)
 
 # ★2026-08-16 修复: 论文飞轮曾是唯一不带 NIM/opencode env 的飞轮 → generate_bu.py 落到
 #   已失效的 DEEPSEEK_API_KEY(aii/aii/.env, 07-19 起 401/402) → 每篇论文都 "LLM 主 provider
@@ -75,14 +76,17 @@ PAPER_COUNT=$(wc -l < "$FLYWHEEL_BOOK_LIST" | tr -d ' ')
 echo "  发现 $PAPER_COUNT 篇待处理论文 → $FLYWHEEL_BOOK_LIST"
 echo ""
 
-# ── Step 2: 逐篇跑轻量管道 ──
-echo "[2/2] 逐篇跑论文轻量管道..."
+# ── Step 2: 并发跑轻量管道(★2026-08-16 提速: 原串行每篇~6-7min, 4387篇≈19天;
+#    改 xargs -P 多 worker, 每篇产物按 SUBSTRATE 隔离可安全并行; 结果汇总后统一写 state) ──
+echo "[2/2] 逐篇跑论文轻量管道(并发 $PAPER_WORKERS)..."
+RESULTS="paper_pipeline/round_results.txt"
+: > "$RESULTS"
+PAPER_RESULTS="$RESULTS" timeout 3600 xargs -d '\n' -P "$PAPER_WORKERS" -n1 bash scripts/paper_worker.sh < "$FLYWHEEL_BOOK_LIST" || echo "  ⚠ 并发轮超时/中断(3600s) — 已完成结果仍会汇总"
+
 ok=0; fail=0
-while IFS=$'\t' read -r md_path substrate title; do  # ★2026-08-16: 与 paper_discover.py 的 TAB 协议对齐(`|` 会与文件名冲突)
+while read -r status substrate; do  # worker 写 "OK|FAIL <substrate>"(空格分隔)
     [ -z "$substrate" ] && continue
-    echo "  → $substrate ($title)"
-    if SUBSTRATE="$substrate" AII_MD_FILE="$md_path" PAPER_TITLE="$title" \
-        bash scripts/paper_pipeline.sh 2>&1 | sed 's/^/    /'; then
+    if [ "$status" = "OK" ]; then
         ok=$((ok + 1))
         $PY - "$FLYWHEEL_STATE" "$substrate" << 'PYEOF'
 import json, sys, datetime
@@ -102,7 +106,7 @@ state["processed"][sid] = {"status": "precheck_fail", "ts": datetime.datetime.no
 open(state_path, "w", encoding="utf-8").write(json.dumps(state, ensure_ascii=False, indent=2))
 PYEOF
     fi
-done < "$FLYWHEEL_BOOK_LIST"
+done < "$RESULTS"
 
 echo ""
 echo "════════════════════════════════════════════════════"

@@ -70,6 +70,7 @@ aii/.pipeline_keys.json
 aii/*_pipeline/bu_*.json
 aii/*_pipeline/ckpts/
 aii/*_pipeline/*_state*.json
+aii/*_pipeline/round_results.txt
 
 # e2e scratch (端到端测试垃圾)
 e2e_token*.txt

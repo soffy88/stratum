@@ -50,6 +50,26 @@ def _read_opencode_key() -> str:
     return ""
 
 
+def _read_opencode_keys() -> str:
+    """★2026-08-16 提速: 读 opencode-keys.txt **全部** key(逗号拼接) — 多 key 池轮换,
+    分摊并发限流(2 key = 2× 并发容量; 此前只用第一行, 6 worker 并发撞同一 key 429)。
+    兼容: 单 key 时行为不变; OPENCODE_KEY_POOL 环境变量可显式覆盖。"""
+    pool = os.getenv("OPENCODE_KEY_POOL", "").strip()
+    if pool:
+        return pool
+    try:
+        from pathlib import Path as _P
+        p = _P.home() / ".pi/agent/opencode-keys.txt"
+        keys = [
+            ln.strip()
+            for ln in p.read_text().splitlines()
+            if ln.strip() and not ln.strip().startswith("#")
+        ]
+        return ",".join(keys)
+    except Exception:
+        return ""
+
+
 def _extract_content(resp) -> str:
     """v4-flash 等推理模型的 content 可能为空, 答案在 reasoning_content。"""
     try:
@@ -64,6 +84,7 @@ def _make_deepseek_caller(
     base_url: str = "https://api.deepseek.com/chat/completions",
     rpm: float = 0,
     fallback: tuple[str, str, str] | None = None,
+    key_pool_env: str = "NIM_KEY_POOL",  # ★2026-08-16: 多 key 池 env 名可配(opencode 用 OPENCODE_KEY_POOL)
 ) -> callable:
     """Return an async callable compatible with both omodul (messages/system/max_tokens kwargs)
     and the legacy synthesis_engine (single positional prompt string via executor).
@@ -78,7 +99,7 @@ def _make_deepseek_caller(
 
     # ★2026-08-10 多 key 池轮询: NIM_KEY_POOL 存在时(逗号分隔), 每次请求/重试轮换 key —
     #   单 key 免费层 40/min 是 misc 781 次 504 的根因; 池化后总配额 = 40 × key数。
-    _key_pool = [k for k in os.getenv("NIM_KEY_POOL", "").split(",") if k.strip()] or [api_key]
+    _key_pool = [k for k in os.getenv(key_pool_env, "").split(",") if k.strip()] or [api_key]
     _key_iter = itertools.cycle(_key_pool)
 
     # ★全局限流: NVIDIA NIM 免费层 40 req/min. rpm>0 时所有并发调用排队, 间隔 60/rpm 秒,
@@ -356,7 +377,10 @@ def register_providers():
         #   504/限流是慢的根因); 端点/模型/key 与 ~/.pi/agent 配置一致, key 走 opencode-keys.txt 轮换
         oc_base = os.getenv("OPENCODE_BASE_URL", "https://opencode.ai/zen/go/v1/chat/completions")
         oc_key = os.getenv("OPENCODE_API_KEY") or _read_opencode_key()
+        oc_pool = os.getenv("OPENCODE_API_KEY") or _read_opencode_keys()  # ★全 key 池(2 key 轮换)
         oc_model = os.getenv("OPENCODE_MODEL", "deepseek-v4-flash")
+        if oc_pool and not os.getenv("OPENCODE_KEY_POOL"):
+            os.environ["OPENCODE_KEY_POOL"] = oc_pool  # ★必须早于 caller 创建(内部读 env)
         nim_caller = _make_deepseek_caller(
             nim_key,
             model=nim_model,
@@ -368,13 +392,17 @@ def register_providers():
         if use_nim:
             if oc_key:
                 # ★opencode v4-flash 主, NIM 免费层备用(平时不碰, 省限流)
+                # ★2026-08-16 提速: key_pool_env=OPENCODE_KEY_POOL → 全部 opencode key 轮换,
+                #   6 worker 并发不再撞同一 key 429 静默重试→NIM fallback 拖慢。
                 oc_caller = _make_deepseek_caller(
                     oc_key, model=oc_model, base_url=oc_base, rpm=0,
+                    key_pool_env="OPENCODE_KEY_POOL",
                     fallback=("https://integrate.api.nvidia.com/v1/chat/completions",
                               nim_key, nim_model),
                 )
                 ProviderRegistry.register("llm", "default", oc_caller)
-                logger.info("opencode-go(%s) DEFAULT, NIM fallback", oc_model)
+                logger.info("opencode-go(%s) DEFAULT, NIM fallback (pool=%d)", oc_model,
+                            len(os.getenv("OPENCODE_KEY_POOL", "").split(",")) if os.getenv("OPENCODE_KEY_POOL") else 1)
             else:
                 ProviderRegistry.register("llm", "default", nim_caller)
                 logger.info("NVIDIA NIM registered as DEFAULT: %s", nim_model)
