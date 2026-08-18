@@ -160,9 +160,13 @@ def _render_pack(th, kus_of, ku_info, theme_concepts, concept_info,
     if len(kus_of) > 100:
         ku_lines.append(f"\n<!-- 共 {len(kus_of)} KU, 展示前 100 -->")
 
+    # description 先在 py 里算好再插值: 此前 [:120] 写在模板串内被当字面输出进
+    # YAML (既没截断又污染 frontmatter)。折叠换行 + 转义双引号保证 YAML 合法。
+    desc = f"{zh or en} — {summary_zh or summary}"[:120]
+    desc = desc.replace("\n", " ").replace('"', "'").strip()
     skill = f"""---
 name: {slug}
-description: "{zh or en} — {summary_zh or summary}"[:120]
+description: "{desc}"
 ---
 
 # {en}{f"（{zh}）" if zh else ""}
@@ -171,11 +175,11 @@ description: "{zh or en} — {summary_zh or summary}"[:120]
 
 ## 核心心智模型（Core Concepts）
 
-{chr(10).join(core_lines) if core_lines else "- (主题内概念待补)"}
+{chr(10).join(core_lines) if core_lines else "- （本主题暂无核心概念）"}
 
 ## 关键关系（Relations）
 
-{chr(10).join(rel_lines) if rel_lines else "- (主题内边待补)"}
+{chr(10).join(rel_lines) if rel_lines else "- （本主题无主题内关系边）"}
 
 ## 使用方式
 
