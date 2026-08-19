@@ -184,6 +184,43 @@ async def get_document_file(substrate_id: str, user=Depends(get_current_user)):
     )
 
 
+@router.delete("/{substrate_id}")
+async def delete_document(
+    substrate_id: str,
+    user=Depends(get_current_user),
+):
+    """Hard-purge a document + derivatives/layers (真删; substrates 无 soft_delete 列)."""
+    from stratum.changefeed import emit_event
+    from stratum.services.purge_service import purge_substrate
+
+    uid = user.user_id
+    uh = hash_user_id(uid)
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM substrates WHERE id=? AND (user_id=? OR user_id=?)",
+            (substrate_id, uh, uid),
+        ).fetchone()
+    if not row:
+        raise HTTPException(404, "Document not found")
+
+    out = purge_substrate(substrate_id, uid)
+    if out.get("status") in ("not_found", "forbidden"):
+        raise HTTPException(404 if out["status"] == "not_found" else 403, out["status"])
+
+    try:
+        await emit_event(
+            uid, "substrate_delete", {"substrate_id": substrate_id, "mode": "hard"}
+        )
+    except Exception:
+        pass
+    return {
+        "substrate_id": substrate_id,
+        "status": "deleted",
+        "mode": "hard",
+        "children": out.get("children"),
+    }
+
+
 async def _run_generate(substrate_id: str, user_id_hash: str, kind: str):
     log.info("generate_derivative: %s kind=%s", substrate_id, kind)
     try:

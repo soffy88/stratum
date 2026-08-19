@@ -42,7 +42,8 @@ interface RequestOpts {
 }
 
 async function request<T>(path: string, opts: RequestOpts = {}): Promise<ApiResult<T>> {
-  const { method = 'GET', body, timeoutMs = 10_000 } = opts;
+  // 60s: ku/list 在 stratum-sl 忙(folder_watcher/LLM)时可能 >10s，过短会 abort 显示页面错误
+  const { method = 'GET', body, timeoutMs = 60_000 } = opts;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
 

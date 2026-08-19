@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# ★已废弃 — 被 math_flywheel_prog_run.sh (B-pipeline, 0 LLM) 取代.
+# 保留仅为历史参考. 如需运行数学飞轮, 请用 math_flywheel_prog_run.sh.
+#
 # ★程序化中文数学飞轮 — 连续运行(不停, 非定时)
 # 处理完一本(math_batch_run 自带 预检R1+R6公式 + 逐章抽取(定义/定理/公式) + ★质量门抽查确认
 # → 入A仓/隔离)→ 下一本; 全部完→sleep→再发现→继续. 永不退出.

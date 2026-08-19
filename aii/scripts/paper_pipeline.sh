@@ -28,7 +28,7 @@ export SUBSTRATE AII_MD_FILE
 export CUDA_VISIBLE_DEVICES=""
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
-export AII_EMBED_URL="${AII_EMBED_URL:-http://100.68.226.13:8102}"
+export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"
 
 echo "════════════════════════════════════════════"
 echo "★ 论文轻量管道: $PAPER_TITLE"

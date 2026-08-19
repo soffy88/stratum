@@ -4,6 +4,10 @@ export interface SearchResultItem {
   title: string;
   score: number;
   highlight?: string | null;
+  paragraph_index?: number | null;
+  char_start?: number | null;
+  char_end?: number | null;
+  deep_link?: string | null;
 }
 
 export interface SearchResponse {

@@ -10,13 +10,13 @@
  *   右栏 — NotesPanel: 新建笔记(关联文档+选中概念) + 最近笔记
  */
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/apiClient';
 import type { Substrate, Derivative } from '@/lib/documents';
-import { getDerivatives } from '@/lib/documents';
+import { getDerivatives, deleteDocument, reprocessDocument } from '@/lib/documents';
 import { CardSkeleton } from '@/components/LoadingSkeleton';
 import { ConceptsPanel } from '@/components/reader/ConceptsPanel';
 import { NotesPanel } from '@/components/reader/NotesPanel';
@@ -39,12 +39,15 @@ interface SelectedConcept { id: string; name: string; }
 
 export default function DocumentDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = String(params.id);
   const [doc, setDoc] = useState<Substrate | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('overview');
   const [derivatives, setDerivatives] = useState<Derivative[]>([]);
   const [selectedConcept, setSelectedConcept] = useState<SelectedConcept | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -59,6 +62,39 @@ export default function DocumentDetailPage() {
       .catch(() => toast.error('加载文档失败'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Record reading progress
+  useEffect(() => {
+    if (!loading && doc) {
+      apiClient.post(`/api/v1/interactions/content/${id}/progress`, {
+        position: "opened",
+        completed: false,
+      }).catch(() => {});
+    }
+  }, [id, loading, doc]);
+
+  // Anchor deep-link: /documents/[id]#p{n} → jump to paragraph n in Markdown tab
+  const searchParams = useSearchParams();
+  const paragraphRef = useRef<Record<string, HTMLParagraphElement | null>>({});
+  const hashPara = searchParams.get('p') ?? (typeof window !== 'undefined' ? (window.location.hash.match(/^#p(\d+)$/)?.[1] ?? null) : null);
+  const [anchorRequest, setAnchorRequest] = useState<string | null>(hashPara);
+  const markdownReady = tab === 'markdown' && derivatives.some(d => d.kind === 'markdown' && d.content);
+
+  useEffect(() => {
+    if (hashPara) setTab('markdown');
+  }, [hashPara]);
+
+  useEffect(() => {
+    if (!markdownReady || !anchorRequest) return;
+    const el = paragraphRef.current[`p${anchorRequest}`];
+    if (el) {
+      el.scrollIntoView({ block: 'center' });
+      el.classList.add('bg-amber-500/15');
+      const timer = setTimeout(() => el.classList.remove('bg-amber-500/15'), 2500);
+      setAnchorRequest(null);
+      return () => clearTimeout(timer);
+    }
+  }, [markdownReady, anchorRequest]);
 
   if (loading) return <div className="p-4 sm:p-6 max-w-4xl mx-auto"><CardSkeleton count={1} /></div>;
   if (!doc) return <div className="p-6 text-center text-muted-foreground">文档不存在</div>;
@@ -145,10 +181,55 @@ export default function DocumentDetailPage() {
       </div>
 
       {tab === 'overview' && (
-        <div className="text-sm text-muted-foreground">
-          <p>类型:{doc.mime}</p>
-          <p>来源:{doc.source}</p>
-          {doc.page_count != null && <p>页数:{doc.page_count}</p>}
+        <div className="text-sm text-muted-foreground space-y-4">
+          <div>
+            <p>类型:{doc.mime}</p>
+            <p>来源:{doc.source}</p>
+            {doc.page_count != null && <p>页数:{doc.page_count}</p>}
+          </div>
+          <div className="flex gap-2 pt-4 border-t border-[var(--color-border)]">
+            <button
+              onClick={async () => {
+                setProcessing(true);
+                const res = await reprocessDocument(id);
+                setProcessing(false);
+                if (res) toast.success('重新处理已触发');
+                else toast.error('触发失败');
+              }}
+              disabled={processing}
+              className="px-3 py-1.5 text-sm rounded-lg border border-[var(--color-border)] text-[var(--color-foreground)] hover:bg-[var(--color-muted)] disabled:opacity-50"
+            >
+              {processing ? '处理中...' : '重新处理'}
+            </button>
+            {confirmDelete ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    const ok = await deleteDocument(id);
+                    if (ok) { toast.success('已删除'); router.push('/documents'); }
+                    else toast.error('删除失败');
+                    setConfirmDelete(false);
+                  }}
+                  className="px-3 py-1.5 text-sm rounded-lg bg-red-500 text-white"
+                >
+                  确认删除
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="px-3 py-1.5 text-sm rounded-lg border border-[var(--color-border)] text-[var(--color-muted)]"
+                >
+                  取消
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="px-3 py-1.5 text-sm rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10"
+              >
+                删除文档
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -157,10 +238,21 @@ export default function DocumentDetailPage() {
         if (!md?.content) return (
           <div className="text-sm text-muted-foreground py-8 text-center">暂无 Markdown 内容</div>
         );
+        const paragraphs = md.content.split(/\n{2,}/);
         return (
-          <pre className="whitespace-pre-wrap text-sm font-mono leading-relaxed overflow-auto max-h-[70vh] border rounded p-4 bg-muted/30">
-            {md.content}
-          </pre>
+          <div className="max-h-[70vh] overflow-auto border rounded p-4 bg-muted/30">
+            {paragraphs.map((para, i) => (
+              <p
+                key={i}
+                id={`p${i}`}
+                data-anchor={`p${i}`}
+                ref={(el) => { paragraphRef.current[`p${i}`] = el; }}
+                className="whitespace-pre-wrap text-sm leading-relaxed mb-3 p-1 rounded transition-colors"
+              >
+                {para}
+              </p>
+            ))}
+          </div>
         );
       })()}
 

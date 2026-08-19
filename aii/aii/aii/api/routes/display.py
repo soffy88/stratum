@@ -5,6 +5,7 @@
 ku_id 现在是 TEXT(命名空间化 substrate::ku_cN), 不再是 uuid — 移除所有 UUID 校验/转换.
 kc/bu 从独立表 kc_onto/bu_onto 读(原是 ku 里的 synthesis/book_understanding 行).
 """
+
 import json
 import os
 from pathlib import Path
@@ -23,6 +24,7 @@ _SHARED_DIR = Path(os.getenv("FLYWHEEL_SHARED_DIR", "/home/soffy/shared/stratum-
 
 # ── helpers ────────────────────────────────────────────────────────────────
 
+
 def _str(v) -> str | None:
     return str(v) if v is not None else None
 
@@ -40,22 +42,28 @@ def _jsonb(v):
 
 # ── KU list / detail ────────────────────────────────────────────────────────
 
+
 @router.get("/ku/list")
 async def ku_list(
     grade: Optional[str] = Query(None),
     type: Optional[str] = Query(None),
     substrate: Optional[str] = Query(None),
     merged_only: bool = Query(False),
+    include_quarantined: bool = Query(False),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
-    size: int = Query(0),           # legacy alias
+    size: int = Query(0),  # legacy alias
 ):
-    """Paginated KU list (ku_onto)."""
+    """Paginated KU list (ku_onto)。默认过滤 is_quarantined=true 的乱码KU
+    (2026-07-25 修:此前该过滤缺失,导致乱码书按created_at排到前几页,见对话记录
+    "Group Chunks"一案);排查/复核可传 include_quarantined=true 看到隔离项。"""
     try:
         effective_size = page_size if page_size != 20 or size == 0 else size
         conditions: list[str] = ["TRUE"]
         params: list = []
 
+        if not include_quarantined:
+            conditions.append("k.is_quarantined = FALSE")
         if grade:
             params.append(grade)
             conditions.append(f"k.grade = ${len(params)}")
@@ -112,12 +120,14 @@ async def ku_list(
             }
             for r in rows
         ]
-        return success_response({
-            "total": total,
-            "page": page,
-            "page_size": effective_size,
-            "items": items,
-        })
+        return success_response(
+            {
+                "total": total,
+                "page": page,
+                "page_size": effective_size,
+                "items": items,
+            }
+        )
     except Exception as e:
         return error_response("KU_LIST_ERROR", str(e))
 
@@ -178,26 +188,29 @@ async def ku_detail(ku_id: str):
             for r in edge_rows
         ]
 
-        return success_response({
-            "id": _str(row["ku_id"]),
-            "title": row["title"],
-            "natural_text": row["natural_text"],
-            "natural_text_zh": row["natural_text_zh"],
-            "knowledge_type": row["knowledge_type"],
-            "grade": row["grade"],
-            "substrate_id": row["substrate_id"],
-            "substrate_title": row["substrate_title"],
-            "merge_count": row["merge_count"],
-            "defeater_count": 0,
-            "sources": sources,
-            "defeaters": [],
-            "edges": edges,
-        })
+        return success_response(
+            {
+                "id": _str(row["ku_id"]),
+                "title": row["title"],
+                "natural_text": row["natural_text"],
+                "natural_text_zh": row["natural_text_zh"],
+                "knowledge_type": row["knowledge_type"],
+                "grade": row["grade"],
+                "substrate_id": row["substrate_id"],
+                "substrate_title": row["substrate_title"],
+                "merge_count": row["merge_count"],
+                "defeater_count": 0,
+                "sources": sources,
+                "defeaters": [],
+                "edges": edges,
+            }
+        )
     except Exception as e:
         return error_response("KU_DETAIL_ERROR", str(e))
 
 
 # ── Graph ────────────────────────────────────────────────────────────────────
+
 
 @router.get("/graph/subgraph")
 async def graph_subgraph(
@@ -231,14 +244,16 @@ async def graph_subgraph(
                     key = (s, d, r["relation_type"])
                     if key not in seen_edge_keys:
                         seen_edge_keys.add(key)
-                        all_edges.append({
-                            "id": f"{s[:8]}-{d[:8]}-{r['relation_type']}",
-                            "source": s,
-                            "target": d,
-                            "relation_type": r["relation_type"],
-                            "grade": r["grade"],
-                            "extraction_method": r["extraction_method"] or "llm",
-                        })
+                        all_edges.append(
+                            {
+                                "id": f"{s[:8]}-{d[:8]}-{r['relation_type']}",
+                                "source": s,
+                                "target": d,
+                                "relation_type": r["relation_type"],
+                                "grade": r["grade"],
+                                "extraction_method": r["extraction_method"] or "llm",
+                            }
+                        )
                     for nid in (s, d):
                         if nid not in visited and len(visited) < limit:
                             visited.add(nid)
@@ -268,12 +283,14 @@ async def graph_subgraph(
             }
             for r in node_rows
         ]
-        return success_response({
-            "nodes": nodes,
-            "edges": all_edges,
-            "center_id": ku_id,
-            "truncated": len(visited) >= limit,
-        })
+        return success_response(
+            {
+                "nodes": nodes,
+                "edges": all_edges,
+                "center_id": ku_id,
+                "truncated": len(visited) >= limit,
+            }
+        )
     except Exception as e:
         return error_response("SUBGRAPH_ERROR", str(e))
 
@@ -287,6 +304,7 @@ async def graph_search(q: str = Query(..., min_length=1), limit: int = Query(20,
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:
             from pgvector.asyncpg import register_vector
+
             await register_vector(conn)
             rows = await conn.fetch(
                 """
@@ -294,7 +312,8 @@ async def graph_search(q: str = Query(..., min_length=1), limit: int = Query(20,
                 FROM aii.ku_onto WHERE embedding IS NOT NULL
                 ORDER BY embedding <=> $1 LIMIT $2
                 """,
-                vec, limit,
+                vec,
+                limit,
             )
         matches = [{"id": r["ku_id"], "label": r["label"], "grade": r["grade"]} for r in rows]
         return success_response({"matches": matches})
@@ -303,6 +322,7 @@ async def graph_search(q: str = Query(..., min_length=1), limit: int = Query(20,
 
 
 # ── KC (Knowledge Cluster / kc_onto) ─────────────────────────────────────────
+
 
 @router.get("/kc/list")
 async def kc_list(
@@ -319,7 +339,9 @@ async def kc_list(
         async with pool.acquire() as conn:
             total = await conn.fetchval(
                 "SELECT count(*) FROM aii.kc_onto WHERE synthesis_marker=$1 AND substrate_id=$2",
-                marker, substrate)
+                marker,
+                substrate,
+            )
             rows = await conn.fetch(
                 f"""
                 SELECT kc_id, community_label, left(summary, 300) AS summary, grade,
@@ -328,7 +350,10 @@ async def kc_list(
                 ORDER BY {order}
                 LIMIT $1 OFFSET $2
                 """,
-                page_size, offset, marker, substrate,
+                page_size,
+                offset,
+                marker,
+                substrate,
             )
 
         items = [
@@ -341,7 +366,9 @@ async def kc_list(
             }
             for r in rows
         ]
-        return success_response({"total": total, "page": page, "page_size": page_size, "items": items})
+        return success_response(
+            {"total": total, "page": page, "page_size": page_size, "items": items}
+        )
     except Exception as e:
         return error_response("KC_LIST_ERROR", str(e))
 
@@ -389,22 +416,25 @@ async def kc_detail(kc_id: str):
             }
             for r in member_rows
         ]
-        return success_response({
-            "id": _str(row["kc_id"]),
-            "community_label": row["community_label"] or "",
-            "summary": row["summary"] or "",
-            "summary_en": row["summary_en"] or "",
-            "grade": row["grade"],
-            "kind": kind,
-            "community_size": len(source_ids),
-            "source_ku_ids": source_ids,
-            "members": members,
-        })
+        return success_response(
+            {
+                "id": _str(row["kc_id"]),
+                "community_label": row["community_label"] or "",
+                "summary": row["summary"] or "",
+                "summary_en": row["summary_en"] or "",
+                "grade": row["grade"],
+                "kind": kind,
+                "community_size": len(source_ids),
+                "source_ku_ids": source_ids,
+                "members": members,
+            }
+        )
     except Exception as e:
         return error_response("KC_DETAIL_ERROR", str(e))
 
 
 # ── BU (Book Understanding / bu_onto) ─────────────────────────────────────────
+
 
 @router.get("/books")
 async def books_list():
@@ -419,10 +449,21 @@ async def books_list():
                 FROM aii.ingested_substrate s
                 WHERE EXISTS (SELECT 1 FROM aii.bu_onto b WHERE b.substrate_id=s.substrate_id)
                 ORDER BY ku_count DESC
-                """)
-        return success_response({"items": [
-            {"substrate_id": r["substrate_id"], "title": r["title"] or r["substrate_id"],
-             "subject": r["subject"], "ku_count": r["ku_count"]} for r in rows]})
+                """
+            )
+        return success_response(
+            {
+                "items": [
+                    {
+                        "substrate_id": r["substrate_id"],
+                        "title": r["title"] or r["substrate_id"],
+                        "subject": r["subject"],
+                        "ku_count": r["ku_count"],
+                    }
+                    for r in rows
+                ]
+            }
+        )
     except Exception as e:
         return error_response("BOOKS_ERROR", str(e))
 
@@ -434,23 +475,39 @@ async def book_bu(substrate_id: str):
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT facets_zh, facets_en, grade, synthesis_marker FROM aii.bu_onto WHERE substrate_id=$1",
-                substrate_id)
-            nku = await conn.fetchval("SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", substrate_id)
+                "SELECT facets_zh, facets_en, facets_grounded, learning_paths, deep_cards, bu_quality, grade, synthesis_marker "
+                "FROM aii.bu_onto WHERE substrate_id=$1",
+                substrate_id,
+            )
+            nku = await conn.fetchval(
+                "SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", substrate_id
+            )
             nkc_ch = await conn.fetchval(
-                "SELECT count(*) FROM aii.kc_onto WHERE substrate_id=$1 AND synthesis_marker='AII章节KC'", substrate_id)
+                "SELECT count(*) FROM aii.kc_onto WHERE substrate_id=$1 AND synthesis_marker='AII章节KC'",
+                substrate_id,
+            )
             nkc_sp = await conn.fetchval(
-                "SELECT count(*) FROM aii.kc_onto WHERE substrate_id=$1 AND synthesis_marker='AII谱社区KC'", substrate_id)
+                "SELECT count(*) FROM aii.kc_onto WHERE substrate_id=$1 AND synthesis_marker='AII谱社区KC'",
+                substrate_id,
+            )
         if not row or not row["facets_zh"]:
             return error_response("NOT_FOUND", f"BU for {substrate_id} not found")
-        return success_response({
-            "substrate_id": substrate_id,
-            "facets_zh": _jsonb(row["facets_zh"]),
-            "facets_en": _jsonb(row["facets_en"]),
-            "grade": row["grade"],
-            "synthesis_marker": row["synthesis_marker"],
-            "n_ku": nku, "n_kc_chapter": nkc_ch, "n_kc_spectral": nkc_sp,
-        })
+        return success_response(
+            {
+                "substrate_id": substrate_id,
+                "facets_zh": _jsonb(row["facets_zh"]),
+                "facets_en": _jsonb(row["facets_en"]),
+                "facets_grounded": _jsonb(row["facets_grounded"]),
+                "learning_paths": _jsonb(row["learning_paths"]),
+                "deep_cards": _jsonb(row["deep_cards"]),
+                "bu_quality": _jsonb(row["bu_quality"]),
+                "grade": row["grade"],
+                "synthesis_marker": row["synthesis_marker"],
+                "n_ku": nku,
+                "n_kc_chapter": nkc_ch,
+                "n_kc_spectral": nkc_sp,
+            }
+        )
     except Exception as e:
         return error_response("BU_ERROR", str(e))
 
@@ -468,7 +525,8 @@ async def bu_list(
             # substrate, 用 INNER JOIN 过滤掉这些残留, 与 /api/books 约定一致。
             total = await conn.fetchval(
                 "SELECT count(*) FROM aii.bu_onto b "
-                "JOIN aii.ingested_substrate s ON s.substrate_id = b.substrate_id")
+                "JOIN aii.ingested_substrate s ON s.substrate_id = b.substrate_id"
+            )
             rows = await conn.fetch(
                 """
                 SELECT b.bu_id, b.substrate_id, b.doc_type, b.grade,
@@ -480,7 +538,8 @@ async def bu_list(
                 ORDER BY b.created_at DESC
                 LIMIT $1 OFFSET $2
                 """,
-                page_size, offset,
+                page_size,
+                offset,
             )
 
         items = [
@@ -495,7 +554,9 @@ async def bu_list(
             }
             for r in rows
         ]
-        return success_response({"total": total, "page": page, "page_size": page_size, "items": items})
+        return success_response(
+            {"total": total, "page": page, "page_size": page_size, "items": items}
+        )
     except Exception as e:
         return error_response("BU_LIST_ERROR", str(e))
 
@@ -528,7 +589,9 @@ async def bu_detail(bu_id: str):
                 "text": c.get("claim", "") if isinstance(c, dict) else str(c),
                 "stance": c.get("stance", "作者观点") if isinstance(c, dict) else "作者观点",
                 "stance_marker": c.get("stance_marker", "") if isinstance(c, dict) else "",
-                "claim_grade": c.get("claim_grade", "unverified") if isinstance(c, dict) else "unverified",
+                "claim_grade": c.get("claim_grade", "unverified")
+                if isinstance(c, dict)
+                else "unverified",
             }
             for i, c in enumerate(raw_claims)
         ]
@@ -543,7 +606,9 @@ async def bu_detail(bu_id: str):
                 "evidence": [
                     {"text": e.get("text", ""), "grade": e.get("grade", "unverified")}
                     for e in (a.get("evidence") or [])
-                ] if isinstance(a, dict) else [],
+                ]
+                if isinstance(a, dict)
+                else [],
             }
             for i, a in enumerate(raw_args)
         ]
@@ -559,38 +624,47 @@ async def bu_detail(bu_id: str):
                     [str(k) for k in key_ku_ids[:10]],
                 )
                 key_concepts = [
-                    {"ku_id": r["ku_id"], "label": r["label"], "grade": r["grade"]}
-                    for r in kc_rows
+                    {"ku_id": r["ku_id"], "label": r["label"], "grade": r["grade"]} for r in kc_rows
                 ]
 
         structure_raw = _jsonb(row["structure"]) or []
         if isinstance(structure_raw, str):
-            structure_raw = [{"title": "全书结构", "summary": structure_raw, "children": []}] if structure_raw else []
+            structure_raw = (
+                [{"title": "全书结构", "summary": structure_raw, "children": []}]
+                if structure_raw
+                else []
+            )
 
-        return success_response({
-            "id": _str(row["bu_id"]),
-            "substrate_id": row["substrate_id"] or "",
-            "book_title": row["book_title"] or "",
-            "summary": row["overview_oneline"] or "",
-            "grade": row["grade"],
-            "main_claim_count": len(main_claims),
-            "source_credibility": row["source_credibility"] or "",
-            "problem_statement": row["problem_statement"] or "",
-            "overview_oneline": row["overview_oneline"] or "",
-            "learning_thread": row["learning_thread"] or "",
-            "knowledge_categories": {},
-            "applicability": _jsonb(row["applicability"]) or "",
-            "core_takeaways": _jsonb(row["core_takeaways"]) or [],
-            "main_claims": main_claims,
-            "argument_structure": argument_structure,
-            "structure": structure_raw,
-            "key_concepts": key_concepts,
-        })
+        return success_response(
+            {
+                "id": _str(row["bu_id"]),
+                "substrate_id": row["substrate_id"] or "",
+                "book_title": row["book_title"] or "",
+                "summary": row["overview_oneline"] or "",
+                "grade": row["grade"],
+                "main_claim_count": len(main_claims),
+                "source_credibility": row["source_credibility"] or "",
+                "problem_statement": row["problem_statement"] or "",
+                "overview_oneline": row["overview_oneline"] or "",
+                "learning_thread": row["learning_thread"] or "",
+                "knowledge_categories": {},
+                "applicability": _jsonb(row["applicability"]) or "",
+                "core_takeaways": _jsonb(row["core_takeaways"]) or [],
+                "main_claims": main_claims,
+                "argument_structure": argument_structure,
+                "structure": structure_raw,
+                "key_concepts": key_concepts,
+                "learning_paths": _jsonb(row["learning_paths"]) or [],
+                "deep_cards": _jsonb(row["deep_cards"]) or [],
+                "bu_quality": _jsonb(row["bu_quality"]) or {},
+            }
+        )
     except Exception as e:
         return error_response("BU_DETAIL_ERROR", str(e))
 
 
 # ── Concept (concept_onto; ku_count 实时算) ───────────────────────────────────
+
 
 @router.get("/concepts")
 async def concept_list(
@@ -621,16 +695,21 @@ async def concept_list(
             rows = await conn.fetch(
                 f"""SELECT c.concept_id, c.name, cnt.ku_count {base}
                     ORDER BY cnt.ku_count DESC, c.name
-                    LIMIT ${len(params)-1} OFFSET ${len(params)}""",
+                    LIMIT ${len(params) - 1} OFFSET ${len(params)}""",
                 *params,
             )
         items = [
             {"id": _str(r["concept_id"]), "name": r["name"], "ku_count": r["ku_count"]}
             for r in rows
         ]
-        return success_response({
-            "total": total, "page": page, "page_size": page_size, "items": items,
-        })
+        return success_response(
+            {
+                "total": total,
+                "page": page,
+                "page_size": page_size,
+                "items": items,
+            }
+        )
     except Exception as e:
         return error_response("CONCEPT_LIST_ERROR", str(e))
 
@@ -654,7 +733,8 @@ async def concept_kus(
                 return error_response("NOT_FOUND", f"Concept '{name}' not found")
 
             total = await conn.fetchval(
-                "SELECT count(*) FROM aii.ku_concept_onto WHERE concept_id = $1", c_row["concept_id"]
+                "SELECT count(*) FROM aii.ku_concept_onto WHERE concept_id = $1",
+                c_row["concept_id"],
             )
             rows = await conn.fetch(
                 """
@@ -666,7 +746,9 @@ async def concept_kus(
                 ORDER BY k.created_at DESC
                 LIMIT $2 OFFSET $3
                 """,
-                c_row["concept_id"], page_size, offset,
+                c_row["concept_id"],
+                page_size,
+                offset,
             )
         items = [
             {
@@ -678,18 +760,21 @@ async def concept_kus(
             }
             for r in rows
         ]
-        return success_response({
-            "concept": name.strip().lower(),
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-            "items": items,
-        })
+        return success_response(
+            {
+                "concept": name.strip().lower(),
+                "total": total,
+                "page": page,
+                "page_size": page_size,
+                "items": items,
+            }
+        )
     except Exception as e:
         return error_response("CONCEPT_KUS_ERROR", str(e))
 
 
 # ── Stratum 反向共享端点 (只读) ─────────────────────────────────────────────────
+
 
 @router.get("/graph/edges")
 async def graph_edges(
@@ -738,12 +823,14 @@ async def graph_edges(
             }
             for r in rows
         ]
-        return success_response({
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-            "items": items,
-        })
+        return success_response(
+            {
+                "total": total,
+                "page": page,
+                "page_size": page_size,
+                "items": items,
+            }
+        )
     except Exception as e:
         return error_response("GRAPH_EDGES_ERROR", str(e))
 
@@ -809,6 +896,7 @@ async def ku_batch(
 
 # ── KU 溯源 ────────────────────────────────────────────────────────────────
 
+
 @router.get("/ku/{ku_id}/trace")
 async def ku_trace(ku_id: str):
     """KU source provenance: which substrate(s) this KU was extracted from (ku_id TEXT)."""
@@ -823,16 +911,27 @@ async def ku_trace(ku_id: str):
                 return error_response("NOT_FOUND", f"KU {ku_id} not found")
 
             raw_sources = _jsonb(ku_row["sources"]) or []
-            source_ids: list[str] = [s["substrate_id"] for s in raw_sources if isinstance(s, dict) and s.get("substrate_id")]
+            source_ids: list[str] = [
+                s["substrate_id"]
+                for s in raw_sources
+                if isinstance(s, dict) and s.get("substrate_id")
+            ]
             if not source_ids and ku_row["substrate_id"]:
                 source_ids = [str(ku_row["substrate_id"])]
 
-            substrate_rows = await conn.fetch(
-                "SELECT substrate_id, title, medium FROM aii.ingested_substrate WHERE substrate_id = ANY($1)",
-                source_ids,
-            ) if source_ids else []
+            substrate_rows = (
+                await conn.fetch(
+                    "SELECT substrate_id, title, medium FROM aii.ingested_substrate WHERE substrate_id = ANY($1)",
+                    source_ids,
+                )
+                if source_ids
+                else []
+            )
 
-        substrate_map = {str(r["substrate_id"]): {"title": r["title"], "medium": r["medium"]} for r in substrate_rows}
+        substrate_map = {
+            str(r["substrate_id"]): {"title": r["title"], "medium": r["medium"]}
+            for r in substrate_rows
+        }
         positions = [
             {
                 "source_id": sid,
@@ -842,11 +941,13 @@ async def ku_trace(ku_id: str):
             }
             for i, sid in enumerate(source_ids)
         ]
-        return success_response({
-            "ku_id": ku_id,
-            "source_ids": source_ids,
-            "trace_depth": len(source_ids),
-            "positions": positions,
-        })
+        return success_response(
+            {
+                "ku_id": ku_id,
+                "source_ids": source_ids,
+                "trace_depth": len(source_ids),
+                "positions": positions,
+            }
+        )
     except Exception as e:
         return error_response("KU_TRACE_ERROR", str(e))

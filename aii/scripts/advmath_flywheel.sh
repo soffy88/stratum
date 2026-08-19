@@ -34,10 +34,18 @@ export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline
 export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
 export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-4}"
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
+# ★2026-08-16 提速: 本机 7890 代理(opencode-go 直连被 RST; NO_PROXY 白名单保本地服务)
+#   + OPENCODE_KEY_POOL 由 _provider.py 自动读 opencode-keys.txt 全部 key(2 key 轮换)
+export http_proxy="${HTTP_PROXY:-http://127.0.0.1:7890}"
+export https_proxy="${HTTPS_PROXY:-http://127.0.0.1:7890}"
+export HTTP_PROXY="${http_proxy}"
+export HTTPS_PROXY="${https_proxy}"
+export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+export no_proxy="${NO_PROXY}"
 export CUDA_VISIBLE_DEVICES=""
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
-export AII_EMBED_URL="${AII_EMBED_URL:-http://100.68.226.13:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU)
+export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU)
 export ECON_QUARANTINE_JSON="advmath_pipeline/quarantine.json"
 export ECON_BATCH_REPORT="advmath_pipeline/batch_report.json"
 export ECON_QUAL_DIR="advmath_pipeline/qual"
@@ -45,6 +53,9 @@ export ECON_CKPT_DIR="advmath_pipeline/ckpts"
 export ECON_PIPELINE_SCRIPT="scripts/advmath_pipeline.sh"
 export ECON_RUN_LOG_DIR="advmath_pipeline"
 export ECON_REGISTER_SUBJECT="高级数学经济"
+# ★2026-07-30: 质量门阈值放宽(原默认阈值从未让新书通过, 见 econ_quality_gate.py 注释)
+export QGATE_KU_PER_CHAPTER="${QGATE_KU_PER_CHAPTER:-10}"
+export QGATE_CHAPTER_FLOOR="${QGATE_CHAPTER_FLOOR:-3}"
 
 mkdir -p advmath_pipeline advmath_pipeline/qual advmath_pipeline/ckpts
 
@@ -76,6 +87,8 @@ if [ ! -s "$FLYWHEEL_BOOK_LIST" ]; then
     echo "  ✅ 没有新书需要处理(全部已处理或未发现候选书)"
     echo "════════════════════════════════════════════════════"
     echo "飞轮完成: 无新书"
+    # ★断料主动补料: 空转时立刻触发夸克盘同步, 不等 2h timer(2026-08-09)
+    bash scripts/refill_feed.sh || true
     exit 0
 fi
 
@@ -89,6 +102,14 @@ echo "[2/4] 批量预检 + 管道(讲透+完整性校验+概念/KC/BU/质量门)
 # /RUN_LOG_DIR按substrate命名天然不会撞, 可以共用), 跑完合并。econ_batch_run.sh本身不改
 # (econ_zh/misc还在单进程顺序用它), 只是这里并行发起多份.
 WORKER_KEYS=(math_en advmath_2 advmath_3)
+# ★2026-08-05: advmath_3 已移出密钥池(转 Genesis 专属), 动态过滤不存在的槽位, worker 数自适应
+_AVAILABLE_KEYS=()
+for _k in "${WORKER_KEYS[@]}"; do
+    if [ -n "$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('$_k',''))" 2>/dev/null)" ]; then
+        _AVAILABLE_KEYS+=("$_k")
+    fi
+done
+WORKER_KEYS=("${_AVAILABLE_KEYS[@]}")
 NW=${#WORKER_KEYS[@]}
 rm -f advmath_pipeline/booklist_worker*.txt advmath_pipeline/quarantine_worker*.json advmath_pipeline/batch_report_worker*.json
 for i in "${!WORKER_KEYS[@]}"; do : > "advmath_pipeline/booklist_worker${i}.txt"; done

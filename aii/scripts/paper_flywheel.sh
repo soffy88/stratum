@@ -13,7 +13,31 @@ cd "$(dirname "$0")/.."
 PY=.venv/bin/python
 FLYWHEEL_STATE="paper_pipeline/flywheel_state.json"
 FLYWHEEL_BOOK_LIST="paper_pipeline/flywheel_booklist.txt"
-PAPER_LIMIT="${PAPER_LIMIT:-20}"
+PAPER_LIMIT="${PAPER_LIMIT:-120}"         # 每轮上限(120: 摊薄每轮 Step0 pull_ingest 固定开销; 并发 6 下 120 篇≈7min/轮)
+PAPER_WORKERS="${PAPER_WORKERS:-6}"   # ★2026-08-16 提速: 并发 worker 数(opencode-go 主 provider 无 rpm 限制; NIM 仅 fallback)
+
+# ★2026-08-16 修复: 论文飞轮曾是唯一不带 NIM/opencode env 的飞轮 → generate_bu.py 落到
+#   已失效的 DEEPSEEK_API_KEY(aii/aii/.env, 07-19 起 401/402) → 每篇论文都 "LLM 主 provider
+#   失败且无 fallback" → 被永久标记 precheck_fail。现对齐 econ/cs 飞轮: opencode-go 主 +
+#   NIM 兜底 + 本地服务 NO_PROXY(防 embed/postgres 502)。
+export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('econ_zh',''))" 2>/dev/null)"
+export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));print(','.join(x for x in (d.get('econ_zh'),d.get('math_en'),d.get('advmath_verify')) if x))" 2>/dev/null)"
+export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
+export OPENCODE_API_KEY=""  # 留空 → 读 ~/.pi/agent/opencode-keys.txt
+export OPENCODE_MODEL="${OPENCODE_MODEL:-deepseek-v4-flash}"
+export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
+export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+export no_proxy="${NO_PROXY}"
+# ★opencode-go 直连偶发 PoolTimeout(实测 4-12s 抖动, 重试 5 次后 NIM fallback 才能救)
+#   → 走本机 7890 代理(实测稳定 2-4s)。NO_PROXY 已排除本地/内网服务。代理挂了自动回落直连。
+export http_proxy="${HTTP_PROXY:-http://127.0.0.1:7890}"
+export https_proxy="${HTTPS_PROXY:-http://127.0.0.1:7890}"
+export HTTP_PROXY="${http_proxy}"
+export HTTPS_PROXY="${https_proxy}"
+export CUDA_VISIBLE_DEVICES=""          # 嵌入走共享 aii-embed, 不占本机 GPU
+# HF offline 由 aii/aii/.env 提供(HF_HUB_OFFLINE=1), 此处不重复设防覆盖
+
+export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"
 
 mkdir -p paper_pipeline
 
@@ -52,14 +76,17 @@ PAPER_COUNT=$(wc -l < "$FLYWHEEL_BOOK_LIST" | tr -d ' ')
 echo "  发现 $PAPER_COUNT 篇待处理论文 → $FLYWHEEL_BOOK_LIST"
 echo ""
 
-# ── Step 2: 逐篇跑轻量管道 ──
-echo "[2/2] 逐篇跑论文轻量管道..."
+# ── Step 2: 并发跑轻量管道(★2026-08-16 提速: 原串行每篇~6-7min, 4387篇≈19天;
+#    改 xargs -P 多 worker, 每篇产物按 SUBSTRATE 隔离可安全并行; 结果汇总后统一写 state) ──
+echo "[2/2] 逐篇跑论文轻量管道(并发 $PAPER_WORKERS)..."
+RESULTS="paper_pipeline/round_results.txt"
+: > "$RESULTS"
+PAPER_RESULTS="$RESULTS" timeout 3600 xargs -d '\n' -P "$PAPER_WORKERS" -n1 bash scripts/paper_worker.sh < "$FLYWHEEL_BOOK_LIST" || echo "  ⚠ 并发轮超时/中断(3600s) — 已完成结果仍会汇总"
+
 ok=0; fail=0
-while IFS='|' read -r md_path substrate title; do
+while read -r status substrate; do  # worker 写 "OK|FAIL <substrate>"(空格分隔)
     [ -z "$substrate" ] && continue
-    echo "  → $substrate ($title)"
-    if SUBSTRATE="$substrate" AII_MD_FILE="$md_path" PAPER_TITLE="$title" \
-        bash scripts/paper_pipeline.sh 2>&1 | sed 's/^/    /'; then
+    if [ "$status" = "OK" ]; then
         ok=$((ok + 1))
         $PY - "$FLYWHEEL_STATE" "$substrate" << 'PYEOF'
 import json, sys, datetime
@@ -79,9 +106,14 @@ state["processed"][sid] = {"status": "precheck_fail", "ts": datetime.datetime.no
 open(state_path, "w", encoding="utf-8").write(json.dumps(state, ensure_ascii=False, indent=2))
 PYEOF
     fi
-done < "$FLYWHEEL_BOOK_LIST"
+done < "$RESULTS"
 
 echo ""
 echo "════════════════════════════════════════════════════"
 echo "★ 论文飞轮完成 $(date '+%Y-%m-%d %H:%M') — 成功 $ok / 失败 $fail"
 echo "════════════════════════════════════════════════════"
+
+# ★2026-08-10 论文精髓 → Agent Skill 自动导出(book-to-skill + cangjie V3)
+#   增量幂等: 只导出新入库的 worth_as_skill 论文到 ~/.agents/skills/
+echo "[skill] 导出本轮新论文技能..."
+$PY scripts/paper_skill_export.py 2>&1 | tail -2

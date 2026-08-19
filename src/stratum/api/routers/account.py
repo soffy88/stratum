@@ -4,37 +4,49 @@ import asyncio
 
 from fastapi import APIRouter, Depends
 
-from stratum.common import ensure_dir, jwt_auth, user_data_dir
-from stratum.db import soft_delete, query
+from stratum.common import jwt_auth
+from stratum.db import query
 
 router = APIRouter(prefix="/api/v1/account", tags=["account"])
 
 
 @router.post("/delete")
 async def delete_account(user_id: str = Depends(jwt_auth)):
-    """Soft-delete all user data. Hard deletion runs after 30-day grace period."""
-    from stratum.common import now_utc
-
-    # Soft-delete notes and concepts
-    for table in ("notes", "concepts"):
-        rows = query(
-            f"SELECT id FROM {table} WHERE user_id = %(uid)s AND deleted_at IS NULL",
-            {"uid": user_id},
-        )
-        for row in rows:
-            soft_delete(table, row["id"])
-
-    # Mark substrates deleted
-    rows = query(
-        "SELECT id FROM substrates WHERE user_id = %(uid)s",
-        {"uid": user_id},
-    )
-    for row in rows:
-        soft_delete("substrates", row["id"])
-
-    # Record deletion request in changefeed
-    from stratum.common import generate_ulid
+    """Purge user knowledge data (MVP 真删). Account tombstone kept for audit."""
+    from stratum.common import generate_ulid, now_utc
     from stratum.db import insert
+    from stratum.services.purge_service import purge_concept, purge_note, purge_substrate
+    from stratum.utils.user_id_hash import hash_user_id
+
+    uh = hash_user_id(user_id)
+    purged = {"notes": 0, "concepts": 0, "substrates": 0}
+
+    # notes_sl (live table name; legacy "notes" soft-delete kept as best-effort)
+    for table, key, purger in (
+        ("notes_sl", "notes", purge_note),
+        ("concepts", "concepts", purge_concept),
+    ):
+        try:
+            rows = query(
+                f"SELECT id FROM {table} WHERE user_id = %(uid)s",
+                {"uid": user_id},
+            )
+        except Exception:
+            rows = []
+        for row in rows:
+            purger(row["id"], user_id)
+            purged[key] += 1
+
+    try:
+        rows = query(
+            "SELECT id FROM substrates WHERE user_id = %(uh)s OR user_id = %(uid)s",
+            {"uh": uh, "uid": user_id},
+        )
+    except Exception:
+        rows = []
+    for row in rows:
+        purge_substrate(row["id"], user_id)
+        purged["substrates"] += 1
 
     insert(
         "changefeed",
@@ -43,11 +55,17 @@ async def delete_account(user_id: str = Depends(jwt_auth)):
             "user_id": user_id,
             "device_id": "server",
             "event_type": "account_delete_requested",
-            "payload": {"grace_days": 30, "requested_at": now_utc()},
+            "payload": {
+                "mode": "hard",
+                "purged": purged,
+                "requested_at": now_utc(),
+            },
         },
     )
 
     return {
-        "status": "scheduled",
-        "message": "Account and all data will be permanently deleted after 30-day grace period.",
+        "status": "purged",
+        "mode": "hard",
+        "purged": purged,
+        "message": "Account knowledge data permanently deleted.",
     }

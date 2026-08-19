@@ -27,10 +27,11 @@ RUN pip install --no-cache-dir \
         python-ulid \
         pyyaml \
         structlog \
-        "mcp>=1.27" \
+        "mcp>=1.27,<2" \
         alembic \
         python-frontmatter \
         pymupdf4llm \
+        docling \
         lancedb \
         tantivy \
         pymupdf \
@@ -83,7 +84,9 @@ RUN pip install --no-cache-dir \
         opencv-contrib-python \
         shapely \
         pyclipper \
-        python-docx
+        python-docx \
+        leidenalg \
+        python-igraph
 
 # yt-dlp: use nodejs as JS runtime + enable remote ejs component for JS challenges
 RUN mkdir -p /root/.config/yt-dlp && printf -- "--js-runtimes node\n--remote-components ejs:github\n" > /root/.config/yt-dlp/config
@@ -121,7 +124,8 @@ RUN pip install --no-cache-dir --no-deps -e /opt/platform/oservi
 # ── Application source ────────────────────────────────────────────────────────
 COPY stratum/src/ /app/src/
 
-ENV PYTHONPATH=/app/src
+# P2: /opt/aii on PYTHONPATH for AII route merge (bind-mounted at runtime)
+ENV PYTHONPATH=/app/src:/opt/aii
 
 EXPOSE 9304
 

@@ -29,9 +29,14 @@ TOPICS = [
     ("economics microeconomics",        "/home/soffy/books/Economic"),
     ("macroeconomics",                   "/home/soffy/books/Economic"),
     ("econometrics",                     "/home/soffy/books/Economic"),
+    ("finance investment",               "/home/soffy/books/Economic"),
+    ("international trade economics",    "/home/soffy/books/Economic"),
     ("calculus analysis",                "/home/soffy/books/数学"),
     ("linear algebra",                   "/home/soffy/books/数学"),
     ("probability statistics",           "/home/soffy/books/数学"),
+    ("differential equations",           "/home/soffy/books/数学"),
+    ("number theory combinatorics",      "/home/soffy/books/数学"),
+    ("mathematical analysis",            "/home/soffy/books/数学"),
 ]
 
 _UA = {"Accept": "application/json", "User-Agent": "oprim/1.0"}

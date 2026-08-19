@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ★全链路体检 — 从源文件到KU的每一环都过一遍, 一条命令看清"哪里在断料/哪里卡死".
-# 覆盖: 5个systemd常驻服务 / aii-embed真调用(已迁笔记本GPU) / 关键docker容器 / D盘挂载 /
+# 覆盖: 11个systemd常驻服务 / aii-embed真调用(已迁笔记本GPU) / 关键docker容器 / D盘挂载 /
 #       各阶段积压深度(PDF待转/MD待分类/各飞轮消费队列) / 隔离积压 / 有没有卡住的拉料进程.
 #
 # Usage: bash scripts/pipeline_health_check.sh
@@ -19,17 +19,20 @@ echo "════════════════════════�
 
 echo
 echo "[1/6] 常驻服务(systemd --user)"
-for svc in aii-backend aii-feeder aii-flywheel-econ-zh aii-flywheel-math-prog aii-flywheel-misc; do
+# 2026-08-13: 覆盖全部 11 个在跑单元(flywheel 已扩到 advmath/cs/edu/paper, 另有 extract/gdrive-mount)
+for svc in aii-backend aii-feeder aii-extract aii-gdrive-mount \
+           aii-flywheel-econ-zh aii-flywheel-math-prog aii-flywheel-misc \
+           aii-flywheel-advmath aii-flywheel-cs aii-flywheel-edu aii-flywheel-paper; do
     if systemctl --user is-active --quiet "$svc"; then
         ok "$svc: active"
     else
         bad "$svc: $(systemctl --user is-active "$svc" 2>&1) — 需要 systemctl --user start $svc"
     fi
-done
+   done
 
 echo
 echo "[2/6] aii-embed 真调用(★已迁笔记本GTX1050Ti, 禁止用本机GPU; 走tailscale, 不只看进程活着, 实际打一次embed)"
-AII_EMBED_URL_CHECK="${AII_EMBED_URL:-http://100.68.226.13:8102}"
+AII_EMBED_URL_CHECK="${AII_EMBED_URL:-http://100.119.113.90:8102}"
 if curl -s -m 10 -o /dev/null -w "" "$AII_EMBED_URL_CHECK/health" 2>/dev/null; then
     EMBED_OUT=$(curl -s -m 30 -X POST "$AII_EMBED_URL_CHECK/embed" -H "Content-Type: application/json" -d '{"texts":["体检"]}' 2>&1)
     if echo "$EMBED_OUT" | grep -q '"embeddings"'; then
@@ -43,10 +46,17 @@ fi
 
 echo
 echo "[3/6] 关键docker容器"
-for c in aii-postgres ocr-vllm; do
+# ocr-vllm 2026-07-06 起因 GPU Xid 79 硬件故障刻意停用 — 存在但非 running 不算故障, 单独提示
+for c in aii-postgres; do
     st=$(docker inspect -f '{{.State.Status}}' "$c" 2>/dev/null || echo "不存在")
     [ "$st" = "running" ] && ok "$c: running" || bad "$c: $st"
 done
+if docker inspect -f '{{.State.Status}}' ocr-vllm >/dev/null 2>&1; then
+    st=$(docker inspect -f '{{.State.Status}}' ocr-vllm)
+    [ "$st" = "running" ] && ok "ocr-vllm: running" || warn "ocr-vllm: $st(GPU故障期刻意停用属正常; GPU 恢复后需人工确认 aii-ocr-daemon)"
+else
+    warn "ocr-vllm 容器不存在(GPU 恢复后需重新创建)"
+fi
 
 echo
 echo "[4/6] D盘/网盘挂载"

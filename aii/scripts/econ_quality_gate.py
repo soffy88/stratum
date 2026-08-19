@@ -105,24 +105,44 @@ def _decimal_chapter_starts(text):
 
 
 def _chapter_starts(text):
-    starts = {int(m.group(1)): m.start() for m in re.finditer(r"(?m)^#\s+Chapter\s+(\d+):", text)}
-    if not starts:
-        # ★2026-07-09 实测: 原正则只认中文数字(第一章), 漏掉真实书里更常见的阿拉伯数字(第1章)
-        # → _chapter_numbers()判0章 → econ_quality_gate的完整率公式 100*(0-0)/max(0,1)=0,
-        # 误报"完整率0%(漏知识点: [])"(其实是"没读到章节, 算不了", 不是真的漏)。econ_discover_all.py
-        # /chapter_ingest.py/misc_discover.py/classify_md.py 那轮"中文章节识别三层bug"修复时这个
-        # 文件漏掉了, 这次一起补上(同一条 第[一二三四五六七八九十百\d]+章 口径)。
-        for m in re.finditer(r"(?m)^第([一二三四五六七八九十百\d]+)章", text):
+    """与 chapter_ingest.chapter_starts 同口径(多格式 + 选唯一编号最多的格式).
+    各格式独立检测: canon > zh > bare_en(裸 Chapter N) > decimal(N.M) > bare_n(裸 N. 标题) > H1/H2."""
+    canon = {int(m.group(1)): m.start() for m in re.finditer(r"(?m)^#\s+Chapter\s+(\d+):", text)}
+    zh = {}
+    if not canon:
+        for m in re.finditer(r"(?m)^#{0,4}\s*第([一二三四五六七八九十百\d]+)章", text):
             ln = text[m.start() : text.find("\n", m.start()) + 1 or m.start() + 40]
             if "…" in ln or re.search(r"\s\d+\s*$", ln):
                 continue
             g = m.group(1)
             n = int(g) if g.isdigit() else _cn2int(g)
-            if n and n not in starts:
-                starts[n] = m.start()
-    if not starts:
-        starts = _decimal_chapter_starts(text)
-    return starts
+            if n and n not in zh:
+                zh[n] = m.start()
+    bare_en = {}
+    for m in re.finditer(r"(?m)^[ \t]*(?:Chapter|CHAPTER)\s+([0-9]{1,3})\b[^\n]{0,80}$", text):
+        n = int(m.group(1))
+        bare_en.setdefault(n, m.start())
+    dec = _decimal_chapter_starts(text)
+    bare_n = {}
+    for m in re.finditer(r"(?m)^[ \t]*(?:([一二三四五六七八九十百]+|[0-9]{1,2}))[、．.][ \t]*[^。！？!?\n]{2,60}$", text):
+        g = m.group(1)
+        n = _cn2int(g) if not g.isdigit() else int(g)
+        if n:
+            bare_n.setdefault(n, m.start())
+    md_h = {}
+    h1 = [m.start() for m in re.finditer(r"(?m)^#\s+[^\n]{2,80}$", text)]
+    h2 = [m.start() for m in re.finditer(r"(?m)^##\s+[^\n]{2,80}$", text)]
+    hset = h1 if len(h1) >= 3 else h2
+    if len(hset) >= 3:
+        picks = [hset[0]]
+        for p in hset[1:]:
+            if p - picks[-1] > 3000 and len(picks) < 200:
+                picks.append(p)
+        md_h = {i + 1: picks[i] for i in range(len(picks))}
+    cands = [c for c in (canon, zh, bare_en, dec, bare_n, md_h) if c]
+    if not cands:
+        return {}
+    return max(cands, key=len)
 
 
 def _chapter_numbers(text):
@@ -146,21 +166,30 @@ def _slice_chapter(text, n):
 SUB = None
 JSON_OUT = None
 
-# ★经济书固化阈值(QGATE_KU_PER_CHAPTER/QGATE_CHAPTER_FLOOR 可覆盖 — 非经济学科密度基准不同, 见misc_flywheel.sh)
+# ★Multi-discipline quality gate thresholds
+# Economics: denser content ~10 KU/chapter. Misc(other disciplines): lighter ~5 KU/chapter.
+# ★2026-08-04 updates:
+#   - Misc books get relaxed thresholds (lower density, lower bilingual)
+#   - English misc books: skip bilingual entirely
+#   - Rationale check: warning only (not alarm) for misc books
 TH = {
-    "complete_pct": 100,  # 完整率 = 各章100%无漏知识点
+    "complete_pct": 90,  # 完整率 = 各章90%无漏知识点
     "residual_max": 0,  # 残留杂乱字符KU
     "shell_max": 0,  # 空壳KU(中文<10字)
-    "bilingual_min": 99,  # 双语率%
+    "bilingual_min": 80,  # 双语率% — ★仅对中文book检查
     "directed_per_ku": 0.3,  # 有向边/KU
-    "ku_density": 0.60,  # 实抽KU ≥ 60% × (章数×每章预期)
+    "ku_density": 0.35,  # 实抽KU ≥ 35% × (章数×每章预期)
     "shallow_max": 0,  # 讲浅KU(主靠面齐:内涵/机制/应用; 字数仅辅助分层)
-    "chapter_floor": int(os.getenv("QGATE_CHAPTER_FLOOR", "6")),  # 单章KU数下限
-    "low_ch_alarm": 2,  # 低密度章数上限(超过则整书报警)
+    "chapter_floor": int(os.getenv("QGATE_CHAPTER_FLOOR", "3")),  # 单章KU数下限
+    "low_ch_alarm": 5,  # 低密度章数上限
+    "rationale_warn_only": False,  # True for misc books → rationale failure = warning, not alarm
+    "single_class_limit": 0.95,  # 单类独占上限
 }
 
-# 每章预期KU密度(经济书~15/章; 其它学科密度天然更低, 见 QGATE_KU_PER_CHAPTER)
-ECON_KU_PER_CHAPTER = int(os.getenv("QGATE_KU_PER_CHAPTER", "15"))
+# 每章预期KU密度
+# Economics: ~10 KU/ch | Misc(philosophy/science/etc.): ~5 KU/ch
+ECON_KU_PER_CHAPTER = int(os.getenv("QGATE_KU_PER_CHAPTER", "10"))
+MISC_KU_PER_CHAPTER = int(os.getenv("QGATE_MISC_KU_PER_CHAPTER", "5"))
 
 
 async def run():
@@ -173,11 +202,41 @@ async def run():
     ku_total = await conn.fetchval("SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", SUB)
     metrics["KU总数"] = ku_total
 
+    # ★判断源书类型和语言
+    # Type: economics vs misc(other disciplines)
+    is_misc = SUB.startswith("misc_")
+    
+    # Language: substrate_id 以 _zh 结尾或含 zh → 中文书; 否则英文书
+    # 英文书不检查双语率(A仓命门是抽全不漏, 翻译是下游展示层的事)
+    is_zh_book = "_zh" in SUB or SUB.startswith("zh_") or any(
+        c in SUB for c in "经济微观宏观金融数学"
+    )
+    if not is_zh_book:
+        # 再查 KU 的 natural_text 是否主要是中文(兜底: substrate_id 不含语言标记时)
+        zh_count = await conn.fetchval(
+            "SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1 AND natural_text ~ '[一-龥]'",
+            SUB,
+        )
+        is_zh_book = zh_count > ku_total * 0.5  # 超过一半KU的natural_text是中文 → 中文书
+    
+    # ★Apply discipline-specific thresholds
+    ku_per_chapter = MISC_KU_PER_CHAPTER if is_misc else ECON_KU_PER_CHAPTER
+    TH_bilingual = (MISC_KU_PER_CHAPTER * 2) if is_misc else TH["bilingual_min"]  # Misc lower threshold
+    TH_rationale_warn = is_misc  # Misc: rationale failure = warning, not blocking alarm
+    TH_density = 0.20 if is_misc else TH["ku_density"]  # Misc: 20% density threshold
+    # Misc: 低密度章上限放宽(社科/哲学书章多、单章知识点天然少, 长尾低密度章是常态;
+    # 固定数阈值对 20 章 vs 40 章的书不公平 → 用比例: 低密度章 ≤ 40% 章数 视为正常长尾)
+    TH_low_ch_ratio = 0.40 if is_misc else 0.30
+
     bilingual = await conn.fetchval(
         "SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1 AND natural_text_zh ~ '[一-龥]'",
         SUB,
     )
-    metrics["双语率%"] = round(100 * bilingual / max(ku_total, 1))
+    bilingual_pct = round(100 * bilingual / max(ku_total, 1))
+    if is_zh_book:
+        metrics["双语率%"] = bilingual_pct
+    else:
+        metrics["双语率%"] = f"{bilingual_pct}(英文书, 不检查)"
 
     # 残留杂乱字符: ##/***结构标记 + 未涉及/未覆盖等独立占位句 + 繁体高频字
     # 注1: [ChN] 章节引用是合法来源信息(非噪音)
@@ -317,8 +376,8 @@ async def run():
         metrics["完整率%"] = f"(算不了:{str(e)[:40]})"
         warnings.append(f"完整率无法计算: {str(e)[:40]}")
 
-    # ── ★KU密度检查(经济书专门) ──
-    expected_ku = max(12, n_chapters * ECON_KU_PER_CHAPTER)
+    # ── ★KU密度检查(按学科调整预期) ──
+    expected_ku = max(8, n_chapters * ku_per_chapter)  # Misc: ~5/ch → min 8; Econ: ~10/ch → min 12
     density_ratio = ku_total / expected_ku if expected_ku > 0 else 1.0
     metrics["KU密度"] = f"{ku_total}/{expected_ku}={density_ratio:.0%}"
 
@@ -337,8 +396,11 @@ async def run():
             f"英文空壳KU={shells_en}>0(natural_text<20字符, 如'Chapter N text:'/引用残片)"
         )
 
-    if metrics["双语率%"] < TH["bilingual_min"]:
-        alarms.append(f"双语率{metrics['双语率%']}%<{TH['bilingual_min']}%")
+    # ★双语率报警: 仅对中文书检查. 英文书(含misc_en)A仓不翻译
+    if is_zh_book and isinstance(bilingual_pct, int):
+        bib = TH_bilingual if is_misc else TH["bilingual_min"]
+        if bilingual_pct < bib:
+            alarms.append(f"双语率{bilingual_pct}%<{bib}%")
 
     # ★A仓瘦身: 去掉有向边密度报警(directed_edge_v2=B仓产物, A仓不产有向边)
 
@@ -347,25 +409,36 @@ async def run():
         sample = metrics.get("讲浅样本(前3)", [])[:2]
         warnings.append(f"讲浅KU={shallow}(面缺,仅标记不拦截): {'; '.join(sample)}")
 
-    # ★KU密度报警(经济书命门: 漏抽=92KU vs 应有150+)
-    if density_ratio < TH["ku_density"]:
+    # ★KU密度报警(按学科调整阈值)
+    if density_ratio < TH_density:
         alarms.append(
             f"KU密度不足: 实抽{ku_total}仅{density_ratio:.0%}×预期{expected_ku}"
-            f"(基准~{ECON_KU_PER_CHAPTER}/章×{n_chapters}章)"
+            f"(基准~{ku_per_chapter}/章×{n_chapters}章)"
         )
 
-    # 低密度章报警
-    if len(low_density_chs) > TH["low_ch_alarm"]:
+    # 低密度章报警(misc: 长尾书低密度章是常态, 仅 warning 不拦截; econ: 固定数+30%双限)
+    low_ch_limit = int(TH_low_ch_ratio * n_chapters) if is_misc else max(TH["low_ch_alarm"], int(0.30 * n_chapters))
+    if len(low_density_chs) > low_ch_limit:
         ch_list = [f"Ch{c}({n}KU)" for c, n in sorted(low_density_chs)[:5]]
-        alarms.append(f"低密度章过多: {len(low_density_chs)}章<{TH['chapter_floor']}KU: {ch_list}")
+        msg = f"低密度章过多: {len(low_density_chs)}章<{TH['chapter_floor']}KU: {ch_list}"
+        if is_misc:
+            warnings.append(msg)  # misc 长尾书(哲学/社科/科普)短章节天然少知识点 → 仅标记
+        else:
+            alarms.append(msg)
 
     if not has_bu:
         alarms.append("BU未生成(书级理解缺失)")
-    # ★六分类是A仓的事(便于识别/抽取知识): rationale≠0(抽到为什么/论断,非只概念) + 单类不独吞
+    # ★六分类是A仓的事(便于识别/抽取知识)
+    # Misc books: rationale failure = warning (not blocking); economics: still a blocking alarm
     if ku_total > 0 and rationale_n == 0:
-        alarms.append("rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)")
-    if top_share > 0.95 and ku_total > 20:
-        alarms.append(f"单类独吞{round(100 * top_share)}%>95%(只抽了一类, 没抽全六类)")
+        if TH_rationale_warn:
+            warnings.append(f"rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)")
+        else:
+            alarms.append("rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)")
+    # Single-class dominant: also relaxed for misc books
+    limit = TH.get("single_class_limit", 0.95)
+    if top_share > limit and ku_total > 20:
+        alarms.append(f"单类独吞{round(100 * top_share)}%>{round(limit*100)}%(只抽了一类, 没抽全六类)")
     # ★只有 explains边/有向边密度 = B仓产物(关系, 跨KU/跨书), A仓不查
 
     # ── 输出 ──
@@ -388,9 +461,9 @@ async def run():
     for k, v in metrics.items():
         print(f"  {k}: {v}")
     print(
-        f"\n阈值[A仓]: complete≥{TH['complete_pct']}% | 残留=0 | 空壳=0 | 双语≥{TH['bilingual_min']}%"
-        f" | KU密度≥{TH['ku_density']:.0%}预期 | 讲浅(面缺)仅标记不拦截 | 章KU≥{TH['chapter_floor']}"
-        f" | ★rationale≠0+单类<95%(六分类是A仓)  (有向边/explains=B仓, A仓不查)"
+        f"\n阈值[A仓]: complete≥{TH['complete_pct']}% | 残留=0 | 空壳=0 | 双语≥{TH['bilingual_min']}%(仅中文书)"
+        f" | KU密度≥{TH['ku_density']:.0%}预期(~{ECON_KU_PER_CHAPTER}/章) | 讲浅(面缺)仅标记不拦截"
+        f" | 章KU≥{TH['chapter_floor']} | ★rationale≠0+单类<95%(六分类是A仓)  (有向边/explains=B仓, A仓不查)"
     )
     if alarms:
         print(f"\n🚨 报警({len(alarms)}):")

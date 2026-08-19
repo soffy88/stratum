@@ -1,0 +1,19 @@
+# Let G = (V,E) be a graph (potentially a multi-graph) on n vertices and m
+edges.…
+
+Type: conceptual | Subject: unknown
+
+Definition 8.4. Let G = (V,E) be a graph (potentially a multi-graph) on n vertices and m
+edges. We let C ⊆ Rm denote the p-spectral code of G which contains one vector v(x) for each
+|     |     | G,p | ≥0  |     |     |     |     |     |     |     |
+assignment x ∈ RV, where for an edge e = (u,v) ∈ E, the corresponding entry in the vector v(x) is
+| (v(x)) |      | |p. |     |     |     |     |     |     |     |     |
+| ------ | ---- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+|        | = |x | −x  |     |     |     |     |     |     |     |     |
+| e      | u    | v   |     |     |     |     |     |     |     |     |
+Remark 8.2. Observe that, for a graph G, building a (1 ± ϵ) code sparsifier of C is in fact
+G,p
+| equivalent | to  | building | a (1±ϵ) | p-spectral |     | sparsifier | of the | graph G. |     |     |
+| ---------- | --- | -------- | ------- | ---------- | --- | ---------- | ------ | -------- | --- | --- |
+Inspired by this connection to C , we now define the CVNRD of a graph G:
+G,p

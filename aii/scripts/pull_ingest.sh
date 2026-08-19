@@ -47,13 +47,36 @@ if copied:
 PYEOF
 done
 
-# 0b. Google Drive 数学书源同步 → books/数学(+写 .driveid.json 供 math_convert 记 source_url)
-#     独立超时+||true: 代理挂/无网/未授权都不许拖垮或中断飞轮; 未同步文件照常转(source_url 留空)。
+# 0b. Google Drive 书源同步(由 auto_classify_books.py 分类落地的学科夹) → 本地对应待转目录
+#     独立超时+||true: 代理挂/无网/未授权都不许拖垮或中断飞轮; 未同步文件照常转。
 timeout 300 bash scripts/math_drive_sync.sh 2>&1 | sed 's/^/  /' || true
+timeout 300 bash scripts/econ_drive_sync.sh 2>&1 | sed 's/^/  /' || true
+timeout 300 bash scripts/misc_drive_sync.sh 2>&1 | sed 's/^/  /' || true
+
+# 0c. 合集本 epub 自动拆分 (每天最多跑一次, 避免每轮 10min 重复扫描大 epub)
+#     检测 >20MB + 文件名含"套装/全集/共N册"等关键词的 epub → 拆成单本 MD → 分类入库。
+SPLIT_STAMP="context_pipeline/.last_split_epub"
+SPLIT_INTERVAL=86400  # 24h
+if [ -f "$SPLIT_STAMP" ]; then
+  LAST_SPLIT=$(stat -c %Y "$SPLIT_STAMP" 2>/dev/null || echo 0)
+  NOW=$(date +%s)
+  ELAPSED=$(( NOW - LAST_SPLIT ))
+else
+  ELAPSED=999999
+fi
+if [ "$ELAPSED" -ge "$SPLIT_INTERVAL" ]; then
+  echo "★ 合集本拆分 (每日一次) $(date '+%H:%M')"
+  timeout 600 $PY scripts/split_collection_epub.py --do 2>&1 | grep -E '✅|合集|拆分完成|跳过' | sed 's/^/  /' || true
+  touch "$SPLIT_STAMP"
+fi
 
 # 1. 本地新投PDF(含刚从D盘/Drive同步来的) → MD
 $PY math_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  math_convert 新转: /'
 $PY econ_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  econ_convert 新转: /'
+$PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  misc_convert 新转: /'
+# ★2026-08-10 教辅/计算机目录(夸克分流) — 复用 misc_convert(章节结构门禁), 只换目录
+CONVERT_SRC=/home/soffy/books/教辅 CONVERT_DST=/home/soffy/books/MD/教辅 CONVERT_TAG=教辅 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  edu_convert 新转: /'
+CONVERT_SRC=/home/soffy/books/计算机 CONVERT_DST=/home/soffy/books/MD/计算机 CONVERT_TAG=计算机 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  cs_convert 新转: /'
 
 # 2. stratum 抓好的 MD(/shared/stratum-to-aii) → 分类入 books/MD/{经济学|中英文数学|其它}
 $PY classify_md.py --do 2>&1 | tail -1

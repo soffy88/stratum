@@ -22,6 +22,8 @@ router = APIRouter(prefix="/api/v1/folder-watch", tags=["folder-watch"])
 FREE_TIER_MAX_WATCHES = 2
 
 
+
+
 class FolderWatchRequest(BaseModel):
     path: str
     description: str | None = None
@@ -58,6 +60,13 @@ async def add_folder_watch(
                 f"Free tier is limited to {FREE_TIER_MAX_WATCHES} folder watches — upgrade to add more",
             )
 
+    # Path must sit under allowed roots (folder-watch or vault)
+    try:
+        from stratum.services.vault_sync_service import assert_safe_watch_path
+        safe_path = str(assert_safe_watch_path(body.path))
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
     watch_id = generate_ulid()
 
     insert(
@@ -65,7 +74,7 @@ async def add_folder_watch(
         {
             "id": watch_id,
             "user_id": user_id,
-            "path": body.path,
+            "path": safe_path,
             "description": body.description,
             "status": "active",
             "generate_derivatives": json.dumps(body.generate_derivatives),
@@ -137,6 +146,35 @@ async def pause_folder_watch(watch_id: str, user_id: str = Depends(jwt_auth)):
 async def resume_folder_watch(watch_id: str, user_id: str = Depends(jwt_auth)):
     db_execute(
         "UPDATE folder_watches SET status = 'active' WHERE id = %(id)s AND user_id = %(uid)s",
+        {"id": watch_id, "uid": user_id},
+    )
+    rows = query(_SELECT + " WHERE id = %(id)s", {"id": watch_id}, limit=1)
+    return _row_to_response(rows[0])
+
+
+@router.post("/{watch_id}/scan-now", response_model=FolderWatchResponse)
+async def scan_folder_watch_now(watch_id: str, user_id: str = Depends(jwt_auth)):
+    """Trigger an immediate scan (does not wait for the 300s poll loop)."""
+    import asyncio
+    from pathlib import Path
+
+    from stratum.services.folder_watcher_service import _scan_one_watch
+
+    rows = query(
+        _SELECT + " WHERE id = %(id)s AND user_id = %(uid)s",
+        {"id": watch_id, "uid": user_id},
+        limit=1,
+    )
+    if not rows:
+        raise HTTPException(404, "Folder watch not found")
+    path = rows[0]["path"]
+    if not Path(path).exists():
+        raise HTTPException(400, f"path not found on server: {path}")
+
+    # Fire-and-forget so the HTTP response returns status immediately
+    asyncio.create_task(_scan_one_watch(watch_id, user_id, path))
+    db_execute(
+        "UPDATE folder_watches SET scan_status = 'scanning' WHERE id = %(id)s AND user_id = %(uid)s",
         {"id": watch_id, "uid": user_id},
     )
     rows = query(_SELECT + " WHERE id = %(id)s", {"id": watch_id}, limit=1)

@@ -16,6 +16,7 @@ from chapter_synthesize import _plan, _synth, _CTX, _find_pos
 from clean_ku import clean, is_empty_shell, is_junk
 from aii.api._provider import register_providers
 from aii.service.planning_completeness import check_completeness
+from ku_schema import build_grounded_by, ku_fingerprint, validate_ku_point
 from oprim import vector_encode
 from obase import ProviderRegistry
 
@@ -76,9 +77,22 @@ async def synth_chapter(llm, n):
 
     async def s(p):
         async with sem:
-            _, body = await _synth(
+            _n, body, quotes, wtext = await _synth(
                 llm, text, n, p["name"], p.get("type", "conceptual"), p.get("pos", 0)
             )
+            # ★Repair 循环(规格 4.2/6): 无合法证据 → 窄窗口重抽 1 次(每候选预算)
+            if not quotes:
+                try:
+                    _n2, body2, quotes2, wtext2 = await _synth(
+                        llm, text, n, p["name"], p.get("type", "conceptual"),
+                        p.get("pos", 0), narrow=True,
+                    )
+                    if quotes2:
+                        body, quotes, wtext = body2, quotes2, wtext2
+                except Exception:  # noqa: BLE001
+                    pass
+            p["_quotes"] = quotes
+            p["_wtext"] = wtext
             return p, body  # ★ 返回完整 point 字典 + body(带 explains/stance 透传 persist)
 
     kus = await asyncio.gather(*(s(p) for p in points))
@@ -95,6 +109,10 @@ async def synth_chapter(llm, n):
         kus = list(kus) + list(fill)
         comp = check_completeness(text, [p["name"] for p, _ in kus])
     return text, kus, comp
+
+
+_PER_SOURCE_BUDGET = int(os.getenv("KU_REPAIR_SOURCE_BUDGET", "5"))  # 每源失败预算(规格: 每源 5 次总量)
+_FAIL_COUNT = [0]  # 跨章累计(协议失败/幻觉/软分)
 
 
 async def persist(conn, n, kus):
@@ -142,6 +160,7 @@ async def persist(conn, n, kus):
         )[0]
         prov = {
             "chapter": n,
+            "ocr_confidence": None,  # OCR 路径由 OCR 管道填写; 文字层为 null
             "paradigm": "thorough-synthesis",
             "marker": "AII综合-讲透,非原文逐字",
             "type": typ,
@@ -149,16 +168,73 @@ async def persist(conn, n, kus):
             "citations": sorted(set(en_cites + zh_cites)),
             "source_lang": BOOK_LANG,  # ★zh=中文原书(natural_text非独立英文, 前端应显示"原文"不折叠)
         }
+        # ★统一质检链(规格 4.1/6): ku_pipeline.evaluate_ku_chain
+        from ku_pipeline import evaluate_ku_chain, choose_repair_action
+        quotes = p.get("_quotes") or []
+        chain = await evaluate_ku_chain(
+            ku_id, zh or en, name, quotes, p.get("_wtext") or "",
+            ku_type=kt, source_type=BOOK_LANG,
+        )
+        if chain["status"] != "pass":
+            sig = chain["signatures"][0] if chain["signatures"] else "REJECT"
+            _traj_sync("persist", sig,
+                       f"{chain['quality']['checks'][:2]}",
+                       {"ku_id": ku_id, "chapter": n,
+                        "repair": await choose_repair_action(chain["signatures"], BOOK_LANG)
+                        if chain["status"] == "repair" else None})
+            print(f"  ⚠ {sig} {ku_id}: {name[:30]} ({chain['status']})", flush=True)
+            _FAIL_COUNT[0] += 1
+            if _FAIL_COUNT[0] >= _PER_SOURCE_BUDGET:
+                from ku_pipeline import investigate_fallback
+                fb = await investigate_fallback(
+                    f"substrate {SUB} 质量失败预算耗尽", {"chapter": n})
+                _traj_sync("persist", "SOURCE_BUDGET_EXHAUSTED",
+                           f"investigate={fb.get('stopped_reason', 'n/a')}",
+                           {"ku_id": ku_id, "chapter": n, "substrate": SUB})
+                raise RuntimeError(f"源失败预算耗尽({_PER_SOURCE_BUDGET})")
+            continue
+        quality = chain["quality"]
+        # DUPLICATE 查重: fingerprint 已存在 → 跳过(不重复建)
+        fp = ku_fingerprint(zh or en)
+        dup = await conn.fetchval(
+            "SELECT 1 FROM aii.ku_onto WHERE fingerprint=$1 AND ku_id <> $2 LIMIT 1",
+            fp, ku_id)
+        if dup:
+            _traj_sync("persist", "DUPLICATE", f"fingerprint 已存在: {fp[:16]}...",
+                       {"ku_id": ku_id, "chapter": n})
+            print(f"  ⚠ DUPLICATE {ku_id}", flush=True)
+            continue
+        grounded_by = build_grounded_by(SUB, f"ch{n}",
+                                        evidence_quotes=[
+                                            {"chunk_id": f"ch{n}", **q} for q in quotes
+                                        ])
+        violations = validate_ku_point(
+            ku_id, name, kt, en or zh, grounded_by)
+        if violations:
+            _traj_sync(
+                "persist", "schema_reject",
+                "; ".join(violations)[:200],
+                {"ku_id": ku_id, "substrate": SUB, "chapter": n},
+            )
+            print(f"  ⚠ 海关拒绝 {ku_id}: {violations[0]}", flush=True)
+            continue  # 丢弃该条(整章不中断; 下轮重跑该章可补)
+        fp = ku_fingerprint(en or zh)
+
         # ★is_positional 是生成列(=knowledge_type='positional'), 不可显式插入; 只写 stance_holder/opposing_stance
         await conn.execute(
             """
             INSERT INTO aii.ku_onto (ku_id, substrate_id, title, natural_text, natural_text_zh,
-                knowledge_type, stance_holder, opposing_stance, grade, provenance, embedding)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'unverified',$9,$10)
+                knowledge_type, stance_holder, opposing_stance, grade, provenance, embedding,
+                grounded_by, fingerprint, sources, quality, created_by, claim_type)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'unverified',$9,$10,$11,$12,'[]'::jsonb,
+                    $13,$14,$15)
             ON CONFLICT (ku_id) DO UPDATE SET natural_text=EXCLUDED.natural_text,
                 natural_text_zh=EXCLUDED.natural_text_zh, knowledge_type=EXCLUDED.knowledge_type,
                 stance_holder=EXCLUDED.stance_holder, opposing_stance=EXCLUDED.opposing_stance,
-                provenance=EXCLUDED.provenance, embedding=EXCLUDED.embedding""",
+                provenance=EXCLUDED.provenance, embedding=EXCLUDED.embedding,
+                grounded_by=EXCLUDED.grounded_by, fingerprint=EXCLUDED.fingerprint,
+                quality=EXCLUDED.quality, created_by=EXCLUDED.created_by,
+                claim_type=EXCLUDED.claim_type""",
             ku_id,
             SUB,
             name[:200],
@@ -169,8 +245,31 @@ async def persist(conn, n, kus):
             opposing,
             json.dumps(prov),
             emb,
+            json.dumps(grounded_by, ensure_ascii=False),
+            fp,
+            json.dumps(quality, ensure_ascii=False),
+            f"flywheel:{os.getenv('AII_FLYWHEEL', 'unknown')}",
+            quality.get("claim_type"),
         )
         # explains 链已写入 prov["explains"](上方) → B仓据此建 explains 超边; A仓不写边.
+
+
+def _traj_sync(phase: str, failure_mode: str, error_sig: str, context: dict | None = None) -> None:
+    """海关拒绝事件静默落 trajectory_logs。"""
+    import importlib.util as _ilu
+    from pathlib import Path as _P
+    try:
+        p = _P(__file__).resolve().parent / "traj_log.py"
+        if not p.exists():
+            return
+        spec = _ilu.spec_from_file_location("traj_log_sb", p)
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        import os as _os
+        flywheel = _os.getenv("AII_FLYWHEEL", "unknown")
+        mod.traj_log_sync(flywheel, phase, failure_mode, error_sig, context or {})
+    except Exception:  # noqa: BLE001
+        pass
 
 
 async def main():
@@ -186,6 +285,20 @@ async def main():
     for n in chapters:
         if n in done:
             continue
+        try:
+            text = slice_chapter(SM.read_text(encoding="utf-8", errors="replace"), n)
+        except Exception:
+            text = ""
+        # ★B1/B2 块质量闸: 乱码/样板/过短章不进抽取(省 NIM + 防垃圾入库)
+        if text:
+            from block_quality import check_chunk_quality
+            qok, qissues = check_chunk_quality(text)
+            if not qok:
+                _traj_sync("parse", qissues[0].split(":")[0],
+                           "; ".join(qissues)[:200],
+                           {"chapter": n, "substrate": SUB})
+                print(f"  ⚠ 块质量拦截 ch{n}: {qissues}", flush=True)
+                continue
         try:
             text, kus, comp = await synth_chapter(llm, n)
             await persist(conn, n, kus)

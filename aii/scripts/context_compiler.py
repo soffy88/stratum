@@ -46,7 +46,7 @@ PIPE_DIR = ROOT / "context_pipeline"
 REGISTRY_DB = PIPE_DIR / "archive_registry.sqlite"
 REPORT_JSON = PIPE_DIR / "compile_report.json"
 DSN = os.getenv("CONTEXT_DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5436/aii_context")
-EMBED_URL = os.getenv("AII_EMBED_URL", "http://100.68.226.13:8102")
+EMBED_URL = os.getenv("AII_EMBED_URL", "http://100.119.113.90:8102")
 MAX_LLM_CHARS = 12000
 
 COMPILE_MAP = {

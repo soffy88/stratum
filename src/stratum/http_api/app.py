@@ -127,9 +127,29 @@ def health_check(response: Response):
 
 
 # MCP SSE endpoint — for Claude Desktop / MCP clients
+# mcp 2.0: mount 的子 app lifespan 不会自动运行 (task group 500) — 父 app 手动托管
 try:
+    from contextlib import asynccontextmanager
+
     from stratum.api.mcp import mcp_app
 
+    # StreamableHTTPSessionManager.run() 每进程只能跑一次(内部 _has_started 单例)。
+    # 生产: uvicorn 单进程, lifespan 只跑一次 → 正常托管。
+    # 测试: 每个 TestClient 重跑 lifespan → 首次后跳过, 避免
+    #   "StreamableHTTPSessionManager .run() can only be called once per instance"。
+    _MCP_LIFESPAN_RUN = False
+
+    @asynccontextmanager
+    async def _lifespan(application):
+        global _MCP_LIFESPAN_RUN
+        if not _MCP_LIFESPAN_RUN:
+            _MCP_LIFESPAN_RUN = True
+            async with mcp_app.router.lifespan_context(application):
+                yield
+        else:
+            yield
+
+    app.router.lifespan_context = _lifespan
     app.mount("/mcp", mcp_app)
 except Exception:
     pass  # mcp optional; skip if fastmcp not installed

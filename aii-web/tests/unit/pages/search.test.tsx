@@ -11,6 +11,10 @@ import userEvent from "@testing-library/user-event";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import SearchPage from "@/app/(app)/search/page";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 // Mock @helios/blocks: stub OSemanticSearch to expose onSearch as a button
 vi.mock("@helios/blocks", () => ({
   OSemanticSearch: ({ onSearch, placeholder }: { onSearch: (q: string) => Promise<unknown>; placeholder?: string }) => (

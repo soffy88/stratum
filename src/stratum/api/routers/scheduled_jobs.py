@@ -21,6 +21,51 @@ router = APIRouter(prefix="/api/v1/scheduled-jobs", tags=["scheduled_jobs_sl"])
 # indefinitely, so they're the natural free-tier cap point.
 FREE_TIER_MAX_JOBS = 2
 
+# 新用户默认定时任务 (native agents, 无 omodul 依赖, 任何部署可跑)。
+# 数量 = FREE_TIER_MAX_JOBS, 免费层恰好放得下。
+DEFAULT_JOBS: list[dict] = [
+    {
+        "name": "日报 (默认)",
+        "agent_name": "daily_digest_simple",
+        "cron_expression": "0 8 * * *",  # 每天 08:00 Asia/Shanghai
+        "timezone": "Asia/Shanghai",
+        "enabled": True,
+        "max_items": 20,
+    },
+    {
+        "name": "知识库 Lint (默认)",
+        "agent_name": "knowledge_lint",
+        "cron_expression": "0 2 * * *",  # 每天 02:00 Asia/Shanghai
+        "timezone": "Asia/Shanghai",
+        "enabled": True,
+        "max_items": 20,
+    },
+]
+
+
+def seed_default_jobs(user_id: str) -> None:
+    """首次列出时为新用户自动挂上默认任务 (幂等: 已有任意任务则跳过)。"""
+    existing = query(
+        "SELECT count(*) AS n FROM scheduled_jobs_sl WHERE user_id = %(uid)s",
+        {"uid": user_id},
+        limit=1,
+    )
+    if existing and existing[0]["n"] > 0:
+        return
+
+    from stratum.scheduler.runtime import sync_job
+
+    for spec in DEFAULT_JOBS:
+        jid = generate_ulid()
+        row = {
+            "id": jid,
+            "user_id": user_id,
+            "created_at": now_utc(),
+            **spec,
+        }
+        insert("scheduled_jobs_sl", row)
+        sync_job(row)
+
 
 class JobCreate(BaseModel):
     name: str
@@ -76,6 +121,8 @@ async def create_job(body: JobCreate, user_id: str = Depends(jwt_auth)):
 
 @router.get("")
 async def list_jobs(user_id: str = Depends(jwt_auth)):
+    # GET 副作用: 首次访问自动挂默认任务 (幂等)。默认任务数量=免费层上限, 无需 402 检查。
+    seed_default_jobs(user_id)
     return query(
         "SELECT * FROM scheduled_jobs_sl WHERE user_id = %(uid)s ORDER BY created_at DESC",
         {"uid": user_id},

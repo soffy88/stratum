@@ -1,14 +1,15 @@
 """Agent run endpoint tests.
 
 Phase 15 P1-A (Wave 1): 3 workflow agents (daily_digest/weekly_review/knowledge_curator)
-Phase 15 P1-C (Wave 5): +3 Agent-class agents activated (translation_worker/reading_companion/lint_bot)
-                          audio_generator remains 501 (oprim.tts_synthesize not exported).
+Phase 15 P1-C (Wave 5): +5 Agent-class agents activated (translation_worker/reading_companion/
+                          lint_bot/audio_generator/illustration_agent)
+All 12 agents implemented — no 501 stubs remain (obase v0.9.0 activated audio_generator TTS).
 
 Coverage:
   1. POST /{agent_name}/run — daily_digest returns status in (completed, failed), not pending
   2. POST /unknown/run — 404
-  3. POST /audio_generator/run — 501 (TTS deferred, oprim provider missing)
-  4. POST /translation_worker|reading_companion|lint_bot/run — 200 (Agent-class, may fail on dep)
+  3. no agent returns 501 (all activated)
+  4. POST /translation_worker|reading_companion|lint_bot|audio_generator/run — 200 (Agent-class, may fail on dep)
   5. run record persisted; GET /runs/{run_id} returns it with non-pending status
   6. GET /runs returns paginated list for authenticated user
   7. GET /runs/{run_id} — cross-user 404 isolation
@@ -24,6 +25,14 @@ from fastapi.testclient import TestClient
 os.environ.setdefault("JWT_SECRET", "test-secret-for-sl-unit-tests-32x")
 
 from stratum.common import create_token  # noqa: E402
+from stratum.api.routers.agents import _HAS_OMODUL  # noqa: E402
+
+# The agent registry's builders/classes live in the omodul platform package,
+# which is only installed in the Docker image (no /opt/platform on dev hosts).
+requires_omodul = pytest.mark.skipif(
+    not _HAS_OMODUL,
+    reason="omodul platform package not installed (Docker image only)",
+)
 
 
 def _auth(user_id: str = "user-alice") -> dict:
@@ -43,6 +52,7 @@ def client():
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+@requires_omodul
 def test_agent_run_daily_digest_true_status(client):
     """R-1: status must be completed or failed, never pending."""
     r = client.post("/api/v1/agents/daily_digest/run", json={}, headers=_auth())
@@ -71,6 +81,7 @@ def test_agent_unknown_returns_404(client):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+@requires_omodul
 def test_no_agent_returns_501(client):
     """No agents are in NOT_IMPLEMENTED_AGENTS as of obase v0.9.0 + oprim v2.24.1."""
     r = client.post(
@@ -89,6 +100,7 @@ def test_no_agent_returns_501(client):
         "illustration_agent",
     ],
 )
+@requires_omodul
 def test_activated_agent_classes_return_200(client, agent_name):
     """All 5 Agent-class agents return 200 (may fail on business logic, not on import).
 
@@ -109,6 +121,7 @@ def test_activated_agent_classes_return_200(client, agent_name):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+@requires_omodul
 def test_agent_run_persisted_and_retrievable(client):
     """run_id must be retrievable via GET /runs/{run_id} with a terminal status."""
     run_resp = client.post("/api/v1/agents/daily_digest/run", json={}, headers=_auth())
@@ -128,6 +141,7 @@ def test_agent_run_persisted_and_retrievable(client):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+@requires_omodul
 def test_list_runs_returns_items(client):
     client.post("/api/v1/agents/daily_digest/run", json={}, headers=_auth())
     r = client.get("/api/v1/agents/runs", headers=_auth())
@@ -144,6 +158,7 @@ def test_list_runs_returns_items(client):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+@requires_omodul
 def test_get_run_cross_user_isolation(client):
     """User Bob cannot retrieve user Alice's run."""
     run_resp = client.post("/api/v1/agents/daily_digest/run", json={}, headers=_auth("user-alice"))

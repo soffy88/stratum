@@ -46,6 +46,11 @@ async def create_highlight(body: HighlightCreate, user_id: str = Depends(jwt_aut
         ).fetchone()
     if not row:
         raise HTTPException(500, "Failed to create highlight")
+    from stratum.changefeed import emit_event
+
+    await emit_event(
+        uh, "highlight_create", {"highlight_id": hid, "substrate_id": body.substrate_id}
+    )
     return {
         "id": row[0],
         "color": row[1],
@@ -122,3 +127,6 @@ async def delete_highlight(highlight_id: str, user_id: str = Depends(jwt_auth)):
         if not h or h[0] != uh:
             raise HTTPException(404, "Highlight not found")
         conn.execute("DELETE FROM highlights WHERE id=?", (highlight_id,))
+    from stratum.changefeed import emit_event
+
+    await emit_event(uh, "highlight_delete", {"highlight_id": highlight_id})

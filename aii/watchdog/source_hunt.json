@@ -1,0 +1,182 @@
+[
+  {
+    "ts": "2026-08-10T01:27:19.950802+00:00",
+    "stage": "oapen",
+    "started": true
+  },
+  {
+    "ts": "2026-08-10T01:27:19.975765+00:00",
+    "stage": "veya",
+    "skipped": "veya headless 已在跑"
+  },
+  {
+    "ts": "2026-08-10T01:27:19.976639+00:00",
+    "stage": "snapshot",
+    "books_md_pools": {
+      "经济": 74,
+      "中文数学": 26,
+      "英文数学": 30,
+      "其它": 276
+    }
+  },
+  {
+    "ts": "2026-08-10T01:28:11.599625+00:00",
+    "stage": "oapen",
+    "skipped": "oapen 已在跑(timer/手动), flock 未获得"
+  },
+  {
+    "ts": "2026-08-10T01:28:11.631801+00:00",
+    "stage": "veya",
+    "skipped": "veya headless 已在跑"
+  },
+  {
+    "ts": "2026-08-10T01:28:11.632866+00:00",
+    "stage": "snapshot",
+    "books_md_pools": {
+      "经济": 74,
+      "中文数学": 26,
+      "英文数学": 30,
+      "其它": 276
+    }
+  },
+  {
+    "ts": "2026-08-10T03:38:15.994233+00:00",
+    "stage": "oapen",
+    "started": true
+  },
+  {
+    "ts": "2026-08-10T03:38:16.040980+00:00",
+    "stage": "veya",
+    "started": true
+  },
+  {
+    "ts": "2026-08-10T03:38:16.042426+00:00",
+    "stage": "snapshot",
+    "books_md_pools": {
+      "经济": 75,
+      "中文数学": 26,
+      "英文数学": 42,
+      "其它": 278
+    }
+  },
+  {
+    "ts": "2026-08-10T04:38:21.179615+00:00",
+    "stage": "oapen",
+    "started": true
+  },
+  {
+    "ts": "2026-08-10T04:38:21.179967+00:00",
+    "stage": "veya",
+    "skipped": "距上次 60min < 6h 限速"
+  },
+  {
+    "ts": "2026-08-10T04:38:21.180766+00:00",
+    "stage": "snapshot",
+    "books_md_pools": {
+      "经济": 75,
+      "中文数学": 26,
+      "英文数学": 43,
+      "其它": 278
+    }
+  },
+  {
+    "ts": "2026-08-12T19:18:28.481388+00:00",
+    "stage": "veya",
+    "result": {
+      "status": "failed",
+      "error": null,
+      "output": {
+        "research": "ERROR: API key not set for provider 'dashscope'",
+        "plan": "ERROR: API key not set for provider 'dashscope'",
+        "execute": null
+      },
+      "cost_usd": 0.0,
+      "squads": [
+        {
+          "id": "research",
+          "role": "research",
+          "status": "success",
+          "output": "ERROR: API key not set for provider 'dashscope'",
+          "error": null,
+          "cost_usd": 0.0
+        },
+        {
+          "id": "plan",
+          "role": "plan",
+          "status": "success",
+          "output": "ERROR: API key not set for provider 'dashscope'",
+          "error": null,
+          "cost_usd": 0.0
+        },
+        {
+          "id": "execute",
+          "role": "execute",
+          "status": "failed",
+          "output": null,
+          "error": "Task timed out after 30.0s",
+          "cost_usd": 0.0
+        }
+      ]
+    }
+  },
+  {
+    "ts": "2026-08-12T19:18:28.488537+00:00",
+    "stage": "oapen",
+    "started": true
+  },
+  {
+    "ts": "2026-08-12T19:18:28.543253+00:00",
+    "stage": "veya",
+    "started": true
+  },
+  {
+    "ts": "2026-08-12T19:18:28.545372+00:00",
+    "stage": "snapshot",
+    "books_md_pools": {
+      "经济": 105,
+      "中文数学": 31,
+      "英文数学": 54,
+      "其它": 393
+    }
+  },
+  {
+    "ts": "2026-08-12T20:19:21.721785+00:00",
+    "stage": "oapen",
+    "started": true
+  },
+  {
+    "ts": "2026-08-12T20:19:21.722125+00:00",
+    "stage": "veya",
+    "skipped": "距上次 60min < 6h 限速"
+  },
+  {
+    "ts": "2026-08-12T20:19:21.724467+00:00",
+    "stage": "snapshot",
+    "books_md_pools": {
+      "经济": 105,
+      "中文数学": 31,
+      "英文数学": 54,
+      "其它": 393
+    }
+  },
+  {
+    "ts": "2026-08-12T21:24:25.886659+00:00",
+    "stage": "oapen",
+    "started": true
+  },
+  {
+    "ts": "2026-08-12T21:24:25.887065+00:00",
+    "stage": "veya",
+    "skipped": "距上次 125min < 6h 限速"
+  },
+  {
+    "ts": "2026-08-12T21:24:25.888914+00:00",
+    "stage": "snapshot",
+    "books_md_pools": {
+      "经济": 105,
+      "中文数学": 31,
+      "英文数学": 54,
+      "其它": 393
+    }
+  }
+]

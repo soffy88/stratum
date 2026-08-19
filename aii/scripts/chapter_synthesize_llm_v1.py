@@ -19,6 +19,25 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 sys.path.insert(0, str(ROOT / "scripts"))
+import pathlib as _pl, importlib.util as _ilu
+
+def _traj_async(phase: str, failure_mode: str, error_sig: str, context: dict | None = None) -> None:
+    """章级失败事件异步落 trajectory_logs(不阻塞, 静默)。"""
+    try:
+        p = _pl.Path(__file__).resolve().parent / "traj_log.py"
+        if not p.exists():
+            return
+        spec = _ilu.spec_from_file_location("traj_log_ch", p)
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        flywheel = os.getenv("AII_FLYWHEEL", "unknown")
+        asyncio.get_event_loop().create_task(
+            mod.traj_log(flywheel, phase, failure_mode, error_sig, context or {})
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+
 from chapter_ingest import slice_chapter, SM
 from aii.api._provider import register_providers
 from aii.service.planning_completeness import check_completeness
@@ -33,6 +52,12 @@ async def _call_with_retry(llm, retries=4, base_delay=8, **kwargs):
             return await llm(**kwargs)
         except Exception as e:
             if attempt == retries - 1:
+                # ★轨迹埋点: 章级 LLM 调用重试耗尽(failure_mode 按类型签名)
+                _traj_async(
+                    "synth_chapter", "llm_timeout" if "timed out" in str(e).lower() else "llm_error",
+                    f"{type(e).__name__}: {str(e)[:120]}",
+                    {"retries": retries, "chapter": kwargs.get("chapter", "")},
+                )
                 raise
             msg = str(e)
             if "429" not in msg and "timed out" not in msg.lower() and "timeout" not in msg.lower():
@@ -160,7 +185,14 @@ async def _synth(llm, text, n, name, typ, pos: int = 0):
         system=SYN_SYS.format(n=n),
         max_tokens=1100,
     )
-    return name, "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
+    text_out = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
+    # ★Grounded 协议(A1): 从合成窗口原文确定性提取证据句(零 LLM, 不依赖模型输出)
+    from ku_schema import extract_evidence_quotes
+    try:
+        quotes = extract_evidence_quotes(section if pos > 0 else text[:_WIN_FALLBACK], name)
+    except Exception:  # noqa: BLE001
+        quotes = []
+    return name, text_out, quotes, (section if pos > 0 else text[:_WIN_FALLBACK])
 
 
 async def main():
@@ -180,7 +212,7 @@ async def main():
             return await _synth(llm, text, n, p["name"], p.get("type", "concept"), p.get("pos", 0))
 
     kus = await asyncio.gather(*(s(p) for p in points))
-    names = [k for k, _ in kus]
+    names = [k for k, *_ in kus]
     # ★防漏: 完整性校验
     comp = check_completeness(text, names)
     print(

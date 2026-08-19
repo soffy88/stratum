@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: test-secret-for-sl-unit-tests-32x
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install Python
+        run: uv python install 3.12
+      - name: Sync deps
+        run: uv sync --frozen
+      - name: Run tests
+        run: |
+          uv run python -m pytest tests/ -q --timeout=600
+
+  frontend:
+    name: Frontend (vitest + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: aii-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: aii-web/pnpm-lock.yaml
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+          run_install: false
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Unit tests
+        run: pnpm test -- --run
+      # 注: 无独立 type-check 门禁 — aii 页面 ~95 个 @helios/blocks 3.0 tsc 错由
+      # next.config ignoreBuildErrors 兜底(见 STATUS.md), 构建即最终门禁。
+      - name: Production build
+        run: pnpm build

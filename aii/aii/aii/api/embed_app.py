@@ -35,6 +35,11 @@ class _Embedder:
         self._lock = threading.Lock()  # 序列化 load/unload/encode, 一次只跑一个
 
     def _pick_device(self) -> str:
+        # CUDA_VISIBLE_DEVICES="" (空串) 会让 nvidia-smi 仍见卡、但 torch 无设备 →
+        # 若这里返回 cuda, SentenceTransformer 会在 to(cuda) 炸 500。空串=显式禁 GPU。
+        cvd = os.environ.get("CUDA_VISIBLE_DEVICES")
+        if cvd is not None and cvd.strip() == "":
+            return "cpu"
         # 用 nvidia-smi 子进程探空闲显存, 而非 torch.cuda.mem_get_info() —— 后者会
         # 初始化一个 ~200M CUDA 上下文赖在显存里, 即便随后用 CPU. 子进程探测 0 显存占用.
         try:

@@ -1,0 +1,24 @@
+# H96 mean and H120 taper variants (hidden width, block depth, reduction methods)
+
+Type: conceptual | Subject: 高级数学经济
+
+Key Understanding: H96 Mean and H120 Taper Variants
+H96 Mean: A configuration of FastBiNLOB with hidden width *𝐻 = 96*, two blocks, and temporal mean pooling for reduction. The hidden width *𝐻* is the number of neurons in each layer, determining the model’s capacity to process information. Two blocks mean the model applies two sequential processing steps. Temporal mean pooling reduces the sequence length by averaging values across time steps.
+H120 Taper: A configuration with *𝐻 = 120*, two blocks, temporal expansion 10, and a learned taper reducer. Temporal expansion 10 increases the sequence length before reduction, and the taper reducer is a learned module that summarizes recent and older time steps without pairwise attention.
+Rigorous Statements:
+H96: *𝐻 = 96*, block depth = 2, reduction via mean pooling.
+H120: *𝐻 = 120*, temporal expansion factor = 10, reduction via learned taper reducer.
+H96 prioritizes latency reduction by minimizing computational overhead: smaller *𝐻* reduces parameters, fewer blocks decrease deepening, and mean pooling avoids complex operations. This aligns with serving efficiency at batch size one.
+H120 trades latency for performance gains: larger *𝐻* increases model capacity, temporal expansion captures longer-range dependencies, and the learned taper reducer adapts to heterogeneous time-step importance. This achieves higher accuracy on selected horizons (e.g., *𝑦_10*, *𝑦_100*) while maintaining lower latency than attention-based models like TLOB.
+Rigorous Statements:
+H96 achieves 23.7% lower latency than MLPLOB while exceeding its *𝑦_10* macro-F1 target.
+H120 exceeds TLOB’s *𝑦_100* macro-F1 target at 60.1% lower latency.
+Architecture: Both variants use axis-separable blocks with residual connections. Each block applies:
+1. Feature MLP (*𝐹𝜃*): A multilayer perceptron (MLP) operating on feature channels at each time step.
+2. Temporal MLP (*𝐺𝜙*): An MLP operating on hidden channels across time steps.
+Reduction Methods:
+H96: Temporal mean pooling averages all time steps into a single vector.
+H120: Learned taper reducer applies a trainable module to combine recent and older time steps without attention weights.
+Rigorous Statements:
+Feature MLP (*𝐹𝜃*) and temporal MLP (*𝐺𝜙*) are applied with residual additions: *𝑧'[𝑡] = 𝑧[𝑡] + 𝐹𝜃(𝑧[𝑡])*, then *𝑧_out = 𝑧'[𝑡] + 𝐺𝜙(𝑧')*.
+H120’s taper reducer replaces mean pooling with a learned combination of time steps.

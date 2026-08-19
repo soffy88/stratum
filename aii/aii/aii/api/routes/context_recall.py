@@ -35,7 +35,7 @@ CONTEXT_DSN = os.getenv(
 )
 # 跟 scripts/context_compiler.py 同一个共享嵌入服务(BGE-M3, 1024维)——灌库和召回必须
 # 用同一个模型, 否则向量不在一个空间里, 相似度是无意义的数。
-EMBED_URL = os.getenv("AII_EMBED_URL", "http://100.68.226.13:8102")
+EMBED_URL = os.getenv("AII_EMBED_URL", "http://100.119.113.90:8102")
 
 # 没有相关资产时给调用方的行为约束(SPEC §3.2/§3.4: 通用知识只做【显式标注】的兜底)。
 _NO_ASSET_ADVISORY = (

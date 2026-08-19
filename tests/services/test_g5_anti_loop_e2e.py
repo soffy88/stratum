@@ -39,6 +39,7 @@ CREATE TABLE aii_processed_needs (
     miss_rounds  INTEGER DEFAULT 0,
     ingested_count INTEGER DEFAULT 0,
     notes        VARCHAR,
+    bucket       VARCHAR DEFAULT 'misc',
     processed_at TIMESTAMP DEFAULT NOW()
 );
 CREATE UNIQUE INDEX idx_aii_needs_hash_source
@@ -112,6 +113,18 @@ def _db_rows(db_path: str) -> dict:
     return {r[0]: (r[1], r[2], r[3]) for r in rows}
 
 
+# Deterministic two-source mapping for the anti-loop assertions. Production
+# _map_topic evolves over time (it now emits six specs for this topic,
+# including two arxiv queries), which would double-count miss_rounds per
+# round; these tests verify per-source loop semantics, not mapping shape.
+# Order matters: gutenberg first, so its round-2 UPSERT predates arxiv's
+# _get_prev_miss_rounds lookup in the old-code contrast test.
+_FIXED_QUERIES = [
+    {"source_type": "gutenberg", "query": {"q": "probability"}},
+    {"source_type": "arxiv", "query": {"q": "probability"}, "max_results": 10},
+]
+
+
 def _run(need: dict, db_path: str, runner, feedback_log: Path, unresolved_log: Path,
          extra_patches: list | None = None):
     import stratum.services.aii_feedback_service as svc
@@ -120,6 +133,7 @@ def _run(need: dict, db_path: str, runner, feedback_log: Path, unresolved_log: P
         patch.object(svc, "get_conn",      _make_get_conn(db_path)),
         patch.object(svc, "FEEDBACK_LOG",  feedback_log),
         patch.object(svc, "UNRESOLVED_LOG", unresolved_log),
+        patch.object(svc, "_map_topic", return_value=(_FIXED_QUERIES, "both")),
     ] + (extra_patches or [])
 
     with contextlib.ExitStack() as stack:

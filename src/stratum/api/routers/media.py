@@ -1,4 +1,4 @@
-"""Layer 4: /api/v1/media/* — 视频 URL 入库。
+"""Layer 4: /api/v1/media/* — 音视频 URL 入库。
 
 调用链（全主库元素，不改主库）:
   omodul.process_media_substrate
@@ -17,6 +17,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel
+from typing import Literal
 
 from stratum.common import jwt_auth
 from stratum.utils.user_id_hash import hash_user_id
@@ -24,11 +25,12 @@ from stratum.utils.user_id_hash import hash_user_id
 router = APIRouter()
 log = logging.getLogger(__name__)
 
-_PROXY = "socks5://100.73.220.5:21080"
+_PROXY = "socks5h://172.19.0.1:10808"  # sing-box mixed inbound (host 0.0.0.0:10808), WSL clash 已死
 
 
 class MediaIngestRequest(BaseModel):
     video_url: str
+    kind: Literal["video", "audio"] = "video"
     asr_backend: str = "local"
     transcribe_if_no_subtitle: bool = True
 
@@ -38,10 +40,19 @@ class MediaIngestResponse(BaseModel):
     video_url: str
 
 
-def _run_ingest(video_url: str, user_id_hash: str, asr_backend: str, transcribe: bool) -> None:
-    from omodul.process_media_substrate import (
-        MediaConfig, MediaInput, process_media_substrate,
-    )
+def _run_ingest(
+    video_url: str, user_id_hash: str, kind: str, asr_backend: str, transcribe: bool,
+) -> None:
+    try:
+        from omodul.process_media_substrate import (
+            MediaConfig, MediaInput, process_media_substrate,
+        )
+    except ImportError:  # pragma: no cover — 平台包仅部署于容器 /opt/platform
+        log.error(
+            "media_ingest: omodul platform unavailable (no /opt/platform); skipped url=%s",
+            video_url,
+        )
+        return
 
     config = MediaConfig(
         video_url=video_url,
@@ -77,7 +88,7 @@ def _run_ingest(video_url: str, user_id_hash: str, asr_backend: str, transcribe:
     if status == "completed":
         sid = result.get("substrate_id") or ""
         if sid:
-            # ingest_substrate classifies .md → medium="other"; patch meta_json+title for video.
+            # ingest_substrate classifies .md → medium="other"; patch meta_json+title for media.
             try:
                 import json as _json
                 from stratum.db import get_conn
@@ -87,7 +98,7 @@ def _run_ingest(video_url: str, user_id_hash: str, asr_backend: str, transcribe:
                         "SELECT meta_json FROM substrates WHERE id=?", (sid,)
                     ).fetchone()
                     meta = _json.loads(row[0] or "{}") if row else {}
-                    meta["medium"] = "video"
+                    meta["medium"] = kind
                     meta_str = _json.dumps(meta, ensure_ascii=False)
                     if title:
                         conn.execute(
@@ -99,7 +110,7 @@ def _run_ingest(video_url: str, user_id_hash: str, asr_backend: str, transcribe:
                             "UPDATE substrates SET meta_json=? WHERE id=?",
                             (meta_str, sid),
                         )
-                    log.info("media_ingest: patched medium=video title=%s sid=%s", title, sid)
+                    log.info("media_ingest: patched medium=%s title=%s sid=%s", kind, title, sid)
             except Exception as exc:
                 log.warning("media_ingest: medium/title patch failed sid=%s: %s", sid, exc)
 
@@ -109,6 +120,31 @@ def _run_ingest(video_url: str, user_id_hash: str, asr_backend: str, transcribe:
             except Exception as exc:
                 log.warning("media_ingest: md_export failed sid=%s: %s", sid, exc)
 
+            # Generate L0/L1/L2 layers (retrieval /api/v1/retrieve depends on substrate_layers)
+            try:
+                from stratum.db import get_conn
+                from stratum.services.layer_generator import generate_substrate_layers
+                with get_conn() as conn:
+                    trow = conn.execute(
+                        "SELECT title FROM substrates WHERE id=?", (sid,)
+                    ).fetchone()
+                    crow = conn.execute(
+                        """SELECT content FROM derivative
+                           WHERE substrate_id=? AND content IS NOT NULL AND content <> ''
+                           ORDER BY CASE WHEN kind='markdown' THEN 0
+                                WHEN kind LIKE 'translation%%zh%%' THEN 1 ELSE 2 END
+                           LIMIT 1""",
+                        (sid,),
+                    ).fetchone()
+                generate_substrate_layers(
+                    sid,
+                    title=(trow[0] if trow else None),
+                    content=(crow[0] if crow else None),
+                )
+                log.info("media_ingest: layers generated sid=%s", sid)
+            except Exception as exc:
+                log.warning("media_ingest: layer generation failed sid=%s: %s", sid, exc)
+
 
 @router.post("/api/v1/media/ingest", status_code=202, response_model=MediaIngestResponse)
 async def ingest_media(
@@ -116,9 +152,9 @@ async def ingest_media(
     background_tasks: BackgroundTasks,
     user_id: str = Depends(jwt_auth),
 ) -> MediaIngestResponse:
-    """提交视频 URL 入库（后台异步，字幕优先→本地 ASR 兜底）。"""
+    """提交音视频 URL 入库（后台异步，字幕优先→本地 ASR 兜底；kind=audio 走转写链路）。"""
     uh = hash_user_id(user_id)
     background_tasks.add_task(
-        _run_ingest, body.video_url, uh, body.asr_backend, body.transcribe_if_no_subtitle,
+        _run_ingest, body.video_url, uh, body.kind, body.asr_backend, body.transcribe_if_no_subtitle,
     )
     return MediaIngestResponse(status="queued", video_url=body.video_url)

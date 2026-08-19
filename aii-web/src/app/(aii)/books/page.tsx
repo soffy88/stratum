@@ -15,6 +15,7 @@ import { useApiNoArg, useApi } from '@/aii/hooks/useApi';
 import * as api from '@/aii/lib/api-client';
 import type { BuListItem, BuDetail, BuStructureSection } from '@/aii/types/api';
 import { GradeDot, gradeTextClass, stanceMeta } from '@/aii/components/GradeMarkers';
+import { LearningLayer } from '@/aii/components/LearningLayer';
 
 function StructureTree({ nodes, depth = 0 }: { nodes: BuStructureSection[]; depth?: number }) {
   return (
@@ -204,6 +205,10 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
                 </div>
               </section>
             )}
+
+            {/* ★ 学习层(0011): 能力路径 + 深卡 */}
+            <LearningLayer substrate={d.substrate_id} compact
+              paths={d.learning_paths} cards={d.deep_cards} quality={d.bu_quality} />
           </>
         )}
       </div>

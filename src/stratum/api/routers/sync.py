@@ -1,9 +1,11 @@
-"""Sync status + changefeed pull (Phase 15 P1-C1: scope filtering)."""
+"""Sync status + changefeed pull + vault folder sync (MVP week 5–6)."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from stratum.common import get_local_state, jwt_auth, user_changefeed_path
 from stratum.db import query
+from stratum.utils.user_id_hash import hash_user_id
 
 router = APIRouter(prefix="/api/v1/sync", tags=["sync"])
 
@@ -19,12 +21,20 @@ _EVENT_TYPES_BY_SCOPE: dict[str, list[str]] = {
 _ALL_SCOPE_KEYS = list(_EVENT_TYPES_BY_SCOPE)
 
 
+class VaultSyncRequest(BaseModel):
+    path: str = Field(..., description="Local or mounted cloud path under allowed roots")
+    mode: str = Field("export", description="export | import | both")
+
+
 @router.get("/status")
 async def sync_status(user_id: str = Depends(jwt_auth)):
     local = get_local_state(user_id)
+    # Routers emit events under either the raw JWT subject (notes/concepts) or
+    # its hash (documents/highlights/views) — match both forms.
     rows = query(
-        "SELECT COUNT(*) AS cnt FROM changefeed WHERE user_id = %(uid)s AND processed = FALSE",
-        {"uid": user_id},
+        "SELECT COUNT(*) AS cnt FROM changefeed "
+        "WHERE user_id IN (%(uid)s, %(huid)s) AND processed = FALSE",
+        {"uid": user_id, "huid": hash_user_id(user_id)},
         limit=1,
     )
     pending = rows[0]["cnt"] if rows else 0
@@ -33,6 +43,30 @@ async def sync_status(user_id: str = Depends(jwt_auth)):
         "pending_count": pending,
         **local,
     }
+
+
+@router.get("/vault/roots")
+async def vault_sync_roots(user_id: str = Depends(jwt_auth)):
+    """List allowed filesystem roots for vault sync."""
+    from stratum.services.vault_sync_service import allowed_roots
+
+    return {"roots": [str(r) for r in allowed_roots()]}
+
+
+@router.post("/vault")
+async def vault_sync(body: VaultSyncRequest, user_id: str = Depends(jwt_auth)):
+    """Export knowledge vault to a folder, import notes MD, or both.
+
+    Path must be under STRATUM_VAULT_SYNC_ROOTS (mounted gdrive/rclone OK).
+    """
+    from stratum.services.vault_sync_service import sync_vault
+
+    try:
+        return sync_vault(user_id, body.path, mode=body.mode)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    except OSError as e:
+        raise HTTPException(500, f"filesystem error: {e}") from e
 
 
 @router.get("/changefeed")
@@ -58,10 +92,15 @@ async def pull_changefeed(
     rows = query(
         "SELECT seq, event_id, event_type, payload, timestamp "
         "FROM changefeed "
-        "WHERE user_id = %(uid)s AND seq > %(since)s "
+        "WHERE user_id IN (%(uid)s, %(huid)s) AND seq > %(since)s "
         "AND event_type = ANY(%(types)s) "
         "ORDER BY seq ASC",
-        {"uid": user_id, "since": since, "types": allowed_types},
+        {
+            "uid": user_id,
+            "huid": hash_user_id(user_id),
+            "since": since,
+            "types": allowed_types,
+        },
         limit=limit,
     )
     latest_seq = rows[-1]["seq"] if rows else since

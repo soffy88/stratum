@@ -34,25 +34,41 @@ STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"   # 英文书来自本地文件�
 
 # ★NIM key(免费) + DB + BGE-M3跑CPU(不抢aii-api的GPU)
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('econ',''))" 2>/dev/null)"
+# ★2026-08-10 多 key 池轮询: 单 key 免费层 40/min → misc 单进程 4 并发 + BU 撞车 → 781次504。
+#   池化 3 key = 120/min, 并发可提到 6。_provider.py 的 NIM_KEY_POOL 轮换实现。
+export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));print(','.join(x for x in (d.get('econ'),d.get('math_zh'),d.get('advmath_2')) if x))" 2>/dev/null)"
+
+# ★2026-08-10 opencode 网关 fallback: NIM 504 过载时切 gpt-5.6-sol(ChatGPT Codex key, 实测可用)
+export OPENCODE_API_KEY=""  # 留空 → 读 ~/.pi/agent/opencode-keys.txt
+export OPENCODE_MODEL="${OPENCODE_MODEL:-deepseek-v4-flash}"
 # ★模型选型: 同 advmath/math_prog(2026-07-07实测对比) — 默认 meta/llama-3.1-70b-instruct 讲得干,
 #   nemotron-super-49b 明显更好, _plan() 规划知识点这步换掉默认档.
 export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
-export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-4}"   # ★并发度=4(测试定论: 4-5低偶发超时, 6+持续过载)
+export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-6}"   # ★并发度=6(2026-08-10: NIM 3-key 池 120/min 后从 4 提到 6; 单 key 时代 4-5 低偶发超时, 6+ 过载)
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
+# ★2026-08-16 提速: 本机 7890 代理(opencode-go 直连被 RST → PoolTimeout → NIM fallback 拖慢,
+#   实测代理后 2-4s 稳定; 缺 NO_PROXY 会整章 embed 502, 白名单保本地服务)
+export http_proxy="${HTTP_PROXY:-http://127.0.0.1:7890}"
+export https_proxy="${HTTPS_PROXY:-http://127.0.0.1:7890}"
+export HTTP_PROXY="${http_proxy}"
+export HTTPS_PROXY="${https_proxy}"
+export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+export no_proxy="${NO_PROXY}"
 export CUDA_VISIBLE_DEVICES=""          # 嵌入走 CPU(GPU 让给 math-prog, 防 OOM)
 export HF_HUB_OFFLINE=1                 # ★用本地缓存 BGE-M3, 不连 huggingface(直连超时→卡死)
 export TRANSFORMERS_OFFLINE=1
-export AII_EMBED_URL="${AII_EMBED_URL:-http://100.68.226.13:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU)
+export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU)
 # ★忠实模式(同中文版): 只忠实呈现原书内容, 不过度LLM判断/why-how; section 默认13000
 export ECON_FAITHFUL=1
 export ECON_QUARANTINE_JSON="misc_pipeline/quarantine.json"
 export ECON_BATCH_REPORT="misc_pipeline/batch_report.json"
 export ECON_QUAL_DIR="misc_pipeline/qual"
 export ECON_CKPT_DIR="misc_pipeline/ckpts"
-# ★质量门密度基准: econ_quality_gate.py 默认按经济学教材(~15KU/章)校准, "其它"学科
+# ★质量门密度基准: econ_quality_gate.py 默认按经济学教材(~10KU/章)校准, "其它"学科
 #   (哲学/通识等)天然密度更低, 套经济学基准会把正常书误判隔离 → 降基准, 非放水
-export QGATE_KU_PER_CHAPTER="${QGATE_KU_PER_CHAPTER:-8}"
-export QGATE_CHAPTER_FLOOR="${QGATE_CHAPTER_FLOOR:-3}"
+# ★2026-07-30: 进一步放宽 KU/章 6→5, 章下限 3→2(实测多数书达不到 8/章)
+export QGATE_KU_PER_CHAPTER="${QGATE_KU_PER_CHAPTER:-5}"
+export QGATE_CHAPTER_FLOOR="${QGATE_CHAPTER_FLOOR:-2}"
 
 mkdir -p misc_pipeline misc_pipeline/qual misc_pipeline/ckpts
 

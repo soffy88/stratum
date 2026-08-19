@@ -81,25 +81,32 @@ def test_search_requires_auth(app_client):
 def test_search_returns_results(app_client, users):
     client, db = app_client
     a, _ = users
-    # substrates (plural, user_id) — Phase 14 schema used by SubstrateDAO post-filter
-    db.execute(
-        "INSERT INTO substrates (id, user_id, title) VALUES (?,?,?)",
-        ("s1", hash_user_id(a.id), "Machine Learning Intro"),
+    # The corpus-isolation post-filter resolves substrates in Postgres (the
+    # service layer store since the DuckDB → PG migration), so the mocked
+    # search hit must exist there — seeding the in-memory DuckDB is not enough.
+    import ulid
+    from stratum.db import insert as pg_insert, hard_delete as pg_hard_delete
+
+    sid = str(ulid.ULID())
+    pg_insert(
+        "substrates",
+        {"id": sid, "user_id": hash_user_id(a.id), "title": "Machine Learning Intro"},
     )
     from unittest.mock import patch, AsyncMock
     from types import SimpleNamespace
 
     mock_results = [
         SimpleNamespace(
-            type="substrate", id="s1", title="Machine Learning Intro", score=0.9, highlight=None
+            type="substrate", id=sid, title="Machine Learning Intro", score=0.9, highlight=None
         )
     ]
-    with patch(
-        "stratum.service.search.hybrid_search", new_callable=AsyncMock, return_value=mock_results
-    ):
-        with patch("stratum.service.search.duckdb") as mock_ddb:
-            mock_ddb.connect.return_value = db
+    try:
+        with patch(
+            "stratum.service.search.hybrid_search", new_callable=AsyncMock, return_value=mock_results
+        ):
             r = client.post("/api/search", json={"query": "Machine"}, headers=_h(a))
+    finally:
+        pg_hard_delete("substrates", sid)
     assert r.status_code == 200
     assert len(r.json()["results"]) >= 1
 

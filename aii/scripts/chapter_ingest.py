@@ -55,11 +55,15 @@ def _zh_chapter_starts(text):
     编号("第N章"紧跟"第N+1章"...)且彼此间距过短(< TOC_GAP, 真实一章内容不可能
     这么短)的一串, 整体判定为目录块并剔除."""
     TOC_GAP = 1500
+    TOC_GAP_SHORT = 300  # ★2026-08-10 教辅短章节(单元/讲/课/节)间距小, 用更短 GAP 防误杀 TOC
+    _SHORT_WORDS = ("单元", "讲", "课", "节", "部分", "回", "篇")
     raw = []
-    for m in re.finditer(r"(?m)^#{0,4}\s*第([一二三四五六七八九十百千0-9]+)章", text):
+    # ★2026-08-10 扩展教辅结构: 除 第N章 外兼容 第N单元/第N讲/第N课/第N节/第N部分
+    #   (夸克教辅=知识点/考点/真题, 常用这些章节词, 原正则只认"章"→ 54 本全判无章节)
+    for m in re.finditer(r"(?m)^#{0,4}\s*第([一二三四五六七八九十百千0-9]+)(章|单元|讲|课|节|部分|回|篇)", text):
         num = _cn2int(m.group(1))
         if num:
-            raw.append((m.start(), num))
+            raw.append((m.start(), num, m.group(2)))
     raw.sort()
 
     is_toc = [False] * len(raw)
@@ -69,7 +73,8 @@ def _zh_chapter_starts(text):
         while (
             j + 1 < len(raw)
             and raw[j + 1][1] == raw[j][1] + 1
-            and raw[j + 1][0] - raw[j][0] < TOC_GAP
+            and raw[j + 1][0] - raw[j][0]
+            < (TOC_GAP_SHORT if raw[j][2] in _SHORT_WORDS else TOC_GAP)
         ):
             j += 1
         if j > i:  # 至少3项(i..j含2次递增跳转)连续递增+紧邻 → 判定目录块
@@ -81,7 +86,7 @@ def _zh_chapter_starts(text):
 
     # 每个章号收集全部候选位置(非TOC), 供下面按序挑选(不再"首个出现即用")
     candidates = {}
-    for (pos, num), toc in zip(raw, is_toc):
+    for (pos, num, _w), toc in zip(raw, is_toc):
         if toc:
             continue
         # ★兜底窗口固定取标题后60字符(不用 find('\n')到行尾)——换行破损的书里一整段
@@ -105,6 +110,106 @@ def _zh_chapter_starts(text):
         starts[num] = pick
         prev_pos = pick
     return starts
+
+
+def _bare_n_decimal_starts(text):
+    """裸小节编号 'N. 标题'(无 '#'、无第二级 'N.M')兜底.
+    markitdown 纯文本流输出常见 '1. Introduction' 独占一行当章节标题(无 '#' 前缀),
+    之前只认 'N.M' 二级编号导致这类书完全切不了。误报控制:
+      - 行首(允许缩进) + 独占一行(到行尾, 标题短语 3-80 字符)
+      - 英文: Title Case 短语(非完整句子, 无句末标点)
+      - 中文: 'N、'/'N.'/'一、' 开头短行, 排除句末标点(完整句子非标题)
+      - 页眉/目录重复: 同编号同文本只取首个位置
+      - 间距过滤: 相邻候选须 > MIN_GAP 字符(页眉间隔均匀且短, 正文标题间隔大)
+    """
+    MIN_GAP = 3000
+    cand: dict[int, list[tuple[int, str]]] = {}
+    # 英文: 1. Introduction  (Title Case 短语, 无句末标点, 行尾)
+    for m in re.finditer(
+        r"(?m)^[ \t]*(\d{1,2})\.\s+[A-Z][A-Za-z0-9 ,'\-]{2,70}$", text
+    ):
+        n = int(m.group(1))
+        cand.setdefault(n, []).append((m.start(), m.group(0).strip()))
+    # 中文: 一、标题 / 1、标题 / 1. 标题 (排除句末标点→非标题)
+    for m in re.finditer(
+        r"(?m)^[ \t]*(?:([一二三四五六七八九十百]+|[0-9]{1,2}))[、．.][ \t]*[^。！？!?\n]{2,60}$",
+        text,
+    ):
+        s = m.group(1)
+        n = _cn2int(s) if not s.isdigit() else int(s)
+        if n:
+            cand.setdefault(n, []).append((m.start(), m.group(0).strip()))
+    # 去重(同编号同文本→页眉/目录重复) + 全局间距过滤(章节起点须与上一已选章节拉开距离)
+    result: dict[int, int] = {}
+    prev_pos = -1
+    for n in sorted(cand):
+        seen_txt: set[str] = set()
+        for pos, txt in sorted(cand[n], key=lambda x: x[0]):
+            if txt in seen_txt:  # 页眉重复: 同编号同文本跳过
+                continue
+            seen_txt.add(txt)
+            if prev_pos < 0 or pos > prev_pos + MIN_GAP:  # 与上一已选章节的间距(页眉/练习题密集区被跳过)
+                result[n] = pos
+                prev_pos = pos
+                break  # 每编号取一个(正文首次出现)
+    return result
+
+
+def _bare_english_chapter_starts(text):
+    """裸英文 'Chapter N Title' / 'CHAPTER N TITLE'(无 '#' 前缀).
+    markitdown 输出常见 'CHAPTER 1 **Title** 7'——带页码的是页眉(每页重复),
+    页码会被剥离后去重取首; 真正章节标题行则保留。误报控制:
+      - 行首(允许缩进) 'Chapter|CHAPTER' + 数字
+      - 行尾可选页码(页眉特征) → 剥离不影响编号
+      - 同编号多次出现(页眉/目录重复)只取首个位置
+    """
+    cand: dict[int, list[int]] = {}
+    for m in re.finditer(
+        r"(?m)^[ \t]*#{0,2}[ \t]*(?:Chapter|CHAPTER)\s+([0-9]{1,3})\b[^\n]{0,80}$",
+        text,
+    ):
+        n = int(m.group(1))
+        cand.setdefault(n, []).append(m.start())
+    return {n: min(poses) for n, poses in cand.items()}
+
+
+def _md_heading_starts(text):
+    """最后兜底: 任意 markdown 标题行当章节起点.
+    适用: 书有 '#'/'##' 标题但无 'Chapter N'/'第N章'/'N.' 编号格式
+    (如《沉思录》H2×109、《50堂经典哲学思维课》H2×58)。误报控制:
+      - H1(>=3个) 优先于 H2
+      - 页眉/目录重复: 同标题文本多次出现只取首个
+      - 间距过滤: 相邻章节起点须 > MIN_GAP 字符(真实章节内容不可能更短), 过滤密集小标题
+      - 上限 200 章(防碎片化)
+    """
+    MIN_GAP = 3000
+    MAX_CH = 200
+    h1 = re.findall(r"(?m)^#\s+([^\n]{2,80})$", text)
+    h2 = re.findall(r"(?m)^##\s+([^\n]{2,80})$", text)
+    # 去重(页眉/目录重复), 保留首次出现位置
+    seen: dict[str, int] = {}
+    for m in re.finditer(r"(?m)^#\s+([^\n]{2,80})$", text):
+        seen.setdefault(m.group(1).strip(), m.start())
+    h1_uniq = sorted(seen.values())
+    if len(h1_uniq) >= 3:
+        picks = [h1_uniq[0]]
+        for p in h1_uniq[1:]:
+            if p - picks[-1] > MIN_GAP and len(picks) < MAX_CH:
+                picks.append(p)
+        if len(picks) >= 3:
+            return {i + 1: picks[i] for i in range(len(picks))}
+    seen2: dict[str, int] = {}
+    for m in re.finditer(r"(?m)^##\s+([^\n]{2,80})$", text):
+        seen2.setdefault(m.group(1).strip(), m.start())
+    h2_uniq = sorted(seen2.values())
+    if len(h2_uniq) >= 3:
+        picks = [h2_uniq[0]]
+        for p in h2_uniq[1:]:
+            if p - picks[-1] > MIN_GAP and len(picks) < MAX_CH:
+                picks.append(p)
+        if len(picks) >= 3:
+            return {i + 1: picks[i] for i in range(len(picks))}
+    return {}
 
 
 def _decimal_chapter_starts(text):
@@ -135,14 +240,18 @@ def _decimal_chapter_starts(text):
 
 def chapter_starts(text):
     """章起始位置(英文 # Chapter N: 或中文 第N章). 自动判格式.
-    ★两种都找不到时, 兜底用小节编号(1.1/2.1这类, 无"Chapter"字样的现代教材常见)近似
-    定位——见 _decimal_chapter_starts。"""
-    starts = {int(m.group(1)): m.start() for m in re.finditer(r"(?m)^#\s+Chapter\s+(\d+):", text)}
-    if not starts:
-        starts = _zh_chapter_starts(text)
-    if not starts:
-        starts = _decimal_chapter_starts(text)
-    return starts
+    各格式独立检测, 选唯一编号数最多的(1个孤立 '# Chapter 1' 不压过 27 个裸 'N. 标题');
+    与 md_quality_check 的 chapter_structure 判定同口径。"""
+    canon = {int(m.group(1)): m.start() for m in re.finditer(r"(?m)^#\s+Chapter\s+(\d+):", text)}
+    zh = _zh_chapter_starts(text)
+    bare_en = _bare_english_chapter_starts(text)
+    dec = _decimal_chapter_starts(text)
+    bare_n = _bare_n_decimal_starts(text)
+    md_h = _md_heading_starts(text)
+    cands = [c for c in (canon, zh, bare_en, dec, bare_n, md_h) if c]
+    if not cands:
+        return {}
+    return max(cands, key=len)
 
 
 def chapter_numbers(text):
