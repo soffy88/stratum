@@ -1,13 +1,18 @@
 /**
- * Unit tests for UrlIngestDialog — Phase 17.5 D1-D4
+ * Unit tests for UrlIngestDialog — 当前实现(§2.4 Dialog 版)
+ * 覆盖: 表单渲染 / 按钮态 / 取消 / 加载中 / 提交成功 / 提交失败
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { UrlIngestDialog } from "@/components/UrlIngestDialog";
 
-// Mock apiClient
 vi.mock("@/lib/api-client", () => ({
-  apiClient: { getAccessToken: () => "test-token" },
+  apiClient: { post: vi.fn() },
+  AuthRequiredError: class extends Error {},
+}));
+
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
 }));
 
 function renderDialog(props?: Partial<Parameters<typeof UrlIngestDialog>[0]>) {
@@ -17,194 +22,87 @@ function renderDialog(props?: Partial<Parameters<typeof UrlIngestDialog>[0]>) {
   return { onClose, onIngested };
 }
 
-describe("UrlIngestDialog — Phase 17.5", () => {
+describe("UrlIngestDialog", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
-  // D1: Fields render
-  it("renders all D1 form fields", () => {
+  it("renders all form fields", () => {
     renderDialog();
-    expect(screen.getByPlaceholderText(/https:\/\/example.com/i)).toBeInTheDocument();
-    expect(screen.getByText(/留空自动/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/凯利公式, quant/i)).toBeInTheDocument();
-    expect(screen.getByText("全文")).toBeInTheDocument();
-    expect(screen.getByText(/摘要/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/这篇讲了/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/https:\/\/\.\.\./i)).toBeInTheDocument();
+    expect(screen.getByText("AI 处理选项")).toBeInTheDocument();
+    expect(screen.getByText("提取 Markdown")).toBeInTheDocument();
+    expect(screen.getByText("翻译为中文")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /抓取/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /取消/i })).toBeInTheDocument();
   });
 
   it("fetch button disabled when URL empty", () => {
     renderDialog();
-    const btn = screen.getByRole("button", { name: /抓取/i });
-    expect(btn).toBeDisabled();
+    expect(screen.getByRole("button", { name: /抓取/i })).toBeDisabled();
   });
 
   it("fetch button enabled when URL filled", () => {
     renderDialog();
-    fireEvent.change(screen.getByPlaceholderText(/https:\/\/example.com/i), {
+    fireEvent.change(screen.getByPlaceholderText(/https:\/\/\.\.\./i), {
       target: { value: "https://example.com" },
     });
-    const btn = screen.getByRole("button", { name: /抓取/i });
-    expect(btn).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: /抓取/i })).not.toBeDisabled();
   });
 
-  it("close button calls onClose", () => {
+  it("close button (取消) calls onClose", () => {
     const { onClose } = renderDialog();
-    fireEvent.click(screen.getByText("×"));
+    fireEvent.click(screen.getByRole("button", { name: /取消/i }));
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  // D2: Loading state
-  it("shows loading spinner while fetching", async () => {
-    vi.spyOn(global, "fetch").mockImplementation(
-      () => new Promise(() => {}), // never resolves
-    );
+  it("shows loading state while fetching and disables button", async () => {
+    const { apiClient } = await import("@/lib/api-client");
+    vi.mocked(apiClient.post).mockImplementation(() => new Promise(() => {})); // never resolves
     renderDialog();
-    fireEvent.change(screen.getByPlaceholderText(/https:\/\/example.com/i), {
+    fireEvent.change(screen.getByPlaceholderText(/https:\/\/\.\.\./i), {
       target: { value: "https://example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: /抓取/i }));
-    await waitFor(() => expect(screen.getByText(/正在抓取/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("抓取中…")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /抓取中…/ })).toBeDisabled();
   });
 
-  it("loading shows hostname from URL", async () => {
-    vi.spyOn(global, "fetch").mockImplementation(() => new Promise(() => {}));
-    renderDialog();
-    fireEvent.change(screen.getByPlaceholderText(/https:\/\/example.com/i), {
-      target: { value: "https://news.example.com/article" },
+  it("submits url and selected derivatives on fetch", async () => {
+    const { apiClient } = await import("@/lib/api-client");
+    vi.mocked(apiClient.post).mockResolvedValue({ ok: true });
+    const { onIngested, onClose } = renderDialog();
+    fireEvent.change(screen.getByPlaceholderText(/https:\/\/\.\.\./i), {
+      target: { value: "https://example.com/article" },
     });
+    // 勾选"翻译为中文" → derivatives 含 translation
+    fireEvent.click(screen.getByText("翻译为中文"));
     fireEvent.click(screen.getByRole("button", { name: /抓取/i }));
-    await waitFor(() =>
-      expect(screen.getByText(/news\.example\.com/)).toBeInTheDocument(),
-    );
+
+    await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
+    const [calledUrl, body] = vi.mocked(apiClient.post).mock.calls[0];
+    expect(calledUrl).toBe("/api/v1/inbox/submit");
+    expect(body).toMatchObject({
+      url: "https://example.com/article",
+      generate_derivatives: ["translation"],
+    });
+    await waitFor(() => expect(onIngested).toHaveBeenCalledOnce());
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
-  // D3: Success state
-  it("shows success preview after successful fetch", async () => {
-    const mockResult = {
-      substrate_id: "01TEST123",
-      status: "completed",
-      url: "https://example.com",
-      title: "Test Article Title",
-      snippet: "This is the article snippet...",
-      word_count: 1234,
-      medium: "webpage",
-      tags: ["tag1", "tag2"],
-    };
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify(mockResult), { status: 200 }),
-    );
-    const { onIngested } = renderDialog();
-    fireEvent.change(screen.getByPlaceholderText(/https:\/\/example.com/i), {
+  it("shows error toast and re-enables button on failure", async () => {
+    const { toast } = await import("sonner");
+    const { apiClient } = await import("@/lib/api-client");
+    vi.mocked(apiClient.post).mockRejectedValue(new Error("boom"));
+    const { onIngested, onClose } = renderDialog();
+    fireEvent.change(screen.getByPlaceholderText(/https:\/\/\.\.\./i), {
       target: { value: "https://example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: /抓取/i }));
 
-    await waitFor(() => expect(screen.getByText("✓ 抓取成功，已入库")).toBeInTheDocument());
-    expect(screen.getByText("Test Article Title")).toBeInTheDocument();
-    expect(screen.getByText(/1,234/)).toBeInTheDocument();
-    expect(onIngested).toHaveBeenCalled();
-  });
-
-  it("shows 查看完整 link with correct substrate id", async () => {
-    const mockResult = {
-      substrate_id: "01TESTID",
-      status: "completed",
-      url: "https://example.com",
-      title: "Title",
-      snippet: "Snippet",
-      word_count: 500,
-      medium: "webpage",
-      tags: [],
-    };
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify(mockResult), { status: 200 }),
-    );
-    renderDialog();
-    fireEvent.change(screen.getByPlaceholderText(/https:\/\/example.com/i), {
-      target: { value: "https://example.com" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /抓取/i }));
-    await waitFor(() => expect(screen.getByText(/查看完整/)).toBeInTheDocument());
-    expect(screen.getByText(/查看完整/).closest("a")).toHaveAttribute(
-      "href",
-      "/documents/01TESTID",
-    );
-  });
-
-  it("继续抓另一个 resets form", async () => {
-    const mockResult = {
-      substrate_id: "01TEST",
-      status: "completed",
-      url: "https://example.com",
-      title: "T",
-      snippet: "S",
-      word_count: 100,
-      medium: "webpage",
-      tags: [],
-    };
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify(mockResult), { status: 200 }),
-    );
-    renderDialog();
-    fireEvent.change(screen.getByPlaceholderText(/https:\/\/example.com/i), {
-      target: { value: "https://example.com" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /抓取/i }));
-    await waitFor(() => expect(screen.getByText("继续抓另一个")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("继续抓另一个"));
-    expect(screen.getByPlaceholderText(/https:\/\/example.com/i)).toBeInTheDocument();
-  });
-
-  // D4: Error handling
-  it("shows friendly error for 404", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ detail: "not_found" }), { status: 404 }),
-    );
-    renderDialog();
-    fireEvent.change(screen.getByPlaceholderText(/https:\/\/example.com/i), {
-      target: { value: "https://example.com/missing" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /抓取/i }));
-    await waitFor(() => expect(screen.getByText(/404 不存在/)).toBeInTheDocument());
-  });
-
-  it("shows ssrf_blocked error with correct message", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ detail: "ssrf_blocked" }), { status: 403 }),
-    );
-    renderDialog();
-    fireEvent.change(screen.getByPlaceholderText(/https:\/\/example.com/i), {
-      target: { value: "http://192.168.1.1/" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /抓取/i }));
-    await waitFor(() => expect(screen.getByText(/内网地址/)).toBeInTheDocument());
-  });
-
-  it("shows timeout error with browser extension hint", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ detail: "fetch_timeout" }), { status: 504 }),
-    );
-    renderDialog();
-    fireEvent.change(screen.getByPlaceholderText(/https:\/\/example.com/i), {
-      target: { value: "https://slow.example.com/" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /抓取/i }));
-    await waitFor(() => expect(screen.getByText(/超时/)).toBeInTheDocument());
-    expect(screen.getByText(/浏览器扩展/)).toBeInTheDocument();
-  });
-
-  it("retry button resets to input phase", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ detail: "ssrf_blocked" }), { status: 403 }),
-    );
-    renderDialog();
-    fireEvent.change(screen.getByPlaceholderText(/https:\/\/example.com/i), {
-      target: { value: "http://192.168.1.1/" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /抓取/i }));
-    await waitFor(() => expect(screen.getByText("重试")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("重试"));
-    expect(screen.getByPlaceholderText(/https:\/\/example.com/i)).toBeInTheDocument();
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("抓取失败"));
+    expect(onIngested).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /抓取/i })).not.toBeDisabled();
   });
 });

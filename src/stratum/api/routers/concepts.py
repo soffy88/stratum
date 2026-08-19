@@ -1,11 +1,12 @@
 """Concept CRUD + knowledge graph."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from stratum.changefeed import emit_event
 from stratum.common import generate_ulid, jwt_auth, now_utc
 from stratum.db import insert, query, read, soft_delete, update
+from stratum.utils.user_id_hash import hash_user_id
 
 router = APIRouter(prefix="/api/v1/concepts", tags=["concepts"])
 
@@ -58,10 +59,16 @@ async def concept_detail(concept_id: str, user_id: str = Depends(jwt_auth)):
     if not concept or concept.get("user_id") != user_id or concept.get("deleted_at"):
         raise HTTPException(404, "Concept not found")
 
-    related_subs = query(
-        "SELECT id, title FROM substrates "
-        "WHERE $cid = ANY(concept_refs) AND user_id = $uid LIMIT 20",
-        {"cid": concept_id, "uid": user_id},
+    uh = hash_user_id(user_id)
+    refs = concept.get("substrate_refs") or []
+    related_subs = (
+        query(
+            "SELECT id, title FROM substrates "
+            "WHERE id = ANY(%(ids)s) AND (user_id = %(uid)s OR user_id = %(uh)s) LIMIT 20",
+            {"ids": refs, "uid": user_id, "uh": uh},
+        )
+        if refs
+        else []
     )
     platform = read("platform_concepts", concept_id)
 
@@ -92,10 +99,16 @@ async def concept_graph(concept_id: str, depth: int = 2, user_id: str = Depends(
             nodes.append({"id": rel_id, "type": "concept", "label": rel["name"]})
             edges.append({"from": concept_id, "to": rel_id, "type": "related_concept"})
 
-    subs = query(
-        "SELECT id, title FROM substrates "
-        "WHERE $cid = ANY(concept_refs) AND user_id = $uid LIMIT 20",
-        {"cid": concept_id, "uid": user_id},
+    uh = hash_user_id(user_id)
+    refs = concept.get("substrate_refs") or []
+    subs = (
+        query(
+            "SELECT id, title FROM substrates "
+            "WHERE id = ANY(%(ids)s) AND (user_id = %(uid)s OR user_id = %(uh)s) LIMIT 20",
+            {"ids": refs, "uid": user_id, "uh": uh},
+        )
+        if refs
+        else []
     )
     for s in subs:
         nodes.append({"id": s["id"], "type": "substrate", "title": s["title"]})
@@ -117,10 +130,25 @@ async def update_concept(concept_id: str, body: ConceptUpdate, user_id: str = De
 
 
 @router.delete("/{concept_id}")
-async def delete_concept(concept_id: str, user_id: str = Depends(jwt_auth)):
+async def delete_concept(
+    concept_id: str,
+    soft: bool = Query(False, description="If true, soft-delete; default hard purge"),
+    user_id: str = Depends(jwt_auth),
+):
     existing = read("concepts", concept_id)
-    if not existing or existing.get("user_id") != user_id or existing.get("deleted_at"):
+    if not existing or existing.get("user_id") != user_id:
         raise HTTPException(404, "Concept not found")
-    soft_delete("concepts", concept_id)
-    await emit_event(user_id, "concept_delete", {"concept_id": concept_id})
-    return {"concept_id": concept_id, "status": "deleted"}
+    if existing.get("deleted_at") and soft:
+        raise HTTPException(404, "Concept not found")
+    if soft:
+        soft_delete("concepts", concept_id)
+        mode = "soft"
+    else:
+        from stratum.services.purge_service import purge_concept
+
+        out = purge_concept(concept_id, user_id)
+        if out.get("status") == "not_found":
+            raise HTTPException(404, "Concept not found")
+        mode = "hard"
+    await emit_event(user_id, "concept_delete", {"concept_id": concept_id, "mode": mode})
+    return {"concept_id": concept_id, "status": "deleted", "mode": mode}

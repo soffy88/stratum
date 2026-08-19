@@ -106,7 +106,22 @@ def analyze(path):
 def convert(path):
     """PDF/EPUB → 清洗后的 MD 文本. 用markitdown(同econ_convert.py/math_convert.py 2026-07-07起的换用),
     页眉页脚按全文行频率剔除(markitdown无天然页边界), 阈值沿用 0.12*页数。"""
-    from markitdown import MarkItDown
+    # ★2026-08-07 全面接入 opendataloader(benchmark#1 表格/无cid), PDF 优先; 失败回退 markitdown
+    text = None
+    if str(path).lower().endswith(".pdf"):
+        try:
+            from oprim.parser.parse_pdf import parse_pdf
+            # ★2026-08-07: 默认 pdf_inspector(firecrawl, benchmark 0.875/表格0.814/0.47s,
+            # 原生 CID 解码); ODL_HYBRID=1 时走 opendataloader hybrid(公式 LaTeX 深加工)
+            if os.getenv("ODL_HYBRID") == "1":
+                pc = parse_pdf(path, provider="opendataloader", hint={"hybrid": True})
+            else:
+                pc = parse_pdf(path, provider="pdf_inspector")
+            text = pc.markdown
+        except Exception as e:  # noqa: BLE001
+            print(f"  ⚠ pdf_inspector 回退 markitdown: {str(e)[:80]}", flush=True)
+    if text is None:
+        from markitdown import MarkItDown
 
     npg = fitz.open(path).page_count
     text = MarkItDown().convert(path).text_content

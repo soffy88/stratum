@@ -1,4 +1,4 @@
-# Merged frontend (Stratum base + AII pages) for aii.kanpan.co.
+# Merged frontend (Stratum base + AII pages) for aiinote.com (legacy aii.kanpan.co).
 # Bakes the pre-built Next.js standalone output so the image is self-contained
 # (decoupled from the build worktree).
 #
@@ -11,12 +11,30 @@
 FROM node:24-trixie-slim
 WORKDIR /app
 COPY . ./
+# Build context is usually the standalone output (no monorepo deploy/).
+# Inline entrypoint: rewrite bake-time localhost API targets → Docker DNS names.
+RUN printf '%s\n' \
+  '#!/bin/sh' \
+  'set -e' \
+  'API_BASE="${STRATUM_API_BASE:-http://stratum-api:9302}"' \
+  'SL_BASE="${STRATUM_SL_BASE:-http://stratum-sl:9304}"' \
+  'API_BASE="${API_BASE%/}"; SL_BASE="${SL_BASE%/}"' \
+  'for f in /app/aii-web/.next/routes-manifest.json /app/aii-web/.next/required-server-files.json /app/aii-web/server.js; do' \
+  '  [ -f "$f" ] || continue' \
+  '  sed -i -e "s|http://localhost:9302|${API_BASE}|g" -e "s|http://stratum-api:9302|${API_BASE}|g" -e "s|http://localhost:9304|${SL_BASE}|g" -e "s|http://stratum-sl:9304|${SL_BASE}|g" "$f"' \
+  'done' \
+  'echo "aii-web: rewrites auth=${API_BASE} sl=${SL_BASE}"' \
+  'exec node server.js' \
+  > /entrypoint.sh && chmod +x /entrypoint.sh
 WORKDIR /app/aii-web
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3101
+# Defaults match docker-compose service names on stratum-net
+ENV STRATUM_API_BASE=http://stratum-api:9302
+ENV STRATUM_SL_BASE=http://stratum-sl:9304
 EXPOSE 3101
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=15s \
   CMD node -e "require('http').get('http://localhost:3101/',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"
-CMD ["node", "server.js"]
+ENTRYPOINT ["/entrypoint.sh"]

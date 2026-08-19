@@ -1,17 +1,39 @@
+import json
+import os
+import re
 from typing import Any
 from pathlib import Path
-from oprim.fulltext import open_fulltext_index
-from oprim.vector_db import open_vector_db
-from oskill.knowledge._context import tantivy_path, lancedb_path
+
+# 3O 平台包仅部署于容器 /opt/platform（dev 副本在 /platform），本机可能没有。
+# 必须保证 import 本模块不崩：平台缺失时路径退化到本地约定，
+# 检索源在运行时按 _HAS_3O_PLATFORM 优雅降级为 []（与索引不存在时行为一致）。
+try:
+    from oprim.fulltext import open_fulltext_index
+    from oprim.vector_db import open_vector_db
+    from oskill.knowledge._context import tantivy_path, lancedb_path
+
+    _HAS_3O_PLATFORM = True
+except ImportError:  # pragma: no cover — 平台包仅部署于容器
+    _HAS_3O_PLATFORM = False
+    open_fulltext_index = None
+    open_vector_db = None
+
+    def _index_path_fallback(sub: str) -> Path:
+        """与 oskill.knowledge._context 同约定（STRATUM_HOME → ~/.stratum/index/<sub>）。"""
+        home = os.environ.get("STRATUM_HOME", str(Path.home() / ".stratum"))
+        return Path(home) / "index" / sub
+
+    def tantivy_path() -> Path:
+        return _index_path_fallback("tantivy")
+
+    def lancedb_path() -> Path:
+        return _index_path_fallback("lance")
 
 import logging
 
 logger = logging.getLogger(__name__)
 
 from stratum.db import get_conn
-
-import json
-import re
 
 _SNIPPET_CHARS = 400  # snippet length fed to rerank + shown as preview
 
@@ -73,6 +95,9 @@ def _clean_snippet(content: str) -> str:
 
 def get_tantivy_mgr():
     def tantivy_mgr(*, query: str, top_k: int, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        if not _HAS_3O_PLATFORM:
+            logger.warning("Tantivy source disabled: 3O platform unavailable (no /opt/platform)")
+            return []
         path = tantivy_path()
         if not path.exists():
             logger.warning(f"Tantivy path {path} does not exist")
@@ -109,8 +134,49 @@ def get_tantivy_mgr():
             return []
     return tantivy_mgr
 
+def get_pgvector_user_mgr(user_id: str):
+    """User-scoped semantic dense source backed by PG substrate_layers (L0).
+
+    Replaces the abandoned lancedb index: the current ingest pipeline maintains
+    L0 embeddings in PG (same qwen3-embedding model /retrieve uses), so query
+    embeddings come from the identical model → consistent cosine space.
+    Satisfies the LanceDBMgr protocol (query_embedding/query/top_k/filters).
+    """
+    def pgvector_user_mgr(*, query_embedding: list[float] | None, query: str,
+                          top_k: int, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        from stratum.services.retrieval_engine import _vector_search_layers, get_embedding
+
+        if query_embedding is None:
+            query_embedding = get_embedding(query)
+        if not query_embedding:
+            return []
+        hits = _vector_search_layers(
+            query_embedding, layer="L0", top_k=max(top_k * 2, 20), user_id=user_id
+        )
+        if not hits:
+            return []
+        meta_map = _fetch_meta([h["substrate_id"] for h in hits])
+        results = []
+        for h in hits:
+            sid = h["substrate_id"]
+            if sid not in meta_map:
+                continue  # stale layer row, substrate gone
+            results.append({
+                "id": sid,
+                "type": "user_substrate",
+                "title": meta_map[sid].get("title") or sid,
+                "highlight": meta_map[sid].get("snippet", ""),
+                "user_id": meta_map[sid].get("user_id"),
+            })
+        return results
+    return pgvector_user_mgr
+
+
 def get_lancedb_mgr():
     def lancedb_mgr(*, query_embedding: list[float] | None, query: str, top_k: int, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        if not _HAS_3O_PLATFORM:
+            logger.warning("LanceDB source disabled: 3O platform unavailable (no /opt/platform)")
+            return []
         path = lancedb_path()
         if not path.exists():
             logger.warning(f"LanceDB path {path} does not exist")
@@ -120,7 +186,14 @@ def get_lancedb_mgr():
             
             if query_embedding is None:
                 from oprim.embedding import embed_text
-                query_embedding = embed_text([query])[0]
+
+                # 与 oprim._config.cfg 同源（cfg.get 最终回退到 os.environ）——不耦合私有模块
+                provider = os.environ.get("EMBEDDING_PROVIDER", "qwen3_dashscope")
+                try:
+                    query_embedding = embed_text([query], provider=provider)[0]
+                except Exception as e:
+                    logger.error(f"embed_text failed: {e}")
+                    return []
                 
             if hasattr(db, "_table"):
                 tbl = db._table

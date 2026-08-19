@@ -253,15 +253,37 @@ export interface BuFacets {
   soul: string; positioning: string; question: string;
   skeleton: string; thinking: string; for_whom: string; boundary: string;
 }
+// 证据挂接版七项(0012 迁移): 每项带依据/证据分级/逐字切片/定位
+export interface GroundedFacet {
+  key: string; text: string; basis: string;
+  ku_ids: string[]; evidence: string; grades: string[];
+  excerpts: { text: string; ku_id: string; locator: string }[];
+}
 export interface BuData {
   substrate_id: string;
   facets_zh: BuFacets;
   facets_en: BuFacets;
+  facets_grounded?: GroundedFacet[];
+  learning_paths?: LearningPath[];
+  deep_cards?: DeepCard[];
+  bu_quality?: { status?: string; stats?: { paths?: number; cards?: number; dropped?: number } };
   grade: EpistemicGrade;
   synthesis_marker: string;
   n_ku: number;
   n_kc_chapter: number;
   n_kc_spectral: number;
+}
+// 学习层(0011 迁移): 能力路径 + 深卡
+export interface LearningPath {
+  id: string; no: string; name: string; promise: string; card_ids: number[];
+}
+export interface DeepCard {
+  id: number; name: string; path: string; ku_ids: string[];
+  evidence: string; grounding_grades?: string[];
+  desc: string; excerpt: string; context: string;
+  arguments: string[]; source_digest: string[]; boundary: string;
+  connections: number[]; practice: string;
+  source_excerpts?: { text: string; ku_id: string; locator: string }[];
 }
 
 // ── 视图2:KU 浏览 GET /api/ku/list ──
@@ -562,4 +584,8 @@ export interface BuDetail extends BuListItem {
   structure: BuStructureSection[];
   /** 核心概念 KU(链到 /knowledge)。 */
   key_concepts: Array<{ ku_id: string; label: string; grade: EpistemicGrade }>;
+  /** ★学习层(0011 迁移): 能力路径 + 深卡(与 /book 同构) */
+  learning_paths?: LearningPath[];
+  deep_cards?: DeepCard[];
+  bu_quality?: { status?: string; stats?: { paths?: number; cards?: number; dropped?: number } };
 }

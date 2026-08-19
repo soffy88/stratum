@@ -63,14 +63,21 @@ def build_contributions(members: list[dict]) -> tuple[list, int]:
                     break
             continue
         seen_facets.add(key)
+        # ★P1 溯源增强: 从 raw_ku_id 确定性解析 chapter_anchor(引用链完整化)
+        import sys as _sys
+        from pathlib import Path as _P
+        _sys.path.insert(0, str(_P(__file__).resolve().parents[1]))
+        from ku_schema import parse_chapter_anchor
         contribs.append(
             {
                 "source_book_id": m.get("book"),
                 "version": m.get("version", 1),
                 "raw_ku_id": m.get("raw_ku_id"),
+                "chapter_anchor": parse_chapter_anchor(m.get("raw_ku_id") or ""),
                 "facet": facet,
                 "fragment_text": m.get("text"),
                 "lang": _lang(m.get("text")),
+                "parser_version": "markitdown-v0.5",
             }
         )
     facet_count = len({c["facet"] for c in contribs})
@@ -92,9 +99,14 @@ def render_zh(contributions: list) -> str:
     return "\n".join(parts)
 
 
-def embed_text(contributions: list) -> str:
-    """B仓独立向量的编码输入: 合并后干净内容(原语言片段, BGE-M3 多语种直接编)。"""
-    return " ".join((c.get("fragment_text") or "").strip() for c in contributions).strip()
+def embed_text(contributions: list, *, max_chars: int = 4000) -> str:
+    """B仓独立向量的编码输入: 合并后干净内容(原语言片段, BGE-M3 多语种直接编)。
+
+    max_chars 截断: 长 KU 全量进 batch 会在 10G 卡上 CUDA OOM(2026-07-29 实测
+    batch=64 长文爆显存); 语义近邻主要靠前段, 截断优先保可完成。
+    """
+    t = " ".join((c.get("fragment_text") or "").strip() for c in contributions).strip()
+    return t[:max_chars] if t else " "
 
 
 async def persist_refined_ku(

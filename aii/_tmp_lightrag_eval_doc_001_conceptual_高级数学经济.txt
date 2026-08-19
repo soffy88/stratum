@@ -1,0 +1,48 @@
+# Policy classification (stationary, deterministic, policy sets ΠNM/ΠM/ΠS)
+
+Type: conceptual | Subject: 高级数学经济
+
+Policy Classification (Stationary, Deterministic, Policy Sets)
+Type: Conceptual
+Plain-language gloss:
+A policy is like a recipe that tells an agent exactly how to choose actions in every possible situation. In MDPs, policies are classified based on two key factors:
+information they use to decide:
+Markovian policies only look at the *current state* (like making a decision based solely on where you are right now).
+Non-Markovian policies use the *entire history* of states and actions (like considering every step you’ve taken so far).
+they make decisions:
+Deterministic policies always pick the same action in a given state (no randomness).
+Stochastic policies randomly choose actions based on probabilities (like rolling a dice to decide).
+Rigorous definition:
+A policy π is a sequence of decision rules. A decision rule maps either the current state *s* (Markovian) or the history *h_t = (s₀, a₀, ..., s_t)* (non-Markovian) to a distribution over actions (stochastic) or a single action (deterministic):
+Non-Markovian stochastic: π_t : S × (S × A)^t → Δ(A)
+Markovian stochastic: π_t : S → Δ(A)
+Non-Markovian deterministic: π_t : S × (S × A)^t → A
+Markovian deterministic: π_t : S → A
+Policy sets:
+ΠNM: All non-Markovian policies
+ΠM: All Markovian policies
+ΠS: Stationary policies (same decision rule at every timestep)
+Π^D NM, Π^D M, Π^D S: Deterministic subsets of each class.
+Plain-language gloss:
+These classifications matter because they trade off *generality* (solving complex problems) vs. *tractability* (computational ease):
+Non-Markovian policies are the most flexible (they use full history) but are harder to compute.
+Markovian policies are simpler (only current state) and often sufficient for optimal solutions.
+Stationary policies avoid time-dependent rules, simplifying analysis.
+Deterministic policies are easier to implement (no randomness) but may miss robust solutions.
+Rigorous rationale:
+The chapter emphasizes:
+1. ΠNM is the most general class, encompassing all possible policies.
+2. ΠS ⊂ ΠM ⊂ ΠNM: Stationary policies are Markovian, which are a subset of non-Markovian.
+3. Deterministic subsets (Π^D NM, Π^D M, Π^D S) exist within each class for specialized applications.
+Plain-language gloss:
+Policies are structured hierarchically:
+1. Decision rules build policies: Each rule defines how to act at a specific time.
+2. Stationarity means using the same rule forever, avoiding the need to update decisions over time.
+3. Determinism removes randomness: For example, a deterministic Markovian policy is a function *π: S → A*.
+Rigorous structure:
+1. Policy hierarchy:
+Any Markovian policy (ΠM) can be expressed as π = (π, π, ...) (stationary).
+Stationary policies (ΠS) are a strict subset: ΠS ⊂ ΠM.
+2. Deterministic policies:
+For non-Markovian: π_t(h_t) ∈ A (direct action output).
+For Markovian: π(s) ∈ A (direct action output).

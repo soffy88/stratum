@@ -6,15 +6,22 @@ services:
     container_name: stratum-api
     restart: unless-stopped
     ports:
-      - "127.0.0.1:9309:9302"
+      - "0.0.0.0:9309:9302"
     volumes:
       - ~/.stratum:/root/.stratum
       # Live source mount — auth.py path change takes effect without image rebuild
       - /home/soffy/projects/stratum/src:/app/src
+      # 3O 包 (omodul 决策 operator 等) — 与 stratum-sl 一致
+      - /home/soffy/deploy/3O/omodul:/opt/platform/omodul
+      - /home/soffy/deploy/3O/obase:/opt/platform/obase
+      - /home/soffy/deploy/3O/oservi:/opt/platform/oservi
+      - /home/soffy/deploy/3O/oprim:/opt/platform/oprim
+      - /home/soffy/deploy/3O/oskill:/opt/platform/oskill
     env_file:
       - /home/soffy/.config/keys/.env
       - ./aii-secrets.conf
     environment:
+      - PYTHONPATH=/app/src:/opt/platform/omodul:/opt/platform/obase:/opt/platform/oservi:/opt/platform/oprim:/opt/platform/oskill
       - STRATUM_ENV=production
       - DATABASE_PATH=/data/stratum/meta.duckdb
       # AII merge P1.5: service-layer store moved DuckDB → aii-postgres stratum schema.
@@ -56,9 +63,13 @@ services:
       retries: 3
       start_period: 15s
 
-  # AII merge P3.5: merged frontend (Stratum base + AII pages) serving aii.kanpan.co.
-  # Self-contained image baked from the Next standalone build (deploy/Dockerfile.aii-web).
-  # cloudflared (host net) routes aii.kanpan.co → 127.0.0.1:3101, aii-api.kanpan.co → :8101.
+  # AII Note 前端 (Stratum base + AII pages). 镜像 Dockerfile.aii-web。
+  # 公网入口在 **aegis** 栈, 不要直连本容器端口做公网:
+  #   aiinote.com / aii.kanpan.co
+  #     → CF tunnel aegis-prod
+  #     → aegis-caddy:8086  (aegis/Caddyfile)
+  #     → aii-web:3101      (本服务, stratum-net 上被 caddy 反代)
+  # P2: AII API routes now served by stratum-sl (:9304), standalone AII backend retired.
   aii-web:
     image: aii-web:latest
     container_name: aii-web
@@ -72,8 +83,8 @@ services:
       # Stratum backends (same docker network, by service name).
       - STRATUM_SL_BASE=http://stratum-sl:9304
       - STRATUM_API_BASE=http://stratum-api:9302
-      # AII epistemic-engine backend runs on the host (uvicorn :8101) → via gateway.
-      - AII_API_BASE=http://172.19.0.1:8101
+      # P2: AII routes merged into stratum-sl. AII_API_BASE unset → defaults to
+      # /api/aii (same-origin rewrite → STRATUM_SL_BASE). AII_API_KEY from env_file.
     env_file:
       - ./aii-secrets.conf
     depends_on:
@@ -141,17 +152,17 @@ services:
       - HTTPS_PROXY=http://172.19.0.1:10808
       - http_proxy=http://172.19.0.1:10808
       - https_proxy=http://172.19.0.1:10808
-      # ★100.68.226.13(tailscale笔记本, aii-embed宿主)必须在NO_PROXY里: httpx尊重代理env,
+      # ★100.119.113.90(tailscale笔记本, aii-embed宿主)必须在NO_PROXY里: httpx尊重代理env,
       #   不排除的话 embed 请求会被路由进 sing-box 代理而不可达。
-      - NO_PROXY=localhost,127.0.0.1,::1,172.19.0.1,100.68.226.13,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend
-      - no_proxy=localhost,127.0.0.1,::1,172.19.0.1,100.68.226.13,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend
+      - NO_PROXY=localhost,127.0.0.1,::1,172.19.0.1,100.119.113.90,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend
+      - no_proxy=localhost,127.0.0.1,::1,172.19.0.1,100.119.113.90,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend
       # PaddleOCR: skip network model-source check, use pre-downloaded models from volume
       - PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
       # ★2026-07-10: 原 qwen3_local→aegis ollama 网关已死(每条入库404×3, 向量从未写入,
       #   语义检索静默失效)。改走共享 aii-embed BGE-M3 服务(tailscale笔记本), provider
       #   自带短connect超时+本机CPU兜底(oprim PR#18)。
       - EMBEDDING_PROVIDER=aii_remote
-      - AII_EMBED_URL=http://100.68.226.13:8102
+      - AII_EMBED_URL=http://172.19.0.1:8102
       # ★2026-07-10: DuckDB 已弃用。oskill.ingest_substrate/detect_duplicate 走 oprim.meta_db
       #   的 open_meta_db——原来返回 DuckDB(迁PG后表空, substrate持久化静默死掉)。改用
       #   META_DB_BACKEND=postgres → PgMetaDB 直接写入 stratum 读的同一个 aii-postgres,
@@ -159,7 +170,23 @@ services:
       - META_DB_BACKEND=postgres
       # P1.4b: user-substrate vector search embeds queries via the shared BGE-M3
       # endpoint (AII backend) so query space matches substrate_chunk (BGE-M3).
-      - STRATUM_EMBED_URL=http://172.19.0.1:8101/internal/embed
+      - STRATUM_EMBED_URL=http://172.19.0.1:8102/embed
+      # ★2026-08-02: oskill 索引(meta.duckdb/tantivy/lance)必须落在 ext4 — 原来
+      #   ~/.stratum→/mnt/d(ntfs3), tantivy 段文件 statx Invalid argument, 全量入库的
+      #   fulltext 层静默失败。STRATUM_HOME 仅影响 oskill 路径; stratum 自身用 STRATUM_DATA_DIR。
+      - STRATUM_HOME=/data/shared/stratum-home
+      # P2: AII backend merged into stratum-sl — needs AII's PG DSN for asyncpg pool.
+      # Password matches STRATUM_PG_PASSWORD in aii-secrets.conf.
+      - AII_DATABASE_URL=postgresql://aii:aii_safe_pass@172.19.0.1:5435/aii_kg
+      # P2: AII provider env vars (DeepSeek/NIM/Ollama for AII's LLM routes)
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - NVIDIA_NIM_API_KEY=${NVIDIA_NIM_API_KEY:-}
+      - OLLAMA_BASE_URL=http://172.19.0.1:11434
+      # 本地兜底: agents 默认走 ollama qwen3-8b (DASHSCOPE/NIM 键缺失/失效时链路不断)
+      - STRATUM_LLM_PROVIDER=ollama
+      - STRATUM_LLM_MODEL=qwen3-8b
+      # Flywheel disabled in merged backend (handled by standalone systemd services)
+      - FLYWHEEL_ENABLED=0
     volumes:
       # Stratum source mounted live — code changes take effect after container restart, no rebuild.
       - /home/soffy/projects/stratum/src:/app/src
@@ -174,10 +201,14 @@ services:
       - /home/soffy/deploy/3O/oskill:/opt/platform/oskill
       - /home/soffy/deploy/3O/omodul:/opt/platform/omodul
       - /home/soffy/deploy/3O/oservi:/opt/platform/oservi
+      # P2: AII source code — bind-mounted for import as `aii.*` Python package
+      - /home/soffy/projects/stratum/aii/aii:/opt/aii:ro
       # Data directory (uploads, etc.)
       - ~/.stratum:/root/.stratum
       # AII shared export volume — Wave 4
       - /home/soffy/shared/stratum-to-aii:/data/shared/stratum-to-aii:rw
+      # oskill 索引 ext4 挂载 (STRATUM_HOME=/data/shared/stratum-home)
+      - /home/soffy/shared/stratum-home:/data/shared/stratum-home:rw
       # AII → Stratum needs (ro: AII writes, Stratum reads)
       - /home/soffy/shared/aii-to-stratum:/data/shared/aii-to-stratum:ro
       # Textbook export volume — middle/primary school textbooks
@@ -194,6 +225,34 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  stratum-docs:
+    build:
+      context: ..
+      dockerfile: deploy/docs_service/Dockerfile
+    container_name: stratum-docs
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8300:8300"
+    volumes:
+      - /home/soffy/deploy/3O:/opt/platform:ro
+    environment:
+      - ODL_HYBRID=0
+      # ★2026-08-11 officecli(NIM 端点)经宿主机 sing-box 代理出网
+      - HTTP_PROXY=http://172.19.0.1:10808
+      - HTTPS_PROXY=http://172.19.0.1:10808
+      - NO_PROXY=localhost,127.0.0.1,172.19.0.1
+      # LangExtract grounded extraction LLM(NIM, 经代理出网) — 密钥经 deploy/.env 插值, 不入库
+      - LX_API_KEY=${LX_API_KEY:?set LX_API_KEY in deploy/.env}
+      - LX_API_BASE=https://integrate.api.nvidia.com/v1
+      - LX_MODEL=nvidia/llama-3.3-nemotron-super-49b-v1.5
+    mem_limit: 6g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8300/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
 networks:
   default:

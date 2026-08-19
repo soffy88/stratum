@@ -9,7 +9,7 @@ from stratum.services.source_watcher_service import run_first_check
 
 router = APIRouter()
 
-VALID_SOURCE_TYPES = {"arxiv", "gutenberg", "oapen", "openstax", "mit_ocw"}
+VALID_SOURCE_TYPES = {"arxiv", "gutenberg", "oapen", "openstax", "mit_ocw", "wechat", "twitter"}
 
 
 class SourceSubscribeRequest(BaseModel):
@@ -46,6 +46,12 @@ async def source_subscribe(
         pass  # subjects/keywords optional — defaults to Math+Science
     elif body.source_type == "mit_ocw":
         pass  # departments/keywords optional — defaults to dept 18 (Mathematics)
+    elif body.source_type == "wechat":
+        if not q.get("urls") and not q.get("keyword"):
+            raise HTTPException(400, "wechat 订阅需填写 urls 列表或 keyword 搜索词")
+    elif body.source_type == "twitter":
+        if not q.get("usernames") and not q.get("keyword"):
+            raise HTTPException(400, "twitter 订阅需填写 usernames 列表或 keyword 搜索词")
 
     uh = hash_user_id(user_id)
     sub_id = generate_ulid()
@@ -83,6 +89,11 @@ def _default_name(source_type: str, q: dict) -> str:
         depts = ",".join(q.get("departments") or ["18"])
         kw = q.get("keywords") or ""
         return f"MIT OCW dept{depts}" + (f" — {kw}" if kw else "")
+    if source_type == "wechat":
+        return q.get("keyword") or "WeChat Articles"
+    if source_type == "twitter":
+        users = q.get("usernames") or []
+        return ", ".join(users[:3]) or "Twitter Feed"
     return source_type
 
 

@@ -8,10 +8,16 @@
 #   规划审核+质检共用同一个独立key(math_prog_verify), 无key则两步都fail-open跳过.
 set -uo pipefail
 cd "$(dirname "$0")/.."
+: "${RCLONE_PROXY=http://127.0.0.1:7890}"
+if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
+  export HTTPS_PROXY="${RCLONE_PROXY}" HTTP_PROXY="${RCLONE_PROXY}"
+  export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+  export no_proxy="${NO_PROXY}"
+fi
 PY=.venv/bin/python
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1   # 用本地缓存 BGE-M3, 不连 huggingface
-export AII_EMBED_URL="${AII_EMBED_URL:-http://100.68.226.13:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU); 本进程不再加载 BGE-M3
+export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU); 本进程不再加载 BGE-M3
 export CUDA_VISIBLE_DEVICES=""   # ★嵌入已外包给服务, 本飞轮彻底不碰 GPU(抽取0-LLM纯CPU)
 # ★规划审核用key。原来只取 'math_prog_verify' —— 该键在 .pipeline_keys.json 里【不存在】
 # (实有 econ/math_en/econ_zh/math_zh/advmath_2/advmath_3/advmath_verify/learning),
@@ -49,7 +55,9 @@ for f in /home/soffy/books/MD/英文数学/*.md /home/soffy/books/MD/中文数�
     # 察觉自己失败(粘连整句会被当成概念名放行)。实测 76% 粘连的书 ①②双双归零。
     # 不抽, 退回 Stratum 返工——粘连是上游 PDF→MD 的病, 自弃等于替上游背账。
     # 卡在②【之前】, 顺带省下 ~240s/章 的 49B 成本。阈值 MD_GLUE_THRESHOLD 可调。
-    if ! $PY scripts/md_glue_gate.py "$f" --substrate "$sub" --title "$stem" --report; then
+    # ★2026-08-10: 阈值 0.30→0.40 — OCR 粘连 30-40% 的好教材(ML概率统计35%/Stewart微积分)
+    #   被 gate 拒后 math 彻底空转; 40% 内程序抠仍可用, math_route_or_skip 编号定理门禁兜底。
+    if ! MD_GLUE_THRESHOLD=0.40 $PY scripts/md_glue_gate.py "$f" --substrate "$sub" --title "$stem" --report; then
         echo "  ⏭ 粘连超阈值, 跳过并已反馈 Stratum: $stem"
         continue
     fi
@@ -62,7 +70,17 @@ for f in /home/soffy/books/MD/英文数学/*.md /home/soffy/books/MD/中文数�
     $PY scripts/math_program_ingest.py "$f" "$sub" 2>&1 | tail -2
     ingest_out=$($PY scripts/math_ingest.py --substrate "$sub" --staging "$STAGING_BASE/$sub" 2>&1)
     echo "$ingest_out" | grep -E '入库完成|准备入库' || true
-    echo "$ingest_out" | grep -qE '入库完成: ok=[0-9]+ skip=[0-9]+ err=0$' && touch "$STAGING_BASE/$sub/.done"
+    if echo "$ingest_out" | grep -qE '入库完成: ok=[0-9]+ skip=[0-9]+ err=0$'; then
+        touch "$STAGING_BASE/$sub/.done"
+        # ★用户指令(2026-07-23): 抽完KU的源MD是资产, 不能只留本地——按本地MD池子分类
+        # (中文数学/英文数学)同名归档到Drive, 不删本地。
+        MD_SUBJECT_DIR=$(basename "$(dirname "$f")")
+        if rclone copy "$f" "gdrive-rw:aii-已入库源MD/$MD_SUBJECT_DIR/" --drive-chunk-size 64M 2>/dev/null; then
+            echo "  📦 已归档源MD到 Drive(aii-已入库源MD/$MD_SUBJECT_DIR/)"
+        else
+            echo "  ⚠ 归档到 Drive 失败(本地MD保留, 不影响入库结果)"
+        fi
+    fi
     SUBSTRATE="$sub" $PY scripts/math_prog_verify.py 2>&1 || echo "  ⚠ 判官调用异常(非致命, 继续)"
     processed=$((processed + 1))
 done

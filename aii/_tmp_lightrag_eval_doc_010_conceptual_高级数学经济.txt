@@ -1,0 +1,36 @@
+# Excessive Optimism (Overestimation of positive outcomes, e.g., marriage success, project timelines)
+
+Type: conceptual | Subject: 高级数学经济
+
+Key Understanding (KU) for "Excessive Optimism" (Type: Conceptual)
+Plain Language Gloss:
+Excessive optimism is when people believe good things are more likely to happen to them than they actually are, while bad things are less likely. It’s like being overly sure your team will win the lottery or that your big project will finish early and under budget, even when history says otherwise.
+Rigorous Statement:
+Excessive optimism refers to the systematic overestimation of the probability of positive life events (e.g., successful marriage, career success) and underestimation of negative events (e.g., cancer, divorce). Empirical examples include:
+Newlyweds overestimating their marriage’s longevity despite high divorce rates (, p. 106).
+Students predicting higher exam scores than earned (, p. 106).
+The *planning fallacy*, where people underestimate project timelines and costs (e.g., Sydney Opera House budget ballooning from $7M to $120M;, p. 107).
+Overestimating personal success in challenging tasks (e.g., a student enrolling in an overly hard course;, p. 108).
+Plain Language Gloss:
+People are excessively optimistic because it feels good and protects their self-esteem. They focus on their strengths and ignore risks. Biases like blaming failures on bad luck (self-attribution bias) and rewriting history to think they “knew it all along” (hindsight bias) make this worse.
+Rigorous Statement:
+Excessive optimism arises from motivational factors (e.g., maintaining self-esteem by overestimating success) and cognitive mechanisms (e.g., selectively recalling past successes). Key sustaining biases include:
+1. Self-attribution bias: Individuals attribute success to personal skill but blame failures on external factors (, p. 110).
+2. Hindsight bias: After an event, people falsely believe they predicted it (, p. 110).
+3. Confirmation bias: Seeking information that confirms pre-existing beliefs (, p. 110).
+ever, excessive optimism may sometimes *improve performance* by increasing effort when action plans are available (, p. 113).
+Plain Language Gloss:
+Excessive optimism is measured through surveys where people state their confidence (e.g., “What’s the 90% range for your exam score?”). If their guesses are too narrow or too high, they’re overconfident.Gender and education affect this: men and highly educated people often show stronger biases.
+Rigorous Statement:
+Measurement methods include:
+1. Confidence intervals: Participants state x% confidence intervals for unknowns (e.g., “90% range for the Dow Jones”). Overly narrow intervals signal miscalibration (, p. 102).
+2. Probability estimates: Directly ask for perceived likelihood of positive/negative events (e.g., marriage success;, p. 106).
+3. Gender differences: Men exhibit stronger excessive optimism than women, especially in “masculine” tasks (, p. 109).
+4. Education effects: Higher education correlates with *increased* overconfidence (, p. 109).
+Critically, framing effects alter results: Gigerenzer (1991) showed overconfidence disappears when participants compare their confidence to *frequency judgments* (e.g., “How many questions did you get right?”) instead of binary correct/incorrect (, p. 109).
+plain language gloss：
+Rigorous statement：
+plain language gloss：
+Rigorous statement：
+plain language gloss：
+Rigorous statement：

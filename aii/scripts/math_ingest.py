@@ -16,11 +16,30 @@ except ImportError:
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import asyncpg
+from ku_schema import build_grounded_by, parse_chapter_anchor, ku_fingerprint, validate_ku_point
 from pgvector.asyncpg import register_vector
 from aii.api._provider import register_providers
 from oprim import vector_encode
 
 register_providers()
+
+
+def _traj_sync(phase: str, failure_mode: str, error_sig: str, context: dict | None = None) -> None:
+    """海关拒绝事件静默落 trajectory_logs。"""
+    import importlib.util as _ilu
+    from pathlib import Path as _P
+    try:
+        p = _P(__file__).resolve().parent / "traj_log.py"
+        if not p.exists():
+            return
+        spec = _ilu.spec_from_file_location("traj_log_sb", p)
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        import os as _os
+        flywheel = _os.getenv("AII_FLYWHEEL", "unknown")
+        mod.traj_log_sync(flywheel, phase, failure_mode, error_sig, context or {})
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _ku_type(t):
@@ -96,7 +115,7 @@ async def main(substrate: str, staging_dir: Path, dry_run: bool = False):
 
     # ── 阶段2: 批量嵌入(分块调共享服务; 整块失败降级逐条, 保证不整批挂) ──
     embs = []
-    B = 64
+    B = 16  # 2026-08-16: 64→16. embed 迁笔记本 CPU 模式(BGE-M3), 大批次 CPU 编码超时; 16条/批 ~2min < 客户端400s 窗口
     for i in range(0, len(rows), B):
         chunk = [t for _, t in rows[i : i + B]]
         try:
@@ -135,13 +154,45 @@ async def main(substrate: str, staging_dir: Path, dry_run: bool = False):
             ok += 1
             continue
 
+        # ★统一质检链(规格 6): 0LLM 程序抽取的自引用证据(内容即原文片段)
+        from ku_pipeline import evaluate_ku_chain
+        quotes = [{"quote": en[:400], "span": [0, min(len(en), 400)], "kind": "program_extract"}]
+        chain = await evaluate_ku_chain(
+            ku_id, en, title, quotes, en, ku_type=ktype, source_type="math_prog")
+        if chain["status"] != "pass":
+            sig = chain["signatures"][0] if chain["signatures"] else "REJECT"
+            _traj_sync("persist", sig, f"{chain['quality']['checks'][:2]}",
+                       {"ku_id": ku_id, "substrate": substrate})
+            print(f"  ⚠ {sig} {ku_id}: ({chain['status']})", flush=True)
+            continue
+        quality = chain["quality"]
+        grounded_by = build_grounded_by(substrate, parse_chapter_anchor(ku_id) or str(ch),
+                                        extraction_method="program_extract",
+                                        evidence_quotes=quotes)
+        violations = validate_ku_point(ku_id, title, ktype, en, grounded_by)
+        if violations:
+            _traj_sync("persist", "schema_reject", "; ".join(violations)[:200],
+                       {"ku_id": ku_id, "substrate": substrate})
+            print(f"  ⚠ 海关拒绝 {ku_id}: {violations[0]}", flush=True)
+            continue
+        fp = ku_fingerprint(en)
+        dup = await conn.fetchval(
+            "SELECT 1 FROM aii.ku_onto WHERE fingerprint=$1 AND ku_id <> $2 LIMIT 1",
+            fp, ku_id)
+        if dup:
+            _traj_sync("persist", "DUPLICATE", f"fingerprint 已存在: {fp[:16]}...",
+                       {"ku_id": ku_id, "substrate": substrate})
+            print(f"  ⚠ DUPLICATE {ku_id}", flush=True)
+            continue
         try:
             await conn.execute(
                 """
                 INSERT INTO aii.ku_onto
                     (ku_id, substrate_id, title, natural_text, knowledge_type,
-                     provenance, embedding, natural_text_zh, grade)
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'unverified')
+                     provenance, embedding, natural_text_zh, grade, grounded_by, fingerprint,
+                     sources, quality, created_by, claim_type)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'unverified',$9,$10,'[]'::jsonb,
+                        $11,$12,$13)
                 ON CONFLICT (ku_id) DO UPDATE SET
                     title=EXCLUDED.title,
                     natural_text=EXCLUDED.natural_text,
@@ -149,6 +200,10 @@ async def main(substrate: str, staging_dir: Path, dry_run: bool = False):
                     knowledge_type=EXCLUDED.knowledge_type,
                     provenance=EXCLUDED.provenance,
                     embedding=EXCLUDED.embedding,
+                    grounded_by=EXCLUDED.grounded_by,
+                    fingerprint=EXCLUDED.fingerprint,
+                    quality=EXCLUDED.quality,
+                    claim_type=EXCLUDED.claim_type,
                     updated_at=now()
                 """,
                 ku_id,
@@ -159,6 +214,11 @@ async def main(substrate: str, staging_dir: Path, dry_run: bool = False):
                 json.dumps(provenance, ensure_ascii=False),
                 emb,
                 zh,
+                json.dumps(grounded_by, ensure_ascii=False),
+                fp,
+                json.dumps(quality, ensure_ascii=False),
+                f"flywheel:{os.getenv('AII_FLYWHEEL', 'math-prog')}",
+                quality.get("claim_type"),
             )
             ok += 1
             if ok % 50 == 0:

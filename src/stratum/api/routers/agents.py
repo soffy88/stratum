@@ -86,14 +86,14 @@ def _get_researcher_engine():
             raise RuntimeError("SEARXNG_URL env var not set")
 
         from oservi import assemble, ServiceManifest
-        from oprim import url_fetch_ssrf_safe
+        from stratum.services.web_fetch import fetch_url_ssrf_safe
 
         manifest = ServiceManifest(
             name="stratum-researcher",
             skeleton="researcher",
             inject={
                 "search_oprim": [_make_searxng_adapter(searxng_url)],
-                "fetch_oprim": [url_fetch_ssrf_safe],
+                "fetch_oprim": [fetch_url_ssrf_safe],
                 "llm_caller": [_make_oprim_llm_adapter(_DEFAULT_LLM_PROVIDER, _DEFAULT_LLM_MODEL)],
                 # ingest_omodul omitted (cardinality=0..1): returns results without DB ingestion.
                 # Enable when omodul ships a kwargs-compatible ingest callable.
@@ -320,6 +320,69 @@ else:
     _AGENT_CLASSES: dict = {}
 
 
+# MVP Extract + Link&Merge — stratum-native (always available)
+async def _run_extract_merge_agent(params: dict, user_id: str) -> dict:
+    from stratum.services.extract_merge_service import extract_and_merge
+
+    sid = (params or {}).get("substrate_id")
+    if not sid:
+        return {"status": "failed", "error": "substrate_id required", "sources": []}
+    out = await extract_and_merge(sid, user_id=user_id)
+    return {
+        "status": out.get("status", "ok"),
+        "findings": out,
+        "sources": [
+            {
+                "substrate_id": sid,
+                "title": sid,
+                "deep_link": f"stratum://substrate/{sid}",
+            }
+        ],
+        "citations": [],
+    }
+
+
+async def _run_knowledge_lint_agent(params: dict, user_id: str) -> dict:
+    from stratum.services.knowledge_lint_service import run_lint
+
+    write_report = True
+    if params and "write_report" in params:
+        write_report = bool(params["write_report"])
+    out = run_lint(user_id, write_report=write_report)
+    return {
+        "status": out.get("status", "ok"),
+        "findings": out,
+        "sources": [],
+        "citations": [],
+    }
+
+
+async def _run_daily_digest_simple(params: dict, user_id: str) -> dict:
+    from stratum.services.daily_digest_service import build_daily_digest
+
+    days = int((params or {}).get("days") or 1)
+    notify = (params or {}).get("notify", True)
+    out = build_daily_digest(user_id, days=days, notify=bool(notify))
+    return {
+        "status": out.get("status", "ok"),
+        "findings": out,
+        "sources": [],
+        "citations": [],
+        "note_id": out.get("note_id"),
+    }
+
+
+_NATIVE_AGENTS = frozenset(
+    {
+        "extract_merge",
+        "knowledge_lint",
+        "lint",  # alias
+        "daily_digest_simple",
+        "aii_daily_digest",  # alias
+    }
+)
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 
@@ -331,6 +394,20 @@ async def agent_run(
 ):
     if agent_name in NOT_IMPLEMENTED_AGENTS:
         raise HTTPException(501, NOT_IMPLEMENTED_AGENTS[agent_name])
+    # MVP stratum-native agents (no omodul required)
+    if agent_name in _NATIVE_AGENTS:
+        run_id = generate_ulid()
+        try:
+            if agent_name == "extract_merge":
+                result = await _run_extract_merge_agent(params or {}, user_id)
+            elif agent_name in ("knowledge_lint", "lint"):
+                result = await _run_knowledge_lint_agent(params or {}, user_id)
+            else:
+                result = await _run_daily_digest_simple(params or {}, user_id)
+            return {"run_id": run_id, "agent_name": agent_name, **result}
+        except Exception as e:
+            raise HTTPException(500, str(e)[:400]) from e
+
     _is_oservice = agent_name in _OSERVICE_AGENT_NAMES
     if not _is_oservice and agent_name not in _BUILDERS and agent_name not in _AGENT_CLASSES:
         raise HTTPException(404, f"Unknown agent: {agent_name}")
@@ -392,7 +469,9 @@ async def agent_run(
             enriched_params = dict(params or {})
             enriched_params.setdefault("corpus_id", f"user_{user_id}")
 
-            # Stage B: inject graph context for reading_companion
+            # Stage B: inject graph context for reading_companion.
+            # 只放 graph_context 参数, 绝不污染 question —— ReadingCompanionAgent 用
+            # question 同时做 hybrid_search 查询 (tantivy 对 [方括号] 会 Syntax Error)。
             if agent_name == "reading_companion":
                 _question = enriched_params.get("question", "")
                 if _question:
@@ -433,11 +512,7 @@ async def agent_run(
                                 f"- {e['name']} ({e['type']}): {e['description'] or ''}"
                                 for e in _entities[:5]
                             )
-                            # ReadingCompanionAgent uses params["question"] in LLM prompt;
-                            # prepend graph context so LLM sees known entities (§20 compliant).
-                            enriched_params["question"] = (
-                                f"[知识图谱背景]\n{_graph_lines}\n\n问题: {_question}"
-                            )
+                            enriched_params["graph_context"] = _graph_lines
                     except Exception as _g_err:
                         import logging as _glog
 
@@ -456,10 +531,71 @@ async def agent_run(
                 }
                 for c in (agent_result.citations or [])
             ]
+            # MVP: Reading Companion / all agents expose sources[] (出处) for UI
+            sources = []
+            for c in citations:
+                if not c.get("substrate_id"):
+                    continue
+                sources.append(
+                    {
+                        "substrate_id": c["substrate_id"],
+                        "title": c.get("title") or c["substrate_id"],
+                        "fragment_id": c.get("fragment_id"),
+                        "deep_link": c.get("deep_link")
+                        or f"stratum://substrate/{c['substrate_id']}",
+                        "snippet": None,
+                    }
+                )
+            # Enrich snippets from DB for companion answers
+            if agent_name == "reading_companion" and sources:
+                try:
+                    from stratum.db import query as _q
+                    from stratum.services.search_anchors import locate_anchor
+
+                    ids = [s["substrate_id"] for s in sources[:8]]
+                    rows = _q(
+                        "SELECT id, title FROM substrates WHERE id = ANY(%(ids)s)",
+                        {"ids": ids},
+                    )
+                    title_map = {r["id"]: r.get("title") for r in rows}
+                    crows = _q(
+                        """SELECT DISTINCT ON (substrate_id) substrate_id, content
+                           FROM derivative
+                           WHERE substrate_id = ANY(%(ids)s)
+                             AND content IS NOT NULL AND content <> ''
+                           ORDER BY substrate_id,
+                             CASE WHEN kind='markdown' THEN 0
+                                  WHEN kind LIKE 'translation%%zh%%' THEN 1 ELSE 2 END""",
+                        {"ids": ids},
+                    )
+                    content_map = {r["substrate_id"]: r["content"] or "" for r in crows}
+                    for s in sources:
+                        if title_map.get(s["substrate_id"]):
+                            s["title"] = title_map[s["substrate_id"]]
+                        full = content_map.get(s["substrate_id"], "")
+                        if full:
+                            anch = locate_anchor(full, None)
+                            s["snippet"] = anch.get("snippet") or full[:300]
+                            if anch.get("paragraph_index") is not None:
+                                if not s["fragment_id"]:
+                                    s["fragment_id"] = f"p{anch['paragraph_index']}"
+                                s["deep_link"] = (
+                                    f"stratum://substrate/{s['substrate_id']}"
+                                    f"#p{anch['paragraph_index']}"
+                                )
+                except Exception:
+                    pass
+            # Companion without citations is a soft failure signal
+            if agent_name == "reading_companion" and not sources:
+                final_status = "completed_no_sources"
+            findings = agent_result.output
+            if isinstance(findings, dict):
+                findings = {**findings, "sources": sources}
             result = {
                 "status": final_status,
-                "findings": agent_result.output,
+                "findings": findings,
                 "citations": citations,
+                "sources": sources,  # MVP 强制出处字段
                 "error": agent_result.error,
                 "trace": [
                     {"step": s.step_num, "tool": s.tool_name, "duration_ms": s.duration_ms}
@@ -568,9 +704,13 @@ async def list_agent_runs(agent_name: str, user_id: str = Depends(jwt_auth)):
 async def debug_providers(_: str = Depends(jwt_auth)):
     """Temporary: introspect live provider + module state for illustration_agent diagnosis."""
     import sys as _sys
-    from obase import ProviderRegistry as _PR
 
     info: dict = {}
+    try:
+        from obase import ProviderRegistry as _PR
+    except ImportError:  # pragma: no cover — 平台包仅部署于容器
+        info["error"] = "3O platform unavailable (no /opt/platform)"
+        return info
     # ProviderRegistry state
     info["registered_providers"] = [f"{c}:{n}" for c, n in _PR.list_providers()]
     wanx = _PR._providers.get(("image_gen", "wanxiang"))

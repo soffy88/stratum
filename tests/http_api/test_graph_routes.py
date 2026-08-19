@@ -8,6 +8,19 @@ import pytest
 import duckdb
 from unittest.mock import patch, MagicMock
 
+try:
+    import oprim  # noqa: F401
+
+    _HAS_OPRIM = True
+except ImportError:
+    _HAS_OPRIM = False
+
+# graph_builder_service imports oprim at module level; the platform package
+# only exists in the Docker image (no /opt/platform on dev hosts).
+requires_oprim = pytest.mark.skipif(
+    not _HAS_OPRIM, reason="oprim platform package not installed (Docker image only)"
+)
+
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -107,6 +120,7 @@ def test_get_entity_neighbors_empty(graph_db):
 
 # ── graph_builder_service unit test ───────────────────────────────────────────
 
+@requires_oprim
 @pytest.mark.asyncio
 async def test_build_graph_from_substrate_no_derivative():
     """Returns zeros when no markdown derivative exists."""
@@ -123,6 +137,7 @@ async def test_build_graph_from_substrate_no_derivative():
     assert result == {"entities_added": 0, "relations_added": 0}
 
 
+@requires_oprim
 @pytest.mark.asyncio
 async def test_build_graph_llm_extract(graph_db):
     """Mocked llm_call returns fixed JSON; verifies upsert calls."""

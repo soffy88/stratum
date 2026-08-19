@@ -33,3 +33,21 @@ export const listDocuments = (params?: {
 
 export const getDerivatives = (substrateId: string) =>
   apiClient.get<Derivative[]>(`/api/v1/documents/${substrateId}/derivatives`).then(r => r.data);
+
+export async function deleteDocument(id: string): Promise<boolean> {
+  try {
+    await apiClient.delete(`/api/v1/documents/${id}`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function reprocessDocument(id: string): Promise<{ status: string } | null> {
+  try {
+    const r = await apiClient.post<{ status: string }>(`/api/v1/documents/${id}/reprocess`);
+    return r.data;
+  } catch {
+    return null;
+  }
+}

@@ -23,6 +23,16 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+: "${RCLONE_PROXY=http://127.0.0.1:7890}"
+if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
+  export HTTPS_PROXY="${RCLONE_PROXY}" HTTP_PROXY="${RCLONE_PROXY}"
+  # ★本地/tailscale 服务(embed 100.119.113.90:8102 / postgres)必须直连:
+  #   缺 NO_PROXY 会让 embed 请求也走代理 → sing-box 拨号回环/内网失败
+  #   → "aii-embed unreachable ... 502" 整章 FAILED(2026-08-09 事故根因)
+  export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+  export no_proxy="${NO_PROXY}"
+fi
+
 PY=.venv/bin/python
 ECON_QUAL_DIR="${ECON_QUAL_DIR:-econ_pipeline/qual}"
 ECON_CKPT_DIR="${ECON_CKPT_DIR:-econ_pipeline/ckpts}"
@@ -122,17 +132,18 @@ import asyncio, asyncpg, os; from dotenv import load_dotenv; from pathlib import
 load_dotenv(Path('aii/.env'))
 async def chk():
     c = await asyncpg.connect(os.getenv('DATABASE_URL'))
-    # 已完整入库: ku_onto KU数 > 100(flywheel产出规模) 且 BU已生成
-    r = await c.fetchrow('SELECT (SELECT count(*) FROM aii.ku_onto WHERE substrate_id=\$1) AS ku, (SELECT count(*) FROM aii.bu_onto WHERE substrate_id=\$1) AS bu', '$SUBSTRATE')
+    # 已完整入库: ingested_substrate 已登记(register.py 末端标记) 且 BU已生成
+    # (KU>100 阈值只对经济学大书成立; misc书KU常<100 → 以登记表为准)
+    r = await c.fetchrow('SELECT (SELECT count(*) FROM aii.ingested_substrate WHERE substrate_id=\$1) AS reg, (SELECT count(*) FROM aii.bu_onto WHERE substrate_id=\$1) AS bu', '$SUBSTRATE')
     await c.close()
-    if r and (r['ku'] or 0) > 100 and (r['bu'] or 0) > 0:
+    if r and (r['reg'] or 0) > 0 and (r['bu'] or 0) > 0:
         print('yes')
     else:
         print('no')
 asyncio.run(chk())
 " 2>/dev/null || echo "no")
         if [ "$ALREADY" = "yes" ]; then
-            echo "  ✅ 已完整入库(KU>100且BU已生成), 跳过(FORCE=0)"
+            echo "  ✅ 已完整入库(已登记且BU已生成), 跳过(FORCE=0)"
             N_SKIP=$((N_SKIP + 1))
             RESULTS[$SUBSTRATE]="SKIP:already_ingested"
             continue
@@ -141,39 +152,7 @@ asyncio.run(chk())
 
     # ── R1-R9 预检(md 结构质量门) ──
     echo "  [预检] R1-R9 章节结构检查..."
-    PRECHECK_RESULT=$($PY -c "
-import sys; sys.path.insert(0, 'scripts'); sys.path.insert(0, '.')
-# 内联 strip_frontmatter(避免 import run_first3 引入 omodul 依赖)
-def strip_frontmatter(text):
-    if text.startswith('---'):
-        end = text.find('\n---', 3)
-        if end != -1:
-            return text[text.find('\n', end + 1) + 1:]
-    return text
-from aii.service.md_quality_check import check_md_quality
-import json
-try:
-    text = strip_frontmatter(open('$MD_PATH', encoding='utf-8', errors='replace').read())
-    q = check_md_quality(text, medium='book', title='$ECON_TITLE')
-    if q['ok']:
-        print('PASS')
-    else:
-        # ★中文书: 仅 chapter_structure(R1英文 # Chapter N:)失败 且有中文章节(第N章)≥3 → PASS_ZH
-        from chapter_ingest import chapter_starts
-        n = len(chapter_starts(text))
-        nonch = [f for f in q['hard_failures'] if f['check'] != 'chapter_structure']
-        if not nonch and n >= 3:
-            print(f'PASS_ZH:{n}章')
-        else:
-            fails = '; '.join(f[\"check\"]+\":\"+f[\"detail\"][:50] for f in q['hard_failures'])
-            print(f'FAIL:{fails}')
-except Exception as e:
-    # R1检查可能失败(中文书无英文章节标题) → 改用章节数量检查
-    from chapter_ingest import chapter_starts
-    text2 = open('$MD_PATH', encoding='utf-8', errors='replace').read()
-    n = len(chapter_starts(text2))
-    print(f'PASS_ZH:{n}章') if n >= 3 else print(f'FAIL:章节数不足({n}章)<3')
-" 2>/dev/null || echo "FAIL:预检脚本错误")
+    PRECHECK_RESULT=$($PY scripts/misc_precheck.py "$MD_PATH" "$ECON_TITLE" 2>/dev/null || echo "FAIL:预检脚本错误")
 
     if [[ "$PRECHECK_RESULT" == FAIL* ]]; then
         echo "  ❌ 预检失败($PRECHECK_RESULT) → 不进管道"
@@ -222,6 +201,20 @@ except Exception as e:
         N_PIPELINE_OK=$((N_PIPELINE_OK + 1))
         RESULTS[$SUBSTRATE]="PASS:registered"
         echo "  ✅ 已入正式库: $SUBSTRATE"
+        # ★P2(2026-08-12): 生成 KU 证据审查 HTML(字符级高亮, 人工抽查 A 仓质量用)
+        $PY scripts/ku_visualize.py --substrate "$SUBSTRATE" --limit 60 \
+            --out "$(dirname "$QUAL_JSON" 2>/dev/null || echo econ_pipeline/qual)/${SUBSTRATE}_ku_review.html" 2>/dev/null \
+            || echo "  ⚠ KU 审查 HTML 生成失败(非致命)"
+        # ★用户指令(2026-07-23): 抽完KU的源MD是资产, 不能只留本地——按本地MD池子分类
+        # (经济学/中文数学/英文数学/其它)同名归档到Drive。不删本地, 失败下轮 econ_register
+        # 幂等重跑时不会再碰这段(只在本次成功分支跑一次), 但下次批量遇到同名文件 rclone
+        # 会按checksum跳过, 不重复上传。
+        MD_SUBJECT_DIR=$(basename "$(dirname "$MD_PATH")")
+        if rclone copy "$MD_PATH" "gdrive-rw:aii-已入库源MD/$MD_SUBJECT_DIR/" --drive-chunk-size 64M 2>/dev/null; then
+            echo "  📦 已归档源MD到 Drive(aii-已入库源MD/$MD_SUBJECT_DIR/)"
+        else
+            echo "  ⚠ 归档到 Drive 失败(本地MD保留, 不影响入库结果)"
+        fi
     else
         # ── 质量门报警 → 隔离等人工 ──
         echo "  🚨 质量门报警(exit=$PIPE_EXIT) → 隔离等人工审查"

@@ -14,33 +14,48 @@ dependencies = [
     "structlog>=24.0",
     "tenacity>=8.0",
     "rich>=13.0",
+    # Runtime stack imported unconditionally by stratum.api / stratum.db /
+    # stratum.auth — kept in sync with deploy/Dockerfile.sl.
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.30",
+    "httpx",
+    "python-multipart",
+    "email-validator",
+    "mcp>=1.27,<2",
+    "psycopg2-binary",
+    "duckdb>=1.0",
+    "numpy",
+    "argon2-cffi",
+    "PyJWT",
+    "apscheduler",
 ]
 
 [project.optional-dependencies]
 # 以下为预期依赖, 实际选型见批 2 实证结果
 # [PENDING_VALIDATION]
 ingest-pdf = [
-    "pymupdf4llm",
+    "docling>=2,<3",  # MIT — 默认 PDF 解析器 (表格+代码保留), 替换 AGPL pymupdf4llm
+    "pymupdf4llm",    # AGPL — 仅作 fallback, 镜像内可选裁剪
     # "unstructured",  # 实证后选一
     # "marker-pdf",
 ]
 ingest-epub = ["ebooklib", "beautifulsoup4"]
 ingest-webpage = ["trafilatura"]
 indexing = [
-    "duckdb>=1.0",
     "pyarrow>=16.0",
     # "tantivy",          # 实证后定
     # "qdrant-client",    # 实证后定
 ]
-servers = [
-    "fastapi>=0.110",
-    "uvicorn>=0.30",
-    # "mcp>=0.9",         # 实证后定 SDK
-]
+
+# Dev/test tooling. `uv sync` installs this group by default; httpx2 is
+# required by the patched starlette TestClient used in the route tests.
+[dependency-groups]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio",
     "pytest-cov",
+    "pytest-timeout",
+    "httpx2",
     "ruff>=0.6",
     "mypy>=1.10",
 ]

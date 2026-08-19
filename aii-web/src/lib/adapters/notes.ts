@@ -96,3 +96,25 @@ export function useNote(noteId: string) {
     error: query.error,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Mutations for the (app)/notes page (edit content / delete)
+// Backend NoteUpdate expects { content_markdown } — see routers/notes.py.
+// ---------------------------------------------------------------------------
+export async function updateNote(id: string, content: string): Promise<boolean> {
+  try {
+    await apiClient.put(`/api/v1/notes/${id}`, { content_markdown: content });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteNote(id: string): Promise<boolean> {
+  try {
+    await apiClient.delete(`/api/v1/notes/${id}`);
+    return true;
+  } catch {
+    return false;
+  }
+}

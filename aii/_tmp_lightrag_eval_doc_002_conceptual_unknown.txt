@@ -1,0 +1,30 @@
+# G → ∞ double asymptotics framework
+
+Type: conceptual | Subject: unknown
+
+The G → ∞ double asymptotics framework is a theoretical tool where the number of groups (*G*) grows infinitely large, allowing researchers to study the properties of statistical estimators (like average treatment effects or variance components) under conditions that mirror real-world complexity. Here, "double" refers to analyzing how estimates behave as both *G* (groups) *and* other parameters (e.g., sample sizes within groups) grow large simultaneously. This framework is critical when groups are interdependent (e.g., due to "donor sharing," where multiple groups receive treatments from a common source), which creates correlated errors that standard methods might mishandle.
+Gloss for high-schooler: Imagine studying how a vaccine’s effectiveness varies across hospitals. If hospitals share patients or resources (like "donor sharing"), their results aren’t independent. The *G → ∞* framework lets us mathematically model how conclusions (e.g., "is the vaccine effective?") stabilize or change as we include more and more hospitals, even when hospitals influence each other.
+Rigorous Statement ():
+The framework analyzes asymptotic properties (e.g., consistency, asymptotic normality) of estimators as *G → ∞*, where *G* denotes the number of groups in a finite-population setup. For SDID (Synthetic DiD) models, this involves:
+1. Projection of group effects: Estimating *γ*∗ = argmin_γ ∑_{g∈T} (τ_g - W_g⊤γ)^2, the finite-population best linear predictor of group-level treatment effects (τ_g) onto covariates (W_g).
+2. Variance decomposition: Estimating between-group variance (*V*), covariance (*C*), and explained share (*R²*) of group effects.
+3. Donor-sharing dependence: Groups are not independent due to shared donors (e.g., a single donor affecting multiple treatment groups), inducing heteroskedastic, correlated noise. The framework extends leave-out algebra for quadratic forms (Kline et al., 2020) to handle projection matrices dependent on estimated weights.
+The framework addresses three key challenges:
+1. Dependence across groups: Donor sharing creates correlated errors, violating standard independence assumptions.
+2. Estimated weights: SDID uses estimated weights (e.g., from a first-stage regression), requiring extensions to algebraic tools (e.g., leave-out estimators) that assume known weights.
+3. Non-distributional guarantees: The framework allows valid inference (confidence intervals, hypothesis tests) without assuming normality or other parametric distributions.
+Gloss for high-schooler:
+If hospitals share patients, their results aren’t truly independent—even if we don’t know exactly how they’re connected. The *G → ∞* framework helps us account for this hidden "noise" and still trust our conclusions, even when we don’t know the exact structure of the connections.
+Rigorous Statement ():
+Existing methods (e.g., FIRC random effects, Kline et al.) assume independent groups or known noise distributions.
+This paper’s framework relaxes these assumptions by modeling heteroskedastic, donor-sharing-dependent noise and deriving estimation error bounds as *G → ∞*.
+It enables joint inference on *γ*∗, *V*, *C*, *R²* without distributional assumptions, using a moment system integrated with group-wise crossfitting (e.g., leaving out groups to debias estimates).
+The framework proceeds via double asymptotics (letting *G* and potentially other parameters grow together) and robust algebraic adjustments:
+2. Donor-sharing adjustments: The covariance of first-stage noise (from estimated weights) is modeled as dependent across groups due to donor sharing, with variance components estimated via leave-out techniques.
+3. Moment system integration: Combines first- and second-moment conditions (e.g., projection onto W_g and variance decomposition) into a single system, enabling simultaneous estimation and inference.
+Gloss for high-schooler:
+Think of it like a multi-step recipe: First, we adjust our tools (like statistical formulas) to account for the fact that our initial estimates (e.g., of treatment effects) are "noisy" because groups overlap. Second, we use a method akin to cross-validation (leaving out some groups temporarily) to reduce bias. Third, we combine all these steps into a unified system that lets us accurately measure both the average effect and how much it varies across groups.
+Rigorous Statement ():
+Leave-out algebra extension: For quadratic form *Q = ∑_{g} (y_g - X_gβ̂)²*, the variance is adjusted via *Q = Q - ̂Q_{lo} + correction*, where ̂Q_{lo} uses leave-out estimators to account for estimated weights.
+Donor-dependent covariance: The noise covariance matrix Σ_g has entries Σ_{g,g’} = Cov(ε_g, ε_g’) ≠ 0 if groups g and g’ share donors.
+Group-wise crossfitting: Groups are split into folds, with estimation and inference conducted by rotating which fold is left out, ensuring robustness to donor-sharing structures.
