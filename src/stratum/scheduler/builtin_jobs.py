@@ -1,26 +1,42 @@
 """Scheduler builtin job definitions (Phase 15 P1-B1).
 
-3 real workflows registered as cron jobs.
-4 stub agents (translation_worker/reading_companion/lint_bot/audio_generator)
-NOT registered — they return 501; running them on schedule would always fail.
-reading_companion is manual-only (no cron).
+All 12 agents (3 omodul workflows + 5 Agent-class + researcher + 3 native) are
+activated — no 501 stubs remain (obase v0.9.0 activated audio_generator TTS).
+
+NOTE: BUILTIN_JOBS below is reference documentation only. Real scheduling is
+DB-driven: users create rows in scheduled_jobs_sl (CRUD router keeps APScheduler
+in sync via runtime.sync_job). New users get two native defaults seeded
+automatically on first list (see scheduled_jobs.py `list_jobs`):
+  - daily_digest_simple  08:00 Asia/Shanghai (日报, native, no omodul)
+  - knowledge_lint       02:00 Asia/Shanghai (Lint, native, no omodul)
+These are omodul-free so they work on any deployment.
 """
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from omodul.daily_digest_workflow import (
-    DailyDigestConfig,
-    DailyDigestInput,
-    daily_digest_workflow,
-)
-from omodul.weekly_review_workflow import (
-    WeeklyReviewConfig,
-    WeeklyReviewInput,
-    weekly_review_workflow,
-)
-from omodul.process_inbox_substrate import InboxConfig, InboxInput, process_inbox_substrate
+# 3O 平台包仅部署于容器 /opt/platform（dev 副本在 /platform），本机可能没有。
+# 必须保证 import 本模块不崩；平台缺失时 execute_builtin_job 返回 status='failed'。
+try:
+    from omodul.daily_digest_workflow import (
+        DailyDigestConfig,
+        DailyDigestInput,
+        daily_digest_workflow,
+    )
+    from omodul.weekly_review_workflow import (
+        WeeklyReviewConfig,
+        WeeklyReviewInput,
+        weekly_review_workflow,
+    )
+    from omodul.process_inbox_substrate import InboxConfig, InboxInput, process_inbox_substrate
+
+    _HAS_OMODUL = True
+except ImportError:  # pragma: no cover — 平台包仅部署于容器
+    _HAS_OMODUL = False
+    DailyDigestConfig = DailyDigestInput = daily_digest_workflow = None
+    WeeklyReviewConfig = WeeklyReviewInput = weekly_review_workflow = None
+    InboxConfig = InboxInput = process_inbox_substrate = None
 
 BUILTIN_JOBS: list[dict[str, Any]] = [
     {
@@ -54,6 +70,14 @@ def _output_dir(user_id: str, job_name: str) -> Path:
 def execute_builtin_job(job: dict[str, Any], user_id: str = "system") -> dict:
     """Run a builtin job synchronously. Called by APScheduler or run-now."""
     name = job["agent_name"]
+
+    # 3 个内置 job 全部依赖 omodul 平台包——缺失时直接返回失败，不触碰文件系统
+    if not _HAS_OMODUL:
+        return {
+            "status": "failed",
+            "error": f"omodul platform package unavailable (no /opt/platform); job '{name}' requires it",
+        }
+
     out_dir = _output_dir(user_id, name)
     out_dir.mkdir(parents=True, exist_ok=True)
 

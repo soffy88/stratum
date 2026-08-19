@@ -40,7 +40,10 @@ def app():
     async def refresh():
         return {"ok": True}
 
-    @_app.get("/api/data")
+    # Stratum's own routes live under /api/v1/* — anything else under /api/*
+    # is classified as an AII route (API-key gated), so use the v1 prefix to
+    # exercise the api_default window.
+    @_app.get("/api/v1/data")
     async def data():
         return {"ok": True}
 
@@ -79,14 +82,14 @@ def test_login_blocks_over_limit(app):
 
 def test_api_default_allows_under_limit(app):
     for _ in range(60):
-        r = app.get("/api/data")
+        r = app.get("/api/v1/data")
         assert r.status_code == 200
 
 
 def test_api_default_blocks_over_limit(app):
     for _ in range(60):
-        app.get("/api/data")
-    r = app.get("/api/data")
+        app.get("/api/v1/data")
+    r = app.get("/api/v1/data")
     assert r.status_code == 429
 
 

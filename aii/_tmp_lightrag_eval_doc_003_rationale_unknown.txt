@@ -1,0 +1,40 @@
+# Construction of ill-conditioned matrices using logarithmically spaced singular values
+
+Type: rationale | Subject: unknown
+
+Construction of Ill-Conditioned Matrices Using Logarithmically Spaced Singular Values
+Plain-language gloss:
+Ill-conditioned matrices: Matrices where small changes in input can cause large, unpredictable changes in output. They are "sensitive" and hard for algorithms to handle.
+Singular values: Numbers that describe how a matrix stretches or shrinks space in different directions. A matrix with both very large and very small singular values is ill-conditioned.
+Logarithmically spaced sequences: A set of numbers where the gaps between them grow exponentially (e.g., 1, 0.1, 0.01, 0.001). This creates a wide range of values.
+Rigorous statement:
+In Chapter 4, matrices \( A \in \mathbb{R}^{m \times n} \) and \( B \in \mathbb{R}^{r \times n} \) are constructed to be ill-conditioned by assigning singular values that are logarithmically spaced between \( 1 \) and \( 10^{-3} \) (Section 4.1) or \( 1 \) and \( 10^{-2} \) (Section 4.2). For example:
+Random Gaussian matrices are generated.
+QR factorization orthogonalizes these matrices (ensuring columns are perpendicular and unit-length).
+Singular values are explicitly set to values like \( \{1, 10^{-1}, 10^{-2}, \dots, 10^{-3}\} \), creating a spectrum with extreme variation.
+This ensures the matrices amplify numerical instability, testing optimization algorithms’ robustness.
+Plain-language gloss:
+Ill-conditioned matrices simulate "worst-case" scenarios for algorithms. By deliberately creating matrices with extreme singular value ranges, researchers can:
+1. Highlight differences in algorithm performance (e.g., stability, convergence speed).
+2. Ensure methods work reliably even under adverse numerical conditions.
+Rigorous statement:
+The chapter states that ill-conditioning "amplifies differences in stability and robustness between optimization algorithms". For instance:
+In Section 4.1 (\( n = 500, m = 50, r = 100 \)), ill-conditioned \( A \) and \( B \) test how algorithms handle sparse, rank-deficient systems.
+In Section 4.2 (\( m = 100, n = 500 \)), ill-conditioned \( A \) ensures the problem is "strictly feasible" but numerically challenging, mimicking real-world inverse problems (e.g., compressed sensing).
+Plain-language gloss:
+1. Generate random Gaussian matrices: Fill matrices with numbers from a normal distribution (like heights of people in a population).
+2. QR factorization: A process to split a matrix into two parts: one with perpendicular columns (\( Q \)) and another triangular (\( R \)).
+3. Assign logarithmic singular values: Replace the original singular values with a pre-defined sequence spanning many orders of magnitude.
+Rigorous statement:
+Step-by-step construction:
+1. Random Gaussian matrices: Draw entries of \( A \) and \( B \) independently from a standard normal distribution.
+2. QR orthogonalization: Apply QR decomposition to \( A \) and \( B \), yielding orthogonal matrices \( Q_A \) and \( Q_B \).
+3. Set singular values: Define singular values \( \sigma_i \) as a logarithmically spaced sequence:
+\[
+\sigma_i = 10^{-3 \cdot (i-1)/(\min(m,n)-1)} \quad \text{for } i = 1, \dots, \min(m,n)
+\]
+For example, if \( \min(m,n) = 100 \), \( \sigma_1 = 1, \sigma_2 = 10^{-0.03}, \dots, \sigma_{100} = 10^{-3} \).
+4. Form final matrices: Combine orthogonal basis \( Q \) with diagonal singular value matrix \( \Sigma \) to get \( A = Q_A \Sigma_A \) and \( B = Q_B \Sigma_B \).
+\[
+\sigma_i = 10^{-3 \cdot (i-1)/(\min(m,n)-1)} \quad \forall i
+\]

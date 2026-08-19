@@ -97,6 +97,11 @@ NVRM: GPU 0000:01:00.0: GPU has fallen off the bus.
 - 重启前建议先确认没有其它重要的、未保存状态的工作跑在这台host上(这台机器同时扛着经济学/数学飞轮以外的一大堆容器: aegis/helios/tide/quant/selene/mneme等)
 - GPU恢复后, `aii-ocr-daemon` 需要手动 `systemctl --user start aii-ocr-daemon` 才会重新开始(不会自愈启动, 这是刻意的——不想在GPU状态不明时又自动开始猛跑)
 
+## 2026-08-13 体检/同步链路修复（评估修复）
+
+- **b_repo_sync.sh embed 端点失配修复**：`ensure_embed()` 原指向本机 `127.0.0.1:8102` 并尝试 `systemctl --user start aii-embed`——自 embed 迁笔记本后（100.68.226.13:8102），每日 04:30 timer 触发必失败（embed 不可达 + 本机单元 disabled 起不来）。已对齐其他飞轮脚本：默认走 `http://100.68.226.13:8102`，不可达时直接报错不再尝试启动本机单元。手动小批量验证通过（embed/readout 正常）。附带发现 m0 步骤偶发 `numpy AxisError: axis 1 out of bounds`（WARN 降级不阻塞，待查）。
+- **pipeline_health_check.sh 覆盖扩到 11 个服务**（新增 extract/gdrive-mount/advmath/cs/edu/paper），ocr-vllm 降为 ⚠️（GPU 故障期刻意停用，不再误报 🚨）；清理 aii-embed/aii-ku-enrich/aii-b-repo-sync 三个 failed 残留（reset-failed）。
+
 ## 2026-07-06 10:25 GPU故障后续: 已重启host, 但硬件仍未恢复 + aii-embed一度真实故障(已修) + aii-ocr-daemon被linger误唤醒(已再停)
 
 距06:35 Xid 79记录约4小时后发现host已被重启(`uptime`显示仅运行5分钟), 但`nvidia-smi`重启后依然报`Unable to determine the device handle`/`No devices were found`——**说明这次GPU故障不是简单的驱动挂起, `sudo systemctl reboot`这条"通常有效"的修复手段已经试过且未生效, 硬件层面的问题比预想的更严重**。
@@ -116,10 +121,39 @@ NVRM: GPU 0000:01:00.0: GPU has fallen off the bus.
 - OCR降并发(8→4)是否彻底解决OOM还没跑完全部45本验证过(GPU故障中断了验证), 需要GPU恢复后继续观察; 如果4还不够稳, 下一步应该是降`--gpu-memory-utilization`或`--max-num-seqs`而不是继续降并发(并发再降会拖慢~80min/大书的处理时间)
 - **GPU硬件故障: reboot已试过且未解决**(10:18已重启host, `nvidia-smi`仍不可用)——下一步不再是"要不要重启"的问题, 需要人工判断是否要开始查硬件本身(排线/PCIe插槽/电源, 甚至联系硬件支持), 这已超出软件层面能处理的范围
 - **aii-ocr-daemon的linger自启会覆盖人工stop的意图**(本次已复现一次): 若GPU长期不可用, 应考虑`systemctl --user disable aii-ocr-daemon`而非仅`stop`, 否则每次host重启都会重新空转重试`ocr-vllm`
+- **宿主机内存告急导致 econ-zh 飞轮持续 OOM kill**（2026-08-02 观察）: 30G RAM 用 24G、**31G swap 全满**；`aii-flywheel-econ-zh` 重启计数已达 45（今日 07:02–08:42 被 OOM kill 8 次），今日 0 KU 入库。内存大头是跨项目 `platform-postgres` 容器（8.8G，helios/selene/aegis 共享库），非 AII 代码问题。若要让 econ-zh 稳定跑，需要人工决定释放/限制内存（如给 platform-postgres 设内存上限、或暂时停掉非关键容器），或提高宿主 RAM/swap 上限——这超出 AII 软件层面可处理范围
 
 <!-- WATCHDOG:START -->
-## 🚨 Needs Human (看门狗自动维护, 2026-07-20T00:31:40Z)
+## 🚨 Needs Human (看门狗自动维护, 2026-08-13T01:33:42Z)
 
-- ✅ 无严重项 (overall=degraded)
+- ku-growth: 24h KU 增量=0(历史正常 400-700/天) — 产能停摆, 查飞轮/入库
 
 <!-- WATCHDOG:END -->
+
+---
+## 2026-08-06 运维加固（故障复盘 + 自愈挂载）
+
+### 故障链复盘
+- 8/2 主机重启 → /mnt/d(NTFS) 挂载失败(superblock 错误) → D 盘书源断料
+- ~/.stratum 悬空符号链接 → stratum-api/sl 容器 docker start 全部失败(mount source 报错)
+- 8/2-8/4 内存压力(30G 仅余 ~7G) → econ-zh/feeder/math-prog/paper 连环 OOM 重启
+- misc 飞轮存在手动 nohup 残留实例 → 与 systemd 实例双跑(8 并发同 key 打 NIM)
+  → 免费层限流 → ReadTimeout/504 重试风暴 → 章节合成失败 → 质量门整批隔离
+  → 7/27 后 ku_onto 零新增(235h 停滞, 8/6 04:38 检测)
+
+### 本次修复
+1. 单实例锁: 5 个 flywheel_run.sh 统一 flock(防双跑重演)
+2. NIM client timeout 240s→600s(_provider.py); 7 个 key 验证全有效
+3. 内存治理: 7 个服务加 MemoryMax=6G/MemoryHigh=4G
+4. aii-backend 拉起(on-failure 策略对 SIGTERM 不重启, 人工 start)
+5. 存量清洗: cleanup_ku_cid.py 清 2337 条 (cid:) 污染 + 字母粘连修复
+6. enrichment 二期: ku_enrich.py(intuition/insight/example/sources/fingerprint
+   + grade→moderate), 挂 aii-ku-enrich.timer 每 2h 300 条, 独立 key(advmath_verify)
+7. 自愈: aii-healer.timer 15min 一轮(服务重启/容器 docker start/D盘检测
+   /KU 新鲜度/飞轮心跳, 日志 aii_pipeline/healer.log)
+
+### 待人工(需 root)
+- sudo ntfsfix /dev/nvme0n1p1 && sudo mount /mnt/d   (挂载后 healer 自动拉起 stratum 容器)
+- 可选自动挂载: echo "soffy ALL=(root) NOPASSWD: /usr/bin/systemctl start mnt-d.mount, /bin/mount" \
+  | sudo tee /etc/sudoers.d/aii-healer
+- misc 质量门拦截 18 本 + advmath quarantine 129 本: 按既有规则人工 review 或放弃

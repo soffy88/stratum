@@ -1,11 +1,13 @@
 """Translation routes."""
 
 import asyncio
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from stratum.common import ensure_dir, jwt_auth, user_translations_dir
+from stratum.common import ensure_dir, generate_ulid, jwt_auth, user_translations_dir
 from stratum.db import read
+from stratum.utils.user_id_hash import hash_user_id
 
 router = APIRouter(prefix="/api/v1/translate", tags=["translate"])
 
@@ -26,7 +28,8 @@ async def translate_substrate(
     user_id: str = Depends(jwt_auth),
 ):
     sub = read("substrates", substrate_id)
-    if not sub or sub.get("user_id") != user_id:
+    uid = sub.get("user_id") if sub else None
+    if not sub or (uid != user_id and uid != hash_user_id(user_id)):
         raise HTTPException(404, "Substrate not found")
 
     if not _HAS_TRANSLATE:
@@ -38,7 +41,11 @@ async def translate_substrate(
 
     out_dir = ensure_dir(user_translations_dir(user_id))
     agent = TranslationWorkerAgent()
-    context = AgentContext(user_id=user_id, corpus_id=f"user_{user_id}")
+    context = AgentContext(
+        user_id=user_id,
+        agent_run_id=generate_ulid(),
+        invoked_at=datetime.now(timezone.utc),
+    )
     result = await asyncio.to_thread(
         asyncio.run,
         agent.run(

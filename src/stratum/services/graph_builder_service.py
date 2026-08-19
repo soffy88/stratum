@@ -1,11 +1,15 @@
-"""
-GraphRAG Stage A: 入库后从 derivative.content 抽实体+关系写入 graph_entities/graph_relations.
+"""GraphRAG Stage A: 入库后从 derivative.content 抽实体+关系写入 graph_entities/graph_relations.
 
 调用链（全 3O 主库元素，不动主库）:
   derivative.content (markdown)
   → oprim.structural_chunk → chunks
   → oprim.llm_call (抽实体+关系 JSON)
   → dao.graph.upsert_entity / upsert_relation
+
+集成优化:
+  - Paragraph-aware chunking (STRATUM_PARAGRAPH_CHUNKING=1)
+  - Agent Post-it 状态持久化 (Meta/states/graph_builder.json)
+  - Call chain tracking (防循环/防重复/最大深度3)
 """
 import asyncio
 import json
@@ -13,6 +17,7 @@ import logging
 import os
 from stratum.db import get_conn
 from stratum.dao.graph import upsert_entity, upsert_relation
+from stratum.services.agent_state import load_agent_state, save_agent_state
 
 log = logging.getLogger(__name__)
 
@@ -39,13 +44,20 @@ _MAX_CHUNKS = int(os.environ.get("STRATUM_GRAPH_MAX_CHUNKS", "20"))
 
 
 async def build_graph_from_substrate(substrate_id: str, user_id_hash: str) -> dict:
-    """
-    Main entry: read derivative.content, chunk, extract entities+relations via LLM,
-    write to graph tables.
-    Returns {"entities_added": N, "relations_added": M}
-    """
-    from oprim import structural_chunk
+    """Main entry: read derivative.content, chunk, extract entities+relations via LLM.
 
+    Returns {"entities_added": N, "relations_added": M}
+
+    Agent Post-it 状态追踪:
+      - 执行前: 加载 state
+      - 执行中: 更新 phase 和 step
+      - 执行后: 保存 entities_added/relations_added 到 data
+    """
+    state = load_agent_state("graph_builder")
+    state.phase = "extracting"
+    state.step = 0
+    state.data.setdefault("last_substrate_id", substrate_id)
+    save_agent_state(state)
     # 1. 读 markdown derivative
     with get_conn() as conn:
         row = conn.execute(
@@ -59,12 +71,20 @@ async def build_graph_from_substrate(substrate_id: str, user_id_hash: str) -> di
 
     content = row[0]
 
-    # 2. chunk（oprim.structural_chunk returns list of dicts with "content" key）
-    raw_chunks = structural_chunk(
-        text=content,
-        min_chars=500,
-        max_chars=_MAX_CHUNK_CHARS,
-    )
+    # 2. chunk — use paragraph-aware chunking by default (semantic boundaries)
+    use_paragraph_chunking = os.environ.get("STRATUM_PARAGRAPH_CHUNKING", "1") == "1"
+
+    if use_paragraph_chunking:
+        from stratum.services.paragraph_chunking import paragraph_chunk
+        raw_chunks = paragraph_chunk(content, min_chars=400, max_chars=_MAX_CHUNK_CHARS)
+    else:
+        from oprim import structural_chunk
+        raw_chunks = structural_chunk(
+            text=content,
+            min_chars=500,
+            max_chars=_MAX_CHUNK_CHARS,
+        )
+
     chunks: list[str] = []
     if raw_chunks:
         for c in raw_chunks:
@@ -129,4 +149,17 @@ async def build_graph_from_substrate(substrate_id: str, user_id_hash: str) -> di
 
     log.info("graph_builder: substrate=%s entities=%d relations=%d",
              substrate_id, entities_added, relations_added)
+
+    # Agent Post-it: save result
+    state = load_agent_state("graph_builder")
+    state.phase = "completed"
+    state.data["last_substrate_id"] = substrate_id
+    state.data["last_entities_added"] = entities_added
+    state.data["last_relations_added"] = relations_added
+    state.data["last_run_count"] = state.data.get("last_run_count", 0) + 1
+    if entities_added == 0 and relations_added == 0:
+        state.notes.append(f"[WARN] {substrate_id[:12]}: no entities extracted")
+    state.step = 0
+    save_agent_state(state)
+
     return {"entities_added": entities_added, "relations_added": relations_added}

@@ -1,0 +1,79 @@
+/**
+ * Adapter: stratum POST /api/v1/retrieve → multi-stage retrieval
+ */
+
+import { apiClient } from "@/lib/api-client";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export interface RetrieveOptions {
+  query: string;
+  substrate_ids?: string[];
+  max_results: number;
+  min_score: number;
+  use_rerank: boolean;
+}
+
+export interface RetrievalResult {
+  substrate_id: string;
+  ref_id?: string | null;
+  title: string;
+  score: number;
+  rerank_score: number | null;
+  l0_summary: string;
+  l1_summary: string | null;
+  source_path: string;
+  paragraph_index?: number | null;
+  deep_link?: string | null;
+}
+
+export interface TrajectoryStep {
+  phase: "coarse" | "expand" | "drill";
+  duration_ms: number;
+  result_count: number;
+  siblings_added?: number;
+}
+
+export interface RetrievalTrajectory {
+  steps: TrajectoryStep[];
+  total_ms: number;
+}
+
+export interface RetrieveResponse {
+  query: string;
+  results: RetrievalResult[];
+  trajectory: RetrievalTrajectory;
+  total_ms: number;
+}
+
+// ---------------------------------------------------------------------------
+// API call
+// ---------------------------------------------------------------------------
+
+export async function retrieve(
+  query: string,
+  opts?: Partial<RetrieveOptions>
+): Promise<RetrieveResponse | null> {
+  try {
+    const res = await apiClient.post<RetrieveResponse>("/api/v1/retrieve", {
+      query,
+      substrate_ids: opts?.substrate_ids,
+      max_results: opts?.max_results ?? 10,
+      min_score: opts?.min_score ?? 0.1,
+      use_rerank: opts?.use_rerank ?? true,
+    });
+    return {
+      ...res,
+      results: (res.results ?? []).map((item) => ({
+        ...item,
+        substrate_id: item.ref_id ?? item.substrate_id,
+        paragraph_index: item.paragraph_index ?? null,
+        deep_link: item.deep_link ?? null,
+      })),
+    };
+  } catch {
+    return null;
+  }
+}

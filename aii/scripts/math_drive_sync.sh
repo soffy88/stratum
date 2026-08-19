@@ -22,10 +22,12 @@ export PATH="$HOME/.local/bin:$PATH"
 : "${RCLONE_PROXY=http://127.0.0.1:7890}"
 if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
   export HTTPS_PROXY="${RCLONE_PROXY}" HTTP_PROXY="${RCLONE_PROXY}"
+  export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+  export no_proxy="${NO_PROXY}"
 fi
 
 RCLONE_REMOTE="${RCLONE_REMOTE:-gdrive}"
-DRIVE_FOLDER_ID="${DRIVE_FOLDER_ID:-1tbxwprHUfM0rjaCtTJGdGah70Pk2Wt-k}"
+DRIVE_PATH="${DRIVE_PATH:-books/数学}"
 DEST="${DEST:-/home/soffy/books/数学}"
 MAP="${DEST}/.driveid.json"
 
@@ -39,8 +41,8 @@ fi
 mkdir -p "${DEST}"
 
 # 1) 列目录(递归, 只文件), 拿到每个文件的 Drive ID → 写 基名→直链 映射
-echo "[drive_sync] 列举 Drive 文件夹 ${DRIVE_FOLDER_ID} …"
-LSJSON=$(rclone lsjson --drive-root-folder-id "${DRIVE_FOLDER_ID}" "${RCLONE_REMOTE}:" --files-only -R)
+echo "[drive_sync] 列举 Drive 文件夹 ${DRIVE_PATH} …"
+LSJSON=$(rclone lsjson "${RCLONE_REMOTE}:${DRIVE_PATH}" --files-only -R)
 python3 - "$MAP" <<PY
 import json, sys
 rows = json.loads('''${LSJSON}''')
@@ -62,9 +64,9 @@ PY
 FLAGS=(--include "*.pdf" --include "*.epub")
 if [ "${DRIVE_DRY:-0}" = "1" ]; then
   echo "[drive_sync] DRY: 将要拉取的新文件:"
-  rclone copy --drive-root-folder-id "${DRIVE_FOLDER_ID}" "${RCLONE_REMOTE}:" "${DEST}" "${FLAGS[@]}" --dry-run 2>&1 | grep -iE "copy|transfer" | head -50 || true
+  rclone copy "${RCLONE_REMOTE}:${DRIVE_PATH}" "${DEST}" "${FLAGS[@]}" --dry-run 2>&1 | grep -iE "copy|transfer" | head -50 || true
 else
   echo "[drive_sync] 拉取新文件到 ${DEST} …"
-  rclone copy --drive-root-folder-id "${DRIVE_FOLDER_ID}" "${RCLONE_REMOTE}:" "${DEST}" "${FLAGS[@]}" --stats-one-line
+  rclone copy "${RCLONE_REMOTE}:${DRIVE_PATH}" "${DEST}" "${FLAGS[@]}" --stats-one-line
 fi
 echo "[drive_sync] 完成。"

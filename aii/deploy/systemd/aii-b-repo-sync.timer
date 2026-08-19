@@ -1,0 +1,10 @@
+[Unit]
+Description=AII B仓增量同步 timer — 每日 04:30 (backup 03:15 之后)
+
+[Timer]
+OnCalendar=*-*-* 04:30:00
+Persistent=true
+AccuracySec=5min
+
+[Install]
+WantedBy=timers.target

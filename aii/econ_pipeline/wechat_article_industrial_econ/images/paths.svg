@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620">
+  <rect width="900" height="620" fill="#F7F3EA"/>
+  <text x="48" y="52" font-family="WenQuanYi Zen Hei, SimHei, sans-serif" font-size="26" font-weight="bold" fill="#3A352F">本书学习层 · 5 条能力路径</text>
+  <g font-family="WenQuanYi Zen Hei, SimHei, sans-serif">
+    <rect x="48" y="80" width="804" height="86" rx="10" fill="#FFFFFF" stroke="#CFC5B6" stroke-width="2"/>
+    <text x="76" y="116" font-size="20" font-weight="bold" fill="#8D7C64">01</text>
+    <text x="112" y="116" font-size="20" font-weight="bold" fill="#3A352F">从要素到增长——识别经济生产的根基与动力</text>
+    <text x="112" y="146" font-size="15" fill="#766E64">学完能解释资本、劳动、自然等要素如何驱动增长，并评估增长带来的成本与代价</text>
+    <rect x="48" y="186" width="804" height="86" rx="10" fill="#FFFFFF" stroke="#CFC5B6" stroke-width="2"/>
+    <text x="76" y="222" font-size="20" font-weight="bold" fill="#8D7C64">02</text>
+    <text x="112" y="222" font-size="20" font-weight="bold" fill="#3A352F">从分工到市场结构——判断竞争与垄断的边界</text>
+    <text x="112" y="252" font-size="15" fill="#766E64">学完能分析分工如何提升生产率，并区分完美竞争、自然垄断等市场形态</text>
+    <rect x="48" y="292" width="804" height="86" rx="10" fill="#FFFFFF" stroke="#CFC5B6" stroke-width="2"/>
+    <text x="76" y="328" font-size="20" font-weight="bold" fill="#8D7C64">03</text>
+    <text x="112" y="328" font-size="20" font-weight="bold" fill="#3A352F">用供求曲线预测价格与数量</text>
+    <text x="112" y="358" font-size="15" fill="#766E64">学完能根据需求定理和供给函数预测价格变动对供需量的影响</text>
+    <rect x="48" y="398" width="804" height="86" rx="10" fill="#FFFFFF" stroke="#CFC5B6" stroke-width="2"/>
+    <text x="76" y="434" font-size="20" font-weight="bold" fill="#8D7C64">04</text>
+    <text x="112" y="434" font-size="20" font-weight="bold" fill="#3A352F">拆解租金与工资的决定</text>
+    <text x="112" y="464" font-size="15" fill="#766E64">学完能回答租金由哪些因素决定，以及工资如何由劳动市场均衡决定</text>
+    <rect x="48" y="504" width="804" height="86" rx="10" fill="#FFFFFF" stroke="#CFC5B6" stroke-width="2"/>
+    <text x="76" y="540" font-size="20" font-weight="bold" fill="#8D7C64">05</text>
+    <text x="112" y="540" font-size="20" font-weight="bold" fill="#3A352F">透视报酬与货币的激励作用</text>
+    <text x="112" y="570" font-size="15" fill="#766E64">学完能解释管理报酬的激励逻辑，以及利息、货币供应如何影响经济</text>
+  </g>
+</svg>

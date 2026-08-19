@@ -7,8 +7,13 @@
   - 专业术语精确；不确定的术语在中文后括号附英文原词，如 '鞅(martingale)'
   - 不增删内容，不发挥
 
-翻译用 qwen3.5:9b via local Ollama。
+翻译用 qwen3-8b via local Ollama。
+(2026-07-25 修: 原写 qwen3.5:9b，本机 Ollama 从未装过这个模型 tag——
+`ollama list` 只有 qwen3-8b/qwen3-embedding/qwen2.5vl:3b/7b/llama3.2，
+该管线大概率从写完就没真正跑起来过，是 natural_text_zh 大批量缺失的
+根因之一。改指向本机实际存在的 qwen3-8b。)
 """
+
 from __future__ import annotations
 
 import logging
@@ -19,8 +24,8 @@ import requests
 logger = logging.getLogger(__name__)
 
 _OLLAMA_BASE = "http://localhost:11434"
-_MODEL = "qwen3.5:9b"
-_TIMEOUT = 300  # seconds — qwen3.5:9b cold start (model load) can take ~180s
+_MODEL = "qwen3-8b"
+_TIMEOUT = 300  # seconds — cold start (model load) can take ~180s
 
 # 含中日韩字符 → 本来就是中文，不需翻译
 _CJK_RE = re.compile(r"[一-龥぀-ヿ가-힣]")
@@ -55,17 +60,15 @@ def translate_ku_to_zh(natural_text: str, has_formula: bool = False) -> str:
 
     user_msg = text
     if has_formula:
-        user_msg = (
-            "【此条目含 LaTeX 公式，$...$内容不翻译】\n\n" + text
-        )
+        user_msg = "【此条目含 LaTeX 公式，$...$内容不翻译】\n\n" + text
 
     try:
         resp = requests.post(
             f"{_OLLAMA_BASE}/api/chat",
             json={
                 "model": _MODEL,
-                "think": False,      # disable extended thinking for latency
-                "keep_alive": "10m", # keep model warm during batch
+                "think": False,  # disable extended thinking for latency
+                "keep_alive": "10m",  # keep model warm during batch
                 "messages": [
                     {"role": "system", "content": _SYSTEM_PROMPT},
                     {"role": "user", "content": user_msg},
@@ -75,6 +78,16 @@ def translate_ku_to_zh(natural_text: str, has_formula: bool = False) -> str:
             },
             timeout=_TIMEOUT,
         )
+        if resp.status_code >= 400:
+            # 2026-07-26: 批量回填期间大量400, 此前只记异常字符串看不到body,
+            # 补上响应体方便定位(如 context 超限/参数不支持等)。
+            logger.warning(
+                "ku_translate: HTTP %s for '%s...': %s",
+                resp.status_code,
+                text[:40],
+                resp.text[:300],
+            )
+            return ""
         resp.raise_for_status()
         zh = resp.json()["message"]["content"].strip()
         # Strip thinking tags if model outputs them

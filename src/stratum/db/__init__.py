@@ -52,7 +52,7 @@ def _dsn_kwargs() -> dict[str, Any]:
         "password": os.environ.get("STRATUM_PG_PASSWORD", ""),
         "dbname": os.environ.get("STRATUM_PG_DB", "aii_kg"),
         # Resolve unqualified table names to the stratum schema (aii.* stays explicit).
-        "options": "-c search_path=stratum",
+        "options": "-c search_path=stratum,public",
     }
 
 
@@ -85,9 +85,12 @@ class _ConnWrapper:
         # `?` → `%s` (positional); `$name` → `%(name)s` (named). A query uses one
         # style, matching whether params is a tuple/list or a dict.
         if params is not None and "?" in sql:
-            sql = sql.replace("?", "%s")
+            # Escape literal `%` first (LIKE patterns e.g. 'translation%zh%'):
+            # psycopg2 would otherwise treat them as format specifiers.
+            sql = sql.replace("%", "%%").replace("?", "%s")
         elif "$" in sql:
-            sql = _to_pyformat(sql)
+            # Escape stray % (LIKE literals) but keep %(name)s markers intact.
+            sql = re.sub(r"%(?!\()", "%%", _to_pyformat(sql))
         cur = self._raw.cursor()
         cur.execute(sql, params)
         return cur
@@ -101,6 +104,12 @@ def _conn():
     try:
         raw.autocommit = True
         yield _ConnWrapper(raw)
+    except Exception:
+        try:
+            raw.rollback()
+        except Exception:
+            pass
+        raise
     finally:
         pool.putconn(raw)
 
@@ -109,8 +118,11 @@ get_conn = _conn
 
 
 def _serialize(v: Any) -> Any:
-    """Dicts → jsonb (psycopg2 Json adapter); lists pass through as PG arrays."""
+    """Dicts → jsonb (psycopg2 Json adapter); lists of dicts → jsonb too
+    (bare lists pass through as PG arrays, which can't adapt dict elements)."""
     if isinstance(v, dict):
+        return psycopg2.extras.Json(v)
+    if isinstance(v, list) and any(isinstance(x, dict) for x in v):
         return psycopg2.extras.Json(v)
     return v
 
@@ -136,6 +148,12 @@ def _cursor(commit: bool = False):
         cur = raw.cursor()
         try:
             yield cur
+        except Exception:
+            try:
+                raw.rollback()
+            except Exception:
+                pass
+            raise
         finally:
             cur.close()
     finally:
@@ -218,6 +236,13 @@ def update(table: str, rid: str, data: dict[str, Any], id_column: str = "id") ->
 def soft_delete(table: str, rid: str, deleted_at_column: str = "deleted_at") -> None:
     """SET deleted_at = NOW() for a row."""
     sql = f"UPDATE {table} SET {deleted_at_column} = NOW() WHERE id = %(rid)s"
+    with _cursor() as cur:
+        cur.execute(sql, {"rid": rid})
+
+
+def hard_delete(table: str, rid: str, id_column: str = "id") -> None:
+    """Permanently DELETE a row by id (MVP 真删)."""
+    sql = f"DELETE FROM {table} WHERE {id_column} = %(rid)s"
     with _cursor() as cur:
         cur.execute(sql, {"rid": rid})
 

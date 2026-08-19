@@ -14,7 +14,7 @@ echo "[3/8] 有向关系读出(讲透KU读出, 非N²judge)";           $PY scri
 echo "[4/8] 节点归一: 概念级有向→图 / KU内部逻辑→留KU";      $PY scripts/normalize_readout.py
 echo "[5/8] KU内部逻辑结构化(因果链+分解树) + 节点归一";      $PY scripts/structure_logic.py && $PY scripts/normalize_ku_logic_nodes.py
 echo "[6/8] 按章KC(中文主题名) + 双语簇摘要";                $PY scripts/persist_chapter_kc.py && $PY scripts/fix_kc_labels_summaries.py
-echo "[7/8] BU 书级理解(七项 + 忠实校验) 入库";              $PY scripts/generate_bu.py && $PY scripts/persist_bu.py
+echo "[7/8] BU 书级理解(七项 + 学习层 + 忠实校验) 入库";              $PY scripts/generate_bu.py && $PY scripts/persist_bu.py
 echo "[8/8] ★质量自检报告 + 报警阈值(→人工确认入正式库)";   $PY scripts/quality_report.py "${SUBSTRATE:-microecon_en_full_v2}"
 echo "════ 完成. 看质量自检报告: 0报警→人工确认; 有报警→人工核查 ════"
 # ───────────────────────────────────────────────────────────────────────

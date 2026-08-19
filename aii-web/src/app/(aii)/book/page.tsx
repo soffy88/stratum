@@ -10,7 +10,8 @@ import { OLoadingState, OErrorState } from '@helios/blocks';
 import { useApi } from '@/aii/hooks/useApi';
 import * as api from '@/aii/lib/api-client';
 import { MathText } from '@/aii/components/MathText';
-import type { BuData, BuFacets, BookInfo } from '@/aii/types/api';
+import { LearningLayer } from '@/aii/components/LearningLayer';
+import type { BuData, BuFacets, BookInfo, DeepCard, GroundedFacet, LearningPath } from '@/aii/types/api';
 
 const FACETS: { key: keyof BuFacets; label: string; icon: string }[] = [
   { key: 'soul', label: '一句话灵魂', icon: '◎' },
@@ -22,15 +23,24 @@ const FACETS: { key: keyof BuFacets; label: string; icon: string }[] = [
   { key: 'boundary', label: '诚实边界 / 不讲什么', icon: '∂' },
 ];
 
-function Facet({ label, icon, zh, en }: { label: string; icon: string; zh: string; en: string }) {
+function Facet({ label, icon, zh, en, grounded }: {
+  label: string; icon: string; zh: string; en: string; grounded?: GroundedFacet;
+}) {
   const [showEn, setShowEn] = useState(false);
+  const [showGrounding, setShowGrounding] = useState(true);
   // ★中文原书没有独立英文(与 zh 内容相同, 存储层 fallback 而非翻译)——不显示折叠。
   const hasSeparateEn = !!en && en.trim().length > 0 && en.trim() !== (zh ?? '').trim();
+  const evidenceLabel = { primary: '一手来源', corroborated: '多源印证', inference: '结构推断' }[grounded?.evidence ?? ''] ?? grounded?.evidence;
   return (
     <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--card)] p-4 flex flex-col gap-2">
       <div className="flex items-center gap-2">
         <span className="text-[color:var(--accent,#2563eb)] text-base">{icon}</span>
         <h3 className="text-sm font-semibold">{label}</h3>
+        {grounded && (
+          <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full border border-[color:var(--border)] text-[color:var(--text-secondary)]">
+            {evidenceLabel}
+          </span>
+        )}
       </div>
       <MathText text={zh} className="text-sm leading-relaxed" />
       {hasSeparateEn && (
@@ -43,6 +53,29 @@ function Facet({ label, icon, zh, en }: { label: string; icon: string; zh: strin
           </button>
           {showEn && (
             <MathText text={en} className="text-sm leading-relaxed text-[color:var(--text-secondary)] border-l-2 border-[color:var(--border)] pl-2" />
+          )}
+        </>
+      )}
+      {grounded && grounded.basis && (
+        <>
+          <button
+            onClick={() => setShowGrounding(v => !v)}
+            className="self-start text-xs text-[color:var(--text-secondary)] hover:text-[color:var(--accent,#2563eb)] flex items-center gap-1"
+          >
+            <span className="inline-block w-3">{showGrounding ? '▾' : '▸'}</span> 判断依据与原文核验
+            {grounded.ku_ids.length > 0 && <span className="opacity-70">· {grounded.ku_ids.length} KU</span>}
+          </button>
+          {showGrounding && (
+            <div className="flex flex-col gap-2 text-xs border-l-2 border-[color:var(--border)] pl-3">
+              <p className="text-[color:var(--text-secondary)] leading-relaxed">{grounded.basis}</p>
+              {grounded.excerpts.length > 0 && grounded.excerpts.map((x, i) => (
+                <blockquote key={i} className="m-0 border-l-2 border-[color:var(--accent,#2563eb)]/40 pl-2 text-[color:var(--text-secondary)] leading-relaxed line-clamp-3"
+                  title={x.locator}>
+                  {x.text}
+                  <cite className="block not-italic text-[10px] opacity-70 mt-1">{x.locator}</cite>
+                </blockquote>
+              ))}
+            </div>
           )}
         </>
       )}
@@ -101,9 +134,13 @@ export default function BookPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {FACETS.filter(f => f.key !== 'soul').map(f => (
               <Facet key={f.key} label={f.label} icon={f.icon}
-                zh={bu.facets_zh[f.key] || ''} en={bu.facets_en?.[f.key] || ''} />
+                zh={bu.facets_zh[f.key] || ''} en={bu.facets_en?.[f.key] || ''}
+                grounded={bu.facets_grounded?.find(g => g.key === f.key)} />
             ))}
           </div>
+
+          <LearningLayer substrate={bu.substrate_id}
+            paths={bu.learning_paths} cards={bu.deep_cards} quality={bu.bu_quality} />
         </>
       )}
     </div>
