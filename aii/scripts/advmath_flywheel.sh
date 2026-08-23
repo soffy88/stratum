@@ -45,7 +45,14 @@ export no_proxy="${NO_PROXY}"
 export CUDA_VISIBLE_DEVICES=""
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
-export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU)
+# ★嵌入走共享 aii-embed 微服务(笔记本GPU); 不可用时走本地 BGE-M3(CPU, 慢但可用)
+if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://100.119.113.90:8102}/health" >/dev/null 2>&1; then
+  export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"
+  echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
+else
+  unset AII_EMBED_URL
+  echo "  ▶ 远端 embed 不可用, 回退本地 BGE-M3(CPU)"
+fi
 export ECON_QUARANTINE_JSON="advmath_pipeline/quarantine.json"
 export ECON_BATCH_REPORT="advmath_pipeline/batch_report.json"
 export ECON_QUAL_DIR="advmath_pipeline/qual"

@@ -37,7 +37,14 @@ export HTTPS_PROXY="${https_proxy}"
 export CUDA_VISIBLE_DEVICES=""          # 嵌入走共享 aii-embed, 不占本机 GPU
 # HF offline 由 aii/aii/.env 提供(HF_HUB_OFFLINE=1), 此处不重复设防覆盖
 
-export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"
+# ★嵌入走共享 aii-embed 微服务(笔记本GPU); 不可用时走本地 BGE-M3(CPU, 慢但可用)
+if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://100.119.113.90:8102}/health" >/dev/null 2>&1; then
+  export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"
+  echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
+else
+  unset AII_EMBED_URL
+  echo "  ▶ 远端 embed 不可用, 回退本地 BGE-M3(CPU)"
+fi
 
 mkdir -p paper_pipeline
 
