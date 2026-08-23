@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_f3a15da6ec",
+  "title": "[当代经济学系列丛书]微观经济学：现代观点 (第九版) (（美）哈尔·R.范里安著   费方域,朱保华等译)",
+  "md_path": "/home/soffy/books/MD/经济学/[当代经济学系列丛书]微观经济学：现代观点 (第九版) (（美）哈尔·R.范里安著   费方域,朱保华等译).md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-05T03:04:26.613481+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_f3a15da6ec.json",
+  "status": "pending_review"
+}

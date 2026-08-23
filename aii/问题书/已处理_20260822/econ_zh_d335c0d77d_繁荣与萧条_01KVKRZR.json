@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_d335c0d77d",
+  "title": "繁荣与萧条_01KVKRZR",
+  "md_path": "/home/soffy/books/MD/经济学/繁荣与萧条_01KVKRZR.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽1仅8%×预期12(基准~10/章×1章) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+  "ts": "2026-07-31T02:57:19.860623+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_d335c0d77d.json",
+  "status": "pending_review"
+}

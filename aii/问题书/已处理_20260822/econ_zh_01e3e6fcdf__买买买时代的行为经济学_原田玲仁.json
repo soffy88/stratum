@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_01e3e6fcdf",
+  "title": "[买买买时代的行为经济学]原田玲仁",
+  "md_path": "/home/soffy/books/MD/经济学/[买买买时代的行为经济学]原田玲仁.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-11T06:49:20.511587+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_01e3e6fcdf.json",
+  "status": "pending_review"
+}

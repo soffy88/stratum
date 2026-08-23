@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_ba1e1ec4e3",
+  "title": "演化博弈论__问题导向的策略互动模型",
+  "md_path": "/home/soffy/books/MD/经济学/演化博弈论__问题导向的策略互动模型.md",
+  "reason_type": "pipeline_error",
+  "reason_detail": "管道步骤失败(exit 2)",
+  "ts": "2026-07-31T00:26:49.069710+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_ba1e1ec4e3.json",
+  "status": "pending_review"
+}

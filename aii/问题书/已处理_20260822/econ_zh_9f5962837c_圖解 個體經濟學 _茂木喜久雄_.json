@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_9f5962837c",
+  "title": "圖解 個體經濟學 (茂木喜久雄)",
+  "md_path": "/home/soffy/books/MD/经济学/圖解 個體經濟學 (茂木喜久雄).md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽1仅8%×预期12(基准~10/章×1章) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+  "ts": "2026-07-30T20:30:19.141757+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_9f5962837c.json",
+  "status": "pending_review"
+}

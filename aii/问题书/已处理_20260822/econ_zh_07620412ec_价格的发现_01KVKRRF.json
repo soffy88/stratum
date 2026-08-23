@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_07620412ec",
+  "title": "价格的发现_01KVKRRF",
+  "md_path": "/home/soffy/books/MD/经济学/价格的发现_01KVKRRF.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "完整率0%<100%(漏知识点: []) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+  "ts": "2026-07-07T13:50:42.462417+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_07620412ec.json",
+  "status": "pending_review"
+}

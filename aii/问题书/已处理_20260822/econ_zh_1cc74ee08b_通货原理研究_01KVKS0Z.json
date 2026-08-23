@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_1cc74ee08b",
+  "title": "通货原理研究_01KVKS0Z",
+  "md_path": "/home/soffy/books/MD/经济学/通货原理研究_01KVKS0Z.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽3仅15%×预期20(基准~10/章×2章) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+  "ts": "2026-07-31T05:45:53.121892+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_1cc74ee08b.json",
+  "status": "pending_review"
+}

@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_04f261fef5",
+  "title": "叙事经济学_01KVKRSM",
+  "md_path": "/home/soffy/books/MD/经济学/叙事经济学_01KVKRSM.md",
+  "reason_type": "pipeline_error",
+  "reason_detail": "管道步骤失败(exit 2)",
+  "ts": "2026-07-07T15:05:56.530064+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_04f261fef5.json",
+  "status": "pending_review"
+}

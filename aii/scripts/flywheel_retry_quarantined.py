@@ -51,10 +51,10 @@ PIPELINE_CONFIGS = {
 # ── 可重试的隔离原因关键词 ──
 RETRYABLE_PATTERNS = [
     r"双语率\d+%<",           # bilingual rate too low → now fixed by translation step
-    r"KU密度不足: 实抽[1-9]", # KU density too low (but had SOME KUs) → relaxed thresholds
+    r"KU密度不足: 实抽\d+", # KU密度太低(但抽到了一些KU, 可重试) → relaxed thresholds
     r"rationale\(why\)=0",    # no rationale extracted → now fixed by stronger prompt
     r"低密度章过多",          # too many low-density chapters → now fixed by lower floor
-    r"完整率(9[0-9]|[5-8]\d)%<100%",  # completeness 50-99% (not 0%) → relaxed to 90%
+    r"完整率",                   # 完整率不足(含0%: 章节regex可能未命中, 但书有KU就值得重试; 0KU+0%会被下面非重试"实抽0仅0%"捕获)
 ]
 
 # ── 不可重试的隔离原因 ──
@@ -66,7 +66,7 @@ NON_RETRYABLE_PATTERNS = [
     r"源MD文件严重重复",      # source file corrupted
     r"章号重复",              # chapter duplication
     r"章号非连续",            # chapter gap
-    r"完整率0%",              # 0% completeness = chapter regex didn't match = structural
+    # 完整率0% 不再列入非重试: 可能只是章节regex未命中, 但书有KU(有内容) → 可重试
     r"实抽0仅0%",             # 0 KU extracted = synthesis failed entirely
 ]
 

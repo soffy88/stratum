@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_30b3e5fbfe",
+  "title": "资本主义、社会主义与民主_01KVKRYS",
+  "md_path": "/home/soffy/books/MD/经济学/资本主义、社会主义与民主_01KVKRYS.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽59仅31%×预期190(基准~10/章×19章) | 低密度章过多: 10章<3KU: ['Ch1(1KU)', 'Ch5(1KU)', 'Ch7(1KU)', 'Ch8(1KU)', 'Ch9(1KU)']",
+  "ts": "2026-07-31T05:00:06.123000+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_30b3e5fbfe.json",
+  "status": "pending_review"
+}

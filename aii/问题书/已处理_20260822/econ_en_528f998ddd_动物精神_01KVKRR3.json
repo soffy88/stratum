@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_en_528f998ddd",
+  "title": "动物精神_01KVKRR3",
+  "md_path": "/home/soffy/books/MD/经济学/动物精神_01KVKRR3.md",
+  "reason_type": "precheck",
+  "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+  "ts": "2026-07-07T14:45:32.591184+00:00",
+  "qual_json": "econ_pipeline/qual/econ_en_528f998ddd.json",
+  "status": "pending_review"
+}

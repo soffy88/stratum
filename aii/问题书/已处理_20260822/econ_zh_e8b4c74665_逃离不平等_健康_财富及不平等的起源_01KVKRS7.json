@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_e8b4c74665",
+  "title": "逃离不平等：健康、财富及不平等的起源_01KVKRS7",
+  "md_path": "/home/soffy/books/MD/经济学/逃离不平等：健康、财富及不平等的起源_01KVKRS7.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽2仅17%×预期12(基准~10/章×1章) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+  "ts": "2026-07-31T05:31:16.078886+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_e8b4c74665.json",
+  "status": "pending_review"
+}

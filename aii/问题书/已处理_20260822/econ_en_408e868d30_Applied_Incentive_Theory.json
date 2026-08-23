@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_en_408e868d30",
+  "title": "Applied_Incentive_Theory",
+  "md_path": "/home/soffy/books/MD/经济学/Applied_Incentive_Theory.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-04T20:49:21.982027+00:00",
+  "qual_json": "econ_pipeline/qual/econ_en_408e868d30.json",
+  "status": "pending_review"
+}

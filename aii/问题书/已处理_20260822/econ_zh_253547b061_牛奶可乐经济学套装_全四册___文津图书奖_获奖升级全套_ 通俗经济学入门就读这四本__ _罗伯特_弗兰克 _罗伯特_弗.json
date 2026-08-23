@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_253547b061",
+  "title": "牛奶可乐经济学套装（全四册）（“文津图书奖”获奖升级全套！ 通俗经济学入门就读这四本！） (罗伯特·弗兰克 [罗伯特·弗兰克])",
+  "md_path": "/home/soffy/books/MD/经济学/牛奶可乐经济学套装（全四册）（“文津图书奖”获奖升级全套！ 通俗经济学入门就读这四本！） (罗伯特·弗兰克 [罗伯特·弗兰克]).md",
+  "reason_type": "precheck",
+  "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+  "ts": "2026-07-06T17:30:25.147669+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_253547b061.json",
+  "status": "pending_review"
+}

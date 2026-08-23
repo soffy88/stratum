@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_85c1e848a6",
+  "title": "《道德情操论》亚当·斯密_01KVJQXC",
+  "md_path": "/home/soffy/books/MD/经济学/《道德情操论》亚当·斯密_01KVJQXC.md",
+  "reason_type": "pipeline_error",
+  "reason_detail": "管道步骤失败(exit 2)",
+  "ts": "2026-07-08T08:10:39.002257+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_85c1e848a6.json",
+  "status": "pending_review"
+}

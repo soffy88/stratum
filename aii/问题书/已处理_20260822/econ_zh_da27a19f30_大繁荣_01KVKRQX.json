@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_da27a19f30",
+  "title": "大繁荣_01KVKRQX",
+  "md_path": "/home/soffy/books/MD/经济学/大繁荣_01KVKRQX.md",
+  "reason_type": "precheck",
+  "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+  "ts": "2026-07-07T16:15:14.730170+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_da27a19f30.json",
+  "status": "pending_review"
+}

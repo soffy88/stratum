@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_41a64ad6d9",
+  "title": "[MBA轻松读：市场营销+经营战略+逻辑思维+组织管理+管理会计+金融学(套装共6册)]",
+  "md_path": "/home/soffy/books/MD/经济学/[MBA轻松读：市场营销+经营战略+逻辑思维+组织管理+管理会计+金融学(套装共6册)].md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-11T06:04:00.545372+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_41a64ad6d9.json",
+  "status": "pending_review"
+}

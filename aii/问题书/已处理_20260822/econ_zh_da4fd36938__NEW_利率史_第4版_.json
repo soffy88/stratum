@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_da4fd36938",
+  "title": "(NEW)利率史(第4版)",
+  "md_path": "/home/soffy/books/MD/经济学/(NEW)利率史(第4版).md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽4仅20%×预期20(基准~10/章×2章)",
+  "ts": "2026-07-30T18:28:56.067325+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_da4fd36938.json",
+  "status": "pending_review"
+}

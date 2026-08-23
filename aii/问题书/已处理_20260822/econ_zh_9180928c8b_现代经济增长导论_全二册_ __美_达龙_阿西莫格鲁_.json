@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_9180928c8b",
+  "title": "现代经济增长导论（全二册） (【美】达龙·阿西莫格鲁)",
+  "md_path": "/home/soffy/books/MD/经济学/现代经济增长导论（全二册） (【美】达龙·阿西莫格鲁).md",
+  "reason_type": "pipeline_error",
+  "reason_detail": "管道步骤失败(exit 2)",
+  "ts": "2026-08-01T13:10:53.663010+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_9180928c8b.json",
+  "status": "pending_review"
+}

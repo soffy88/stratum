@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_7ab0b69498",
+  "title": "[指数基金投资从入门到精通]老罗",
+  "md_path": "/home/soffy/books/MD/经济学/[指数基金投资从入门到精通]老罗.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-11T21:14:28.167798+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_7ab0b69498.json",
+  "status": "pending_review"
+}
