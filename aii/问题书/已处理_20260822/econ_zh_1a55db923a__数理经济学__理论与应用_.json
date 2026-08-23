@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_1a55db923a",
+  "title": "《数理经济学——理论与应用》",
+  "md_path": "/home/soffy/books/MD/经济学/《数理经济学——理论与应用》.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<99% | KU密度不足: 实抽0仅0%×预期12(基准~15/章×0章)",
+  "ts": "2026-07-14T19:52:03.676857+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_1a55db923a.json",
+  "status": "pending_review"
+}

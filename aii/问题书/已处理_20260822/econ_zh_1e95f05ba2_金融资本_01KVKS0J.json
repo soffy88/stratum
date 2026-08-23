@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_1e95f05ba2",
+  "title": "金融资本_01KVKS0J",
+  "md_path": "/home/soffy/books/MD/经济学/金融资本_01KVKS0J.md",
+  "reason_type": "pipeline_error",
+  "reason_detail": "管道步骤失败(exit 2)",
+  "ts": "2026-07-31T18:06:19.531101+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_1e95f05ba2.json",
+  "status": "pending_review"
+}

@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_142946e849",
+  "title": "RBC之ABC_动态宏观经济模型入门 (George McCandless)",
+  "md_path": "/home/soffy/books/MD/经济学/RBC之ABC_动态宏观经济模型入门 (George McCandless).md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽4仅13%×预期30(基准~10/章×3章)",
+  "ts": "2026-07-30T19:38:47.046607+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_142946e849.json",
+  "status": "pending_review"
+}

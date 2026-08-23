@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_en_4b04aad52d",
+  "title": "After Neoliberalism",
+  "md_path": "/home/soffy/books/MD/经济学/After Neoliberalism.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-09T09:04:53.039369+00:00",
+  "qual_json": "econ_pipeline/qual/econ_en_4b04aad52d.json",
+  "status": "pending_review"
+}

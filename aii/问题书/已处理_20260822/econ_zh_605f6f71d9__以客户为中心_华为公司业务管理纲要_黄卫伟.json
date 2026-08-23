@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_605f6f71d9",
+  "title": "[以客户为中心：华为公司业务管理纲要]黄卫伟",
+  "md_path": "/home/soffy/books/MD/经济学/[以客户为中心：华为公司业务管理纲要]黄卫伟.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-10T17:36:38.763534+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_605f6f71d9.json",
+  "status": "pending_review"
+}

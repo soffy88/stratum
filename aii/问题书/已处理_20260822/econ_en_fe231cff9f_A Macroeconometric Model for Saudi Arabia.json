@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_en_fe231cff9f",
+  "title": "A Macroeconometric Model for Saudi Arabia",
+  "md_path": "/home/soffy/books/MD/经济学/A Macroeconometric Model for Saudi Arabia.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽1仅10%×预期10(基准~10/章×1章) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+  "ts": "2026-08-10T03:36:08.298819+00:00",
+  "qual_json": "econ_pipeline/qual/econ_en_fe231cff9f.json",
+  "status": "pending_review"
+}
