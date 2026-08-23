@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_951acc33fe",
+  "title": "[史玉柱自述：我的营销心得]优米网",
+  "md_path": "/home/soffy/books/MD/经济学/[史玉柱自述：我的营销心得]优米网.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-10T18:27:30.038921+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_951acc33fe.json",
+  "status": "pending_review"
+}

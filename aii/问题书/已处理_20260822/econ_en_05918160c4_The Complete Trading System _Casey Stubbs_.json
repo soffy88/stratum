@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_en_05918160c4",
+  "title": "The Complete Trading System (Casey Stubbs)",
+  "md_path": "/home/soffy/books/MD/经济学/The Complete Trading System (Casey Stubbs).md",
+  "reason_type": "precheck",
+  "reason_detail": "FAIL:chapter_dup:章号重复(正文混入目录副本?): 共22个/去重13个",
+  "ts": "2026-07-23T13:40:35.507459+00:00",
+  "qual_json": "econ_pipeline/qual/econ_en_05918160c4.json",
+  "status": "pending_review"
+}

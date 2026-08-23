@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_c17913c054",
+  "title": "好的经济学（《贫穷的本质》作者诺贝尔经济学奖得主新作，解决当今世界的棘手问题，共_01KVM1QD",
+  "md_path": "/home/soffy/books/MD/经济学/好的经济学（《贫穷的本质》作者诺贝尔经济学奖得主新作，解决当今世界的棘手问题，共_01KVM1QD.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽7仅12%×预期60(基准~10/章×6章) | 低密度章过多: 6章<3KU: ['Ch2(1KU)', 'Ch3(2KU)', 'Ch4(1KU)', 'Ch5(1KU)', 'Ch6(1KU)']",
+  "ts": "2026-07-30T21:27:49.909493+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_c17913c054.json",
+  "status": "pending_review"
+}

@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_6b2c62a4fb",
+  "title": "經濟學的思考方式：經濟學大師寫給大眾的入門書_(湯瑪斯‧索維爾（Thomas_S_01KVA3Q9",
+  "md_path": "/home/soffy/books/MD/经济学/經濟學的思考方式：經濟學大師寫給大眾的入門書_(湯瑪斯‧索維爾（Thomas_S_01KVA3Q9.md",
+  "reason_type": "pipeline_error",
+  "reason_detail": "管道步骤失败(exit 2)",
+  "ts": "2026-07-07T20:31:15.013066+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_6b2c62a4fb.json",
+  "status": "pending_review"
+}

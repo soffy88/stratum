@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_f6c7071a5f",
+  "title": "中信经济中国大家系列（套装共14册）",
+  "md_path": "/home/soffy/books/MD/经济学/中信经济中国大家系列（套装共14册）.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽29仅29%×预期100(基准~10/章×10章)",
+  "ts": "2026-07-30T20:27:27.794344+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_f6c7071a5f.json",
+  "status": "pending_review"
+}

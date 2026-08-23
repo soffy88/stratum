@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_a51261636f",
+  "title": "当代经济学系列丛书当代经济学译库 （多部诺奖经济学家经典著作，国内最早大规模系统引进和介绍现代经济学理论的大型丛书，新一代经济学人必读） ( etc.) (1)",
+  "md_path": "/home/soffy/books/MD/经济学/当代经济学系列丛书当代经济学译库 （多部诺奖经济学家经典著作，国内最早大规模系统引进和介绍现代经济学理论的大型丛书，新一代经济学人必读） ( etc.) (1).md",
+  "reason_type": "precheck",
+  "reason_detail": "FAIL:chapter_gap:章号非连续 1..N: [9]",
+  "ts": "2026-07-06T16:26:12.074067+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_a51261636f.json",
+  "status": "pending_review"
+}

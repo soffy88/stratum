@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_c6914e14f7",
+  "title": "经济运行的真相 (高善文)",
+  "md_path": "/home/soffy/books/MD/经济学/经济运行的真相 (高善文).md",
+  "reason_type": "pipeline_error",
+  "reason_detail": "管道步骤失败(exit 2)",
+  "ts": "2026-08-01T01:00:02.441805+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_c6914e14f7.json",
+  "status": "pending_review"
+}
