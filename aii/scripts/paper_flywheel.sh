@@ -21,6 +21,7 @@ PAPER_WORKERS="${PAPER_WORKERS:-6}"   # ★2026-08-16 提速: 并发 worker 数(
 #   失败且无 fallback" → 被永久标记 precheck_fail。现对齐 econ/cs 飞轮: opencode-go 主 +
 #   NIM 兜底 + 本地服务 NO_PROXY(防 embed/postgres 502)。
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('econ_zh',''))" 2>/dev/null)"
+export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));ks=[d.get(k) for k in ('econ_zh','math_en','advmath_verify','econ','math_zh','advmath_2','advmath_3')];print(','.join(x for x in ks if x))" 2>/dev/null)"
 export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));print(','.join(x for x in (d.get('econ_zh'),d.get('math_en'),d.get('advmath_verify')) if x))" 2>/dev/null)"
 export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
 export OPENCODE_API_KEY=""  # 留空 → 读 ~/.pi/agent/opencode-keys.txt
