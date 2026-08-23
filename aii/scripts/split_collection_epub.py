@@ -22,6 +22,7 @@ import os
 import re
 import sys
 import zipfile
+from concurrent.futures import ProcessPoolExecutor, TimeoutError as FuturesTimeout
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -60,6 +61,13 @@ def is_collection_by_name(filename, title):
     return bool(patterns.search(text))
 
 
+def _read_epub_worker(path):
+    """子进程里读 epub — 防止大合集在父进程里读挂(D状态不可杀, 拖死整轮 pull_ingest)."""
+    import ebooklib
+    from ebooklib import epub
+    return epub.read_epub(path)
+
+
 def detect_collections():
     """扫描本地书目录, 返回 (epub_path, title, sections) 列表。
     
@@ -67,6 +75,10 @@ def detect_collections():
     1. 文件大小 > 20MB (普通教材很少这么大)
     2. 文件名/标题含合集关键词 (套装/全集/文集/共N册/Boxed Set等)
     3. TOC 有 ≥2 个顶层 Section (每个有 ≥3 个子项)
+    
+    ★2026-08-22 修复: epub.read_epub 在父进程里读大合集时曾卡入 D 状态
+    (磁盘IO挂起, 连 SIGKILL 都杀不掉, 单轮 pull_ingest 拖死 55 分钟)。
+    改到独立子进程读 + 120s 超时, 超时直接跳过该书(下轮 24h 后再试)。
     """
     try:
         import ebooklib
@@ -76,6 +88,7 @@ def detect_collections():
         return []
 
     results = []
+    pool = ProcessPoolExecutor(max_workers=1)
     for book_dir in BOOK_DIRS:
         if not os.path.isdir(book_dir):
             continue
@@ -86,7 +99,15 @@ def detect_collections():
                 continue
 
             try:
-                book = epub.read_epub(str(f))
+                fut = pool.submit(_read_epub_worker, str(f))
+                book = fut.result(timeout=120)
+            except FuturesTimeout:
+                # 子进程可能已卡 D 状态(磁盘IO挂起, SIGKILL 也杀不掉), 直接换新池:
+                # shutdown(wait=False) 立刻返回, 遗留的 D 状态子进程由内核在 I/O 恢复后自己结束。
+                log.warning("超时跳过(读epub>120s): %s", f.name[:50])
+                pool.shutdown(wait=False, cancel_futures=True)
+                pool = ProcessPoolExecutor(max_workers=1)
+                continue
             except Exception as e:
                 log.warning("读取失败 %s: %s", f.name[:50], e)
                 continue
@@ -133,6 +154,7 @@ def detect_collections():
                         f.name[:50], fsize // (1024 * 1024), len(top_links),
                     )
 
+    pool.shutdown(wait=False)
     return results
 
 
