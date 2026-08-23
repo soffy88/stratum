@@ -27,6 +27,7 @@ ADVMATH_LIMIT="${ADVMATH_LIMIT:-10}"
 
 # ★NIM key(math_en, 闲置——旧math_flywheel_en.sh已废弃, 见pipelines.py CHANNELS注释)
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('math_en',''))" 2>/dev/null)"
+export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));ks=[d.get(k) for k in ('econ_zh','math_en','advmath_verify','econ','math_zh','advmath_2','advmath_3')];print(','.join(x for x in ks if x))" 2>/dev/null)"
 # ★模型选型(2026-07-07实测对比, 见记忆/对话记录): 默认 meta/llama-3.1-70b-instruct 讲透
 # 内容干; nvidia/llama-3.3-nemotron-super-49b-v1.5 明显更好(讲解更充分, 公式/引用一个
 # 不少)——只对本频道生效(NIM_MODEL是per-process env, 不影响econ_zh/misc/math_prog各自

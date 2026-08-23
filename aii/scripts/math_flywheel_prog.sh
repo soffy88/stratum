@@ -39,6 +39,7 @@ for k in ('math_prog_verify', 'advmath_verify', 'math_zh', 'math_en'):
         print(d[k]); break
 " 2>/dev/null)"
 export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
+export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));ks=[d.get(k) for k in ('econ_zh','math_en','advmath_verify','econ','math_zh','advmath_2','advmath_3')];print(','.join(x for x in ks if x))" 2>/dev/null)"
 STAGING_BASE="scripts/_staging/math_prog"
 MIN_KU="${MATH_PROG_MIN_KU:-30}"        # DB 已有 >MIN_KU 视为已 B 过(小书靠下面的 .done 标记判断)
 

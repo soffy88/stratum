@@ -36,7 +36,7 @@ STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"   # 英文书来自本地文件�
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('econ',''))" 2>/dev/null)"
 # ★2026-08-10 多 key 池轮询: 单 key 免费层 40/min → misc 单进程 4 并发 + BU 撞车 → 781次504。
 #   池化 3 key = 120/min, 并发可提到 6。_provider.py 的 NIM_KEY_POOL 轮换实现。
-export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));print(','.join(x for x in (d.get('econ'),d.get('math_zh'),d.get('advmath_2')) if x))" 2>/dev/null)"
+export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));ks=[d.get(k) for k in ('econ_zh','math_en','advmath_verify','econ','math_zh','advmath_2','advmath_3')];print(','.join(x for x in ks if x))" 2>/dev/null)"
 
 # ★2026-08-10 opencode 网关 fallback: NIM 504 过载时切 gpt-5.6-sol(ChatGPT Codex key, 实测可用)
 export OPENCODE_API_KEY=""  # 留空 → 读 ~/.pi/agent/opencode-keys.txt
