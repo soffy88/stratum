@@ -8,8 +8,19 @@
 
 import os, re, sys, glob, subprocess
 import fitz  # pymupdf
+try:
+    fitz.TOOLS.mupdf_display_errors(False)  # 静音 EPUB HTML/CSS 解析噪音(immersive-translate 导出书 css 大量垃圾)
+except Exception:
+    pass
 from pathlib import Path
 from collections import Counter
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
+try:
+    from convert_analyze_cache import get as _cat_cache_get, put as _cat_cache_put  # noqa: E402
+except Exception:
+    _cat_cache_get = lambda _p: None
+    _cat_cache_put = lambda _p, _r: None
 
 SRC = os.getenv("CONVERT_SRC", "/home/soffy/books/其它")
 DST = os.getenv("CONVERT_DST", "/home/soffy/books/MD/其它")
@@ -74,13 +85,26 @@ def chapters(text):
     #   扩展教辅结构(单元/讲/课/节/部分)与 chapter_ingest 对齐。
     return len(
         re.findall(
-            r"(?m)^\s*#\s+Chapter\s+\d|^\s*第[一二三四五六七八九十百千0-9]+(章|单元|讲|课|节|部分|回|篇)|^\s*Chapter\s+\d",
+            r"(?m)^\s*#+\s*Chapter\s+\d|^\s*#+\s*第[一二三四五六七八九十百千0-9]+(章|单元|讲|课|节|部分|回|篇)|^\s*Chapter\s+\d",
             text,
         )
     )
 
 
 def analyze(path):
+    """查可转性(带缓存: 文件未变则直接用上次分类, 省掉每轮全量重扫)."""
+    stem = Path(path).stem
+    if matched(stem):
+        return ("已转", stem, None)
+    hit = _cat_cache_get(path)
+    if hit is not None:
+        return hit
+    res = _analyze_uncached(path)
+    _cat_cache_put(path, res)
+    return res
+
+
+def _analyze_uncached(path):
     stem = Path(path).stem
     if matched(stem):
         return ("已转", stem, None)
@@ -91,15 +115,18 @@ def analyze(path):
         txt = ""
         for p in range(0, min(npg, 60), 6):
             txt += d[p].get_text()
-        full = "".join(d[p].get_text() for p in range(npg))
+        if len(txt) / max(min(npg, 60) // 6, 1) < 200:
+            # ★2026-08-22 优化: 无文字层(扫描版)书早退, 不做全文采样(最慢的书全是这类)。
+            return ("需OCR(无文字层)", stem, npg)
+        # ★2026-08-22 修复: 原来全量抽取所有页(range(npg))对杂源大书拖垮 feeder 预算;
+        # 改首目录+均抽页采样(≤400页), 与全文判定一致(章节行密集分布)。
+        full = "".join(d[p].get_text() for p in range(0, min(npg, 400), 2))
     except Exception:
         # 个别PDF损坏字体表等会让pymupdf在读页时直接崩(不是open()阶段) ——
         # 同"打不开"处理, 不能让一本坏书拖垮整批(misc来源杂, 比math/econ更常见)
         return ("打不开", stem, None)
     txt_ratio = len(txt) / max(min(npg, 60) // 6, 1)
     nch = chapters(full)
-    if txt_ratio < 200:
-        return ("需OCR(无文字层)", stem, npg)
     if nch < 3:
         return ("无章节结构", stem, npg)
     return ("可转", stem, npg)
