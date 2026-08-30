@@ -9,8 +9,27 @@ jobs:
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: aii
+          POSTGRES_PASSWORD: aii_safe_pass
+          POSTGRES_DB: aii_kg
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd="pg_isready -U aii -d aii_kg"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
     env:
       JWT_SECRET: test-secret-for-sl-unit-tests-32x
+      STRATUM_PG_HOST: 127.0.0.1
+      STRATUM_PG_PORT: 5435
+      STRATUM_PG_USER: aii
+      STRATUM_PG_PASSWORD: aii_safe_pass
+      STRATUM_PG_DB: aii_kg
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -18,6 +37,16 @@ jobs:
         run: uv python install 3.12
       - name: Sync deps
         run: uv sync --frozen
+      - name: Check architecture boundaries
+        run: uv run python scripts/check_architecture.py
+      - name: Check AII naming convergence
+        run: uv run python scripts/check_aii_naming.py
+      - name: Validate SLO release-gate contract
+        run: uv run python scripts/check_slo_gate.py
+      - name: Bootstrap PostgreSQL schema and migrations
+        run: uv run python scripts/bootstrap_pg_schema.py
+      - name: Validate PostgreSQL release contract (019-028)
+        run: uv run python scripts/check_pg_acceptance.py
       - name: Run tests
         run: |
           uv run python -m pytest tests/ -q --timeout=600
@@ -43,7 +72,9 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Unit tests
         run: pnpm test -- --run
-      # 注: 无独立 type-check 门禁 — aii 页面 ~95 个 @helios/blocks 3.0 tsc 错由
-      # next.config ignoreBuildErrors 兜底(见 STATUS.md), 构建即最终门禁。
+      - name: Type check
+        run: pnpm run type-check
+      - name: Lint
+        run: pnpm run lint
       - name: Production build
         run: pnpm build
