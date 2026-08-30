@@ -1,0 +1,1202 @@
+[
+  {
+    "query_id": "q000",
+    "query": "市场均衡 marginal cost 解释",
+    "language": "mix",
+    "scope": "lexical",
+    "expected_source": "substrate_0",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q001",
+    "query": "边际成本 marginal cost 解释",
+    "language": "mix",
+    "scope": "concept",
+    "expected_source": "substrate_1",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q002",
+    "query": "需求弹性是什么",
+    "language": "zh",
+    "scope": "semantic",
+    "expected_source": "substrate_2",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q003",
+    "query": "产权理论 marginal cost 解释",
+    "language": "mix",
+    "scope": "learning",
+    "expected_source": "substrate_3",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q004",
+    "query": "机会成本是什么",
+    "language": "zh",
+    "scope": "note",
+    "expected_source": "substrate_4",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q005",
+    "query": "需求弹性是什么",
+    "language": "zh",
+    "scope": "lexical",
+    "expected_source": "substrate_5",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q006",
+    "query": "产权理论是什么",
+    "language": "zh",
+    "scope": "semantic",
+    "expected_source": "substrate_6",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q007",
+    "query": "产权理论 marginal cost 解释",
+    "language": "mix",
+    "scope": "lexical",
+    "expected_source": "substrate_7",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q008",
+    "query": "产权理论是什么",
+    "language": "zh",
+    "scope": "learning",
+    "expected_source": "substrate_8",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q009",
+    "query": "What is 交易费用 in economics?",
+    "language": "en",
+    "scope": "semantic",
+    "expected_source": "substrate_9",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q010",
+    "query": "市场均衡 marginal cost 解释",
+    "language": "mix",
+    "scope": "concept",
+    "expected_source": "substrate_10",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q011",
+    "query": "机会成本是什么",
+    "language": "zh",
+    "scope": "learning",
+    "expected_source": "substrate_11",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q012",
+    "query": "What is 供给定律 in economics?",
+    "language": "en",
+    "scope": "concept",
+    "expected_source": "substrate_12",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q013",
+    "query": "需求弹性是什么",
+    "language": "zh",
+    "scope": "concept",
+    "expected_source": "substrate_13",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q014",
+    "query": "需求弹性是什么",
+    "language": "zh",
+    "scope": "temporal",
+    "expected_source": "substrate_14",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q015",
+    "query": "What is 企业家精神 in economics?",
+    "language": "en",
+    "scope": "concept",
+    "expected_source": "substrate_15",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q016",
+    "query": "What is 交易费用 in economics?",
+    "language": "en",
+    "scope": "lexical",
+    "expected_source": "substrate_16",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q017",
+    "query": "机会成本 marginal cost 解释",
+    "language": "mix",
+    "scope": "lexical",
+    "expected_source": "substrate_17",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q018",
+    "query": "消费者剩余是什么",
+    "language": "zh",
+    "scope": "note",
+    "expected_source": "substrate_18",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q019",
+    "query": "生产可能性边界 marginal cost 解释",
+    "language": "mix",
+    "scope": "note",
+    "expected_source": "substrate_19",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q020",
+    "query": "需求弹性 marginal cost 解释",
+    "language": "mix",
+    "scope": "semantic",
+    "expected_source": "substrate_0",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q021",
+    "query": "边际成本是什么",
+    "language": "zh",
+    "scope": "learning",
+    "expected_source": "substrate_1",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q022",
+    "query": "What is 边际成本 in economics?",
+    "language": "en",
+    "scope": "lexical",
+    "expected_source": "substrate_2",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q023",
+    "query": "消费者剩余是什么",
+    "language": "zh",
+    "scope": "temporal",
+    "expected_source": "substrate_3",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q024",
+    "query": "What is 生产可能性边界 in economics?",
+    "language": "en",
+    "scope": "learning",
+    "expected_source": "substrate_4",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q025",
+    "query": "生产可能性边界是什么",
+    "language": "zh",
+    "scope": "concept",
+    "expected_source": "substrate_5",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q026",
+    "query": "消费者剩余是什么",
+    "language": "zh",
+    "scope": "learning",
+    "expected_source": "substrate_6",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q027",
+    "query": "需求弹性 marginal cost 解释",
+    "language": "mix",
+    "scope": "learning",
+    "expected_source": "substrate_7",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q028",
+    "query": "供给定律 marginal cost 解释",
+    "language": "mix",
+    "scope": "learning",
+    "expected_source": "substrate_8",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q029",
+    "query": "边际成本 marginal cost 解释",
+    "language": "mix",
+    "scope": "learning",
+    "expected_source": "substrate_9",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q030",
+    "query": "机会成本是什么",
+    "language": "zh",
+    "scope": "temporal",
+    "expected_source": "substrate_10",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q031",
+    "query": "What is 产权理论 in economics?",
+    "language": "en",
+    "scope": "learning",
+    "expected_source": "substrate_11",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q032",
+    "query": "生产可能性边界是什么",
+    "language": "zh",
+    "scope": "learning",
+    "expected_source": "substrate_12",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q033",
+    "query": "市场均衡是什么",
+    "language": "zh",
+    "scope": "semantic",
+    "expected_source": "substrate_13",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q034",
+    "query": "What is 消费者剩余 in economics?",
+    "language": "en",
+    "scope": "temporal",
+    "expected_source": "substrate_14",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q035",
+    "query": "企业家精神是什么",
+    "language": "zh",
+    "scope": "semantic",
+    "expected_source": "substrate_15",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q036",
+    "query": "边际成本 marginal cost 解释",
+    "language": "mix",
+    "scope": "concept",
+    "expected_source": "substrate_16",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q037",
+    "query": "机会成本 marginal cost 解释",
+    "language": "mix",
+    "scope": "temporal",
+    "expected_source": "substrate_17",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q038",
+    "query": "供给定律 marginal cost 解释",
+    "language": "mix",
+    "scope": "temporal",
+    "expected_source": "substrate_18",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q039",
+    "query": "What is 边际成本 in economics?",
+    "language": "en",
+    "scope": "semantic",
+    "expected_source": "substrate_19",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q040",
+    "query": "产权理论 marginal cost 解释",
+    "language": "mix",
+    "scope": "note",
+    "expected_source": "substrate_0",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q041",
+    "query": "What is 企业家精神 in economics?",
+    "language": "en",
+    "scope": "learning",
+    "expected_source": "substrate_1",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q042",
+    "query": "What is 机会成本 in economics?",
+    "language": "en",
+    "scope": "note",
+    "expected_source": "substrate_2",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q043",
+    "query": "What is 供给定律 in economics?",
+    "language": "en",
+    "scope": "semantic",
+    "expected_source": "substrate_3",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q044",
+    "query": "需求弹性 marginal cost 解释",
+    "language": "mix",
+    "scope": "temporal",
+    "expected_source": "substrate_4",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q045",
+    "query": "供给定律是什么",
+    "language": "zh",
+    "scope": "lexical",
+    "expected_source": "substrate_5",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q046",
+    "query": "机会成本 marginal cost 解释",
+    "language": "mix",
+    "scope": "semantic",
+    "expected_source": "substrate_6",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q047",
+    "query": "机会成本 marginal cost 解释",
+    "language": "mix",
+    "scope": "lexical",
+    "expected_source": "substrate_7",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q048",
+    "query": "What is 交易费用 in economics?",
+    "language": "en",
+    "scope": "note",
+    "expected_source": "substrate_8",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q049",
+    "query": "产权理论 marginal cost 解释",
+    "language": "mix",
+    "scope": "concept",
+    "expected_source": "substrate_9",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q050",
+    "query": "需求弹性是什么",
+    "language": "zh",
+    "scope": "learning",
+    "expected_source": "substrate_10",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q051",
+    "query": "消费者剩余 marginal cost 解释",
+    "language": "mix",
+    "scope": "note",
+    "expected_source": "substrate_11",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q052",
+    "query": "需求弹性 marginal cost 解释",
+    "language": "mix",
+    "scope": "concept",
+    "expected_source": "substrate_12",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q053",
+    "query": "What is 供给定律 in economics?",
+    "language": "en",
+    "scope": "temporal",
+    "expected_source": "substrate_13",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q054",
+    "query": "What is 消费者剩余 in economics?",
+    "language": "en",
+    "scope": "lexical",
+    "expected_source": "substrate_14",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q055",
+    "query": "产权理论 marginal cost 解释",
+    "language": "mix",
+    "scope": "semantic",
+    "expected_source": "substrate_15",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q056",
+    "query": "消费者剩余是什么",
+    "language": "zh",
+    "scope": "learning",
+    "expected_source": "substrate_16",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q057",
+    "query": "企业家精神 marginal cost 解释",
+    "language": "mix",
+    "scope": "note",
+    "expected_source": "substrate_17",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q058",
+    "query": "生产可能性边界是什么",
+    "language": "zh",
+    "scope": "semantic",
+    "expected_source": "substrate_18",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q059",
+    "query": "产权理论是什么",
+    "language": "zh",
+    "scope": "note",
+    "expected_source": "substrate_19",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q060",
+    "query": "生产可能性边界是什么",
+    "language": "zh",
+    "scope": "note",
+    "expected_source": "substrate_0",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q061",
+    "query": "What is 需求弹性 in economics?",
+    "language": "en",
+    "scope": "lexical",
+    "expected_source": "substrate_1",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q062",
+    "query": "What is 边际成本 in economics?",
+    "language": "en",
+    "scope": "concept",
+    "expected_source": "substrate_2",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q063",
+    "query": "企业家精神是什么",
+    "language": "zh",
+    "scope": "semantic",
+    "expected_source": "substrate_3",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q064",
+    "query": "交易费用是什么",
+    "language": "zh",
+    "scope": "lexical",
+    "expected_source": "substrate_4",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q065",
+    "query": "供给定律是什么",
+    "language": "zh",
+    "scope": "note",
+    "expected_source": "substrate_5",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q066",
+    "query": "交易费用是什么",
+    "language": "zh",
+    "scope": "learning",
+    "expected_source": "substrate_6",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q067",
+    "query": "消费者剩余 marginal cost 解释",
+    "language": "mix",
+    "scope": "semantic",
+    "expected_source": "substrate_7",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q068",
+    "query": "机会成本 marginal cost 解释",
+    "language": "mix",
+    "scope": "note",
+    "expected_source": "substrate_8",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q069",
+    "query": "边际成本是什么",
+    "language": "zh",
+    "scope": "note",
+    "expected_source": "substrate_9",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q070",
+    "query": "机会成本 marginal cost 解释",
+    "language": "mix",
+    "scope": "concept",
+    "expected_source": "substrate_10",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q071",
+    "query": "生产可能性边界 marginal cost 解释",
+    "language": "mix",
+    "scope": "learning",
+    "expected_source": "substrate_11",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q072",
+    "query": "What is 交易费用 in economics?",
+    "language": "en",
+    "scope": "note",
+    "expected_source": "substrate_12",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q073",
+    "query": "边际成本是什么",
+    "language": "zh",
+    "scope": "semantic",
+    "expected_source": "substrate_13",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q074",
+    "query": "市场均衡是什么",
+    "language": "zh",
+    "scope": "concept",
+    "expected_source": "substrate_14",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q075",
+    "query": "边际成本 marginal cost 解释",
+    "language": "mix",
+    "scope": "note",
+    "expected_source": "substrate_15",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q076",
+    "query": "市场均衡 marginal cost 解释",
+    "language": "mix",
+    "scope": "semantic",
+    "expected_source": "substrate_16",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q077",
+    "query": "市场均衡是什么",
+    "language": "zh",
+    "scope": "learning",
+    "expected_source": "substrate_17",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q078",
+    "query": "市场均衡是什么",
+    "language": "zh",
+    "scope": "lexical",
+    "expected_source": "substrate_18",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q079",
+    "query": "What is 产权理论 in economics?",
+    "language": "en",
+    "scope": "lexical",
+    "expected_source": "substrate_19",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q080",
+    "query": "交易费用是什么",
+    "language": "zh",
+    "scope": "concept",
+    "expected_source": "substrate_0",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q081",
+    "query": "供给定律是什么",
+    "language": "zh",
+    "scope": "note",
+    "expected_source": "substrate_1",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q082",
+    "query": "企业家精神 marginal cost 解释",
+    "language": "mix",
+    "scope": "note",
+    "expected_source": "substrate_2",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q083",
+    "query": "What is 交易费用 in economics?",
+    "language": "en",
+    "scope": "semantic",
+    "expected_source": "substrate_3",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q084",
+    "query": "What is 需求弹性 in economics?",
+    "language": "en",
+    "scope": "semantic",
+    "expected_source": "substrate_4",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q085",
+    "query": "机会成本是什么",
+    "language": "zh",
+    "scope": "learning",
+    "expected_source": "substrate_5",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q086",
+    "query": "What is 机会成本 in economics?",
+    "language": "en",
+    "scope": "temporal",
+    "expected_source": "substrate_6",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q087",
+    "query": "What is 市场均衡 in economics?",
+    "language": "en",
+    "scope": "learning",
+    "expected_source": "substrate_7",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q088",
+    "query": "需求弹性 marginal cost 解释",
+    "language": "mix",
+    "scope": "learning",
+    "expected_source": "substrate_8",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q089",
+    "query": "生产可能性边界是什么",
+    "language": "zh",
+    "scope": "temporal",
+    "expected_source": "substrate_9",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q090",
+    "query": "边际成本是什么",
+    "language": "zh",
+    "scope": "semantic",
+    "expected_source": "substrate_10",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q091",
+    "query": "交易费用是什么",
+    "language": "zh",
+    "scope": "note",
+    "expected_source": "substrate_11",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q092",
+    "query": "供给定律是什么",
+    "language": "zh",
+    "scope": "temporal",
+    "expected_source": "substrate_12",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q093",
+    "query": "What is 边际成本 in economics?",
+    "language": "en",
+    "scope": "temporal",
+    "expected_source": "substrate_13",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q094",
+    "query": "产权理论是什么",
+    "language": "zh",
+    "scope": "temporal",
+    "expected_source": "substrate_14",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q095",
+    "query": "产权理论是什么",
+    "language": "zh",
+    "scope": "lexical",
+    "expected_source": "substrate_15",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q096",
+    "query": "边际成本是什么",
+    "language": "zh",
+    "scope": "lexical",
+    "expected_source": "substrate_16",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q097",
+    "query": "交易费用是什么",
+    "language": "zh",
+    "scope": "temporal",
+    "expected_source": "substrate_17",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q098",
+    "query": "What is 机会成本 in economics?",
+    "language": "en",
+    "scope": "semantic",
+    "expected_source": "substrate_18",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  },
+  {
+    "query_id": "q099",
+    "query": "机会成本是什么",
+    "language": "zh",
+    "scope": "semantic",
+    "expected_source": "substrate_19",
+    "expected_citation_anchor": {
+      "paragraph_index": 0,
+      "char_start": 0
+    },
+    "user_scope": "user-alice"
+  }
+]
