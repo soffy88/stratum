@@ -29,6 +29,7 @@ RESULT_SCHEMA_FIELDS: set[str] = {
     "anchor_status",
     "deep_link",
     "substrate_id",
+    "fragment_id",
     "layer",
     "uri",
     "ref_id",
@@ -43,6 +44,9 @@ class KnowledgeViewRequest:
     user_id: str | None = None
     rerank: bool = False
     filters: dict[str, Any] = field(default_factory=dict)
+    # Internal evaluation/worker optimisation: callers may reuse a batch
+    # embedding, while the public API continues to derive it from ``query``.
+    query_embedding: list[float] | None = None
 
 
 @dataclass
@@ -64,6 +68,7 @@ class KnowledgeViewResult:
     layer: str | None = None
     uri: str | None = None
     ref_id: str | None = None
+    fragment_id: str | None = None
     provenance: dict[str, Any] | None = None  # Claim -> Evidence -> Fragment -> Source
 
     def to_dict(self) -> dict[str, Any]:
@@ -80,6 +85,7 @@ class KnowledgeViewResult:
             "anchor_status": self.anchor_status,
             "deep_link": self.deep_link,
             "substrate_id": self.substrate_id,
+            "fragment_id": self.fragment_id,
             "layer": self.layer,
             "uri": self.uri,
             "ref_id": self.ref_id,
@@ -123,6 +129,7 @@ def search_knowledge_view(req: KnowledgeViewRequest) -> dict[str, Any]:
         rerank=req.rerank,
         user_id=req.user_id or "default",
         namespace=namespace,
+        query_embedding=req.query_embedding,
     )
 
     # Normalize to KnowledgeViewResult stable schema
@@ -157,8 +164,11 @@ def search_knowledge_view(req: KnowledgeViewRequest) -> dict[str, Any]:
                 char_start=anchor.get("char_start"),
                 char_end=anchor.get("char_end"),
                 anchor_status="ok",
-                deep_link=f"stratum://substrate/{r.ref_id}#p{anchor.get('paragraph_index')}" if r.ref_id else r.uri,
+                deep_link=f"stratum://substrate/{r.ref_id}#p{anchor.get('paragraph_index')}"
+                if r.ref_id
+                else r.uri,
                 substrate_id=r.ref_id,
+                fragment_id=r.fragment_id,
                 layer=r.layer,
                 uri=r.uri,
                 ref_id=r.ref_id,

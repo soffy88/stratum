@@ -24,6 +24,8 @@ import logging
 import json
 import re
 import time
+import unicodedata
+from difflib import SequenceMatcher
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any
@@ -86,6 +88,7 @@ class RetrievalResult:
     score: float
     token_count: int = 0
     namespace: str = "global"  # global=权威库(B仓/项目) | personal=个人草稿
+    fragment_id: str | None = None
 
 
 @dataclass
@@ -272,6 +275,325 @@ def _text_search_layers(
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results[:top_k]
+
+
+# ── Canonical fragment/metadata channels ────────────────────────────────────
+
+
+def _normalise_retrieval_text(value: str | None) -> str:
+    """Normalise user text for exact/lexical retrieval without losing CJK."""
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", value or "").casefold()).strip()
+
+
+def _compact_retrieval_text(value: str | None) -> str:
+    """Remove punctuation/spacing for robust title and phrase comparisons."""
+    return re.sub(r"[^\w\u3400-\u9fff]+", "", _normalise_retrieval_text(value))
+
+
+def _retrieval_terms(value: str | None) -> list[str]:
+    """Return word terms plus CJK bigrams for punctuation/footnote-tolerant search."""
+    normalised = _normalise_retrieval_text(value)
+    terms = re.findall(r"[a-z0-9]+|[\u3400-\u9fff]+", normalised)
+    cjk_grams: list[str] = []
+    for term in terms:
+        if re.fullmatch(r"[\u3400-\u9fff]+", term) and len(term) >= 2:
+            cjk_grams.extend(term[i : i + 2] for i in range(len(term) - 1))
+    # Keep the original CJK terms first; bigrams make OCR footnotes and
+    # punctuation between characters searchable without a new tokenizer.
+    output: list[str] = []
+    for term in terms + cjk_grams:
+        if len(term) > 1 and term not in output:
+            output.append(term)
+    return output
+
+
+def _lexical_match_score(query: str, text: str) -> tuple[float, bool]:
+    """Score a fragment and report whether it is an exact/high-confidence hit."""
+    qcompact = _compact_retrieval_text(query)
+    tcompact = _compact_retrieval_text(text)
+    exact = bool(qcompact and len(qcompact) >= 4 and qcompact in tcompact)
+    terms = _retrieval_terms(query)
+    if not terms:
+        # Some OCR/PDF fixtures contain opaque control-character text. Keep
+        # those queries searchable without treating the corrupted string as a
+        # normal word: compare short windows after whitespace removal.
+        qopaque = "".join(_normalise_retrieval_text(query).split())
+        top_ratio = 0.0
+        if len(qopaque) >= 8:
+            compact_text = "".join(_normalise_retrieval_text(text).split())
+            window = len(qopaque) + 4
+            for start in range(0, max(len(compact_text) - len(qopaque) + 1, 1), 1):
+                candidate = compact_text[start : start + window]
+                top_ratio = max(
+                    top_ratio,
+                    SequenceMatcher(None, qopaque, candidate, autojunk=False).ratio(),
+                )
+            return top_ratio * 100.0, top_ratio >= 0.85
+        return 0.0, exact
+    matched = sum(1 for term in terms if term in tcompact)
+    coverage = matched / len(terms)
+    cjk_terms = [term for term in terms if re.fullmatch(r"[\u3400-\u9fff]+", term)]
+    cjk_coverage = (
+        sum(1 for term in cjk_terms if term in tcompact) / len(cjk_terms) if cjk_terms else 0.0
+    )
+    # A CJK phrase can have a footnote marker between two characters. Treat a
+    # high bigram-coverage match as an exact lexical signal, but not a generic
+    # one-token semantic match.
+    protected_phrase = bool(len(cjk_terms) >= 3 and cjk_coverage >= 0.75)
+    return (200.0 if exact else 0.0) + coverage * 10.0, exact or protected_phrase
+
+
+def _text_search_chunks(
+    query: str, top_k: int = 50, user_id: str | None = None
+) -> list[dict]:
+    """Search canonical substrate fragments with Unicode/CJK-aware lexical scoring."""
+    terms = _retrieval_terms(query)
+    uid, uh = _user_owner_ids(user_id)
+    owner_sql = ""
+    owner_params: list[Any] = []
+    if uid is not None:
+        owner_sql = " AND (s.user_id = ? OR s.user_id = ?)"
+        owner_params = [uid, uh]
+    # OR is deliberate: scoring/coverage is calculated in Python and the
+    # database only narrows the candidate set. CJK bigrams cover OCR footnotes.
+    search_terms = terms[:32]
+    conditions = " OR ".join("c.text ILIKE ?" for _ in search_terms)
+    params: list[Any] = [f"%{term}%" for term in search_terms]
+    params.extend(owner_params)
+    with get_conn() as conn:
+        try:
+            if conditions:
+                rows = conn.execute(
+                    f"""SELECT c.id, c.substrate_id, c.text, c.chunk_idx
+                        FROM substrate_chunk c
+                        JOIN substrates s ON s.id = c.substrate_id
+                        WHERE ({conditions}) {owner_sql}
+                        LIMIT ?""",
+                    tuple(params + [max(top_k * 20, 200)]),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    f"""SELECT c.id, c.substrate_id, c.text, c.chunk_idx
+                        FROM substrate_chunk c
+                        JOIN substrates s ON s.id = c.substrate_id
+                        WHERE c.text IS NOT NULL {owner_sql}
+                        LIMIT ?""",
+                    tuple(owner_params + [max(top_k * 100, 5000)]),
+                ).fetchall()
+        except Exception as exc:
+            logger.warning("text_search_chunks failed: %s", exc)
+            return []
+    results: list[dict] = []
+    seen_fragments: set[str] = set()
+    for fragment_id, substrate_id, content, chunk_idx in rows:
+        if fragment_id in seen_fragments:
+            continue
+        seen_fragments.add(fragment_id)
+        score, exact = _lexical_match_score(query, content or "")
+        if score <= 0:
+            continue
+        results.append(
+            {
+                "substrate_id": substrate_id,
+                "fragment_id": fragment_id,
+                "content": content or "",
+                "token_count": len(content or "") // 4,
+                "score": score,
+                "exact_match": exact,
+                "chunk_idx": chunk_idx,
+            }
+        )
+    results.sort(key=lambda item: (-item["score"], item["substrate_id"], item["fragment_id"]))
+    return results[:top_k]
+
+
+def _vector_search_chunks(
+    query_embedding: list[float], top_k: int = 50, user_id: str | None = None
+) -> list[dict]:
+    """Search canonical fragments whose BGE-M3 vectors are available."""
+    if not query_embedding:
+        return []
+    emb_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
+    uid, uh = _user_owner_ids(user_id)
+    owner_sql = ""
+    owner_params: tuple[Any, ...] = ()
+    if uid is not None:
+        owner_sql = " AND (s.user_id = ? OR s.user_id = ?)"
+        owner_params = (uid, uh)
+    with get_conn() as conn:
+        try:
+            rows = conn.execute(
+                f"""SELECT c.id, c.substrate_id, c.text, c.chunk_idx,
+                           1 - (c.embedding <=> ?::vector) AS score
+                    FROM substrate_chunk c
+                    JOIN substrates s ON s.id = c.substrate_id
+                    WHERE c.embedding IS NOT NULL {owner_sql}
+                    ORDER BY c.embedding <=> ?::vector
+                    LIMIT ?""",
+                (emb_str, *owner_params, emb_str, top_k),
+            ).fetchall()
+        except Exception as exc:
+            logger.warning("vector_search_chunks failed: %s", exc)
+            return []
+    return [
+        {
+            "substrate_id": row[1],
+            "fragment_id": row[0],
+            "content": row[2] or "",
+            "token_count": len(row[2] or "") // 4,
+            "score": float(row[4]),
+            "chunk_idx": row[3],
+        }
+        for row in rows
+    ]
+
+
+def _contains_query_phrase(query: str, phrase: str) -> bool:
+    """Match a canonical claim statement as a phrase, not a substring prefix."""
+    query_text = _normalise_retrieval_text(query)
+    phrase_text = _normalise_retrieval_text(phrase)
+    if not query_text or not phrase_text:
+        return False
+    pattern = re.escape(phrase_text).replace(r"\ ", r"\s+")
+    return bool(re.search(rf"(?<!\w){pattern}(?!\w)", query_text))
+
+
+def _claim_provenance_search(query: str, top_k: int = 20, user_id: str | None = None) -> list[dict]:
+    """Resolve exact canonical claim statements to their evidenced sources.
+
+    Claims are canonical records, not benchmark fixtures. This channel makes a
+    claim question retrievable through the existing Claim -> Evidence -> Source
+    provenance path instead of pretending the statement is present in a PDF's
+    title-only L0 summary.
+    """
+    uid, uh = _user_owner_ids(user_id)
+    owner_sql = ""
+    owner_params: tuple[Any, ...] = ()
+    if uid is not None:
+        owner_sql = """ AND (c.user_id = ? OR c.user_id = ?)
+                         AND (e.user_id = ? OR e.user_id = ?)
+                         AND (s.user_id = ? OR s.user_id = ?)"""
+        owner_params = (uid, uh, uid, uh, uid, uh)
+    with get_conn() as conn:
+        try:
+            rows = conn.execute(
+                f"""SELECT c.id, c.statement, e.substrate_id, e.quote
+                    FROM knowledge_claims c
+                    JOIN claim_evidence ce ON ce.claim_id = c.id
+                    JOIN evidence e ON e.id = ce.evidence_id
+                    JOIN substrates s ON s.id = e.substrate_id
+                    WHERE c.deleted_at IS NULL {owner_sql}
+                    ORDER BY c.id, e.id""",
+                owner_params,
+            ).fetchall()
+        except Exception as exc:
+            logger.warning("claim_provenance_search failed: %s", exc)
+            return []
+    results: list[dict] = []
+    seen: set[str] = set()
+    for claim_id, statement, substrate_id, quote in rows:
+        if substrate_id in seen or not _contains_query_phrase(query, statement or ""):
+            continue
+        seen.add(substrate_id)
+        results.append(
+            {
+                "substrate_id": substrate_id,
+                "content": quote or statement or "",
+                "token_count": len(quote or statement or "") // 4,
+                "score": 100.0,
+                "exact_match": True,
+                "claim_id": claim_id,
+                "channel": "claim",
+            }
+        )
+        if len(results) >= top_k:
+            break
+    return results
+
+
+def _title_metadata_search(query: str, top_k: int = 50, user_id: str | None = None) -> list[dict]:
+    """Search canonical source title/path metadata with exact-match protection."""
+    uid, uh = _user_owner_ids(user_id)
+    owner_sql = ""
+    owner_params: tuple[Any, ...] = ()
+    if uid is not None:
+        owner_sql = " WHERE (s.user_id = ? OR s.user_id = ?)"
+        owner_params = (uid, uh)
+    with get_conn() as conn:
+        try:
+            rows = conn.execute(
+                f"SELECT s.id, s.title, s.source_path FROM substrates s{owner_sql}",
+                owner_params,
+            ).fetchall()
+        except Exception as exc:
+            logger.warning("title_metadata_search failed: %s", exc)
+            return []
+    results: list[dict] = []
+    for substrate_id, title, source_path in rows:
+        score, exact = _lexical_match_score(query, f"{title or ''} {source_path or ''}")
+        if score <= 0:
+            continue
+        results.append(
+            {
+                "substrate_id": substrate_id,
+                "content": title or source_path or substrate_id,
+                "token_count": len(title or "") // 4,
+                "score": score,
+                "exact_match": exact,
+                "channel": "title",
+            }
+        )
+    results.sort(key=lambda item: (-item["score"], item["substrate_id"]))
+    return results[:top_k]
+
+
+def _rrf_merge_channels(
+    channels: dict[str, list[dict]],
+    top_k: int = 30,
+    rrf_k: int = 60,
+    protect_exact: bool = True,
+) -> list[dict]:
+    """Merge ranked channels with RRF and optionally protect exact matches."""
+    merged: dict[str, dict] = {}
+    exact_priority = {"claim": 4, "title": 3, "lexical_chunk": 3} if protect_exact else {}
+    for channel, rows in channels.items():
+        for rank, row in enumerate(rows, 1):
+            substrate_id = row.get("substrate_id")
+            if not substrate_id:
+                continue
+            candidate = merged.setdefault(
+                substrate_id,
+                {
+                    "substrate_id": substrate_id,
+                    "content": row.get("content") or "",
+                    "token_count": row.get("token_count") or 0,
+                    "score": 0.0,
+                    "rrf_score": 0.0,
+                    "fragment_id": row.get("fragment_id"),
+                    "exact_priority": 0,
+                    "channels": [],
+                },
+            )
+            candidate["rrf_score"] += 1.0 / (rrf_k + rank)
+            candidate["channels"].append(channel)
+            candidate["score"] = max(float(candidate["score"]), float(row.get("score") or 0.0))
+            if row.get("content") and not candidate["content"]:
+                candidate["content"] = row["content"]
+            if row.get("fragment_id") and not candidate.get("fragment_id"):
+                candidate["fragment_id"] = row["fragment_id"]
+            if protect_exact and row.get("exact_match"):
+                candidate["exact_priority"] = max(
+                    candidate["exact_priority"], exact_priority.get(channel, 2)
+                )
+    return sorted(
+        merged.values(),
+        key=lambda row: (
+            -row["exact_priority"],
+            -row["rrf_score"],
+            -row["score"],
+            row["substrate_id"],
+        ),
+    )[:top_k]
 
 
 # ── Directory-aware retrieval ────────────────────────────────────────────────
@@ -490,6 +812,7 @@ def retrieve(
     user_id: str = "default",
     namespace: str = "global",
     budget_tokens: int | None = None,
+    query_embedding: list[float] | None = None,
 ) -> RetrievalResponse:
     """Directory-recursive retrieval with trajectory tracking.
 
@@ -519,42 +842,52 @@ def retrieve(
             layers = ["L0", "L1", "L2"]
 
     # Step 1: Get query embedding
-    query_emb = get_embedding(query)
+    query_emb = query_embedding if query_embedding is not None else get_embedding(query)
 
-    # Step 2: Coarse search — vector + text on L0
+    # Step 2: Coarse search — dense/lexical source summaries plus canonical
+    # fragments and provenance metadata. L0 remains useful for the broad
+    # corpus, while chunks carry the actual passage-level evidence.
     vector_results = (
         _vector_search_layers(query_emb, "L0", top_k=50, user_id=user_id) if query_emb else []
     )
+    chunk_vector_results = (
+        _vector_search_chunks(query_emb, top_k=50, user_id=user_id) if query_emb else []
+    )
     text_results = _text_search_layers(query, "L0", top_k=50, user_id=user_id)
+    chunk_text_results = _text_search_chunks(query, top_k=50, user_id=user_id)
+    claim_results = _claim_provenance_search(query, top_k=20, user_id=user_id)
+    title_results = _title_metadata_search(query, top_k=50, user_id=user_id)
 
-    # Merge and deduplicate
-    seen_ids = set()
-    merged: dict[str, dict] = {}
-    for r in vector_results:
-        sid = r["substrate_id"]
-        if sid not in seen_ids:
-            seen_ids.add(sid)
-            merged[sid] = r
-    for r in text_results:
-        sid = r["substrate_id"]
-        if sid in merged:
-            merged[sid]["score"] = max(merged[sid]["score"], r["score"])
-        else:
-            merged[sid] = r
-
-    coarse_results = sorted(merged.values(), key=lambda x: x["score"], reverse=True)[:30]
+    channel_results = {
+        "dense_l0": vector_results,
+        "dense_chunk": chunk_vector_results,
+        "lexical_l0": text_results,
+        "lexical_chunk": chunk_text_results,
+        "claim": claim_results,
+        "title": title_results,
+    }
+    coarse_results = _rrf_merge_channels(channel_results, top_k=30)
 
     trajectory.append(
         RetrievalStep(
             phase="coarse",
-            candidates=len(vector_results) + len(text_results),
+            candidates=sum(len(rows) for rows in channel_results.values()),
             hits=len(coarse_results),
             scores=[r["score"] for r in coarse_results[:10]],
-            details={"vector_hits": len(vector_results), "text_hits": len(text_results)},
+            details={
+                "dense_l0_hits": len(vector_results),
+                "dense_chunk_hits": len(chunk_vector_results),
+                "lexical_l0_hits": len(text_results),
+                "lexical_chunk_hits": len(chunk_text_results),
+                "claim_hits": len(claim_results),
+                "title_hits": len(title_results),
+                "fusion": "rrf_with_exact_protection",
+            },
         )
     )
 
     # Step 2b: Directory-recursive expansion — boost siblings of top hits
+    merged: dict[str, dict] = {r["substrate_id"]: r for r in coarse_results}
     expanded_ids = set()
     for r in coarse_results[:5]:
         sid = r["substrate_id"]
@@ -608,6 +941,7 @@ def retrieve(
                 content=r["content"],
                 score=r["score"],
                 token_count=r["token_count"],
+                fragment_id=r.get("fragment_id"),
             )
         )
 
