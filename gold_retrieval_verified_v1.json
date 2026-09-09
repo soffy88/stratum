@@ -358,25 +358,25 @@
   },
   {
     "query_id": "exact-source-6e445618b0df5a1c",
-    "query": "AII final-quality parser smoke S1",
+    "query": "S1-chinese-novel-history.pdf",
     "gold_type": "exact-source",
     "expected_source_ids": [
-      "01M21MEZ79GFJSDB37ZH3FM5N7"
+      "01KTYCNNYXSYHC5WXY13K6EXD2"
     ],
     "expected_fragment_ids": [
-      "01M21MEZ79GFJSDB37ZH3FM5N7#0",
-      "01M21MEZ79GFJSDB37ZH3FM5N7#1",
-      "01M21MEZ79GFJSDB37ZH3FM5N7#2",
-      "01M21MEZ79GFJSDB37ZH3FM5N7#3"
+      "01KTYCNNYXSYHC5WXY13K6EXD2#0",
+      "01KTYCNNYXSYHC5WXY13K6EXD2#1",
+      "01KTYCNNYXSYHC5WXY13K6EXD2#2",
+      "01KTYCNNYXSYHC5WXY13K6EXD2#3"
     ],
     "evidence_ids": [],
-    "verification_basis": "canonical_substrate_title:01M21MEZ79GFJSDB37ZH3FM5N7",
+    "verification_basis": "canonical_substrate_title:01KTYCNNYXSYHC5WXY13K6EXD2",
     "review_status": "verified",
     "reviewer": "codex-final-quality",
     "user_id": "56d6bc01edc35765",
-    "source_ref": "/data/shared/stratum-home/data/substrate/markdown_note/01M21MEZ79GFJSDB37ZH3FM5N7--01m21medf2sek840gpms00qd36.md",
+    "source_ref": "/root/.stratum/data/substrate/paper/01KTYCNNYXSYHC5WXY13K6EXD2--01ktycnnfxf2pn4cz0dn4w3dty.pdf",
     "relevant_substrate_ids": [
-      "01M21MEZ79GFJSDB37ZH3FM5N7"
+      "01KTYCNNYXSYHC5WXY13K6EXD2"
     ]
   },
   {
@@ -964,23 +964,23 @@
     ]
   },
   {
-    "query_id": "exact-source-ca2953998afd9933",
-    "query": "correction test src",
-    "gold_type": "exact-source",
+    "query_id": "rare-phrase-legacy-canonical-s1",
+    "query": "鹽谷節山教授",
+    "gold_type": "rare-phrase",
     "expected_source_ids": [
-      "01CORRECTSRC00000000000001"
+      "01KTYCNNYXSYHC5WXY13K6EXD2"
     ],
     "expected_fragment_ids": [
-      "01CORRECTSRC00000000000001#0"
+      "01KTYCNNYXSYHC5WXY13K6EXD2#0"
     ],
     "evidence_ids": [],
-    "verification_basis": "canonical_substrate_title:01CORRECTSRC00000000000001",
+    "verification_basis": "canonical_fragment_phrase:01KTYCNNYXSYHC5WXY13K6EXD2#0",
     "review_status": "verified",
     "reviewer": "codex-final-quality",
-    "user_id": "user-alice",
-    "source_ref": "/tmp/corr.md",
+    "user_id": "56d6bc01edc35765",
+    "source_ref": "/root/.stratum/data/substrate/paper/01KTYCNNYXSYHC5WXY13K6EXD2--01ktycnnfxf2pn4cz0dn4w3dty.pdf",
     "relevant_substrate_ids": [
-      "01CORRECTSRC00000000000001"
+      "01KTYCNNYXSYHC5WXY13K6EXD2"
     ]
   },
   {

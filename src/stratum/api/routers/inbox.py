@@ -69,10 +69,20 @@ def _fill_derivative_content(substrate_id: str, findings: object) -> None:
 
 
 import ast
+import hashlib
 import json
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+)
 
 from stratum.common import (
     dedup_cache,
@@ -84,7 +94,7 @@ from stratum.common import (
     user_inbox_dir,
 )
 from stratum.utils.user_id_hash import hash_user_id
-from stratum.db import execute as db_execute, insert as db_insert, update as db_update
+from stratum.db import advisory_lock, execute as db_execute, query as db_query, update as db_update
 
 try:
     from stratum.services.web_fetch import fetch_url_ssrf_safe as _url_fetch_ssrf_safe
@@ -96,6 +106,7 @@ except ImportError:
 
 try:
     from stratum.services.web_fetch_enhanced import fetch_url_enhanced as _url_fetch_enhanced
+
     _HAS_ENHANCED = True
 except ImportError:
     _HAS_ENHANCED = False
@@ -130,9 +141,7 @@ async def _run_agent_background(agent_name: str, params: dict, user_id: str) -> 
                         target_lang=(params or {}).get("target_lang", "zh-CN"),
                         embed_translation=True,
                     )
-                    logging.getLogger(__name__).info(
-                        "bg_translation_ok substrate_id=%s", sid
-                    )
+                    logging.getLogger(__name__).info("bg_translation_ok substrate_id=%s", sid)
                     return
                 except Exception as te:
                     logging.getLogger(__name__).warning(
@@ -166,16 +175,12 @@ async def _run_agent_background(agent_name: str, params: dict, user_id: str) -> 
         logging.getLogger(__name__).warning("bg_agent_failed name=%s error=%s", agent_name, exc)
 
 
-async def _run_extract_merge_background(
-    substrate_id: str, user_id: str, user_id_hash: str
-) -> None:
+async def _run_extract_merge_background(substrate_id: str, user_id: str, user_id_hash: str) -> None:
     """MVP: Extract + Link&Merge after ingest (append to concept notes)."""
     try:
         from stratum.services.extract_merge_service import extract_and_merge
 
-        result = await extract_and_merge(
-            substrate_id, user_id=user_id, user_id_hash=user_id_hash
-        )
+        result = await extract_and_merge(substrate_id, user_id=user_id, user_id_hash=user_id_hash)
         logging.getLogger(__name__).info(
             "bg_extract_merge substrate_id=%s result=%s", substrate_id, result
         )
@@ -222,6 +227,165 @@ async def _save_upload(file: UploadFile, dest_dir: Path) -> tuple[Path, str]:
             fp.write(chunk)
             h.update(chunk)
     return dest, h.hexdigest()
+
+
+def _sha256_file(path: Path) -> str:
+    """Hash the exact bytes sent to omodul/oskill (post-conversion)."""
+    h = hashlib.sha256()
+    with path.open("rb") as fp:
+        while chunk := fp.read(1024 * 1024):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _existing_substrate_by_hash(user_id_hash: str, file_hash: str) -> dict | None:
+    """Return the canonical source for this owner's exact ingest identity."""
+    rows = db_query(
+        "SELECT id, title, mime, meta_json FROM substrates "
+        "WHERE user_id = %(uid)s AND file_hash = %(file_hash)s LIMIT 1",
+        {"uid": user_id_hash, "file_hash": file_hash},
+        limit=1,
+    )
+    return rows[0] if rows else None
+
+
+def _existing_substrate_by_upload_hash(user_id_hash: str, upload_hash: str) -> dict | None:
+    """Return a source previously created from the exact uploaded bytes."""
+    rows = db_query(
+        "SELECT id, title, mime, meta_json FROM substrates "
+        "WHERE user_id = %(uid)s AND meta_json ->> 'upload_sha256' = %(upload_hash)s "
+        "LIMIT 1",
+        {"uid": user_id_hash, "upload_hash": upload_hash},
+        limit=1,
+    )
+    return rows[0] if rows else None
+
+
+def _record_upload_identity(substrate_id: str, upload_hash: str) -> None:
+    """Persist the pre-parser upload identity beside the canonical source."""
+    db_execute(
+        "UPDATE substrates "
+        "SET meta_json = COALESCE(meta_json, '{}'::jsonb) "
+        "  || jsonb_build_object('upload_sha256', %(upload_hash)s), "
+        "    updated_at = NOW() "
+        "WHERE id = %(substrate_id)s",
+        {"upload_hash": upload_hash, "substrate_id": substrate_id},
+    )
+
+
+def _lock_key(user_id_hash: str, file_hash: str) -> int:
+    """Map the owner/hash pair to PostgreSQL's signed bigint lock key."""
+    value = int.from_bytes(
+        hashlib.sha256(f"{user_id_hash}:{file_hash}".encode()).digest()[:8],
+        byteorder="big",
+        signed=False,
+    )
+    return value - (1 << 64) if value >= (1 << 63) else value
+
+
+def _run_ingest_idempotently(
+    *,
+    processor: object,
+    raw_file_path: Path,
+    output_dir: Path,
+    user_id_hash: str,
+    upload_hash: str,
+    medium_hint: str | None,
+) -> dict:
+    """Run one canonical ingest, serialised by owner/content identity.
+
+    The shared oskill duplicate detector historically consulted a different
+    metadata backend in some deployments.  The Stratum boundary therefore
+    performs the authoritative PostgreSQL lookup while holding a DB advisory
+    lock.  A duplicate-key result is reconciled to the same existing source;
+    it is never surfaced as an HTTP 500.
+    """
+    with advisory_lock(_lock_key(user_id_hash, upload_hash)):
+        existing = _existing_substrate_by_upload_hash(user_id_hash, upload_hash)
+        if existing:
+            return {"status": "reused", "existing": existing}
+
+        file_path = _convert_docx_if_needed(raw_file_path)
+        pdf_parser: str | None = None
+        if Path(file_path).suffix.lower() == ".pdf":
+            converted = _convert_pdf_if_needed(file_path)
+            if converted != file_path:
+                pdf_parser = "preconvert_md"
+                file_path = converted
+        ingest_checksum = _sha256_file(file_path)
+        # Legacy rows predate upload_sha256; their deterministic post-convert
+        # hash remains a safe fallback after the original identity lock.
+        existing = _existing_substrate_by_hash(user_id_hash, ingest_checksum)
+        if existing:
+            _record_upload_identity(existing["id"], upload_hash)
+            return {"status": "reused", "existing": existing, "pdf_parser": pdf_parser}
+
+        config = InboxConfig(
+            file_path=str(file_path),
+            file_checksum=ingest_checksum,
+            user_id_hash=user_id_hash,
+            medium_hint=medium_hint,
+            auto_classify=True,
+            llm_provider="qwen3",
+            llm_model="qwen3-max",
+        )
+        try:
+            result = processor(
+                config=config,
+                input_data=InboxInput(),
+                output_dir=output_dir,
+            )
+        except Exception:
+            existing = _existing_substrate_by_upload_hash(user_id_hash, upload_hash)
+            if not existing:
+                existing = _existing_substrate_by_hash(user_id_hash, ingest_checksum)
+            if existing:
+                return {"status": "reused", "existing": existing, "pdf_parser": pdf_parser}
+            raise
+
+        findings = result.get("findings") if isinstance(result, dict) else None
+        duplicate_of = getattr(findings, "duplicate_of", None) if findings else None
+        substrate_id = _extract_id(getattr(findings, "substrate_id", None)) if findings else None
+        if substrate_id:
+            _record_upload_identity(substrate_id, upload_hash)
+        existing = _existing_substrate_by_upload_hash(user_id_hash, upload_hash)
+        if not existing:
+            existing = _existing_substrate_by_hash(user_id_hash, ingest_checksum)
+        if existing:
+            # The row just written by this call is a processed result, not a
+            # retry; retain the processor result so the route persists its
+            # normal derivatives and queues follow-up work exactly once.
+            if substrate_id and existing["id"] == substrate_id:
+                return {"status": "processed", "result": result, "pdf_parser": pdf_parser}
+            return {"status": "reused", "existing": existing, "pdf_parser": pdf_parser}
+        if duplicate_of:
+            existing = _existing_substrate_by_upload_hash(user_id_hash, upload_hash)
+            if not existing:
+                existing = _existing_substrate_by_hash(user_id_hash, ingest_checksum)
+            if existing:
+                return {"status": "reused", "existing": existing, "pdf_parser": pdf_parser}
+        return {"status": "processed", "result": result, "pdf_parser": pdf_parser}
+
+
+def _reused_response(existing: dict, upload_checksum: str) -> dict:
+    """Build the stable API response for an idempotent re-ingest."""
+    meta = existing.get("meta_json") or {}
+    if isinstance(meta, str):
+        try:
+            meta = json.loads(meta)
+        except json.JSONDecodeError:
+            meta = {}
+    medium = meta.get("medium") if isinstance(meta, dict) else None
+    return {
+        "upload_id": upload_checksum[:12],
+        "substrate_id": existing["id"],
+        "title": existing.get("title") or "untitled",
+        "medium": medium or existing.get("mime") or "unknown",
+        "status": "completed",
+        "deduplicated": True,
+        "derivatives_queued": [],
+        "pipeline": {"reused": True, "extract_merge": None, "graph": None},
+    }
 
 
 def _convert_pdf_if_needed(file_path: Path) -> Path:
@@ -359,9 +523,7 @@ async def _generate_layers_background(substrate_id: str) -> None:
         from stratum.services.layer_generator import generate_substrate_layers
 
         with get_conn() as _c:
-            _t = _c.execute(
-                "SELECT title FROM substrates WHERE id=?", (substrate_id,)
-            ).fetchone()
+            _t = _c.execute("SELECT title FROM substrates WHERE id=?", (substrate_id,)).fetchone()
             _content = _c.execute(
                 """SELECT content FROM derivative
                    WHERE substrate_id=? AND content IS NOT NULL AND content <> ''
@@ -373,7 +535,10 @@ async def _generate_layers_background(substrate_id: str) -> None:
         title = _t[0] if _t else None
         content = _content[0] if _content else None
         await asyncio.to_thread(
-            generate_substrate_layers, substrate_id, title, content,
+            generate_substrate_layers,
+            substrate_id,
+            title,
+            content,
         )
         _log.info("inbox: layers generated sid=%s", substrate_id)
     except Exception as exc:
@@ -414,30 +579,16 @@ async def inbox_submit(
             "error": "omodul_unavailable",
         }
 
-    pdf_parser: str | None = None
-    file_path = await asyncio.to_thread(_convert_docx_if_needed, file_path)
-    # PDF: Docling/pymupdf → MD at boundary (MVP: tables+structure before omodul)
-    if Path(file_path).suffix.lower() == ".pdf":
-        converted = await asyncio.to_thread(_convert_pdf_if_needed, file_path)
-        if converted != file_path:
-            pdf_parser = "preconvert_md"
-            file_path = converted
-
-    config = InboxConfig(
-        file_path=str(file_path),
-        file_checksum=checksum,
-        user_id_hash=hash_user_id(user_id),
-        medium_hint=medium_hint,
-        auto_classify=True,
-        llm_provider="qwen3",
-        llm_model="qwen3-max",
-    )
+    user_id_hash = hash_user_id(user_id)
     try:
-        result = await asyncio.to_thread(
-            process_inbox_substrate,
-            config=config,
-            input_data=InboxInput(),
+        ingest = await asyncio.to_thread(
+            _run_ingest_idempotently,
+            processor=process_inbox_substrate,
+            raw_file_path=file_path,
             output_dir=inbox_dir,
+            user_id_hash=user_id_hash,
+            upload_hash=checksum,
+            medium_hint=medium_hint,
         )
     except Exception as exc:
         logging.getLogger(__name__).exception("inbox_submit_ingest_exception")
@@ -449,6 +600,14 @@ async def inbox_submit(
                 "file": file.filename,
             },
         ) from exc
+
+    if ingest.get("status") == "reused":
+        response = _reused_response(ingest["existing"], checksum)
+        await dedup_cache.set(fp_key, response, ttl=120)
+        return response
+
+    pdf_parser = ingest.get("pdf_parser")
+    result = ingest["result"]
 
     if result.get("status") == "failed":
         err = result.get("error") or {}
@@ -579,13 +738,23 @@ async def _fetch_url_html(url: str) -> str:
     log = logging.getLogger(__name__)
 
     if _HAS_ENHANCED and _url_fetch_enhanced:
-        result = await _url_fetch_enhanced(url, timeout=_WEB_CLIP_TIMEOUT, max_bytes=_WEB_CLIP_MAX_BYTES)
+        result = await _url_fetch_enhanced(
+            url, timeout=_WEB_CLIP_TIMEOUT, max_bytes=_WEB_CLIP_MAX_BYTES
+        )
         if result.success and result.html:
-            log.info("enhanced_fetch url=%s strategy=%s len=%d",
-                     url[:80], result.strategy_used, len(result.html))
+            log.info(
+                "enhanced_fetch url=%s strategy=%s len=%d",
+                url[:80],
+                result.strategy_used,
+                len(result.html),
+            )
             return result.html
-        log.warning("enhanced_fetch_failed url=%s strategy=%s error=%s",
-                    url[:80], result.strategy_used, result.error)
+        log.warning(
+            "enhanced_fetch_failed url=%s strategy=%s error=%s",
+            url[:80],
+            result.strategy_used,
+            result.error,
+        )
 
     # Fallback: SSRF-safe direct
     if not _HAS_SSRF_SAFE:
@@ -738,7 +907,8 @@ async def inbox_webclip(
         # Generate L0/L1/L2 layers (retrieval depends on substrate_layers)
         if substrate_id:
             background_tasks.add_task(
-                _generate_layers_background, substrate_id,
+                _generate_layers_background,
+                substrate_id,
             )
 
     return {
