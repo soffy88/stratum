@@ -98,7 +98,9 @@ def upload(path: Path, token: str, api_url: str, title: str) -> tuple[dict, floa
     )
     started = time.perf_counter()
     try:
-        with urllib.request.urlopen(request, timeout=180) as response:
+        with urllib.request.urlopen(
+            request, timeout=float(os.environ.get("PARSER_HTTP_TIMEOUT", "180"))
+        ) as response:
             payload = json.loads(response.read().decode("utf-8"))
         return payload, time.perf_counter() - started
     except urllib.error.HTTPError as exc:
@@ -177,6 +179,9 @@ def _record_from_row(record: dict, row: tuple, reused: bool) -> dict:
 
 def _process_document(index: int, path: Path, token: str, api_url: str) -> dict:
     started = time.perf_counter()
+    delay = float(os.environ.get("PARSER_UPLOAD_DELAY", "0"))
+    if delay > 0:
+        time.sleep(delay)
     record = {
         "case_id": f"parser-{index:02d}",
         "filename": str(path),
@@ -186,32 +191,51 @@ def _process_document(index: int, path: Path, token: str, api_url: str) -> dict:
     }
     conn = psycopg2.connect(**DB)
     try:
-        existing = _existing_row(conn, path)
-        if existing:
-            record.update({"parse_success": True, "upload": {"status": "reused_existing"}})
-            record = _record_from_row(record, existing, True)
-        else:
-            payload, elapsed = upload(path, token, api_url, f"AII final-quality parser {index:02d}")
-            record.update(
-                {
-                    "upload": payload,
-                    "elapsed_sec": round(elapsed, 3),
-                    "parse_success": payload.get("status") == "completed",
-                    "substrate_id": payload.get("substrate_id"),
-                }
-            )
-            if record["substrate_id"]:
-                row = _db_row(conn, record["substrate_id"])
-                if row:
-                    record = _record_from_row(record, row, False)
-                else:
-                    record["exception"] = "database row/derivative not available"
+        payload, elapsed = upload(path, token, api_url, f"AII final-quality parser {index:02d}")
+        record.update(
+            {
+                "upload": payload,
+                "elapsed_sec": round(elapsed, 3),
+                "parse_success": payload.get("status") == "completed",
+                "substrate_id": payload.get("substrate_id"),
+            }
+        )
+        if record["substrate_id"]:
+            row = _db_row(conn, record["substrate_id"])
+            if row:
+                record = _record_from_row(record, row, bool(payload.get("deduplicated")))
+            else:
+                record["exception"] = "database row/derivative not available"
     except Exception as exc:  # one failed document must not hide the rest
         record.update({"parse_success": False, "exception": f"{type(exc).__name__}: {exc}"})
     finally:
         conn.close()
     record["elapsed_sec"] = round(record.get("elapsed_sec", time.perf_counter() - started), 3)
     return record
+
+
+def _concurrent_reingest(path: Path, token: str, api_url: str) -> dict:
+    """Submit the same owner/content identity twice at the same time."""
+    title = "AII final-quality concurrent idempotency"
+
+    def one() -> dict:
+        try:
+            payload, elapsed = upload(path, token, api_url, title)
+            return {"success": True, "payload": payload, "elapsed_sec": round(elapsed, 3)}
+        except Exception as exc:  # preserve both race outcomes for the report
+            return {"success": False, "exception": f"{type(exc).__name__}: {exc}"}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _unused: one(), (0, 1)))
+    ids = [((result.get("payload") or {}).get("substrate_id")) for result in results]
+    return {
+        "filename": str(path),
+        "results": results,
+        "success": sum(bool(result.get("success")) for result in results),
+        "http_500": sum("HTTP 500" in str(result.get("exception", "")) for result in results),
+        "same_source_id": bool(ids[0] and ids[0] == ids[1]),
+        "deduplicated": sum(bool((result.get("payload") or {}).get("deduplicated")) for result in results),
+    }
 
 
 def run(output: Path) -> int:
@@ -229,12 +253,34 @@ def run(output: Path) -> int:
             records.append(record)
             print(json.dumps(record, ensure_ascii=False), flush=True)
 
+    reingest_records = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(_process_document, i, path, token, api_url) for i, path in enumerate(documents, 1)]
+        for future in futures:
+            record = future.result()
+            reingest_records.append(record)
+            print(json.dumps({"reingest": record}, ensure_ascii=False), flush=True)
+
+    initial_ids = [record.get("substrate_id") for record in records]
+    reingest_ids = [record.get("substrate_id") for record in reingest_records]
     reingest = {
-        "same_source_id": False,
-        "deduplicated": False,
-        "status": "NOT_RETRIED_AFTER_OBSERVED_DUPLICATE_KEY",
-        "observed": "A repeated S1 upload returned HTTP 500 duplicate key idx_substrates_user_file_hash",
+        "documents_total": len(reingest_records),
+        "success": sum(bool(record.get("parse_success")) for record in reingest_records),
+        "failed": sum(not bool(record.get("parse_success")) for record in reingest_records),
+        "http_500": sum(
+            "HTTP 500" in str(record.get("exception", "")) for record in reingest_records
+        ),
+        "same_source_id": all(a and a == b for a, b in zip(initial_ids, reingest_ids)),
+        "deduplicated": sum(
+            bool((record.get("upload") or {}).get("deduplicated")) for record in reingest_records
+        ),
+        "records": reingest_records,
     }
+
+    # Leave a small interval so the two requests are not mistaken for a burst
+    # by the API rate limiter after the sequential benchmark.
+    time.sleep(max(float(os.environ.get("PARSER_UPLOAD_DELAY", "0")), 2.2))
+    concurrent_reingest = _concurrent_reingest(documents[0], token, api_url)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
@@ -246,6 +292,7 @@ def run(output: Path) -> int:
                 "substrate_ids": [r["substrate_id"] for r in records if r.get("substrate_id")],
                 "records": records,
                 "reingest": reingest,
+                "concurrent_reingest": concurrent_reingest,
             },
             ensure_ascii=False,
             indent=2,
