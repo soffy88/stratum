@@ -63,6 +63,7 @@ async def retrieve_endpoint(req: RetrieveRequest, user_id: str = Depends(jwt_aut
             "uri": r.uri,
             "node_type": r.node_type,
             "ref_id": r.ref_id,
+            "fragment_id": r.fragment_id,
             "title": _title,
             "layer": r.layer,
             "score": round(r.score, 4),
@@ -83,6 +84,7 @@ async def retrieve_endpoint(req: RetrieveRequest, user_id: str = Depends(jwt_aut
             sources.append(
                 {
                     "substrate_id": r.ref_id,
+                    "fragment_id": r.fragment_id,
                     "title": _title,
                     "snippet": item["snippet"],
                     "paragraph_index": item["paragraph_index"],
