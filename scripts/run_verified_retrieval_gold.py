@@ -24,7 +24,7 @@ def _runtime_user(value: str) -> str:
     return RAW_OWNER if value == HASHED_OWNER else value
 
 
-def _load_state() -> tuple[dict[str, tuple], dict[str, str]]:
+def _load_state() -> tuple[dict[str, tuple], dict[str, str], dict[str, bool]]:
     conn = psycopg2.connect(**DB)
     cur = conn.cursor()
     cur.execute("SELECT id, user_id, title, COALESCE(file_hash,'') FROM stratum.substrates")
@@ -38,9 +38,20 @@ def _load_state() -> tuple[dict[str, tuple], dict[str, str]]:
         """
     )
     chunks = {row[0]: f"{row[1]}:{row[2]}" for row in cur.fetchall()}
+    cur.execute(
+        """SELECT s.id,
+                  bool_or(sl.embedding IS NOT NULL
+                          AND sl.model_used = 'BAAI/bge-m3'
+                          AND vector_dims(sl.embedding) = 1024)
+           FROM stratum.substrates s
+           LEFT JOIN stratum.substrate_layers sl
+             ON sl.substrate_id = s.id AND sl.layer = 'L0'
+           GROUP BY s.id"""
+    )
+    index_state = {row[0]: bool(row[1]) for row in cur.fetchall()}
     cur.close()
     conn.close()
-    return sources, chunks
+    return sources, chunks, index_state
 
 
 def _dedupe(results: list[dict]) -> list[dict]:
@@ -86,13 +97,18 @@ def _anchor_valid(result: dict) -> bool:
     )
 
 
-def _failure(record: dict, ranked: list[str], sources: dict, chunks: dict) -> str | None:
+def _failure(
+    record: dict,
+    ranked: list[str],
+    sources: dict,
+    index_state: dict[str, bool],
+) -> str | None:
     expected = set(record.get("expected_source_ids", []))
     if expected & set(ranked):
         return None
     if not expected or any(sid not in sources for sid in expected):
         return "bad gold"
-    if any(chunks.get(sid, "0:0").split(":")[0] == "0" for sid in expected):
+    if any(not index_state.get(sid, False) for sid in expected):
         return "missing index"
     query = record.get("query", "").lower()
     title_or_text = query[:80]
@@ -109,7 +125,7 @@ def run(gold_path: Path, output: Path, limit: int | None) -> int:
     gold = [item for item in json.loads(gold_path.read_text(encoding="utf-8")) if item.get("review_status") == "verified"]
     if limit:
         gold = gold[:limit]
-    sources, chunks = _load_state()
+    sources, _chunks, index_state = _load_state()
     isolation_leaks = 0
     citation_total = citation_ok = 0
     anchor_total = anchor_ok = 0
@@ -144,7 +160,7 @@ def run(gold_path: Path, output: Path, limit: int | None) -> int:
         result_slots += len(results)
         wrong_source_results += sum(sid not in expected for sid in ranked)
         hit_positions = [position for position, sid in enumerate(ranked, 1) if sid in expected]
-        failure = _failure(record, ranked, sources, chunks)
+        failure = _failure(record, ranked, sources, index_state)
         if failure:
             failure_categories[failure] += 1
         per_query.append(

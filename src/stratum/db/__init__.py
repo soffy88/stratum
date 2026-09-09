@@ -30,6 +30,7 @@ _DOLLAR_RE = re.compile(r"\$(\w+)")
 def _to_pyformat(sql: str) -> str:
     return _DOLLAR_RE.sub(r"%(\1)s", sql)
 
+
 import psycopg2
 import psycopg2.extras
 import psycopg2.pool
@@ -115,6 +116,34 @@ def _conn():
 
 
 get_conn = _conn
+
+
+@contextmanager
+def advisory_lock(lock_key: int):
+    """Hold a PostgreSQL session lock for a cross-worker idempotency section.
+
+    The lock deliberately uses a dedicated pooled connection and remains held
+    across the caller's work, including calls into the shared omodul/oskill
+    ingestion path.  This prevents two API workers from both passing the
+    canonical ``(user_id, file_hash)`` lookup before either inserts the source.
+    """
+    pool = _get_pool()
+    raw = pool.getconn()
+    try:
+        raw.autocommit = True
+        with raw.cursor() as cur:
+            cur.execute("SELECT pg_advisory_lock(%s)", (int(lock_key),))
+        yield
+    finally:
+        try:
+            with raw.cursor() as cur:
+                cur.execute("SELECT pg_advisory_unlock(%s)", (int(lock_key),))
+        except Exception:
+            try:
+                raw.rollback()
+            except Exception:
+                pass
+        pool.putconn(raw)
 
 
 def _serialize(v: Any) -> Any:
