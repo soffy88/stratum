@@ -3,6 +3,37 @@
 -- at a non-existent substrate.  The cleanup is deliberately narrow and
 -- idempotent, while the partial unique index protects future concurrent writes.
 
+CREATE TABLE IF NOT EXISTS stratum.evidence (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    source_highlight_id TEXT,
+    substrate_id TEXT NOT NULL,
+    quote TEXT NOT NULL,
+    quote_hash TEXT NOT NULL,
+    locator_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    confidence DOUBLE PRECISION,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS stratum.knowledge_claims (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    statement TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'hypothesis',
+    confidence DOUBLE PRECISION,
+    concept_ids TEXT[] NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS stratum.claim_evidence (
+    claim_id TEXT NOT NULL REFERENCES stratum.knowledge_claims(id) ON DELETE CASCADE,
+    evidence_id TEXT NOT NULL REFERENCES stratum.evidence(id) ON DELETE CASCADE,
+    relation TEXT NOT NULL DEFAULT 'supports',
+    PRIMARY KEY (claim_id, evidence_id)
+);
+
 WITH ranked AS (
     SELECT id,
            ROW_NUMBER() OVER (
