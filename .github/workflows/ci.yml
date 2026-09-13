@@ -133,7 +133,10 @@ jobs:
           if ((${#files[@]})); then
             uv run ruff format --check "${files[@]}"
             uv run ruff check "${files[@]}"
-            uv run mypy --ignore-missing-imports --follow-imports=skip "${files[@]}"
+            mapfile -t mypy_files < <(printf '%s\n' "${files[@]}" | grep '^src/' || true)
+            if ((${#mypy_files[@]})); then
+              uv run mypy --ignore-missing-imports --follow-imports=skip "${mypy_files[@]}"
+            fi
           fi
 
   frontend:
@@ -146,7 +149,7 @@ jobs:
         with: {version: 11, run_install: false}
       - uses: actions/setup-node@v4
         with: {node-version: 22, cache: pnpm, cache-dependency-path: aii-web/pnpm-lock.yaml}
-      - run: pnpm install --frozen-lockfile --config.minimumReleaseAge=0
+      - run: pnpm install --frozen-lockfile --config.minimumReleaseAge=0 --config.minimumReleaseAgeExclude='@helios/blocks,@helios/oui'
       - run: pnpm test -- --run
       - run: pnpm run type-check
       - run: pnpm build

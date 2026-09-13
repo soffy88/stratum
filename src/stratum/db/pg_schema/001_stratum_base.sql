@@ -313,7 +313,8 @@ CREATE TABLE IF NOT EXISTS stratum.scheduled_jobs_sl (
     "config" JSONB NOT NULL DEFAULT '{}'::jsonb,
     "enabled" BOOLEAN NOT NULL,
     "max_items" INTEGER,
-    "created_at" TIMESTAMPTZ
+    "created_at" TIMESTAMPTZ,
+    UNIQUE ("name")
 );
 
 CREATE TABLE IF NOT EXISTS stratum.sessions (
