@@ -5,6 +5,7 @@
 
 -- Vault Audit: monthly health audit (runs 1st of each month at 03:00 CST)
 INSERT INTO scheduled_jobs_sl (
+    id,
     name,
     cron_expression,
     timezone,
@@ -14,6 +15,7 @@ INSERT INTO scheduled_jobs_sl (
     enabled,
     created_at
 ) VALUES (
+    'vault_health_audit',
     'vault_health_audit',
     '0 3 1 * *',
     'Asia/Shanghai',
@@ -26,6 +28,7 @@ INSERT INTO scheduled_jobs_sl (
 
 -- Knowledge Gap Analysis: weekly (Sunday 04:00 CST)
 INSERT INTO scheduled_jobs_sl (
+    id,
     name,
     cron_expression,
     timezone,
@@ -35,6 +38,7 @@ INSERT INTO scheduled_jobs_sl (
     enabled,
     created_at
 ) VALUES (
+    'knowledge_gap_analysis',
     'knowledge_gap_analysis',
     '0 4 * * 0',
     'Asia/Shanghai',
@@ -47,6 +51,7 @@ INSERT INTO scheduled_jobs_sl (
 
 -- Graph Health Scoring: daily (05:00 CST)
 INSERT INTO scheduled_jobs_sl (
+    id,
     name,
     cron_expression,
     timezone,
@@ -56,6 +61,7 @@ INSERT INTO scheduled_jobs_sl (
     enabled,
     created_at
 ) VALUES (
+    'graph_health_daily',
     'graph_health_daily',
     '0 5 * * *',
     'Asia/Shanghai',
