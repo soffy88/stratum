@@ -46,6 +46,17 @@ jobs:
   tenant-security:
     name: Security / tenant isolation
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: aii
+          POSTGRES_PASSWORD: aii_safe_pass
+          POSTGRES_DB: aii_kg
+        ports: [5435:5432]
+        options: >-
+          --health-cmd="pg_isready -U aii -d aii_kg"
+          --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
