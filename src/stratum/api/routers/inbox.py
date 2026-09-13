@@ -289,6 +289,7 @@ def _run_ingest_idempotently(
     raw_file_path: Path,
     output_dir: Path,
     user_id_hash: str,
+    authenticated_user_id: str,
     upload_hash: str,
     medium_hint: str | None,
 ) -> dict:
@@ -301,8 +302,17 @@ def _run_ingest_idempotently(
     it is never surfaced as an HTTP 500.
     """
     with advisory_lock(_lock_key(user_id_hash, upload_hash)):
+        # Prefer a legacy canonical row already carrying the original hash.
+        # A parser projection may also have recorded upload_sha256 on a
+        # secondary row; selecting that row first would violate the unique
+        # owner/hash identity when repairing the canonical Source.
+        existing = _existing_substrate_by_hash(user_id_hash, upload_hash)
+        if existing:
+            return {"status": "reused", "existing": existing}
+
         existing = _existing_substrate_by_upload_hash(user_id_hash, upload_hash)
         if existing:
+            _record_upload_identity(existing["id"], upload_hash)
             return {"status": "reused", "existing": existing}
 
         file_path = _convert_docx_if_needed(raw_file_path)
@@ -324,6 +334,7 @@ def _run_ingest_idempotently(
             file_path=str(file_path),
             file_checksum=ingest_checksum,
             user_id_hash=user_id_hash,
+            authenticated_user_id=authenticated_user_id,
             medium_hint=medium_hint,
             auto_classify=True,
             llm_provider="qwen3",
@@ -562,6 +573,11 @@ async def inbox_submit(
         raise HTTPException(413, f"File too large (max {_UPLOAD_MAX_BYTES // 1048576} MB)")
 
     file_path, checksum = await _save_upload(file, inbox_dir)
+    # Preserve the uploaded representation before any parser/converter can
+    # replace the substrate path with a derived markdown export.
+    from stratum.services.source_storage import store_original_binary
+
+    original = store_original_binary(file_path, user_id, checksum)
 
     # Dedup check
     fp_key = f"inbox:{user_id}:{checksum}"
@@ -587,6 +603,7 @@ async def inbox_submit(
             raw_file_path=file_path,
             output_dir=inbox_dir,
             user_id_hash=user_id_hash,
+            authenticated_user_id=user_id,
             upload_hash=checksum,
             medium_hint=medium_hint,
         )
@@ -602,6 +619,17 @@ async def inbox_submit(
         ) from exc
 
     if ingest.get("status") == "reused":
+        existing_id = _extract_id(ingest["existing"].get("id"))
+        if existing_id:
+            from stratum.services.source_storage import attach_original_binary
+
+            attach_original_binary(
+                existing_id,
+                user_id,
+                original["uri"],
+                content_hash=checksum,
+                mime_type=file.content_type or "application/octet-stream",
+            )
         response = _reused_response(ingest["existing"], checksum)
         await dedup_cache.set(fp_key, response, ttl=120)
         return response
@@ -629,6 +657,15 @@ async def inbox_submit(
 
     # UPDATE title + populate derivative.content from omodul findings.
     if substrate_id and result.get("status") != "failed":
+        from stratum.services.source_storage import attach_original_binary
+
+        attach_original_binary(
+            substrate_id,
+            user_id,
+            original["uri"],
+            content_hash=checksum,
+            mime_type=file.content_type or "application/octet-stream",
+        )
         stored_title = (
             (title_override.strip() if title_override and title_override.strip() else None)
             or file.filename
@@ -847,6 +884,7 @@ async def inbox_webclip(
         file_path=str(clip_path),
         file_checksum=checksum,
         user_id_hash=hash_user_id(user_id),
+        authenticated_user_id=user_id,
         medium_hint="webpage",
         auto_classify=True,
         llm_provider="qwen3",
