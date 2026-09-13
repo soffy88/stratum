@@ -61,6 +61,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen
+      - name: Bootstrap PostgreSQL schema
+        run: |
+          PGPASSWORD="$STRATUM_PG_PASSWORD" psql -h "$STRATUM_PG_HOST" -p "$STRATUM_PG_PORT" -U "$STRATUM_PG_USER" -d "$STRATUM_PG_DB" -v ON_ERROR_STOP=1 -f src/stratum/db/pg_schema/001_stratum_base.sql
+          PGPASSWORD="$STRATUM_PG_PASSWORD" psql -h "$STRATUM_PG_HOST" -p "$STRATUM_PG_PORT" -U "$STRATUM_PG_USER" -d "$STRATUM_PG_DB" -v ON_ERROR_STOP=1 -f src/stratum/db/pg_schema/002_substrate_chunk.sql
+          uv run python -m stratum.db.run_pg_migrations upgrade
       - run: >-
           uv run pytest -q --tb=short
           tests/service_layer/test_mvp_security_idor.py
@@ -132,10 +137,10 @@ jobs:
     defaults: {run: {working-directory: aii-web}}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: {node-version: 22, cache: pnpm, cache-dependency-path: aii-web/pnpm-lock.yaml}
       - uses: pnpm/action-setup@v4
         with: {version: 11, run_install: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: pnpm, cache-dependency-path: aii-web/pnpm-lock.yaml}
       - run: pnpm install --frozen-lockfile
       - run: pnpm test -- --run
       - run: pnpm run type-check
