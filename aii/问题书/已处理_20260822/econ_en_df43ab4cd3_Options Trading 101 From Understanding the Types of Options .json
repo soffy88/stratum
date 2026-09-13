@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_en_df43ab4cd3",
+  "title": "Options Trading 101 From Understanding the Types of Options and Creating a Trade Plan to Analyzing Risk and Selecting Strike… (James Royal)",
+  "md_path": "/home/soffy/books/MD/经济学/Options Trading 101 From Understanding the Types of Options and Creating a Trade Plan to Analyzing Risk and Selecting Strike… (James Royal).md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-04T10:01:22.070852+00:00",
+  "qual_json": "econ_pipeline/qual/econ_en_df43ab4cd3.json",
+  "status": "pending_review"
+}

@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_81f2bfe681",
+  "title": "[经济学原理第5版：微观经济学分册]曼昆",
+  "md_path": "/home/soffy/books/MD/经济学/[经济学原理第5版：微观经济学分册]曼昆.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-12T05:48:46.402791+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_81f2bfe681.json",
+  "status": "pending_review"
+}

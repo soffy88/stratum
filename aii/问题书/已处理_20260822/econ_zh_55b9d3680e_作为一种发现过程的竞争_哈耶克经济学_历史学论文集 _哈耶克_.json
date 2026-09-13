@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_55b9d3680e",
+  "title": "作为一种发现过程的竞争：哈耶克经济学、历史学论文集 (哈耶克)",
+  "md_path": "/home/soffy/books/MD/经济学/作为一种发现过程的竞争：哈耶克经济学、历史学论文集 (哈耶克).md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-04T10:03:23.119846+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_55b9d3680e.json",
+  "status": "pending_review"
+}

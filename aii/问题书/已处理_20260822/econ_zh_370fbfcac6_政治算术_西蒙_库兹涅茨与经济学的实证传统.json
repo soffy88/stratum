@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_370fbfcac6",
+  "title": "政治算术：西蒙·库兹涅茨与经济学的实证传统",
+  "md_path": "/home/soffy/books/MD/经济学/政治算术：西蒙·库兹涅茨与经济学的实证传统.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "完整率0%<100%(漏知识点: []) | KU密度不足: 实抽16仅21%×预期75(基准~15/章×5章) | 低密度章过多: 5章<6KU: ['Ch1(3KU)', 'Ch2(4KU)', 'Ch3(3KU)', 'Ch4(5KU)', 'Ch6(1KU)']",
+  "ts": "2026-07-07T19:25:26.194232+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_370fbfcac6.json",
+  "status": "pending_review"
+}

@@ -35,7 +35,7 @@ STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"   # 中文书来自本地文件�
 # ★NIM key(econ_zh 专属, 4飞轮各自独立: econ/econ_zh/math_en/math_zh) + DB + BGE-M3跑CPU(不抢GPU)
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('econ_zh',''))" 2>/dev/null)"
 # ★2026-08-16 提速: 3-key 池(对齐 cs/misc/edu) — 单 key 40/min 是并发上限瓶颈, 池化=120/min
-export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));print(','.join(x for x in (d.get('econ_zh'),d.get('math_en'),d.get('advmath_verify')) if x))" 2>/dev/null)"
+export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));ks=[d.get(k) for k in ('econ_zh','math_en','advmath_verify','econ','math_zh','advmath_2','advmath_3')];print(','.join(x for x in ks if x))" 2>/dev/null)"
 # ★模型选型: 同 advmath/math_prog(2026-07-07实测对比) — 默认 meta/llama-3.1-70b-instruct 讲得干,
 #   nemotron-super-49b 明显更好, _plan() 规划知识点这步换掉默认档.
 export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
@@ -51,7 +51,14 @@ export no_proxy="${NO_PROXY}"
 export CUDA_VISIBLE_DEVICES=""          # 嵌入走 CPU(GPU 让给 math-prog, 防 OOM)
 export HF_HUB_OFFLINE=1                 # ★用本地缓存 BGE-M3, 不连 huggingface(直连超时→卡死)
 export TRANSFORMERS_OFFLINE=1
-export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU)
+# ★嵌入走共享 aii-embed 微服务(笔记本GPU); 不可用时走本地 BGE-M3(CPU, 慢但可用)
+if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://100.119.113.90:8102}/health" >/dev/null 2>&1; then
+  export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"
+  echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
+else
+  unset AII_EMBED_URL
+  echo "  ▶ 远端 embed 不可用, 回退本地 BGE-M3(CPU)"
+fi
 
 # ★2026-08-10 opencode 网关 fallback: NIM 504 过载时切 gpt-5.6-sol
 export OPENCODE_API_KEY=""  # 留空 → 读 ~/.pi/agent/opencode-keys.txt

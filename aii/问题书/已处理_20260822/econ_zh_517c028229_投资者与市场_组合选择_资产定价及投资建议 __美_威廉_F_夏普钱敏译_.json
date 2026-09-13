@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_517c028229",
+  "title": "投资者与市场：组合选择、资产定价及投资建议 (【美】威廉·F.夏普钱敏译)",
+  "md_path": "/home/soffy/books/MD/经济学/投资者与市场：组合选择、资产定价及投资建议 (【美】威廉·F.夏普钱敏译).md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-05T05:56:21.584765+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_517c028229.json",
+  "status": "pending_review"
+}

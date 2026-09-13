@@ -47,6 +47,10 @@ if copied:
 PYEOF
 done
 
+# 0a. USB 移动硬盘书源同步(替代 D 盘, 2026-08-22) — 挂载点: /run/media/soffy/<UUID>/books
+#     可覆写 USB_SRC 指向其它挂载点; 未挂载时静默跳过。
+timeout 1800 bash scripts/usb_drive_sync.sh 2>&1 | sed 's/^/  /' || true
+
 # 0b. Google Drive 书源同步(由 auto_classify_books.py 分类落地的学科夹) → 本地对应待转目录
 #     独立超时+||true: 代理挂/无网/未授权都不许拖垮或中断飞轮; 未同步文件照常转。
 timeout 300 bash scripts/math_drive_sync.sh 2>&1 | sed 's/^/  /' || true

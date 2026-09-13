@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_e1b48ffec9",
+  "title": "(NEW)包容性人才管理：面对多样性企业如何顺势而为管好人才",
+  "md_path": "/home/soffy/books/MD/经济学/(NEW)包容性人才管理：面对多样性企业如何顺势而为管好人才.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽1仅10%×预期10(基准~10/章×1章) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+  "ts": "2026-08-11T00:03:32.469614+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_e1b48ffec9.json",
+  "status": "pending_review"
+}

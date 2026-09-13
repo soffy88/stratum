@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_dbbac66e8b",
+  "title": "《经济学原理(第6版)宏观经济学分册》(美)曼昆",
+  "md_path": "/home/soffy/books/MD/经济学/《经济学原理(第6版)宏观经济学分册》(美)曼昆.md",
+  "reason_type": "pipeline_error",
+  "reason_detail": "管道步骤失败(exit 2)",
+  "ts": "2026-07-15T17:24:51.840429+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_dbbac66e8b.json",
+  "status": "pending_review"
+}

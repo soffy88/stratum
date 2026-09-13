@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_bd09234518",
+  "title": "(NEW)千年金融史：金融如何塑造文明，从5000年前到21世纪",
+  "md_path": "/home/soffy/books/MD/经济学/(NEW)千年金融史：金融如何塑造文明，从5000年前到21世纪.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽47仅29%×预期160(基准~10/章×16章) | 低密度章过多: 9章<3KU: ['Ch2(2KU)', 'Ch7(2KU)', 'Ch10(1KU)', 'Ch12(2KU)', 'Ch14(1KU)']",
+  "ts": "2026-07-30T18:48:02.892906+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_bd09234518.json",
+  "status": "pending_review"
+}

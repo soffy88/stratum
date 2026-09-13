@@ -1,98 +1,96 @@
-# Stratum — 你的 AI 知识管家
+# AII — Personal Knowledge Infrastructure
 
-把英文资料消化成自己的知识。PDF / 网页 / RSS / 研究主题 → AI 翻译 / 摘要 / 朗读 / 插图 / 概念图谱。
+把你读过、研究过和理解过的东西，
+变成持续生长、可追溯、可检索、可复用的个人知识系统。
 
-> 当前版本: **alpha v1.0** (Phase 17.10)  
-> 立即试用: **https://stratum.kanpan.co**（免费注册）
+**https://aiinote.com**
 
----
-
-## 真功能 (alpha v1.0)
-
-### 主动获取
-- 📄 **上传文件** — PDF、EPUB、Markdown、图片，拖拽或点击上传，含进度条
-- 🌐 **URL 抓取网页** — 粘贴任意网页链接，服务端抓全文入库
-- 📡 **RSS 订阅** — 输入网站首页或 Feed URL，自动发现，周期自动拉取
-- 🔬 **AI 研究员** (待 omodul ship) — 输入研究主题，自动找资料 + 总结
-
-### AI 加工
-- 🌏 **英文翻译中文** — Translation Worker Agent
-- 📝 **每日 / 每周摘要** — Daily Digest / Weekly Review Agent
-- 🎧 **音频朗读** — edge-tts 驱动 (需配置 TTS)
-- 🖼️ **插图生成** — DashScope wanxiang (需配置 DASHSCOPE_API_KEY)
-- 💬 **阅读伙伴** — 针对你的资料库问答 (Reading Companion Agent)
-- 🔧 **知识库 lint** — 检查结构问题 (Lint Bot Agent)
-
-### 知识体系
-- 🔍 **三层融合检索** — BM25 + 向量混合，覆盖文档 / 笔记 / hevi 内容
-- 🧠 **概念图谱** — 概念节点 + 关联资料 ReactFlow 可视化
-- 🔗 **反向链接 / wikilink** — `[[note_id]]` 笔记互链 + 反向链接面板
-- ⏰ **时光机** — 按月查看历史入库内容
-
-### 隐私
-- alpha 期：数据存服务器，你删 = 真删
-- 引流后 Pro tier 可选：用户网盘 (Google Drive / OneDrive) 同步
+> 历史仓库名 `stratum` 仅作为实现壳保留（`src/stratum/`、`stratum-sl` 容器）。
+> 产品与架构主语统一为 **AII**。详见 `docs/AII_ARCHITECTURE_CONTRACT.md`。
 
 ---
 
-## 立即试用
+## AII 是什么
 
-```
-https://stratum.kanpan.co
-```
+AII 不是 PDF 编辑器、普通笔记软件或"带 AI 的资料库"。那些只是 Capture / Experience 层；AII 的核心是 **Personal Knowledge Infrastructure**：
 
-1. 注册免费账号
-2. 上传一份 PDF 或粘贴网页 URL
-3. 跑 Translation Worker → 看中文翻译
-4. 用融合搜索找资料
+- **多源摄取** — PDF、网页、RSS、论文、Markdown、EPUB、图片
+- **Evidence-grounded 理解** — 每个 AI 结论可追溯到原文 Fragment → Source
+- **知识图谱** — Concept / Relation 单一 authority，Relation 必须带 provenance
+- **混合检索** — lexical + dense + graph + temporal + user-authored + learning，统一 `KnowledgeView` contract
+- **学习层** — BU 作为 Learning Projection（不是第二套事实库）
+- **自主飞轮** — 8 个领域飞轮持续把新资料编译为 32k KU
+- **Skill 导出** — 可携带 `concept_refs / claim_refs / evidence_refs / source_refs` 的可复用知识包
+- **Provenance** — 任何知识都知道谁是 authority、从哪里来、谁写的、怎么被检索、怎么被修正
+- **个人所有权** — 你删 = 真删；user/AI ownership 永不混淆
 
----
+北极星：**WUKR（Weekly Useful Knowledge Reuse，周度有效知识复用）**
 
-## 跟 Obsidian / Notion 真区别
-
-| 功能             | Obsidian | Notion   | Stratum                      |
-|------------------|----------|----------|------------------------------|
-| AI 翻译          | ❌        | ❌        | ✅                            |
-| AI 摘要 / 总结   | 🟡 插件  | 🟡 AI 加 | ✅                            |
-| AI 主动研究      | ❌        | ❌        | ✅ (待 omodul ship)          |
-| 音频朗读         | ❌        | ❌        | ✅                            |
-| RSS 自动订阅入库 | ❌        | ❌        | ✅                            |
-| 三层融合检索     | ❌        | ❌        | ✅ (含 hevi 专业内容)        |
-| 双链 + 图谱      | ✅        | 🟡        | ✅                            |
-| 数据所有权       | ✅ 本地  | ❌ 云     | 🟡 短期云, 长期 Pro 网盘    |
+当前版本: **alpha v1.0**，Knowledge Contract 已收敛见 `docs/AII_ARCHITECTURE_CONTRACT.md`
 
 ---
 
-## 技术栈
+## 核心闭环
+
+| 阶段 | 能力 |
+|---|---|
+| Acquire | 上传文件 / URL 抓取 / RSS 订阅 / AI 研究员 |
+| Parse | 稳定 Fragment + anchor + content_hash + version |
+| Understand | Evidence → Claim（必须 grounded），Concept/Relation 唯一 authority |
+| Ground | 引用链 Claim → Evidence → Fragment → Source 永远可追溯 |
+| Structure | Concept/Relation 单一表，禁止平行权威 |
+| Connect | 图谱 neighborhood + 反向链接 |
+| Retrieve | 统一 KnowledgeView（search / retrieve / companion / agent / skill 同一底层） |
+| Learn | LearningObject 投影 + FSRS 复习 + Skill 复用 |
+
+---
+
+## 技术栈（真实）
 
 - **前端**: Next.js 15 + TypeScript + Tailwind + @helios/blocks + ReactFlow
-- **后端**: FastAPI + Python 3.14 + DuckDB + LanceDB + Tantivy
+- **后端**: FastAPI + Python 3.14 + **PostgreSQL + pgvector** (canonical store `aii_kg`)
+- **索引**: pgvector `vector(1024)` 为 dense authority；Tantivy/LanceDB 仅作可选 rebuildable projection
 - **AI**: DashScope (Qwen3) + edge-tts + wanxiang
 - **基础库**: obase / oprim / oskill / omodul (3O paradigm)
 - **部署**: Docker Compose + Cloudflare Tunnel + nginx
+
+> LanceDB / DuckDB 已不再是 canonical runtime；详见 `docs/AII_ARCHITECTURE_CONTRACT.md §5`
 
 ---
 
 ## 本地开发
 
 ```bash
-# Backend (stratum-sl / stratum-api)
-cd /path/to/stratum
-python3 -m pytest tests/ -q          # 292 tests
+# Backend (AII Service Layer :9304; PostgreSQL required)
+uv sync
+uv run python scripts/bootstrap_pg_schema.py
+uv run python -m pytest tests/ -q
+uv run python scripts/check_aii_naming.py --all   # AII 命名收敛门禁
 
 # Frontend
-cd stratum-web
-pnpm install && pnpm dev              # http://localhost:3000
+cd stratum-web && pnpm install && pnpm dev        # http://localhost:3000
+cd aii-web && pnpm install && pnpm dev            # http://localhost:3101
 
 # Docker 全栈
-cd deploy
-docker compose up -d
+cd deploy && docker compose up -d
 ```
 
-环境变量见 `/path/to/keys/.env` — 需要 `DASHSCOPE_API_KEY`, `JWT_SECRET`, `STRATUM_DB_PATH`。
+环境变量见 `/home/soffy/.config/keys/.env` — 需要 `DASHSCOPE_API_KEY`, `JWT_SECRET`, `STRATUM_PG_*`。
+Legacy `:9302` 的 CORS 通过 `STRATUM_CORS_ALLOWED_ORIGINS` 显式 allowlist。
+JWT 轮换: `JWT_SECRETS=new,old`（首个签发，全部验证）。
+
+---
+
+## 知识宪法
+
+- `docs/AII_ARCHITECTURE_CONTRACT.md` — 唯一知识对象契约 + 六项 contract + provenance + KnowledgeView
+- `src/stratum/knowledge/contract.py` — 机器可读权威定义
+- `src/stratum/knowledge/provenance.py` — provenance 校验
+- `src/stratum/services/knowledge_view.py` — 唯一检索平面
+- `tests/architecture/test_aii_closure.py` — 18 项架构收敛测试
 
 ---
 
 ## 反馈
 
-页面右下角 FeedbackWidget 内嵌反馈，或联系 wiki@helios-plat.com。
+页面右下角 FeedbackWidget，或 `wiki@helios-plat.com`。

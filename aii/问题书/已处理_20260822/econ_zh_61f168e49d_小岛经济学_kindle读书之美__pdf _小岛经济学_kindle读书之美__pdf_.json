@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_61f168e49d",
+  "title": "小岛经济学（kindle读书之美）.pdf (小岛经济学（kindle读书之美）.pdf)",
+  "md_path": "/home/soffy/books/MD/经济学/小岛经济学（kindle读书之美）.pdf (小岛经济学（kindle读书之美）.pdf).md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽3仅15%×预期20(基准~10/章×2章)",
+  "ts": "2026-07-30T21:43:37.714640+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_61f168e49d.json",
+  "status": "pending_review"
+}

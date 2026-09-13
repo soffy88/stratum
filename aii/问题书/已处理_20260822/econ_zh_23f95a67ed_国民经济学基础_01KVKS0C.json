@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_23f95a67ed",
+  "title": "国民经济学基础_01KVKS0C",
+  "md_path": "/home/soffy/books/MD/经济学/国民经济学基础_01KVKS0C.md",
+  "reason_type": "pipeline_error",
+  "reason_detail": "管道步骤失败(exit 2)",
+  "ts": "2026-07-08T05:11:44.036097+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_23f95a67ed.json",
+  "status": "pending_review"
+}

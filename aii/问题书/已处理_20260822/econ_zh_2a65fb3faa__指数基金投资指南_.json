@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_2a65fb3faa",
+  "title": "《指数基金投资指南》",
+  "md_path": "/home/soffy/books/MD/经济学/《指数基金投资指南》.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-12T16:15:48.998910+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_2a65fb3faa.json",
+  "status": "pending_review"
+}

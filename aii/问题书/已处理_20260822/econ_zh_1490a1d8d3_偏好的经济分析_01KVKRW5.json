@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_1490a1d8d3",
+  "title": "偏好的经济分析_01KVKRW5",
+  "md_path": "/home/soffy/books/MD/经济学/偏好的经济分析_01KVKRW5.md",
+  "reason_type": "precheck",
+  "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+  "ts": "2026-07-06T15:08:56.977292+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_1490a1d8d3.json",
+  "status": "pending_review"
+}

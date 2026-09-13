@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_526f777703",
+  "title": "政治发展的经济分析：专制和民主的经济起源 ( etc.)",
+  "md_path": "/home/soffy/books/MD/经济学/政治发展的经济分析：专制和民主的经济起源 ( etc.).md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-05T09:30:43.355155+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_526f777703.json",
+  "status": "pending_review"
+}

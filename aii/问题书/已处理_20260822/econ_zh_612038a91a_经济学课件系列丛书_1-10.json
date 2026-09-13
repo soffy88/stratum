@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_612038a91a",
+  "title": "经济学课件系列丛书.1-10",
+  "md_path": "/home/soffy/books/MD/经济学/经济学课件系列丛书.1-10.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-12T19:02:29.391367+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_612038a91a.json",
+  "status": "pending_review"
+}

@@ -17,7 +17,14 @@ fi
 PY=.venv/bin/python
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1   # 用本地缓存 BGE-M3, 不连 huggingface
-export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU); 本进程不再加载 BGE-M3
+# ★嵌入走共享 aii-embed 微服务(笔记本GPU); 不可用时走本地 BGE-M3(CPU, 慢但可用)
+if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://100.119.113.90:8102}/health" >/dev/null 2>&1; then
+  export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"
+  echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
+else
+  unset AII_EMBED_URL
+  echo "  ▶ 远端 embed 不可用, 回退本地 BGE-M3(CPU)"
+fi
 export CUDA_VISIBLE_DEVICES=""   # ★嵌入已外包给服务, 本飞轮彻底不碰 GPU(抽取0-LLM纯CPU)
 # ★规划审核用key。原来只取 'math_prog_verify' —— 该键在 .pipeline_keys.json 里【不存在】
 # (实有 econ/math_en/econ_zh/math_zh/advmath_2/advmath_3/advmath_verify/learning),
@@ -32,6 +39,7 @@ for k in ('math_prog_verify', 'advmath_verify', 'math_zh', 'math_en'):
         print(d[k]); break
 " 2>/dev/null)"
 export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
+export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));ks=[d.get(k) for k in ('econ_zh','math_en','advmath_verify','econ','math_zh','advmath_2','advmath_3')];print(','.join(x for x in ks if x))" 2>/dev/null)"
 STAGING_BASE="scripts/_staging/math_prog"
 MIN_KU="${MATH_PROG_MIN_KU:-30}"        # DB 已有 >MIN_KU 视为已 B 过(小书靠下面的 .done 标记判断)
 

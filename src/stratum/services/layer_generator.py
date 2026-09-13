@@ -10,10 +10,15 @@ LLM: qwen3-8b via 本地 Ollama (免费, 与 ku_translate 共用).
 
 from __future__ import annotations
 
+import sys
+
+_OPRIM_ROOT = "/data/soffy/projects/platform/3O/oprim"
+if _OPRIM_ROOT not in sys.path:
+    sys.path.insert(0, _OPRIM_ROOT)
+
 import asyncio
 import logging
 import os
-import re
 from typing import Any
 
 import httpx
@@ -60,11 +65,14 @@ _L1_SYSTEM = """\
 
 # ── LLM call ─────────────────────────────────────────────────────────────────
 
+
 def _call_llm(system_prompt: str, user_content: str, max_tokens: int = 2048) -> str:
     """Call Ollama LLM synchronously. Returns response text or empty string on failure."""
     try:
         # Truncate very long content to avoid OOM; strip NUL chars
-        content = (user_content[:8000] if len(user_content) > 8000 else user_content).replace("\x00", "")
+        content = (user_content[:8000] if len(user_content) > 8000 else user_content).replace(
+            "\x00", ""
+        )
         resp = httpx.post(
             f"{_OLLAMA_BASE}/api/chat",
             json={
@@ -83,6 +91,7 @@ def _call_llm(system_prompt: str, user_content: str, max_tokens: int = 2048) -> 
         # Strip thinking tags from qwen3 reasoning output
         if "" in result:
             import re
+
             result = re.sub(r"", "", result, flags=re.DOTALL).strip()
         return result
     except Exception as exc:
@@ -93,7 +102,9 @@ def _call_llm(system_prompt: str, user_content: str, max_tokens: int = 2048) -> 
 async def _call_llm_async(system_prompt: str, user_content: str, max_tokens: int = 2048) -> str:
     """Call Ollama LLM asynchronously."""
     try:
-        content = (user_content[:8000] if len(user_content) > 8000 else user_content).replace("\x00", "")
+        content = (user_content[:8000] if len(user_content) > 8000 else user_content).replace(
+            "\x00", ""
+        )
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             resp = await client.post(
                 f"{_OLLAMA_BASE}/api/chat",
@@ -112,6 +123,7 @@ async def _call_llm_async(system_prompt: str, user_content: str, max_tokens: int
             # Strip thinking tags from qwen3 reasoning output
             if "" in result:
                 import re
+
                 result = re.sub(r"", "", result, flags=re.DOTALL).strip()
             return result
     except Exception as exc:
@@ -121,36 +133,44 @@ async def _call_llm_async(system_prompt: str, user_content: str, max_tokens: int
 
 # ── Embedding ────────────────────────────────────────────────────────────────
 
-_EMBED_MODEL = "qwen3-embedding"
-_EMBED_TIMEOUT = 30.0
+_LLM_MODEL = "qwen3-8b"
+
+# BGE-M3 embedder — must match substrate_layers.embedding space (1024-dim, cosine)
+_bge: Any | None = None
+
+
+def _get_bge():
+    global _bge
+    if _bge is None:
+        from oprim.embedding.bge_m3 import BgeM3Embedder
+
+        _bge = BgeM3Embedder()
+    return _bge
 
 
 _EMBED_DIM = 1024  # Must match substrate_layers.embedding vector dimension
+_EMBEDDING_MODEL = "BAAI/bge-m3"
 
 
 def _get_embedding(text: str) -> list[float] | None:
-    """Get embedding vector for text using qwen3-embedding.
+    """Get embedding vector for text using BGE-M3 — same space as substrate_layers.
 
     Truncates to _EMBED_DIM (1024) to match pgvector column.
     """
     try:
         text = text[:4000] if len(text) > 4000 else text
-        resp = httpx.post(
-            f"{_OLLAMA_BASE}/api/embeddings",
-            json={"model": _EMBED_MODEL, "prompt": text.replace("\x00", "")},
-            timeout=_EMBED_TIMEOUT,
-        )
-        resp.raise_for_status()
-        emb = resp.json().get("embedding", [])
-        # Truncate to match vector(1024) column (Matryoshka-safe)
-        emb = emb[:_EMBED_DIM] if len(emb) > _EMBED_DIM else emb
-        return emb if emb else None
+        emb = _get_bge().embed([text], dim=1024)
+        if not emb or not emb[0]:
+            return None
+        vec = emb[0]
+        return vec[:_EMBED_DIM] if len(vec) > _EMBED_DIM else vec
     except Exception as exc:
-        logger.warning("layer_generator: embedding failed: %s", exc)
+        logger.warning("layer_generator: BGE-M3 embedding failed: %s", exc)
         return None
 
 
 # ── Token estimation ─────────────────────────────────────────────────────────
+
 
 def _estimate_tokens(text: str) -> int:
     """Rough token estimate: ~4 chars per token for mixed CJK/English."""
@@ -159,18 +179,22 @@ def _estimate_tokens(text: str) -> int:
 
 # ── ID generation ────────────────────────────────────────────────────────────
 
+
 def _gen_id(prefix: str = "layer") -> str:
     import hashlib
     import time
     import random
+
     raw = f"{prefix}-{time.time()}-{random.randint(0, 999999)}"
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
 
 # ── Substrate layers ─────────────────────────────────────────────────────────
 
-def generate_substrate_layers(substrate_id: str, title: str | None = None,
-                             content: str | None = None) -> dict[str, str]:
+
+def generate_substrate_layers(
+    substrate_id: str, title: str | None = None, content: str | None = None
+) -> dict[str, str]:
     """Generate L0/L1 layers for a substrate. L2 is the original content.
 
     Args:
@@ -208,8 +232,9 @@ def generate_substrate_layers(substrate_id: str, title: str | None = None,
     return layers
 
 
-async def generate_substrate_layers_async(substrate_id: str, title: str | None = None,
-                                           content: str | None = None) -> dict[str, str]:
+async def generate_substrate_layers_async(
+    substrate_id: str, title: str | None = None, content: str | None = None
+) -> dict[str, str]:
     """Async version of generate_substrate_layers."""
     if not content and not title:
         return {"L0": "", "L1": "", "L2": ""}
@@ -254,6 +279,7 @@ def _persist_substrate_layers(substrate_id: str, layers: dict[str, str]) -> None
 
             if embedding:
                 emb_str = "[" + ",".join(str(x) for x in embedding) + "]"
+                model_used = _EMBEDDING_MODEL if layer_name == "L0" else _MODEL
                 conn.execute(
                     """INSERT INTO substrate_layers (id, substrate_id, layer, content, token_count, model_used, embedding)
                        VALUES (?, ?, ?, ?, ?, ?, ?::vector)
@@ -263,10 +289,18 @@ def _persist_substrate_layers(substrate_id: str, layers: dict[str, str]) -> None
                            model_used = EXCLUDED.model_used,
                            embedding = EXCLUDED.embedding,
                            generated_at = NOW()""",
-                    (layer_id, substrate_id, layer_name, clean,
-                     _estimate_tokens(clean), _MODEL, emb_str),
+                    (
+                        layer_id,
+                        substrate_id,
+                        layer_name,
+                        clean,
+                        _estimate_tokens(clean),
+                        model_used,
+                        emb_str,
+                    ),
                 )
             else:
+                model_used = _EMBEDDING_MODEL if layer_name == "L0" else _MODEL
                 conn.execute(
                     """INSERT INTO substrate_layers (id, substrate_id, layer, content, token_count, model_used)
                        VALUES (?, ?, ?, ?, ?, ?)
@@ -275,18 +309,23 @@ def _persist_substrate_layers(substrate_id: str, layers: dict[str, str]) -> None
                            token_count = EXCLUDED.token_count,
                            model_used = EXCLUDED.model_used,
                            generated_at = NOW()""",
-                    (layer_id, substrate_id, layer_name, clean,
-                     _estimate_tokens(clean), _MODEL),
+                    (layer_id, substrate_id, layer_name, clean, _estimate_tokens(clean), model_used),
                 )
-    logger.info("layer_generator: persisted substrate %s layers L0=%d L1=%d L2=%d chars",
-                substrate_id, len(layers.get("L0", "")),
-                len(layers.get("L1", "")), len(layers.get("L2", "")))
+    logger.info(
+        "layer_generator: persisted substrate %s layers L0=%d L1=%d L2=%d chars",
+        substrate_id,
+        len(layers.get("L0", "")),
+        len(layers.get("L1", "")),
+        len(layers.get("L2", "")),
+    )
 
 
 # ── KU layers ────────────────────────────────────────────────────────────────
 
-def generate_ku_layers(ku_id: str, natural_text: str,
-                       natural_text_zh: str | None = None) -> dict[str, str]:
+
+def generate_ku_layers(
+    ku_id: str, natural_text: str, natural_text_zh: str | None = None
+) -> dict[str, str]:
     """Generate L0/L1 layers for a Knowledge Unit.
 
     Args:
@@ -308,7 +347,10 @@ def generate_ku_layers(ku_id: str, natural_text: str,
     layers["L0"] = l0_text if l0_text else text[:200]
 
     # L1: structured overview (shorter for KU — KUs are already atomic)
-    l1_prompt = _L1_SYSTEM + "\n\n注意: 这是一条原子知识单元(KU), 概览应比文档更精炼, 重点突出核心概念和应用。"
+    l1_prompt = (
+        _L1_SYSTEM
+        + "\n\n注意: 这是一条原子知识单元(KU), 概览应比文档更精炼, 重点突出核心概念和应用。"
+    )
     l1_text = _call_llm(l1_prompt, text, max_tokens=1024)
     layers["L1"] = l1_text if l1_text else text[:2000]
 
@@ -339,13 +381,13 @@ def _persist_ku_layers(ku_id: str, layers: dict[str, str]) -> None:
                        token_count = EXCLUDED.token_count,
                        model_used = EXCLUDED.model_used,
                        generated_at = NOW()""",
-                (layer_id, ku_id, layer_name, content,
-                 _estimate_tokens(content), _MODEL),
+                (layer_id, ku_id, layer_name, content, _estimate_tokens(content), _MODEL),
             )
     logger.info("layer_generator: persisted KU %s layers", ku_id)
 
 
 # ── Query helpers ────────────────────────────────────────────────────────────
+
 
 def get_substrate_layers(substrate_id: str) -> dict[str, dict[str, Any]]:
     """Get all layers for a substrate."""
@@ -382,15 +424,11 @@ def get_layer_stats() -> dict[str, Any]:
             sl_count = conn.execute(
                 "SELECT count(DISTINCT substrate_id) FROM substrate_layers WHERE layer='L0'"
             ).fetchone()[0]
-            sl_total = conn.execute(
-                "SELECT count(*) FROM substrate_layers"
-            ).fetchone()[0]
+            sl_total = conn.execute("SELECT count(*) FROM substrate_layers").fetchone()[0]
             kl_count = conn.execute(
                 "SELECT count(DISTINCT ku_id) FROM ku_layers WHERE layer='L0'"
             ).fetchone()[0]
-            kl_total = conn.execute(
-                "SELECT count(*) FROM ku_layers"
-            ).fetchone()[0]
+            kl_total = conn.execute("SELECT count(*) FROM ku_layers").fetchone()[0]
         return {
             "substrates_with_layers": sl_count,
             "substrate_layer_rows": sl_total,
@@ -438,8 +476,8 @@ def backfill_embeddings(batch_size: int = 50) -> int:
             emb_str = "[" + ",".join(str(x) for x in embedding) + "]"
             with get_conn() as conn:
                 conn.execute(
-                    "UPDATE substrate_layers SET embedding = ?::vector WHERE id = ?",
-                    (emb_str, row_id),
+                    "UPDATE substrate_layers SET embedding = ?::vector, model_used = ? WHERE id = ?",
+                    (emb_str, _EMBEDDING_MODEL, row_id),
                 )
             count += 1
             logger.info("backfill_embeddings: %s (%d/%d)", substrate_id[:12], count, len(rows))

@@ -27,6 +27,25 @@ class ConceptUpdate(BaseModel):
 
 @router.post("")
 async def create_concept(body: ConceptCreate, user_id: str = Depends(jwt_auth)):
+    # Concept identity is owner + normalized name + type.  Reusing the active
+    # canonical row makes retries safe and lets the database partial unique
+    # index enforce the same invariant for concurrent writers.
+    existing = query(
+        "SELECT id FROM concepts "
+        "WHERE user_id = %(uid)s AND lower(trim(name)) = lower(trim(%(name)s)) "
+        "AND type = %(type)s AND deleted_at IS NULL "
+        "ORDER BY created_at, id LIMIT 1",
+        {"uid": user_id, "name": body.name, "type": body.type},
+        limit=1,
+    )
+    if existing:
+        await emit_event(
+            user_id,
+            "concept_create_deduplicated",
+            {"concept_id": existing[0]["id"], "name": body.name},
+        )
+        return {"concept_id": existing[0]["id"], "deduplicated": True}
+
     cid = generate_ulid()
     insert(
         "concepts",

@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_41d6acdd39",
+  "title": "[华为管理变革]吴晓波",
+  "md_path": "/home/soffy/books/MD/经济学/[华为管理变革]吴晓波.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-11T12:43:54.952716+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_41d6acdd39.json",
+  "status": "pending_review"
+}

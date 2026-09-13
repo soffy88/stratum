@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_db4f523c4e",
+  "title": "像经济学家一样思考",
+  "md_path": "/home/soffy/books/MD/经济学/像经济学家一样思考.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-05T04:14:31.008573+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_db4f523c4e.json",
+  "status": "pending_review"
+}

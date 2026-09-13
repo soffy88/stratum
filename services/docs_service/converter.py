@@ -78,7 +78,10 @@ def convert_to_md(path: str) -> str:
             import pdf_inspector
             r = pdf_inspector.process_pdf(path)
             if r.markdown:
-                return _clean_md(r.markdown, path)
+                # ★2026-08-22 修复: pdf_inspector 对某些复杂 PDF 只返回 TOC(256 字), 质量门禁:
+                #   长书(>10页)且结果<500字 → 跳过, 用 fallback 重试。
+                if len(r.markdown) >= 500:
+                    return _clean_md(r.markdown, path)
         except Exception:
             pass
     # fallback: oprim parse_pdf → markitdown(同旧逻辑)

@@ -7,12 +7,17 @@
 
 import os, re, sys, glob, subprocess
 import fitz  # pymupdf
+try:
+    fitz.TOOLS.mupdf_display_errors(False)  # 静音 EPUB HTML/CSS 解析噪音(immersive-translate 导出书 css 大量垃圾)
+except Exception:
+    pass
 from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
 from math_ocr_gate import needs_ocr  # noqa: E402
 from chapter_ingest import chapter_numbers  # noqa: E402
+from convert_analyze_cache import get as _cat_cache_get, put as _cat_cache_put  # noqa: E402
 
 SRC = "/mnt/d/books/高级数学经济专用"
 DO = "--do" in sys.argv
@@ -79,6 +84,19 @@ def matched(stem):
 
 
 def analyze(path):
+    """查可转性(带缓存: 文件未变则直接用上次分类, 省掉每轮全量重扫)."""
+    stem = Path(path).stem
+    if matched(stem):
+        return ("已转", stem, None)
+    hit = _cat_cache_get(path)
+    if hit is not None:
+        return hit
+    res = _analyze_uncached(path)
+    _cat_cache_put(path, res)
+    return res
+
+
+def _analyze_uncached(path):
     stem = Path(path).stem
     if matched(stem):
         return ("已转", stem, None)
@@ -91,10 +109,12 @@ def analyze(path):
     for p in range(0, min(npg, 60), 6):
         txt += d[p].get_text()
     txt_ratio = len(txt) / max(min(npg, 60) // 6, 1)
-    full = "".join(d[p].get_text() for p in range(npg))
-    nch = len(chapter_numbers(full))
     if txt_ratio < 200:
+        # ★2026-08-22 优化: 无文字层(扫描版)书早退, 不做全文采样(最慢的书全是这类)。
         return ("需OCR(无文字层)", stem, npg)
+    # ★2026-08-22 修复: 全文抽取对超大书(500页+/200MB+)拖垮单轮预算; 改首目录+均抽页采样(≤400页)。
+    full = "".join(d[p].get_text() for p in range(0, min(npg, 400), 2))
+    nch = len(chapter_numbers(full))
     if nch < 3:
         return ("无章节结构", stem, npg)
     ocr_flag, _ = needs_ocr(full)

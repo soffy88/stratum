@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_66de1bd763",
+  "title": "[德鲁克管理思想精要]德鲁克",
+  "md_path": "/home/soffy/books/MD/经济学/[德鲁克管理思想精要]德鲁克.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-11T16:19:43.430153+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_66de1bd763.json",
+  "status": "pending_review"
+}
