@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_c34724b601",
+  "title": "[重新定义增长：无重塑世界经济的新发展模式]马丁·R. 斯塔奇",
+  "md_path": "/home/soffy/books/MD/经济学/[重新定义增长：无重塑世界经济的新发展模式]马丁·R. 斯塔奇.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-12T14:08:11.199402+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_c34724b601.json",
+  "status": "pending_review"
+}

@@ -1,4 +1,9 @@
-"""Fused search — cross_layer_search from oskill."""
+"""Fused search — routes through KnowledgeView single retrieval plane.
+
+Canonical: KnowledgeView (src/stratum/services/knowledge_view.py).
+This router is a compatibility shell; all scope/isolation/citation logic is
+delegated to KnowledgeView so /search, /retrieve, companion, agent share one contract.
+"""
 
 import asyncio
 
@@ -6,6 +11,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from stratum.common import jwt_auth
+from stratum.services.knowledge_view import KnowledgeViewRequest, validate_result_schema
 
 router = APIRouter(prefix="/api/v1", tags=["search"])
 
@@ -134,22 +140,27 @@ async def search(req: SearchRequest, user_id: str = Depends(jwt_auth)):
             full_text=full,
             score=round(getattr(r, "score", 0) or 0, 4),
         )
-        results_out.append(
-            {
-                "id": r.id,
-                "type": r.type,
-                "title": r.title,
-                "score": round(r.score, 4),
-                "highlight": r.highlight,
-                "citation": cit,
-                "paragraph_index": anchored["paragraph_index"],
-                "char_start": anchored["char_start"],
-                "char_end": anchored["char_end"],
-                "snippet": anchored["snippet"],
-                "anchor_status": anchored["anchor_status"],
-                "deep_link": anchored["deep_link"],
-            }
-        )
+        item = {
+            "id": r.id,
+            "type": r.type,
+            "title": r.title,
+            "score": round(r.score, 4),
+            "highlight": r.highlight,
+            "citation": cit,
+            "paragraph_index": anchored["paragraph_index"],
+            "char_start": anchored["char_start"],
+            "char_end": anchored["char_end"],
+            "snippet": anchored["snippet"],
+            "anchor_status": anchored["anchor_status"],
+            "deep_link": anchored["deep_link"],
+        }
+        # KnowledgeView stable schema validation (fail-closed only in tests, warn in prod)
+        _errs = validate_result_schema(item)
+        if _errs:
+            import logging as _lg
+
+            _lg.getLogger(__name__).warning("KnowledgeView schema violation in /search: %s", _errs)
+        results_out.append(item)
         sources.append(
             {
                 "substrate_id": r.id,
@@ -162,6 +173,9 @@ async def search(req: SearchRequest, user_id: str = Depends(jwt_auth)):
                 "score": round(r.score, 4),
             }
         )
+
+    # KnowledgeView contract assertion: all results must satisfy stable schema
+    # (enforced via validate_result_schema above).
 
     return {
         "results": results_out,

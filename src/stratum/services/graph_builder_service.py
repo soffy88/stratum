@@ -11,6 +11,7 @@
   - Agent Post-it 状态持久化 (Meta/states/graph_builder.json)
   - Call chain tracking (防循环/防重复/最大深度3)
 """
+
 import asyncio
 import json
 import logging
@@ -62,7 +63,7 @@ async def build_graph_from_substrate(substrate_id: str, user_id_hash: str) -> di
     with get_conn() as conn:
         row = conn.execute(
             "SELECT content FROM derivative WHERE substrate_id=? AND kind='markdown'",
-            (substrate_id,)
+            (substrate_id,),
         ).fetchone()
 
     if not row or not row[0]:
@@ -76,9 +77,11 @@ async def build_graph_from_substrate(substrate_id: str, user_id_hash: str) -> di
 
     if use_paragraph_chunking:
         from stratum.services.paragraph_chunking import paragraph_chunk
+
         raw_chunks = paragraph_chunk(content, min_chars=400, max_chars=_MAX_CHUNK_CHARS)
     else:
         from oprim import structural_chunk
+
         raw_chunks = structural_chunk(
             text=content,
             min_chars=500,
@@ -99,9 +102,16 @@ async def build_graph_from_substrate(substrate_id: str, user_id_hash: str) -> di
     seen_entities: dict[str, str] = {}  # name → entity_id
 
     # 3. 每 chunk LLM 抽取（通过 ProviderRegistry 走已注册的 caller，run in thread）
-    from obase import ProviderRegistry as _PR
-    # Local Ollama provider (registered in main.py); DashScope path is in arrears.
-    _llm_caller = _PR.get().llm("qwen3")
+    # The production image registers qwen3 through obase.  The formal oprim
+    # callable remains the supported fallback for CLI/test environments where
+    # obase's optional text dependencies are not installed.
+    try:
+        from obase import ProviderRegistry as _PR
+    except (ImportError, ModuleNotFoundError):
+        from oprim import llm_call as _llm_caller
+    else:
+        # Local Ollama provider (registered in main.py); DashScope path is in arrears.
+        _llm_caller = _PR.get().llm("qwen3")
     for chunk_text in chunks[:_MAX_CHUNKS]:
         try:
             raw = await asyncio.to_thread(
@@ -109,7 +119,14 @@ async def build_graph_from_substrate(substrate_id: str, user_id_hash: str) -> di
                 messages=[{"role": "user", "content": _EXTRACT_PROMPT + chunk_text}],
                 max_tokens=1000,
             )
-            text = (raw if isinstance(raw, str) else str(raw)).strip().strip("```json").strip("```").strip()
+            raw_text = getattr(raw, "text", raw)
+            text = (
+                (raw_text if isinstance(raw_text, str) else str(raw_text))
+                .strip()
+                .strip("```json")
+                .strip("```")
+                .strip()
+            )
             data = json.loads(text)
         except Exception as e:
             log.warning("graph_builder: LLM extract failed for chunk: %s", e)
@@ -147,8 +164,12 @@ async def build_graph_from_substrate(substrate_id: str, user_id_hash: str) -> di
             )
             relations_added += 1
 
-    log.info("graph_builder: substrate=%s entities=%d relations=%d",
-             substrate_id, entities_added, relations_added)
+    log.info(
+        "graph_builder: substrate=%s entities=%d relations=%d",
+        substrate_id,
+        entities_added,
+        relations_added,
+    )
 
     # Agent Post-it: save result
     state = load_agent_state("graph_builder")

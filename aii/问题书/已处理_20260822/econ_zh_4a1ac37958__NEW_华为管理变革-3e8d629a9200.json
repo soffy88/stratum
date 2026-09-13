@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_4a1ac37958",
+  "title": "(NEW)华为管理变革-3e8d629a9200",
+  "md_path": "/home/soffy/books/MD/经济学/(NEW)华为管理变革-3e8d629a9200.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽2仅10%×预期20(基准~10/章×2章) | rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)",
+  "ts": "2026-08-10T15:52:23.373518+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_4a1ac37958.json",
+  "status": "pending_review"
+}

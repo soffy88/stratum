@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_b70874dd3d",
+  "title": "[小艾上班记：真账实操教你学会会计]陈艳红",
+  "md_path": "/home/soffy/books/MD/经济学/[小艾上班记：真账实操教你学会会计]陈艳红.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-11T14:28:29.310342+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_b70874dd3d.json",
+  "status": "pending_review"
+}

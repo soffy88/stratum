@@ -14,9 +14,18 @@
 
 from __future__ import annotations
 
+import sys
+
+_OPRIM_ROOT = "/data/soffy/projects/platform/3O/oprim"
+if _OPRIM_ROOT not in sys.path:
+    sys.path.insert(0, _OPRIM_ROOT)
+
 import logging
+import json
 import re
 import time
+import unicodedata
+from difflib import SequenceMatcher
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any
@@ -34,21 +43,33 @@ def _user_owner_ids(user_id: str | None) -> tuple[str | None, str | None]:
     if not user_id or user_id == "default":
         return None, None
     from stratum.utils.user_id_hash import hash_user_id
+
     return user_id, hash_user_id(user_id)
 
 
-_OLLAMA_BASE = "http://172.19.0.1:11434"
-_EMBED_MODEL = "qwen3-embedding"
 _LLM_MODEL = "qwen3-8b"
-_EMBED_TIMEOUT = 30.0
+
+# BGE-M3 embedder — must match substrate_layers.embedding space (1024-dim, cosine)
+_bge: Any | None = None
+
+
+def _get_bge():
+    global _bge
+    if _bge is None:
+        from oprim.embedding.bge_m3 import BgeM3Embedder
+
+        _bge = BgeM3Embedder()
+    return _bge
 
 
 # ── Data classes ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class RetrievalStep:
     """Single step in the retrieval trajectory."""
-    phase: str          # "coarse", "drill", "load", "rerank"
+
+    phase: str  # "coarse", "drill", "load", "rerank"
     candidates: int
     hits: int
     scores: list[float] = field(default_factory=list)
@@ -58,19 +79,22 @@ class RetrievalStep:
 @dataclass
 class RetrievalResult:
     """Single retrieval result."""
+
     uri: str
     node_type: str
     ref_id: str | None
-    layer: str          # "L0", "L1", "L2"
+    layer: str  # "L0", "L1", "L2"
     content: str
     score: float
     token_count: int = 0
-    namespace: str = "global"   # global=权威库(B仓/项目) | personal=个人草稿
+    namespace: str = "global"  # global=权威库(B仓/项目) | personal=个人草稿
+    fragment_id: str | None = None
 
 
 @dataclass
 class RetrievalResponse:
     """Complete retrieval response with trajectory."""
+
     query: str
     results: list[RetrievalResult]
     trajectory: list[RetrievalStep]
@@ -84,28 +108,24 @@ _EMBED_DIM = 1024  # Must match substrate_layers.embedding vector dimension
 
 
 def get_embedding(text: str) -> list[float] | None:
-    """Get embedding vector for text using qwen3-embedding.
+    """Get embedding vector for text using BGE-M3 — same space as substrate_layers.
 
     Truncates to _EMBED_DIM (1024) to match pgvector column.
     """
     try:
-        # Truncate to ~2000 tokens
         text = text[:8000] if len(text) > 8000 else text
-        resp = httpx.post(
-            f"{_OLLAMA_BASE}/api/embeddings",
-            json={"model": _EMBED_MODEL, "prompt": text},
-            timeout=_EMBED_TIMEOUT,
-        )
-        resp.raise_for_status()
-        emb = resp.json().get("embedding", [])
-        # Truncate to match vector(1024) column (Matryoshka-safe)
-        return emb[:_EMBED_DIM] if len(emb) > _EMBED_DIM else emb
+        emb = _get_bge().embed([text], dim=1024)
+        if not emb or not emb[0]:
+            return None
+        vec = emb[0]
+        return vec[:_EMBED_DIM] if len(vec) > _EMBED_DIM else vec
     except Exception as exc:
-        logger.warning("retrieval_engine: embedding failed: %s", exc)
+        logger.warning("retrieval_engine: BGE-M3 embedding failed: %s", exc)
         return None
 
 
 # ── Vector search ────────────────────────────────────────────────────────────
+
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
     """Compute cosine similarity between two vectors."""
@@ -121,9 +141,13 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
     return float(dot / (norm_a * norm_b))
 
 
-def _vector_search_layers(query_embedding: list[float], layer: str = "L0",
-                          top_k: int = 50, scope_uri: str | None = None,
-                          user_id: str | None = None) -> list[dict]:
+def _vector_search_layers(
+    query_embedding: list[float],
+    layer: str = "L0",
+    top_k: int = 50,
+    scope_uri: str | None = None,
+    user_id: str | None = None,
+) -> list[dict]:
     """Search substrate_layers by vector similarity using pgvector.
 
     When user_id is set, only returns layers for substrates owned by that user
@@ -154,8 +178,10 @@ def _vector_search_layers(query_embedding: list[float], layer: str = "L0",
                 (emb_str, layer, *owner_params, emb_str, top_k),
             ).fetchall()
             logger.debug("vector_search_layers: pgvector returned %d rows", len(rows))
-            return [{"substrate_id": r[0], "content": r[1], "token_count": r[2],
-                     "score": float(r[3])} for r in rows]
+            return [
+                {"substrate_id": r[0], "content": r[1], "token_count": r[2], "score": float(r[3])}
+                for r in rows
+            ]
         except Exception as exc:
             logger.warning("vector_search_layers pgvector failed: %s — falling back to Python", exc)
 
@@ -176,7 +202,9 @@ def _vector_search_layers(query_embedding: list[float], layer: str = "L0",
         try:
             emb_list = list(emb) if not isinstance(emb, list) else emb
             score = _cosine_similarity(query_embedding, emb_list)
-            results.append({"substrate_id": sid, "content": content, "token_count": tc, "score": score})
+            results.append(
+                {"substrate_id": sid, "content": content, "token_count": tc, "score": score}
+            )
         except Exception:
             continue
 
@@ -186,8 +214,10 @@ def _vector_search_layers(query_embedding: list[float], layer: str = "L0",
 
 # ── Text search (BM25-like) ─────────────────────────────────────────────────
 
-def _text_search_layers(query: str, layer: str = "L0",
-                        top_k: int = 50, user_id: str | None = None) -> list[dict]:
+
+def _text_search_layers(
+    query: str, layer: str = "L0", top_k: int = 50, user_id: str | None = None
+) -> list[dict]:
     """Simple text search using ILIKE (case-insensitive LIKE).
 
     When user_id is set, only searches layers owned by that user.
@@ -210,7 +240,7 @@ def _text_search_layers(query: str, layer: str = "L0",
 
     with get_conn() as conn:
         # Build ILIKE conditions on sl.content
-        conditions = " AND ".join(f"sl.content ILIKE ?" for _ in terms)
+        conditions = " AND ".join("sl.content ILIKE ?" for _ in terms)
         params = [f"%{t}%" for t in terms] + [layer] + owner_params
 
         try:
@@ -234,18 +264,340 @@ def _text_search_layers(query: str, layer: str = "L0",
         content_lower = content.lower()
         matches = sum(1 for t in terms if t.lower() in content_lower)
         score = matches / len(terms) if terms else 0
-        results.append({
-            "substrate_id": sid,
-            "content": content,
-            "token_count": tc,
-            "score": score,
-        })
+        results.append(
+            {
+                "substrate_id": sid,
+                "content": content,
+                "token_count": tc,
+                "score": score,
+            }
+        )
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results[:top_k]
 
 
+# ── Canonical fragment/metadata channels ────────────────────────────────────
+
+
+def _normalise_retrieval_text(value: str | None) -> str:
+    """Normalise user text for exact/lexical retrieval without losing CJK."""
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", value or "").casefold()).strip()
+
+
+def _compact_retrieval_text(value: str | None) -> str:
+    """Remove punctuation/spacing for robust title and phrase comparisons."""
+    return re.sub(r"[^\w\u3400-\u9fff]+", "", _normalise_retrieval_text(value))
+
+
+def _retrieval_terms(value: str | None) -> list[str]:
+    """Return word terms plus CJK bigrams for punctuation/footnote-tolerant search."""
+    normalised = _normalise_retrieval_text(value)
+    terms = re.findall(r"[a-z0-9]+|[\u3400-\u9fff]+", normalised)
+    cjk_grams: list[str] = []
+    for term in terms:
+        if re.fullmatch(r"[\u3400-\u9fff]+", term) and len(term) >= 2:
+            cjk_grams.extend(term[i : i + 2] for i in range(len(term) - 1))
+    # Keep the original CJK terms first; bigrams make OCR footnotes and
+    # punctuation between characters searchable without a new tokenizer.
+    output: list[str] = []
+    for term in terms + cjk_grams:
+        if len(term) > 1 and term not in output:
+            output.append(term)
+    return output
+
+
+def _lexical_match_score(query: str, text: str) -> tuple[float, bool]:
+    """Score a fragment and report whether it is an exact/high-confidence hit."""
+    qcompact = _compact_retrieval_text(query)
+    tcompact = _compact_retrieval_text(text)
+    exact = bool(qcompact and len(qcompact) >= 4 and qcompact in tcompact)
+    terms = _retrieval_terms(query)
+    if not terms:
+        # Some OCR/PDF fixtures contain opaque control-character text. Keep
+        # those queries searchable without treating the corrupted string as a
+        # normal word: compare short windows after whitespace removal.
+        qopaque = "".join(_normalise_retrieval_text(query).split())
+        top_ratio = 0.0
+        if len(qopaque) >= 8:
+            compact_text = "".join(_normalise_retrieval_text(text).split())
+            window = len(qopaque) + 4
+            for start in range(0, max(len(compact_text) - len(qopaque) + 1, 1), 1):
+                candidate = compact_text[start : start + window]
+                top_ratio = max(
+                    top_ratio,
+                    SequenceMatcher(None, qopaque, candidate, autojunk=False).ratio(),
+                )
+            return top_ratio * 100.0, top_ratio >= 0.85
+        return 0.0, exact
+    matched = sum(1 for term in terms if term in tcompact)
+    coverage = matched / len(terms)
+    cjk_terms = [term for term in terms if re.fullmatch(r"[\u3400-\u9fff]+", term)]
+    cjk_coverage = (
+        sum(1 for term in cjk_terms if term in tcompact) / len(cjk_terms) if cjk_terms else 0.0
+    )
+    # A CJK phrase can have a footnote marker between two characters. Treat a
+    # high bigram-coverage match as an exact lexical signal, but not a generic
+    # one-token semantic match.
+    protected_phrase = bool(len(cjk_terms) >= 3 and cjk_coverage >= 0.75)
+    return (200.0 if exact else 0.0) + coverage * 10.0, exact or protected_phrase
+
+
+def _text_search_chunks(
+    query: str, top_k: int = 50, user_id: str | None = None
+) -> list[dict]:
+    """Search canonical substrate fragments with Unicode/CJK-aware lexical scoring."""
+    terms = _retrieval_terms(query)
+    uid, uh = _user_owner_ids(user_id)
+    owner_sql = ""
+    owner_params: list[Any] = []
+    if uid is not None:
+        owner_sql = " AND (s.user_id = ? OR s.user_id = ?)"
+        owner_params = [uid, uh]
+    # OR is deliberate: scoring/coverage is calculated in Python and the
+    # database only narrows the candidate set. CJK bigrams cover OCR footnotes.
+    search_terms = terms[:32]
+    conditions = " OR ".join("c.text ILIKE ?" for _ in search_terms)
+    params: list[Any] = [f"%{term}%" for term in search_terms]
+    params.extend(owner_params)
+    with get_conn() as conn:
+        try:
+            if conditions:
+                rows = conn.execute(
+                    f"""SELECT c.id, c.substrate_id, c.text, c.chunk_idx
+                        FROM substrate_chunk c
+                        JOIN substrates s ON s.id = c.substrate_id
+                        WHERE ({conditions}) {owner_sql}
+                        LIMIT ?""",
+                    tuple(params + [max(top_k * 20, 200)]),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    f"""SELECT c.id, c.substrate_id, c.text, c.chunk_idx
+                        FROM substrate_chunk c
+                        JOIN substrates s ON s.id = c.substrate_id
+                        WHERE c.text IS NOT NULL {owner_sql}
+                        LIMIT ?""",
+                    tuple(owner_params + [max(top_k * 100, 5000)]),
+                ).fetchall()
+        except Exception as exc:
+            logger.warning("text_search_chunks failed: %s", exc)
+            return []
+    results: list[dict] = []
+    seen_fragments: set[str] = set()
+    for fragment_id, substrate_id, content, chunk_idx in rows:
+        if fragment_id in seen_fragments:
+            continue
+        seen_fragments.add(fragment_id)
+        score, exact = _lexical_match_score(query, content or "")
+        if score <= 0:
+            continue
+        results.append(
+            {
+                "substrate_id": substrate_id,
+                "fragment_id": fragment_id,
+                "content": content or "",
+                "token_count": len(content or "") // 4,
+                "score": score,
+                "exact_match": exact,
+                "chunk_idx": chunk_idx,
+            }
+        )
+    results.sort(key=lambda item: (-item["score"], item["substrate_id"], item["fragment_id"]))
+    return results[:top_k]
+
+
+def _vector_search_chunks(
+    query_embedding: list[float], top_k: int = 50, user_id: str | None = None
+) -> list[dict]:
+    """Search canonical fragments whose BGE-M3 vectors are available."""
+    if not query_embedding:
+        return []
+    emb_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
+    uid, uh = _user_owner_ids(user_id)
+    owner_sql = ""
+    owner_params: tuple[Any, ...] = ()
+    if uid is not None:
+        owner_sql = " AND (s.user_id = ? OR s.user_id = ?)"
+        owner_params = (uid, uh)
+    with get_conn() as conn:
+        try:
+            rows = conn.execute(
+                f"""SELECT c.id, c.substrate_id, c.text, c.chunk_idx,
+                           1 - (c.embedding <=> ?::vector) AS score
+                    FROM substrate_chunk c
+                    JOIN substrates s ON s.id = c.substrate_id
+                    WHERE c.embedding IS NOT NULL {owner_sql}
+                    ORDER BY c.embedding <=> ?::vector
+                    LIMIT ?""",
+                (emb_str, *owner_params, emb_str, top_k),
+            ).fetchall()
+        except Exception as exc:
+            logger.warning("vector_search_chunks failed: %s", exc)
+            return []
+    return [
+        {
+            "substrate_id": row[1],
+            "fragment_id": row[0],
+            "content": row[2] or "",
+            "token_count": len(row[2] or "") // 4,
+            "score": float(row[4]),
+            "chunk_idx": row[3],
+        }
+        for row in rows
+    ]
+
+
+def _contains_query_phrase(query: str, phrase: str) -> bool:
+    """Match a canonical claim statement as a phrase, not a substring prefix."""
+    query_text = _normalise_retrieval_text(query)
+    phrase_text = _normalise_retrieval_text(phrase)
+    if not query_text or not phrase_text:
+        return False
+    pattern = re.escape(phrase_text).replace(r"\ ", r"\s+")
+    return bool(re.search(rf"(?<!\w){pattern}(?!\w)", query_text))
+
+
+def _claim_provenance_search(query: str, top_k: int = 20, user_id: str | None = None) -> list[dict]:
+    """Resolve exact canonical claim statements to their evidenced sources.
+
+    Claims are canonical records, not benchmark fixtures. This channel makes a
+    claim question retrievable through the existing Claim -> Evidence -> Source
+    provenance path instead of pretending the statement is present in a PDF's
+    title-only L0 summary.
+    """
+    uid, uh = _user_owner_ids(user_id)
+    owner_sql = ""
+    owner_params: tuple[Any, ...] = ()
+    if uid is not None:
+        owner_sql = """ AND (c.user_id = ? OR c.user_id = ?)
+                         AND (e.user_id = ? OR e.user_id = ?)
+                         AND (s.user_id = ? OR s.user_id = ?)"""
+        owner_params = (uid, uh, uid, uh, uid, uh)
+    with get_conn() as conn:
+        try:
+            rows = conn.execute(
+                f"""SELECT c.id, c.statement, e.substrate_id, e.quote
+                    FROM knowledge_claims c
+                    JOIN claim_evidence ce ON ce.claim_id = c.id
+                    JOIN evidence e ON e.id = ce.evidence_id
+                    JOIN substrates s ON s.id = e.substrate_id
+                    WHERE c.deleted_at IS NULL {owner_sql}
+                    ORDER BY c.id, e.id""",
+                owner_params,
+            ).fetchall()
+        except Exception as exc:
+            logger.warning("claim_provenance_search failed: %s", exc)
+            return []
+    results: list[dict] = []
+    seen: set[str] = set()
+    for claim_id, statement, substrate_id, quote in rows:
+        if substrate_id in seen or not _contains_query_phrase(query, statement or ""):
+            continue
+        seen.add(substrate_id)
+        results.append(
+            {
+                "substrate_id": substrate_id,
+                "content": quote or statement or "",
+                "token_count": len(quote or statement or "") // 4,
+                "score": 100.0,
+                "exact_match": True,
+                "claim_id": claim_id,
+                "channel": "claim",
+            }
+        )
+        if len(results) >= top_k:
+            break
+    return results
+
+
+def _title_metadata_search(query: str, top_k: int = 50, user_id: str | None = None) -> list[dict]:
+    """Search canonical source title/path metadata with exact-match protection."""
+    uid, uh = _user_owner_ids(user_id)
+    owner_sql = ""
+    owner_params: tuple[Any, ...] = ()
+    if uid is not None:
+        owner_sql = " WHERE (s.user_id = ? OR s.user_id = ?)"
+        owner_params = (uid, uh)
+    with get_conn() as conn:
+        try:
+            rows = conn.execute(
+                f"SELECT s.id, s.title, s.source_path FROM substrates s{owner_sql}",
+                owner_params,
+            ).fetchall()
+        except Exception as exc:
+            logger.warning("title_metadata_search failed: %s", exc)
+            return []
+    results: list[dict] = []
+    for substrate_id, title, source_path in rows:
+        score, exact = _lexical_match_score(query, f"{title or ''} {source_path or ''}")
+        if score <= 0:
+            continue
+        results.append(
+            {
+                "substrate_id": substrate_id,
+                "content": title or source_path or substrate_id,
+                "token_count": len(title or "") // 4,
+                "score": score,
+                "exact_match": exact,
+                "channel": "title",
+            }
+        )
+    results.sort(key=lambda item: (-item["score"], item["substrate_id"]))
+    return results[:top_k]
+
+
+def _rrf_merge_channels(
+    channels: dict[str, list[dict]],
+    top_k: int = 30,
+    rrf_k: int = 60,
+    protect_exact: bool = True,
+) -> list[dict]:
+    """Merge ranked channels with RRF and optionally protect exact matches."""
+    merged: dict[str, dict] = {}
+    exact_priority = {"claim": 4, "title": 3, "lexical_chunk": 3} if protect_exact else {}
+    for channel, rows in channels.items():
+        for rank, row in enumerate(rows, 1):
+            substrate_id = row.get("substrate_id")
+            if not substrate_id:
+                continue
+            candidate = merged.setdefault(
+                substrate_id,
+                {
+                    "substrate_id": substrate_id,
+                    "content": row.get("content") or "",
+                    "token_count": row.get("token_count") or 0,
+                    "score": 0.0,
+                    "rrf_score": 0.0,
+                    "fragment_id": row.get("fragment_id"),
+                    "exact_priority": 0,
+                    "channels": [],
+                },
+            )
+            candidate["rrf_score"] += 1.0 / (rrf_k + rank)
+            candidate["channels"].append(channel)
+            candidate["score"] = max(float(candidate["score"]), float(row.get("score") or 0.0))
+            if row.get("content") and not candidate["content"]:
+                candidate["content"] = row["content"]
+            if row.get("fragment_id") and not candidate.get("fragment_id"):
+                candidate["fragment_id"] = row["fragment_id"]
+            if protect_exact and row.get("exact_match"):
+                candidate["exact_priority"] = max(
+                    candidate["exact_priority"], exact_priority.get(channel, 2)
+                )
+    return sorted(
+        merged.values(),
+        key=lambda row: (
+            -row["exact_priority"],
+            -row["rrf_score"],
+            -row["score"],
+            row["substrate_id"],
+        ),
+    )[:top_k]
+
+
 # ── Directory-aware retrieval ────────────────────────────────────────────────
+
 
 def _search_personal_notes(query: str, top_k: int = 5) -> list[RetrievalResult]:
     """个人草稿区检索(~/.stratum/notes/*.md) — 关键词匹配 + 简单评分。
@@ -271,16 +623,18 @@ def _search_personal_notes(query: str, top_k: int = 5) -> list[RetrievalResult]:
             continue
         score = min(0.6, 0.25 + 0.07 * matched + 0.01 * min(len(text) // 500, 3))
         snippet = text[:400].replace("\n", " ")[:300]
-        hits.append(RetrievalResult(
-            uri=f"pnote://{f.stem}",
-            node_type="note",
-            ref_id=f.stem,
-            layer="L0",
-            content=snippet,
-            score=score,
-            token_count=len(snippet) // 4,
-            namespace="personal",
-        ))
+        hits.append(
+            RetrievalResult(
+                uri=f"pnote://{f.stem}",
+                node_type="note",
+                ref_id=f.stem,
+                layer="L0",
+                content=snippet,
+                score=score,
+                token_count=len(snippet) // 4,
+                namespace="personal",
+            )
+        )
     hits.sort(key=lambda r: r.score, reverse=True)
     return hits[:top_k]
 
@@ -318,8 +672,7 @@ def _get_sibling_kus(parent_uri: str, limit: int = 5) -> list[dict]:
     return [{"uri": r[0], "ku_id": r[1], "l0": r[2]} for r in rows]
 
 
-def _get_directory_siblings(parent_uri: str, exclude_ids: set[str],
-                            limit: int = 5) -> list[dict]:
+def _get_directory_siblings(parent_uri: str, exclude_ids: set[str], limit: int = 5) -> list[dict]:
     """Get sibling substrate L0 summaries from the same directory.
 
     Used for directory-recursive retrieval: when a substrate matches,
@@ -348,8 +701,10 @@ def _get_directory_siblings(parent_uri: str, exclude_ids: set[str],
 
 # ── LLM Rerank ──────────────────────────────────────────────────────────────
 
-def _llm_rerank(query: str, candidates: list[RetrievalResult],
-                top_k: int = 10) -> list[RetrievalResult]:
+
+def _llm_rerank(
+    query: str, candidates: list[RetrievalResult], top_k: int = 10
+) -> list[RetrievalResult]:
     """Re-rank candidates using Ollama LLM.
 
     Asks LLM to score each candidate's relevance to query, returns re-sorted list.
@@ -373,7 +728,7 @@ def _llm_rerank(query: str, candidates: list[RetrievalResult],
         f"Query: {query}\n\n"
         f"Candidates:\n{items_text}\n\n"
         f"Score each candidate's relevance to the query (0-10, 10=perfect match). "
-        f"Return ONLY valid JSON: {{\"scores\":[{{\"id\":<int>,\"score\":<float>}}]}}"
+        f'Return ONLY valid JSON: {{"scores":[{{"id":<int>,"score":<float>}}]}}'
     )
 
     try:
@@ -382,7 +737,10 @@ def _llm_rerank(query: str, candidates: list[RetrievalResult],
             json={
                 "model": _LLM_MODEL,
                 "messages": [
-                    {"role": "system", "content": "You are a precise retrieval re-ranker. Output valid JSON only."},
+                    {
+                        "role": "system",
+                        "content": "You are a precise retrieval re-ranker. Output valid JSON only.",
+                    },
                     {"role": "user", "content": prompt},
                 ],
                 "stream": False,
@@ -444,12 +802,18 @@ def _llm_rerank(query: str, candidates: list[RetrievalResult],
 
 # ── Main retrieval ──────────────────────────────────────────────────────────
 
-def retrieve(query: str, max_depth: int = 2, top_k: int = 10,
-             layers: list[str] | None = None,
-             rerank: bool = False,
-             user_id: str = "default",
-             namespace: str = "global",
-             budget_tokens: int | None = None) -> RetrievalResponse:
+
+def retrieve(
+    query: str,
+    max_depth: int = 2,
+    top_k: int = 10,
+    layers: list[str] | None = None,
+    rerank: bool = False,
+    user_id: str = "default",
+    namespace: str = "global",
+    budget_tokens: int | None = None,
+    query_embedding: list[float] | None = None,
+) -> RetrievalResponse:
     """Directory-recursive retrieval with trajectory tracking.
 
     Args:
@@ -478,38 +842,52 @@ def retrieve(query: str, max_depth: int = 2, top_k: int = 10,
             layers = ["L0", "L1", "L2"]
 
     # Step 1: Get query embedding
-    query_emb = get_embedding(query)
+    query_emb = query_embedding if query_embedding is not None else get_embedding(query)
 
-    # Step 2: Coarse search — vector + text on L0
-    vector_results = _vector_search_layers(query_emb, "L0", top_k=50, user_id=user_id) if query_emb else []
+    # Step 2: Coarse search — dense/lexical source summaries plus canonical
+    # fragments and provenance metadata. L0 remains useful for the broad
+    # corpus, while chunks carry the actual passage-level evidence.
+    vector_results = (
+        _vector_search_layers(query_emb, "L0", top_k=50, user_id=user_id) if query_emb else []
+    )
+    chunk_vector_results = (
+        _vector_search_chunks(query_emb, top_k=50, user_id=user_id) if query_emb else []
+    )
     text_results = _text_search_layers(query, "L0", top_k=50, user_id=user_id)
+    chunk_text_results = _text_search_chunks(query, top_k=50, user_id=user_id)
+    claim_results = _claim_provenance_search(query, top_k=20, user_id=user_id)
+    title_results = _title_metadata_search(query, top_k=50, user_id=user_id)
 
-    # Merge and deduplicate
-    seen_ids = set()
-    merged: dict[str, dict] = {}
-    for r in vector_results:
-        sid = r["substrate_id"]
-        if sid not in seen_ids:
-            seen_ids.add(sid)
-            merged[sid] = r
-    for r in text_results:
-        sid = r["substrate_id"]
-        if sid in merged:
-            merged[sid]["score"] = max(merged[sid]["score"], r["score"])
-        else:
-            merged[sid] = r
+    channel_results = {
+        "dense_l0": vector_results,
+        "dense_chunk": chunk_vector_results,
+        "lexical_l0": text_results,
+        "lexical_chunk": chunk_text_results,
+        "claim": claim_results,
+        "title": title_results,
+    }
+    coarse_results = _rrf_merge_channels(channel_results, top_k=30)
 
-    coarse_results = sorted(merged.values(), key=lambda x: x["score"], reverse=True)[:30]
-
-    trajectory.append(RetrievalStep(
-        phase="coarse",
-        candidates=len(vector_results) + len(text_results),
-        hits=len(coarse_results),
-        scores=[r["score"] for r in coarse_results[:10]],
-        details={"vector_hits": len(vector_results), "text_hits": len(text_results)},
-    ))
+    trajectory.append(
+        RetrievalStep(
+            phase="coarse",
+            candidates=sum(len(rows) for rows in channel_results.values()),
+            hits=len(coarse_results),
+            scores=[r["score"] for r in coarse_results[:10]],
+            details={
+                "dense_l0_hits": len(vector_results),
+                "dense_chunk_hits": len(chunk_vector_results),
+                "lexical_l0_hits": len(text_results),
+                "lexical_chunk_hits": len(chunk_text_results),
+                "claim_hits": len(claim_results),
+                "title_hits": len(title_results),
+                "fusion": "rrf_with_exact_protection",
+            },
+        )
+    )
 
     # Step 2b: Directory-recursive expansion — boost siblings of top hits
+    merged: dict[str, dict] = {r["substrate_id"]: r for r in coarse_results}
     expanded_ids = set()
     for r in coarse_results[:5]:
         sid = r["substrate_id"]
@@ -537,13 +915,15 @@ def retrieve(query: str, max_depth: int = 2, top_k: int = 10,
     if expanded_ids:
         # Re-sort with expanded results
         coarse_results = sorted(merged.values(), key=lambda x: x["score"], reverse=True)[:30]
-        trajectory.append(RetrievalStep(
-            phase="expand",
-            candidates=len(expanded_ids),
-            hits=len(expanded_ids),
-            scores=[merged[sid]["score"] for sid in list(expanded_ids)[:5]],
-            details={"siblings_added": len(expanded_ids)},
-        ))
+        trajectory.append(
+            RetrievalStep(
+                phase="expand",
+                candidates=len(expanded_ids),
+                hits=len(expanded_ids),
+                scores=[merged[sid]["score"] for sid in list(expanded_ids)[:5]],
+                details={"siblings_added": len(expanded_ids)},
+            )
+        )
 
     # Step 3: Drill down — get directory context + L1 for top results
     enriched_results: list[RetrievalResult] = []
@@ -552,15 +932,18 @@ def retrieve(query: str, max_depth: int = 2, top_k: int = 10,
         dir_ctx = _get_directory_context(sid)
 
         # Add L0 result
-        enriched_results.append(RetrievalResult(
-            uri=dir_ctx["uri"] if dir_ctx else f"viking://resources/其他/{sid}",
-            node_type="substrate",
-            ref_id=sid,
-            layer="L0",
-            content=r["content"],
-            score=r["score"],
-            token_count=r["token_count"],
-        ))
+        enriched_results.append(
+            RetrievalResult(
+                uri=dir_ctx["uri"] if dir_ctx else f"viking://resources/其他/{sid}",
+                node_type="substrate",
+                ref_id=sid,
+                layer="L0",
+                content=r["content"],
+                score=r["score"],
+                token_count=r["token_count"],
+                fragment_id=r.get("fragment_id"),
+            )
+        )
 
         # If L1 requested, get it
         if "L1" in layers:
@@ -570,22 +953,26 @@ def retrieve(query: str, max_depth: int = 2, top_k: int = 10,
                     (sid,),
                 ).fetchone()
             if l1_row:
-                enriched_results.append(RetrievalResult(
-                    uri=dir_ctx["uri"] if dir_ctx else f"viking://resources/其他/{sid}",
-                    node_type="substrate",
-                    ref_id=sid,
-                    layer="L1",
-                    content=l1_row[0],
-                    score=r["score"] * 0.9,  # slight discount for deeper layer
-                    token_count=l1_row[1],
-                ))
+                enriched_results.append(
+                    RetrievalResult(
+                        uri=dir_ctx["uri"] if dir_ctx else f"viking://resources/其他/{sid}",
+                        node_type="substrate",
+                        ref_id=sid,
+                        layer="L1",
+                        content=l1_row[0],
+                        score=r["score"] * 0.9,  # slight discount for deeper layer
+                        token_count=l1_row[1],
+                    )
+                )
 
-    trajectory.append(RetrievalStep(
-        phase="drill",
-        candidates=len(coarse_results[:15]),
-        hits=len(enriched_results),
-        scores=[r.score for r in enriched_results[:10]],
-    ))
+    trajectory.append(
+        RetrievalStep(
+            phase="drill",
+            candidates=len(coarse_results[:15]),
+            hits=len(enriched_results),
+            scores=[r.score for r in enriched_results[:10]],
+        )
+    )
 
     # Step 4: Load L2 if requested (only for top-k)
     if "L2" in layers:
@@ -598,22 +985,34 @@ def retrieve(query: str, max_depth: int = 2, top_k: int = 10,
                 ).fetchone()
             if l2_row:
                 dir_ctx = _get_directory_context(sid)
-                enriched_results.append(RetrievalResult(
-                    uri=dir_ctx["uri"] if dir_ctx else f"viking://resources/其他/{sid}",
-                    node_type="substrate",
-                    ref_id=sid,
-                    layer="L2",
-                    content=l2_row[0][:3000],  # Truncate L2 to save tokens
-                    score=next((r.score for r in enriched_results if r.ref_id == sid and r.layer == "L0"), 0.5) * 0.8,
-                    token_count=min(l2_row[1], 750),
-                ))
+                enriched_results.append(
+                    RetrievalResult(
+                        uri=dir_ctx["uri"] if dir_ctx else f"viking://resources/其他/{sid}",
+                        node_type="substrate",
+                        ref_id=sid,
+                        layer="L2",
+                        content=l2_row[0][:3000],  # Truncate L2 to save tokens
+                        score=next(
+                            (
+                                r.score
+                                for r in enriched_results
+                                if r.ref_id == sid and r.layer == "L0"
+                            ),
+                            0.5,
+                        )
+                        * 0.8,
+                        token_count=min(l2_row[1], 750),
+                    )
+                )
 
-        trajectory.append(RetrievalStep(
-            phase="load",
-            candidates=len(top_substrate_ids),
-            hits=len([r for r in enriched_results if r.layer == "L2"]),
-            scores=[r.score for r in enriched_results if r.layer == "L2"][:10],
-        ))
+        trajectory.append(
+            RetrievalStep(
+                phase="load",
+                candidates=len(top_substrate_ids),
+                hits=len([r for r in enriched_results if r.layer == "L2"]),
+                scores=[r.score for r in enriched_results if r.layer == "L2"][:10],
+            )
+        )
 
     # Step 5: Optional rerank (using Ollama LLM)
     if rerank and len(enriched_results) > 5:
@@ -622,14 +1021,18 @@ def retrieve(query: str, max_depth: int = 2, top_k: int = 10,
         if reranked:
             # Reorder: reranked L0s first, then other layers
             rerank_ids = {r.ref_id for r in reranked}
-            other_results = [r for r in enriched_results if r.ref_id not in rerank_ids or r.layer != "L0"]
+            other_results = [
+                r for r in enriched_results if r.ref_id not in rerank_ids or r.layer != "L0"
+            ]
             enriched_results = reranked + other_results
-            trajectory.append(RetrievalStep(
-                phase="rerank",
-                candidates=len(l0_results),
-                hits=len(reranked),
-                scores=[r.score for r in reranked[:10]],
-            ))
+            trajectory.append(
+                RetrievalStep(
+                    phase="rerank",
+                    candidates=len(l0_results),
+                    hits=len(reranked),
+                    scores=[r.score for r in reranked[:10]],
+                )
+            )
 
     # Step 5b: Personal 层联邦检索(P3) — namespace ∈ {personal, all}
     # 个人草稿(~/.stratum/notes/*.md)低门槛碎片区: 只做关键词匹配, 结果标注
@@ -637,20 +1040,22 @@ def retrieve(query: str, max_depth: int = 2, top_k: int = 10,
     if namespace in ("personal", "all"):
         personal_hits = _search_personal_notes(query, top_k=5)
         if personal_hits:
-            trajectory.append(RetrievalStep(
-                phase="personal",
-                candidates=len(personal_hits),
-                hits=len(personal_hits),
-                scores=[r.score for r in personal_hits[:10]],
-                details={"namespace": "personal"},
-            ))
+            trajectory.append(
+                RetrievalStep(
+                    phase="personal",
+                    candidates=len(personal_hits),
+                    hits=len(personal_hits),
+                    scores=[r.score for r in personal_hits[:10]],
+                    details={"namespace": "personal"},
+                )
+            )
             enriched_results.extend(personal_hits)
     if namespace == "personal":
         enriched_results = [r for r in enriched_results if r.namespace == "personal"]
 
     # Sort by score and limit (global 权威 + personal 草稿混排时 global 权重已内建)
     enriched_results.sort(key=lambda r: r.score, reverse=True)
-    final_results = enriched_results[:top_k * len(layers)]
+    final_results = enriched_results[: top_k * len(layers)]
     # ★Token 预算(book-to-skill 启发 P1): 查询成本与答案成正比
     # 按 score 顺序累计 token_count, 超预算截断低分项(保高分权威内容)
     if budget_tokens and budget_tokens > 0:
@@ -658,13 +1063,18 @@ def retrieve(query: str, max_depth: int = 2, top_k: int = 10,
         kept: list[RetrievalResult] = []
         for r in final_results:
             if used + (r.token_count or 0) > budget_tokens and kept:
-                trajectory.append(RetrievalStep(
-                    phase="budget",
-                    candidates=len(final_results),
-                    hits=len(kept),
-                    details={"budget_tokens": budget_tokens, "used_tokens": used,
-                             "truncated": len(final_results) - len(kept)},
-                ))
+                trajectory.append(
+                    RetrievalStep(
+                        phase="budget",
+                        candidates=len(final_results),
+                        hits=len(kept),
+                        details={
+                            "budget_tokens": budget_tokens,
+                            "used_tokens": used,
+                            "truncated": len(final_results) - len(kept),
+                        },
+                    )
+                )
                 break
             used += r.token_count or 0
             kept.append(r)
@@ -673,7 +1083,9 @@ def retrieve(query: str, max_depth: int = 2, top_k: int = 10,
     total_ms = int((time.time() - start_time) * 1000)
 
     # Store trajectory
-    trajectory_id = _store_trajectory(query, query_emb, final_results, trajectory, total_ms, user_id)
+    trajectory_id = _store_trajectory(
+        query, query_emb, final_results, trajectory, total_ms, user_id
+    )
 
     return RetrievalResponse(
         query=query,
@@ -686,22 +1098,38 @@ def retrieve(query: str, max_depth: int = 2, top_k: int = 10,
 
 # ── Trajectory storage ────────────────────────────────────────────────────────
 
-def _store_trajectory(query: str, query_emb: list[float] | None,
-                      results: list[RetrievalResult],
-                      trajectory: list[RetrievalStep],
-                      total_ms: int, user_id: str) -> str:
+
+def _store_trajectory(
+    query: str,
+    query_emb: list[float] | None,
+    results: list[RetrievalResult],
+    trajectory: list[RetrievalStep],
+    total_ms: int,
+    user_id: str,
+) -> str:
     """Store retrieval trajectory in DB."""
     import hashlib
+
     traj_id = hashlib.sha256(f"{query}-{time.time()}".encode()).hexdigest()[:24]
 
     results_json = [
-        {"uri": r.uri, "layer": r.layer, "score": round(r.score, 4),
-         "content_preview": r.content[:200], "token_count": r.token_count}
+        {
+            "uri": r.uri,
+            "layer": r.layer,
+            "score": round(r.score, 4),
+            "content_preview": r.content[:200],
+            "token_count": r.token_count,
+        }
         for r in results
     ]
     trajectory_json = [
-        {"phase": s.phase, "candidates": s.candidates, "hits": s.hits,
-         "scores": [round(x, 4) for x in s.scores[:10]], "details": s.details}
+        {
+            "phase": s.phase,
+            "candidates": s.candidates,
+            "hits": s.hits,
+            "scores": [round(x, 4) for x in s.scores[:10]],
+            "details": s.details,
+        }
         for s in trajectory
     ]
 
@@ -711,11 +1139,16 @@ def _store_trajectory(query: str, query_emb: list[float] | None,
                 """INSERT INTO retrieval_trajectories
                    (id, user_id, query, query_embedding, results, trajectory, total_ms, result_count)
                    VALUES (?, ?, ?, ?, ?::jsonb, ?::jsonb, ?, ?)""",
-                (traj_id, user_id, query,
-                 query_emb,  # psycopg2 should handle float[] → vector
-                 str(results_json).replace("'", '"'),
-                 str(trajectory_json).replace("'", '"'),
-                 total_ms, len(results)),
+                (
+                    traj_id,
+                    user_id,
+                    query,
+                    query_emb,  # psycopg2 should handle float[] → vector
+                    json.dumps(results_json, ensure_ascii=False),
+                    json.dumps(trajectory_json, ensure_ascii=False),
+                    total_ms,
+                    len(results),
+                ),
             )
     except Exception as exc:
         logger.warning("store_trajectory failed: %s", exc)

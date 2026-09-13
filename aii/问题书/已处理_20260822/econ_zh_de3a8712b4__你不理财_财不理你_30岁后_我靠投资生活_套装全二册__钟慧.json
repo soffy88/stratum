@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_de3a8712b4",
+  "title": "[你不理财，财不理你：30岁后，我靠投资生活（套装全二册）]钟慧",
+  "md_path": "/home/soffy/books/MD/经济学/[你不理财，财不理你：30岁后，我靠投资生活（套装全二册）]钟慧.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-11T07:49:13.487338+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_de3a8712b4.json",
+  "status": "pending_review"
+}

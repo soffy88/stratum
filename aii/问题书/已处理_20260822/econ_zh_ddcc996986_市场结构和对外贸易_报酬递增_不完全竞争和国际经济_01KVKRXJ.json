@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_ddcc996986",
+  "title": "市场结构和对外贸易：报酬递增、不完全竞争和国际经济_01KVKRXJ",
+  "md_path": "/home/soffy/books/MD/经济学/市场结构和对外贸易：报酬递增、不完全竞争和国际经济_01KVKRXJ.md",
+  "reason_type": "precheck",
+  "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+  "ts": "2026-07-06T16:26:10.374947+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_ddcc996986.json",
+  "status": "pending_review"
+}

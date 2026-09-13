@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_130c35565a",
+  "title": "经济学家时刻（一部人人看得懂的经济学家如何影响社会的通识佳作。读懂美国经济政策的_01KVAB6K",
+  "md_path": "/home/soffy/books/MD/经济学/经济学家时刻（一部人人看得懂的经济学家如何影响社会的通识佳作。读懂美国经济政策的_01KVAB6K.md",
+  "reason_type": "pipeline_error",
+  "reason_detail": "管道步骤失败(exit 2)",
+  "ts": "2026-08-01T08:22:03.456987+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_130c35565a.json",
+  "status": "pending_review"
+}

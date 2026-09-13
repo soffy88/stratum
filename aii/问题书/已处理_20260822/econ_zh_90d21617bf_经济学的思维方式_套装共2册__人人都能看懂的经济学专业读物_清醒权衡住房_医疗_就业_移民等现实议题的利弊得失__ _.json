@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_90d21617bf",
+  "title": "经济学的思维方式（套装共2册）（人人都能看懂的经济学专业读物，清醒权衡住房、医疗、就业、移民等现实议题的利弊得失。） (托马斯·索维尔 [托马斯·索维尔])",
+  "md_path": "/home/soffy/books/MD/经济学/经济学的思维方式（套装共2册）（人人都能看懂的经济学专业读物，清醒权衡住房、医疗、就业、移民等现实议题的利弊得失。） (托马斯·索维尔 [托马斯·索维尔]).md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-10T22:20:12.763685+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_90d21617bf.json",
+  "status": "pending_review"
+}

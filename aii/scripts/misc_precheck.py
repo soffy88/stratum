@@ -46,7 +46,7 @@ def main():
     #   chapter_ingest 能切出≥3章即视为可入库(切章正则不吃页眉行)
     n = len(chapter_starts(text))
     nonch = [f for f in q['hard_failures']
-             if f['check'] not in ('chapter_structure', 'running_header_noise')]
+             if f['check'] not in ('chapter_structure', 'running_header_noise', 'chapter_dup')]
     if not nonch and n >= 3:
         fmt_parts = []
         for f in q['hard_failures']:

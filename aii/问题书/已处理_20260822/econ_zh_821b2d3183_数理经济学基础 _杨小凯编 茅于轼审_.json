@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_821b2d3183",
+  "title": "数理经济学基础 (杨小凯编 茅于轼审)",
+  "md_path": "/home/soffy/books/MD/经济学/数理经济学基础 (杨小凯编 茅于轼审).md",
+  "reason_type": "pipeline_error",
+  "reason_detail": "管道步骤失败(exit 2)",
+  "ts": "2026-08-01T16:26:00.513071+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_821b2d3183.json",
+  "status": "pending_review"
+}

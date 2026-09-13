@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_def644a1f3",
+  "title": "宏观经济思想七学派",
+  "md_path": "/home/soffy/books/MD/经济学/宏观经济思想七学派.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "完整率0%<100%(漏知识点: []) | KU密度不足: 实抽14仅19%×预期75(基准~15/章×5章) | 低密度章过多: 5章<6KU: ['Ch2(2KU)', 'Ch3(2KU)', 'Ch4(4KU)', 'Ch5(4KU)', 'Ch6(2KU)']",
+  "ts": "2026-07-07T17:37:15.529700+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_def644a1f3.json",
+  "status": "pending_review"
+}

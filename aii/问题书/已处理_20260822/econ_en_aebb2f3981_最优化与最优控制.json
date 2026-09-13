@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_en_aebb2f3981",
+  "title": "最优化与最优控制",
+  "md_path": "/home/soffy/books/MD/经济学/最优化与最优控制.md",
+  "reason_type": "pipeline_error",
+  "reason_detail": "管道步骤失败(exit 2)",
+  "ts": "2026-08-01T02:13:11.911182+00:00",
+  "qual_json": "econ_pipeline/qual/econ_en_aebb2f3981.json",
+  "status": "pending_review"
+}

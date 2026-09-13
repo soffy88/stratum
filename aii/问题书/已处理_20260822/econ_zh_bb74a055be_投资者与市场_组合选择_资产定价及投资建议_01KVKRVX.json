@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_bb74a055be",
+  "title": "投资者与市场：组合选择、资产定价及投资建议_01KVKRVX",
+  "md_path": "/home/soffy/books/MD/经济学/投资者与市场：组合选择、资产定价及投资建议_01KVKRVX.md",
+  "reason_type": "precheck",
+  "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+  "ts": "2026-07-06T17:18:12.318890+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_bb74a055be.json",
+  "status": "pending_review"
+}

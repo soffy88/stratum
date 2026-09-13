@@ -112,7 +112,7 @@ async def go():
         return
     # 边界用生成版(忠实校验在 generate 阶段做; 不再硬编码 microecon 边界)
     zh = {
-        k: bu[k]
+        k: bu.get(k, "")
         for k in ["soul", "positioning", "question", "skeleton", "thinking", "for_whom", "boundary"]
     }
     # ★2026-07-09: generate_bu.py 在0-KU时直接短路输出"[数据不足]"占位(其余6字段空字符串),
