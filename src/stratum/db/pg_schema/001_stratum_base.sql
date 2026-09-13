@@ -304,11 +304,12 @@ CREATE TABLE IF NOT EXISTS stratum.scheduled_job_runs_sl (
 
 CREATE TABLE IF NOT EXISTS stratum.scheduled_jobs_sl (
     "id" TEXT PRIMARY KEY,
-    "user_id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL DEFAULT 'system',
     "name" TEXT NOT NULL,
     "agent_name" TEXT NOT NULL,
     "cron_expression" TEXT NOT NULL,
     "timezone" TEXT NOT NULL,
+    "job_type" TEXT NOT NULL DEFAULT 'native',
     "enabled" BOOLEAN NOT NULL,
     "max_items" INTEGER,
     "created_at" TIMESTAMPTZ

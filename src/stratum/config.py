@@ -16,6 +16,16 @@ DATABASE_POOL_MAX = int(os.environ.get("STRATUM_DB_POOL_MAX", "10"))
 # ── Service URLs ──────────────────────────────────────────────────────────────
 BASE_URL = os.environ.get("STRATUM_BASE_URL", "http://localhost:9302")
 
+# AII projections are opt-in; disabled visual integration must not affect core.
+AII_VISUAL_RETRIEVAL_ENABLED = os.environ.get("AII_VISUAL_RETRIEVAL_ENABLED", "false").lower() == "true"
+AII_PDF_TRANSLATION_ENABLED = os.environ.get("AII_PDF_TRANSLATION_ENABLED", "false").lower() == "true"
+AII_ARTIFACT_PROVENANCE_ENABLED = os.environ.get("AII_ARTIFACT_PROVENANCE_ENABLED", "false").lower() == "true"
+AII_VISUAL_EMBED_MODEL = os.environ.get("AII_VISUAL_EMBED_MODEL", "Qwen3-VL-Embedding-2B")
+AII_VISUAL_EMBED_DIM = int(os.environ.get("AII_VISUAL_EMBED_DIM", "2048"))
+AII_VISUAL_EMBED_BACKEND = os.environ.get("AII_VISUAL_EMBED_BACKEND", "local").lower()
+AII_VISUAL_EMBED_BASE_URL = os.environ.get("AII_VISUAL_EMBED_BASE_URL", "").rstrip("/")
+AII_VISUAL_EMBED_TIMEOUT = float(os.environ.get("AII_VISUAL_EMBED_TIMEOUT", "30"))
+
 # ── File storage ──────────────────────────────────────────────────────────────
 DATA_DIR = Path(os.environ.get("STRATUM_DATA_DIR", str(Path.home() / ".stratum")))
 UPLOAD_MAX_SIZE_MB = int(os.environ.get("STRATUM_UPLOAD_MAX_MB", "500"))
