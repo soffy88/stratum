@@ -58,6 +58,9 @@ CREATE INDEX IF NOT EXISTS idx_multimodal_embedding
 
 DO $$
 BEGIN
+    IF to_regclass('stratum.substrate_layers') IS NULL THEN
+        RETURN;
+    END IF;
     -- Check if unique constraint exists
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
@@ -81,6 +84,9 @@ END $$;
 -- Same for ku_layers
 DO $$
 BEGIN
+    IF to_regclass('stratum.ku_layers') IS NULL THEN
+        RETURN;
+    END IF;
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
         WHERE conname = 'uq_ku_layers_ku_layer'
@@ -102,6 +108,12 @@ END $$;
 
 DO $$
 BEGIN
+    -- graph_entities is created by the later 020 migration in the
+    -- filename-ordered runner.  Fresh databases must not fail here; 020 (or
+    -- an already-existing table on upgrade) owns the optional column/index.
+    IF to_regclass('stratum.graph_entities') IS NULL THEN
+        RETURN;
+    END IF;
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'stratum'
@@ -113,9 +125,14 @@ BEGIN
     END IF;
 END $$;
 
-CREATE INDEX IF NOT EXISTS idx_graph_entities_embedding
-    ON stratum.graph_entities USING hnsw (embedding vector_cosine_ops)
-    WHERE embedding IS NOT NULL;
+DO $$
+BEGIN
+    IF to_regclass('stratum.graph_entities') IS NOT NULL THEN
+        CREATE INDEX IF NOT EXISTS idx_graph_entities_embedding
+            ON stratum.graph_entities USING hnsw (embedding vector_cosine_ops)
+            WHERE embedding IS NOT NULL;
+    END IF;
+END $$;
 
 -- ── 5. Add deleted_at to derivative table (soft delete support) ─────────────
 
