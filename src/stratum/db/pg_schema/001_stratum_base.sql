@@ -310,6 +310,7 @@ CREATE TABLE IF NOT EXISTS stratum.scheduled_jobs_sl (
     "cron_expression" TEXT NOT NULL,
     "timezone" TEXT NOT NULL,
     "job_type" TEXT NOT NULL DEFAULT 'native',
+    "config" JSONB NOT NULL DEFAULT '{}'::jsonb,
     "enabled" BOOLEAN NOT NULL,
     "max_items" INTEGER,
     "created_at" TIMESTAMPTZ
