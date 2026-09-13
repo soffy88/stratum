@@ -193,7 +193,7 @@ async def _lifespan(app: FastAPI):
     await shutdown_aii_backend()
 
 
-app = FastAPI(title="Stratum Service Layer", version="0.5.0", lifespan=_lifespan)
+app = FastAPI(title="AII Service Layer", version="0.5.0", lifespan=_lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -229,6 +229,10 @@ from stratum.api.routers import agents
 
 app.include_router(agents.router)
 
+from stratum.api.routers import agent_contract
+
+app.include_router(agent_contract.router)
+
 from stratum.api.routers import substrates
 
 app.include_router(substrates.router)
@@ -252,6 +256,14 @@ app.include_router(translate.router)
 from stratum.api.routers import concepts
 
 app.include_router(concepts.router)
+
+from stratum.api.routers import knowledge
+
+app.include_router(knowledge.router)
+
+from stratum.api.routers import personal_model
+
+app.include_router(personal_model.router)
 
 from stratum.api.routers import sync
 
@@ -305,10 +317,6 @@ app.include_router(timeline.router)
 from stratum.api.routers import export
 
 app.include_router(export.router)
-
-from stratum.api.routers import graph as graph_router
-
-app.include_router(graph_router.router)
 
 from stratum.api.routers import media
 

@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_856bf79a2a",
+  "title": "怪诞行为学._4，诚实的真相_01KVM21Z",
+  "md_path": "/home/soffy/books/MD/经济学/怪诞行为学._4，诚实的真相_01KVM21Z.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "KU密度不足: 实抽6仅20%×预期30(基准~10/章×3章)",
+  "ts": "2026-07-30T22:48:23.412117+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_856bf79a2a.json",
+  "status": "pending_review"
+}

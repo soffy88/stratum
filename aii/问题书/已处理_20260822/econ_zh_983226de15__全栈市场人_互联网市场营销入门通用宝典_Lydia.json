@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_983226de15",
+  "title": "[全栈市场人：互联网市场营销入门通用宝典]Lydia",
+  "md_path": "/home/soffy/books/MD/经济学/[全栈市场人：互联网市场营销入门通用宝典]Lydia.md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<80% | KU密度不足: 实抽0仅0%×预期8(基准~10/章×0章)",
+  "ts": "2026-08-11T09:10:25.640474+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_983226de15.json",
+  "status": "pending_review"
+}

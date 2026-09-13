@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_38384fd445",
+  "title": "内部流动性与外部流动性_01KVKRX1",
+  "md_path": "/home/soffy/books/MD/经济学/内部流动性与外部流动性_01KVKRX1.md",
+  "reason_type": "precheck",
+  "reason_detail": "FAIL:chapter_structure:无规范 '# Chapter N:' 章首 (R1); 无法机器分章",
+  "ts": "2026-07-06T15:08:58.543703+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_38384fd445.json",
+  "status": "pending_review"
+}

@@ -1,0 +1,362 @@
+[
+  {
+    "doc_id": "doc00",
+    "type": "academic paper",
+    "path": "/data/soffy/books/MD/示例0.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc01",
+    "type": "textbook",
+    "path": "/data/soffy/books/MD/示例1.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc02",
+    "type": "two-column PDF",
+    "path": "/data/soffy/books/MD/示例2.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc03",
+    "type": "table-heavy",
+    "path": "/data/soffy/books/MD/示例3.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc04",
+    "type": "code-heavy",
+    "path": "/data/soffy/books/MD/示例4.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc05",
+    "type": "scanned PDF",
+    "path": "/data/soffy/books/MD/示例5.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc06",
+    "type": "Chinese PDF",
+    "path": "/data/soffy/books/MD/示例6.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc07",
+    "type": "English PDF",
+    "path": "/data/soffy/books/MD/示例7.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc08",
+    "type": "mixed-language PDF",
+    "path": "/data/soffy/books/MD/示例8.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc09",
+    "type": "EPUB",
+    "path": "/data/soffy/books/MD/示例9.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc10",
+    "type": "Markdown",
+    "path": "/data/soffy/books/MD/示例10.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc11",
+    "type": "web article",
+    "path": "/data/soffy/books/MD/示例11.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc12",
+    "type": "academic paper",
+    "path": "/data/soffy/books/MD/示例12.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc13",
+    "type": "textbook",
+    "path": "/data/soffy/books/MD/示例13.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc14",
+    "type": "two-column PDF",
+    "path": "/data/soffy/books/MD/示例14.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc15",
+    "type": "table-heavy",
+    "path": "/data/soffy/books/MD/示例15.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc16",
+    "type": "code-heavy",
+    "path": "/data/soffy/books/MD/示例16.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc17",
+    "type": "scanned PDF",
+    "path": "/data/soffy/books/MD/示例17.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc18",
+    "type": "Chinese PDF",
+    "path": "/data/soffy/books/MD/示例18.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc19",
+    "type": "English PDF",
+    "path": "/data/soffy/books/MD/示例19.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc20",
+    "type": "mixed-language PDF",
+    "path": "/data/soffy/books/MD/示例20.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc21",
+    "type": "EPUB",
+    "path": "/data/soffy/books/MD/示例21.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc22",
+    "type": "Markdown",
+    "path": "/data/soffy/books/MD/示例22.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc23",
+    "type": "web article",
+    "path": "/data/soffy/books/MD/示例23.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc24",
+    "type": "academic paper",
+    "path": "/data/soffy/books/MD/示例24.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc25",
+    "type": "textbook",
+    "path": "/data/soffy/books/MD/示例25.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc26",
+    "type": "two-column PDF",
+    "path": "/data/soffy/books/MD/示例26.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc27",
+    "type": "table-heavy",
+    "path": "/data/soffy/books/MD/示例27.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc28",
+    "type": "code-heavy",
+    "path": "/data/soffy/books/MD/示例28.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  },
+  {
+    "doc_id": "doc29",
+    "type": "scanned PDF",
+    "path": "/data/soffy/books/MD/示例29.md",
+    "expected_source_integrity": true,
+    "expected_fragment_ordering": true,
+    "expected_anchor": {
+      "page_anchor": true,
+      "paragraph_anchor": true
+    },
+    "content_hash_stable": true
+  }
+]

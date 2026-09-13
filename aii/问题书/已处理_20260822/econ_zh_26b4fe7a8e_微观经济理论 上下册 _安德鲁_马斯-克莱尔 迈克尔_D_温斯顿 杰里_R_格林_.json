@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_26b4fe7a8e",
+  "title": "微观经济理论 上下册 (安德鲁·马斯-克莱尔 迈克尔·D·温斯顿 杰里·R·格林)",
+  "md_path": "/home/soffy/books/MD/经济学/微观经济理论 上下册 (安德鲁·马斯-克莱尔 迈克尔·D·温斯顿 杰里·R·格林).md",
+  "reason_type": "pipeline_error",
+  "reason_detail": "管道步骤失败(exit 2)",
+  "ts": "2026-07-15T05:47:57.920025+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_26b4fe7a8e.json",
+  "status": "pending_review"
+}

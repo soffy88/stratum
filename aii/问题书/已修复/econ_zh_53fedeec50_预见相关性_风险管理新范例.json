@@ -1,0 +1,9 @@
+{
+  "substrate_id": "econ_zh_53fedeec50",
+  "title": "预见相关性：风险管理新范例",
+  "reason_type": "quality_gate",
+  "reason_detail": "quality_gate recheck: now PASS after 2026-08-16 fix",
+  "status": "auto_passed_quality_gate",
+  "archived_reason": "quality_gate recheck: now PASS after 2026-08-16 fix",
+  "ts": "2026-08-17T12:48:18.540936+00:00"
+}

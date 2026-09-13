@@ -27,6 +27,7 @@ ADVMATH_LIMIT="${ADVMATH_LIMIT:-10}"
 
 # ★NIM key(math_en, 闲置——旧math_flywheel_en.sh已废弃, 见pipelines.py CHANNELS注释)
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('math_en',''))" 2>/dev/null)"
+export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));ks=[d.get(k) for k in ('econ_zh','math_en','advmath_verify','econ','math_zh','advmath_2','advmath_3')];print(','.join(x for x in ks if x))" 2>/dev/null)"
 # ★模型选型(2026-07-07实测对比, 见记忆/对话记录): 默认 meta/llama-3.1-70b-instruct 讲透
 # 内容干; nvidia/llama-3.3-nemotron-super-49b-v1.5 明显更好(讲解更充分, 公式/引用一个
 # 不少)——只对本频道生效(NIM_MODEL是per-process env, 不影响econ_zh/misc/math_prog各自
@@ -45,7 +46,14 @@ export no_proxy="${NO_PROXY}"
 export CUDA_VISIBLE_DEVICES=""
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
-export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"   # ★嵌入走共享 aii-embed 微服务(已迁笔记本GPU, 禁止用本机GPU)
+# ★嵌入走共享 aii-embed 微服务(笔记本GPU); 不可用时走本地 BGE-M3(CPU, 慢但可用)
+if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://100.119.113.90:8102}/health" >/dev/null 2>&1; then
+  export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"
+  echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
+else
+  unset AII_EMBED_URL
+  echo "  ▶ 远端 embed 不可用, 回退本地 BGE-M3(CPU)"
+fi
 export ECON_QUARANTINE_JSON="advmath_pipeline/quarantine.json"
 export ECON_BATCH_REPORT="advmath_pipeline/batch_report.json"
 export ECON_QUAL_DIR="advmath_pipeline/qual"

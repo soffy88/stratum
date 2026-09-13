@@ -6,10 +6,15 @@
 import os
 import sys, re, sys, glob, unicodedata, subprocess
 import fitz  # pymupdf
+try:
+    fitz.TOOLS.mupdf_display_errors(False)  # 静音 EPUB HTML/CSS 解析噪音(immersive-translate 导出书 css 大量垃圾)
+except Exception:
+    pass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
 from math_ocr_gate import needs_ocr  # noqa: E402
+from convert_analyze_cache import get as _cat_cache_get, put as _cat_cache_put  # noqa: E402
 
 SRC = "/home/soffy/books/数学"
 MD_ZH = "/home/soffy/books/MD/中文数学"
@@ -114,7 +119,7 @@ def chapters(text):
     # 恰好只有英文分支认这个前缀, 中文分支永远算0章(实测斯图尔特今晚OCR复现: 0章被拒,
     # 而同一本书旧版手工转换的MD因为没有"#"前缀反而能通过). 中文分支也加上同样的可选前缀.
     n = len(
-        re.findall(r"(?m)^(?:#\s+)?Chapter\s+\d|^(?:#\s+)?第[一二三四五六七八九十百\d]+\s*章"
+        re.findall(r"(?m)^(?:#{1,6}\s+)?Chapter\s+\d|^(?:#{1,6}\s+)?第[一二三四五六七八九十百\d]+\s*章"
                    r"|^\d{1,2}\.\s+[A-Z][A-Za-z]{2,}",  # ★2026-08-10 arXiv 论文 "1. Introduction" 式
                    text)
     )
@@ -127,6 +132,19 @@ def chapters(text):
 
 
 def analyze(path):
+    """查可转性(带缓存: 文件未变则直接用上次分类, 省掉每轮全量重扫)."""
+    stem = Path(path).stem
+    if matched(stem):
+        return ("已转", stem, None)
+    hit = _cat_cache_get(path)
+    if hit is not None:
+        return hit
+    res = _analyze_uncached(path)
+    _cat_cache_put(path, res)
+    return res
+
+
+def _analyze_uncached(path):
     stem = Path(path).stem
     if matched(stem):
         return ("已转", stem, None)
@@ -140,11 +158,12 @@ def analyze(path):
     for p in range(0, min(npg, 60), 6):
         txt += d[p].get_text()
     txt_ratio = len(txt) / max(min(npg, 60) // 6, 1)
-    # 全文(估章节)
-    full = "".join(d[p].get_text() for p in range(npg))
-    nch = chapters(full)
     if txt_ratio < 200:
+        # ★2026-08-22 优化: 无文字层(扫描版)书早退, 不做章节采样——最慢的书全是这类。
         return ("需OCR(无文字层)", stem, npg)
+    # 全文(估章节) — ★2026-08-22 同 econ_convert: 超大书抽样≤400页, 防拖垮 feeder 预算
+    full = "".join(d[p].get_text() for p in range(0, min(npg, 400), 2))
+    nch = chapters(full)
     if nch < 3:
         return ("无章节结构", stem, npg)
     # 有文字层、有章节, 但文字层可能是烂 OCR(扫描书自带识别错误, 例→囹/圆盘→罔盘/ε-δ→ε-Ò 这类)

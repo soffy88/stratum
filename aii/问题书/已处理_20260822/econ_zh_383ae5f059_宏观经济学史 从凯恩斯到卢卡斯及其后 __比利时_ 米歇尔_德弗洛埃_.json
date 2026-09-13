@@ -1,0 +1,10 @@
+{
+  "substrate_id": "econ_zh_383ae5f059",
+  "title": "宏观经济学史 从凯恩斯到卢卡斯及其后 ([比利时] 米歇尔·德弗洛埃)",
+  "md_path": "/home/soffy/books/MD/经济学/宏观经济学史 从凯恩斯到卢卡斯及其后 ([比利时] 米歇尔·德弗洛埃).md",
+  "reason_type": "quality_gate",
+  "reason_detail": "双语率0%<99% | KU密度不足: 实抽0仅0%×预期12(基准~15/章×0章)",
+  "ts": "2026-07-14T22:37:40.029472+00:00",
+  "qual_json": "econ_pipeline/qual/econ_zh_383ae5f059.json",
+  "status": "pending_review"
+}
