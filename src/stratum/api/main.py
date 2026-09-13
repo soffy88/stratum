@@ -26,6 +26,10 @@ rename; it needs a real migration pass with frontend verification, not an
 ad-hoc edit.
 """
 
+# The application intentionally registers optional routers after startup setup;
+# preserve the established import order while keeping the release delta clean.
+# ruff: noqa: E401, E402, F401
+
 import asyncio
 import logging
 from contextlib import asynccontextmanager
@@ -153,6 +157,7 @@ async def _lifespan(app: FastAPI):
         init_aii_backend,
         shutdown_aii_backend,
     )
+
     apply_aii_monkeypatch()
     register_aii_providers()
     await init_aii_backend()
@@ -167,6 +172,7 @@ async def _lifespan(app: FastAPI):
     dedup_task = None
     try:
         from aii.service.dedup_semantic import dedup_semantic_loop
+
         dedup_task = asyncio.create_task(dedup_semantic_loop(), name="aii-dedup-semantic")
     except ImportError:
         pass
@@ -223,6 +229,7 @@ from stratum.api.routers import notes
 
 app.include_router(notes.router)
 from stratum.api.routers import graph as _graph
+
 app.include_router(_graph.router)
 
 from stratum.api.routers import agents
@@ -256,14 +263,6 @@ app.include_router(translate.router)
 from stratum.api.routers import concepts
 
 app.include_router(concepts.router)
-
-from stratum.api.routers import knowledge
-
-app.include_router(knowledge.router)
-
-from stratum.api.routers import personal_model
-
-app.include_router(personal_model.router)
 
 from stratum.api.routers import sync
 

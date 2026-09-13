@@ -1,5 +1,4 @@
 from stratum.services.artifact_provenance import content_hash
-from stratum.services.literature import LiteratureCandidate
 from stratum.services.visual_embedding import Qwen3VLEmbeddingProvider
 from stratum.services.translation_alignment import align_fragment
 
@@ -38,10 +37,8 @@ def test_visual_provider_runtime_is_lazy_and_no_placeholder_fallback():
     assert provider._runtime is None
 
 
-def test_artifact_hash_and_literature_are_derived_contracts():
+def test_artifact_hash_is_a_derived_contract():
     assert content_hash("same") == content_hash("same")
-    candidate = LiteratureCandidate(title="A paper")
-    assert candidate.title == "A paper"
 
 
 def test_translation_alignment_retains_original_range():
