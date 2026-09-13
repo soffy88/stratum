@@ -21,10 +21,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_concepts_owner_name_type_active
     ON stratum.concepts (user_id, lower(trim(name)), type)
     WHERE deleted_at IS NULL;
 
-DELETE FROM stratum.evidence e
-WHERE NOT EXISTS (
-    SELECT 1 FROM stratum.substrates s WHERE s.id = e.substrate_id
-)
-AND NOT EXISTS (
-    SELECT 1 FROM stratum.claim_evidence ce WHERE ce.evidence_id = e.id
-);
+DO $$
+BEGIN
+    IF to_regclass('stratum.evidence') IS NOT NULL
+       AND to_regclass('stratum.claim_evidence') IS NOT NULL THEN
+        DELETE FROM stratum.evidence e
+        WHERE NOT EXISTS (
+            SELECT 1 FROM stratum.substrates s WHERE s.id = e.substrate_id
+        )
+        AND NOT EXISTS (
+            SELECT 1 FROM stratum.claim_evidence ce WHERE ce.evidence_id = e.id
+        );
+    END IF;
+END $$;

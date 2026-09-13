@@ -24,6 +24,25 @@ TEMP_FILE_TTL_MINUTES = int(os.environ.get("STRATUM_TEMP_TTL_MIN", "30"))
 # ── LLM defaults ──────────────────────────────────────────────────────────────
 DEFAULT_LLM_PROVIDER = os.environ.get("STRATUM_LLM_PROVIDER", "qwen3")
 DEFAULT_LLM_MODEL = os.environ.get("STRATUM_LLM_MODEL", "qwen3-max")
+
+# Opt-in AII document projection capabilities.  Optional providers are
+# loaded by their feature boundary; importing the core service never requires
+# their SDKs or model assets.
+AII_VISUAL_RETRIEVAL_ENABLED = (
+    os.environ.get("AII_VISUAL_RETRIEVAL_ENABLED", "false").lower() == "true"
+)
+AII_PDF_TRANSLATION_ENABLED = (
+    os.environ.get("AII_PDF_TRANSLATION_ENABLED", "false").lower() == "true"
+)
+AII_ARTIFACT_PROVENANCE_ENABLED = (
+    os.environ.get("AII_ARTIFACT_PROVENANCE_ENABLED", "false").lower() == "true"
+)
+AII_VISUAL_EMBED_PROVIDER = os.environ.get("AII_VISUAL_EMBED_PROVIDER", "qwen3-vl")
+AII_VISUAL_EMBED_MODEL = os.environ.get("AII_VISUAL_EMBED_MODEL", "Qwen3-VL-Embedding-2B")
+AII_VISUAL_EMBED_DIM = int(os.environ.get("AII_VISUAL_EMBED_DIM", "2048"))
+AII_VISUAL_EMBED_BACKEND = os.environ.get("AII_VISUAL_EMBED_BACKEND", "local").lower()
+AII_VISUAL_EMBED_BASE_URL = os.environ.get("AII_VISUAL_EMBED_BASE_URL", "").rstrip("/")
+AII_VISUAL_EMBED_TIMEOUT = float(os.environ.get("AII_VISUAL_EMBED_TIMEOUT", "30"))
 DEFAULT_BUDGET_USD = float(os.environ.get("STRATUM_BUDGET_USD", "5.0"))
 
 # ── JWT ───────────────────────────────────────────────────────────────────────
