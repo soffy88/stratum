@@ -23,7 +23,6 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any
 
 from ulid import ULID
 
@@ -291,28 +290,21 @@ def split_one(substrate_id: str, *, force: bool = False) -> dict:
             book.metadata.get("language") or language or _detect_language(book.content or "")
         )
 
+        from stratum.services.canonical_source_writer import CanonicalSourceWriter
+
+        CanonicalSourceWriter().create(
+            authenticated_user=user_id,
+            source_type="epub_toc_split",
+            title=book.book_title,
+            mime=mime,
+            original_binary_uri=source_path,
+            file_hash=child_hash,
+            metadata={**child_meta, "language": child_lang, "parser": "epub_toc_split"},
+            byte_size=(byte_size or 0) // max(len(real_books), 1),
+            page_count=est_pages,
+            source_id=child_id,
+        )
         with get_conn() as conn:
-            conn.execute(
-                "INSERT INTO substrates"
-                " (id, user_id, title, mime, source_path, file_hash,"
-                "  byte_size, page_count, parser, language,"
-                "  parse_quality, meta_json, created_at, updated_at)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())",
-                (
-                    child_id,
-                    user_id,
-                    book.book_title,
-                    mime,
-                    source_path,
-                    child_hash,
-                    (byte_size or 0) // max(len(real_books), 1),
-                    est_pages,
-                    "epub_toc_split",
-                    child_lang,
-                    "ok",
-                    json.dumps(child_meta, ensure_ascii=False),
-                ),
-            )
             conn.execute(
                 "INSERT INTO derivative (id, substrate_id, kind, seq, content, created_at)"
                 " VALUES (?, ?, 'markdown', 0, ?, NOW())",
