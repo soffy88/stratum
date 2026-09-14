@@ -67,6 +67,8 @@ export default function DocToolsPage() {
   // ── KU 证据审查 ──
   const [kuSub, setKuSub] = useState('');
   const [kuHtml, setKuHtml] = useState('');
+  const [anFile, setAnFile] = useState<File | null>(null);
+  const [anResult, setAnResult] = useState<any>(null);
 
   const runKuReview = useCallback(async () => {
     if (!kuSub) { toast.error('请输入 substrate_id'); return; }

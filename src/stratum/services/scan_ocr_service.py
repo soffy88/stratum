@@ -4,7 +4,7 @@
   substrates.parse_quality IN ('scanned', 'empty', 'garbled')
 
 流程（双轨）:
-  is_math=True  → Unlimited-OCR（宿主机 GPU 服务，端到端 LaTeX）
+  is_math=True  → optional Unlimited-OCR service（端到端 LaTeX）
   is_math=False → PPStructureV3（容器内 CPU ONNX）
 
   公共尾部:
@@ -13,7 +13,7 @@
   6. md_export_service.export_one() → 写 AII 共享目录
 
 约束:
-  - Unlimited-OCR server: http://172.19.0.1:8765 (宿主机，Wan2GP venv)
+  - Unlimited-OCR server: configured by STRATUM_OCR_BASE_URL
   - PPStructureV3: use_formula_recognition=False (ONNX 无公式版)
   - PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True (docker-compose env)
 """
@@ -25,10 +25,10 @@ import os
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
 
 import fitz  # pymupdf
 
+from stratum.config import OCR_BASE_URL
 from stratum.db import get_conn
 
 log = logging.getLogger(__name__)
@@ -43,9 +43,9 @@ _MATH_KEYWORDS = (
 # 每次批量的最大页数（避免OOM，超大书分批）
 _PAGE_BATCH = 50
 
-# ── Unlimited-OCR 宿主机服务 ─────────────────────────────────────────────────
-_UNLIMITED_OCR_URL = "http://172.19.0.1:8766/ocr"
-_UNLIMITED_OCR_HEALTH = "http://172.19.0.1:8766/health"
+# ── Optional Unlimited-OCR service ──────────────────────────────────────────
+_UNLIMITED_OCR_URL = f"{OCR_BASE_URL}/ocr" if OCR_BASE_URL else ""
+_UNLIMITED_OCR_HEALTH = f"{OCR_BASE_URL}/health" if OCR_BASE_URL else ""
 _MATH_PHYSICS_KEYWORDS = (
     "数学", "物理", "分析", "微积分", "泛函", "拓扑", "代数", "概率",
     "统计", "线性", "力学", "量子", "电磁", "光学",
@@ -62,7 +62,9 @@ def _is_math_physics_book(title: str | None, meta_json: dict | None) -> bool:
 
 
 def _unlimited_ocr_available() -> bool:
-    """Check if the Unlimited-OCR server on the host is reachable."""
+    """Check whether optional Unlimited-OCR is configured and reachable."""
+    if not _UNLIMITED_OCR_HEALTH:
+        return False
     try:
         import urllib.request
         with urllib.request.urlopen(_UNLIMITED_OCR_HEALTH, timeout=3) as resp:
@@ -105,7 +107,9 @@ def _unlimited_ocr_page(img_path: str) -> str:
 
     Falls back to empty string on connection/server errors.
     """
-    import urllib.request, urllib.error, json
+    import json
+    import urllib.error
+    import urllib.request
     try:
         with open(img_path, "rb") as f:
             data = f.read()
@@ -454,7 +458,7 @@ def ocr_batch(
     ok_count = err_count = skip_count = 0
 
     for r in candidates:
-        sid, title = r[0], r[1]
+        sid = r[0]
         try:
             result = ocr_one(sid, force=force)
             results.append(result)

@@ -80,7 +80,7 @@ describe("UrlIngestDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /抓取/i }));
 
     await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
-    const [calledUrl, body] = vi.mocked(apiClient.post).mock.calls[0];
+    const [calledUrl, body] = vi.mocked(apiClient.post).mock.calls[0]!;
     expect(calledUrl).toBe("/api/v1/inbox/submit");
     expect(body).toMatchObject({
       url: "https://example.com/article",

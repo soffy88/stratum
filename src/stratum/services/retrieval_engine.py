@@ -14,12 +14,6 @@
 
 from __future__ import annotations
 
-import sys
-
-_OPRIM_ROOT = "/data/soffy/projects/platform/3O/oprim"
-if _OPRIM_ROOT not in sys.path:
-    sys.path.insert(0, _OPRIM_ROOT)
-
 import logging
 import json
 import re
@@ -33,9 +27,11 @@ from typing import Any
 import httpx
 import numpy as np
 
+from stratum.config import OLLAMA_BASE_URL
 from stratum.db import get_conn
 
 logger = logging.getLogger(__name__)
+_OLLAMA_BASE = OLLAMA_BASE_URL
 
 
 def _user_owner_ids(user_id: str | None) -> tuple[str | None, str | None]:
@@ -343,9 +339,7 @@ def _lexical_match_score(query: str, text: str) -> tuple[float, bool]:
     return (200.0 if exact else 0.0) + coverage * 10.0, exact or protected_phrase
 
 
-def _text_search_chunks(
-    query: str, top_k: int = 50, user_id: str | None = None
-) -> list[dict]:
+def _text_search_chunks(query: str, top_k: int = 50, user_id: str | None = None) -> list[dict]:
     """Search canonical substrate fragments with Unicode/CJK-aware lexical scoring."""
     terms = _retrieval_terms(query)
     uid, uh = _user_owner_ids(user_id)

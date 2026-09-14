@@ -10,12 +10,6 @@ LLM: qwen3-8b via 本地 Ollama (免费, 与 ku_translate 共用).
 
 from __future__ import annotations
 
-import sys
-
-_OPRIM_ROOT = "/data/soffy/projects/platform/3O/oprim"
-if _OPRIM_ROOT not in sys.path:
-    sys.path.insert(0, _OPRIM_ROOT)
-
 import asyncio
 import logging
 import os
@@ -23,11 +17,12 @@ from typing import Any
 
 import httpx
 
+from stratum.config import OLLAMA_BASE_URL
 from stratum.db import get_conn
 
 logger = logging.getLogger(__name__)
 
-_OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://172.19.0.1:11434")
+_OLLAMA_BASE = OLLAMA_BASE_URL
 _MODEL = os.environ.get("STRATUM_LLM_MODEL", "qwen3-8b")
 _TIMEOUT = 300.0  # cold start can take ~180s
 
@@ -309,7 +304,14 @@ def _persist_substrate_layers(substrate_id: str, layers: dict[str, str]) -> None
                            token_count = EXCLUDED.token_count,
                            model_used = EXCLUDED.model_used,
                            generated_at = NOW()""",
-                    (layer_id, substrate_id, layer_name, clean, _estimate_tokens(clean), model_used),
+                    (
+                        layer_id,
+                        substrate_id,
+                        layer_name,
+                        clean,
+                        _estimate_tokens(clean),
+                        model_used,
+                    ),
                 )
     logger.info(
         "layer_generator: persisted substrate %s layers L0=%d L1=%d L2=%d chars",

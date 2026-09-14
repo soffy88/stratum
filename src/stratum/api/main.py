@@ -31,6 +31,12 @@ import logging
 from contextlib import asynccontextmanager
 
 from stratum.logging_config import configure_logging
+from stratum.config import (
+    OLLAMA_BASE_URL,
+    RUN_BACKGROUND_WATCHERS,
+    RUN_MIGRATIONS_ON_STARTUP,
+    RUN_SCHEDULER,
+)
 
 configure_logging()
 
@@ -45,11 +51,10 @@ def _register_providers() -> None:
     """Register 3O providers (LLM + TTS + image_gen) with obase ProviderRegistry at startup."""
     try:
         from obase.provider_registry import ProviderRegistry
-        from oprim.llm.llm_call import llm_call
+        import httpx as _httpx
+        import os
 
-        import os, httpx as _httpx
-
-        _ollama_base = os.environ.get("OLLAMA_BASE_URL", "http://172.17.0.1:11435")
+        _ollama_base = OLLAMA_BASE_URL
         _ollama_model = os.environ.get("STRATUM_LLM_MODEL", "qwen3.5:9b")
 
         def _qwen3(messages, **_):
@@ -75,8 +80,8 @@ def _register_providers() -> None:
         from obase.secrets import register_backend
         from obase.secrets.backends.env_file import EnvFileBackend
 
-        env_path = os.environ.get("STRATUM_ENV_PATH", "/home/soffy/.config/keys/.env")
-        if os.path.exists(env_path):
+        env_path = os.environ.get("STRATUM_ENV_PATH")
+        if env_path and os.path.exists(env_path):
             register_backend(EnvFileBackend(env_path))
         register_default_providers()
     except Exception:
@@ -143,7 +148,8 @@ async def _aii_feedback_loop() -> None:
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    run_migrations()  # 启动时自动建表
+    if RUN_MIGRATIONS_ON_STARTUP:
+        run_migrations()
     _register_providers()
 
     # P2: Initialize AII backend (asyncpg pool + providers)
@@ -153,43 +159,56 @@ async def _lifespan(app: FastAPI):
         init_aii_backend,
         shutdown_aii_backend,
     )
+
     apply_aii_monkeypatch()
     register_aii_providers()
     await init_aii_backend()
 
-    task = asyncio.create_task(_feed_tracker_loop())
-    fw_task = asyncio.create_task(_folder_watcher_loop())
-    cw_task = asyncio.create_task(_channel_watcher_loop())
-    sw_task = asyncio.create_task(_source_watcher_loop())
-    aii_task = asyncio.create_task(_aii_feedback_loop())
+    tasks: list[asyncio.Task] = []
+    if RUN_BACKGROUND_WATCHERS:
+        tasks.extend(
+            asyncio.create_task(loop())
+            for loop in (
+                _feed_tracker_loop,
+                _folder_watcher_loop,
+                _channel_watcher_loop,
+                _source_watcher_loop,
+                _aii_feedback_loop,
+            )
+        )
 
     # P2: AII semantic dedup loop (cross-book dedup, log-only for cross-book)
     dedup_task = None
-    try:
-        from aii.service.dedup_semantic import dedup_semantic_loop
-        dedup_task = asyncio.create_task(dedup_semantic_loop(), name="aii-dedup-semantic")
-    except ImportError:
-        pass
+    if RUN_BACKGROUND_WATCHERS:
+        try:
+            from aii.service.dedup_semantic import dedup_semantic_loop
 
-    from stratum.scheduler.runtime import scheduler, load_all_enabled_jobs
+            dedup_task = asyncio.create_task(dedup_semantic_loop(), name="aii-dedup-semantic")
+            tasks.append(dedup_task)
+        except ImportError:
+            pass
 
-    n_jobs = await load_all_enabled_jobs()
-    scheduler.start()
-    logging.getLogger(__name__).info("scheduled_jobs_sl: %d job(s) loaded into APScheduler", n_jobs)
+    scheduler = None
+    if RUN_SCHEDULER:
+        from stratum.scheduler.runtime import scheduler as scheduler_runtime, load_all_enabled_jobs
+
+        scheduler = scheduler_runtime
+        n_jobs = await load_all_enabled_jobs()
+        scheduler.start()
+        logging.getLogger(__name__).info(
+            "scheduled_jobs_sl: %d job(s) loaded into APScheduler", n_jobs
+        )
 
     yield
-    task.cancel()
-    fw_task.cancel()
-    cw_task.cancel()
-    sw_task.cancel()
-    aii_task.cancel()
-    if dedup_task:
-        dedup_task.cancel()
+    for task in tasks:
+        task.cancel()
+    for task in tasks:
         try:
-            await dedup_task
+            await task
         except asyncio.CancelledError:
             pass
-    scheduler.shutdown(wait=False)
+    if scheduler is not None:
+        scheduler.shutdown(wait=False)
     await shutdown_aii_backend()
 
 
@@ -223,6 +242,7 @@ from stratum.api.routers import notes
 
 app.include_router(notes.router)
 from stratum.api.routers import graph as _graph
+
 app.include_router(_graph.router)
 
 from stratum.api.routers import agents

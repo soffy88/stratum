@@ -1,6 +1,6 @@
 """用 NIM 润色康奈尔笔记: 线索问更自然、总结更凝练、一句话记忆更好记。
 
-硬顶: 每 key 40 rpm (NIM 免费层)。默认读 aii/.pipeline_keys.json 轮转。
+硬顶: 每 key 40 rpm (NIM 免费层)。默认读配置数据目录中的 key 文件轮转。
 命门: 只改 cues/summary/oneLiner/hints; **不改 modules.body 原文**(B仓片段不可臆造)。
 """
 
@@ -15,11 +15,12 @@ from pathlib import Path
 from typing import Any, Callable
 
 import httpx
+from stratum.config import DATA_DIR
 
 ROOT_CANDIDATES = [
-    Path(__file__).resolve().parents[3] / "aii" / ".pipeline_keys.json",
-    Path("/opt/aii") / ".." / ".pipeline_keys.json",  # unlikely
-    Path(os.environ.get("AII_ROOT", "/data/soffy/projects/stratum/aii")) / ".pipeline_keys.json",
+    Path(os.environ["AII_PIPELINE_KEYS_PATH"])
+    if os.environ.get("AII_PIPELINE_KEYS_PATH")
+    else DATA_DIR / ".pipeline_keys.json",
 ]
 
 NIM_BASE = "https://integrate.api.nvidia.com/v1/chat/completions"
@@ -109,7 +110,9 @@ def _call_nim(api_key: str, throttle: _KeyThrottle, prompt: str, *, max_tokens: 
             # OpenAI-compatible; nemotron 等可能 content=null 而 reasoning 有文
             try:
                 msg = data["choices"][0]["message"]
-                text = msg.get("content") or msg.get("reasoning") or msg.get("reasoning_content") or ""
+                text = (
+                    msg.get("content") or msg.get("reasoning") or msg.get("reasoning_content") or ""
+                )
                 return text if isinstance(text, str) else str(text or "")
             except Exception:
                 return json.dumps(data)[:2000]
@@ -126,7 +129,9 @@ def _extract_json(text: str) -> dict:
         return {}
 
 
-def polish_content(content: dict[str, Any], *, llm: Callable[[str], str] | None = None) -> dict[str, Any]:
+def polish_content(
+    content: dict[str, Any], *, llm: Callable[[str], str] | None = None
+) -> dict[str, Any]:
     """同步润色; llm(prompt)->str 可注入。失败则原样返回。"""
     cues = content.get("cues") or []
     if not cues:
@@ -145,9 +150,8 @@ def polish_content(content: dict[str, Any], *, llm: Callable[[str], str] | None 
         "summary": content.get("summary"),
         "oneLiner": content.get("oneLiner"),
     }
-    prompt = (
-        "请润色以下康奈尔笔记的线索/总结/记忆句。模块正文不在此改写。\n"
-        + json.dumps(payload, ensure_ascii=False)
+    prompt = "请润色以下康奈尔笔记的线索/总结/记忆句。模块正文不在此改写。\n" + json.dumps(
+        payload, ensure_ascii=False
     )
     try:
         if llm is None:

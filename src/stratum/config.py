@@ -15,6 +15,22 @@ DATABASE_POOL_MAX = int(os.environ.get("STRATUM_DB_POOL_MAX", "10"))
 
 # ── Service URLs ──────────────────────────────────────────────────────────────
 BASE_URL = os.environ.get("STRATUM_BASE_URL", "http://localhost:9302")
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+VLM_BASE_URL = os.environ.get("VLM_BASE_URL", OLLAMA_BASE_URL).rstrip("/")
+OUTBOUND_PROXY = os.environ.get("STRATUM_OUTBOUND_PROXY", "").strip()
+MEDIA_PROXY = os.environ.get("STRATUM_MEDIA_PROXY", OUTBOUND_PROXY).strip()
+OAPEN_PROXY_URL = os.environ.get("STRATUM_OAPEN_PROXY_URL", "").strip().rstrip("/")
+OCR_BASE_URL = os.environ.get("STRATUM_OCR_BASE_URL", "").strip().rstrip("/")
+EXPORT_DIR = (
+    Path(os.environ.get("STRATUM_EXPORT_DIR", "")) if os.environ.get("STRATUM_EXPORT_DIR") else None
+)
+RUN_MIGRATIONS_ON_STARTUP = (
+    os.environ.get("STRATUM_RUN_MIGRATIONS_ON_STARTUP", "false").lower() == "true"
+)
+RUN_BACKGROUND_WATCHERS = (
+    os.environ.get("STRATUM_RUN_BACKGROUND_WATCHERS", "false").lower() == "true"
+)
+RUN_SCHEDULER = os.environ.get("STRATUM_RUN_SCHEDULER", "false").lower() == "true"
 
 # AII projections are opt-in; disabled visual integration must not affect core.
 AII_VISUAL_RETRIEVAL_ENABLED = (

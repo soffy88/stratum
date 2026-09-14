@@ -9,21 +9,28 @@ from stratum.services.channel_subscription_store import SubscriptionStore
 log = logging.getLogger(__name__)
 CHANNEL_CHECK_INTERVAL = 3600  # 1小时扫一次
 
-async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: str, rules_dict: dict):
+
+async def _check_one_subscription(
+    sub_id: str, user_id_hash: str, channel_url: str, rules_dict: dict
+):
     from oservi.engines.channel_watcher import ChannelWatcherEngine
     from oprim._channel_list_videos import channel_list_videos
     from oprim._media_types import FilterRules
-    
+
     # 更新状态为 scanning
     with get_conn() as conn:
-        conn.execute("UPDATE channel_subscriptions SET scan_status='scanning' WHERE id=?", (sub_id,))
+        conn.execute(
+            "UPDATE channel_subscriptions SET scan_status='scanning' WHERE id=?", (sub_id,)
+        )
 
     substrate_ids = []
     current_video_title = [""]
 
     async def adapted_ingest_media(video_url: str, **kwargs):
         from omodul.process_media_substrate import (
-            MediaConfig, MediaInput, process_media_substrate,
+            MediaConfig,
+            MediaInput,
+            process_media_substrate,
         )
         import tempfile
         from pathlib import Path
@@ -53,12 +60,22 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
                     output_dir=Path(tmpdir),
                 )
             except Exception as exc:
-                log.error("channel_ingest: process_media_substrate failed url=%s: %s", video_url, exc, exc_info=True)
+                log.error(
+                    "channel_ingest: process_media_substrate failed url=%s: %s",
+                    video_url,
+                    exc,
+                    exc_info=True,
+                )
                 return {"status": "failed", "error": str(exc)}
 
         status = result.get("status")
         if status != "completed":
-            log.warning("channel_ingest: result url=%s status=%s error=%s", video_url, status, result.get("error"))
+            log.warning(
+                "channel_ingest: result url=%s status=%s error=%s",
+                video_url,
+                status,
+                result.get("error"),
+            )
         title = (result.get("title") or "").strip()
         if title:
             current_video_title[0] = title
@@ -67,7 +84,7 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
                 with get_conn() as conn:
                     conn.execute(
                         "UPDATE channel_subscriptions SET current_video=? WHERE id=?",
-                        (title, sub_id)
+                        (title, sub_id),
                     )
             except Exception:
                 pass
@@ -78,6 +95,7 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
                 # 补齐 substrates 属性：medium="video" 并修复标题
                 try:
                     import json as _json
+
                     with get_conn() as conn:
                         row = conn.execute(
                             "SELECT meta_json FROM substrates WHERE id=?", (sid,)
@@ -102,11 +120,13 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
                 # Quality gate then export
                 try:
                     from stratum.lib.quality.ingest_quality_gate import run_quality_gate
+
                     run_quality_gate(sid)
                 except Exception as exc:
                     log.warning("channel_ingest: quality gate failed sid=%s: %s", sid, exc)
                 try:
                     from stratum.services.md_export_service import export_one
+
                     export_one(sid)
                 except Exception as exc:
                     log.warning("channel_ingest: md_export failed sid=%s: %s", sid, exc)
@@ -119,6 +139,7 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
     async def custom_filter_videos(videos, rules, llm=None):
         from oskill._video_filter_by_rules import video_filter_by_rules
         from obase.provider_registry import ProviderRegistry
+
         if llm is None:
             try:
                 llm = ProviderRegistry.get().llm("qwen3")
@@ -138,7 +159,9 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
         llm_filter=rules_dict.get("llm_filter"),
     )
 
-    async def adapted_list_videos(channel_url: str, proxy: str | None = None, limit: int | None = None):
+    async def adapted_list_videos(
+        channel_url: str, proxy: str | None = None, limit: int | None = None
+    ):
         return await channel_list_videos(
             channel_url=channel_url,
             proxy=proxy,
@@ -154,13 +177,13 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
         subscription=store,
         config={
             "channel_url": channel_url,
-            "proxy": os.environ.get("STRATUM_OUTBOUND_PROXY", "http://172.23.224.1:20809"),
+            "proxy": os.environ.get("STRATUM_OUTBOUND_PROXY", ""),
             "filter_rules": rules_obj,
             "user_id_hash": user_id_hash,
             "asr_backend": "local",
             "transcribe_if_no_subtitle": True,
             "cookies_path": "~/.stratum/youtube_cookies.txt",
-        }
+        },
     )
 
     try:
@@ -171,6 +194,7 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
         error_msg = None
     except Exception as exc:
         import traceback
+
         error_msg = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
         found_count = 0
         ingested_count = 0
@@ -180,26 +204,31 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, channel_url: s
     # 完成更新
     with get_conn() as conn:
         if scan_status == "completed":
-            row = conn.execute("SELECT found_count, ingested_count FROM channel_subscriptions WHERE id=?", (sub_id,)).fetchone()
+            row = conn.execute(
+                "SELECT found_count, ingested_count FROM channel_subscriptions WHERE id=?",
+                (sub_id,),
+            ).fetchone()
             current_found = row[0] if row else 0
             current_ingested = row[1] if row else 0
-            
+
             conn.execute(
                 "UPDATE channel_subscriptions SET scan_status='completed', last_check=NOW(), "
                 "found_count=?, ingested_count=? WHERE id=?",
-                (current_found + found_count, current_ingested + ingested_count, sub_id)
+                (current_found + found_count, current_ingested + ingested_count, sub_id),
             )
         else:
             conn.execute(
                 "UPDATE channel_subscriptions SET scan_status='error', current_video=? WHERE id=?",
-                (error_msg[:300] if error_msg else "Unknown Error", sub_id)
+                (error_msg[:300] if error_msg else "Unknown Error", sub_id),
             )
+
 
 async def _run_first_check(sub_id: str, user_id_hash: str, channel_url: str, rules_dict: dict):
     try:
         await _check_one_subscription(sub_id, user_id_hash, channel_url, rules_dict)
     except Exception:
         log.exception("First scan background task failed sub_id=%s", sub_id)
+
 
 async def channel_watcher_loop():
     await asyncio.sleep(60)  # 启动延迟
@@ -210,7 +239,7 @@ async def channel_watcher_loop():
                     "SELECT id, user_id, channel_url, rules_json FROM channel_subscriptions WHERE status='active'"
                 ).fetchall()
             for sub_id, uh, url, rules in subs:
-                await _check_one_subscription(sub_id, uh, url, json.loads(rules or '{}'))
+                await _check_one_subscription(sub_id, uh, url, json.loads(rules or "{}"))
         except Exception as e:
             log.error("channel_watcher_loop error: %s", e)
         await asyncio.sleep(CHANNEL_CHECK_INTERVAL)
