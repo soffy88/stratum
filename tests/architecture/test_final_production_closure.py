@@ -3,6 +3,7 @@
 Each test is designed to prove the 12 production requirements with real DB state.
 If DB is unavailable, tests skip with clear reason (NOT RUN), not fake PASS.
 """
+
 import json
 import pathlib
 import pytest
@@ -15,6 +16,7 @@ pytestmark = pytest.mark.production_runtime
 def _pg():
     import psycopg2
     import os
+
     try:
         conn = psycopg2.connect(
             host=os.environ.get("STRATUM_PG_HOST", "127.0.0.1"),
@@ -33,7 +35,9 @@ def test_concept_relation_physical_merge():
     conn = _pg()
     cur = conn.cursor()
     # canonical deduplicated: ScopeCept should be single
-    cur.execute("SELECT count(*) FROM stratum.concepts WHERE name='ScopeCept' AND deleted_at IS NULL")
+    cur.execute(
+        "SELECT count(*) FROM stratum.concepts WHERE name='ScopeCept' AND deleted_at IS NULL"
+    )
     assert cur.fetchone()[0] == 1, "ScopeCept not deduped"
     cur.execute("SELECT count(*) FROM stratum.legacy_knowledge_merge_ledger WHERE status='applied'")
     assert cur.fetchone()[0] >= 2, "ledger not applied"
@@ -75,7 +79,9 @@ def test_provenance_real_audit():
     linked = cur.fetchone()[0]
     assert linked >= 50
     # evidence->source
-    cur.execute("SELECT count(*) FROM stratum.evidence WHERE substrate_id IN (SELECT id FROM stratum.substrates)")
+    cur.execute(
+        "SELECT count(*) FROM stratum.evidence WHERE substrate_id IN (SELECT id FROM stratum.substrates)"
+    )
     valid = cur.fetchone()[0]
     cur.execute("SELECT count(*) FROM stratum.evidence")
     total_ev = cur.fetchone()[0]
@@ -114,7 +120,9 @@ def test_projection_rebuild():
 def test_correction_lifecycle():
     conn = _pg()
     cur = conn.cursor()
-    cur.execute("SELECT deleted_at IS NOT NULL FROM stratum.knowledge_claims WHERE id='claim_corr_v1'")
+    cur.execute(
+        "SELECT deleted_at IS NOT NULL FROM stratum.knowledge_claims WHERE id='claim_corr_v1'"
+    )
     row = cur.fetchone()
     assert row and row[0] is True, "v1 not superseded"
     cur.execute("SELECT deleted_at IS NULL FROM stratum.knowledge_claims WHERE id='claim_corr_v2'")
@@ -125,6 +133,7 @@ def test_correction_lifecycle():
 
 def test_skill_stale():
     from stratum.services.skill_provenance import build_skill_manifest, is_skill_stale
+
     m = build_skill_manifest("skill_test", "v1", claim_refs=["claim_corr_v1"])
     # claim_corr_v1 updated_at is now, skill generated now -> not stale immediately
     # but if canonical newer than skill, should be stale
@@ -137,32 +146,49 @@ def test_adversarial_isolation():
     cur = conn.cursor()
     # alice should not see bob's substrate via filtered query
     from stratum.utils.user_id_hash import hash_user_id
+
     uid = "user-alice"
     h = hash_user_id(uid)
     cur.execute("SELECT id FROM stratum.substrates WHERE user_id='user-bob' LIMIT 1")
     bob = cur.fetchone()
     if bob:
         bob_id = bob[0]
-        cur.execute("SELECT count(*) FROM stratum.substrates WHERE id=%s AND user_id IN (%s,%s)", (bob_id, uid, h))
+        cur.execute(
+            "SELECT count(*) FROM stratum.substrates WHERE id=%s AND user_id IN (%s,%s)",
+            (bob_id, uid, h),
+        )
         assert cur.fetchone()[0] == 0, "isolation leak"
     conn.close()
 
 
 def test_openapi_knowledge():
-    import json, urllib.request
+    import json
+    import urllib.request
+
     try:
-        data = json.loads(urllib.request.urlopen("http://127.0.0.1:9304/openapi.json", timeout=5).read())
+        data = json.loads(
+            urllib.request.urlopen("http://127.0.0.1:9304/openapi.json", timeout=5).read()
+        )
     except Exception as e:
         pytest.skip(f"openapi not reachable: {e}")
     paths = data["paths"]
-    for p in ["/api/v1/knowledge/evidence", "/api/v1/knowledge/claims", "/api/v1/retrieve", "/api/v1/search"]:
+    for p in [
+        "/api/v1/knowledge/evidence",
+        "/api/v1/knowledge/claims",
+        "/api/v1/retrieve",
+        "/api/v1/search",
+    ]:
         assert p in paths, f"missing {p}"
 
 
 def test_production_runtime():
-    import urllib.request, json
+    import json
+    import urllib.request
+
     try:
-        data = json.loads(urllib.request.urlopen("http://127.0.0.1:9304/api/v1/health", timeout=5).read())
+        data = json.loads(
+            urllib.request.urlopen("http://127.0.0.1:9304/api/v1/health", timeout=5).read()
+        )
         assert data["status"] == "ok"
     except Exception as e:
         pytest.fail(f"production health failed: {e}")
