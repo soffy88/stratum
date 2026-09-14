@@ -6,7 +6,9 @@ import argparse
 import hashlib
 import json
 import math
-import re
+import os
+import statistics
+import time
 from collections import Counter
 from pathlib import Path
 
@@ -112,7 +114,11 @@ def _metric_for_ranked(per_query: list[dict], key: str) -> dict[str, float | int
     hits = {1: 0, 5: 0, 10: 0}
     for item in eligible:
         ranked = item[key]
-        expected = set(item["expected_fragment_ids"] if key == "fragment_ranked" else item["expected_source_ids"])
+        expected = set(
+            item["expected_fragment_ids"]
+            if key == "fragment_ranked"
+            else item["expected_source_ids"]
+        )
         positions = [pos for pos, value in enumerate(ranked, 1) if value in expected]
         rank = min(positions) if positions else None
         reciprocal.append(1.0 / rank if rank else 0.0)
@@ -206,8 +212,41 @@ def _failure(
     return "embedding miss"
 
 
+def _failure_classification(
+    failure: str | None, channel_lists: dict[str, list[dict]], expected: set[str]
+) -> str | None:
+    """Map diagnostic reasons to the frozen P2 failure taxonomy."""
+    if failure is None:
+        return None
+    if failure == "bad gold":
+        return "GOLD_AMBIGUITY"
+    if failure == "missing index":
+        return "INDEXING"
+    if failure == "lexical miss":
+        return "LEXICAL_MISS"
+    if failure == "embedding miss":
+        return "SEMANTIC_MISS"
+    if failure == "ranking failure":
+        dense_hit = any(
+            expected & set(_source_ranked(channel_lists.get(name, [])))
+            for name in ("dense_l0", "dense_chunk")
+        )
+        lexical_hit = any(
+            expected & set(_source_ranked(channel_lists.get(name, [])))
+            for name in ("lexical_l0", "lexical_chunk")
+        )
+        # A failed query with no lexical hit and no expected source in a dense
+        # channel is a semantic miss.  A channel hit that disappears in the
+        # final response is a fusion/ranking failure.
+        if not dense_hit and not lexical_hit:
+            return "SEMANTIC_MISS"
+        return "HYBRID_FUSION"
+    return "OTHER"
+
+
 def run(gold_path: Path, output: Path, limit: int | None) -> int:
-    gold = [item for item in json.loads(gold_path.read_text(encoding="utf-8")) if item.get("review_status") == "verified"]
+    gold_bytes = gold_path.read_bytes()
+    gold = [item for item in json.loads(gold_bytes) if item.get("review_status") == "verified"]
     if limit:
         gold = gold[:limit]
     # Batch immutable BGE-M3 query vectors once; each query still traverses
@@ -216,14 +255,22 @@ def run(gold_path: Path, output: Path, limit: int | None) -> int:
     sources, _chunks, index_state, chunk_texts = _load_state()
     isolation_leaks = 0
     citation_total = citation_ok = 0
+    citation_relevant = 0
+    citation_expected_total = 0
+    provenance_correct = 0
+    broken_provenance_count = 0
+    missing_source_count = 0
+    missing_fragment_count = 0
     anchor_total = anchor_ok = 0
     per_query = []
     failure_categories = Counter()
     wrong_source_results = 0
     result_slots = 0
+    query_latencies: list[float] = []
 
     for index, (record, query_embedding) in enumerate(zip(gold, query_embeddings), 1):
         user_id = _runtime_user(record.get("user_id", RAW_OWNER))
+        query_start = time.perf_counter()
         response = search_knowledge_view(
             KnowledgeViewRequest(
                 query=record["query"],
@@ -233,27 +280,48 @@ def run(gold_path: Path, output: Path, limit: int | None) -> int:
                 query_embedding=query_embedding,
             )
         )
+        query_latencies.append((time.perf_counter() - query_start) * 1000)
         raw_results = response.get("results", [])
         results = _dedupe(raw_results)
         ranked = _source_ranked(raw_results)
         fragment_ranked = _fragment_ranked(raw_results)
         expected = set(record.get("expected_source_ids", []))
+        expected_fragments = set(record.get("expected_fragment_ids", []))
+        citation_expected_total += len(expected)
+        missing_source_ids = sorted(sid for sid in expected if sid not in sources)
+        missing_fragment_ids = sorted(
+            fragment_id for fragment_id in expected_fragments if fragment_id not in chunk_texts
+        )
+        missing_source_count += len(missing_source_ids)
+        missing_fragment_count += len(missing_fragment_ids)
         allowed = {user_id, hashlib.sha256(user_id.encode()).hexdigest()[:16]}
+        citation_valid_count = 0
+        citation_relevant_count = 0
+        provenance_valid_count = 0
+        provenance_broken_count = 0
         for result in results:
             sid = result.get("substrate_id") or result.get("id")
             owner = sources.get(sid, (None, None))[1] if sid in sources else None
             if owner not in allowed:
                 isolation_leaks += 1
             citation_total += 1
-            citation_ok += int(_citation_valid(result))
+            citation_is_valid = _citation_valid(result)
+            citation_ok += int(citation_is_valid)
+            citation_valid_count += int(citation_is_valid)
+            citation_relevant += int(sid in expected)
+            citation_relevant_count += int(sid in expected)
+            provenance_is_valid = (
+                citation_is_valid and (result.get("provenance") or {}).get("substrate_id") == sid
+            )
+            provenance_correct += int(provenance_is_valid)
+            provenance_valid_count += int(provenance_is_valid)
+            provenance_broken_count += int(not provenance_is_valid)
             anchor_total += 1
             anchor_ok += int(_anchor_valid(result))
         result_slots += len(results)
         wrong_source_results += sum(sid not in expected for sid in ranked)
         hit_positions = [position for position, sid in enumerate(ranked, 1) if sid in expected]
         failure = _failure(record, ranked, sources, index_state)
-        if failure:
-            failure_categories[failure] += 1
 
         # These channel runs are diagnostics on the same canonical corpus and
         # query vector. The product metric above remains the formal
@@ -311,14 +379,20 @@ def run(gold_path: Path, output: Path, limit: int | None) -> int:
                 "scores": _channel_row(channel_results)["scores"],
                 "hit_at_10": bool(channel_hits),
             }
+        failure_classification = _failure_classification(failure, channel_lists, expected)
+        if failure_classification:
+            failure_categories[failure_classification] += 1
+        broken_provenance_count += provenance_broken_count
         per_query.append(
             {
                 "query_id": record["query_id"],
+                "query": record["query"],
                 "gold_type": record["gold_type"],
                 "ranked_source_ids": ranked,
                 "ranked_fragment_ids": fragment_ranked,
                 "expected_source_ids": sorted(expected),
-                "expected_fragment_ids": sorted(record.get("expected_fragment_ids", [])),
+                "expected_fragment_ids": sorted(expected_fragments),
+                "expected_evidence_ids": sorted(record.get("evidence_ids", [])),
                 "expected_fragment_text": [
                     chunk_texts.get(fragment_id, "")
                     for fragment_id in record.get("expected_fragment_ids", [])
@@ -330,7 +404,9 @@ def run(gold_path: Path, output: Path, limit: int | None) -> int:
                 "mrr": 1.0 / min(hit_positions) if hit_positions else 0.0,
                 "ndcg_at_10": _ndcg(ranked, expected),
                 "failure_category": failure,
+                "failure_classification": failure_classification,
                 "result_count": len(results),
+                "latency_ms": round(query_latencies[-1], 3),
                 "filters_applied": {
                     "user_id": user_id,
                     "scopes": ["lexical", "dense"],
@@ -344,6 +420,22 @@ def run(gold_path: Path, output: Path, limit: int | None) -> int:
                     }
                     for result in raw_results[:10]
                 ],
+                "citation_result": {
+                    "returned_count": len(results),
+                    "valid_count": citation_valid_count,
+                    "relevant_source_count": citation_relevant_count,
+                    "expected_source_count": len(expected),
+                    "complete": citation_relevant_count >= len(expected),
+                },
+                "provenance_result": {
+                    "valid_count": provenance_valid_count,
+                    "broken_count": provenance_broken_count,
+                    "missing_source_ids": missing_source_ids,
+                    "missing_fragment_ids": missing_fragment_ids,
+                    "complete": provenance_broken_count == 0
+                    and not missing_source_ids
+                    and not missing_fragment_ids,
+                },
                 "channel_metrics": channel_metrics,
             }
         )
@@ -389,6 +481,34 @@ def run(gold_path: Path, output: Path, limit: int | None) -> int:
         ]
         channel_benchmarks[channel_name] = _metric_for_ranked(channel_items, "source_ranked")
     channel_benchmarks["current_fusion"] = source_metrics
+    failure_analysis = {
+        category: {
+            "count": count_value,
+            "percent": round(100 * count_value / len(per_query), 3) if per_query else 0.0,
+        }
+        for category, count_value in failure_categories.most_common()
+    }
+    top_failure_patterns = [
+        {
+            "query_id": item["query_id"],
+            "failure_classification": item["failure_classification"],
+            "gold_type": item["gold_type"],
+            "expected_source_ids": item["expected_source_ids"],
+            "expected_fragment_ids": item["expected_fragment_ids"],
+            "dense_hit": any(
+                item["expected_source_ids"]
+                and set(item["expected_source_ids"]) & set(item["channel_metrics"][name]["top10"])
+                for name in ("dense_l0", "dense_chunk")
+            ),
+            "lexical_hit": any(
+                item["expected_source_ids"]
+                and set(item["expected_source_ids"]) & set(item["channel_metrics"][name]["top10"])
+                for name in ("lexical_l0", "lexical_chunk")
+            ),
+        }
+        for item in per_query
+        if item["failure_classification"]
+    ]
 
     metrics = {
         "N": len(per_query),
@@ -406,14 +526,39 @@ def run(gold_path: Path, output: Path, limit: int | None) -> int:
         "Fragment Recall@10": fragment_metrics["Recall@10"],
         "Fragment MRR": fragment_metrics["MRR"],
         "citation_validity": citation_ok / citation_total if citation_total else 0.0,
+        "citation_recall": citation_relevant / citation_expected_total
+        if citation_expected_total
+        else 0.0,
+        "citation_completeness": citation_relevant / citation_expected_total
+        if citation_expected_total
+        else 0.0,
+        "citation_precision": citation_ok / citation_total if citation_total else 0.0,
+        "provenance_correctness": provenance_correct / citation_total if citation_total else 0.0,
+        "broken_provenance_count": broken_provenance_count,
+        "missing_source_count": missing_source_count,
+        "missing_fragment_count": missing_fragment_count,
         "anchor_validity": anchor_ok / anchor_total if anchor_total else 0.0,
         "isolation_leaks": isolation_leaks,
+        "cross_user_leakage_count": isolation_leaks,
         "wrong_source_results": wrong_source_results,
         "wrong_source_rate": wrong_source_results / result_slots if result_slots else 0.0,
         "failure_categories": dict(failure_categories.most_common()),
+        "failure_analysis": failure_analysis,
+        "top_failure_patterns": top_failure_patterns,
         "query_model": _get_bge().model_name,
         "index_model": "BAAI/bge-m3",
         "dim": _get_bge().native_dim,
+        "latency": {
+            "p50_ms": round(statistics.median(query_latencies), 3) if query_latencies else 0.0,
+            "p95_ms": round(
+                sorted(query_latencies)[
+                    min(len(query_latencies) - 1, math.ceil(len(query_latencies) * 0.95) - 1)
+                ],
+                3,
+            )
+            if query_latencies
+            else 0.0,
+        },
         "retrieval_entrypoint": "stratum.services.knowledge_view.search_knowledge_view",
         "channel_benchmarks": channel_benchmarks,
         "channel_definitions": {
@@ -427,7 +572,32 @@ def run(gold_path: Path, output: Path, limit: int | None) -> int:
         },
     }
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps({"metrics": metrics, "per_query": per_query}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    output.write_text(
+        json.dumps(
+            {
+                "evaluation": {
+                    "gold_file": str(gold_path),
+                    "gold_sha256": hashlib.sha256(gold_bytes).hexdigest(),
+                    "gold_count": len(gold),
+                    "gold_type": "HUMAN_VERIFIED_RETRIEVAL",
+                    "code_sha": os.environ.get("P2_CODE_SHA", "WORKING_TREE_UNCOMMITTED"),
+                    "embedding_model": metrics["index_model"],
+                    "embedding_dimension": metrics["dim"],
+                    "retrieval_config": {
+                        "entrypoint": metrics["retrieval_entrypoint"],
+                        "scopes": ["lexical", "dense"],
+                        "top_k": 10,
+                    },
+                },
+                "metrics": metrics,
+                "per_query": per_query,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     print(json.dumps(metrics, ensure_ascii=False))
     return 0
 

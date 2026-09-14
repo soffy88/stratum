@@ -1,0 +1,95 @@
+{
+  "baseline_id": "retrieval-capacity-baseline-v1",
+  "baseline_type": "OBSERVED_CAPACITY_BASELINE",
+  "dataset": "SYNTHETIC_CAPACITY_DATA",
+  "base_main_sha": "3daca3a7b4f36543cbdb86ac3410eb6f33e63ecd",
+  "p2_code_sha": "93b8332e7526f5524a8d24b2aefcd8266fdd95f7+working-tree",
+  "measurement_tree_sha": "93b8332e7526f5524a8d24b2aefcd8266fdd95f7+working-tree",
+  "gold_sha256": "f858ef5f567b10e4c05ebb47bb9445f95356158a130f485e4ec4b5815676bfea",
+  "database_version": "PostgreSQL 16.14",
+  "pgvector_version": "pgvector/pg16 image",
+  "embedding_model_id": "BAAI/bge-m3",
+  "embedding_revision_or_checksum": "NOT_AVAILABLE; synthetic fixed vectors used",
+  "reranker_model_id": "qwen3-8b",
+  "reranker_revision_or_checksum": "NOT_AVAILABLE; reranker disabled",
+  "vector_column": "substrate_layers.embedding",
+  "vector_dimension": 1024,
+  "vector_distance_metric": "cosine",
+  "vector_index_type": "IVFFlat",
+  "vector_index_name": "p2_vector_idx",
+  "vector_index_parameters": {"lists": 100, "ivfflat.probes": 1},
+  "retrieval_config": {
+    "entrypoint": "KnowledgeView -> retrieve",
+    "channels": ["lexical", "dense"],
+    "top_k": 10,
+    "fusion": "_rrf_merge_channels",
+    "rerank": false
+  },
+  "dataset_generator": "scripts/benchmark_vector_hybrid_capacity.py",
+  "dataset_generator_sha256": "c9b3e94d6fa3640c56df24107a4326d02bae5b8a6c5dd54f17b994afb7f3af1d",
+  "statistical_sufficiency": {
+    "p99_minimum_samples": 100,
+    "measured_single_request_samples": 20,
+    "measured_concurrency_samples_per_combination": 10,
+    "p99_policy": "INSUFFICIENT_SAMPLE_SIZE when samples < 100"
+  },
+  "dataset_seed": "deterministic_generate_series",
+  "results": {
+    "10000": {
+      "vector": {"p50_ms": 7.361, "p95_ms": 12.745, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "sample_count": 20},
+      "hybrid": {"p50_ms": 9.943, "p95_ms": 12.825, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "sample_count": 20},
+      "final": {"p50_ms": 122.059, "p95_ms": 216.97, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "sample_count": 20}
+    },
+    "100000": {
+      "vector": {"p50_ms": 198.941, "p95_ms": 218.583, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "sample_count": 20},
+      "hybrid": {"p50_ms": 222.077, "p95_ms": 241.933, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "sample_count": 20},
+      "final": {"p50_ms": 711.16, "p95_ms": 1314.1, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "sample_count": 20}
+    },
+    "1000000": {
+      "vector": {"p50_ms": 1901.991, "p95_ms": 2515.332, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "sample_count": 20},
+      "hybrid": {"p50_ms": 1977.031, "p95_ms": 2410.165, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "sample_count": 20},
+      "final": {"p50_ms": 5605.682, "p95_ms": 7028.291, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "sample_count": 20}
+    }
+  },
+  "concurrency_1m": {
+    "requests_per_combination": 10,
+    "vector": {
+      "1": {"qps": 0.496, "p50_ms": 1986.932, "p95_ms": 2283.207, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0},
+      "4": {"qps": 1.069, "p50_ms": 2998.874, "p95_ms": 4762.68, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0},
+      "8": {"qps": 1.183, "p50_ms": 6489.64, "p95_ms": 6707.469, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0},
+      "16": {"qps": 1.698, "p50_ms": 5771.305, "p95_ms": 5883.834, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0},
+      "32": {"qps": 1.112, "p50_ms": 8793.962, "p95_ms": 8990.542, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0}
+    },
+    "hybrid": {
+      "1": {"qps": 0.527, "p50_ms": 1937.304, "p95_ms": 2104.762, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0},
+      "4": {"qps": 0.74, "p50_ms": 4778.008, "p95_ms": 5434.827, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0},
+      "8": {"qps": 0.724, "p50_ms": 10988.746, "p95_ms": 11364.136, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0},
+      "16": {"qps": 0.793, "p50_ms": 12530.017, "p95_ms": 12601.567, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0},
+      "32": {"qps": 1.09, "p50_ms": 9027.385, "p95_ms": 9172.109, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0}
+    },
+    "final": {
+      "1": {"qps": 0.176, "p50_ms": 5591.989, "p95_ms": 6660.202, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0},
+      "4": {"qps": 0.357, "p50_ms": 9399.875, "p95_ms": 11168.712, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0},
+      "8": {"qps": 0.386, "p50_ms": 16154.313, "p95_ms": 23494.573, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0},
+      "16": {"qps": 0.361, "p50_ms": 23813.179, "p95_ms": 27687.192, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0},
+      "32": {"qps": 0.511, "p50_ms": 15834.234, "p95_ms": 19560.617, "p99_ms": "INSUFFICIENT_SAMPLE_SIZE", "errors": 0}
+    }
+  },
+  "query_plan_proof": {
+    "lexical": "EXPLAIN ANALYZE BUFFERS at 10000/100000/1000000: Bitmap Index Scan on pg_trgm GIN for selective synthetic token",
+    "vector": "EXPLAIN ANALYZE BUFFERS at 10000/100000/1000000: Limit -> Nested Loop -> Index Scan p2_vector_idx -> Index Scan substrates_pkey",
+    "python_full_table_scan": false
+  },
+  "saturation": {
+    "first_observed_concurrency": 8,
+    "bottleneck": "POSTGRES vector-distance I/O and SQL assembly",
+    "errors_hidden": false,
+    "single_request_dominant_component": "EMBEDDING",
+    "concurrency_saturation_bottleneck": "POSTGRES_VECTOR_DISTANCE_IO_AND_SQL_ASSEMBLY"
+  },
+  "limitations": [
+    "Synthetic fixed vectors; no model inference is included in capacity timings.",
+    "Reranker is disabled and therefore final means KnowledgeView retrieval/fusion/citation-provenance assembly without LLM rerank.",
+    "Claims/evidence tables are empty synthetic support tables; capacity is not a semantic quality gold result."
+  ]
+}

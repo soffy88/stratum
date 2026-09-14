@@ -1,0 +1,17 @@
+{
+  "verification_status_values": ["DRAFT", "HUMAN_VERIFIED", "REJECTED"],
+  "records": [
+    {
+      "item_id": "",
+      "layer": "ingestion",
+      "owner_id": "",
+      "source_ids": [],
+      "input": null,
+      "expected": null,
+      "provenance": {},
+      "annotator": "",
+      "verification_status": "DRAFT",
+      "notes": ""
+    }
+  ]
+}
