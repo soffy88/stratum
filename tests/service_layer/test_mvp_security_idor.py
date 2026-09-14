@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 
@@ -75,9 +74,6 @@ def test_owns_substrate_row_raw_and_hash():
 def test_get_session_filters_user():
     from stratum.services import session_manager as sm
 
-    fake_row = (
-        "sess1", "user-a", "t", "active", 0, 0, 0, 0, 20, None, "t0", "t1"
-    )
     conn = MagicMock()
     # first call with user filter returns None; without would return row
     conn.execute.return_value.fetchone.return_value = None
@@ -138,21 +134,16 @@ def test_vector_search_sql_joins_substrates_when_user():
     from stratum.services import retrieval_engine as re
 
     conn = MagicMock()
-    # first execute (pgvector) fails → fallback
-    conn.execute.side_effect = [
-        Exception("no pgvector"),
-        MagicMock(fetchall=MagicMock(return_value=[])),
-    ]
+    conn.execute.side_effect = Exception("no pgvector")
     conn.__enter__ = MagicMock(return_value=conn)
     conn.__exit__ = MagicMock(return_value=False)
 
     emb = [0.1] * 8
     with patch.object(re, "get_conn", return_value=conn):
-        re._vector_search_layers(emb, "L0", top_k=5, user_id="alice")
-    # Last call is fallback SELECT — must join substrates and filter user
-    calls = [c[0][0] for c in conn.execute.call_args_list]
-    assert any("JOIN substrates" in s for s in calls)
-    assert any("s.user_id" in s for s in calls)
+        assert re._vector_search_layers(emb, "L0", top_k=5, user_id="alice") == []
+    # A missing vector index must fail closed without a second full-corpus
+    # query or Python-side scoring fallback.
+    assert conn.execute.call_count == 1
 
 
 def test_text_search_sql_user_filter():
@@ -178,7 +169,9 @@ def test_cornell_machine_delete_forbidden():
     import asyncio
     from stratum.api.routers import cornell as cr
 
-    with patch.object(cr, "read", return_value={"id": "n1", "source": "machine", "deleted_at": None}):
+    with patch.object(
+        cr, "read", return_value={"id": "n1", "source": "machine", "deleted_at": None}
+    ):
         try:
             asyncio.run(cr.delete_cornell("n1", user_id="u"))
             assert False, "should 403"
