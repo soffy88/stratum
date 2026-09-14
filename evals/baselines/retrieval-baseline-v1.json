@@ -1,0 +1,53 @@
+{
+  "baseline_id": "retrieval-baseline-v1",
+  "baseline_kind": "OBSERVED_BASELINE",
+  "gold_file": "gold_retrieval_verified_v1.json",
+  "gold_sha256": "f858ef5f567b10e4c05ebb47bb9445f95356158a130f485e4ec4b5815676bfea",
+  "gold_count": 100,
+  "gold_type": "HUMAN_VERIFIED_RETRIEVAL",
+  "base_main_sha": "3daca3a7b4f36543cbdb86ac3410eb6f33e63ecd",
+  "measurement_code_sha": "93b8332e7526f5524a8d24b2aefcd8266fdd95f7+working-tree",
+  "working_tree_p2_changes": true,
+  "embedding_model": "BAAI/bge-m3",
+  "embedding_model_revision": "UNKNOWN",
+  "embedding_dimension": 1024,
+  "reranker": "qwen3-8b",
+  "reranker_revision": "UNKNOWN",
+  "reranker_enabled_in_qualification": false,
+  "database": "PostgreSQL 16.14",
+  "pgvector": "pgvector/pg16",
+  "retrieval_config": {
+    "entrypoint": "KnowledgeView",
+    "scopes": ["lexical", "dense"],
+    "top_k": 10
+  },
+  "metrics": {
+    "recall_at_5": 0.99,
+    "recall_at_10": 0.99,
+    "mrr": 0.99,
+    "ndcg_at_10": 0.99,
+    "citation_precision": 1.0,
+    "citation_recall": 0.9906542056074766,
+    "citation_completeness": 0.9906542056074766,
+    "provenance_correctness": 1.0,
+    "broken_provenance_count": 0,
+    "missing_source_count": 0,
+    "missing_fragment_count": 0,
+    "cross_user_leakage_count": 0,
+    "latency": {
+      "p50_ms": 498.408,
+      "p95_ms": 688.427
+    }
+  },
+  "failure_analysis": {
+    "SEMANTIC_MISS": {
+      "count": 1,
+      "percent": 1.0
+    }
+  },
+  "qualification": {
+    "quality_regression_comparison": "NOT_APPLICABLE_BASELINE_ONLY",
+    "synthetic_capacity_data_excluded": true,
+    "non_retrieval_layers": "NOT_VERIFIED"
+  }
+}

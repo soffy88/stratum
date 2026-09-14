@@ -1,0 +1,40 @@
+{
+  "evidence_id": "p2-query-plans-v1",
+  "evidence_type": "QUERY_PLAN_PROOF",
+  "dataset": "SYNTHETIC_CAPACITY_DATA",
+  "gold_sha256": "f858ef5f567b10e4c05ebb47bb9445f95356158a130f485e4ec4b5815676bfea",
+  "measurement_code_sha": "93b8332e7526f5524a8d24b2aefcd8266fdd95f7+working-tree",
+  "database_version": "PostgreSQL 16.14",
+  "pgvector_version": "pgvector/pg16 image",
+  "vector_column": "stratum.substrate_layers.embedding",
+  "vector_dimension": 1024,
+  "vector_distance_metric": "cosine",
+  "vector_index_type": "IVFFlat",
+  "vector_index_name": "p2_vector_idx",
+  "vector_index_parameters": {"lists": 100, "ivfflat.probes": 1},
+  "plans": {
+    "10000": {
+      "lexical": {"index_path": "Bitmap Index Scan on pg_trgm GIN", "limit_in_sql": true},
+      "vector": {"nodes": ["Limit", "Nested Loop", "Index Scan", "Index Scan"], "indexes": ["p2_vector_idx", "substrates_pkey"], "index_used": true}
+    },
+    "100000": {
+      "lexical": {"index_path": "Bitmap Index Scan on pg_trgm GIN", "limit_in_sql": true},
+      "vector": {"nodes": ["Limit", "Nested Loop", "Index Scan", "Index Scan"], "indexes": ["p2_vector_idx", "substrates_pkey"], "index_used": true}
+    },
+    "1000000": {
+      "lexical": {"index_path": "Bitmap Index Scan on pg_trgm GIN", "limit_in_sql": true},
+      "vector": {"nodes": ["Limit", "Nested Loop", "Index Scan", "Index Scan"], "indexes": ["p2_vector_idx", "substrates_pkey"], "index_used": true}
+    }
+  },
+  "python_full_table_scan": false,
+  "source_artifacts": {
+    "lexical_plan_json": {"path": "/tmp/p2_query_plans.json", "sha256": "e63a3f54a2e721ce5a56e5c95e1208bca9246d91f5092f964a53d98af289b90d"},
+    "vector_plan_json": {"path": "/tmp/p2_vector_query_plan.json", "sha256": "f762d35b4471e3fba139d1deb72068a0e426f79a708fa5ad283a409b6693d60c"},
+    "real_lexical_plan_json": {"path": "/tmp/p2_real_lexical_query_plan.json", "sha256": "8c024b53a44e4768015b547a8b00650b8a8381dac6aab0a039af23e6aaed366f"}
+  },
+  "qualification_notes": [
+    "The 1M vector plan uses the target IVFFlat index.",
+    "A selective synthetic lexical token uses pg_trgm GIN; low-selectivity real queries may legitimately use a sequential scan.",
+    "LIMIT and ranking are executed by PostgreSQL; no Python full-table scoring fallback is used."
+  ]
+}

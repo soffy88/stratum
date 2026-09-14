@@ -19,13 +19,12 @@ import json
 import re
 import time
 import unicodedata
+from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from pathlib import Path
-from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
-import numpy as np
 
 from stratum.config import OLLAMA_BASE_URL
 from stratum.db import get_conn
@@ -123,20 +122,6 @@ def get_embedding(text: str) -> list[float] | None:
 # ── Vector search ────────────────────────────────────────────────────────────
 
 
-def _cosine_similarity(a: list[float], b: list[float]) -> float:
-    """Compute cosine similarity between two vectors."""
-    if not a or not b or len(a) != len(b):
-        return 0.0
-    a_np = np.array(a)
-    b_np = np.array(b)
-    dot = np.dot(a_np, b_np)
-    norm_a = np.linalg.norm(a_np)
-    norm_b = np.linalg.norm(b_np)
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-    return float(dot / (norm_a * norm_b))
-
-
 def _vector_search_layers(
     query_embedding: list[float],
     layer: str = "L0",
@@ -179,33 +164,11 @@ def _vector_search_layers(
                 for r in rows
             ]
         except Exception as exc:
-            logger.warning("vector_search_layers pgvector failed: %s — falling back to Python", exc)
-
-    # Fallback: get embeddings (user-scoped when possible) and compute cosine in Python
-    with get_conn() as conn:
-        rows = conn.execute(
-            f"""SELECT sl.substrate_id, sl.content, sl.token_count, sl.embedding
-                FROM substrate_layers sl
-                JOIN substrates s ON s.id = sl.substrate_id
-                WHERE sl.layer = ? AND sl.embedding IS NOT NULL
-                {owner_sql}""",
-            (layer, *owner_params),
-        ).fetchall()
-
-    results = []
-    for r in rows:
-        sid, content, tc, emb = r
-        try:
-            emb_list = list(emb) if not isinstance(emb, list) else emb
-            score = _cosine_similarity(query_embedding, emb_list)
-            results.append(
-                {"substrate_id": sid, "content": content, "token_count": tc, "score": score}
-            )
-        except Exception:
-            continue
-
-    results.sort(key=lambda x: x["score"], reverse=True)
-    return results[:top_k]
+            # Never materialise and score the canonical corpus in Python. A
+            # missing/broken pgvector index is an observable retrieval failure,
+            # not permission to fall back to an unbounded scan.
+            logger.warning("vector_search_layers pgvector failed: %s", exc)
+            return []
 
 
 # ── Text search (BM25-like) ─────────────────────────────────────────────────
@@ -214,7 +177,7 @@ def _vector_search_layers(
 def _text_search_layers(
     query: str, layer: str = "L0", top_k: int = 50, user_id: str | None = None
 ) -> list[dict]:
-    """Simple text search using ILIKE (case-insensitive LIKE).
+    """Use PostgreSQL's indexed trigram search for layer text.
 
     When user_id is set, only searches layers owned by that user.
     Returns list of {substrate_id, content, token_count, score}.
@@ -235,42 +198,31 @@ def _text_search_layers(
         owner_params = [uid, uh]
 
     with get_conn() as conn:
-        # Build ILIKE conditions on sl.content
-        conditions = " AND ".join("sl.content ILIKE ?" for _ in terms)
-        params = [f"%{t}%" for t in terms] + [layer] + owner_params
+        conditions = " OR ".join("sl.content ILIKE ?" for _ in terms)
+        score_sql = " + ".join("CASE WHEN sl.content ILIKE ? THEN 1 ELSE 0 END" for _ in terms)
+        patterns = [f"%{t}%" for t in terms]
+        params = patterns + [len(terms)] + patterns + [layer] + owner_params + [top_k]
 
         try:
             rows = conn.execute(
-                f"""SELECT sl.substrate_id, sl.content, sl.token_count
+                f"""SELECT sl.substrate_id, sl.content, sl.token_count,
+                           ({score_sql})::double precision / ? AS score
                     FROM substrate_layers sl
                     JOIN substrates s ON s.id = sl.substrate_id
-                    WHERE {conditions} AND sl.layer = ?
+                    WHERE ({conditions}) AND sl.layer = ?
                     {owner_sql}
+                    ORDER BY score DESC, sl.substrate_id
                     LIMIT ?""",
-                tuple(params + [top_k]),
+                tuple(params),
             ).fetchall()
         except Exception as exc:
             logger.warning("text_search failed: %s", exc)
             return []
 
-    # Score by number of term matches
-    results = []
-    for r in rows:
-        sid, content, tc = r
-        content_lower = content.lower()
-        matches = sum(1 for t in terms if t.lower() in content_lower)
-        score = matches / len(terms) if terms else 0
-        results.append(
-            {
-                "substrate_id": sid,
-                "content": content,
-                "token_count": tc,
-                "score": score,
-            }
-        )
-
-    results.sort(key=lambda x: x["score"], reverse=True)
-    return results[:top_k]
+    return [
+        {"substrate_id": r[0], "content": r[1], "token_count": r[2], "score": float(r[3])}
+        for r in rows
+    ]
 
 
 # ── Canonical fragment/metadata channels ────────────────────────────────────
@@ -342,63 +294,55 @@ def _lexical_match_score(query: str, text: str) -> tuple[float, bool]:
 def _text_search_chunks(query: str, top_k: int = 50, user_id: str | None = None) -> list[dict]:
     """Search canonical substrate fragments with Unicode/CJK-aware lexical scoring."""
     terms = _retrieval_terms(query)
+    if not terms:
+        return []
     uid, uh = _user_owner_ids(user_id)
     owner_sql = ""
     owner_params: list[Any] = []
     if uid is not None:
         owner_sql = " AND (s.user_id = ? OR s.user_id = ?)"
         owner_params = [uid, uh]
-    # OR is deliberate: scoring/coverage is calculated in Python and the
-    # database only narrows the candidate set. CJK bigrams cover OCR footnotes.
+    # PostgreSQL's pg_trgm index supports the ILIKE predicates below. Match
+    # scoring and ordering also stay in SQL; Python only normalises the query
+    # terms and materialises the bounded result set.
     search_terms = terms[:32]
     conditions = " OR ".join("c.text ILIKE ?" for _ in search_terms)
-    params: list[Any] = [f"%{term}%" for term in search_terms]
+    patterns = [f"%{term}%" for term in search_terms]
+    score_sql = " + ".join("CASE WHEN c.text ILIKE ? THEN 1 ELSE 0 END" for _ in search_terms)
+    exact_sql = "c.text ILIKE ?" if query.strip() else "FALSE"
+    params: list[Any] = patterns + [len(search_terms)]
+    params += [f"%{query.strip()}%"] if query.strip() else []
+    params += patterns
     params.extend(owner_params)
     with get_conn() as conn:
         try:
             if conditions:
                 rows = conn.execute(
-                    f"""SELECT c.id, c.substrate_id, c.text, c.chunk_idx
+                    f"""SELECT c.id, c.substrate_id, c.text, c.chunk_idx,
+                               ({score_sql})::double precision / ? AS score,
+                               {exact_sql} AS exact_match
                         FROM substrate_chunk c
                         JOIN substrates s ON s.id = c.substrate_id
                         WHERE ({conditions}) {owner_sql}
+                        ORDER BY score DESC, c.substrate_id, c.chunk_idx
                         LIMIT ?""",
                     tuple(params + [max(top_k * 20, 200)]),
-                ).fetchall()
-            else:
-                rows = conn.execute(
-                    f"""SELECT c.id, c.substrate_id, c.text, c.chunk_idx
-                        FROM substrate_chunk c
-                        JOIN substrates s ON s.id = c.substrate_id
-                        WHERE c.text IS NOT NULL {owner_sql}
-                        LIMIT ?""",
-                    tuple(owner_params + [max(top_k * 100, 5000)]),
                 ).fetchall()
         except Exception as exc:
             logger.warning("text_search_chunks failed: %s", exc)
             return []
-    results: list[dict] = []
-    seen_fragments: set[str] = set()
-    for fragment_id, substrate_id, content, chunk_idx in rows:
-        if fragment_id in seen_fragments:
-            continue
-        seen_fragments.add(fragment_id)
-        score, exact = _lexical_match_score(query, content or "")
-        if score <= 0:
-            continue
-        results.append(
-            {
-                "substrate_id": substrate_id,
-                "fragment_id": fragment_id,
-                "content": content or "",
-                "token_count": len(content or "") // 4,
-                "score": score,
-                "exact_match": exact,
-                "chunk_idx": chunk_idx,
-            }
-        )
-    results.sort(key=lambda item: (-item["score"], item["substrate_id"], item["fragment_id"]))
-    return results[:top_k]
+    return [
+        {
+            "substrate_id": row[1],
+            "fragment_id": row[0],
+            "content": row[2] or "",
+            "token_count": len(row[2] or "") // 4,
+            "score": float(row[4]),
+            "exact_match": bool(row[5]),
+            "chunk_idx": row[3],
+        }
+        for row in rows[:top_k]
+    ]
 
 
 def _vector_search_chunks(
@@ -506,39 +450,50 @@ def _claim_provenance_search(query: str, top_k: int = 20, user_id: str | None = 
 
 
 def _title_metadata_search(query: str, top_k: int = 50, user_id: str | None = None) -> list[dict]:
-    """Search canonical source title/path metadata with exact-match protection."""
+    """Search title/path metadata through indexed PostgreSQL predicates.
+
+    This deliberately returns no rows for an un-tokenisable query instead of
+    falling back to a full metadata-table scan.
+    """
+    terms = _retrieval_terms(query)
+    if not terms:
+        return []
     uid, uh = _user_owner_ids(user_id)
     owner_sql = ""
     owner_params: tuple[Any, ...] = ()
     if uid is not None:
-        owner_sql = " WHERE (s.user_id = ? OR s.user_id = ?)"
+        owner_sql = " AND (s.user_id = ? OR s.user_id = ?)"
         owner_params = (uid, uh)
+    conditions = " OR ".join("s.title ILIKE ? OR s.source_path ILIKE ?" for _ in terms)
+    score_sql = " + ".join(
+        "CASE WHEN s.title ILIKE ? OR s.source_path ILIKE ? THEN 1 ELSE 0 END" for _ in terms
+    )
+    patterns = [value for term in terms for value in (f"%{term}%", f"%{term}%")]
     with get_conn() as conn:
         try:
             rows = conn.execute(
-                f"SELECT s.id, s.title, s.source_path FROM substrates s{owner_sql}",
-                owner_params,
+                f"""SELECT s.id, s.title, s.source_path,
+                           ({score_sql})::double precision / ? AS score
+                    FROM substrates s
+                    WHERE ({conditions}) {owner_sql}
+                    ORDER BY score DESC, s.id
+                    LIMIT ?""",
+                tuple(patterns + [len(terms)] + patterns + list(owner_params) + [top_k]),
             ).fetchall()
         except Exception as exc:
             logger.warning("title_metadata_search failed: %s", exc)
             return []
-    results: list[dict] = []
-    for substrate_id, title, source_path in rows:
-        score, exact = _lexical_match_score(query, f"{title or ''} {source_path or ''}")
-        if score <= 0:
-            continue
-        results.append(
-            {
-                "substrate_id": substrate_id,
-                "content": title or source_path or substrate_id,
-                "token_count": len(title or "") // 4,
-                "score": score,
-                "exact_match": exact,
-                "channel": "title",
-            }
-        )
-    results.sort(key=lambda item: (-item["score"], item["substrate_id"]))
-    return results[:top_k]
+    return [
+        {
+            "substrate_id": row[0],
+            "content": row[1] or row[2] or row[0],
+            "token_count": len(row[1] or "") // 4,
+            "score": float(row[3]),
+            "exact_match": query.casefold() in f"{row[1] or ''} {row[2] or ''}".casefold(),
+            "channel": "title",
+        }
+        for row in rows
+    ]
 
 
 def _rrf_merge_channels(
