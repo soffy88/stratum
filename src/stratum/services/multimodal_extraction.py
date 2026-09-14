@@ -608,7 +608,7 @@ def process_multimodal_pdf(
     Returns:
         Summary with counts and asset IDs.
     """
-    result = {
+    result: dict[str, Any] = {
         "substrate_id": substrate_id,
         "pdf_path": pdf_path,
         "images": [],
