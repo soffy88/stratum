@@ -1,0 +1,10 @@
+{
+  "ingestion": "NO_HUMAN_GOLD",
+  "fragmentation": "NO_HUMAN_GOLD",
+  "evidence_extraction": "NO_HUMAN_GOLD",
+  "claim_correctness": "NO_HUMAN_GOLD",
+  "concept_normalization": "NO_HUMAN_GOLD",
+  "relation_accuracy": "NO_HUMAN_GOLD",
+  "retrieval": "HUMAN_GOLD_100",
+  "answer_grounding": "NO_HUMAN_GOLD"
+}

@@ -1,0 +1,28 @@
+{
+  "evidence_id": "p2-component-timing-v1",
+  "evidence_type": "COMPONENT_TIMING",
+  "gold_sha256": "f858ef5f567b10e4c05ebb47bb9445f95356158a130f485e4ec4b5815676bfea",
+  "gold_count": 100,
+  "measurement_code_sha": "93b8332e7526f5524a8d24b2aefcd8266fdd95f7+working-tree",
+  "real_retrieval_scope": "KnowledgeView search over the 100 human-verified queries with precomputed query embeddings; p50=498.408ms, p95=688.427ms.",
+  "component_timing_scope": "KnowledgeView retrieval over the same 100 human-verified queries, with BGE-M3 query embeddings generated in batches of 10 and batch time allocated per query; reranker disabled.",
+  "scope_consistent": false,
+  "scope_difference": "The real retrieval latency excludes query-embedding generation because embeddings were precomputed. Component timing includes the amortized batch embedding time; therefore its total p50/p95 (2185.615/4545.811ms) must not be compared as the same end-to-end latency series.",
+  "aggregate_ms": {
+    "query_preprocess": {"p50": 0.021, "p95": 0.037},
+    "embedding": {"p50": 1797.498, "p95": 4082.401},
+    "lexical": {"p50": 412.134, "p95": 644.839},
+    "vector": {"p50": 8.796, "p95": 32.343},
+    "fusion": {"p50": 0.276, "p95": 0.389},
+    "rerank": {"p50": 0.0, "p95": 0.0},
+    "citation_provenance": {"p50": 0.469, "p95": 2.846},
+    "other": {"p50": 38.424, "p95": 95.833},
+    "total": {"p50": 2185.615, "p95": 4545.811}
+  },
+  "single_request_dominant_component": "EMBEDDING",
+  "concurrency_saturation_bottleneck": "POSTGRES_VECTOR_DISTANCE_IO_AND_SQL_ASSEMBLY",
+  "source_artifact": {
+    "path": "/tmp/p2_component_timing.json",
+    "sha256": "369601c8fb6e41ea9fe25f09c821e35ad777b0f0a4d061c48b08b05bad6d083e"
+  }
+}
