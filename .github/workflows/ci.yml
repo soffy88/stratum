@@ -197,11 +197,16 @@ jobs:
       - name: ESLint no-new-debt gate
         shell: bash
         env:
+          EVENT_NAME: ${{ github.event_name }}
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
         run: |
           set -euo pipefail
           base="$PR_BASE_SHA"
-          test -n "$base"
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            base="$BEFORE_SHA"
+          fi
+          [[ -z "$base" || "$base" == "0000000000000000000000000000000000000000" ]] && base=HEAD^
           pnpm exec eslint . -f json > "$RUNNER_TEMP/head-eslint.json" || true
           base_dir="$RUNNER_TEMP/eslint-base"
           git worktree add --detach "$base_dir" "$base"
@@ -225,7 +230,7 @@ jobs:
                   result[f["filePath"]] = [m for m in f["messages"] if m["severity"] == 2]
               return result
 
-          base = os.environ["PR_BASE_SHA"]
+          base = os.environ.get("PR_BASE_SHA") or os.environ.get("BEFORE_SHA") or "HEAD^"
           changed = {}
           current = None
           for line in subprocess.check_output(["git", "diff", "--unified=0", base, "HEAD", "--", "aii-web"]).decode().splitlines():
