@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS stratum.blocked_ips (
     "blocked_count" INTEGER
 );
 
+CREATE SEQUENCE IF NOT EXISTS stratum.changefeed_seq;
+
 CREATE TABLE IF NOT EXISTS stratum.changefeed (
     "seq" BIGINT PRIMARY KEY DEFAULT nextval('stratum.changefeed_seq'),
     "event_id" TEXT NOT NULL,
