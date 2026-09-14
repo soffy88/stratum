@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS stratum.changefeed (
     "event_id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
     "device_id" TEXT NOT NULL,
-    "timestamp" TIMESTAMPTZ NOT NULL,
+    "timestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     "event_type" TEXT NOT NULL,
     "payload" JSONB,
     "processed" BOOLEAN

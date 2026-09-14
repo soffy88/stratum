@@ -11,5 +11,8 @@ CREATE TABLE IF NOT EXISTS stratum.changefeed (
     processed BOOLEAN DEFAULT FALSE
 );
 
+ALTER TABLE stratum.changefeed
+    ALTER COLUMN timestamp SET DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_cf_user_seq ON changefeed(user_id, seq DESC);
 CREATE INDEX IF NOT EXISTS idx_cf_type ON changefeed(event_type);
