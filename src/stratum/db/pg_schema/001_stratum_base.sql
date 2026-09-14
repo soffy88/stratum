@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS stratum.blocked_ips (
 );
 
 CREATE TABLE IF NOT EXISTS stratum.changefeed (
-    "seq" BIGINT PRIMARY KEY,
+    "seq" BIGINT PRIMARY KEY DEFAULT nextval('stratum.changefeed_seq'),
     "event_id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
     "device_id" TEXT NOT NULL,

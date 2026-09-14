@@ -1,7 +1,9 @@
-CREATE TABLE IF NOT EXISTS changefeed (
-    seq BIGSERIAL PRIMARY KEY,
+CREATE SEQUENCE IF NOT EXISTS stratum.changefeed_seq;
+
+CREATE TABLE IF NOT EXISTS stratum.changefeed (
+    seq BIGINT PRIMARY KEY DEFAULT nextval('stratum.changefeed_seq'),
     event_id TEXT NOT NULL UNIQUE,
-    user_id UUID NOT NULL,
+    user_id TEXT NOT NULL,
     device_id TEXT NOT NULL DEFAULT 'server',
     timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
     event_type TEXT NOT NULL,
