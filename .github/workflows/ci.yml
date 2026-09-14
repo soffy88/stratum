@@ -139,8 +139,13 @@ jobs:
               # Mypy required for changed modules while suppressing only the
               # documented legacy categories; new structural/type errors still
               # fail this gate.
-              uv run mypy --ignore-missing-imports --follow-imports=skip \
-                --disable-error-code=type-arg,no-any-return,no-untyped-call,no-untyped-def,misc,untyped-decorator,attr-defined,arg-type,assignment,union-attr,return-value,unused-ignore \
+              uv run mypy --ignore-missing-imports --follow-imports=skip --no-sqlite-cache \
+                --disable-error-code=type-arg --disable-error-code=no-any-return \
+                --disable-error-code=no-untyped-call --disable-error-code=no-untyped-def \
+                --disable-error-code=misc --disable-error-code=untyped-decorator \
+                --disable-error-code=attr-defined --disable-error-code=arg-type \
+                --disable-error-code=assignment --disable-error-code=union-attr \
+                --disable-error-code=return-value --disable-error-code=unused-ignore \
                 "${mypy_files[@]}"
             fi
           fi
