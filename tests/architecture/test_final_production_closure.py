@@ -9,6 +9,8 @@ import pytest
 
 ROOT = pathlib.Path(__file__).parents[2]
 
+pytestmark = pytest.mark.production_runtime
+
 
 def _pg():
     import psycopg2
