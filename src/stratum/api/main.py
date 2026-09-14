@@ -25,6 +25,9 @@ actively used by the live search page today, so merging isn't a drop-in
 rename; it needs a real migration pass with frontend verification, not an
 ad-hoc edit.
 """
+# Router modules are intentionally imported beside registration to keep the
+# application composition visible in one place.
+# ruff: noqa: E402
 
 import asyncio
 import logging
