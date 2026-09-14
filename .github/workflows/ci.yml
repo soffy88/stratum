@@ -187,6 +187,7 @@ jobs:
     defaults: {run: {working-directory: aii-web}}
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: pnpm/action-setup@v4
         with: {version: 10.12.4, run_install: false}
       - uses: actions/setup-node@v4
