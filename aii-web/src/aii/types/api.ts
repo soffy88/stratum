@@ -9,7 +9,20 @@
  *     红线:UI 不能静默展示,必须醒目提示
  */
 
-import type { EpistemicGrade, EpistemicDefeater } from '@helios/blocks';
+export type EpistemicGrade =
+  | 'proven'
+  | 'high'
+  | 'moderate'
+  | 'low'
+  | 'very_low'
+  | 'unverified'
+  | 'contradicted'
+  | 'pending_verification';
+export interface EpistemicDefeater {
+  id: string;
+  text: string;
+  weight?: number;
+}
 
 // ============================================================
 // 通用响应包络

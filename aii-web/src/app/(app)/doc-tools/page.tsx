@@ -3,6 +3,15 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 
+type DocumentAnalysisResult = {
+  pdf_type?: string;
+  confidence?: number;
+  page_count?: number;
+  chapters?: number;
+  pages_needing_ocr?: number[];
+  category?: string;
+};
+
 const DOCS_BASE = process.env.NEXT_PUBLIC_DOCS_BASE || '/docs';
 
 export default function DocToolsPage() {
@@ -67,6 +76,8 @@ export default function DocToolsPage() {
   // ── KU 证据审查 ──
   const [kuSub, setKuSub] = useState('');
   const [kuHtml, setKuHtml] = useState('');
+  const [anFile, setAnFile] = useState<File | null>(null);
+  const [anResult, setAnResult] = useState<DocumentAnalysisResult | null>(null);
 
   const runKuReview = useCallback(async () => {
     if (!kuSub) { toast.error('请输入 substrate_id'); return; }
@@ -197,8 +208,8 @@ export default function DocToolsPage() {
             <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
               <p><span className="text-gray-500">类型：</span><b>{anResult.pdf_type}</b> <span className="text-gray-400">(置信度 {anResult.confidence})</span></p>
               <p><span className="text-gray-500">页数：</span>{anResult.page_count} 页 · 章节 {anResult.chapters}</p>
-              {anResult.pages_needing_ocr?.length > 0 && (
-                <p><span className="text-amber-600">⚠ 需要 OCR 的页：</span>{anResult.pages_needing_ocr.slice(0, 30).join(', ')}{anResult.pages_needing_ocr.length > 30 ? '...' : ''}</p>
+              {(anResult.pages_needing_ocr ?? []).length > 0 && (
+                <p><span className="text-amber-600">⚠ 需要 OCR 的页：</span>{(anResult.pages_needing_ocr ?? []).slice(0, 30).join(', ')}{(anResult.pages_needing_ocr ?? []).length > 30 ? '...' : ''}</p>
               )}
               <p><span className="text-gray-500">分类：</span>{anResult.category}</p>
             </div>

@@ -8,6 +8,7 @@
     → oskill.ingest_substrate (DB+向量+全文索引)
   → md_export_service.export_one (导出 .md 到 AII)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -20,12 +21,13 @@ from pydantic import BaseModel
 from typing import Literal
 
 from stratum.common import jwt_auth
+from stratum.config import MEDIA_PROXY
 from stratum.utils.user_id_hash import hash_user_id
 
 router = APIRouter()
 log = logging.getLogger(__name__)
 
-_PROXY = "socks5h://172.19.0.1:10808"  # sing-box mixed inbound (host 0.0.0.0:10808), WSL clash 已死
+_PROXY = MEDIA_PROXY
 
 
 class MediaIngestRequest(BaseModel):
@@ -41,11 +43,17 @@ class MediaIngestResponse(BaseModel):
 
 
 def _run_ingest(
-    video_url: str, user_id_hash: str, kind: str, asr_backend: str, transcribe: bool,
+    video_url: str,
+    user_id_hash: str,
+    kind: str,
+    asr_backend: str,
+    transcribe: bool,
 ) -> None:
     try:
         from omodul.process_media_substrate import (
-            MediaConfig, MediaInput, process_media_substrate,
+            MediaConfig,
+            MediaInput,
+            process_media_substrate,
         )
     except ImportError:  # pragma: no cover — 平台包仅部署于容器 /opt/platform
         log.error(
@@ -75,13 +83,21 @@ def _run_ingest(
                 )
             )
         except Exception as exc:
-            log.error("media_ingest: process_media_substrate failed url=%s: %s", video_url, exc, exc_info=True)
+            log.error(
+                "media_ingest: process_media_substrate failed url=%s: %s",
+                video_url,
+                exc,
+                exc_info=True,
+            )
             return
 
     status = result.get("status")
     log.info(
         "media_ingest: done url=%s status=%s has_subtitle=%s transcribed=%s error=%s",
-        video_url, status, result.get("has_subtitle"), result.get("transcribed"),
+        video_url,
+        status,
+        result.get("has_subtitle"),
+        result.get("transcribed"),
         result.get("error"),
     )
 
@@ -92,6 +108,7 @@ def _run_ingest(
             try:
                 import json as _json
                 from stratum.db import get_conn
+
                 title = (result.get("title") or "").strip() or None
                 with get_conn() as conn:
                     row = conn.execute(
@@ -116,6 +133,7 @@ def _run_ingest(
 
             try:
                 from stratum.services.md_export_service import export_one
+
                 export_one(sid)
             except Exception as exc:
                 log.warning("media_ingest: md_export failed sid=%s: %s", sid, exc)
@@ -124,6 +142,7 @@ def _run_ingest(
             try:
                 from stratum.db import get_conn
                 from stratum.services.layer_generator import generate_substrate_layers
+
                 with get_conn() as conn:
                     trow = conn.execute(
                         "SELECT title FROM substrates WHERE id=?", (sid,)
@@ -155,6 +174,11 @@ async def ingest_media(
     """提交音视频 URL 入库（后台异步，字幕优先→本地 ASR 兜底；kind=audio 走转写链路）。"""
     uh = hash_user_id(user_id)
     background_tasks.add_task(
-        _run_ingest, body.video_url, uh, body.kind, body.asr_backend, body.transcribe_if_no_subtitle,
+        _run_ingest,
+        body.video_url,
+        uh,
+        body.kind,
+        body.asr_backend,
+        body.transcribe_if_no_subtitle,
     )
     return MediaIngestResponse(status="queued", video_url=body.video_url)
