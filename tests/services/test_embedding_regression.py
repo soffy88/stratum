@@ -13,6 +13,8 @@ import pytest
 from stratum.services.layer_generator import _get_embedding as lg_get_embedding
 from stratum.services.retrieval_engine import get_embedding as re_get_embedding
 
+pytestmark = pytest.mark.external_provider
+
 
 def _is_finite_vector(vec: list[float]) -> bool:
     return all(math.isfinite(x) for x in vec)

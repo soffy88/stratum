@@ -23,11 +23,12 @@ from typing import Any
 import httpx
 import numpy as np
 
+from stratum.config import OLLAMA_BASE_URL
 from stratum.db import get_conn
 
 logger = logging.getLogger(__name__)
 
-_OLLAMA_BASE = "http://172.19.0.1:11434"
+_OLLAMA_BASE = OLLAMA_BASE_URL
 _MODEL = "qwen3-8b"
 _EMBED_MODEL = "qwen3-embedding"
 
@@ -41,6 +42,7 @@ MEMORY_TYPES = [
 ]
 
 # ── LLM / Embedding ─────────────────────────────────────────────────────────
+
 
 def _call_llm(messages: list[dict]) -> str:
     try:
@@ -79,6 +81,7 @@ def _get_embedding(text: str) -> list[float] | None:
 
 def _gen_id(prefix: str = "mem") -> str:
     import hashlib
+
     raw = f"{prefix}-{time.time()}-{id(prefix)}"
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
@@ -115,8 +118,7 @@ Rules:
 - Output ONLY the JSON array, no explanation"""
 
 
-async def extract_memories(session_id: str, user_id: str,
-                           messages: list[dict]) -> dict[str, Any]:
+async def extract_memories(session_id: str, user_id: str, messages: list[dict]) -> dict[str, Any]:
     """Extract long-term memories from session messages.
 
     Returns:
@@ -126,16 +128,17 @@ async def extract_memories(session_id: str, user_id: str,
         return {"extracted": 0, "by_type": {}}
 
     # Build conversation text
-    conversation = "\n".join(
-        f"[{m['role']}] {m['content'][:300]}" for m in messages[-20:]
-    )
+    conversation = "\n".join(f"[{m['role']}] {m['content'][:300]}" for m in messages[-20:])
 
     # Call LLM to extract memories
     result_text = await asyncio.to_thread(
         _call_llm,
         [
             {"role": "system", "content": _EXTRACTION_PROMPT},
-            {"role": "user", "content": f"Extract memories from this conversation:\n\n{conversation}"},
+            {
+                "role": "user",
+                "content": f"Extract memories from this conversation:\n\n{conversation}",
+            },
         ],
     )
 
@@ -145,7 +148,7 @@ async def extract_memories(session_id: str, user_id: str,
     # Parse JSON
     try:
         # Try to extract JSON from response
-        json_match = re.search(r'\[.*\]', result_text, re.DOTALL)
+        json_match = re.search(r"\[.*\]", result_text, re.DOTALL)
         if json_match:
             memories = json.loads(json_match.group())
         else:
@@ -184,8 +187,7 @@ async def extract_memories(session_id: str, user_id: str,
                        (id, user_id, memory_type, content, source_session,
                         confidence, embedding, tags)
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (mem_id, user_id, mem_type, content, session_id,
-                     confidence, embedding, tags),
+                    (mem_id, user_id, mem_type, content, session_id, confidence, embedding, tags),
                 )
         except Exception as exc:
             logger.warning("Memory persist failed: %s", exc)
@@ -195,7 +197,8 @@ async def extract_memories(session_id: str, user_id: str,
 
         # Register in viking:// directory
         try:
-            from stratum.services.directory_builder import ensure_directory, register_ku
+            from stratum.services.directory_builder import ensure_directory
+
             mem_dir = ensure_directory("viking://memories", user_id)
             ensure_directory(mem_dir, mem_type)
             # Register as a memory node
@@ -211,22 +214,29 @@ async def extract_memories(session_id: str, user_id: str,
                        (id, parent_id, uri, node_type, ref_id, l0_content, depth)
                        VALUES (?, ?, ?, 'memory', ?, ?, ?)
                        ON CONFLICT (uri) DO NOTHING""",
-                    (_gen_id("mdir"), parent_id, mem_uri, mem_id,
-                     content[:200], mem_uri.count("/")),
+                    (
+                        _gen_id("mdir"),
+                        parent_id,
+                        mem_uri,
+                        mem_id,
+                        content[:200],
+                        mem_uri.count("/"),
+                    ),
                 )
         except Exception:
             pass  # Non-critical
 
     extracted = sum(by_type.values())
-    logger.info("memory_extractor: session %s → %d memories (%s)",
-                session_id[:12], extracted, by_type)
+    logger.info(
+        "memory_extractor: session %s → %d memories (%s)", session_id[:12], extracted, by_type
+    )
     return {"extracted": extracted, "by_type": by_type}
 
 
 # ── Memory retrieval ─────────────────────────────────────────────────────────
 
-def get_relevant_memories(user_id: str, query: str,
-                          limit: int = 5) -> list[dict[str, Any]]:
+
+def get_relevant_memories(user_id: str, query: str, limit: int = 5) -> list[dict[str, Any]]:
     """Get memories relevant to a query, sorted by relevance.
 
     Uses embedding similarity search.
@@ -242,8 +252,14 @@ def get_relevant_memories(user_id: str, query: str,
                 (user_id, limit),
             ).fetchall()
         return [
-            {"id": r[0], "type": r[1], "content": r[2], "confidence": r[3],
-             "tags": r[4], "created_at": str(r[5])}
+            {
+                "id": r[0],
+                "type": r[1],
+                "content": r[2],
+                "confidence": r[3],
+                "tags": r[4],
+                "created_at": str(r[5]),
+            }
             for r in rows
         ]
 
@@ -270,14 +286,20 @@ def get_relevant_memories(user_id: str, query: str,
         try:
             emb_list = list(emb) if not isinstance(emb, list) else emb
             emb_np = np.array(emb_list)
-            score = float(np.dot(query_np, emb_np) / (
-                np.linalg.norm(query_np) * np.linalg.norm(emb_np)
-            ))
-            scored.append({
-                "id": mem_id, "type": mem_type, "content": content,
-                "confidence": confidence, "tags": tags,
-                "score": round(score, 4), "created_at": str(created_at),
-            })
+            score = float(
+                np.dot(query_np, emb_np) / (np.linalg.norm(query_np) * np.linalg.norm(emb_np))
+            )
+            scored.append(
+                {
+                    "id": mem_id,
+                    "type": mem_type,
+                    "content": content,
+                    "confidence": confidence,
+                    "tags": tags,
+                    "score": round(score, 4),
+                    "created_at": str(created_at),
+                }
+            )
         except Exception:
             continue
 
@@ -285,8 +307,7 @@ def get_relevant_memories(user_id: str, query: str,
     return scored[:limit]
 
 
-def list_memories(user_id: str, memory_type: str | None = None,
-                  limit: int = 50) -> list[dict]:
+def list_memories(user_id: str, memory_type: str | None = None, limit: int = 50) -> list[dict]:
     """List all memories for a user."""
     with get_conn() as conn:
         if memory_type:
@@ -306,8 +327,14 @@ def list_memories(user_id: str, memory_type: str | None = None,
                 (user_id, limit),
             ).fetchall()
     return [
-        {"id": r[0], "type": r[1], "content": r[2], "confidence": r[3],
-         "tags": r[4], "created_at": str(r[5])}
+        {
+            "id": r[0],
+            "type": r[1],
+            "content": r[2],
+            "confidence": r[3],
+            "tags": r[4],
+            "created_at": str(r[5]),
+        }
         for r in rows
     ]
 

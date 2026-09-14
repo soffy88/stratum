@@ -18,15 +18,15 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any
 
 import httpx
 
+from stratum.config import OLLAMA_BASE_URL
 from stratum.db import get_conn
 
 logger = logging.getLogger(__name__)
 
-_OLLAMA_BASE = "http://172.19.0.1:11434"
+_OLLAMA_BASE = OLLAMA_BASE_URL
 _MODEL = "qwen3-8b"
 
 WM_SECTIONS = [
@@ -40,6 +40,7 @@ WM_SECTIONS = [
 ]
 
 # ── LLM call ─────────────────────────────────────────────────────────────────
+
 
 def _call_llm(messages: list[dict]) -> str:
     try:
@@ -59,6 +60,7 @@ def _call_llm(messages: list[dict]) -> str:
 
 
 # ── WM operations ────────────────────────────────────────────────────────────
+
 
 def create_working_memory(session_id: str, title: str = "") -> dict[str, str]:
     """Create initial Working Memory for a session."""
@@ -98,9 +100,7 @@ def update_working_memory(session_id: str, messages: list[dict]) -> dict[str, st
         return current_wm
 
     # Build conversation summary
-    conversation = "\n".join(
-        f"[{m['role']}] {m['content'][:200]}" for m in recent
-    )
+    conversation = "\n".join(f"[{m['role']}] {m['content'][:200]}" for m in recent)
 
     # Ask LLM to update each section
     updated_wm = dict(current_wm)
@@ -135,10 +135,15 @@ Update this section based on the conversation. Rules:
 - Keep it concise (under 500 characters).
 - Output ONLY the section content, no headers or explanations."""
 
-    result = _call_llm([
-        {"role": "system", "content": "You maintain structured working memory for AI agents. Be concise and precise."},
-        {"role": "user", "content": prompt},
-    ])
+    result = _call_llm(
+        [
+            {
+                "role": "system",
+                "content": "You maintain structured working memory for AI agents. Be concise and precise.",
+            },
+            {"role": "user", "content": prompt},
+        ]
+    )
 
     return result if result else current
 

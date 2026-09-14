@@ -1,7 +1,15 @@
+from dataclasses import dataclass
+
 from stratum.services.artifact_provenance import content_hash
-from stratum.services.literature import LiteratureCandidate
 from stratum.services.visual_embedding import Qwen3VLEmbeddingProvider
 from stratum.services.translation_alignment import align_fragment
+
+
+@dataclass(frozen=True)
+class DocumentProjectionCandidate:
+    """Deterministic fixture for the document projection contract."""
+
+    title: str
 
 
 def test_optional_integrations_disabled_boot_cleanly():
@@ -38,9 +46,9 @@ def test_visual_provider_runtime_is_lazy_and_no_placeholder_fallback():
     assert provider._runtime is None
 
 
-def test_artifact_hash_and_literature_are_derived_contracts():
+def test_artifact_hash_and_document_projection_contracts():
     assert content_hash("same") == content_hash("same")
-    candidate = LiteratureCandidate(title="A paper")
+    candidate = DocumentProjectionCandidate(title="A paper")
     assert candidate.title == "A paper"
 
 
