@@ -41,7 +41,18 @@ jobs:
       - name: Verify migration runner second run
         run: |
           uv run python -m stratum.db.run_pg_migrations upgrade
-          PGPASSWORD="$STRATUM_PG_PASSWORD" psql -h "$STRATUM_PG_HOST" -p "$STRATUM_PG_PORT" -U "$STRATUM_PG_USER" -d "$STRATUM_PG_DB" -v ON_ERROR_STOP=1 -c "SELECT to_regclass('stratum.substrates'), to_regclass('stratum.substrate_chunk'), to_regclass('stratum.derived_artifact'), to_regclass('stratum.artifact_input'); SELECT filename FROM public._pg_migrations WHERE filename='051_source_soft_delete.sql';"
+          PGPASSWORD="$STRATUM_PG_PASSWORD" psql -h "$STRATUM_PG_HOST" -p "$STRATUM_PG_PORT" -U "$STRATUM_PG_USER" -d "$STRATUM_PG_DB" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF to_regclass('stratum.substrates') IS NULL
+               OR to_regclass('stratum.substrate_chunk') IS NULL
+               OR to_regclass('stratum.derived_artifact') IS NULL
+               OR to_regclass('stratum.artifact_input') IS NULL
+            THEN RAISE EXCEPTION 'required canonical relation is missing'; END IF;
+            IF NOT EXISTS (SELECT 1 FROM public._pg_migrations WHERE filename='051_source_soft_delete.sql')
+            THEN RAISE EXCEPTION '051_source_soft_delete.sql was not recorded'; END IF;
+          END $$;
+          SQL
 
   tenant-security:
     name: Security / tenant isolation
@@ -129,7 +140,7 @@ jobs:
           base="$BEFORE_SHA"
           [[ "$EVENT_NAME" == "pull_request" ]] && base="$PR_BASE_SHA"
           [[ -z "$base" || "$base" == "0000000000000000000000000000000000000000" ]] && base=HEAD^
-          mapfile -t files < <(git diff --diff-filter=ACM --name-only "$base" HEAD -- '*.py' | sort -u)
+          mapfile -t files < <(git diff --diff-filter=ACMR --name-only "$base" HEAD -- '*.py' | sort -u)
           if ((${#files[@]})); then
             uv run ruff format --check "${files[@]}"
             uv run ruff check "${files[@]}"
@@ -162,6 +173,7 @@ jobs:
         with: {node-version: 22, cache: pnpm, cache-dependency-path: aii-web/pnpm-lock.yaml}
       - run: pnpm install --frozen-lockfile
       - run: pnpm test -- --run
+      - run: pnpm run lint
       - run: pnpm run type-check
       - run: pnpm build
 
