@@ -3,6 +3,15 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 
+type DocumentAnalysisResult = {
+  pdf_type?: string;
+  confidence?: number;
+  page_count?: number;
+  chapters?: number;
+  pages_needing_ocr?: number[];
+  category?: string;
+};
+
 const DOCS_BASE = process.env.NEXT_PUBLIC_DOCS_BASE || '/docs';
 
 export default function DocToolsPage() {
@@ -68,7 +77,7 @@ export default function DocToolsPage() {
   const [kuSub, setKuSub] = useState('');
   const [kuHtml, setKuHtml] = useState('');
   const [anFile, setAnFile] = useState<File | null>(null);
-  const [anResult, setAnResult] = useState<any>(null);
+  const [anResult, setAnResult] = useState<DocumentAnalysisResult | null>(null);
 
   const runKuReview = useCallback(async () => {
     if (!kuSub) { toast.error('请输入 substrate_id'); return; }
