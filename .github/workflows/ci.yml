@@ -41,7 +41,18 @@ jobs:
       - name: Verify migration runner second run
         run: |
           uv run python -m stratum.db.run_pg_migrations upgrade
-          PGPASSWORD="$STRATUM_PG_PASSWORD" psql -h "$STRATUM_PG_HOST" -p "$STRATUM_PG_PORT" -U "$STRATUM_PG_USER" -d "$STRATUM_PG_DB" -v ON_ERROR_STOP=1 -c "SELECT to_regclass('stratum.substrates'), to_regclass('stratum.substrate_chunk'), to_regclass('stratum.derived_artifact'), to_regclass('stratum.artifact_input'); SELECT filename FROM public._pg_migrations WHERE filename='051_source_soft_delete.sql';"
+          PGPASSWORD="$STRATUM_PG_PASSWORD" psql -h "$STRATUM_PG_HOST" -p "$STRATUM_PG_PORT" -U "$STRATUM_PG_USER" -d "$STRATUM_PG_DB" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          BEGIN
+            IF to_regclass('stratum.substrates') IS NULL
+               OR to_regclass('stratum.substrate_chunk') IS NULL
+               OR to_regclass('stratum.derived_artifact') IS NULL
+               OR to_regclass('stratum.artifact_input') IS NULL
+            THEN RAISE EXCEPTION 'required canonical relation is missing'; END IF;
+            IF NOT EXISTS (SELECT 1 FROM public._pg_migrations WHERE filename='051_source_soft_delete.sql')
+            THEN RAISE EXCEPTION '051_source_soft_delete.sql was not recorded'; END IF;
+          END $$;
+          SQL
 
   tenant-security:
     name: Security / tenant isolation
@@ -80,13 +91,13 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen
       - run: >-
-          uv run pytest -q --tb=short -k 'not test_production_runtime'
+          uv run pytest -q --tb=short -m 'not production_runtime and not external_provider'
           tests/architecture/test_aii_closure.py
           tests/architecture/test_final_production_closure.py
       - run: uv run python -c "from stratum.api.main import app; assert app is not None"
 
   backend:
-    name: Backend / full regression
+    name: Backend / PR regression
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -108,7 +119,27 @@ jobs:
           PGPASSWORD="$STRATUM_PG_PASSWORD" psql -h "$STRATUM_PG_HOST" -p "$STRATUM_PG_PORT" -U "$STRATUM_PG_USER" -d "$STRATUM_PG_DB" -v ON_ERROR_STOP=1 -f src/stratum/db/pg_schema/001_stratum_base.sql
           PGPASSWORD="$STRATUM_PG_PASSWORD" psql -h "$STRATUM_PG_HOST" -p "$STRATUM_PG_PORT" -U "$STRATUM_PG_USER" -d "$STRATUM_PG_DB" -v ON_ERROR_STOP=1 -f src/stratum/db/pg_schema/002_substrate_chunk.sql
           uv run python -m stratum.db.run_pg_migrations upgrade
-      - run: uv run pytest tests -q --tb=short --timeout=600
+      - run: uv run pytest tests -q --tb=short --timeout=600 -m 'not production_runtime and not external_provider'
+
+  production-qualification:
+    name: Production runtime qualification
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - run: uv run pytest tests -q --tb=short --timeout=600 -m production_runtime
+
+  external-provider-qualification:
+    name: External provider qualification
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - run: uv run pytest tests -q --tb=short --timeout=600 -m external_provider
 
   static:
     name: Static / Ruff and Mypy delta
@@ -129,7 +160,7 @@ jobs:
           base="$BEFORE_SHA"
           [[ "$EVENT_NAME" == "pull_request" ]] && base="$PR_BASE_SHA"
           [[ -z "$base" || "$base" == "0000000000000000000000000000000000000000" ]] && base=HEAD^
-          mapfile -t files < <(git diff --diff-filter=ACM --name-only "$base" HEAD -- '*.py' | sort -u)
+          mapfile -t files < <(git diff --diff-filter=ACMR --name-only "$base" HEAD -- '*.py' | sort -u)
           if ((${#files[@]})); then
             uv run ruff format --check "${files[@]}"
             uv run ruff check "${files[@]}"
@@ -156,12 +187,71 @@ jobs:
     defaults: {run: {working-directory: aii-web}}
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: pnpm/action-setup@v4
         with: {version: 10.12.4, run_install: false}
       - uses: actions/setup-node@v4
         with: {node-version: 22, cache: pnpm, cache-dependency-path: aii-web/pnpm-lock.yaml}
       - run: pnpm install --frozen-lockfile
       - run: pnpm test -- --run
+      - name: ESLint no-new-debt gate
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          base="$PR_BASE_SHA"
+          test -n "$base"
+          pnpm exec eslint . -f json > "$RUNNER_TEMP/head-eslint.json" || true
+          base_dir="$RUNNER_TEMP/eslint-base"
+          git worktree add --detach "$base_dir" "$base"
+          trap 'git worktree remove --force "$base_dir"' EXIT
+          # The base checkout is used only for a source-level lint baseline.
+          # Reuse the already frozen-installed dependency tree from HEAD so
+          # private file: packages are not resolved a second time.
+          ln -s "$GITHUB_WORKSPACE/aii-web/node_modules" "$base_dir/aii-web/node_modules"
+          (cd "$base_dir/aii-web" && "$GITHUB_WORKSPACE/aii-web/node_modules/.bin/eslint" . -f json > "$RUNNER_TEMP/base-eslint.json" || true)
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+
+          def errors(path):
+              data = json.loads(Path(path).read_text())
+              return sum(m["errorCount"] for f in data for m in [f])
+
+          def violations(path):
+              result = {}
+              for f in json.loads(Path(path).read_text()):
+                  result[f["filePath"]] = [m for m in f["messages"] if m["severity"] == 2]
+              return result
+
+          base = os.environ["PR_BASE_SHA"]
+          changed = {}
+          current = None
+          for line in subprocess.check_output(["git", "diff", "--unified=0", base, "HEAD", "--", "aii-web"]).decode().splitlines():
+              if line.startswith("+++ b/"):
+                  current = line[6:]
+                  changed.setdefault(current, set())
+              elif current and line.startswith("@@"):
+                  rhs = line.split("+")[1].split(" ")[0]
+                  start, _, length = rhs.split(",") if "," in rhs else (rhs, "", "1")
+                  for n in range(int(start), int(start) + int(length or 1)):
+                      changed[current].add(n)
+          head = violations(os.environ["RUNNER_TEMP"] + "/head-eslint.json")
+          changed_errors = 0
+          for path, messages in head.items():
+              rel = os.path.relpath(path, os.getcwd())
+              for message in messages:
+                  if message.get("line") in changed.get(rel, set()):
+                      changed_errors += 1
+          base_errors = errors(os.environ["RUNNER_TEMP"] + "/base-eslint.json")
+          head_errors = errors(os.environ["RUNNER_TEMP"] + "/head-eslint.json")
+          print(f"BASE_ESLINT_ERRORS={base_errors}")
+          print(f"HEAD_ESLINT_ERRORS={head_errors}")
+          print(f"NEW_CHANGED_LINE_ERRORS={changed_errors}")
+          if changed_errors or head_errors > base_errors:
+              raise SystemExit(1)
+          PY
       - run: pnpm run type-check
       - run: pnpm build
 
