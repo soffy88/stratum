@@ -67,6 +67,10 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 asyncio_mode = "strict"
+markers = [
+    "production_runtime: requires a deployed service or pre-seeded production-like data",
+    "external_provider: requires an external model/provider runtime",
+]
 
 [tool.ruff]
 line-length = 100
