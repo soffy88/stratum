@@ -206,7 +206,10 @@ jobs:
           base_dir="$RUNNER_TEMP/eslint-base"
           git worktree add --detach "$base_dir" "$base"
           trap 'git worktree remove --force "$base_dir"' EXIT
-          pnpm --dir "$base_dir/aii-web" install --frozen-lockfile
+          # The base checkout is used only for a source-level lint baseline.
+          # Reuse the already frozen-installed dependency tree from HEAD so
+          # private file: packages are not resolved a second time.
+          ln -s "$GITHUB_WORKSPACE/aii-web/node_modules" "$base_dir/aii-web/node_modules"
           (cd "$base_dir/aii-web" && pnpm exec eslint . -f json > "$RUNNER_TEMP/base-eslint.json" || true)
           python - <<'PY'
           import json, os, subprocess
