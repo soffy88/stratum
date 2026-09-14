@@ -13,7 +13,6 @@ import asyncio
 import logging
 import re
 import shutil
-import sys
 import tempfile
 from pathlib import Path
 
@@ -32,6 +31,7 @@ except ImportError:  # pragma: no cover — 平台包仅部署于容器 /opt/pla
     export_substrate_markdown = None
 
 from stratum.db import get_conn
+from stratum.config import EXPORT_DIR as CONFIG_EXPORT_DIR
 
 log = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ def _detect_language(text: str) -> str:
     return "zh" if zh > en else "en"
 
 
-EXPORT_DIR = Path("/data/shared/stratum-to-aii")
+EXPORT_DIR = CONFIG_EXPORT_DIR or Path.home() / ".stratum" / "exports"
 
 _MEDIUM_TO_DOC_TYPE = {
     "paper": "paper",
@@ -82,9 +82,6 @@ def _inject_book_structure(substrate_id: str, md_path: Path, file_path: str | No
         return False
 
     try:
-        # scripts/ 目录在容器内挂为 /app/scripts
-        if "/app/scripts" not in sys.path:
-            sys.path.insert(0, "/app/scripts")
         from book_structure_inject import inject_structure_inplace  # type: ignore[import]
 
         result = inject_structure_inplace(
@@ -137,7 +134,9 @@ def export_one(substrate_id: str, *, force: bool = False) -> dict:
         return {"status": "skipped", "reason": "already exported", "substrate_id": substrate_id}
 
     if not _HAS_EXPORT_OMODUL:
-        log.warning("md_export: omodul platform unavailable (no /opt/platform); skip %s", substrate_id)
+        log.warning(
+            "md_export: omodul platform unavailable (no /opt/platform); skip %s", substrate_id
+        )
         return {
             "status": "failed",
             "error": "omodul platform package unavailable (no /opt/platform)",

@@ -5,21 +5,19 @@
  */
 import { describe, expect, it } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import fs from 'fs';
+import fs, { existsSync } from 'fs';
 import path from 'path';
 import { LearningLayer } from '@/aii/components/LearningLayer';
 
-const RAW = JSON.parse(
-  fs.readFileSync(
-    path.resolve(__dirname, '../../../../aii/econ_pipeline/bu_econ_zh_2726f38224.json'),
-    'utf-8',
-  ),
-);
+const fixturePath = path.resolve(__dirname, '../../../../aii/econ_pipeline/bu_econ_zh_2726f38224.json');
+const RAW = existsSync(fixturePath)
+  ? JSON.parse(fs.readFileSync(fixturePath, 'utf-8'))
+  : { learning_paths: [], deep_cards: [], bu_quality: {} };
 const paths = RAW.learning_paths;
 const cards = RAW.deep_cards;
 const quality = RAW.bu_quality;
 
-describe('LearningLayer · 产业经济学真实数据', () => {
+describe.skipIf(!existsSync(fixturePath))('LearningLayer · 产业经济学真实数据', () => {
   it('渲染 5 条能力路径与全部 10 张深卡', () => {
     render(<LearningLayer substrate="econ_zh_2726f38224" paths={paths} cards={cards} quality={quality} />);
     expect(screen.getByText('学习层 · Learning Layer')).toBeInTheDocument();
@@ -61,10 +59,10 @@ describe('LearningLayer · 产业经济学真实数据', () => {
   it('继续连接跳转到相邻深卡', () => {
     render(<LearningLayer substrate="econ_zh_2726f38224" paths={paths} cards={cards} quality={quality} />);
     fireEvent.click(screen.getByText(cards[0].name));
-    const linked = cards.find(c => cards[0].connections.includes(c.id));
+    const linked = cards.find((c: (typeof cards)[number]) => cards[0].connections.includes(c.id));
     expect(linked).toBeTruthy();
     // 连接按钮与卡名同名(列表项), 点第一个匹配(连接按钮)
-    fireEvent.click(screen.getAllByText(linked!.name)[0]);
+    fireEvent.click(screen.getAllByText(linked!.name)[0]!);
     // 相邻卡展开: 语境段出现两次(第一张 + 第二张)
     expect(screen.getAllByText('语境 · 原文在回应什么').length).toBeGreaterThanOrEqual(1);
   });

@@ -77,12 +77,14 @@ CREATE TABLE IF NOT EXISTS stratum.blocked_ips (
     "blocked_count" INTEGER
 );
 
+CREATE SEQUENCE IF NOT EXISTS stratum.changefeed_seq;
+
 CREATE TABLE IF NOT EXISTS stratum.changefeed (
-    "seq" BIGINT PRIMARY KEY,
+    "seq" BIGINT PRIMARY KEY DEFAULT nextval('stratum.changefeed_seq'),
     "event_id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
     "device_id" TEXT NOT NULL,
-    "timestamp" TIMESTAMPTZ NOT NULL,
+    "timestamp" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     "event_type" TEXT NOT NULL,
     "payload" JSONB,
     "processed" BOOLEAN
@@ -304,14 +306,17 @@ CREATE TABLE IF NOT EXISTS stratum.scheduled_job_runs_sl (
 
 CREATE TABLE IF NOT EXISTS stratum.scheduled_jobs_sl (
     "id" TEXT PRIMARY KEY,
-    "user_id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL DEFAULT 'system',
     "name" TEXT NOT NULL,
     "agent_name" TEXT NOT NULL,
     "cron_expression" TEXT NOT NULL,
     "timezone" TEXT NOT NULL,
+    "job_type" TEXT NOT NULL DEFAULT 'native',
+    "config" JSONB NOT NULL DEFAULT '{}'::jsonb,
     "enabled" BOOLEAN NOT NULL,
     "max_items" INTEGER,
-    "created_at" TIMESTAMPTZ
+    "created_at" TIMESTAMPTZ,
+    UNIQUE ("name")
 );
 
 CREATE TABLE IF NOT EXISTS stratum.sessions (
