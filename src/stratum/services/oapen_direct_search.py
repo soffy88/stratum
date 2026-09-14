@@ -1,14 +1,14 @@
 """OAPEN open-access book search — Stratum-layer implementation.
 
-Proxies through host-side service at 172.19.0.1:8766/oapen-search,
-because library.oapen.org (103.200.31.172) is unreachable from the container
-network (TCP timeout), while the host can reach it fine.
+Optionally proxies through a configured OAPEN service when direct access is
+unavailable.
 
 Root cause of oprim._oapen_search failure:
   1. library.oapen.org unreachable from container (routing, not DNS)
   2. Even if reachable: _TRUSTED_PDF_HOSTS = ("link.springer.com",) drops
      99% of books whose PDFs are hosted on library.oapen.org itself.
 """
+
 from __future__ import annotations
 
 import json
@@ -16,9 +16,11 @@ import logging
 import urllib.parse
 import urllib.request
 
+from stratum.config import OAPEN_PROXY_URL
+
 log = logging.getLogger(__name__)
 
-_PROXY_URL = "http://172.19.0.1:8766/oapen-search"
+_PROXY_URL = OAPEN_PROXY_URL
 
 
 def oapen_direct_search(
@@ -39,7 +41,10 @@ def oapen_direct_search(
     if language:
         params["language"] = language
 
-    url = _PROXY_URL + "?" + urllib.parse.urlencode(params)
+    if not _PROXY_URL:
+        log.warning("OAPEN proxy is not configured")
+        return []
+    url = _PROXY_URL + "/oapen-search?" + urllib.parse.urlencode(params)
     try:
         req = urllib.request.Request(url)
         data = json.loads(urllib.request.urlopen(req, timeout=30).read())
@@ -49,13 +54,15 @@ def oapen_direct_search(
 
     results = []
     for r in data.get("results", []):
-        results.append(SourceResult(
-            external_id=r["external_id"],
-            title=r["title"],
-            download_url=r["download_url"],
-            file_type="pdf",
-            metadata=r.get("metadata", {}),
-        ))
+        results.append(
+            SourceResult(
+                external_id=r["external_id"],
+                title=r["title"],
+                download_url=r["download_url"],
+                file_type="pdf",
+                metadata=r.get("metadata", {}),
+            )
+        )
 
     log.info("oapen_direct: query=%r → %d results", query, len(results))
     return results

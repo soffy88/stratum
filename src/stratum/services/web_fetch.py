@@ -4,7 +4,7 @@ Why not oprim.url_fetch_ssrf_safe directly: stratum-sl runs with HTTP(S)_PROXY
 pointing at the outbound relay (deploy/docker-compose.yml). urllib.request's
 default ProxyHandler then routes every request through the relay, and obase's
 DNS-pinned transport rejects the relay address as private
-(SSRFBlockedError for e.g. 172.19.0.1), so all web fetches fail.
+(SSRFBlockedError for a private relay), so all web fetches fail.
 
 Strategy: try direct first (env proxies stripped via an empty ProxyHandler,
 DNS pinned by obase). On failure, and when STRATUM_OUTBOUND_PROXY is set,
@@ -15,6 +15,7 @@ no localhost / *.local / *.internal / *.lan).
 Keeps oprim's result shape: {url, status_code, content_type, body_bytes,
 body_text, error}.
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,9 +24,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from stratum.config import OUTBOUND_PROXY
+
 log = logging.getLogger(__name__)
 
-_DEFAULT_OUTBOUND_PROXY = "http://172.19.0.1:10808"  # deploy/docker-compose.yml relay
+_DEFAULT_OUTBOUND_PROXY = OUTBOUND_PROXY
 _NON_PUBLIC_TLDS = (".local", ".internal", ".lan", ".home.arpa", ".localdomain")
 _DEFAULT_HEADERS = {
     "User-Agent": (
@@ -61,7 +64,13 @@ def _is_public_url(url: str) -> bool:
     return True
 
 
-def _perform(opener: urllib.request.OpenerDirector, url: str, timeout: int, max_bytes: int, headers: dict | None) -> dict:
+def _perform(
+    opener: urllib.request.OpenerDirector,
+    url: str,
+    timeout: int,
+    max_bytes: int,
+    headers: dict | None,
+) -> dict:
     merged_headers = dict(_DEFAULT_HEADERS)
     if headers:
         merged_headers.update(headers)
@@ -97,18 +106,30 @@ def _direct_fetch(url: str, timeout: int, max_bytes: int, headers: dict | None) 
         return _perform(opener, url, timeout, max_bytes, headers)
     except SSRFBlockedError:
         return {
-            "url": url, "status_code": None, "content_type": None,
-            "body_bytes": b"", "body_text": None, "error": "ssrf_blocked",
+            "url": url,
+            "status_code": None,
+            "content_type": None,
+            "body_bytes": b"",
+            "body_text": None,
+            "error": "ssrf_blocked",
         }
     except urllib.error.HTTPError as exc:
         return {
-            "url": url, "status_code": exc.code, "content_type": None,
-            "body_bytes": b"", "body_text": None, "error": str(exc),
+            "url": url,
+            "status_code": exc.code,
+            "content_type": None,
+            "body_bytes": b"",
+            "body_text": None,
+            "error": str(exc),
         }
     except Exception as exc:
         return {
-            "url": url, "status_code": None, "content_type": None,
-            "body_bytes": b"", "body_text": None, "error": str(exc),
+            "url": url,
+            "status_code": None,
+            "content_type": None,
+            "body_bytes": b"",
+            "body_text": None,
+            "error": str(exc),
         }
 
 
@@ -120,13 +141,21 @@ def _proxy_fetch(proxy: str, url: str, timeout: int, max_bytes: int, headers: di
         return _perform(opener, url, timeout, max_bytes, headers)
     except urllib.error.HTTPError as exc:
         return {
-            "url": url, "status_code": exc.code, "content_type": None,
-            "body_bytes": b"", "body_text": None, "error": str(exc),
+            "url": url,
+            "status_code": exc.code,
+            "content_type": None,
+            "body_bytes": b"",
+            "body_text": None,
+            "error": str(exc),
         }
     except Exception as exc:
         return {
-            "url": url, "status_code": None, "content_type": None,
-            "body_bytes": b"", "body_text": None, "error": str(exc),
+            "url": url,
+            "status_code": None,
+            "content_type": None,
+            "body_bytes": b"",
+            "body_text": None,
+            "error": str(exc),
         }
 
 
@@ -146,8 +175,11 @@ def fetch_url_ssrf_safe(
         import obase  # noqa: F401  (capability gate; platform pkg only in image)
     except Exception as exc:
         return {
-            "url": url, "status_code": None, "content_type": None,
-            "body_bytes": b"", "body_text": None,
+            "url": url,
+            "status_code": None,
+            "content_type": None,
+            "body_bytes": b"",
+            "body_text": None,
             "error": f"ssrf_transport_unavailable: {exc}",
         }
 
