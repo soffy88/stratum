@@ -1,11 +1,10 @@
 """POST /api/search — hybrid search with corpus isolation."""
 
-import os
 from typing import Optional, Literal
 
-import duckdb
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
+from ...utils.user_id_hash import hash_user_id
 
 router = APIRouter()
 
@@ -68,7 +67,7 @@ async def search(req: SearchRequest, request: Request, db=Depends(get_db)):
         # Fallback: direct DB search if oskill unavailable (uses substrates plural, user_id)
         rows = db.execute(
             "SELECT id, 'substrate' as type, title FROM substrates WHERE user_id = ? AND title ILIKE ? LIMIT ?",
-            (user_id, f"%{req.query}%", req.top_k),
+            (hash_user_id(user_id), f"%{req.query}%", req.top_k),
         ).fetchall()
         results = [SearchResultItem(id=r[0], type=r[1], title=r[2], score=1.0) for r in rows]
 

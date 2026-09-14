@@ -26,7 +26,8 @@ AII 不是 PDF 编辑器、普通笔记软件或"带 AI 的资料库"。那些�
 
 北极星：**WUKR（Weekly Useful Knowledge Reuse，周度有效知识复用）**
 
-当前版本: **alpha v1.0**，Knowledge Contract 已收敛见 `docs/AII_ARCHITECTURE_CONTRACT.md`
+当前版本: **v1.0 OSS baseline**。实现目录仍叫 `src/stratum/`，但产品、API
+和文档的 canonical 名称是 **AII**。
 
 ---
 
@@ -58,24 +59,44 @@ AII 不是 PDF 编辑器、普通笔记软件或"带 AI 的资料库"。那些�
 
 ---
 
+## Fresh-machine install
+
+唯一推荐的可移植启动路径是 Docker Compose。它只要求一台安装了 Docker
+Compose v2 的 Linux/macOS 主机，不依赖固定开发者路径、本地 Python 环境
+或开发者的 3O checkout。
+
+```bash
+git clone <canonical-repository-url> aii
+cd aii
+cp deploy/.env.example deploy/.env
+# 编辑 deploy/.env，至少设置 AII_DB_PASSWORD、JWT_SECRET 和 AII_PUBLIC_ORIGIN
+docker compose --env-file deploy/.env -f deploy/docker-compose.oss.yml up -d --build
+docker compose --env-file deploy/.env -f deploy/docker-compose.oss.yml run --rm api \
+  python -m stratum.db.run_pg_migrations upgrade
+curl -fsS http://127.0.0.1:9302/health
+```
+
+配置、迁移、备份和恢复合同见 [`docs/deployment-contract.md`](docs/deployment-contract.md)。
+
 ## 本地开发
 
 ```bash
-# Backend (AII Service Layer :9304; PostgreSQL required)
+# Backend (AII API :9302; PostgreSQL required)
 uv sync
-uv run python scripts/bootstrap_pg_schema.py
+uv run python -m stratum.db.run_pg_migrations upgrade
 uv run python -m pytest tests/ -q
 uv run python scripts/check_aii_naming.py --all   # AII 命名收敛门禁
 
 # Frontend
-cd stratum-web && pnpm install && pnpm dev        # http://localhost:3000
 cd aii-web && pnpm install && pnpm dev            # http://localhost:3101
 
 # Docker 全栈
 cd deploy && docker compose up -d
 ```
 
-环境变量见 `/home/soffy/.config/keys/.env` — 需要 `DASHSCOPE_API_KEY`, `JWT_SECRET`, `STRATUM_PG_*`。
+环境变量由 `deploy/.env` 或部署平台 secret store 提供；不要把 secret 写进仓库。
+DashScope 是可选 provider，未配置时不应阻止 core boot。PostgreSQL 的
+`STRATUM_PG_*` 连接唯一 canonical authority DB。
 Legacy `:9302` 的 CORS 通过 `STRATUM_CORS_ALLOWED_ORIGINS` 显式 allowlist。
 JWT 轮换: `JWT_SECRETS=new,old`（首个签发，全部验证）。
 
@@ -94,3 +115,11 @@ JWT 轮换: `JWT_SECRETS=new,old`（首个签发，全部验证）。
 ## 反馈
 
 页面右下角 FeedbackWidget，或 `wiki@helios-plat.com`。
+
+## OSS governance
+
+- [Deployment contract](docs/deployment-contract.md)
+- [Observability](docs/observability.md)
+- [Backup and restore](docs/backup-restore.md)
+- [Privacy and retention](docs/privacy-retention.md)
+- [Contributing](CONTRIBUTING.md)

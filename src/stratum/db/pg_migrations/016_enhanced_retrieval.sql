@@ -138,6 +138,12 @@ END $$;
 
 DO $$
 BEGIN
+    -- `derivative` is a legacy projection table and is not present in every
+    -- fresh schema.  Preserve the upgrade patch when it exists, while making
+    -- the historical migration safe for fresh installations.
+    IF to_regclass('stratum.derivative') IS NULL THEN
+        RETURN;
+    END IF;
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'stratum'

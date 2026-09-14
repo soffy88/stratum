@@ -3,6 +3,15 @@
 --
 -- Registers new scheduled jobs and provides seed data.
 
+DO $$
+BEGIN
+    -- This seed targets the historical service-layer table created by the
+    -- base schema.  Incremental fresh installs use the current scheduled_jobs
+    -- table instead, so skip this legacy seed when that table is absent.
+    IF to_regclass('stratum.scheduled_jobs_sl') IS NULL THEN
+        RETURN;
+    END IF;
+
 -- Vault Audit: monthly health audit (runs 1st of each month at 03:00 CST)
 INSERT INTO scheduled_jobs_sl (
     id,
@@ -71,3 +80,5 @@ INSERT INTO scheduled_jobs_sl (
     true,
     NOW()
 ) ON CONFLICT (name) DO NOTHING;
+
+END $$;

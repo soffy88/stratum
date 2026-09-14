@@ -1,0 +1,6 @@
+FROM pgvector/pgvector:pg16
+
+# Bootstrap the canonical base schema inside the database image.  The
+# incremental runner remains responsible for migrations 002+; no host source
+# tree is mounted into the deployment.
+COPY src/stratum/db/pg_schema/001_stratum_base.sql /docker-entrypoint-initdb.d/001_stratum_base.sql
