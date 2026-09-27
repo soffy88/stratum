@@ -29,6 +29,10 @@ FLYWHEEL_STATE="misc_pipeline/flywheel_misc_state.json"
 FLYWHEEL_BOOK_LIST="misc_pipeline/flywheel_misc_booklist.txt"
 FLYWHEEL_REPORT="misc_pipeline/flywheel_misc_report.json"
 FLYWHEEL_LOG="misc_pipeline/flywheel_misc.log"
+# ★2026-09-27 多 worker 用的 NIM key 槽位(取自 .pipeline_keys.json)。
+#   已分配: advmath=math_en/advmath_2/advmath_3, cs=math_zh/advmath_verify。
+#   想再加快就往 .pipeline_keys.json 加槽位, 这里加名字即可。
+BOOK_WORKER_KEYS="learning"
 ECON_LIMIT="${ECON_LIMIT:-20}"
 STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"   # 英文书来自本地文件夹, 默认不反馈Stratum
 
@@ -40,26 +44,30 @@ export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json
 
 # ★2026-08-10 opencode 网关 fallback: NIM 504 过载时切 gpt-5.6-sol(ChatGPT Codex key, 实测可用)
 export OPENCODE_API_KEY=""  # 留空 → 读 ~/.pi/agent/opencode-keys.txt
-export OPENCODE_MODEL="${OPENCODE_MODEL:-deepseek-v4-flash}"
+export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://192.168.80.1:8791/v1/chat/completions}"
+export OPENCODE_MODEL="${OPENCODE_MODEL:-gpt-5.6-luna}"
 # ★模型选型: 同 advmath/math_prog(2026-07-07实测对比) — 默认 meta/llama-3.1-70b-instruct 讲得干,
 #   nemotron-super-49b 明显更好, _plan() 规划知识点这步换掉默认档.
-export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
+export NIM_MODEL="${NIM_MODEL:-deepseek-ai/deepseek-v4-flash-0731}"
 export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-6}"   # ★并发度=6(2026-08-10: NIM 3-key 池 120/min 后从 4 提到 6; 单 key 时代 4-5 低偶发超时, 6+ 过载)
-export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
+export AII_PLAN_CONCURRENCY="${AII_PLAN_CONCURRENCY:-3}"
+export AII_CHAPTER_PARALLEL="${AII_CHAPTER_PARALLEL:-2}"   # 章节独立合成并行, persist 仍串行
+export KU_REPAIR_SOURCE_BUDGET="${KU_REPAIR_SOURCE_BUDGET:-20}"
+export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5437/aii_kg}"
 # ★2026-08-16 提速: 本机 7890 代理(opencode-go 直连被 RST → PoolTimeout → NIM fallback 拖慢,
 #   实测代理后 2-4s 稳定; 缺 NO_PROXY 会整章 embed 502, 白名单保本地服务)
 export http_proxy="${HTTP_PROXY:-http://127.0.0.1:7890}"
 export https_proxy="${HTTPS_PROXY:-http://127.0.0.1:7890}"
 export HTTP_PROXY="${http_proxy}"
 export HTTPS_PROXY="${https_proxy}"
-export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+export NO_PROXY="localhost,127.0.0.1,192.168.80.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
 export no_proxy="${NO_PROXY}"
 export CUDA_VISIBLE_DEVICES=""          # 嵌入走 CPU(GPU 让给 math-prog, 防 OOM)
 export HF_HUB_OFFLINE=1                 # ★用本地缓存 BGE-M3, 不连 huggingface(直连超时→卡死)
 export TRANSFORMERS_OFFLINE=1
 # ★嵌入走共享 aii-embed 微服务(笔记本GPU); 不可用时走本地 BGE-M3(CPU, 慢但可用)
-if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://100.119.113.90:8102}/health" >/dev/null 2>&1; then
-  export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"
+if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://127.0.0.1:8102}/health" >/dev/null 2>&1; then
+  export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"
   echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
 else
   unset AII_EMBED_URL
@@ -93,7 +101,8 @@ echo ""
 # ── Step 0: 主动拉料 ── 别等 feeder 独立时钟才有新书: D盘同步+本地PDF转换+stratum分类
 # 一次做全 (flock 防和其他飞轮/feeder撞车挪同一文件)
 mkdir -p .locks
-flock -w 120 .locks/classify_md.lock -c "timeout 600 bash scripts/pull_ingest.sh" || true
+flock -n .locks/classify_md.lock -c "timeout --kill-after=30s 600 bash scripts/pull_ingest.sh" >> .logs/pull_ingest.out 2>&1 &
+    disown || true
 
 # ── Step 1: 发现未处理的经济书 ──
 echo "[1/4] 发现未处理的书(books/MD/其它, 全学科)..."
@@ -118,11 +127,19 @@ echo ""
 
 # ── Step 2: 批量预检+管道 ──
 echo "[2/4] 批量预检 + 管道..."
-ECON_MD_LIST="$FLYWHEEL_BOOK_LIST" \
-ECON_STRATUM_FEEDBACK="$STRATUM_FEEDBACK" \
-ECON_DRY_RUN="${ECON_DRY_RUN:-0}" \
-ECON_FORCE="${ECON_FORCE:-0}" \
-bash scripts/econ_batch_run.sh 2>&1 | tee -a "$FLYWHEEL_LOG"
+# ★2026-09-27 改多 worker 并行(串行书循环上限约 2 本/小时, 队列消化不完)。
+#   共享实现见 scripts/run_book_workers.sh(与 advmath 同模式)。
+if bash scripts/run_book_workers.sh misc_pipeline "$FLYWHEEL_BOOK_LIST" "$FLYWHEEL_LOG" \
+       $BOOK_WORKER_KEYS; then
+    :
+else
+    echo "  ⚠ 多 worker 不可用, 本轮退回单进程"
+    ECON_MD_LIST="$FLYWHEEL_BOOK_LIST" \
+    ECON_STRATUM_FEEDBACK="$STRATUM_FEEDBACK" \
+    ECON_DRY_RUN="${ECON_DRY_RUN:-0}" \
+    ECON_FORCE="${ECON_FORCE:-0}" \
+    bash scripts/econ_batch_run.sh 2>&1 | tee -a "$FLYWHEEL_LOG"
+fi
 
 echo ""
 
@@ -151,7 +168,7 @@ for item in quarantine.get('quarantined', []):
     reason_type = item.get('reason_type', '')
     if sid:
         state['processed'][sid] = {
-            'status': 'precheck_fail' if reason_type == 'precheck' else 'quarantine',
+            'status': 'precheck_fail' if reason_type == 'precheck' else ('retry' if reason_type == 'zero_ku' or (reason_type == 'quality_gate' and '实抽0' in item.get('reason_detail', '')) else 'quarantine'),
             'reason': item.get('reason_detail', '')[:200],
             'ts': item.get('ts', ts),
         }
@@ -193,7 +210,7 @@ if feedback_queue.exists():
     }
 
 # 飞轮状态统计
-state_file = Path('econ_pipeline/flywheel_state.json')
+state_file = Path('misc_pipeline/flywheel_misc_state.json')
 if state_file.exists():
     s = json.loads(state_file.read_text(encoding='utf-8'))
     by_status = {}
