@@ -120,3 +120,22 @@ paperclip/
 *.env.save
 deploy/docs_service/officecli_config.json
 officecli-*.tgz
+
+# Category D: Cache/Log/Temp
+.books_gdrive_*.log
+.quarkclouddrive/
+.venv/
+.veya-project/
+.veya/
+aii/.logs/
+aii/gdrive_staging/
+
+# Category C: Generated Artifacts
+.final_quality/
+gold_retrieval_real_100.json
+
+# Category E: Secrets
+aii/.env.metadata
+
+# Category F: Backups
+*.bak-*
