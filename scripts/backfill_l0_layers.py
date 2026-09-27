@@ -6,6 +6,7 @@ Usage (inside stratum-sl container):
 L0 content = title (short) or first 200 chars of preferred derivative.
 Idempotent/resumable: skips substrates that already have an L0 row.
 """
+
 from __future__ import annotations
 
 import sys
@@ -62,5 +63,5 @@ for i, (sid, title, content) in enumerate(rows, 1):
         )
     ok += 1
     if i % 25 == 0:
-        print(f"  [{i}/{len(rows)}] done={ok} skipped={skipped} elapsed={time.time()-t0:.0f}s")
-print(f"L0 backfill complete: done={ok} skipped={skipped} elapsed={time.time()-t0:.0f}s")
+        print(f"  [{i}/{len(rows)}] done={ok} skipped={skipped} elapsed={time.time() - t0:.0f}s")
+print(f"L0 backfill complete: done={ok} skipped={skipped} elapsed={time.time() - t0:.0f}s")

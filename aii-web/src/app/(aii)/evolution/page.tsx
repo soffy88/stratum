@@ -91,7 +91,6 @@ export default function EvolutionPage() {
                         type="button"
                         className="px-3 py-1 rounded text-xs border border-current"
                         onClick={() => {
-                          // eslint-disable-next-line no-console
                           console.log('[evolution] accept', e.id);
                         }}
                       >
@@ -101,7 +100,6 @@ export default function EvolutionPage() {
                         type="button"
                         className="px-3 py-1 rounded text-xs border border-current opacity-70"
                         onClick={() => {
-                          // eslint-disable-next-line no-console
                           console.log('[evolution] reject', e.id);
                         }}
                       >

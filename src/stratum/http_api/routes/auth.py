@@ -13,8 +13,6 @@ from ...auth.password import hash_password, verify_password, validate_password_s
 from ...auth.jwt_handler import encode_access, decode_access
 from ...auth.refresh_handler import create_refresh
 from ...middleware.abuse_detection import record_auth_event, _get_ip
-import duckdb
-import os
 import hashlib
 from datetime import datetime, timezone
 

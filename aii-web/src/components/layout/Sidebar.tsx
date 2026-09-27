@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { create } from 'zustand';
 import { getTheme, setTheme, type Theme } from '@/lib/theme';
+import { CORE_ENTRY_ROUTES } from '@/lib/core-entries';
 
 /* Global collapsible-sidebar state — a module-level singleton so the (app) and
    (aii) layouts share one open/closed value across navigation. Persisted to
@@ -77,6 +78,13 @@ interface NavItem { href: string; label: string; icon: React.ComponentType<{ cla
 interface NavGroup { title?: string; items: NavItem[]; }
 
 const NAV: NavGroup[] = [
+  { title: '核心入口', items: [
+    { href: CORE_ENTRY_ROUTES[0].href, label: CORE_ENTRY_ROUTES[0].label, icon: Sun },
+    { href: CORE_ENTRY_ROUTES[1].href, label: CORE_ENTRY_ROUTES[1].label, icon: Library },
+    { href: CORE_ENTRY_ROUTES[2].href, label: CORE_ENTRY_ROUTES[2].label, icon: MessageSquare },
+    { href: CORE_ENTRY_ROUTES[3].href, label: CORE_ENTRY_ROUTES[3].label, icon: GraduationCap },
+    { href: CORE_ENTRY_ROUTES[4].href, label: CORE_ENTRY_ROUTES[4].label, icon: Share2 },
+  ] },
   { items: [
     { href: '/search', label: '搜索', icon: Search },
     { href: '/discover', label: '发现', icon: Compass },

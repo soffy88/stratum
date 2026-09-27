@@ -4,6 +4,7 @@ PDF  : fitz.open() + page_count > 0
 EPUB : zipfile 解包 + 找 OPF spine
 其他 : 文件存在且非空即通过
 """
+
 from __future__ import annotations
 
 import zipfile
@@ -25,6 +26,7 @@ def check_source_openable(source_path: str | None, mime: str | None) -> tuple[bo
     if "pdf" in mime_lower:
         try:
             import fitz  # pymupdf
+
             doc = fitz.open(str(path))
             count = doc.page_count
             doc.close()

@@ -2,11 +2,9 @@ import asyncio
 import concurrent.futures
 import json
 import logging
-from typing import Any, AsyncIterator
-from uuid import UUID
+from typing import Any
 
-import asyncpg
-from obase.persistence import PgPool, transaction, upsert_batch, vector_search, ensure_table
+from obase.persistence import PgPool, transaction, upsert_batch
 from aii.storage.backend import StorageBackend, EpistemicStore
 
 logger = logging.getLogger(__name__)
@@ -87,7 +85,7 @@ class PgBackend(StorageBackend, EpistemicStore):
             user = os.getenv("POSTGRES_USER")
             password = os.getenv("POSTGRES_PASSWORD")
             db = os.getenv("POSTGRES_DB")
-            self.dsn = f"postgresql://{user}:{password}@localhost:5435/{db}"
+            self.dsn = f"postgresql://{user}:{password}@localhost:5437/{db}"
         self._pool = None
         self._main_loop: asyncio.AbstractEventLoop | None = None
 

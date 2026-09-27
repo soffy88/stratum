@@ -9,7 +9,13 @@
 用法:
   cd /home/soffy/projects/AII && .venv/bin/python scripts/misc_recovery.py [--dry-run]
 """
-import asyncio, json, os, sys, hashlib, re, glob
+
+import asyncio
+import json
+import os
+import sys
+import hashlib
+import glob
 from pathlib import Path
 
 DRY_RUN = "--dry-run" in sys.argv
@@ -91,8 +97,10 @@ print(f"已从 state 中移除 {len(recovered_ids)} 本可恢复书")
 
 # ── 5. Clean DB data for recoverable books ──
 if DB_URL and recovered_ids:
+
     async def _clean_db():
         import asyncpg
+
         conn = await asyncpg.connect(DB_URL)
         tables = [
             ("aii.ku_onto", "substrate_id"),
@@ -106,13 +114,9 @@ if DB_URL and recovered_ids:
         for table, col in tables:
             for sid in recovered_ids:
                 if col == "ku_id":
-                    n = await conn.fetchval(
-                        f"DELETE FROM {table} WHERE ku_id LIKE $1", f"{sid}::%"
-                    )
+                    n = await conn.fetchval(f"DELETE FROM {table} WHERE ku_id LIKE $1", f"{sid}::%")
                 else:
-                    n = await conn.fetchval(
-                        f"DELETE FROM {table} WHERE {col}=$1", sid
-                    )
+                    n = await conn.fetchval(f"DELETE FROM {table} WHERE {col}=$1", sid)
                 total += n
         await conn.close()
         return total
@@ -123,6 +127,6 @@ if DB_URL and recovered_ids:
 else:
     print("\n未设置 DATABASE_URL, 跳过 DB 清理(管道 re-run 时 ON CONFLICT 会覆盖)")
 
-print(f"\n{'='*60}")
-print(f"恢复就绪! 下一步: cd /home/soffy/projects/AII && bash scripts/misc_flywheel.sh")
-print(f"{'='*60}")
+print(f"\n{'=' * 60}")
+print("恢复就绪! 下一步: cd /home/soffy/projects/AII && bash scripts/misc_flywheel.sh")
+print(f"{'=' * 60}")

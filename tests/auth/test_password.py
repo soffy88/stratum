@@ -1,4 +1,5 @@
 """Tests for stratum.auth.password — ≥5 tests per §3.7."""
+
 import pytest
 from stratum.auth.password import hash_password, verify_password, validate_password_strength
 

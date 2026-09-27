@@ -88,7 +88,6 @@ export default function QueryPage() {
                 // emphasize="auto" — 默认行为,unverified/contradicted 自动加警示边框
                 // TODO: AII business logic — 点击跳详情
                 onClick={() => {
-                  // eslint-disable-next-line no-console
                   console.log('[query] clicked', item.id);
                 }}
               />

@@ -3,9 +3,13 @@
   concept_canonical_global.py --filter '%opportunity cost%'   # 一组试(验证防错合)
   concept_canonical_global.py                                  # 全库
 """
-import asyncio, os, sys
+
+import asyncio
+import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
+
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 sys.path.insert(0, str(ROOT))
@@ -28,8 +32,11 @@ async def main():
     print(f"★全局归一 filter={name_filter or '(全库)'} dry_run={dry_run}", flush=True)
     r = await vectorize_and_normalize_global(conn, llm, name_filter=name_filter, dry_run=dry_run)
     mk = "would_merge" if dry_run else "merged"
-    print(f"\n前 {r['before']} → {'(dry,不落库)' if dry_run else '后 '+str(r['after'])} "
-          f"({mk} {r.get(mk)}, 候选对 {r['candidates']}, ★硬闸挡 {r['hardgate_blocked']})", flush=True)
+    print(
+        f"\n前 {r['before']} → {'(dry,不落库)' if dry_run else '后 ' + str(r['after'])} "
+        f"({mk} {r.get(mk)}, 候选对 {r['candidates']}, ★硬闸挡 {r['hardgate_blocked']})",
+        flush=True,
+    )
     print("=== 会合并的组(canonical ← 被并入的)===", flush=True)
     for g in r["groups"]:
         print(f"  ✓ {g['canonical']}  ←  {g['merged']}", flush=True)

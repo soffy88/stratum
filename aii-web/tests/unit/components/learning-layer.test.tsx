@@ -61,10 +61,10 @@ describe('LearningLayer · 产业经济学真实数据', () => {
   it('继续连接跳转到相邻深卡', () => {
     render(<LearningLayer substrate="econ_zh_2726f38224" paths={paths} cards={cards} quality={quality} />);
     fireEvent.click(screen.getByText(cards[0].name));
-    const linked = cards.find(c => cards[0].connections.includes(c.id));
+    const linked = cards.find((c: { id: string }) => cards[0].connections.includes(c.id));
     expect(linked).toBeTruthy();
     // 连接按钮与卡名同名(列表项), 点第一个匹配(连接按钮)
-    fireEvent.click(screen.getAllByText(linked!.name)[0]);
+    fireEvent.click(screen.getAllByText(linked!.name)[0]!);
     // 相邻卡展开: 语境段出现两次(第一张 + 第二张)
     expect(screen.getAllByText('语境 · 原文在回应什么').length).toBeGreaterThanOrEqual(1);
   });

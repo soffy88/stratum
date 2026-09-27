@@ -32,7 +32,7 @@ from aii.api._provider import register_providers  # noqa: E402
 from ledger import DecisionLedger  # noqa: E402
 from judge import judge_pair, to_merge_action  # noqa: E402
 
-KG_URL = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+KG_URL = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
 REFINED_URL = os.getenv("REFINED_URL", "postgresql://aii:aii_safe_pass@localhost:5436/aii_refined")
 MODEL = (
     sys.argv[sys.argv.index("--model") + 1]

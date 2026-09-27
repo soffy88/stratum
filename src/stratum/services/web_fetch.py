@@ -15,6 +15,7 @@ no localhost / *.local / *.internal / *.lan).
 Keeps oprim's result shape: {url, status_code, content_type, body_bytes,
 body_text, error}.
 """
+
 from __future__ import annotations
 
 import logging
@@ -61,7 +62,13 @@ def _is_public_url(url: str) -> bool:
     return True
 
 
-def _perform(opener: urllib.request.OpenerDirector, url: str, timeout: int, max_bytes: int, headers: dict | None) -> dict:
+def _perform(
+    opener: urllib.request.OpenerDirector,
+    url: str,
+    timeout: int,
+    max_bytes: int,
+    headers: dict | None,
+) -> dict:
     merged_headers = dict(_DEFAULT_HEADERS)
     if headers:
         merged_headers.update(headers)
@@ -97,18 +104,30 @@ def _direct_fetch(url: str, timeout: int, max_bytes: int, headers: dict | None) 
         return _perform(opener, url, timeout, max_bytes, headers)
     except SSRFBlockedError:
         return {
-            "url": url, "status_code": None, "content_type": None,
-            "body_bytes": b"", "body_text": None, "error": "ssrf_blocked",
+            "url": url,
+            "status_code": None,
+            "content_type": None,
+            "body_bytes": b"",
+            "body_text": None,
+            "error": "ssrf_blocked",
         }
     except urllib.error.HTTPError as exc:
         return {
-            "url": url, "status_code": exc.code, "content_type": None,
-            "body_bytes": b"", "body_text": None, "error": str(exc),
+            "url": url,
+            "status_code": exc.code,
+            "content_type": None,
+            "body_bytes": b"",
+            "body_text": None,
+            "error": str(exc),
         }
     except Exception as exc:
         return {
-            "url": url, "status_code": None, "content_type": None,
-            "body_bytes": b"", "body_text": None, "error": str(exc),
+            "url": url,
+            "status_code": None,
+            "content_type": None,
+            "body_bytes": b"",
+            "body_text": None,
+            "error": str(exc),
         }
 
 
@@ -120,13 +139,21 @@ def _proxy_fetch(proxy: str, url: str, timeout: int, max_bytes: int, headers: di
         return _perform(opener, url, timeout, max_bytes, headers)
     except urllib.error.HTTPError as exc:
         return {
-            "url": url, "status_code": exc.code, "content_type": None,
-            "body_bytes": b"", "body_text": None, "error": str(exc),
+            "url": url,
+            "status_code": exc.code,
+            "content_type": None,
+            "body_bytes": b"",
+            "body_text": None,
+            "error": str(exc),
         }
     except Exception as exc:
         return {
-            "url": url, "status_code": None, "content_type": None,
-            "body_bytes": b"", "body_text": None, "error": str(exc),
+            "url": url,
+            "status_code": None,
+            "content_type": None,
+            "body_bytes": b"",
+            "body_text": None,
+            "error": str(exc),
         }
 
 
@@ -146,8 +173,11 @@ def fetch_url_ssrf_safe(
         import obase  # noqa: F401  (capability gate; platform pkg only in image)
     except Exception as exc:
         return {
-            "url": url, "status_code": None, "content_type": None,
-            "body_bytes": b"", "body_text": None,
+            "url": url,
+            "status_code": None,
+            "content_type": None,
+            "body_bytes": b"",
+            "body_text": None,
             "error": f"ssrf_transport_unavailable: {exc}",
         }
 

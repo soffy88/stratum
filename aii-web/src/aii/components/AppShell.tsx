@@ -53,8 +53,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const collapsed = state === 'collapsed';
   const hidden    = state === 'hidden';
 
-  // 图标
-  const menuIcon = hidden ? '▶' : state === 'collapsed' ? '▶' : '☰';
   const menuTitle =
     hidden    ? '展开侧栏' :
     collapsed ? '隐藏侧栏' : '折叠侧栏';

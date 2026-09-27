@@ -8,6 +8,7 @@
   黑体定义术语 **TERM** 保留). md 烂(术语丢、标题乱)→ 应有清单也可能漏识别 → 见该规格.
 ★配套铁律: 喂规划/合成的章节文本【绝不截断】(截断=系统性漏知识); 章大 → 分块喂, 不丢内容.
 """
+
 from __future__ import annotations
 
 import re
@@ -15,8 +16,19 @@ import re
 # 教材结构信号(确定性):小节标题 ## **N.M Title** + 黑体定义术语 **CAPS TERM**(词汇表惯例)
 _SECTION = re.compile(r"(?m)^##\s*\*\*\s*(\d+\.\d+)\s+([^*\n]+?)\s*\*?\*?\s*$")
 _BOLD_TERM = re.compile(r"\*\*([A-Z][A-Z’'\- ]{3,45})\*\*")
-_STOP = {"EXAMPLE", "FALSE", "TRUE", "CHAPTER", "FIGURE", "TABLE", "NOTE", "ECONOMIC FALLACY",
-         "SOURCE", "PART", "EXAMPLES"}
+_STOP = {
+    "EXAMPLE",
+    "FALSE",
+    "TRUE",
+    "CHAPTER",
+    "FIGURE",
+    "TABLE",
+    "NOTE",
+    "ECONOMIC FALLACY",
+    "SOURCE",
+    "PART",
+    "EXAMPLES",
+}
 
 
 def _norm(s: str) -> str:
@@ -44,8 +56,10 @@ def _zh_math_should_have(chapter_text: str) -> dict:
             continue
         seen.add(t)
         secs.append(t)
-    return {"sections": [{"num": str(i + 1), "title": t, "terms": [t]} for i, t in enumerate(secs)],
-            "bold_terms": secs}
+    return {
+        "sections": [{"num": str(i + 1), "title": t, "terms": [t]} for i, t in enumerate(secs)],
+        "bold_terms": secs,
+    }
 
 
 def identify_should_have(chapter_text: str) -> dict:
@@ -90,14 +104,17 @@ def check_completeness(chapter_text: str, extracted_ku_names: list[str]) -> dict
             parts = [p for p in _ZH_SPLIT.split(nt) if len(p) >= 2]
             if any(p in blob for p in parts):
                 return True
-            grams = {nt[i:i + 2] for i in range(len(nt) - 1) if re.match(r"[一-鿿]{2}", nt[i:i + 2])}
+            grams = {
+                nt[i : i + 2] for i in range(len(nt) - 1) if re.match(r"[一-鿿]{2}", nt[i : i + 2])
+            }
             return any(g in blob for g in grams)
         words = [w for w in nt.split() if len(w) > 3]
         return bool(words) and all(w in blob for w in words)
 
     missing_terms = [t for t in sh["bold_terms"] if not covered(t)]
-    missing_sections = [s for s in sh["sections"]
-                        if s["terms"] and all(not covered(t) for t in s["terms"])]
+    missing_sections = [
+        s for s in sh["sections"] if s["terms"] and all(not covered(t) for t in s["terms"])
+    ]
     return {
         "should_have": sh,
         "missing_bold_terms": missing_terms,

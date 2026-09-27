@@ -178,6 +178,21 @@ async def persist_ontology_result(
                 stats["rejected_structural"] = stats.get("rejected_structural", 0) + 1
                 continue
 
+            # DB 对 positional KU 要求非空 stance_holder。LLM/旧抽取器偶尔只给
+            # knowledge_type 却漏掉持有者；若把这条原样送入 ku_onto，会在一个
+            # 章节写到一半时触发 CHECK，导致整章反复重跑、看起来像飞轮 0 增长。
+            # 内容本身仍是有效知识，只是立场元数据不完整，因此安全降级为
+            # conceptual，保住 KU；有持有者的 positional 仍按原类型入库。
+            if (
+                ku.get("knowledge_type") == "positional"
+                and not _as_text(ku.get("stance_holder")).strip()
+            ):
+                logger.warning(
+                    "onto_persist: positional KU %s 缺 stance_holder, 降级 conceptual 避免整章回滚",
+                    ku_id,
+                )
+                ku = {**ku, "knowledge_type": "conceptual", "stance_holder": None}
+
             # 组校验输入 (operad 要 grounded_by 才能过 grade 铁律)
             ku_for_validation = {
                 **ku,

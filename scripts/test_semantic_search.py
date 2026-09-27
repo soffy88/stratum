@@ -7,13 +7,17 @@ test_semantic_search.py — 验证本地 embedding 向量搜索恢复
 
 §20: stratum/scripts/ 层。不改主库。
 """
+
 from __future__ import annotations
-import sys, os, argparse, logging
+import sys
+import os
+import argparse
+import logging
 
-sys.path.insert(0, '/app/src')
-os.environ.setdefault('STRATUM_ENV', 'prod')
+sys.path.insert(0, "/app/src")
+os.environ.setdefault("STRATUM_ENV", "prod")
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)-8s %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s")
 log = logging.getLogger(__name__)
 
 QUERIES = [
@@ -22,9 +26,9 @@ QUERIES = [
     ("中文-数学", "微积分导数与极限的定义"),
     ("中文-概率", "贝叶斯定理在条件概率中的应用"),
     # 英文（OpenStax/arxiv papers）
-    ("EN-econ",   "price elasticity demand supply equilibrium"),
-    ("EN-math",   "calculus derivative limit continuous function"),
-    ("EN-ml",     "transformer attention mechanism self-supervised learning"),
+    ("EN-econ", "price elasticity demand supply equilibrium"),
+    ("EN-math", "calculus derivative limit continuous function"),
+    ("EN-ml", "transformer attention mechanism self-supervised learning"),
     # 混合/双语
     ("混合-统计", "statistical learning theory generalization bounds"),
 ]
@@ -36,11 +40,12 @@ def search(query: str, n: int = 5) -> list[dict]:
     from oprim._config import cfg
     from oskill.ingest_substrate import lancedb_path, _VECTOR_TABLE
 
-    provider = str(cfg.get('EMBEDDING_PROVIDER', 'qwen3_dashscope'))
+    provider = str(cfg.get("EMBEDDING_PROVIDER", "qwen3_dashscope"))
     vecs = embed_text([query], provider=provider, dim=1024)
     q_vec = vecs[0]
 
     import lancedb
+
     vdb = lancedb.connect(str(lancedb_path()))
     tbl = vdb.open_table(_VECTOR_TABLE)
     results = tbl.search(q_vec).limit(n).to_list()
@@ -51,6 +56,7 @@ def get_substrate_title(substrate_id: str) -> str:
     """从 DuckDB 查 substrate 标题（可选，在 service 运行时有效）。"""
     try:
         from stratum.db import get_conn
+
         with get_conn() as conn:
             row = conn.execute(
                 "SELECT title FROM substrates WHERE id=?", (substrate_id,)
@@ -62,14 +68,14 @@ def get_substrate_title(substrate_id: str) -> str:
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument('--query', '-q', default='', help='Single query (overrides default list)')
-    p.add_argument('--n', type=int, default=5, help='Top-N results')
-    p.add_argument('--no-db', action='store_true', help='Skip DuckDB title lookup')
+    p.add_argument("--query", "-q", default="", help="Single query (overrides default list)")
+    p.add_argument("--n", type=int, default=5, help="Top-N results")
+    p.add_argument("--no-db", action="store_true", help="Skip DuckDB title lookup")
     args = p.parse_args()
 
-    queries = [(('custom', args.query),)] if args.query else [(label, q) for label, q in QUERIES]
+    queries = [(("custom", args.query),)] if args.query else [(label, q) for label, q in QUERIES]
     if args.query:
-        queries = [('custom', args.query)]
+        queries = [("custom", args.query)]
     else:
         queries = QUERIES
 
@@ -83,13 +89,19 @@ def main() -> int:
                 all_ok = False
                 continue
             for i, r in enumerate(results, 1):
-                sid_chunk = r.get('id', '')
-                sid = sid_chunk.split('#')[0] if '#' in sid_chunk else sid_chunk[:26]
-                chunk_idx = sid_chunk.split('#')[1] if '#' in sid_chunk else '?'
-                score = r.get('_distance', r.get('score', '?'))
-                title = '' if args.no_db else get_substrate_title(sid)
-                log.info("  %d. [%.4f] %s chunk#%s  %s", i, float(score) if score != '?' else 0,
-                         sid[:12], chunk_idx, title[:50])
+                sid_chunk = r.get("id", "")
+                sid = sid_chunk.split("#")[0] if "#" in sid_chunk else sid_chunk[:26]
+                chunk_idx = sid_chunk.split("#")[1] if "#" in sid_chunk else "?"
+                score = r.get("_distance", r.get("score", "?"))
+                title = "" if args.no_db else get_substrate_title(sid)
+                log.info(
+                    "  %d. [%.4f] %s chunk#%s  %s",
+                    i,
+                    float(score) if score != "?" else 0,
+                    sid[:12],
+                    chunk_idx,
+                    title[:50],
+                )
         except Exception as e:
             log.error("  FAILED: %s", e)
             all_ok = False
@@ -97,5 +109,5 @@ def main() -> int:
     return 0 if all_ok else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

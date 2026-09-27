@@ -25,7 +25,7 @@ import os
 
 import asyncpg
 
-DSN = os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+DSN = os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
 
 # 多数决: 按 KU 条数排序, 平票按学科名(确定性)
 _VOTE_SQL = """

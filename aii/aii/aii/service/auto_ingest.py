@@ -28,6 +28,7 @@ provider 分流:
   2. DeepSynthesisEngine.build_overview_async → 社区聚类+大局摘要
   3. DeepSynthesisEngine.build_book_understanding_async → 书级理解(stance/论据grade独立)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -42,16 +43,27 @@ from aii.storage.pg_backend import PgBackend
 
 logger = logging.getLogger(__name__)
 
-_SUBJECTS = ["数学", "经济学", "物理", "化学", "生物", "计算机", "文学", "哲学", "历史", "心理学", "其他"]
+_SUBJECTS = [
+    "数学",
+    "经济学",
+    "物理",
+    "化学",
+    "生物",
+    "计算机",
+    "文学",
+    "哲学",
+    "历史",
+    "心理学",
+    "其他",
+]
 
 
 async def _infer_subject_async(title: str) -> str:
     """从书名/标题用本地 LLM (qwen2.5:7b) 推断学科，失败返回'其他'。"""
     import requests as _req
+
     subjects_str = "/".join(_SUBJECTS)
-    prompt = (
-        f"这本书或文章属于哪个学科？只从[{subjects_str}]中选一个，只回答学科名，不要其他内容：\n{title}"
-    )
+    prompt = f"这本书或文章属于哪个学科？只从[{subjects_str}]中选一个，只回答学科名，不要其他内容：\n{title}"
     loop = asyncio.get_event_loop()
     try:
         resp = await loop.run_in_executor(
@@ -71,6 +83,7 @@ async def _infer_subject_async(title: str) -> str:
     except Exception as e:
         logger.warning("auto_ingest: subject inference failed for '%s': %s", title[:30], e)
         return "其他"
+
 
 _MEDIUM_GRADE_CAP: dict[str, str] = {
     "video": "unverified",
@@ -100,7 +113,7 @@ _PICTURE_KEYWORDS = frozenset(("picture", "figure", "image"))
 # 段落级分块参数 (里程硃1: 降到段落级逼 LLM 不能跳过)
 # 目标 ~500-800 汉字 ≈ 1500 字符; 确保每块 ≤ 2-3 段落，LLM 必须全部抽取
 _CHUNK_TARGET_CHARS: int = 1500
-_CHUNK_MAX_CHARS: int = 2500   # 硬上限: 超过强制切分
+_CHUNK_MAX_CHARS: int = 2500  # 硬上限: 超过强制切分
 
 # 覆盖率质量门参数 (里程硃4)
 # ku_density = ku_count / (original_chars / 500) 表示"每500字平均KU条数"
@@ -160,7 +173,7 @@ def _split_text_into_chunks(text: str) -> list[str]:
                 sections.append(block)
         # 第一个标题之前的前言内容也纳入
         if heading_indices[0] > 0:
-            preamble = "".join(lines[:heading_indices[0]]).strip()
+            preamble = "".join(lines[: heading_indices[0]]).strip()
             if preamble:
                 sections.insert(0, preamble)
     else:
@@ -217,7 +230,7 @@ def _split_text_into_chunks(text: str) -> list[str]:
             # 无段落分隔（连续文本）→ 直接按 _CHUNK_TARGET_CHARS 字数硬切
             pos = 0
             while pos < len(section):
-                chunks.append(section[pos: pos + _CHUNK_TARGET_CHARS])
+                chunks.append(section[pos : pos + _CHUNK_TARGET_CHARS])
                 pos += _CHUNK_TARGET_CHARS
 
     return [c for c in chunks if c.strip()]
@@ -234,6 +247,7 @@ def _write_quality_alert(
     """将覆盖率过低的书写入 low_coverage.json 供飞轮重摄。非致命。"""
     import json as _json
     from datetime import datetime, timezone
+
     try:
         _QUALITY_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         out_path = _QUALITY_OUTPUT_DIR / "low_coverage.json"
@@ -245,24 +259,33 @@ def _write_quality_alert(
                 existing = []
         existing_ids = {e.get("substrate_id") for e in existing}
         if substrate_id not in existing_ids:
-            existing.append({
-                "substrate_id": substrate_id,
-                "title": title[:100],
-                "ku_count": ku_count,
-                "original_chars": original_chars,
-                "ku_density": round(density, 4),
-                "alert_type": alert_type,
-                "detected_at": datetime.now(timezone.utc).isoformat(),
-            })
+            existing.append(
+                {
+                    "substrate_id": substrate_id,
+                    "title": title[:100],
+                    "ku_count": ku_count,
+                    "original_chars": original_chars,
+                    "ku_density": round(density, 4),
+                    "alert_type": alert_type,
+                    "detected_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
             out_path.write_text(
                 _json.dumps(existing, ensure_ascii=False, indent=2), encoding="utf-8"
             )
     except Exception as _e:
         logger.warning("quality_alert: write failed (non-fatal): %s", _e)
 
+
 async def _run_ontology_path(
-    backend: PgBackend, substrate_id: str, text: str, title: str,
-    medium: str, doc_type: str, provider: str, subject: str,
+    backend: PgBackend,
+    substrate_id: str,
+    text: str,
+    title: str,
+    medium: str,
+    doc_type: str,
+    provider: str,
+    subject: str,
 ) -> int:
     """onto 正式路径 (USE_ONTOLOGY): 抽取→持久化→语义归一→跨块连接→KC(Louvain).
 
@@ -288,28 +311,41 @@ async def _run_ontology_path(
 
     # Step 1: ontology_extract (主库两遍法/六分类) + AII Layer-4 判据 prompt 注入
     from aii.service import onto_vocab as V
+
     result = await ontology_extract(
-        source_text=text, llm=step1_llm, doc_type=doc_type, source_credibility=source_credibility,
-        pass1_chunk_tmpl=P.PASS1_CHUNK_TMPL, pass1_chunk_system=P.PASS1_CHUNK_SYSTEM,
-        pass1_outline_tmpl=P.PASS1_OUTLINE_TMPL, pass1_outline_system=P.PASS1_OUTLINE_SYSTEM,
-        pass2_chunk_tmpl=P.PASS2_CHUNK_TMPL, pass2_system=P.PASS2_SYSTEM,
+        source_text=text,
+        llm=step1_llm,
+        doc_type=doc_type,
+        source_credibility=source_credibility,
+        pass1_chunk_tmpl=P.PASS1_CHUNK_TMPL,
+        pass1_chunk_system=P.PASS1_CHUNK_SYSTEM,
+        pass1_outline_tmpl=P.PASS1_OUTLINE_TMPL,
+        pass1_outline_system=P.PASS1_OUTLINE_SYSTEM,
+        pass2_chunk_tmpl=P.PASS2_CHUNK_TMPL,
+        pass2_system=P.PASS2_SYSTEM,
         valid_knowledge_types=V.VALID_KNOWLEDGE_TYPES,  # ★注入 AII 词表(含 rationale)
         valid_sub_types=V.VALID_SUB_TYPES,
         valid_relation_types=V.VALID_RELATION_TYPES,
     )
     # Step 2: 持久化 (过 register_ku_ontology 校验) → ku_onto/edge_onto/concept_onto
     pstats = await persist_ontology_result(
-        dsn=backend.dsn, substrate_id=substrate_id, result=result,
-        trail_dir=trail_dir, backend=backend)
+        dsn=backend.dsn,
+        substrate_id=substrate_id,
+        result=result,
+        trail_dir=trail_dir,
+        backend=backend,
+    )
     ku_count = pstats.get("registered", 0)
 
     conn = await asyncpg.connect(backend.dsn)
     try:
         from pgvector.asyncpg import register_vector
+
         await register_vector(conn)
         # Step 3: 概念语义归一 (向量筛候选 + LLM 判同一才合, 治反义误并)
         nstats = await vectorize_and_normalize(
-            conn, llm, substrate_id=substrate_id, discipline=(subject or "general"))
+            conn, llm, substrate_id=substrate_id, discipline=(subject or "general")
+        )
         # Step 4: 跨块连接 (概念/语义筛候选 → LLM 判真关系 → 连真边)
         cands = await gen_candidates(conn, substrate_id=substrate_id, sem_threshold=0.80)
         cstats = await judge_and_link(conn, llm, cands, substrate_id=substrate_id)
@@ -321,9 +357,14 @@ async def _run_ontology_path(
     await backend.mark_substrate_ingested(substrate_id, title, medium, ku_count, subject=subject)
     logger.info(
         "auto_ingest[onto]: %s → KU=%d 归一=%d→%d 跨块边=%d/%d候选 KC=%d社区%s",
-        title[:40], ku_count, nstats.get("before", 0), nstats.get("after", 0),
-        cstats.get("linked", 0), cstats.get("candidates", 0),
-        kstats.get("communities", 0), kstats.get("sizes", []),
+        title[:40],
+        ku_count,
+        nstats.get("before", 0),
+        nstats.get("after", 0),
+        cstats.get("linked", 0),
+        cstats.get("candidates", 0),
+        kstats.get("communities", 0),
+        kstats.get("sizes", []),
     )
     return ku_count
 
@@ -358,7 +399,9 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
     if existing:
         logger.info(
             "auto_ingest: title already ingested as %s — skip duplicate %s (%s)",
-            existing[:8], substrate_id[:8], title[:40],
+            existing[:8],
+            substrate_id[:8],
+            title[:40],
         )
         return -1
 
@@ -382,14 +425,21 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
     #   MD_GATE_ENABLED=1 硬开(默认); =0 仅作紧急 kill-switch. ★数据从开始就对: 不降级不将就.
     if os.getenv("MD_GATE_ENABLED", "1") != "0":
         from aii.service.md_quality_check import check_md_quality, write_md_rework
+
         _q = check_md_quality(text, medium=medium, title=title)
         if not _q["ok"]:
-            write_md_rework(substrate_id=substrate_id, file_name=md_path.name, title=title, result=_q)
-            logger.warning("auto_ingest: md quality gate FAILED %s (%s) → rework, skip抽取. fails=%s",
-                           substrate_id[:8], title[:40], [f["check"] for f in _q["hard_failures"]])
+            write_md_rework(
+                substrate_id=substrate_id, file_name=md_path.name, title=title, result=_q
+            )
+            logger.warning(
+                "auto_ingest: md quality gate FAILED %s (%s) → rework, skip抽取. fails=%s",
+                substrate_id[:8],
+                title[:40],
+                [f["check"] for f in _q["hard_failures"]],
+            )
             return -1
 
     # onto-only: 旧 Step1-4 链路(KuIngestionEngine/RelationEngine/DeepSynthesis)已退役删除, 统一走 onto 路径.
     return await _run_ontology_path(
-        backend, substrate_id, text, title, medium, doc_type, provider, subject)
-
+        backend, substrate_id, text, title, medium, doc_type, provider, subject
+    )

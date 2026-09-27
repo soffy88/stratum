@@ -4,6 +4,7 @@ POST   /api/v1/flashcards/generate      {source_kind, source_id} → 生成并�
 GET    /api/v1/flashcards               ?due_only&limit → 列表
 GET    /api/v1/flashcards/due           到期统计
 POST   /api/v1/flashcards/{id}/review   {rating: again|hard|good|easy}
+GET/PUT /api/v1/flashcards/settings     {desired_retention: 0.5..0.99}
 DELETE /api/v1/flashcards/{id}
 """
 
@@ -24,6 +25,25 @@ class GenerateRequest(BaseModel):
 
 class ReviewRequest(BaseModel):
     rating: str = Field(pattern="^(again|hard|good|easy)$")
+
+
+class ReviewSettingsRequest(BaseModel):
+    desired_retention: float = Field(default=0.9, ge=0.5, le=0.99)
+
+
+@router.get("/settings")
+async def get_settings(user_id: str = Depends(jwt_auth)):
+    """Return the user's FSRS Desired Retention preference."""
+    return flashcard_service.get_review_settings(user_id)
+
+
+@router.put("/settings")
+async def update_settings(body: ReviewSettingsRequest, user_id: str = Depends(jwt_auth)):
+    """Persist the user's FSRS Desired Retention preference."""
+    try:
+        return flashcard_service.update_review_settings(user_id, body.desired_retention)
+    except Exception as exc:
+        raise HTTPException(503, f"Review settings unavailable: {exc}") from exc
 
 
 @router.post("/generate")

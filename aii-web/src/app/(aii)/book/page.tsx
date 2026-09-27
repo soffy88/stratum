@@ -11,7 +11,7 @@ import { useApi } from '@/aii/hooks/useApi';
 import * as api from '@/aii/lib/api-client';
 import { MathText } from '@/aii/components/MathText';
 import { LearningLayer } from '@/aii/components/LearningLayer';
-import type { BuData, BuFacets, BookInfo, DeepCard, GroundedFacet, LearningPath } from '@/aii/types/api';
+import type { BuData, BuFacets, BookInfo, GroundedFacet } from '@/aii/types/api';
 
 const FACETS: { key: keyof BuFacets; label: string; icon: string }[] = [
   { key: 'soul', label: '一句话灵魂', icon: '◎' },

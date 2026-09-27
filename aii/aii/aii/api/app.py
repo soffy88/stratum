@@ -11,7 +11,6 @@ from aii.logging_config import configure_logging
 configure_logging()
 
 from aii.api._provider import register_providers
-from aii.storage.pg_backend import PgBackend
 from aii.api._dependencies import backend
 from aii.api.routes import (
     health,
@@ -49,13 +48,13 @@ async def lifespan(app: FastAPI):
     # 3. Monkey-patch oskill (fix internal 'module not callable' errors)
     try:
         import oskill.ku_extract_pipeline
-        import oprim.structural_chunk
-        import oprim.llm_extract_ku
-        import oprim.ku_gate_validate
+        # oprim now exposes these atoms through its lazy public exports; the
+        # old module paths (oprim.structural_chunk, etc.) no longer exist.
+        from oprim import structural_chunk, llm_extract_ku, ku_gate_validate
 
-        oskill.ku_extract_pipeline.structural_chunk = oprim.structural_chunk.structural_chunk
-        oskill.ku_extract_pipeline.llm_extract_ku = oprim.llm_extract_ku.llm_extract_ku
-        oskill.ku_extract_pipeline.ku_gate_validate = oprim.ku_gate_validate.ku_gate_validate
+        oskill.ku_extract_pipeline.structural_chunk = structural_chunk
+        oskill.ku_extract_pipeline.llm_extract_ku = llm_extract_ku
+        oskill.ku_extract_pipeline.ku_gate_validate = ku_gate_validate
         logger.info("oskill monkey-patch applied successfully.")
     except Exception as e:
         logger.warning(f"oskill monkey-patch failed: {e}")
@@ -85,21 +84,24 @@ async def lifespan(app: FastAPI):
     # 4c. 预热 Ollama qwen2.5:7b — 冷启动加载模型需 40s，会使本地 I/O 饱和并
     #     阻塞 PostgreSQL loopback 响应，导致第一条 kc/list 请求超过前端 10s 超时。
     #     在 yield 之前完成热身，确保对外提供服务时模型已在 GPU。
-    try:
-        import requests as _r
+    if os.getenv("AII_OLLAMA_WARMUP", "0") == "1":
+        try:
+            import requests as _r
 
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(
-            None,
-            lambda: _r.post(
-                "http://localhost:11434/api/generate",
-                json={"model": "qwen2.5:7b", "prompt": "hi", "stream": False},
-                timeout=120,
-            ),
-        )
-        logger.info("Ollama qwen2.5:7b warmed up.")
-    except Exception as e:
-        logger.warning("Ollama warm-up failed (non-fatal): %s", e)
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(
+                None,
+                lambda: _r.post(
+                    "http://localhost:11434/api/generate",
+                    json={"model": "qwen2.5:7b", "prompt": "hi", "stream": False},
+                    timeout=120,
+                ),
+            )
+            logger.info("Ollama qwen2.5:7b warmed up.")
+        except Exception as e:
+            logger.warning("Ollama warm-up failed (non-fatal): %s", e)
+    else:
+        logger.info("Ollama warm-up skipped (set AII_OLLAMA_WARMUP=1 to enable).")
 
     # 5. 启动后台飞轮 (管道1: 普通文档)
     #    ★FLYWHEEL_ENABLED=0 关闭飞轮自动摄取 (旧路径灌旧表; onto 迁移期默认停).

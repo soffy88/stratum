@@ -12,6 +12,7 @@ boundary_conditions(防误用) / dependencies(依赖)。
 幂等: 已导出的记录在 watchdog/paper_skill_exported.json; 重跑跳过。
 用法: .venv/bin/python scripts/paper_skill_export.py [--limit N] [--out DIR]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -24,7 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = Path.home() / ".agents" / "skills"
 EXPORTED = ROOT / "watchdog" / "paper_skill_exported.json"
-DSN = "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg"
+DSN = "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg"
 
 
 def _slugify(s: str) -> str:
@@ -47,45 +48,49 @@ def _skill_md(row: dict) -> str:
     v3 = sk.get("v3") or {}
     _claims_raw = row.get("main_claims")
     claims = json.loads(_claims_raw) if isinstance(_claims_raw, str) else (_claims_raw or [])
-    claims_txt = "\n".join(
-        f"- {c.get('claim')}" for c in claims if c.get("claim")) if isinstance(claims, list) else str(claims)
+    claims_txt = (
+        "\n".join(f"- {c.get('claim')}" for c in claims if c.get("claim"))
+        if isinstance(claims, list)
+        else str(claims)
+    )
     findings = v3.get("findings") or []
     findings_txt = "\n".join(
-        f"- **{f.get('finding')}** (独有: {f.get('why')})" for f in findings if f.get("finding"))
+        f"- **{f.get('finding')}** (独有: {f.get('why')})" for f in findings if f.get("finding")
+    )
     boundary = sk.get("boundary_conditions") or []
     deps = sk.get("dependencies") or []
     title = row.get("substrate_id")
     desc = (row.get("overview_oneline") or v3.get("novelty_note") or "")[:160]
     return f"""---
-name: paper-{_slugify(row['substrate_id'])}
+name: paper-{_slugify(row["substrate_id"])}
 description: {desc}
 ---
 
 # {title}
 
 ## 解决什么问题
-{row.get('problem_statement') or '(无)'}
+{row.get("problem_statement") or "(无)"}
 
 ## 何时使用
-{_li(sk.get('use_when'))}
+{_li(sk.get("use_when"))}
 
 ## 方法 (可执行)
-{method.get('approach') or '(无)'}
+{method.get("approach") or "(无)"}
 
 ### 输入
-{_li(method.get('inputs'))}
+{_li(method.get("inputs"))}
 
 ### 步骤
-{_li(method.get('steps'))}
+{_li(method.get("steps"))}
 
 ### 输出
-{method.get('outputs') or '(无)'}
+{method.get("outputs") or "(无)"}
 
 ## 关键结论
-{claims_txt or '(无)'}
+{claims_txt or "(无)"}
 
 ## 论文独有洞见 (cangjie 排他性)
-{findings_txt or '(无)'}
+{findings_txt or "(无)"}
 
 ## 边界条件 (防误用)
 {_li(boundary)}
@@ -114,6 +119,7 @@ async def main() -> int:
     args = ap.parse_args()
 
     import asyncpg
+
     conn = await asyncpg.connect(DSN, timeout=15)
     exported = _load_exported()
     try:

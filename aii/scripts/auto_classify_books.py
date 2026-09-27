@@ -93,7 +93,9 @@ def _llm_classify(names: list[str], categories: list[dict]) -> dict:
 
 
 async def run_classify(owner: str = "default", dry: bool = False, force: bool = False) -> dict:
-    conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
+    conn = await asyncpg.connect(
+        os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
+    )
     row = await conn.fetchrow(
         "SELECT source, categories, skip_patterns, enabled FROM aii.book_classify_config WHERE owner=$1",
         owner,

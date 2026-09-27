@@ -1,4 +1,7 @@
-import asyncio, asyncpg, os, re
+import asyncio
+import asyncpg
+import os
+import re
 from dotenv import load_dotenv
 
 load_dotenv("aii/.env", override=True)
@@ -85,7 +88,7 @@ async def go():
     if os.getenv("AII_COOCCUR", "0") == "1":
         await c.execute("DELETE FROM aii.ku_cooccurrence WHERE substrate_id=$1", SUB)
         await c.execute(
-            f"""
+            """
           INSERT INTO aii.ku_cooccurrence(substrate_id,ku_a,ku_b,shared_concept_count,semantic_sim,strength)
           SELECT $1, a.ku_id, b.ku_id, count(*) shared,
                  (1-(ka.embedding<=>kb.embedding))::real sim,

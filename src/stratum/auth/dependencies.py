@@ -1,6 +1,7 @@
-from fastapi import Request, Header, HTTPException, Depends
+from fastapi import Header, HTTPException
 from .jwt_handler import decode_access
 from .exceptions import AuthError
+
 
 async def get_current_user_data(authorization: str | None = Header(None)) -> dict:
     if not authorization or not authorization.startswith("Bearer "):

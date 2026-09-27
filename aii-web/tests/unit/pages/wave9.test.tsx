@@ -62,6 +62,49 @@ describe("SettingsPage", () => {
       expect(screen.getByText("加载中...")).toBeDefined();
     });
   });
+
+  it("shows server-authoritative credits usage", async () => {
+    const { apiClient } = await import("@/lib/api-client");
+    vi.mocked(apiClient.get).mockResolvedValue({
+      period: "2026-08",
+      tier: "plus",
+      allowances: { plus: 250 },
+      unit_costs: { deep_research: 10 },
+      credits_used: 20,
+      credits_remaining: 230,
+    });
+    render(<SettingsPage />, { wrapper: W });
+    fireEvent.click(screen.getByText("用量"));
+    await waitFor(() => {
+      expect(screen.getByText("PLUS")).toBeDefined();
+      expect(screen.getByText("230")).toBeDefined();
+      expect(screen.getByText("deep_research")).toBeDefined();
+    });
+    expect(apiClient.get).toHaveBeenCalledWith("/api/v1/billing/credits");
+  });
+
+  it("submits an Obsidian bidirectional sync under an allowed root", async () => {
+    const { apiClient } = await import("@/lib/api-client");
+    vi.mocked(apiClient.get).mockResolvedValue({ roots: ["/tmp/vault"] });
+    vi.mocked(apiClient.post).mockResolvedValue({
+      status: "ok",
+      connector: "obsidian",
+      export: { files_written: 3 },
+      import: { created: 1, updated: 2, skipped: 0 },
+    });
+    render(<SettingsPage />, { wrapper: W });
+    fireEvent.click(screen.getByText("Obsidian"));
+    const input = screen.getByLabelText("Vault 路径");
+    fireEvent.change(input, { target: { value: "/tmp/vault" } });
+    fireEvent.click(screen.getByRole("button", { name: "开始同步" }));
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith("/api/v1/sync/obsidian", {
+        path: "/tmp/vault",
+        mode: "both",
+      });
+      expect(screen.getByText(/同步完成/)).toBeDefined();
+    });
+  });
 });
 
 describe("ShareNoteButton", () => {

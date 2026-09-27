@@ -1,15 +1,12 @@
 """stratum.db._ConnWrapper placeholder translation — LIKE + params edge cases."""
 
-import re
 
-import pytest
 
-from stratum.db import _ConnWrapper, _to_pyformat
+from stratum.db import _ConnWrapper
 
 # Replicate the translation logic (imported via _ConnWrapper.execute is hard to
 # unit test without a live cursor, so test the pure translation behavior through
 # a stub cursor).
-import psycopg2
 
 
 class _StubCursor:

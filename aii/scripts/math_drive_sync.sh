@@ -22,7 +22,7 @@ export PATH="$HOME/.local/bin:$PATH"
 : "${RCLONE_PROXY=http://127.0.0.1:7890}"
 if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
   export HTTPS_PROXY="${RCLONE_PROXY}" HTTP_PROXY="${RCLONE_PROXY}"
-  export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+  export NO_PROXY="localhost,127.0.0.1,192.168.80.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
   export no_proxy="${NO_PROXY}"
 fi
 
@@ -42,7 +42,7 @@ mkdir -p "${DEST}"
 
 # 1) 列目录(递归, 只文件), 拿到每个文件的 Drive ID → 写 基名→直链 映射
 echo "[drive_sync] 列举 Drive 文件夹 ${DRIVE_PATH} …"
-LSJSON=$(rclone lsjson "${RCLONE_REMOTE}:${DRIVE_PATH}" --files-only -R)
+LSJSON=$(rclone lsjson "${RCLONE_REMOTE}:${DRIVE_PATH}" --files-only -R --fast-list)
 python3 - "$MAP" <<PY
 import json, sys
 rows = json.loads('''${LSJSON}''')
@@ -61,7 +61,9 @@ print(f"[drive_sync] 写映射 {sys.argv[1]}: {len(m)} 个文件")
 PY
 
 # 2) 拉取(copy=只增不删; 已存在的按大小/校验跳过)
-FLAGS=(--include "*.pdf" --include "*.epub")
+# 大目录先一次性列举，避免默认逐页列举在 GDrive 上超过飞轮单轮预算。
+RCLONE_MAX_TRANSFER="${RCLONE_MAX_TRANSFER:-256M}"
+FLAGS=(--fast-list --transfers 8 --checkers 8 --max-transfer "$RCLONE_MAX_TRANSFER" --cutoff-mode SOFT --include "*.pdf" --include "*.epub")
 if [ "${DRIVE_DRY:-0}" = "1" ]; then
   echo "[drive_sync] DRY: 将要拉取的新文件:"
   rclone copy "${RCLONE_REMOTE}:${DRIVE_PATH}" "${DEST}" "${FLAGS[@]}" --dry-run 2>&1 | grep -iE "copy|transfer" | head -50 || true

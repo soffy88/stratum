@@ -24,7 +24,7 @@ IDLE="${OCR_DAEMON_IDLE:-1800}"
 
 export MATH_CONVERT_AUTO_OCR=1
 export ADVMATH_CONVERT_AUTO_OCR=1
-export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
+export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5437/aii_kg}"
 
 echo "════════════════════════════════════════════════════"
 echo "★ OCR自动化守护启动 $(date '+%Y-%m-%d %H:%M')  (每 ${IDLE}s 一轮)"

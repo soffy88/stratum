@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 
@@ -75,9 +74,7 @@ def test_owns_substrate_row_raw_and_hash():
 def test_get_session_filters_user():
     from stratum.services import session_manager as sm
 
-    fake_row = (
-        "sess1", "user-a", "t", "active", 0, 0, 0, 0, 20, None, "t0", "t1"
-    )
+    fake_row = ("sess1", "user-a", "t", "active", 0, 0, 0, 0, 20, None, "t0", "t1")
     conn = MagicMock()
     # first call with user filter returns None; without would return row
     conn.execute.return_value.fetchone.return_value = None
@@ -178,7 +175,9 @@ def test_cornell_machine_delete_forbidden():
     import asyncio
     from stratum.api.routers import cornell as cr
 
-    with patch.object(cr, "read", return_value={"id": "n1", "source": "machine", "deleted_at": None}):
+    with patch.object(
+        cr, "read", return_value={"id": "n1", "source": "machine", "deleted_at": None}
+    ):
         try:
             asyncio.run(cr.delete_cornell("n1", user_id="u"))
             assert False, "should 403"

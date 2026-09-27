@@ -29,7 +29,7 @@ async def main(limit: int | None):
     import asyncpg
 
     conn = await asyncpg.connect(
-        os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+        os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
     )
 
     query = """

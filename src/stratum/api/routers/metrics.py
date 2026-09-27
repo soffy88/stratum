@@ -25,6 +25,7 @@ def _require_admin_secret(x_admin_secret: Optional[str] = Header(None)) -> None:
 async def get_metrics():
     """Get all telemetry metrics as JSON (admin only)."""
     from stratum.services.telemetry import get_all_metrics
+
     return get_all_metrics()
 
 
@@ -32,5 +33,6 @@ async def get_metrics():
 async def get_metrics_prometheus():
     """Get metrics in Prometheus exposition format (admin only)."""
     from stratum.services.telemetry import get_all_metrics, format_prometheus
+
     metrics = get_all_metrics()
     return PlainTextResponse(format_prometheus(metrics), media_type="text/plain")

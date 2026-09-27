@@ -1,10 +1,8 @@
 """POST /api/search — hybrid search with corpus isolation."""
 
-import os
 from typing import Optional, Literal
 
-import duckdb
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 router = APIRouter()

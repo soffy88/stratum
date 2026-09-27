@@ -21,6 +21,7 @@
   审计CLI: python bu_learning_gate.py <substrate_id>   (读 DB 里已入库 BU, 校验并打印报告)
 Exit(CLI): 0=ok, 1=alarm, 2=运行错误
 """
+
 from __future__ import annotations
 
 import json
@@ -29,7 +30,9 @@ import re
 import sys
 from typing import Any
 
-EVIDENCE: frozenset[str] = frozenset({"primary", "corroborated", "external", "inference", "current"})
+EVIDENCE: frozenset[str] = frozenset(
+    {"primary", "corroborated", "external", "inference", "current"}
+)
 GRADE_BAD: frozenset[str] = frozenset({"refuted", "contradicted", "low"})
 # 0-LLM 程序抠原文路径: natural_text 本身是逐字原文(LLM 综合书不在此列)
 PROGRAM_EXTRACT: frozenset[str] = frozenset({"program_extract", "legacy_ingest"})
@@ -94,7 +97,13 @@ def resolve_verbatim(grounded_by: dict | None, natural_text: str | None) -> list
     if not out and str(gb.get("extraction_method") or "") in PROGRAM_EXTRACT:
         t = str(natural_text or "").strip()
         if t:
-            out.append({"text": t[:MAX_EXCERPT], "chunk_id": str(gb.get("chapter_anchor") or ""), "kind": "text_head"})
+            out.append(
+                {
+                    "text": t[:MAX_EXCERPT],
+                    "chunk_id": str(gb.get("chapter_anchor") or ""),
+                    "kind": "text_head",
+                }
+            )
     return out
 
 
@@ -117,7 +126,9 @@ def validate_learning_layer(
     quality: dict[str, Any] = {"status": "ok", "checks": [], "dropped": []}
 
     def _check(name: str, ok: bool, detail: str = "") -> None:
-        quality["checks"].append({"check": name, "status": "pass" if ok else "fail", "detail": detail})
+        quality["checks"].append(
+            {"check": name, "status": "pass" if ok else "fail", "detail": detail}
+        )
 
     def _drop(card: dict, reason: str) -> None:
         quality["dropped"].append(
@@ -194,7 +205,7 @@ def validate_learning_layer(
         qs: list[dict] = []
         for k in kids:
             allowed = [str(v.get("text") or "") for v in ku_meta[k].get("verbatim", [])]
-            for s in (c.get("source_excerpts") or []):
+            for s in c.get("source_excerpts") or []:
                 if not isinstance(s, dict) or s.get("ku_id") != k:
                     continue
                 st = str(s.get("text") or "")
@@ -202,7 +213,9 @@ def validate_learning_layer(
                 #   完整原文(quote 路径可达 200+ 字)仍在 allowed 里; 截断文本是完整原文的前缀,
                 #   必须放行, 否则审计 CLI 复验已入库数据会误报 no_verbatim_grounding。
                 if st and (st in allowed or any(a.startswith(st) for a in allowed)):
-                    qs.append({"text": st[:MAX_EXCERPT], "ku_id": k, "locator": s.get("locator", "")})
+                    qs.append(
+                        {"text": st[:MAX_EXCERPT], "ku_id": k, "locator": s.get("locator", "")}
+                    )
         if not qs:
             _drop(c, "no_verbatim_grounding")
             del kept[cid]
@@ -216,7 +229,11 @@ def validate_learning_layer(
     if not kept:
         return _insufficient(quality, "证据底限过后 0 卡存活")
     n_unv = sum(1 for c in kept.values() if set(c["grounding_grades"]) <= {"unverified", "pending"})
-    _check("grounding_transparency", True, f"{n_unv} 张卡全部支撑 KU 为 unverified(已逐卡标注 grounding_grades)")
+    _check(
+        "grounding_transparency",
+        True,
+        f"{n_unv} 张卡全部支撑 KU 为 unverified(已逐卡标注 grounding_grades)",
+    )
 
     # ── 3. 路径: 数量 / 分区 / 归属 ─────────────────────────
     pset: dict[str, dict] = {}
@@ -227,7 +244,9 @@ def validate_learning_layer(
             pid = p.get("id")
             if not isinstance(pid, str) or not pid or pid in pset:
                 continue
-            ids = [int(x) for x in (p.get("card_ids") or []) if isinstance(x, int) or str(x).isdigit()]
+            ids = [
+                int(x) for x in (p.get("card_ids") or []) if isinstance(x, int) or str(x).isdigit()
+            ]
             p["card_ids"] = ids
             pset[pid] = p
     if not (MIN_PATHS <= len(pset) <= MAX_PATHS):
@@ -302,8 +321,11 @@ def validate_learning_layer(
     out_paths = [p for p in pset.values()]
     _check("evidence_consistency", all(c["evidence"] in EVIDENCE for c in out_cards))
     _check("verbatim_excerpts", all(c["source_excerpts"] for c in out_cards))
-    quality["stats"] = {"paths": len(out_paths), "cards": len(out_cards),
-                        "dropped": len(quality["dropped"])}
+    quality["stats"] = {
+        "paths": len(out_paths),
+        "cards": len(out_cards),
+        "dropped": len(quality["dropped"]),
+    }
     return {"ok": True, "paths": out_paths, "cards": out_cards, "quality": quality}
 
 
@@ -352,21 +374,24 @@ def validate_bu_facets(
         kids = [k for k in kids if str(ku_meta[k].get("grade")) not in GRADE_BAD]
         if kids and len([k for k in (f.get("ku_ids") or []) if k in ku_meta]) != len(kids):
             # 原引用含坏源(已剥除): 记录但不因这一条丢项(剩余 KU 仍可支撑)
-            quality["checks"].append({"check": f"facet:{key}", "status": "pass",
-                                          "detail": "bad_grade_ku_removed"})
+            quality["checks"].append(
+                {"check": f"facet:{key}", "status": "pass", "detail": "bad_grade_ku_removed"}
+            )
         if (f.get("ku_ids") or []) and not kids:
             quality["dropped"].append({"facet": key, "reason": "all_ku_bad_grade"})
             continue
         exs: list[dict] = []
         for k in kids:
             allowed = [str(v.get("text") or "") for v in ku_meta[k].get("verbatim", [])]
-            for s in (f.get("excerpts") or []):
+            for s in f.get("excerpts") or []:
                 if not isinstance(s, dict) or s.get("ku_id") != k:
                     continue
                 st = str(s.get("text") or "")
                 # 同学习层: 存储截断前缀也放行(复验幂等, 见 validate_learning_layer 注释)
                 if st and (st in allowed or any(a.startswith(st) for a in allowed)):
-                    exs.append({"text": st[:MAX_EXCERPT], "ku_id": k, "locator": s.get("locator", "")})
+                    exs.append(
+                        {"text": st[:MAX_EXCERPT], "ku_id": k, "locator": s.get("locator", "")}
+                    )
         if kids and not exs:
             quality["dropped"].append({"facet": key, "reason": "no_verbatim"})
             continue
@@ -374,14 +399,29 @@ def validate_bu_facets(
         ev = evidence_class_for(grades) if kids else "inference"
         struct_hubs = sum(1 for h in hubs if h and h in text)
         if not kids and key == "skeleton" and struct_hubs >= SKELETON_MIN_HUBS:
-            quality["checks"].append({"check": f"facet:{key}", "status": "pass", "detail": f"inference(枢纽x{struct_hubs})"})
+            quality["checks"].append(
+                {
+                    "check": f"facet:{key}",
+                    "status": "pass",
+                    "detail": f"inference(枢纽x{struct_hubs})",
+                }
+            )
         elif not kids and not HEDGE_MARK.search(text + basis):
             quality["dropped"].append({"facet": key, "reason": "no_grounding_no_hedge"})
             continue
         else:
             quality["checks"].append({"check": f"facet:{key}", "status": "pass", "detail": ev})
-        out.append({"key": key, "text": text, "basis": basis, "ku_ids": kids,
-                    "evidence": ev, "grades": grades, "excerpts": exs[:2]})
+        out.append(
+            {
+                "key": key,
+                "text": text,
+                "basis": basis,
+                "ku_ids": kids,
+                "evidence": ev,
+                "grades": grades,
+                "excerpts": exs[:2],
+            }
+        )
     if quality["dropped"]:
         quality["status"] = "partial"
     if not out:
@@ -428,6 +468,7 @@ def _cli(substrate: str) -> int:
                 "grade": r["grade"],
                 "verbatim": resolve_verbatim(gb, r["natural_text_zh"] or r["natural_text"]),
             }
+
         def _loads(v):
             # asyncpg 默认把 jsonb 返回为 str, 需解析成结构再入门(否则列表判空误报)
             if isinstance(v, str):
@@ -437,7 +478,9 @@ def _cli(substrate: str) -> int:
                     return None
             return v
 
-        res = validate_learning_layer(_loads(bu["learning_paths"]), _loads(bu["deep_cards"]), ku_meta)
+        res = validate_learning_layer(
+            _loads(bu["learning_paths"]), _loads(bu["deep_cards"]), ku_meta
+        )
         print("── 学习层 ──")
         print(json.dumps(res["quality"], ensure_ascii=False, indent=2))
         print(f"paths={len(res['paths'])} cards={len(res['cards'])} ok={res['ok']}")

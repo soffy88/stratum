@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "window": "28d",
+  "policy": "freeze_non_emergency_release_when_any_budget_is_exhausted",
+  "targets": [
+    {
+      "name": "retrieval",
+      "journey": "user_can_get_grounded_search_results",
+      "metric": "retrieval_good_event_ratio",
+      "threshold": 1500,
+      "threshold_unit": "p95_ms",
+      "objective": 0.99
+    },
+    {
+      "name": "ingest_to_queryable",
+      "journey": "uploaded_document_becomes_searchable",
+      "metric": "ingest_good_event_ratio",
+      "threshold": 0.0,
+      "threshold_unit": "pipeline_success",
+      "objective": 0.95
+    }
+  ]
+}

@@ -1,11 +1,9 @@
 """User profile + sessions management routes."""
 
 import hashlib
-import os
 from datetime import datetime
 from typing import Optional
 
-import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
@@ -19,6 +17,7 @@ router = APIRouter()
 
 def get_db():
     from stratum.db import get_conn
+
     with get_conn() as conn:
         yield conn
 

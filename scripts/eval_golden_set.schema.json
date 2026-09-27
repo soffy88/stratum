@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": ["query", "relevant_substrate_ids"],
+    "properties": {
+      "query": {"type": "string", "minLength": 1},
+      "relevant_substrate_ids": {
+        "type": "array",
+        "minItems": 1,
+        "items": {"type": "string", "minLength": 1}
+      },
+      "query_id": {"type": "string", "minLength": 1},
+      "source_ref": {"type": "string", "minLength": 1},
+      "reviewer": {"type": "string", "minLength": 1},
+      "review_status": {"enum": ["candidate", "reviewed"]},
+      "rationale": {"type": "string", "minLength": 1}
+    },
+    "additionalProperties": false
+  }
+}

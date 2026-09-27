@@ -1,11 +1,10 @@
 """Agent routes: run agent, list runs."""
-import os
+
 import json
 from typing import Optional
 from datetime import datetime, timezone
 
-import duckdb
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from ...dao.agent_run import AgentRunDAO
@@ -15,6 +14,7 @@ router = APIRouter()
 
 def get_db():
     from stratum.db import get_conn
+
     with get_conn() as conn:
         yield conn
 
@@ -46,12 +46,16 @@ async def run_agent(agent_name: str, req: RunAgentRequest, request: Request, db=
     # In production, this would call omodul agent registry.
     # For now, return a stub indicating the agent would be invoked.
     import ulid as ulid_mod
+
     run_id = str(ulid_mod.ULID())
     now = datetime.now(timezone.utc)
-    db.execute("""
+    db.execute(
+        """
         INSERT INTO agent_runs (id, user_id, corpus_id, agent_name, params, status, started_at, total_input_tokens, total_output_tokens, cost_usd)
         VALUES (?, ?, ?, ?, ?, 'pending', ?, 0, 0, 0.0)
-    """, (run_id, user_id, corpus_id, agent_name, json.dumps(req.params), now))
+    """,
+        (run_id, user_id, corpus_id, agent_name, json.dumps(req.params), now),
+    )
 
     return RunAgentResponse(
         agent_run=AgentRunItem(id=run_id, agent_name=agent_name, status="pending", started_at=now),
@@ -59,12 +63,23 @@ async def run_agent(agent_name: str, req: RunAgentRequest, request: Request, db=
 
 
 @router.get("/agents/runs")
-async def list_agent_runs(request: Request, agent: Optional[str] = None, limit: int = 20, db=Depends(get_db)):
+async def list_agent_runs(
+    request: Request, agent: Optional[str] = None, limit: int = 20, db=Depends(get_db)
+):
     corpus_id = request.state.corpus_id
     runs = AgentRunDAO(db).list_runs(corpus_id=corpus_id, limit=limit)
     if agent:
         runs = [r for r in runs if r.agent_name == agent]
-    items = [AgentRunItem(id=r.id, agent_name=r.agent_name, status=r.status,
-                          output=r.output, started_at=r.started_at,
-                          completed_at=r.completed_at, error_message=r.error_message) for r in runs]
+    items = [
+        AgentRunItem(
+            id=r.id,
+            agent_name=r.agent_name,
+            status=r.status,
+            output=r.output,
+            started_at=r.started_at,
+            completed_at=r.completed_at,
+            error_message=r.error_message,
+        )
+        for r in runs
+    ]
     return {"items": items, "total": len(items)}

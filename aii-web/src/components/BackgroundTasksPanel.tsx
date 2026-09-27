@@ -78,9 +78,11 @@ export function BackgroundTasksPanel({ onFolderDeleted }: { onFolderDeleted?: ()
       apiClient.get<ChannelSub[]>('/api/v1/channels').then(r => r.data ?? []).catch(() => []),
       apiClient.get<SourceSub[]>('/api/v1/sources').then(r => r.data ?? []).catch(() => []),
     ]);
-    setFolders(fw);
-    setChannels(ch);
-    setSources(src);
+    // Older/partial deployments may return an envelope instead of an array;
+    // a malformed background-task response must not crash the documents page.
+    setFolders(Array.isArray(fw) ? fw : []);
+    setChannels(Array.isArray(ch) ? ch : []);
+    setSources(Array.isArray(src) ? src : []);
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);

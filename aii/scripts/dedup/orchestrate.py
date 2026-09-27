@@ -31,9 +31,8 @@ from obase import ProviderRegistry  # noqa: E402
 from aii.api._provider import register_providers  # noqa: E402
 
 from pgvector.asyncpg import register_vector  # noqa: E402
-from oprim import vector_encode  # noqa: E402
 from candidates import ku_candidates  # noqa: E402
-from judge import judge_pair, to_merge_action  # noqa: E402
+from judge import judge_pair  # noqa: E402
 from ledger import DecisionLedger  # noqa: E402
 from integrate import (
     cluster_same,
@@ -44,7 +43,7 @@ from integrate import (
     embed_text,
 )
 
-KG_URL = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+KG_URL = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
 REFINED_URL = os.getenv("REFINED_URL", "postgresql://aii:aii_safe_pass@localhost:5436/aii_refined")
 
 
@@ -117,6 +116,7 @@ async def discover_substrates(kg, disc: str):
         # 极端空库 fallback, 不阻断手工验证
         return list(ECON_SUBS_LEGACY)
     return found
+
 
 _TYPE_MAP = {
     "conceptual": "conceptual",
@@ -236,9 +236,7 @@ async def main():
                             v = await judge_pair(a, b, llm_weak, DecisionLedger(rc), **kw)
                     else:
                         v = await judge_pair(a, b, llm_weak, None, **kw)
-                except (
-                    Exception
-                ) as e:  # 单对失败→ 降级 different(宁碎片), 不拖垮整批
+                except Exception as e:  # 单对失败→ 降级 different(宁碎片), 不拖垮整批
                     fails.append((c, str(e)[:60]))
                     v = {"verdict": "different", "reason": f"判同失败降级(宁碎片): {str(e)[:50]}"}
             results.append((a, b, v))
@@ -393,9 +391,7 @@ async def main():
                 members, contribs, _ = built[i]
                 texts.append(embed_text(contribs) or (members[0].get("name") or "") or " ")
             BATCH = int(os.getenv("B_REPO_EMBED_BATCH", "8"))  # 长文小批, 防 10G 卡 OOM
-            print(
-                f"重算嵌入 {len(texts)} 条 → {embed_url} (batch={BATCH})…", flush=True
-            )
+            print(f"重算嵌入 {len(texts)} 条 → {embed_url} (batch={BATCH})…", flush=True)
             fresh = []
             for i in range(0, len(texts), BATCH):
                 chunk = texts[i : i + BATCH]

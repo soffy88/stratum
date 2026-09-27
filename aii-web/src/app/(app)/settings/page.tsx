@@ -8,7 +8,7 @@ import { apiClient } from "@/lib/api-client";
 import { resetOnboardingTour } from "@/components/OnboardingTour";
 import type { SessionItem, SessionListResponse } from "@/lib/types";
 
-type Tab = "profile" | "theme" | "sessions";
+type Tab = "profile" | "theme" | "sessions" | "usage" | "sync";
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("profile");
@@ -21,11 +21,15 @@ export default function SettingsPage() {
         <TabBtn active={tab === "profile"} onClick={() => setTab("profile")}>个人资料</TabBtn>
         <TabBtn active={tab === "theme"} onClick={() => setTab("theme")}>主题</TabBtn>
         <TabBtn active={tab === "sessions"} onClick={() => setTab("sessions")}>会话管理</TabBtn>
+        <TabBtn active={tab === "usage"} onClick={() => setTab("usage")}>用量</TabBtn>
+        <TabBtn active={tab === "sync"} onClick={() => setTab("sync")}>Obsidian</TabBtn>
       </div>
 
       {tab === "profile" && <ProfileTab />}
       {tab === "theme" && <ThemeTab />}
       {tab === "sessions" && <SessionsTab />}
+      {tab === "usage" && <UsageTab />}
+      {tab === "sync" && <ObsidianSyncTab />}
     </div>
   );
 }
@@ -163,6 +167,150 @@ function SessionsTab() {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+interface CreditSnapshot {
+  period: string;
+  tier: string;
+  allowances: Record<string, number>;
+  unit_costs: Record<string, number>;
+  credits_used: number;
+  credits_remaining: number;
+}
+
+function UsageTab() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["creditSnapshot"],
+    queryFn: () => apiClient.get<CreditSnapshot>("/api/v1/billing/credits"),
+  });
+
+  if (isLoading) return <p className="text-sm text-[var(--color-muted)]">加载用量中...</p>;
+  if (error || !data) return <p className="text-sm text-red-600">无法加载 credits 用量</p>;
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-3 gap-3">
+        <UsageCard label="当前套餐" value={data.tier.toUpperCase()} />
+        <UsageCard label="本月已用" value={data.credits_used} />
+        <UsageCard label="剩余 credits" value={data.credits_remaining} />
+      </div>
+      <p className="text-xs text-[var(--color-muted)]">计费周期：{data.period}</p>
+      <div>
+        <h2 className="text-sm font-semibold mb-2">能力单价</h2>
+        <div className="space-y-1.5 text-sm">
+          {Object.entries(data.unit_costs).map(([capability, cost]) => (
+            <div key={capability} className="flex justify-between border-b border-[var(--color-border)] pb-1.5">
+              <span>{capability}</span>
+              <span className="tabular-nums text-[var(--color-muted)]">{cost} credits / 次</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <p className="text-xs text-[var(--color-muted)]">
+        套餐额度由服务端策略决定；客户端只展示账本快照，不自行计算或修改余额。
+      </p>
+    </div>
+  );
+}
+
+function UsageCard({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="p-3 border border-[var(--color-border)] rounded-lg">
+      <p className="text-xs text-[var(--color-muted)] mb-1">{label}</p>
+      <p className="text-xl font-semibold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+interface ObsidianSyncResult {
+  status: string;
+  connector?: string;
+  export?: { files_written?: number };
+  import?: { created?: number; updated?: number; skipped?: number; errors?: string[] };
+}
+
+function ObsidianSyncTab() {
+  const [path, setPath] = useState("");
+  const [mode, setMode] = useState<"export" | "import" | "both">("both");
+  const [result, setResult] = useState<ObsidianSyncResult | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { data: roots, isLoading: rootsLoading } = useQuery({
+    queryKey: ["vaultRoots"],
+    queryFn: () => apiClient.get<{ roots: string[] }>("/api/v1/sync/vault/roots"),
+  });
+
+  const sync = useMutation({
+    mutationFn: () => apiClient.post<ObsidianSyncResult>("/api/v1/sync/obsidian", { path, mode }),
+    onSuccess: (value) => { setResult(value); setSubmitError(null); },
+    onError: (error) => { setSubmitError(error instanceof Error ? error.message : "同步失败"); },
+  });
+
+  const submit = () => {
+    if (!path.trim()) { setSubmitError("请输入 Obsidian vault 路径"); return; }
+    setResult(null);
+    sync.mutate();
+  };
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-sm font-semibold">Obsidian 双向同步</h2>
+        <p className="text-xs text-[var(--color-muted)] mt-1">
+          使用 Markdown frontmatter 的稳定 id 做 upsert；路径必须位于服务端允许的根目录内。
+        </p>
+      </div>
+      <label className="block space-y-1" htmlFor="obsidian-path">
+        <span className="text-sm">Vault 路径</span>
+        <input
+          id="obsidian-path"
+          aria-label="Vault 路径"
+          value={path}
+          onChange={(e) => setPath(e.target.value)}
+          list="obsidian-roots"
+          placeholder={roots?.roots[0] ?? "/allowed/vault"}
+          className="w-full border border-[var(--color-border)] rounded px-3 py-2 text-sm"
+        />
+        <datalist id="obsidian-roots">
+          {(roots?.roots ?? []).map((root) => <option key={root} value={root} />)}
+        </datalist>
+        {rootsLoading && <span className="text-xs text-[var(--color-muted)]">读取允许目录…</span>}
+      </label>
+      <div className="flex items-center gap-3">
+        <label className="text-sm" htmlFor="obsidian-mode">模式</label>
+        <select
+          id="obsidian-mode"
+          value={mode}
+          onChange={(e) => setMode(e.target.value as typeof mode)}
+          className="border border-[var(--color-border)] rounded px-3 py-2 text-sm"
+        >
+          <option value="both">双向</option>
+          <option value="export">导出到 Obsidian</option>
+          <option value="import">从 Obsidian 导入</option>
+        </select>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={sync.isPending}
+          className="ml-auto px-4 py-2 rounded bg-[var(--color-primary)] text-white text-sm disabled:opacity-50"
+        >
+          {sync.isPending ? "同步中…" : "开始同步"}
+        </button>
+      </div>
+      {submitError && <p className="text-sm text-red-600">{submitError}</p>}
+      {result && (
+        <div className="p-3 rounded-lg border border-green-500/30 bg-green-500/5 text-sm space-y-1">
+          <p className="font-medium">同步完成（{result.connector ?? "vault"}）</p>
+          {result.export && <p className="text-xs">导出文件：{result.export.files_written ?? 0}</p>}
+          {result.import && (
+            <p className="text-xs">
+              导入：新建 {result.import.created ?? 0} · 更新 {result.import.updated ?? 0} ·
+              跳过 {result.import.skipped ?? 0}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

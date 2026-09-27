@@ -11,6 +11,7 @@ import type { Rendition } from 'epubjs';
 import {
   listHighlightsByDocument, createHighlight, type Highlight, type EpubLocation,
 } from '@/lib/highlights';
+import { recordReaderAction, type ReaderAction } from '@/lib/interactions';
 
 const COLORS = ['yellow', 'green', 'blue', 'red'];
 
@@ -22,6 +23,7 @@ export function EpubReader({ buffer, documentId, title, fullHeight }: {
   const [pending, setPending] = useState<{ cfi: string; text: string } | null>(null);
   const [pendingColor, setPendingColor] = useState('yellow');
   const [pendingNote, setPendingNote] = useState('');
+  const [pendingAction, setPendingAction] = useState<ReaderAction | null>(null);
   const renditionRef = useRef<Rendition | null>(null);
 
   const reload = useCallback(() => {
@@ -50,6 +52,7 @@ export function EpubReader({ buffer, documentId, title, fullHeight }: {
       setPending({ cfi: cfiRange, text });
       setPendingNote('');
       setPendingColor('yellow');
+      setPendingAction(null);
     });
   };
 
@@ -65,6 +68,9 @@ export function EpubReader({ buffer, documentId, title, fullHeight }: {
         location_json: { cfi: pending.cfi },
       });
       if (r) r.annotations.highlight(pending.cfi, {}, () => {}, '', { fill: pendingColor });
+      if (pendingAction) {
+        try { await recordReaderAction(documentId, pendingAction, pendingNote); } catch { /* 高亮已保存 */ }
+      }
       reload();
     } catch { /* 保存失败 */ }
     setPending(null);
@@ -103,10 +109,21 @@ export function EpubReader({ buffer, documentId, title, fullHeight }: {
               className="text-xs border rounded p-1.5 resize-none w-full"
               rows={2}
             />
+            <div className="flex gap-1 border-t pt-2">
+              <button onClick={() => setPendingAction('important')}
+                className={`text-xs px-1.5 py-1 rounded border ${pendingAction === 'important' ? 'bg-primary text-primary-foreground' : ''}`}
+                aria-label="标记重要">重要</button>
+              <button onClick={() => setPendingAction('question')} disabled={!pendingNote.trim()}
+                className={`text-xs px-1.5 py-1 rounded border disabled:opacity-40 ${pendingAction === 'question' ? 'bg-primary text-primary-foreground' : ''}`}
+                aria-label="标记问题">问题</button>
+              <button onClick={() => setPendingAction('contradict')} disabled={!pendingNote.trim()}
+                className={`text-xs px-1.5 py-1 rounded border disabled:opacity-40 ${pendingAction === 'contradict' ? 'bg-primary text-primary-foreground' : ''}`}
+                aria-label="标记矛盾">矛盾</button>
+            </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setPending(null)} className="text-xs text-muted-foreground px-2 py-1">取消</button>
               <button onClick={confirmHighlight} className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded">
-                保存高亮
+                {pendingAction ? '保存并记录' : '保存高亮'}
               </button>
             </div>
           </div>

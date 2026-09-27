@@ -9,8 +9,9 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 BAD=0
+WARN=0
 ok()   { echo "  ✅ $1"; }
-warn() { echo "  ⚠️  $1"; }
+warn() { echo "  ⚠️  $1"; WARN=1; }
 bad()  { echo "  🚨 $1"; BAD=1; }
 
 echo "════════════════════════════════════════════════════"
@@ -32,7 +33,7 @@ for svc in aii-backend aii-feeder aii-extract aii-gdrive-mount \
 
 echo
 echo "[2/6] aii-embed 真调用(★已迁笔记本GTX1050Ti, 禁止用本机GPU; 走tailscale, 不只看进程活着, 实际打一次embed)"
-AII_EMBED_URL_CHECK="${AII_EMBED_URL:-http://100.119.113.90:8102}"
+AII_EMBED_URL_CHECK="${AII_EMBED_URL:-http://127.0.0.1:8102}"
 if curl -s -m 10 -o /dev/null -w "" "$AII_EMBED_URL_CHECK/health" 2>/dev/null; then
     EMBED_OUT=$(curl -s -m 30 -X POST "$AII_EMBED_URL_CHECK/embed" -H "Content-Type: application/json" -d '{"texts":["体检"]}' 2>&1)
     if echo "$EMBED_OUT" | grep -q '"embeddings"'; then
@@ -90,11 +91,25 @@ done < <(ps -eo pid,etimes,cmd | grep -E "pull_ingest\.sh|math_convert\.py|econ_
 [ "$STUCK" -eq 0 ] && ok "没有发现卡住超15分钟的拉料进程"
 
 echo
-echo "════════════════════════════════════════════════════"
-if [ "$BAD" -eq 0 ]; then
-    echo "★ 体检结论: 全绿 ✅"
+echo "[7/7] KU产出哨兵"
+KU_WINDOW=$(docker exec aii-postgres psql -U aii -d aii_kg -tAc \
+    "SELECT count(*) FROM aii.ku_onto WHERE created_at > now() - interval '24 hours'" 2>/dev/null | tr -d '[:space:]')
+if [ "${KU_WINDOW:-0}" -eq 0 ]; then
+    bad "24小时KU增量=0 — 检查飞轮零KU重试/LLM质量门"
+elif [ "${KU_WINDOW:-0}" -lt 100 ]; then
+    warn "24小时KU增量=${KU_WINDOW} — 低于历史产能，检查 zero_ku/retry 统计"
 else
+    ok "24小时KU增量=${KU_WINDOW}"
+fi
+
+echo
+echo "════════════════════════════════════════════════════"
+if [ "$BAD" -ne 0 ]; then
     echo "★ 体检结论: 发现 🚨 项, 见上"
+elif [ "$WARN" -ne 0 ]; then
+    echo "★ 体检结论: 主链路正常，但有 ⚠️ 警告，见上"
+else
+    echo "★ 体检结论: 全绿 ✅"
 fi
 echo "════════════════════════════════════════════════════"
 exit $BAD

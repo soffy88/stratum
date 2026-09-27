@@ -5,7 +5,11 @@ chapter_synthesize.py 的0LLM程序抠——给散文体/无markdown小标题的
 落库: 每讲透KU一行(title/natural_text=EN/natural_text_zh=中文/knowledge_type/chapter_id/grade/embedding).
 """
 
-import asyncio, json, os, re, sys
+import asyncio
+import json
+import os
+import re
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -15,8 +19,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import asyncpg
 import opencc
 from chapter_ingest import slice_chapter, SM, chapter_numbers
-from chapter_synthesize_llm_v1 import _plan, _synth, _CTX, _find_pos
-from ku_schema import build_grounded_by, ku_fingerprint, validate_ku_point
+from chapter_synthesize_llm_v1 import _plan, _synth, _find_pos
+from ku_schema import build_grounded_by, ensure_evidence_number_coverage, ku_fingerprint
 from clean_ku import clean, is_empty_shell, is_junk
 from aii.api._provider import register_providers
 from aii.service.planning_completeness import check_completeness
@@ -48,7 +52,9 @@ _CJK = re.compile(r"[一-鿿]")
 
 # ★2026-08-09 修复: llm_v1(英文书分支)缺少 synthesize_book.py 里的这些定义,
 #   ch9/10/11 报 "name '_traj_sync' is not defined" 整章 FAILED
-_PER_SOURCE_BUDGET = int(os.getenv("KU_REPAIR_SOURCE_BUDGET", "5"))  # 每源失败预算
+_PER_SOURCE_BUDGET = int(
+    os.getenv("KU_REPAIR_SOURCE_BUDGET", "20")
+)  # 每源失败预算；单条仍拒绝，但不因少数坏候选丢掉整章
 _FAIL_COUNT = [0]  # 跨章累计
 
 
@@ -56,6 +62,7 @@ def _traj_sync(phase: str, failure_mode: str, error_sig: str, context: dict | No
     """海关拒绝事件静默落 trajectory_logs。"""
     import importlib.util as _ilu
     from pathlib import Path as _P
+
     try:
         p = _P(__file__).resolve().parent / "traj_log.py"
         if not p.exists():
@@ -64,6 +71,7 @@ def _traj_sync(phase: str, failure_mode: str, error_sig: str, context: dict | No
         mod = _ilu.module_from_spec(spec)
         spec.loader.exec_module(mod)
         import os as _os
+
         flywheel = _os.getenv("AII_FLYWHEEL", "unknown")
         mod.traj_log_sync(flywheel, phase, failure_mode, error_sig, context or {})
     except Exception:  # noqa: BLE001
@@ -81,6 +89,8 @@ def _split_bilingual(body: str):
 async def synth_chapter(llm, n):
     text = slice_chapter(SM.read_text(encoding="utf-8", errors="replace"), n)
     points = await _plan(llm, text, n)
+    if not points:
+        raise RuntimeError(f"ch{n} 规划未返回知识点；不写入完成 checkpoint，等待重试")
     sem = asyncio.Semaphore(int(os.getenv("AII_SYNTH_CONCURRENCY", "4")))
 
     async def s(p):
@@ -91,14 +101,23 @@ async def synth_chapter(llm, n):
             if not quotes:
                 try:
                     _n2, body2, quotes2, wtext2 = await _synth(
-                        llm, text, n, p["name"], p.get("type", "concept"),
-                        p.get("pos", 0), narrow=True)
+                        llm,
+                        text,
+                        n,
+                        p["name"],
+                        p.get("type", "concept"),
+                        p.get("pos", 0),
+                        narrow=True,
+                    )
                     if quotes2:
                         body, quotes, wtext = body2, quotes2, wtext2
                 except Exception:
                     pass
             p["_quotes"] = quotes
             p["_wtext"] = wtext
+            # 质检通常使用定向窗口；数字若落在窗口边界外，允许 helper 从本章
+            # 原文补逐字证据，避免把“窗口太窄”误判成幻觉。
+            p["_source_text"] = text
             return p, body
 
     kus = await asyncio.gather(*(s(p) for p in points))
@@ -119,6 +138,38 @@ async def synth_chapter(llm, n):
 
 async def persist(conn, n, kus):
     loop = asyncio.get_event_loop()
+    stats = {"candidates": len(kus), "inserted": 0, "empty_shell": 0,
+             "bilingual": 0, "junk": 0, "quality_reject": 0, "duplicate": 0,
+             "errors": 0}
+    # Batch BGE-M3 requests.  Serial one-KU HTTP calls made the CPU fallback
+    # spend minutes embedding a single chapter after the LLM had finished.
+    embed_items = []
+    for i, (p, body) in enumerate(kus):
+        en_raw, zh_raw = _split_bilingual(body)
+        en, _ = clean(en_raw)
+        zh, _ = clean(zh_raw)
+        if zh:
+            zh = _T2S.convert(zh)
+        if is_empty_shell(zh or en) or len(re.findall(r"[一-龥]", zh or "")) < 10:
+            continue
+        if is_junk(f"{zh or ''} {en or ''}"):
+            continue
+        embed_items.append((i, (zh or en)[:2000]))
+
+    def _encode_batches():
+        batch_size = max(1, int(os.getenv("AII_EMBED_BATCH", "2")))
+        vectors = []
+        for start in range(0, len(embed_items), batch_size):
+            vectors.extend(
+                vector_encode(
+                    texts=[text for _, text in embed_items[start : start + batch_size]],
+                    provider="default",
+                )
+            )
+        return vectors
+
+    encoded = await loop.run_in_executor(None, _encode_batches) if embed_items else []
+    embed_by_index = {item[0]: encoded[pos] for pos, item in enumerate(embed_items)}
     for i, (p, body) in enumerate(kus):
         name = p["name"]
         typ = p.get("type", "conceptual")
@@ -129,11 +180,17 @@ async def persist(conn, n, kus):
         zh, zh_cites = clean(zh_raw)
         if zh:
             zh = _T2S.convert(zh)  # 繁体→简体(机械转换, 简体输入原样不变)
-        if (
-            is_empty_shell(zh or en)
-            or len(re.findall(r"[一-龥]", zh or "")) < 10
-            or is_junk(f"{zh or ''} {en or ''}")
-        ):
+        if is_empty_shell(zh or en):
+            stats["empty_shell"] += 1
+            print(f"  ⚠ ch{n} KU{i} 丢弃: empty_shell", flush=True)
+            continue
+        if len(re.findall(r"[一-龥]", zh or "")) < 10:
+            stats["bilingual"] += 1
+            print(f"  ⚠ ch{n} KU{i} 丢弃: missing_simplified_chinese (en={len(en)}, zh={len(zh)})", flush=True)
+            continue
+        if is_junk(f"{zh or ''} {en or ''}"):
+            stats["junk"] += 1
+            print(f"  ⚠ ch{n} KU{i} 丢弃: junk_response", flush=True)
             continue
         kt = _TYPE_MAP.get(typ, "conceptual")
         is_pos = kt == "positional"
@@ -147,11 +204,7 @@ async def persist(conn, n, kus):
             is_pos = False
         opposing = (p.get("opposing") or p.get("opposing_stance") or None) if is_pos else None
         ku_id = f"{SUB}::ch{n}_ku{i}"
-        emb = (
-            await loop.run_in_executor(
-                None, lambda c=(zh or en)[:2000]: vector_encode(texts=[c], provider="default")
-            )
-        )[0]
+        emb = embed_by_index[i]
         prov = {
             "chapter": n,
             "paradigm": "thorough-synthesis",
@@ -163,40 +216,73 @@ async def persist(conn, n, kus):
         }
         # ★统一质检链(规格 6)
         from ku_pipeline import evaluate_ku_chain, choose_repair_action
+
         quotes = p.get("_quotes") or []
+        # 英文书的 evidence_quotes 来自英文原文；若拿中文译文做 embedding
+        # 粗滤，会把合法的中英双语 KU 误判成 HALLUCINATION。校验时优先用
+        # 与原文同语种的英文段落，数字/引用/质量门规则仍全部保留。
+        grounding_claim = en or zh
+        window_text = p.get("_wtext") or ""
+        source_text = p.get("_source_text") or window_text
+        quotes = ensure_evidence_number_coverage(
+            grounding_claim,
+            quotes,
+            window_text,
+            name,
+            fallback_text=source_text,
+        )
         chain = await evaluate_ku_chain(
-            ku_id, zh or en, name, quotes, p.get("_wtext") or "",
-            ku_type=kt, source_type="misc_llm",
+            ku_id,
+            grounding_claim,
+            name,
+            quotes,
+            source_text,
+            ku_type=kt,
+            source_type="misc_llm",
         )
         if chain["status"] != "pass":
+            stats["quality_reject"] += 1
             sig = chain["signatures"][0] if chain["signatures"] else "REJECT"
-            _traj_sync("persist", sig, f"{chain['quality']['checks'][:2]}",
-                       {"ku_id": ku_id, "chapter": n,
-                        "repair": await choose_repair_action(chain["signatures"], "misc_llm")
-                        if chain["status"] == "repair" else None})
+            _traj_sync(
+                "persist",
+                sig,
+                f"{chain['quality']['checks'][:2]}",
+                {
+                    "ku_id": ku_id,
+                    "chapter": n,
+                    "repair": await choose_repair_action(chain["signatures"], "misc_llm")
+                    if chain["status"] == "repair"
+                    else None,
+                },
+            )
             print(f"  ⚠ {sig} {ku_id}: {name[:30]} ({chain['status']})", flush=True)
             _FAIL_COUNT[0] += 1
             if _FAIL_COUNT[0] >= _PER_SOURCE_BUDGET:
                 from ku_pipeline import investigate_fallback
-                await investigate_fallback(
-                    f"substrate {SUB} 质量失败预算耗尽", {"chapter": n})
+
+                await investigate_fallback(f"substrate {SUB} 质量失败预算耗尽", {"chapter": n})
                 raise RuntimeError(f"源失败预算耗尽({_PER_SOURCE_BUDGET})")
             continue
         quality = chain["quality"]
         fp = ku_fingerprint(zh or en)
         dup = await conn.fetchval(
-            "SELECT 1 FROM aii.ku_onto WHERE fingerprint=$1 AND ku_id <> $2 LIMIT 1",
-            fp, ku_id)
+            "SELECT 1 FROM aii.ku_onto WHERE fingerprint=$1 AND ku_id <> $2 LIMIT 1", fp, ku_id
+        )
         if dup:
-            _traj_sync("persist", "DUPLICATE", f"fingerprint 已存在: {fp[:16]}...",
-                       {"ku_id": ku_id, "chapter": n})
+            stats["duplicate"] += 1
+            _traj_sync(
+                "persist",
+                "DUPLICATE",
+                f"fingerprint 已存在: {fp[:16]}...",
+                {"ku_id": ku_id, "chapter": n},
+            )
             print(f"  ⚠ DUPLICATE {ku_id}", flush=True)
             continue
-        grounded_by = build_grounded_by(SUB, f"ch{n}",
-                                        evidence_quotes=[
-                                            {"chunk_id": f"ch{n}", **q} for q in quotes
-                                        ])
-        await conn.execute(
+        grounded_by = build_grounded_by(
+            SUB, f"ch{n}", evidence_quotes=[{"chunk_id": f"ch{n}", **q} for q in quotes]
+        )
+        try:
+            await conn.execute(
             """
             INSERT INTO aii.ku_onto (ku_id, substrate_id, title, natural_text, natural_text_zh,
                 knowledge_type, stance_holder, opposing_stance, grade, provenance, embedding,
@@ -225,7 +311,13 @@ async def persist(conn, n, kus):
             json.dumps(quality, ensure_ascii=False),
             f"flywheel:{os.getenv('AII_FLYWHEEL', 'misc-llm')}",
             quality.get("claim_type"),
-        )
+            )
+            stats["inserted"] += 1
+        except Exception:
+            stats["errors"] += 1
+            raise
+    print(f"  ch{n} persist统计: {json.dumps(stats, ensure_ascii=False)}", flush=True)
+    return stats
 
 
 async def main():
@@ -238,21 +330,51 @@ async def main():
     from pgvector.asyncpg import register_vector
 
     await register_vector(conn)
-    for n in chapters:
-        if n in done:
-            continue
+    # Older runs could mark every chapter done after an empty planner response.
+    # A zero-KU checkpoint is not a successful completion; allow the repaired
+    # planner to revisit those chapters automatically.
+    if done and not await conn.fetchval(
+        "SELECT 1 FROM aii.ku_onto WHERE substrate_id=$1 LIMIT 1", SUB
+    ):
+        print("  ⚠ 检测到0 KU旧 checkpoint，清除完成标记并重新规划", flush=True)
+        done.clear()
+        CKPT.unlink(missing_ok=True)
+    pending = [n for n in chapters if n not in done]
+    chapter_parallel = max(1, int(os.getenv("AII_CHAPTER_PARALLEL", "1")))
+
+    async def synth_one(n):
         try:
-            text, kus, comp = await synth_chapter(llm, n)
-            await persist(conn, n, kus)
-            done.add(n)
-            CKPT.write_text(json.dumps({"done": sorted(done)}))
-            print(
-                f"  ch{n}: {len(kus)} KU persisted; complete={comp['complete']} "
-                f"missing={comp['missing_bold_terms']} [{len(done)}/{len(chapters)}]",
-                flush=True,
-            )
-        except Exception as e:
-            print(f"  ch{n} FAILED: {e}", flush=True)
+            return n, await synth_chapter(llm, n), None
+        except Exception as e:  # noqa: BLE001
+            return n, None, e
+
+    # 章节合成彼此独立，可以并行；persist 保持串行，避免同一 asyncpg
+    # connection 上的写入互相占用，也让 checkpoint 逐章可靠落盘。
+    for start in range(0, len(pending), chapter_parallel):
+        batch = pending[start : start + chapter_parallel]
+        results = await asyncio.gather(*(synth_one(n) for n in batch))
+        for n, result, error in results:
+            if error is not None:
+                print(f"  ch{n} FAILED: {error}", flush=True)
+                continue
+            _text, kus, comp = result
+            try:
+                persist_stats = await persist(conn, n, kus)
+                if kus and persist_stats["inserted"] == 0:
+                    print(
+                        f"  ⚠ ch{n} 未产生任何KU，不能写入完成checkpoint；下轮重试",
+                        flush=True,
+                    )
+                    continue
+                done.add(n)
+                CKPT.write_text(json.dumps({"done": sorted(done)}))
+                print(
+                    f"  ch{n}: {len(kus)} KU persisted; complete={comp['complete']} "
+                    f"missing={comp['missing_bold_terms']} [{len(done)}/{len(chapters)}]",
+                    flush=True,
+                )
+            except Exception as e:  # noqa: BLE001
+                print(f"  ch{n} FAILED: {e}", flush=True)
     total = await conn.fetchval("SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", SUB)
     await conn.close()
     print(f"\nDONE: {total} thorough KUs across {len(done)} chapters", flush=True)

@@ -4,11 +4,14 @@
 1. clean_ku 现在能把"未覆盖/未涵盖/未出现"等句子清掉(之前漏了)
 2. 清掉后是空壳的缺席通知KU, is_empty_shell 返回 True
 """
+
 import sys
+
 sys.path.insert(0, "scripts")
 from clean_ku import clean, is_empty_shell
 
 PASS = FAIL = 0
+
 
 def check(label: str, zh: str, expect_shell: bool):
     global PASS, FAIL
@@ -20,8 +23,10 @@ def check(label: str, zh: str, expect_shell: bool):
     if not ok:
         print(f"   input:   {zh[:80]}")
         print(f"   cleaned: {cleaned[:80]}")
-    if ok: PASS += 1
-    else: FAIL += 1
+    if ok:
+        PASS += 1
+    else:
+        FAIL += 1
 
 
 # Case 1: 典型缺席通知 — 全是"（未覆盖）"，清后空壳
@@ -36,8 +41,7 @@ check(
 # Case 2: 带"未覆盖"注记但有实质内容 → 清掉注记后不空壳
 check(
     "有实质内容+未覆盖注记",
-    "需求曲线向下倾斜，因为价格上升时消费者需求减少。"
-    "（未覆盖：本章未给出具体数值示例。）",
+    "需求曲线向下倾斜，因为价格上升时消费者需求减少。（未覆盖：本章未给出具体数值示例。）",
     expect_shell=False,
 )
 
@@ -89,7 +93,7 @@ check(
     expect_shell=False,
 )
 
-print(f"\n{'='*40}")
-print(f"结果: {PASS}/{PASS+FAIL} 通过{'  ✅ 全过' if FAIL==0 else f'  ❌ {FAIL}失败'}")
+print(f"\n{'=' * 40}")
+print(f"结果: {PASS}/{PASS + FAIL} 通过{'  ✅ 全过' if FAIL == 0 else f'  ❌ {FAIL}失败'}")
 if FAIL:
     sys.exit(1)

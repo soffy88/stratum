@@ -6,8 +6,6 @@ except ImportError:
     hybrid_search = None  # type: ignore[assignment]
     SearchResult = None  # type: ignore[assignment,misc]
 from stratum.dao.substrate import SubstrateDAO
-import duckdb
-import os
 
 
 async def stratum_search(

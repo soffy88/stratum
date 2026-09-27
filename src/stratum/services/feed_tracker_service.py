@@ -14,7 +14,6 @@ with new entries).
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import timedelta
 from pathlib import Path
@@ -37,7 +36,7 @@ def _make_fetch_event_adapter():
     injection point owns the whole "which feeds are due" decision.
     """
     from oprim import fetch_rss_feed, feed_diff_detector
-    from stratum.db import query, update
+    from stratum.db import update
     from stratum.services.feed_subscriptions import query_active_subscriptions
 
     def _fetch_event_adapter(*, config: dict | None = None, **_) -> list[dict]:
@@ -163,6 +162,7 @@ def _make_ingest_adapter():
             file_path=str(tmp_path),
             file_checksum=checksum,
             user_id_hash=hash_user_id(user_id),
+            authenticated_user_id=user_id,
             medium_hint="webpage",
             auto_classify=True,
             llm_provider="qwen3_dashscope",

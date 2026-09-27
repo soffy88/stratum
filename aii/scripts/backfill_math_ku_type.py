@@ -30,7 +30,7 @@ from collections import Counter
 
 import asyncpg
 
-DSN = os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+DSN = os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
 
 # 与 math_ingest._ku_type 保持同一张表(修复后的版本)
 _TYPE_TO_KT = {

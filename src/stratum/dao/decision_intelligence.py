@@ -23,6 +23,7 @@ class DecisionLedgerBackend:
         try:
             from omodul.decision_ledger import Decision as _D
             from omodul.decision_ledger import DecisionRelation as _R
+
             self._Decision = _D
             self._Relation = _R
         except ImportError:  # omodul 未装配时退化 dict (仅测试)
@@ -40,9 +41,14 @@ class DecisionLedgerBackend:
                            %(conf)s, %(maker)s, %(ts)s, %(src)s::jsonb, %(meta)s::jsonb)
                    ON CONFLICT (decision_id) DO NOTHING""",
                 {
-                    "id": d.decision_id, "uid": self.user_id,
-                    "cat": d.category, "scn": d.scenario, "rea": d.reasoning,
-                    "out": d.outcome, "conf": d.confidence, "maker": d.decision_maker,
+                    "id": d.decision_id,
+                    "uid": self.user_id,
+                    "cat": d.category,
+                    "scn": d.scenario,
+                    "rea": d.reasoning,
+                    "out": d.outcome,
+                    "conf": d.confidence,
+                    "maker": d.decision_maker,
                     "ts": d.timestamp,
                     "src": json.dumps(d.source_refs, ensure_ascii=False),
                     "meta": json.dumps(d.metadata, ensure_ascii=False),
@@ -80,9 +86,14 @@ class DecisionLedgerBackend:
     @staticmethod
     def _row_to_decision(row) -> dict:
         return {
-            "decision_id": row[0], "category": row[1], "scenario": row[2],
-            "reasoning": row[3], "outcome": row[4], "confidence": row[5],
-            "decision_maker": row[6], "timestamp": str(row[7]),
+            "decision_id": row[0],
+            "category": row[1],
+            "scenario": row[2],
+            "reasoning": row[3],
+            "outcome": row[4],
+            "confidence": row[5],
+            "decision_maker": row[6],
+            "timestamp": str(row[7]),
             "source_refs": row[8] if isinstance(row[8], list) else json.loads(row[8] or "[]"),
             "metadata": row[9] if isinstance(row[9], dict) else json.loads(row[9] or "{}"),
         }
@@ -96,8 +107,10 @@ class DecisionLedgerBackend:
                    VALUES (%(id)s, %(uid)s, %(src)s, %(dst)s, %(typ)s, %(meta)s::jsonb)
                    ON CONFLICT DO NOTHING""",
                 {
-                    "id": generate_ulid(), "uid": self.user_id,
-                    "src": r.src_id, "dst": r.dst_id,
+                    "id": generate_ulid(),
+                    "uid": self.user_id,
+                    "src": r.src_id,
+                    "dst": r.dst_id,
                     "typ": r.relationship_type,
                     "meta": json.dumps(r.metadata, ensure_ascii=False),
                 },
@@ -112,7 +125,9 @@ class DecisionLedgerBackend:
             ).fetchall()
         out = [
             {
-                "src_id": r[0], "dst_id": r[1], "relationship_type": r[2],
+                "src_id": r[0],
+                "dst_id": r[1],
+                "relationship_type": r[2],
                 "metadata": json.loads(r[3] or "{}"),
             }
             for r in rows
@@ -156,9 +171,7 @@ def list_provenance(user_id: str, limit: int = 500) -> list[dict]:
             {"uid": user_id, "lim": limit},
         ).fetchall()
     return [
-        {"kind": r[0], "src": r[1], "dst": r[2],
-         "attrs": json.loads(r[3] or "{}")}
-        for r in rows
+        {"kind": r[0], "src": r[1], "dst": r[2], "attrs": json.loads(r[3] or "{}")} for r in rows
     ]
 
 
@@ -167,6 +180,12 @@ def put_provenance(user_id: str, kind: str, src: str, dst: str, attrs: dict | No
         conn.execute(
             """INSERT INTO decision_provenance (id, user_id, kind, src, dst, attrs)
                VALUES (%(id)s, %(uid)s, %(k)s, %(s)s, %(d)s, %(a)s::jsonb)""",
-            {"id": generate_ulid(), "uid": user_id, "k": kind, "s": src, "d": dst,
-             "a": json.dumps(attrs or {}, ensure_ascii=False)},
+            {
+                "id": generate_ulid(),
+                "uid": user_id,
+                "k": kind,
+                "s": src,
+                "d": dst,
+                "a": json.dumps(attrs or {}, ensure_ascii=False),
+            },
         )

@@ -21,6 +21,12 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PY=.venv/bin/python
+
+# ★统一模型链: opencodex(10100) gpt-5.6-luna 主, NIM fallback
+export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://192.168.80.1:8791/v1/chat/completions}"  # ★2026-08-27 切 Veya(10100僵死)
+export OPENCODE_MODEL="${OPENCODE_MODEL:-gpt-5.6-luna}"
+export NIM_MODEL="${NIM_MODEL:-deepseek-ai/deepseek-v4-flash-0731}"
+
 FLYWHEEL_STATE="math_pipeline/flywheel_state.json"
 FLYWHEEL_BOOK_LIST="math_pipeline/flywheel_booklist.txt"
 FLYWHEEL_REPORT="math_pipeline/flywheel_report.json"

@@ -12,7 +12,8 @@
 脚本现在只是那个模块的 CLI 入口，逻辑不再重复维护两份。
 """
 
-import asyncio, sys
+import asyncio
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 

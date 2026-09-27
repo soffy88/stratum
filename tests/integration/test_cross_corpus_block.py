@@ -5,9 +5,6 @@ Red-line tests: any failure blocks Wave 2.
 
 import pytest
 import ulid as ulid_mod
-import uuid
-import os
-import glob
 from stratum.dao.users import UserDAO
 from stratum.dao.substrate import SubstrateDAO
 from stratum.dao.note import NoteDAO
@@ -179,7 +176,9 @@ async def test_user_A_cannot_search_user_B_content(two_users):
     ]
     try:
         with patch(
-            "stratum.service.search.hybrid_search", new_callable=AsyncMock, return_value=mock_results
+            "stratum.service.search.hybrid_search",
+            new_callable=AsyncMock,
+            return_value=mock_results,
         ):
             from stratum.service.search import stratum_search
 

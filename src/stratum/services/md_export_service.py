@@ -137,7 +137,9 @@ def export_one(substrate_id: str, *, force: bool = False) -> dict:
         return {"status": "skipped", "reason": "already exported", "substrate_id": substrate_id}
 
     if not _HAS_EXPORT_OMODUL:
-        log.warning("md_export: omodul platform unavailable (no /opt/platform); skip %s", substrate_id)
+        log.warning(
+            "md_export: omodul platform unavailable (no /opt/platform); skip %s", substrate_id
+        )
         return {
             "status": "failed",
             "error": "omodul platform package unavailable (no /opt/platform)",

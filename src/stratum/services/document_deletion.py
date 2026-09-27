@@ -1,7 +1,7 @@
 """Document-level Deletion — 基于锚点的完整文档删除系统.
 
 功能:
-  - 级联删除: substrate → derivative → substrate_layers → substrate_chunk → 
+  - 级联删除: substrate → derivative → substrate_layers → substrate_chunk →
     graph_entities(如果仅由此文档引用) → highlights → flashcards
   - LLM 缓存清除: 删除关联的 ku_layers、context_directory 条目
   - 日志记录: 写入 purge_journal 表用于审计和回滚
@@ -26,10 +26,12 @@ import uuid
 from typing import Any
 
 from stratum.db import get_conn
+from stratum.utils.ownership import fetch_owned_substrate, owner_ids
 
 logger = logging.getLogger(__name__)
 
 # ── ID Generation ────────────────────────────────────────────────────────────
+
 
 def _gen_id() -> str:
     return uuid.uuid4().hex[:24]
@@ -44,7 +46,7 @@ _SUBSTRATE_DEPENDENTS = {
     "substrate_chunk": "substrate_id",
     "highlights": "substrate_id",
     "flashcards": "source_id",  # source_kind='substrate'
-    "ku_layers": "ku_id",       # indirect — need to resolve ku_id from substrate
+    "ku_layers": "ku_id",  # indirect — need to resolve ku_id from substrate
 }
 
 # Tables that reference substrates via JSON arrays (source_substrate_ids)
@@ -53,7 +55,8 @@ _JSON_DEPENDENTS = ["graph_entities", "graph_relations"]
 
 # ── Core: Deprecation Analysis ────────────────────────────────────────────────
 
-def analyze_substrate_impact(substrate_id: str) -> dict[str, Any]:
+
+def analyze_substrate_impact(substrate_id: str, *, user_id: str) -> dict[str, Any]:
     """Analyze what will be affected by deleting a substrate.
 
     Returns a detailed impact report showing counts of dependent records.
@@ -67,11 +70,13 @@ def analyze_substrate_impact(substrate_id: str) -> dict[str, Any]:
         "graph_entities_to_review": [],
     }
 
+    if not user_id:
+        return {"substrate_id": substrate_id, "error": "forbidden"}
     with get_conn() as conn:
         # Check substrate exists
         sub = conn.execute(
-            "SELECT id, title, source_path FROM substrates WHERE id = ?",
-            (substrate_id,),
+            "SELECT id, title, source_path FROM substrates WHERE id = ? AND (user_id = ? OR user_id = ?)",
+            (substrate_id, *owner_ids(user_id)),
         ).fetchone()
         if not sub:
             impact["error"] = "substrate_not_found"
@@ -97,8 +102,7 @@ def analyze_substrate_impact(substrate_id: str) -> dict[str, Any]:
         for table in _JSON_DEPENDENTS:
             try:
                 rows = conn.execute(
-                    f"SELECT id, name FROM {table} "
-                    f"WHERE source_substrate_ids::text LIKE %s",
+                    f"SELECT id, name FROM {table} WHERE source_substrate_ids::text LIKE %s",
                     (f'%"{substrate_id}"%',),
                 ).fetchall()
                 if rows:
@@ -116,12 +120,18 @@ def analyze_substrate_impact(substrate_id: str) -> dict[str, Any]:
 
 # ── Core: Soft Deletion ──────────────────────────────────────────────────────
 
-def soft_delete_substrate(substrate_id: str, reason: str = "manual") -> dict[str, Any]:
+
+def soft_delete_substrate(
+    substrate_id: str, reason: str = "manual", *, user_id: str
+) -> dict[str, Any]:
     """Soft-delete a substrate: set deleted_at, cascade to child tables.
 
     Does NOT physically remove data — supports undo via unmark_deleted().
     """
     result = {"substrate_id": substrate_id, "deleted_records": {}, "errors": []}
+    if not fetch_owned_substrate(substrate_id, user_id, columns="id"):
+        result["errors"].append("substrate_forbidden_or_not_found")
+        return result
 
     try:
         with get_conn() as conn:
@@ -137,7 +147,9 @@ def soft_delete_substrate(substrate_id: str, reason: str = "manual") -> dict[str
                     "UPDATE derivative SET deleted_at = NOW() WHERE substrate_id = ? AND deleted_at IS NULL",
                     (substrate_id,),
                 )
-                result["deleted_records"]["derivative"] = cur.rowcount if hasattr(cur, 'rowcount') else 0
+                result["deleted_records"]["derivative"] = (
+                    cur.rowcount if hasattr(cur, "rowcount") else 0
+                )
             except Exception as e:
                 result["errors"].append(f"derivative: {e}")
 
@@ -147,7 +159,9 @@ def soft_delete_substrate(substrate_id: str, reason: str = "manual") -> dict[str
                     "UPDATE highlights SET deleted_at = NOW() WHERE substrate_id = ? AND deleted_at IS NULL",
                     (substrate_id,),
                 )
-                result["deleted_records"]["highlights"] = cur.rowcount if hasattr(cur, 'rowcount') else 0
+                result["deleted_records"]["highlights"] = (
+                    cur.rowcount if hasattr(cur, "rowcount") else 0
+                )
             except Exception as e:
                 result["errors"].append(f"highlights: {e}")
 
@@ -165,15 +179,25 @@ def soft_delete_substrate(substrate_id: str, reason: str = "manual") -> dict[str
     except Exception as e:
         result["errors"].append(f"transaction_error: {e}")
 
-    logger.info("soft_delete_substrate: %s reason=%s records=%s",
-                substrate_id, reason, result["deleted_records"])
+    logger.info(
+        "soft_delete_substrate: %s reason=%s records=%s",
+        substrate_id,
+        reason,
+        result["deleted_records"],
+    )
     return result
 
 
 # ── Core: Hard Deletion ─────────────────────────────────────────────────────
 
-def hard_delete_substrate(substrate_id: str, reason: str = "manual",
-                          cascade_graph: bool = True) -> dict[str, Any]:
+
+def hard_delete_substrate(
+    substrate_id: str,
+    reason: str = "manual",
+    cascade_graph: bool = True,
+    *,
+    user_id: str,
+) -> dict[str, Any]:
     """Hard-delete a substrate and all dependent records.
 
     Args:
@@ -184,7 +208,15 @@ def hard_delete_substrate(substrate_id: str, reason: str = "manual",
     Returns:
         Detailed result with counts per table.
     """
-    result = {"substrate_id": substrate_id, "deleted_records": {}, "errors": [], "graph_cleaned": []}
+    result = {
+        "substrate_id": substrate_id,
+        "deleted_records": {},
+        "errors": [],
+        "graph_cleaned": [],
+    }
+    if not fetch_owned_substrate(substrate_id, user_id, columns="id"):
+        result["errors"].append("substrate_forbidden_or_not_found")
+        return result
 
     try:
         with get_conn() as conn:
@@ -194,7 +226,9 @@ def hard_delete_substrate(substrate_id: str, reason: str = "manual",
                     "DELETE FROM derivative WHERE substrate_id = ?",
                     (substrate_id,),
                 )
-                result["deleted_records"]["derivative"] = cur.rowcount if hasattr(cur, 'rowcount') else 0
+                result["deleted_records"]["derivative"] = (
+                    cur.rowcount if hasattr(cur, "rowcount") else 0
+                )
             except Exception as e:
                 result["errors"].append(f"derivative: {e}")
 
@@ -204,7 +238,9 @@ def hard_delete_substrate(substrate_id: str, reason: str = "manual",
                     "DELETE FROM substrate_layers WHERE substrate_id = ?",
                     (substrate_id,),
                 )
-                result["deleted_records"]["substrate_layers"] = cur.rowcount if hasattr(cur, 'rowcount') else 0
+                result["deleted_records"]["substrate_layers"] = (
+                    cur.rowcount if hasattr(cur, "rowcount") else 0
+                )
             except Exception as e:
                 result["errors"].append(f"substrate_layers: {e}")
 
@@ -214,7 +250,9 @@ def hard_delete_substrate(substrate_id: str, reason: str = "manual",
                     "DELETE FROM substrate_chunk WHERE substrate_id = ?",
                     (substrate_id,),
                 )
-                result["deleted_records"]["substrate_chunk"] = cur.rowcount if hasattr(cur, 'rowcount') else 0
+                result["deleted_records"]["substrate_chunk"] = (
+                    cur.rowcount if hasattr(cur, "rowcount") else 0
+                )
             except Exception as e:
                 result["errors"].append(f"substrate_chunk: {e}")
 
@@ -224,7 +262,9 @@ def hard_delete_substrate(substrate_id: str, reason: str = "manual",
                     "DELETE FROM highlights WHERE substrate_id = ?",
                     (substrate_id,),
                 )
-                result["deleted_records"]["highlights"] = cur.rowcount if hasattr(cur, 'rowcount') else 0
+                result["deleted_records"]["highlights"] = (
+                    cur.rowcount if hasattr(cur, "rowcount") else 0
+                )
             except Exception as e:
                 result["errors"].append(f"highlights: {e}")
 
@@ -234,7 +274,9 @@ def hard_delete_substrate(substrate_id: str, reason: str = "manual",
                     "DELETE FROM flashcards WHERE source_id = ? AND source_kind = 'substrate'",
                     (substrate_id,),
                 )
-                result["deleted_records"]["flashcards"] = cur.rowcount if hasattr(cur, 'rowcount') else 0
+                result["deleted_records"]["flashcards"] = (
+                    cur.rowcount if hasattr(cur, "rowcount") else 0
+                )
             except Exception as e:
                 result["errors"].append(f"flashcards: {e}")
 
@@ -248,7 +290,9 @@ def hard_delete_substrate(substrate_id: str, reason: str = "manual",
                     "DELETE FROM context_directory WHERE ref_id = ?",
                     (substrate_id,),
                 )
-                result["deleted_records"]["context_directory"] = cur.rowcount if hasattr(cur, 'rowcount') else 0
+                result["deleted_records"]["context_directory"] = (
+                    cur.rowcount if hasattr(cur, "rowcount") else 0
+                )
             except Exception as e:
                 result["errors"].append(f"context_directory: {e}")
 
@@ -258,7 +302,9 @@ def hard_delete_substrate(substrate_id: str, reason: str = "manual",
                     "DELETE FROM substrates WHERE id = ?",
                     (substrate_id,),
                 )
-                result["deleted_records"]["substrates"] = cur.rowcount if hasattr(cur, 'rowcount') else 0
+                result["deleted_records"]["substrates"] = (
+                    cur.rowcount if hasattr(cur, "rowcount") else 0
+                )
             except Exception as e:
                 result["errors"].append(f"substrates: {e}")
 
@@ -277,12 +323,18 @@ def hard_delete_substrate(substrate_id: str, reason: str = "manual",
         result["errors"].append(f"transaction_error: {e}")
 
     total = sum(result["deleted_records"].values())
-    logger.info("hard_delete_substrate: %s reason=%s total=%d errors=%d",
-                substrate_id, reason, total, len(result["errors"]))
+    logger.info(
+        "hard_delete_substrate: %s reason=%s total=%d errors=%d",
+        substrate_id,
+        reason,
+        total,
+        len(result["errors"]),
+    )
     return result
 
 
 # ── Graph Reference Cleanup ──────────────────────────────────────────────────
+
 
 def _cleanup_graph_references(conn, substrate_id: str, result: dict) -> None:
     """Remove substrate_id from graph_entities source_substrate_ids.
@@ -318,7 +370,9 @@ def _cleanup_graph_references(conn, substrate_id: str, result: dict) -> None:
                    WHERE id = %s""",
                 (_json.dumps(remaining), eid),
             )
-            result["graph_cleaned"].append({"entity": eid, "name": ename, "action": "source_removed"})
+            result["graph_cleaned"].append(
+                {"entity": eid, "name": ename, "action": "source_removed"}
+            )
         else:
             # Entity is now orphaned — delete it and its relations
             conn.execute(
@@ -329,17 +383,23 @@ def _cleanup_graph_references(conn, substrate_id: str, result: dict) -> None:
                 "DELETE FROM graph_entities WHERE id = %s",
                 (eid,),
             )
-            result["graph_cleaned"].append({"entity": eid, "name": ename, "action": "orphaned_deleted"})
+            result["graph_cleaned"].append(
+                {"entity": eid, "name": ename, "action": "orphaned_deleted"}
+            )
 
 
 # ── Undo (Soft Delete Recovery) ──────────────────────────────────────────────
 
-def restore_substrate(substrate_id: str) -> dict[str, Any]:
+
+def restore_substrate(substrate_id: str, *, user_id: str) -> dict[str, Any]:
     """Restore a soft-deleted substrate.
 
     Only works for soft deletes (hard deletes are irreversible).
     """
     result = {"substrate_id": substrate_id, "restored": False, "errors": []}
+    if not fetch_owned_substrate(substrate_id, user_id, columns="id"):
+        result["errors"].append("substrate_forbidden_or_not_found")
+        return result
 
     with get_conn() as conn:
         sub = conn.execute(
@@ -369,8 +429,10 @@ def restore_substrate(substrate_id: str) -> dict[str, Any]:
 
 # ── Batch Purge ──────────────────────────────────────────────────────────────
 
-def batch_purge_substrates(substrate_ids: list[str], reason: str = "batch_cleanup",
-                           soft: bool = True) -> dict[str, Any]:
+
+def batch_purge_substrates(
+    substrate_ids: list[str], reason: str = "batch_cleanup", soft: bool = True, *, user_id: str
+) -> dict[str, Any]:
     """Purge multiple substrates at once.
 
     Args:
@@ -390,9 +452,9 @@ def batch_purge_substrates(substrate_ids: list[str], reason: str = "batch_cleanu
 
     for sid in substrate_ids:
         if soft:
-            r = soft_delete_substrate(sid, reason)
+            r = soft_delete_substrate(sid, reason, user_id=user_id)
         else:
-            r = hard_delete_substrate(sid, reason)
+            r = hard_delete_substrate(sid, reason, user_id=user_id)
 
         if not r["errors"]:
             aggregate["succeeded"] += 1
@@ -400,15 +462,21 @@ def batch_purge_substrates(substrate_ids: list[str], reason: str = "batch_cleanu
             aggregate["failed"] += 1
         aggregate["results"].append(r)
 
-    logger.info("batch_purge: total=%d ok=%d fail=%d",
-                aggregate["total"], aggregate["succeeded"], aggregate["failed"])
+    logger.info(
+        "batch_purge: total=%d ok=%d fail=%d",
+        aggregate["total"],
+        aggregate["succeeded"],
+        aggregate["failed"],
+    )
     return aggregate
 
 
 # ── Anchor-based Deletion ────────────────────────────────────────────────────
 
-def delete_by_anchor(anchor: str, anchor_type: str = "source_path",
-                     soft: bool = True) -> dict[str, Any]:
+
+def delete_by_anchor(
+    anchor: str, anchor_type: str = "source_path", soft: bool = True, *, user_id: str
+) -> dict[str, Any]:
     """Delete substrates matched by anchor (source_path, file_hash, or title).
 
     Args:
@@ -426,14 +494,18 @@ def delete_by_anchor(anchor: str, anchor_type: str = "source_path",
     }
     col = col_map.get(anchor_type, "source_path")
 
+    if not user_id:
+        return {"error": "forbidden"}
     with get_conn() as conn:
         rows = conn.execute(
-            f"SELECT id FROM substrates WHERE {col} = ?",
-            (anchor,),
+            f"SELECT id FROM substrates WHERE {col} = ? AND (user_id = ? OR user_id = ?)",
+            (anchor, *owner_ids(user_id)),
         ).fetchall()
 
     if not rows:
         return {"error": "no_matching_substrates", "anchor": anchor, "anchor_type": anchor_type}
 
     ids = [r[0] for r in rows]
-    return batch_purge_substrates(ids, reason=f"anchor:{anchor_type}={anchor}", soft=soft)
+    return batch_purge_substrates(
+        ids, reason=f"anchor:{anchor_type}={anchor}", soft=soft, user_id=user_id
+    )

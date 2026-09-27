@@ -5,7 +5,15 @@
 输出: md路径|substrate_id|书名   (substrate_id: 已知书保留旧id, 新书派生 econ_en_<md5前10>)
 用法: python scripts/econ_discover_en.py [--out list.txt] [--limit N] [--state state.json]
 """
-import asyncio, asyncpg, json, os, re, sys, hashlib, glob
+
+import asyncio
+import asyncpg
+import json
+import os
+import re
+import sys
+import hashlib
+import glob
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -28,9 +36,9 @@ def _sid(stem: str) -> str:
 def _is_english_book(text: str) -> tuple[bool, int]:
     """英文书判定: 中文字符占比 < 15% + 有 ≥3 个 # Chapter N 章节. 返回 (是否, 章节数)."""
     samp = text[:200000]
-    zh = len(re.findall(r'[一-鿿]', samp))
-    en = len(re.findall(r'[A-Za-z]', samp))
-    chapters = len(re.findall(r'(?m)^#\s+Chapter\s+\d+', text))
+    zh = len(re.findall(r"[一-鿿]", samp))
+    en = len(re.findall(r"[A-Za-z]", samp))
+    chapters = len(re.findall(r"(?m)^#\s+Chapter\s+\d+", text))
     is_en = (zh / max(zh + en, 1)) < 0.15
     return (is_en and chapters >= 3), chapters
 
@@ -55,13 +63,16 @@ async def _ingested(ids):
         return set()
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
     rows = await conn.fetch(
-        "SELECT substrate_id FROM aii.ingested_substrate WHERE substrate_id=ANY($1::text[]) AND ku_count>100", ids)
+        "SELECT substrate_id FROM aii.ingested_substrate WHERE substrate_id=ANY($1::text[]) AND ku_count>100",
+        ids,
+    )
     await conn.close()
     return {r["substrate_id"] for r in rows}
 
 
 async def main():
     import argparse
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=None)
     ap.add_argument("--limit", type=int, default=0)
@@ -87,7 +98,7 @@ async def main():
     if args.verbose:
         print(f"排已入库/终态后: {len(cands)} 本", file=sys.stderr)
     if args.limit > 0:
-        cands = cands[:args.limit]
+        cands = cands[: args.limit]
     lines = [f"{c['md_path']}|{c['id']}|{c['title']}" for c in cands]
     if args.out:
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)

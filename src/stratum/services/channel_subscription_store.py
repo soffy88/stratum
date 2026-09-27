@@ -1,6 +1,7 @@
 # src/stratum/services/channel_subscription_store.py
 from stratum.db import get_conn
 
+
 class SubscriptionStore:
     """实现 oservi channel_watcher 的 subscription 注入点接口。"""
 
@@ -11,7 +12,7 @@ class SubscriptionStore:
         with get_conn() as conn:
             rows = conn.execute(
                 "SELECT video_id FROM channel_processed_videos WHERE subscription_id = ?",
-                (self.subscription_id,)
+                (self.subscription_id,),
             ).fetchall()
         return {r[0] for r in rows}
 
@@ -25,5 +26,5 @@ class SubscriptionStore:
                 conn.execute(
                     "INSERT INTO channel_processed_videos (subscription_id, video_id) "
                     "VALUES (?, ?) ON CONFLICT DO NOTHING",
-                    (self.subscription_id, video_id)
+                    (self.subscription_id, video_id),
                 )

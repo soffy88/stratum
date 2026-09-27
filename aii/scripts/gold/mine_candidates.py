@@ -10,10 +10,14 @@
 不静默截断: 每路超上限时 log 丢弃数(设计红线)。
 
 用法: python mine_candidates.py [--sim 0.86] [--per-cat 120] [--disc econ,math]
-env: AII_KG_URL (默认 postgresql://aii:aii_safe_pass@localhost:5435/aii_kg)
+env: AII_KG_URL (默认 postgresql://aii:aii_safe_pass@localhost:5437/aii_kg)
 """
 
-import asyncio, json, os, re, sys
+import asyncio
+import json
+import os
+import re
+import sys
 from pathlib import Path
 
 import asyncpg
@@ -21,7 +25,7 @@ import numpy as np
 from pgvector.asyncpg import register_vector
 
 HERE = Path(__file__).parent
-KG_URL = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+KG_URL = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
 SIM = float(
     os.getenv("GOLD_SIM", sys.argv[sys.argv.index("--sim") + 1] if "--sim" in sys.argv else 0.86)
 )

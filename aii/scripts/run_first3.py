@@ -15,6 +15,7 @@ keeping the 'ku_cN_' format that cross_chunk_link's regex depends on.
 Usage:
   .venv/bin/python scripts/run_first3.py <substrate_id> <md_path> <title> <subject> [batch_chars] [concurrency]
 """
+
 import asyncio
 import json
 import os
@@ -36,18 +37,19 @@ from aii.service.onto_persist import persist_ontology_result
 from aii.service.concept_onto_ops import vectorize_and_normalize
 from obase import ProviderRegistry
 
-SCRATCH = Path("/tmp/claude-1000/-home-soffy-projects-AII/"
-               "bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad")
+SCRATCH = Path(
+    "/tmp/claude-1000/-home-soffy-projects-AII/bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad"
+)
 SCRATCH.mkdir(parents=True, exist_ok=True)
 
-_CID = re.compile(r'^ku_c(\d+)_(.+)$')
+_CID = re.compile(r"^ku_c(\d+)_(.+)$")
 
 
 def strip_frontmatter(text: str) -> str:
     if text.startswith("---"):
         end = text.find("\n---", 3)
         if end != -1:
-            return text[text.find("\n", end + 1) + 1:]
+            return text[text.find("\n", end + 1) + 1 :]
     return text
 
 
@@ -101,6 +103,7 @@ async def main():
     text = strip_frontmatter(md_path.read_text(encoding="utf-8"))
     # ★分块前剥高置信 TOC/Index/表格行(页码族, 治本: 源头不喂进抽取)
     from aii.service.structural_gate import strip_toc_index_lines
+
     text, _stripped = strip_toc_index_lines(text)
     print(f"[{substrate_id}] pre-chunk stripped {_stripped} TOC/Index/table lines", flush=True)
     batches = split_batches(text, batch_chars)
@@ -108,10 +111,14 @@ async def main():
     ckpt_path = SCRATCH / f"ckpt_{substrate_id}.json"
     ckpt = json.loads(ckpt_path.read_text()) if ckpt_path.exists() else {"done": []}
     done = set(ckpt["done"])
-    print(f"[{substrate_id}] {len(batches)} batches, {len(done)} already done, "
-          f"batch_chars={batch_chars}, concurrency={concurrency}", flush=True)
+    print(
+        f"[{substrate_id}] {len(batches)} batches, {len(done)} already done, "
+        f"batch_chars={batch_chars}, concurrency={concurrency}",
+        flush=True,
+    )
 
-    trail = Path("/tmp/onto_trails"); trail.mkdir(parents=True, exist_ok=True)
+    trail = Path("/tmp/onto_trails")
+    trail.mkdir(parents=True, exist_ok=True)
     sem = asyncio.Semaphore(concurrency)
     persist_lock = asyncio.Lock()
     fails = []
@@ -120,10 +127,16 @@ async def main():
         async with sem:
             try:
                 result = await ontology_extract(
-                    source_text=btext, llm=llm, doc_type=doc_type, source_credibility="high",
-                    pass1_chunk_tmpl=P.PASS1_CHUNK_TMPL, pass1_chunk_system=P.PASS1_CHUNK_SYSTEM,
-                    pass1_outline_tmpl=P.PASS1_OUTLINE_TMPL, pass1_outline_system=P.PASS1_OUTLINE_SYSTEM,
-                    pass2_chunk_tmpl=P.PASS2_CHUNK_TMPL, pass2_system=P.PASS2_SYSTEM,
+                    source_text=btext,
+                    llm=llm,
+                    doc_type=doc_type,
+                    source_credibility="high",
+                    pass1_chunk_tmpl=P.PASS1_CHUNK_TMPL,
+                    pass1_chunk_system=P.PASS1_CHUNK_SYSTEM,
+                    pass1_outline_tmpl=P.PASS1_OUTLINE_TMPL,
+                    pass1_outline_system=P.PASS1_OUTLINE_SYSTEM,
+                    pass2_chunk_tmpl=P.PASS2_CHUNK_TMPL,
+                    pass2_system=P.PASS2_SYSTEM,
                     valid_knowledge_types=V.VALID_KNOWLEDGE_TYPES,
                     valid_sub_types=V.VALID_SUB_TYPES,
                     valid_relation_types=V.VALID_RELATION_TYPES,
@@ -136,12 +149,19 @@ async def main():
             async with persist_lock:  # serialize DB writes (concept upsert races)
                 try:
                     ps = await persist_ontology_result(
-                        dsn=backend.dsn, substrate_id=substrate_id, result=result,
-                        trail_dir=trail, backend=backend)
+                        dsn=backend.dsn,
+                        substrate_id=substrate_id,
+                        result=result,
+                        trail_dir=trail,
+                        backend=backend,
+                    )
                     done.add(bi)
                     ckpt_path.write_text(json.dumps({"done": sorted(done)}))
-                    print(f"  batch {bi}: +{ps.get('registered',0)} KU "
-                          f"(rej {ps.get('rejected',0)}) [{len(done)}/{len(batches)}]", flush=True)
+                    print(
+                        f"  batch {bi}: +{ps.get('registered', 0)} KU "
+                        f"(rej {ps.get('rejected', 0)}) [{len(done)}/{len(batches)}]",
+                        flush=True,
+                    )
                 except Exception as e:
                     fails.append((bi, f"persist: {e}"))
                     print(f"  batch {bi} PERSIST FAIL: {e}", flush=True)
@@ -154,9 +174,11 @@ async def main():
         conn = await asyncpg.connect(backend.dsn)
         try:
             from pgvector.asyncpg import register_vector
+
             await register_vector(conn)
             norm = await vectorize_and_normalize(
-                conn, llm, substrate_id=substrate_id, discipline=(subject or "general"))
+                conn, llm, substrate_id=substrate_id, discipline=(subject or "general")
+            )
         finally:
             await conn.close()
 
@@ -165,7 +187,9 @@ async def main():
     n = await conn.fetchval("SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", substrate_id)
     nz = await conn.fetchval(
         "SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1 AND natural_text_zh IS NOT NULL "
-        "AND natural_text_zh<>''", substrate_id)
+        "AND natural_text_zh<>''",
+        substrate_id,
+    )
     await conn.close()
     print(f"\nDONE {substrate_id}: KU={n} zh={nz} normalize={norm} fails={len(fails)}", flush=True)
     if fails:

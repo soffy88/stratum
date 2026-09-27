@@ -4,16 +4,31 @@
 
 收录经济/数学之外、有章节结构的教材(心理/哲学/科普等)。
 substrate_id: 中文→edu_zh_<hash>,英文→edu_en_<hash>。
-用法: python scripts/misc_discover.py [--out list.txt] [--limit N] [--state state.json]
+用法: python scripts/edu_discover.py [--out list.txt] [--limit N] [--state state.json]
 """
 
-import asyncio, asyncpg, json, os, re, sys, hashlib, glob
+import asyncio
+import asyncpg
+import json
+import os
+import re
+import sys
+import hashlib
+import glob
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
+# 发现器会延迟导入 chapter_ingest，而其依赖位于仓库内的 aii/ 包。
+# 不依赖外部 PYTHONPATH，保证裸 python3 手工恢复与 systemd/.venv 行为一致。
+sys.path.insert(0, str(ROOT / "aii"))
 load_dotenv(ROOT / "aii" / ".env", override=True)
-MISC_DIR = "/home/soffy/books/MD/教辅"
+MISC_DIRS = [
+    str(p)
+    for p in (ROOT / "gdrive_staging" / "MD" / "教辅", Path("/home/soffy/books/MD/教辅"))
+    if p.exists()
+]
 
 
 def _is_chinese(text: str) -> bool:
@@ -34,16 +49,29 @@ def _chapters(text: str) -> int:
     # 之前这里自带窄正则, OpenStax 等"N.M 小节编号"排版的书(拉书回流的主要产物)数出
     # 0 章被永久静默跳过——书进了池没人捡, 最后一公里断在这。
     from chapter_ingest import chapter_starts
+
     return len(chapter_starts(text))
 
 
 def discover() -> list[dict]:
     # ★2026-08-10 非教材预筛: 夸克大量拉入励志/文学/传记(有3+章但无KU密度),
     #   misc 啃它们 0 产出白烧算力。确定性黑名单词直接跳过(保守, 只过滤极明显的)。
-    _SKIP_WORDS = ("创业", "情商", "成功学", "散文", "小说", "漫画", "随笔",
-                   "传记", "精选", "合集", "情商课", "励志")
+    _SKIP_WORDS = (
+        "创业",
+        "情商",
+        "成功学",
+        "散文",
+        "小说",
+        "漫画",
+        "随笔",
+        "传记",
+        "精选",
+        "合集",
+        "情商课",
+        "励志",
+    )
     out = []
-    for md in sorted(glob.glob(f"{MISC_DIR}/*.md")):
+    for md in sorted(path for root in MISC_DIRS for path in glob.glob(f"{root}/*.md")):
         stem = Path(md).stem
         if any(w in stem for w in _SKIP_WORDS):
             continue
@@ -63,11 +91,35 @@ async def _ingested(ids):
         return set()
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
     rows = await conn.fetch(
-        "SELECT substrate_id FROM aii.ingested_substrate WHERE substrate_id=ANY($1::text[])",
+        # 仅把真正有 KU 的书视为已处理；预检/质量门失败或旧版本的
+        # 半成品登记不能让 0-KU 教辅永久消失。
+        "SELECT substrate_id FROM aii.ingested_substrate "
+        "WHERE substrate_id=ANY($1::text[]) AND deep_understood_at IS NOT NULL "
+        "AND EXISTS (SELECT 1 FROM aii.ku_onto k WHERE k.substrate_id=ingested_substrate.substrate_id)",
         ids,
     )
     await conn.close()
     return {r["substrate_id"] for r in rows}
+
+
+def _state_blocks(entry: dict) -> bool:
+    """Retry old transient quarantines; do not make a timeout permanent."""
+    status = (entry or {}).get("status", "")
+    if status in {"precheck_fail", "skip"}:
+        return True
+    if status != "quarantine":
+        return False
+    stamp = (entry or {}).get("ts")
+    if not stamp:
+        return False
+    try:
+        when = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        cooldown = int(os.getenv("AII_QUARANTINE_RETRY_MINUTES", "30"))
+        return datetime.now(timezone.utc) - when < timedelta(minutes=max(0, cooldown))
+    except (TypeError, ValueError, OverflowError):
+        return False
 
 
 async def main():
@@ -82,15 +134,14 @@ async def main():
 
     cands = discover()
     if args.verbose:
-        print(f"其它书候选: {len(cands)} 本", file=sys.stderr)
+        print(f"教辅书候选: {len(cands)} 本", file=sys.stderr)
     state = {"processed": {}}
     if Path(args.state).exists():
         try:
             state = json.loads(Path(args.state).read_text(encoding="utf-8"))
         except Exception:
             pass
-    done = {"ingested", "precheck_fail", "quarantine", "skip"}
-    cands = [c for c in cands if state["processed"].get(c["id"], {}).get("status") not in done]
+    cands = [c for c in cands if not _state_blocks(state["processed"].get(c["id"], {}))]
     ing = await _ingested([c["id"] for c in cands])
     cands = [c for c in cands if c["id"] not in ing]
     if args.verbose:

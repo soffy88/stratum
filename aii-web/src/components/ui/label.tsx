@@ -1,7 +1,7 @@
 import { forwardRef, LabelHTMLAttributes } from 'react';
 import { clsx } from 'clsx';
 
-export interface LabelProps extends LabelHTMLAttributes<HTMLLabelElement> {}
+export type LabelProps = LabelHTMLAttributes<HTMLLabelElement>;
 
 export const Label = forwardRef<HTMLLabelElement, LabelProps>(
   ({ className, ...props }, ref) => (

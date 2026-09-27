@@ -40,11 +40,6 @@ export function ArxivSubscribeDialog({ open, onClose }: { open: boolean; onClose
     );
   };
 
-  const allCategories = [
-    ...selectedCats.filter(c => !PRESET_CATEGORIES.find(p => p.id === c)),
-    ...selectedCats,
-  ];
-
   const handleSubmit = async () => {
     const cats = [
       ...selectedCats,

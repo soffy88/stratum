@@ -1,9 +1,13 @@
 """对照实验: 同一文本, chunk_size=2000(小块A) vs 11000(大块B单块). 同 prompt/flash, 只变块大小.
 测: 数量 / 六分类 / KU 内容 / 位置分布(begin-mid-end, 验 lost-in-the-middle)."""
-import asyncio, os, re, statistics
+
+import asyncio
+import re
+import statistics
 from pathlib import Path
 from collections import Counter
 from dotenv import load_dotenv
+
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 from aii.api._provider import register_providers
@@ -14,11 +18,18 @@ from obase import ProviderRegistry
 SC = "/tmp/claude-1000/-home-soffy-projects-AII/bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad"
 SECTION = Path(SC + "/exp_section.md").read_text(encoding="utf-8")
 PROMPTS = dict(
-    pass1_chunk_tmpl=P.PASS1_CHUNK_TMPL, pass1_chunk_system=P.PASS1_CHUNK_SYSTEM,
-    pass1_outline_tmpl=P.PASS1_OUTLINE_TMPL, pass1_outline_system=P.PASS1_OUTLINE_SYSTEM,
-    pass2_chunk_tmpl=P.PASS2_CHUNK_TMPL, pass2_system=P.PASS2_SYSTEM,
-    valid_knowledge_types=V.VALID_KNOWLEDGE_TYPES, valid_sub_types=V.VALID_SUB_TYPES,
-    valid_relation_types=V.VALID_RELATION_TYPES, doc_type="textbook", source_credibility="high")
+    pass1_chunk_tmpl=P.PASS1_CHUNK_TMPL,
+    pass1_chunk_system=P.PASS1_CHUNK_SYSTEM,
+    pass1_outline_tmpl=P.PASS1_OUTLINE_TMPL,
+    pass1_outline_system=P.PASS1_OUTLINE_SYSTEM,
+    pass2_chunk_tmpl=P.PASS2_CHUNK_TMPL,
+    pass2_system=P.PASS2_SYSTEM,
+    valid_knowledge_types=V.VALID_KNOWLEDGE_TYPES,
+    valid_sub_types=V.VALID_SUB_TYPES,
+    valid_relation_types=V.VALID_RELATION_TYPES,
+    doc_type="textbook",
+    source_credibility="high",
+)
 
 _low = SECTION.lower()
 _L = len(SECTION)
@@ -37,6 +48,7 @@ def position_third(content: str) -> str:
 async def run(chunk_size):
     llm = ProviderRegistry.get().llm("default")
     from oskill import ontology_extract
+
     return await ontology_extract(source_text=SECTION, llm=llm, chunk_size=chunk_size, **PROMPTS)
 
 
@@ -48,11 +60,20 @@ async def main():
         kus = r.ku_candidates
         thirds = Counter(position_third(k.get("content", "")) for k in kus)
         print(f"===== {label} =====", flush=True)
-        print(f"KU count = {len(kus)} | by_type = {dict(Counter(k.get('knowledge_type') for k in kus))}", flush=True)
-        print(f"position distribution: {dict(thirds)}  (begin/mid/end thirds of the section)", flush=True)
+        print(
+            f"KU count = {len(kus)} | by_type = {dict(Counter(k.get('knowledge_type') for k in kus))}",
+            flush=True,
+        )
+        print(
+            f"position distribution: {dict(thirds)}  (begin/mid/end thirds of the section)",
+            flush=True,
+        )
         print("--- KU titles (content[:75]) ---", flush=True)
         for k in kus:
-            print(f"  [{position_third(k.get('content','')):5}] {k.get('content','')[:75]}", flush=True)
+            print(
+                f"  [{position_third(k.get('content', '')):5}] {k.get('content', '')[:75]}",
+                flush=True,
+            )
         print(flush=True)
 
 

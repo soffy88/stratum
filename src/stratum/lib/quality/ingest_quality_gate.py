@@ -9,6 +9,7 @@
   quarantine (md_empty / md_too_short)
   ok                          ← 全部通过
 """
+
 from __future__ import annotations
 
 import logging
@@ -30,8 +31,7 @@ def run_quality_gate(substrate_id: str) -> dict:
     """
     with get_conn() as conn:
         row = conn.execute(
-            "SELECT source_path, mime, title, parse_quality"
-            " FROM substrates WHERE id = ?",
+            "SELECT source_path, mime, title, parse_quality FROM substrates WHERE id = ?",
             (substrate_id,),
         ).fetchone()
 

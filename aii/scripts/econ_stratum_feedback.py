@@ -11,7 +11,9 @@ Usage:
   echo '[{"id":"xxx","title":"...","md_path":"...","reason":"FAIL:..."}]' \
     | python scripts/econ_stratum_feedback.py --batch
 """
-import json, sys
+
+import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -59,15 +61,17 @@ def add_entry(substrate_id: str, title: str, md_path: str, reason: str) -> None:
 
     # 去重: 同 substrate_id 只保留最新
     queue["items"] = [x for x in queue["items"] if x.get("substrate_id") != substrate_id]
-    queue["items"].append({
-        "substrate_id": substrate_id,
-        "file": Path(md_path).name,
-        "title": title[:200],
-        "failures": _parse_failures(reason),
-        "requested_at": datetime.now(timezone.utc).isoformat(),
-        "status": "pending",
-        "spec_ref": SPEC_REF,
-    })
+    queue["items"].append(
+        {
+            "substrate_id": substrate_id,
+            "file": Path(md_path).name,
+            "title": title[:200],
+            "failures": _parse_failures(reason),
+            "requested_at": datetime.now(timezone.utc).isoformat(),
+            "status": "pending",
+            "spec_ref": SPEC_REF,
+        }
+    )
     queue["last_updated"] = datetime.now(timezone.utc).isoformat()
     queue["pending_count"] = sum(1 for x in queue["items"] if x.get("status") == "pending")
 
@@ -83,8 +87,10 @@ def main():
         return
 
     if len(sys.argv) < 5:
-        print("Usage: econ_stratum_feedback.py <substrate_id> <title> <md_path> <fail_reason>",
-              file=sys.stderr)
+        print(
+            "Usage: econ_stratum_feedback.py <substrate_id> <title> <md_path> <fail_reason>",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     _, substrate_id, title, md_path, reason = sys.argv[:5]

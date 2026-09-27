@@ -5,16 +5,14 @@ from aii.service.synthesis_engine import SynthesisEngine
 
 router = APIRouter()
 
+
 @router.post("/chat")
-async def chat(
-    message: str = Body(..., embed=True),
-    top_k: int = Body(5)
-):
+async def chat(message: str = Body(..., embed=True), top_k: int = Body(5)):
     engine = SynthesisEngine(backend=backend)
     try:
-        # Note: SynthesisEngine.chat currently doesn't take top_k in its signature 
+        # Note: SynthesisEngine.chat currently doesn't take top_k in its signature
         # in the file I read, but the user request implies we might want to control it.
-        # Since the engine handles search internally with a fixed limit=3, 
+        # Since the engine handles search internally with a fixed limit=3,
         # I'll stick to what the engine provides for now.
         res = await engine.chat(message)
         return success_response(res)

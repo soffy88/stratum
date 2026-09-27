@@ -1,6 +1,8 @@
 import asyncio
+import ast
 import hashlib
 import logging
+import re
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -8,6 +10,46 @@ log = logging.getLogger(__name__)
 SUPPORTED_EXTENSIONS = {".pdf", ".epub", ".md", ".txt"}
 SCAN_INTERVAL_SECONDS = 300
 MAX_FILE_SIZE_MB = 100  # 超过 100MB 跳过
+_ULID_RE = re.compile(r"[0-9A-Z]{26}")
+
+
+def _extract_id(raw: object) -> str | None:
+    """Normalize a plain ULID or an ``IngestResult`` repr to a substrate ID."""
+    value = str(raw) if raw is not None else ""
+    if _ULID_RE.fullmatch(value):
+        return value
+    match = _ULID_RE.search(value)
+    return match.group(0) if match else None
+
+
+def _fill_derivative_content(substrate_id: str, findings: object) -> None:
+    """Persist parser output without importing the HTTP inbox router."""
+    from stratum.db import execute as db_execute
+
+    for item in getattr(findings, "derivative_ids", None) or []:
+        try:
+            derivative = ast.literal_eval(item) if isinstance(item, str) else item
+        except (ValueError, SyntaxError):
+            log.warning("folder_watcher: invalid derivative payload sid=%s", substrate_id)
+            continue
+        if not isinstance(derivative, dict):
+            continue
+        for kind, content in derivative.items():
+            if not content or not isinstance(content, str):
+                continue
+            try:
+                db_execute(
+                    "UPDATE derivative SET content = $content "
+                    "WHERE substrate_id = $sid AND kind = $kind",
+                    {"content": content, "sid": substrate_id, "kind": kind},
+                )
+            except Exception as exc:
+                log.warning(
+                    "folder_watcher: derivative update failed sid=%s kind=%s error=%s",
+                    substrate_id,
+                    kind,
+                    exc,
+                )
 
 
 def _file_hash_sync(path: Path) -> str:
@@ -86,11 +128,6 @@ async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
                     if result.get("status") == "completed":
                         findings = result.get("findings")
                         if findings:
-                            from stratum.api.routers.inbox import (
-                                _fill_derivative_content,
-                                _extract_id,
-                            )
-
                             sid = _extract_id(findings.substrate_id)
                             if sid:
                                 _fill_derivative_content(sid, findings)
@@ -108,7 +145,10 @@ async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
                                     export_one(_sid)
                                     # Phase 1: Generate L0/L1 layers
                                     try:
-                                        from stratum.services.layer_generator import generate_substrate_layers
+                                        from stratum.services.layer_generator import (
+                                            generate_substrate_layers,
+                                        )
+
                                         with get_conn() as _c:
                                             _row = _c.execute(
                                                 "SELECT title FROM substrates WHERE id=?", (_sid,)
@@ -116,10 +156,15 @@ async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
                                         _title = _row[0] if _row else None
                                         generate_substrate_layers(_sid, title=_title, content=None)
                                     except Exception:
-                                        log.warning("folder_watcher: layer generation failed sid=%s", _sid)
+                                        log.warning(
+                                            "folder_watcher: layer generation failed sid=%s", _sid
+                                        )
                                     # Phase 2: Register in directory tree
                                     try:
-                                        from stratum.services.directory_builder import register_substrate
+                                        from stratum.services.directory_builder import (
+                                            register_substrate,
+                                        )
+
                                         with get_conn() as _c:
                                             _row = _c.execute(
                                                 "SELECT title, COALESCE(meta_json->>'discipline', '') FROM substrates WHERE id=?",
@@ -139,7 +184,10 @@ async def _scan_one_watch(watch_id: str, user_id_raw: str, path_str: str):
                                                     _l0 = _l0_row[0]
                                             register_substrate(_sid, _title, _disc, _l0)
                                     except Exception:
-                                        log.warning("folder_watcher: directory registration failed sid=%s", _sid)
+                                        log.warning(
+                                            "folder_watcher: directory registration failed sid=%s",
+                                            _sid,
+                                        )
                         ingested += 1
                         log.info("folder_watcher: ingested %s", f.name)
                     else:

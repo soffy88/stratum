@@ -14,13 +14,13 @@ export PATH="$HOME/.local/bin:$PATH"
 : "${RCLONE_PROXY=http://127.0.0.1:7890}"
 if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
   export HTTPS_PROXY="${RCLONE_PROXY}" HTTP_PROXY="${RCLONE_PROXY}"
-  export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+  export NO_PROXY="localhost,127.0.0.1,192.168.80.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
   export no_proxy="${NO_PROXY}"
 fi
 
 RCLONE_REMOTE="${RCLONE_REMOTE:-gdrive}"
 DEST="${DEST:-/home/soffy/books/其它}"
-SUBFOLDERS=(哲学 社科心理 科学 量化与AI all)
+SUBFOLDERS=(哲学 社科心理 科学 量化与AI 其它 all)
 
 command -v rclone >/dev/null || { echo "[misc_drive_sync] rclone 未安装 (~/.local/bin/rclone)"; exit 1; }
 if ! rclone listremotes 2>/dev/null | grep -qx "${RCLONE_REMOTE}:"; then
@@ -30,7 +30,9 @@ fi
 
 mkdir -p "${DEST}"
 
-FLAGS=(--include "*.pdf" --include "*.epub")
+# 大目录先一次性列举，避免默认逐页列举在 GDrive 上超过飞轮单轮预算。
+RCLONE_MAX_TRANSFER="${RCLONE_MAX_TRANSFER:-256M}"
+FLAGS=(--fast-list --transfers 8 --checkers 8 --max-transfer "$RCLONE_MAX_TRANSFER" --cutoff-mode SOFT --include "*.pdf" --include "*.epub")
 for sub in "${SUBFOLDERS[@]}"; do
   if [ "${DRIVE_DRY:-0}" = "1" ]; then
     echo "[misc_drive_sync] DRY(${sub}): 将要拉取的新文件:"

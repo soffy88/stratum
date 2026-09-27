@@ -1,8 +1,6 @@
 """Tests for Wave 5 REST API routes + corpus isolation — §7.3."""
 
 import pytest
-import json
-from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
@@ -102,7 +100,9 @@ def test_search_returns_results(app_client, users):
     ]
     try:
         with patch(
-            "stratum.service.search.hybrid_search", new_callable=AsyncMock, return_value=mock_results
+            "stratum.service.search.hybrid_search",
+            new_callable=AsyncMock,
+            return_value=mock_results,
         ):
             r = client.post("/api/search", json={"query": "Machine"}, headers=_h(a))
     finally:

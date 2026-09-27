@@ -8,6 +8,7 @@ extraction_method 诚实标注 'legacy_ingest'。零 LLM, 幂等(已填跳过)�
 用法:
     .venv/bin/python scripts/backfill_grounded_by.py [--dry-run] [--limit N]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,7 +21,7 @@ import asyncpg
 
 from ku_schema import build_grounded_by, ku_fingerprint, parse_chapter_anchor
 
-DSN = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+DSN = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
 
 
 async def main() -> int:
@@ -33,8 +34,7 @@ async def main() -> int:
     rows = await conn.fetch(
         "SELECT ku_id, substrate_id, natural_text FROM aii.ku_onto"
         " WHERE grounded_by IS NULL OR grounded_by->>'method' = 'default'"
-        " ORDER BY created_at"
-        + (" LIMIT $1" if args.limit else ""),
+        " ORDER BY created_at" + (" LIMIT $1" if args.limit else ""),
         *([args.limit] if args.limit else []),
     )
     print(f"待补填: {len(rows)} 条", flush=True)
@@ -43,7 +43,8 @@ async def main() -> int:
     for r in rows:
         ch = parse_chapter_anchor(r["ku_id"])
         packet = build_grounded_by(
-            r["substrate_id"], ch,
+            r["substrate_id"],
+            ch,
             parser_version="legacy",
             extraction_method="legacy_ingest",
         )
@@ -54,7 +55,9 @@ async def main() -> int:
         await conn.execute(
             "UPDATE aii.ku_onto SET grounded_by=$1, fingerprint=$2, updated_at=now()"
             " WHERE ku_id=$3",
-            json.dumps(packet, ensure_ascii=False), fp, r["ku_id"],
+            json.dumps(packet, ensure_ascii=False),
+            fp,
+            r["ku_id"],
         )
         ok += 1
         if ok % 5000 == 0:

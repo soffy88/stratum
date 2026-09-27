@@ -19,14 +19,16 @@ import '@react-pdf-viewer/highlight/lib/styles/index.css';
 import {
   listHighlightsByDocument, createHighlight, updateHighlight, type Highlight, type PdfLocation,
 } from '@/lib/highlights';
+import { recordReaderAction, type ReaderAction } from '@/lib/interactions';
 
-const COLORS = ['yellow', 'green', 'blue', 'red'];
+const COLORS = ['yellow', 'green', 'blue', 'red'] as const;
 
 function HighlightTargetPopup({ props, onSave }: {
   props: RenderHighlightTargetProps;
-  onSave: (p: RenderHighlightTargetProps, color: string, note: string) => void;
+  onSave: (p: RenderHighlightTargetProps, color: string, note: string, action?: ReaderAction) => void;
 }) {
   const [note, setNote] = useState('');
+  const [color, setColor] = useState<(typeof COLORS)[number]>(COLORS[0]);
   return (
     <div
       className="flex flex-col gap-2 p-2 rounded-lg shadow-lg bg-background border min-w-44"
@@ -39,8 +41,8 @@ function HighlightTargetPopup({ props, onSave }: {
     >
       <div className="flex gap-1 justify-center">
         {COLORS.map(c => (
-          <button key={c} onClick={() => onSave(props, c, note)} aria-label={`高亮 ${c}`}
-            className="w-6 h-6 rounded-full border hover:scale-110 transition-transform"
+          <button key={c} onClick={() => setColor(c)} aria-label={`高亮 ${c}`}
+            className={`w-6 h-6 rounded-full border hover:scale-110 transition-transform ${color === c ? 'ring-2 ring-primary' : ''}`}
             style={{ background: c }} />
         ))}
       </div>
@@ -52,6 +54,20 @@ function HighlightTargetPopup({ props, onSave }: {
         rows={2}
         onMouseDown={e => e.stopPropagation()}
       />
+      <button onClick={() => onSave(props, color, note)}
+        className="text-xs bg-primary text-primary-foreground rounded px-2 py-1">
+        保存高亮
+      </button>
+      <div className="flex gap-1 justify-between border-t pt-2">
+        <button onClick={() => onSave(props, color, note, 'important')}
+          className="text-xs px-1.5 py-1 rounded border" aria-label="标记重要">重要</button>
+        <button onClick={() => onSave(props, color, note, 'question')}
+          disabled={!note.trim()} className="text-xs px-1.5 py-1 rounded border disabled:opacity-40"
+          aria-label="标记问题">问题</button>
+        <button onClick={() => onSave(props, color, note, 'contradict')}
+          disabled={!note.trim()} className="text-xs px-1.5 py-1 rounded border disabled:opacity-40"
+          aria-label="标记矛盾">矛盾</button>
+      </div>
     </div>
   );
 }
@@ -102,7 +118,12 @@ export function PdfReader({ blobUrl, documentId, fullHeight }: { blobUrl: string
 
   useEffect(() => { reload(); }, [reload]);
 
-  const save = async (props: RenderHighlightTargetProps, color: string, note: string) => {
+  const save = async (
+    props: RenderHighlightTargetProps,
+    color: string,
+    note: string,
+    action?: ReaderAction,
+  ) => {
     const loc: PdfLocation = {
       page: props.highlightAreas[0]?.pageIndex,
       rects: props.highlightAreas.map(a => ({
@@ -114,6 +135,9 @@ export function PdfReader({ blobUrl, documentId, fullHeight }: { blobUrl: string
         substrate_id: documentId, color, text: props.selectedText,
         note: note || undefined, location_json: loc,
       });
+      if (action) {
+        try { await recordReaderAction(documentId, action, note); } catch { /* 高亮已保存 */ }
+      }
       props.cancel();
       reload();
     } catch { /* 保存失败保持选区 */ }

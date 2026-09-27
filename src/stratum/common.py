@@ -96,6 +96,15 @@ _JWT_SECRET = os.environ.get("JWT_SECRET", "")
 _JWT_ALGORITHM = "HS256"
 
 
+def _jwt_secrets() -> tuple[str, ...]:
+    raw = os.environ.get("JWT_SECRETS", "")
+    keys = [item.strip() for item in raw.split(",") if item.strip()]
+    legacy = os.environ.get("JWT_SECRET", "").strip() or _JWT_SECRET
+    if legacy and legacy not in keys:
+        keys.append(legacy)
+    return tuple(keys)
+
+
 def create_token(user_id: str, expires_hours: int = 168) -> str:
     import jwt
 
@@ -104,8 +113,10 @@ def create_token(user_id: str, expires_hours: int = 168) -> str:
         "iat": int(time.time()),
         "exp": int(time.time()) + expires_hours * 3600,
     }
-    secret = _JWT_SECRET or os.environ.get("JWT_SECRET", "")
-    return jwt.encode(payload, secret, algorithm=_JWT_ALGORITHM)
+    secrets = _jwt_secrets()
+    if not secrets:
+        raise RuntimeError("JWT_SECRET or JWT_SECRETS not set")
+    return jwt.encode(payload, secrets[0], algorithm=_JWT_ALGORITHM)
 
 
 def verify_token(token: str) -> str:
@@ -115,14 +126,18 @@ def verify_token(token: str) -> str:
     raw = token.removeprefix("Bearer ").strip()
     if not raw:
         raise HTTPException(401, "Missing token")
-    secret = _JWT_SECRET or os.environ.get("JWT_SECRET", "")
-    try:
-        payload = _jwt.decode(raw, secret, algorithms=[_JWT_ALGORITHM])
-        return payload["sub"]
-    except _jwt.ExpiredSignatureError:
+    expired = False
+    for secret in _jwt_secrets():
+        try:
+            payload = _jwt.decode(raw, secret, algorithms=[_JWT_ALGORITHM])
+            return payload["sub"]
+        except _jwt.ExpiredSignatureError:
+            expired = True
+        except _jwt.InvalidTokenError:
+            continue
+    if expired:
         raise HTTPException(401, "Token expired")
-    except _jwt.InvalidTokenError:
-        raise HTTPException(401, "Invalid token")
+    raise HTTPException(401, "Invalid token")
 
 
 async def jwt_auth(request: Request) -> str:

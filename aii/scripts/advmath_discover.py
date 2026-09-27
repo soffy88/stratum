@@ -7,7 +7,14 @@ substrate_id: 中文→advmath_zh_<hash>, 英文→advmath_en_<hash>。
 用法: python scripts/advmath_discover.py [--out list.txt] [--limit N] [--state state.json]
 """
 
-import asyncio, asyncpg, json, os, re, sys, hashlib, glob
+import asyncio
+import asyncpg
+import json
+import os
+import re
+import sys
+import hashlib
+import glob
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -16,7 +23,17 @@ load_dotenv(ROOT / "aii" / ".env", override=True)
 sys.path.insert(0, str(ROOT / "scripts"))
 from chapter_ingest import chapter_numbers
 
-ADVMATH_DIR = "/mnt/d/books/高级数学经济专用"
+ADVMATH_DIRS = [
+    str(p)
+    for p in (
+        Path("/mnt/d/books/高级数学经济专用"),
+        ROOT / "gdrive_staging" / "MD" / "中文数学",
+        ROOT / "gdrive_staging" / "MD" / "英文数学",
+        Path("/home/soffy/books/MD/中文数学"),
+        Path("/home/soffy/books/MD/英文数学"),
+    )
+    if p.exists()
+]
 
 
 def _is_chinese(text: str) -> bool:
@@ -33,7 +50,7 @@ def _sid(stem: str, text: str) -> str:
 
 def discover() -> list[dict]:
     out = []
-    for md in sorted(glob.glob(f"{ADVMATH_DIR}/*.md")):
+    for md in sorted(path for root in ADVMATH_DIRS for path in glob.glob(f"{root}/*.md")):
         stem = Path(md).stem
         try:
             text = open(md, encoding="utf-8", errors="replace").read()

@@ -8,18 +8,20 @@
 #   规划审核+质检共用同一个独立key(math_prog_verify), 无key则两步都fail-open跳过.
 set -uo pipefail
 cd "$(dirname "$0")/.."
+# systemd --user 不会把 ~/.local/bin 放进 PATH；成功入库后的源 MD 归档需要 rclone。
+export PATH="$HOME/.local/bin:$PATH"
 : "${RCLONE_PROXY=http://127.0.0.1:7890}"
 if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
   export HTTPS_PROXY="${RCLONE_PROXY}" HTTP_PROXY="${RCLONE_PROXY}"
-  export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+  export NO_PROXY="localhost,127.0.0.1,192.168.80.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
   export no_proxy="${NO_PROXY}"
 fi
 PY=.venv/bin/python
-export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
+export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5437/aii_kg}"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1   # 用本地缓存 BGE-M3, 不连 huggingface
 # ★嵌入走共享 aii-embed 微服务(笔记本GPU); 不可用时走本地 BGE-M3(CPU, 慢但可用)
-if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://100.119.113.90:8102}/health" >/dev/null 2>&1; then
-  export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"
+if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://127.0.0.1:8102}/health" >/dev/null 2>&1; then
+  export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"
   echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
 else
   unset AII_EMBED_URL
@@ -38,7 +40,10 @@ for k in ('math_prog_verify', 'advmath_verify', 'math_zh', 'math_en'):
     if d.get(k):
         print(d[k]); break
 " 2>/dev/null)"
-export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
+export NIM_MODEL="${NIM_MODEL:-deepseek-ai/deepseek-v4-flash-0731}"
+# ★统一模型链: opencodex(10100) gpt-5.6-luna 主, NIM fallback
+export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://192.168.80.1:8791/v1/chat/completions}"  # ★2026-08-27 切 Veya(10100僵死)
+export OPENCODE_MODEL="${OPENCODE_MODEL:-gpt-5.6-luna}"
 export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));ks=[d.get(k) for k in ('econ_zh','math_en','advmath_verify','econ','math_zh','advmath_2','advmath_3')];print(','.join(x for x in ks if x))" 2>/dev/null)"
 STAGING_BASE="scripts/_staging/math_prog"
 MIN_KU="${MATH_PROG_MIN_KU:-30}"        # DB 已有 >MIN_KU 视为已 B 过(小书靠下面的 .done 标记判断)
@@ -46,11 +51,19 @@ MIN_KU="${MATH_PROG_MIN_KU:-30}"        # DB 已有 >MIN_KU 视为已 B 过(小�
 # ★主动拉料: 别等 feeder 独立时钟才有新书: D盘同步+本地PDF转换+stratum分类一次做全
 # (flock 防和其他飞轮/feeder撞车挪同一文件)
 mkdir -p .locks
-flock -w 120 .locks/classify_md.lock -c "timeout 600 bash scripts/pull_ingest.sh" || true
+flock -n .locks/classify_md.lock -c "timeout --kill-after=30s 600 bash scripts/pull_ingest.sh" >> .logs/pull_ingest.out 2>&1 &
+    disown || true
 
 echo "════ 数学程序化飞轮 B (0 LLM) $(date '+%Y-%m-%d %H:%M') ════"
 processed=0
-for f in /home/soffy/books/MD/英文数学/*.md /home/soffy/books/MD/中文数学/*.md; do
+# GDrive 源挂载是只读的；pull_ingest 在挂载模式会把新转换结果写到本地
+# gdrive_staging/MD。两处都扫，否则新书永远停在 staging，数学 B 飞轮固定 0 增长。
+STAGING_MD_ROOT="${AII_STAGING_MD_ROOT:-$PWD/gdrive_staging/MD}"
+for f in \
+    /home/soffy/books/MD/英文数学/*.md \
+    /home/soffy/books/MD/中文数学/*.md \
+    "$STAGING_MD_ROOT/英文数学"/*.md \
+    "$STAGING_MD_ROOT/中文数学"/*.md; do
     [ -f "$f" ] || continue
     # ★门禁: 数学密度/章节结构够≠能被B范式抽取(靠MARK正则找带编号的"定理N/定义N").
     # 叙事类数学科普书从不编号, 抽出0KU白跑一轮; 不可抽的直接挪 其它/ 给misc飞轮接手.
@@ -69,17 +82,38 @@ for f in /home/soffy/books/MD/英文数学/*.md /home/soffy/books/MD/中文数�
         echo "  ⏭ 粘连超阈值, 跳过并已反馈 Stratum: $stem"
         continue
     fi
-    # ★已成功入库过的标记(即便书本身 KU 数<MIN_KU, 也不再永远重跑, 见下方 .done 写入)
-    [ -f "$STAGING_BASE/$sub/.done" ] && continue
+    # ★已成功入库过的标记(即便书本身 KU 数<MIN_KU, 也不再永远重跑)。
+    # 但旧版本曾把 ok=0/err=0 的空结果也标成 .done，导致“KU=0 永久跳过”。
+    # 先查库再判断标记：有实际 KU 才允许终态；0 KU 的旧标记自动重试。
     cnt=$(docker exec aii-postgres psql -U aii -d aii_kg -tAc \
           "SELECT count(*) FROM aii.ku_onto WHERE substrate_id='$sub'" 2>/dev/null | tr -d '[:space:]')
+    source_sig=$(stat -c '%s:%Y' "$f" 2>/dev/null || echo unknown)
+    if [ -f "$STAGING_BASE/$sub/.done" ] && [ "${cnt:-0}" -gt 0 ]; then
+        continue
+    fi
+    if [ -f "$STAGING_BASE/$sub/.done" ] && [ "${cnt:-0}" -eq 0 ]; then
+        echo "  ♻ 发现陈旧空 .done($sub, KU=0)，本轮重试抽取"
+    fi
+    # 结构门通过但程序抽取结果为 0 的源，通常是“有数学文本、无可识别编号
+    # 标记”或上游章节切坏。不能让它每 120 秒重复一次同样的 0 KU；同时也
+    # 不能伪造 .done 把它永久当成已入库。按源文件 size+mtime 做可失效的
+    # 阻塞标记：源 MD 被重新转换后自动重试。
+    blocked_file="$STAGING_BASE/$sub/.blocked"
+    if [ -f "$blocked_file" ] && [ "$(head -1 "$blocked_file" 2>/dev/null)" = "$source_sig" ]; then
+        echo "  ⏭ 上次抽取为 0 KU 且源未变化，已阻塞等待 MD 修复: $stem"
+        continue
+    fi
+    [ -f "$blocked_file" ] && rm -f "$blocked_file"
     [ "${cnt:-0}" -gt "$MIN_KU" ] && continue
     echo "── 抽取: ${stem:0:50} (sub=$sub) ──"
     $PY scripts/math_program_ingest.py "$f" "$sub" 2>&1 | tail -2
     ingest_out=$($PY scripts/math_ingest.py --substrate "$sub" --staging "$STAGING_BASE/$sub" 2>&1)
     echo "$ingest_out" | grep -E '入库完成|准备入库' || true
-    if echo "$ingest_out" | grep -qE '入库完成: ok=[0-9]+ skip=[0-9]+ err=0$'; then
+    ok_count=$(echo "$ingest_out" | sed -n 's/.*入库完成: ok=\([0-9][0-9]*\) skip=.*/\1/p' | tail -1)
+    # 只有真实写入至少一条 KU 才写 .done；空结果必须留在可重试路径。
+    if [ "${ok_count:-0}" -gt 0 ] && echo "$ingest_out" | grep -qE '入库完成: ok=[0-9]+ skip=[0-9]+ err=0$'; then
         touch "$STAGING_BASE/$sub/.done"
+        rm -f "$STAGING_BASE/$sub/.blocked"
         # ★用户指令(2026-07-23): 抽完KU的源MD是资产, 不能只留本地——按本地MD池子分类
         # (中文数学/英文数学)同名归档到Drive, 不删本地。
         MD_SUBJECT_DIR=$(basename "$(dirname "$f")")
@@ -88,6 +122,9 @@ for f in /home/soffy/books/MD/英文数学/*.md /home/soffy/books/MD/中文数�
         else
             echo "  ⚠ 归档到 Drive 失败(本地MD保留, 不影响入库结果)"
         fi
+    elif [ "${ok_count:-0}" -eq 0 ]; then
+        printf '%s\n' "$source_sig" > "$blocked_file"
+        echo "  ⚠ 本轮没有实际入库(ok=0)，不写 .done；源未变化前暂停重试，等待 MD 修复"
     fi
     SUBSTRATE="$sub" $PY scripts/math_prog_verify.py 2>&1 || echo "  ⚠ 判官调用异常(非致命, 继续)"
     processed=$((processed + 1))
