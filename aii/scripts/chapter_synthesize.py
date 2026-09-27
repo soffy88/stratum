@@ -436,17 +436,42 @@ def _find_pos(text: str, name: str) -> int:
     return -1
 
 
+def _salvage_points(t: str) -> list:
+    """★2026-09-27 从截断的 JSON 里抢救完整知识点对象。
+
+    背景: 密度高的章, 模型输出的 {"points":[...]} 列表很长, 会在结构中间被截断
+    (而 max_tokens 在当前网关路由上被模型忽略, 想写多少写多少, 截断经常发生)。
+    原来 json.loads 失败就 return [], 于是**整块章颗粒无收**, 且重试参数不变必然再失败。
+    实测症状: "ch1 FAILED: 规划未返回知识点" + 质量门报
+    "KU密度不足: 实抽4仅17%×预期24(基准~6/章×4章)"。
+
+    不追求还原完整 JSON, 只把列表里**已经闭合的** {"name":..,"type":..} 逐个抠出来
+    —— 丢掉末尾那个不完整的对象, 其余全部保留。
+    """
+    out = []
+    for m in re.finditer(r'\{\s*"name"\s*:.*?"type"\s*:\s*"[a-z]+"\s*\}', t, re.DOTALL):
+        try:
+            d = json.loads(m.group(0))
+        except Exception:
+            continue
+        nm = d.get("name")
+        if isinstance(nm, str) and nm.strip():
+            out.append({"name": nm.strip(), "type": d.get("type", "concept")})
+    return out
+
+
 def _parse_points(t: str) -> list:
     """从LLM返回稳健提取知识点列表.
     标准: {"points":[{"name","type"}]} (DeepSeek遵守). 兜底: 本地模型(gemma)常自拟schema
-    (如 {"analysis":{"key_concepts":[{"concept":..}]}}) → 递归找含 name/concept/term 的对象."""
+    (如 {"analysis":{"key_concepts":[{"concept":..}]}}) → 递归找含 name/concept/term 的对象.
+    ★2026-09-27: JSON 被截断时先抢救已闭合对象再放弃(见 _salvage_points)。"""
     m = re.search(r"\{.*\}", t, re.DOTALL)
     if not m:
-        return []
+        return _salvage_points(t)
     try:
         data = json.loads(m.group(0))
     except Exception:
-        return []
+        return _salvage_points(t)
     pts = data.get("points") if isinstance(data, dict) else None
     if pts:  # 标准 schema, 原样返回(保持 DeepSeek 路径行为不变)
         return pts
