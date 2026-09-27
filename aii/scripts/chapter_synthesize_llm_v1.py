@@ -12,14 +12,20 @@ chapter_synthesize.py 的 _synth 已改0LLM逐字抠(靠 _section_end 找 ## 小
 配 scripts/synthesize_book_llm_v1.py 使用, 不改动现役3个飞轮依赖的 chapter_synthesize.py。
 """
 
-import asyncio, json, re, sys
+import asyncio
+import json
+import os
+import re
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 sys.path.insert(0, str(ROOT / "scripts"))
-import pathlib as _pl, importlib.util as _ilu
+import pathlib as _pl
+import importlib.util as _ilu
+
 
 def _traj_async(phase: str, failure_mode: str, error_sig: str, context: dict | None = None) -> None:
     """章级失败事件异步落 trajectory_logs(不阻塞, 静默)。"""
@@ -54,7 +60,8 @@ async def _call_with_retry(llm, retries=4, base_delay=8, **kwargs):
             if attempt == retries - 1:
                 # ★轨迹埋点: 章级 LLM 调用重试耗尽(failure_mode 按类型签名)
                 _traj_async(
-                    "synth_chapter", "llm_timeout" if "timed out" in str(e).lower() else "llm_error",
+                    "synth_chapter",
+                    "llm_timeout" if "timed out" in str(e).lower() else "llm_error",
                     f"{type(e).__name__}: {str(e)[:120]}",
                     {"retries": retries, "chapter": kwargs.get("chapter", "")},
                 )
@@ -80,7 +87,13 @@ PLAN_SYS = (
 # 字符串里, 子模块(如chapter_synthesize_advmath.py)覆盖PLAN_SYS时很容易漏改这行, 导致LLM
 # 被限定在窄枚举里, 下游_TYPE_MAP即使支持更多类型也收不到(2026-07-11实测: advmath频道
 # rationale永远是0, 而落库_TYPE_MAP明明按五分类写的——根因就是这里没跟着一起覆盖).
-_PLAN_TYPES = "concept|principle|method"
+# ⚠2026-09-27 修复(与 2026-07-11 对 advmath 的同型修复): 此前这里是窄枚举
+#   "concept|principle|method", 而 _TYPE_MAP 把它映射成 conceptual/conceptual/procedural
+#   —— **rationale 永远产不出来**。质量门要求 `rationale≠0`(六分类rationale≠0),
+#   于是 cs/misc/edu 每一本书都必然 exit=1 → 隔离 → pass_registered 恒为 0,
+#   KU 总量冻结(实测 41806 全程不涨)。DB 里那 10987 条 rationale 全部来自
+#   econ/advmath 等用宽枚举的频道。枚举必须与 _TYPE_MAP 的键对齐。
+_PLAN_TYPES = "conceptual|rationale|procedural|positional|factual"
 SYN_SYS = (
     "You synthesize ONE thorough KU by INTEGRATING the chapter's material. Use ONLY the chapter text. "
     "Cite [Ch{n}]. Write ONLY what IS substantively covered — skip any facet absent from this chapter "
@@ -91,6 +104,13 @@ SYN_SYS = (
 
 def _facets(typ):
     return {
+        # ★2026-09-27: _PLAN_TYPES 已放宽到五分类(见该处注释), 原来只有 concept/principle/method
+        #   三个键, canonical 名会全部落到兜底串。两种命名都留着, 兼容旧 checkpoint。
+        "conceptual": "WHAT(内涵essence/外延boundary), WHY(why true/important), HOW(how applied), 用处use",
+        "rationale": "WHY(为什么成立/为何如此), 论据evidence/推理reasoning, 前提与边界, IMPLICATION(这意味着什么)",
+        "procedural": "WHAT, WHEN(适用条件), HOW(步骤), WHY, 常见坑",
+        "positional": "主张claim, 立场holder, 支撑理由, 反对意见, 适用边界",
+        "factual": "事实fact, 数值/条件, 出处source, 意义significance",
         "concept": "WHAT(内涵essence/外延boundary/用处use), WHY(why true/important), HOW(how applied)",
         "principle": "WHAT(meaning), WHY(rationale/evidence), IMPLICATION(what follows)",
         "method": "WHAT, WHEN, HOW(steps), WHY",
@@ -112,40 +132,97 @@ def _find_pos(text_lo: str, name: str) -> int:
     return -1
 
 
+def _parse_points(text: str) -> list[dict]:
+    """Parse planner output, including fenced JSON and common model schemas.
+
+    Planning is a control-plane step: an unparseable response must not silently
+    become an empty chapter.  Keep the normal ``points`` schema, but tolerate
+    local/relay models that call the field ``concepts`` or return nested items.
+    """
+    match = re.search(r"\{.*\}", text or "", re.DOTALL)
+    if not match:
+        return []
+    try:
+        data = json.loads(match.group(0))
+    except (TypeError, json.JSONDecodeError):
+        return []
+    if isinstance(data, dict):
+        for key in ("points", "concepts", "knowledge_points", "items"):
+            points = data.get(key)
+            if isinstance(points, list) and points:
+                return [
+                    {**p, "name": _point_name(p)}
+                    for p in points
+                    if isinstance(p, dict) and _point_name(p)
+                ]
+
+    out: list[dict] = []
+
+    def walk(value):
+        if isinstance(value, dict):
+            name = _point_name(value)
+            if name:
+                out.append({"name": name, "type": value.get("type", "concept")})
+            for child in value.values():
+                walk(child)
+        elif isinstance(value, list):
+            for child in value:
+                walk(child)
+
+    walk(data)
+    return out
+
+
+def _point_name(point: dict) -> str:
+    for key in ("name", "concept", "term", "point", "title", "topic"):
+        value = point.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
 async def _plan(llm, text, n):
     """规划仍喂全章(不截断); 额外为每个知识点定位 pos 供 _synth 用."""
-    chunks = (
-        [text] if len(text) <= _CTX else [text[i : i + _CTX] for i in range(0, len(text), _CTX)]
-    )
-    pts = []
-    for ck in chunks:
-        content = (
-            f"Chapter {n} text (part):\n\n{ck}\n\n"
-            f"List ONLY the concepts this chapter DIRECTLY AND SUBSTANTIVELY teaches — "
-            f"concepts with their own definition or ≥2 paragraphs of explanation. "
-            f"EXCLUDE concepts merely mentioned in passing, used as 1-sentence examples, "
-            f"or previewed/introduced for a later chapter. "
-            f'JSON: {{"points":[{{"name":"..","type":"{_PLAN_TYPES}"}}]}}'
-        )
-        # ★JSON解析失败(常见于长列表被max_tokens截断)重试1次, 而不是让整章直接FAILED
-        parsed = None
-        for parse_attempt in range(2):
-            r = await _call_with_retry(
-                llm,
-                messages=[{"role": "user", "content": content}],
-                system=PLAN_SYS,
-                max_tokens=1500,
+    # Keep the instruction before source text and bound each request.  Several
+    # gateways/models truncate long prompts; with the old whole-chapter prompt
+    # the instruction was truncated away and every chapter became 0 points.
+    prompt_limit = int(os.getenv("OLLAMA_PROMPT_CHARS", str(_CTX)))
+    chunk_size = min(_CTX, max(8000, prompt_limit - 2500), int(os.getenv("PLAN_CHUNK_CHARS", "14000")))
+    chunks = [text] if len(text) <= chunk_size else [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+    plan_sem = asyncio.Semaphore(int(os.getenv("AII_PLAN_CONCURRENCY", "3")))
+
+    async def plan_one(ck):
+        async with plan_sem:
+            content = (
+                f"List ONLY the concepts this chapter DIRECTLY AND SUBSTANTIVELY teaches — "
+                f"concepts with their own definition or ≥2 paragraphs of explanation. "
+                f"EXCLUDE concepts merely mentioned in passing, used as 1-sentence examples, "
+                f"or previewed/introduced for a later chapter. "
+                f'Output JSON only: {{"points":[{{"name":"..","type":"{_PLAN_TYPES}"}}]}}\n\n'
+                f"Chapter {n} text (part):\n\n{ck}"
             )
-            t = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
-            m = re.search(r"\{.*\}", t, re.DOTALL)
-            if m:
-                try:
-                    parsed = json.loads(m.group(0))
-                    break
-                except json.JSONDecodeError:
-                    continue
-        if parsed:
-            pts += parsed.get("points", [])
+            # ★JSON解析失败(常见于长列表被max_tokens截断)重试1次, 而不是让整章直接FAILED
+            # ★2026-09-27 1500 → 4000: 该值此前因 _call_async 丢弃 max_tokens 而空转,
+            #   实际吃上游默认上限(实测 ~5.4k tokens)。_call_async 修通后 1500 会真的截断
+            #   长知识点列表 → JSON 解析失败 → 整章 return [] → 0 KU。必须同步抬高。
+            parsed = None
+            for parse_attempt in range(2):
+                r = await _call_with_retry(
+                    llm,
+                    messages=[{"role": "user", "content": content}],
+                    system=PLAN_SYS,
+                    max_tokens=4000,
+                )
+                t = "".join(
+                    b.get("text", "") for b in r.get("content", []) if b.get("type") == "text"
+                )
+                parsed_points = _parse_points(t)
+                if parsed_points:
+                    return parsed_points
+            return []
+
+    planned = await asyncio.gather(*(plan_one(ck) for ck in chunks))
+    pts = [p for chunk_points in planned for p in chunk_points]
     # dedup by normalized name (单复数/大小写归一)
     seen, out = set(), []
     for p in pts:
@@ -161,12 +238,13 @@ async def _plan(llm, text, n):
     return out
 
 
-async def _synth(llm, text, n, name, typ, pos: int = 0):
+async def _synth(llm, text, n, name, typ, pos: int = 0, narrow: bool = False):
     """★定向窗口合成: intro[:1000] + section[pos-WIN_PRE:pos+WIN_POST].
     pos 未找到(=0且非章首): fallback 到章首 40K chars."""
     if pos > 0:
         intro = text[:1000]  # 章首记号/约定上下文
-        section = text[max(0, pos - _WIN_PRE) : pos + _WIN_POST]  # 定向窗口
+        post = 6000 if narrow else _WIN_POST
+        section = text[max(0, pos - _WIN_PRE) : pos + post]  # 定向窗口
         context = (
             f"Chapter {n} opening (notation/context):\n\n{intro}\n\nRelevant section:\n\n{section}"
         )
@@ -183,11 +261,16 @@ async def _synth(llm, text, n, name, typ, pos: int = 0):
             }
         ],
         system=SYN_SYS.format(n=n),
-        max_tokens=1100,
+        # ★2026-09-27 1100 → 3200: 双语("English then 中文")逐 facet 展开, 1100 不够写完
+        #   英文半边就被上游截断(质检判退语高频"ends abruptly mid-word")。3200 取自
+        #   chapter_synthesize_advmath.py:96 的实测结论(2200 仍会截断)。此前该值因
+        #   _call_async 丢弃 max_tokens 而完全无效, 修通后此处才真正起作用。
+        max_tokens=3200,
     )
     text_out = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
     # ★Grounded 协议(A1): 从合成窗口原文确定性提取证据句(零 LLM, 不依赖模型输出)
     from ku_schema import extract_evidence_quotes
+
     try:
         quotes = extract_evidence_quotes(section if pos > 0 else text[:_WIN_FALLBACK], name)
     except Exception:  # noqa: BLE001
