@@ -88,6 +88,8 @@ aii/*_pipeline/batch_report_worker*.json
 aii/*_pipeline/worker*.log
 aii/*_pipeline/quarantine.json
 aii/*_pipeline/quarantine.json.bak
+# context_pipeline 同样是运行时状态(转换缓存/时间戳/报告), 不是源码
+aii/context_pipeline/
 aii/*_pipeline/quarantine_worker*.json
 aii/*_pipeline/recall_audit/
 aii/*_pipeline/archive_registry.sqlite
