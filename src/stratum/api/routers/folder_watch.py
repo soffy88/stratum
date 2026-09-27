@@ -22,8 +22,6 @@ router = APIRouter(prefix="/api/v1/folder-watch", tags=["folder-watch"])
 FREE_TIER_MAX_WATCHES = 2
 
 
-
-
 class FolderWatchRequest(BaseModel):
     path: str
     description: str | None = None
@@ -63,6 +61,7 @@ async def add_folder_watch(
     # Path must sit under allowed roots (folder-watch or vault)
     try:
         from stratum.services.vault_sync_service import assert_safe_watch_path
+
         safe_path = str(assert_safe_watch_path(body.path))
     except ValueError as e:
         raise HTTPException(400, str(e)) from e

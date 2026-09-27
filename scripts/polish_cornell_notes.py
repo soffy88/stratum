@@ -69,7 +69,9 @@ def main():
                     "updated_at": datetime.now(timezone.utc),
                 },
             )
-            print(f"  ok {r['id'][:20]} · {r['title'][:40]} drills={len(content.get('drills') or [])}")
+            print(
+                f"  ok {r['id'][:20]} · {r['title'][:40]} drills={len(content.get('drills') or [])}"
+            )
             ok += 1
         except Exception as e:
             print(f"  ERR {r['id']}: {e}")

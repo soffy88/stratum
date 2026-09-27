@@ -9,7 +9,11 @@ summary 从未被真正覆盖, 一直停留在 persist_chapter_kc.py 写的占�
 只产出中文摘要, 不编一份假英文——与"中文原书不假造英文原文"同一原则(见 KU 语言修复)。
 """
 
-import asyncio, asyncpg, json, os, re
+import asyncio
+import asyncpg
+import json
+import os
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 

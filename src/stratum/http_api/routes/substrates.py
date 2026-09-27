@@ -1,10 +1,8 @@
 """Substrate routes: list, get by id, get derivatives."""
 
-import os
 from typing import Optional
 from datetime import datetime
 
-import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
@@ -16,6 +14,7 @@ router = APIRouter()
 
 def get_db():
     from stratum.db import get_conn
+
     with get_conn() as conn:
         yield conn
 
@@ -56,7 +55,7 @@ async def list_substrates(
             language=s.language,
             page_count=s.page_count,
             created_at=s.created_at,
-            parse_quality=getattr(s, 'parse_quality', None),
+            parse_quality=getattr(s, "parse_quality", None),
         )
         for s in subs
     ]

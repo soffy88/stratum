@@ -1,15 +1,10 @@
 import logging
 from typing import Any
-from oskill.formal_proof_verify import formal_proof_verify
-from oprim import mathlib_lookup
 
 from aii.storage.pg_backend import PgBackend
 
 logger = logging.getLogger(__name__)
 
-from pydantic import BaseModel
-from oprim._mathlib_lookup import MathlibLookupResult
-from oskill.formal_proof_verify import FormalProofResult
 
 # Rigorous pre-verified metadata from TRUE Loogle responses (never mocks).
 # New entries MUST be verified via live network before inclusion.

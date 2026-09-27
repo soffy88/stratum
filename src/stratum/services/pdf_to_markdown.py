@@ -1,12 +1,15 @@
 """PDF → Markdown for inbox ingest.
 
-MVP: prefer Docling (tables + code), fall back to pymupdf4llm.
+Prefer Docling (tables + code), then pymupdf4llm/oprim, with a text-only
+``pdftotext`` fallback for environments where richer parser dependencies fail.
 Converts before omodul process_inbox_substrate (same pattern as DOCX→MD).
 """
 
 from __future__ import annotations
 
 import logging
+import shutil
+import subprocess
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -66,6 +69,21 @@ def pdf_to_markdown(path: Path) -> tuple[Path, str]:
     except Exception as e:
         errors.append(f"oprim:{type(e).__name__}:{e}")
 
+    # 4) Poppler's pdftotext is a deliberately narrow, dependency-light fallback.
+    # It preserves text when the richer parsers are not installed, but does not
+    # claim layout/table fidelity; the benchmark still evaluates those dimensions
+    # separately when reviewed annotations are present.
+    try:
+        text = _via_pdftotext(path)
+        if text and len(text.strip()) > 40:
+            md_path.write_text(text, encoding="utf-8")
+            log.info("pdf_to_md parser=pdftotext path=%s chars=%d", path.name, len(text))
+            return md_path, "pdftotext"
+        errors.append("pdftotext_empty")
+    except Exception as e:
+        errors.append(f"pdftotext:{type(e).__name__}:{e}")
+        log.warning("pdf_to_md pdftotext failed: %s", e)
+
     log.error("pdf_to_md all parsers failed path=%s errors=%s", path, errors)
     return path, "passthrough:" + ";".join(errors[:3])
 
@@ -88,3 +106,22 @@ def _via_pymupdf4llm(path: Path) -> str:
     import pymupdf4llm
 
     return pymupdf4llm.to_markdown(str(path)) or ""
+
+
+def _via_pdftotext(path: Path) -> str:
+    """Extract text through the system Poppler binary, without invoking a shell."""
+    executable = shutil.which("pdftotext")
+    if executable is None:
+        raise RuntimeError("pdftotext executable not found")
+
+    completed = subprocess.run(
+        [executable, "-layout", str(path), "-"],
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=60,
+    )
+    if completed.returncode != 0:
+        detail = (completed.stderr or "").strip().replace("\n", " ")[:240]
+        raise RuntimeError(f"pdftotext exited with {completed.returncode}: {detail}")
+    return completed.stdout or ""

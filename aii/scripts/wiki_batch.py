@@ -6,6 +6,7 @@
 
 用法: .venv/bin/python scripts/wiki_batch.py [--limit N] [--kb /data/.../wiki_kb]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -52,8 +53,9 @@ def main() -> int:
         dest = KB / "raw" / f"{i:02d}_{label}_{md.stem[:40]}.md"
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(md, dest)
-        r = subprocess.run([OPENKB, "add", str(dest)], cwd=KB,
-                           capture_output=True, text=True, timeout=1500)
+        r = subprocess.run(
+            [OPENKB, "add", str(dest)], cwd=KB, capture_output=True, text=True, timeout=1500
+        )
         tail = [l for l in (r.stdout or "").splitlines() if "OK" in l or "ERROR" in l][-2:]
         print(f"  [{label}] {md.stem[:35]} → {' | '.join(tail)[:90] or 'done'}")
 
@@ -61,8 +63,13 @@ def main() -> int:
         print("\n[skill] 从 wiki 产 skill...")
         topics = ["mathematics", "economics", "education", "science"]
         for t in topics:
-            r = subprocess.run([OPENKB, "skill", "new", f"wiki-{t}", f"Reason like an expert on {t}"],
-                               cwd=KB, capture_output=True, text=True, timeout=900)
+            r = subprocess.run(
+                [OPENKB, "skill", "new", f"wiki-{t}", f"Reason like an expert on {t}"],
+                cwd=KB,
+                capture_output=True,
+                text=True,
+                timeout=900,
+            )
             out = (r.stdout or "") + (r.stderr or "")
             if "output/skills" in out:
                 # 拷贝进 ~/.agents/skills/

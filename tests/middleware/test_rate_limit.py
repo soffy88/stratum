@@ -1,9 +1,10 @@
 """Tests for stratum.middleware.rate_limit — ≥10 tests per §5.7."""
+
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
-from stratum.middleware.rate_limit import rate_limit_middleware, reset_rate_limits, LIMITS
+from stratum.middleware.rate_limit import rate_limit_middleware, reset_rate_limits
 
 
 @pytest.fixture(autouse=True)
@@ -24,6 +25,7 @@ def app():
     @_app.exception_handler(Exception)
     async def exc_handler(request, exc):
         from fastapi.exceptions import HTTPException
+
         if isinstance(exc, HTTPException):
             return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
         return JSONResponse(status_code=500, content={"detail": str(exc)})

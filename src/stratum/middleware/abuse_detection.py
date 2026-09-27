@@ -9,14 +9,11 @@ Uses in-memory tracking + DuckDB blocked_ips table for persistence.
 """
 
 import time
-import os
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from fastapi import Request
 from fastapi.responses import JSONResponse
-import duckdb
-import ulid as ulid_mod
 
 
 @dataclass

@@ -43,9 +43,10 @@ async function getContent(id: string): Promise<ContentDetail | null> {
 export default async function ArticlePage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const content = await getContent(params.id);
+  const { id } = await params;
+  const content = await getContent(id);
   if (!content) {
     return <p className="p-6 text-[var(--color-muted)]">内容未找到。</p>;
   }

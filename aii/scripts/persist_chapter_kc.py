@@ -1,6 +1,11 @@
 """按章KC入 kc_onto(synthesis_marker='AII章节KC'). 通用: 章标题取自md(第N章 或 # Chapter)."""
 
-import asyncio, asyncpg, os, json, re, sys
+import asyncio
+import asyncpg
+import os
+import json
+import re
+import sys
 from collections import defaultdict
 from pathlib import Path
 from dotenv import load_dotenv

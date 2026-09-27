@@ -9,9 +9,14 @@
 用法: python3 scripts/eval/run_eval.py [--rerank] [--k 10]
   需先 build_golden.py 生成 golden.json. ECON_LLM_PROVIDER=ollama 用本地模型重排.
 """
-import asyncio, json, math, os, sys
+
+import asyncio
+import json
+import math
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
+
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 from aii.api._provider import register_providers
@@ -62,8 +67,10 @@ async def main():
             qv = _embed(embed_fn, g["query"])
             dense = await be.search_ku_by_vector(qv, limit=depth)
             hybrid = await be.search_ku_hybrid(qv, g["query"], limit=depth)
-            row = {"dense": _rank_of(g["gold_ku_id"], dense),
-                   "hybrid": _rank_of(g["gold_ku_id"], hybrid)}
+            row = {
+                "dense": _rank_of(g["gold_ku_id"], dense),
+                "hybrid": _rank_of(g["gold_ku_id"], hybrid),
+            }
             if rerank:
                 rr = await llm_rerank(llm, g["query"], hybrid[:15], top_k=k)
                 row["hybrid+rerank"] = _rank_of(g["gold_ku_id"], rr)
@@ -76,12 +83,12 @@ async def main():
                 ranks[method].append(r[method])
 
     print(f"\n=== 检索评测 (golden n={len(golden)}, k={k}) ===")
-    print(f"{'method':16} {'recall@%d'%k:>10} {'MRR':>8} {'nDCG@%d'%k:>8}")
+    print(f"{'method':16} {'recall@%d' % k:>10} {'MRR':>8} {'nDCG@%d' % k:>8}")
     for method in ["dense", "hybrid"] + (["hybrid+rerank"] if rerank else []):
         if not ranks[method]:
             continue
         m = _metrics(ranks[method], k)
-        print(f"{method:16} {m['recall@%d'%k]:>10.3f} {m['MRR']:>8.3f} {m['nDCG@%d'%k]:>8.3f}")
+        print(f"{method:16} {m['recall@%d' % k]:>10.3f} {m['MRR']:>8.3f} {m['nDCG@%d' % k]:>8.3f}")
     print()
 
 

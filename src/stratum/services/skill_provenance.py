@@ -10,6 +10,7 @@ Usage:
   check_skill_stale(skill_meta, canonical_updated_at_map) -> bool
   build_skill_manifest(skill_id, concept_refs, claim_refs, evidence_refs) -> dict
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

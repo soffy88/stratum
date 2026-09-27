@@ -8,25 +8,34 @@
 用法: python3 scripts/detect_contradictions.py [--sim 0.82] [--max 60] [--apply]
   --apply 才写复核队列(默认 dry-run 只打印). ECON_LLM_PROVIDER=ollama 用本地模型判.
 """
-import asyncio, os, re, json, sys
+
+import asyncio
+import os
+import re
+import json
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
+
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 import asyncpg
 from aii.api._provider import register_providers
 from obase import ProviderRegistry
 
-JUDGE_SYS = ("You compare two knowledge statements about a similar topic. Output valid JSON only. "
-             "verdict ∈ {SAME, CONTRADICT, COMPLEMENTARY, DIFFERENT}. "
-             "CONTRADICT = they make logically incompatible claims about the same thing. "
-             "SAME = same claim (duplicate). COMPLEMENTARY = compatible, different aspects. "
-             "DIFFERENT = unrelated/different scope. Be conservative: only CONTRADICT if a real conflict.")
+JUDGE_SYS = (
+    "You compare two knowledge statements about a similar topic. Output valid JSON only. "
+    "verdict ∈ {SAME, CONTRADICT, COMPLEMENTARY, DIFFERENT}. "
+    "CONTRADICT = they make logically incompatible claims about the same thing. "
+    "SAME = same claim (duplicate). COMPLEMENTARY = compatible, different aspects. "
+    "DIFFERENT = unrelated/different scope. Be conservative: only CONTRADICT if a real conflict."
+)
 
 
 async def _pairs(conn, sim: float, limit: int):
     """向量近邻配对(LATERAL 走 HNSW 索引), 去重 + 偏好跨 substrate/章."""
-    rows = await conn.fetch("""
+    rows = await conn.fetch(
+        """
         SELECT a.ku_id a_id, a.substrate_id a_sub, a.natural_text a_tx,
                n.ku_id b_id, n.substrate_id b_sub, n.natural_text b_tx,
                1 - (a.embedding <=> n.embedding) sim
@@ -38,7 +47,9 @@ async def _pairs(conn, sim: float, limit: int):
         ) n
         WHERE a.embedding IS NOT NULL AND 1 - (a.embedding <=> n.embedding) >= $1
         ORDER BY sim DESC
-    """, sim)
+    """,
+        sim,
+    )
     seen, out = set(), []
     for r in rows:
         key = tuple(sorted([r["a_id"], r["b_id"]]))
@@ -59,39 +70,75 @@ async def main():
     apply = "--apply" in sys.argv
     register_providers()
     llm = ProviderRegistry.get().llm("default")
-    model = os.getenv("OLLAMA_MODEL", "deepseek") if os.getenv("ECON_LLM_PROVIDER") == "ollama" else "deepseek"
+    model = (
+        os.getenv("OLLAMA_MODEL", "deepseek")
+        if os.getenv("ECON_LLM_PROVIDER") == "ollama"
+        else "deepseek"
+    )
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
     await conn.execute((ROOT / "migrations" / "0005_ku_contradiction.sql").read_text())
     cands = await _pairs(conn, sim, mx)
     print(f"{len(cands)} candidate pairs (sim≥{sim}, judging…)", flush=True)
 
     sem = asyncio.Semaphore(4)
+
     async def judge(p):
         async with sem:
             try:
-                r = await llm(messages=[{"role": "user", "content":
-                    f"A: {(p['a_tx'] or '')[:600]}\n\nB: {(p['b_tx'] or '')[:600]}\n\n"
-                    f'JSON: {{"verdict":"..","rationale":".."}}'}],
-                    system=JUDGE_SYS, max_tokens=200)
-                t = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
+                r = await llm(
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": f"A: {(p['a_tx'] or '')[:600]}\n\nB: {(p['b_tx'] or '')[:600]}\n\n"
+                            f'JSON: {{"verdict":"..","rationale":".."}}',
+                        }
+                    ],
+                    system=JUDGE_SYS,
+                    max_tokens=200,
+                )
+                t = "".join(
+                    b.get("text", "") for b in r.get("content", []) if b.get("type") == "text"
+                )
                 m = re.search(r"\{.*\}", t, re.DOTALL)
                 d = json.loads(m.group(0)) if m else {}
-            except Exception as e:
+            except Exception:
                 return None
-            return {**p, "verdict": (d.get("verdict") or "").upper(), "rationale": d.get("rationale", "")}
+            return {
+                **p,
+                "verdict": (d.get("verdict") or "").upper(),
+                "rationale": d.get("rationale", ""),
+            }
 
     judged = [j for j in await asyncio.gather(*(judge(p) for p in cands)) if j]
     contras = [j for j in judged if j["verdict"] == "CONTRADICT"]
-    print(f"verdicts: " + ", ".join(f"{v}={sum(1 for j in judged if j['verdict']==v)}"
-                                    for v in ["SAME", "CONTRADICT", "COMPLEMENTARY", "DIFFERENT"]))
+    print(
+        "verdicts: "
+        + ", ".join(
+            f"{v}={sum(1 for j in judged if j['verdict'] == v)}"
+            for v in ["SAME", "CONTRADICT", "COMPLEMENTARY", "DIFFERENT"]
+        )
+    )
     for c in contras:
-        print(f"  ⚠ CONTRADICT sim={c['sim']:.2f} {c['a_id'][-22:]} ↔ {c['b_id'][-22:]}: {c['rationale'][:90]}")
+        print(
+            f"  ⚠ CONTRADICT sim={c['sim']:.2f} {c['a_id'][-22:]} ↔ {c['b_id'][-22:]}: {c['rationale'][:90]}"
+        )
         if apply:
             a, b = sorted([c["a_id"], c["b_id"]])
-            await conn.execute("""INSERT INTO aii.ku_contradiction(ku_a,ku_b,similarity,verdict,rationale,confidence,judged_by)
+            await conn.execute(
+                """INSERT INTO aii.ku_contradiction(ku_a,ku_b,similarity,verdict,rationale,confidence,judged_by)
                 VALUES($1,$2,$3,'contradict',$4,$5,$6) ON CONFLICT (ku_a,ku_b) DO NOTHING""",
-                a, b, c["sim"], c["rationale"][:500], c["sim"], model)
-    print(f"\nDONE: {len(contras)} contradictions → 复核队列" + (" (written)" if apply else " (dry-run, use --apply)"), flush=True)
+                a,
+                b,
+                c["sim"],
+                c["rationale"][:500],
+                c["sim"],
+                model,
+            )
+    print(
+        f"\nDONE: {len(contras)} contradictions → 复核队列"
+        + (" (written)" if apply else " (dry-run, use --apply)"),
+        flush=True,
+    )
     await conn.close()
 
 

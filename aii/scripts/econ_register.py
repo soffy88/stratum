@@ -8,7 +8,12 @@
 
 Usage: python econ_register.py <substrate_id> <title> [--medium book] [--subject 经济学]
 """
-import asyncio, asyncpg, json, os, sys
+
+import asyncio
+import asyncpg
+import json
+import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from dotenv import load_dotenv
@@ -20,8 +25,10 @@ RUN_LOG = ROOT / "econ_pipeline" / "run_log.jsonl"
 RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
 
 if len(sys.argv) < 3:
-    print("Usage: econ_register.py <substrate_id> <title> [--medium book] [--subject 经济学]",
-          file=sys.stderr)
+    print(
+        "Usage: econ_register.py <substrate_id> <title> [--medium book] [--subject 经济学]",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 SUB = sys.argv[1]
@@ -40,11 +47,11 @@ async def register():
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
 
     # 从 ku_onto 数实际 KU 数
-    ku_count = await conn.fetchval(
-        "SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", SUB)
+    ku_count = await conn.fetchval("SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", SUB)
 
     # 入库 ingested_substrate
-    await conn.execute("""
+    await conn.execute(
+        """
         INSERT INTO aii.ingested_substrate (substrate_id, title, medium, ku_count, subject)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (substrate_id) DO UPDATE
@@ -52,15 +59,20 @@ async def register():
                 medium=EXCLUDED.medium,
                 ku_count=EXCLUDED.ku_count,
                 subject=COALESCE(EXCLUDED.subject, aii.ingested_substrate.subject)
-    """, SUB, TITLE[:300], MEDIUM, ku_count, SUBJECT)
+    """,
+        SUB,
+        TITLE[:300],
+        MEDIUM,
+        ku_count,
+        SUBJECT,
+    )
 
     # 若 BU 已生成 → 标记 deep_understood_at
-    has_bu = await conn.fetchval(
-        "SELECT count(*) FROM aii.bu_onto WHERE substrate_id=$1", SUB)
+    has_bu = await conn.fetchval("SELECT count(*) FROM aii.bu_onto WHERE substrate_id=$1", SUB)
     if has_bu:
         await conn.execute(
-            "UPDATE aii.ingested_substrate SET deep_understood_at=NOW() WHERE substrate_id=$1",
-            SUB)
+            "UPDATE aii.ingested_substrate SET deep_understood_at=NOW() WHERE substrate_id=$1", SUB
+        )
 
     await conn.close()
 

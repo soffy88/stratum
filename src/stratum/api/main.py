@@ -45,9 +45,9 @@ def _register_providers() -> None:
     """Register 3O providers (LLM + TTS + image_gen) with obase ProviderRegistry at startup."""
     try:
         from obase.provider_registry import ProviderRegistry
-        from oprim.llm.llm_call import llm_call
 
-        import os, httpx as _httpx
+        import os
+        import httpx as _httpx
 
         _ollama_base = os.environ.get("OLLAMA_BASE_URL", "http://172.17.0.1:11435")
         _ollama_model = os.environ.get("STRATUM_LLM_MODEL", "qwen3.5:9b")
@@ -153,6 +153,7 @@ async def _lifespan(app: FastAPI):
         init_aii_backend,
         shutdown_aii_backend,
     )
+
     apply_aii_monkeypatch()
     register_aii_providers()
     await init_aii_backend()
@@ -167,6 +168,7 @@ async def _lifespan(app: FastAPI):
     dedup_task = None
     try:
         from aii.service.dedup_semantic import dedup_semantic_loop
+
         dedup_task = asyncio.create_task(dedup_semantic_loop(), name="aii-dedup-semantic")
     except ImportError:
         pass
@@ -223,6 +225,7 @@ from stratum.api.routers import notes
 
 app.include_router(notes.router)
 from stratum.api.routers import graph as _graph
+
 app.include_router(_graph.router)
 
 from stratum.api.routers import agents
@@ -252,6 +255,10 @@ app.include_router(content.router)
 from stratum.api.routers import translate
 
 app.include_router(translate.router)
+
+from stratum.api.routers import document_projections
+
+app.include_router(document_projections.router)
 
 from stratum.api.routers import concepts
 

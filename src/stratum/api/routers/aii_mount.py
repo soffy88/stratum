@@ -45,6 +45,7 @@ def _import_aii():
             graph_concepts,
             context_recall,
         )
+
         return True
     except ImportError as e:
         logger.warning("AII package not importable — /api/aii/* routes disabled: %s", e)
@@ -174,6 +175,7 @@ def register_aii_providers() -> None:
 
     try:
         from aii.api._provider import register_providers
+
         register_providers()
         logger.info("AII providers registered.")
     except Exception as e:
@@ -187,6 +189,7 @@ async def shutdown_aii_backend() -> None:
 
     try:
         from aii.api._dependencies import backend as aii_backend
+
         if aii_backend._pool:
             await aii_backend._pool.close()
             logger.info("AII asyncpg pool closed.")

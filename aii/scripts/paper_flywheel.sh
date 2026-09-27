@@ -23,11 +23,12 @@ PAPER_WORKERS="${PAPER_WORKERS:-6}"   # ★2026-08-16 提速: 并发 worker 数(
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('econ_zh',''))" 2>/dev/null)"
 export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));ks=[d.get(k) for k in ('econ_zh','math_en','advmath_verify','econ','math_zh','advmath_2','advmath_3')];print(','.join(x for x in ks if x))" 2>/dev/null)"
 export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));print(','.join(x for x in (d.get('econ_zh'),d.get('math_en'),d.get('advmath_verify')) if x))" 2>/dev/null)"
-export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
+export NIM_MODEL="${NIM_MODEL:-deepseek-ai/deepseek-v4-flash-0731}"
 export OPENCODE_API_KEY=""  # 留空 → 读 ~/.pi/agent/opencode-keys.txt
-export OPENCODE_MODEL="${OPENCODE_MODEL:-deepseek-v4-flash}"
-export DATABASE_URL="${DATABASE_URL:-postgresql://aii:***REMOVED***@localhost:5435/aii_kg}"
-export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://192.168.80.1:8791/v1/chat/completions}"
+export OPENCODE_MODEL="${OPENCODE_MODEL:-gpt-5.6-luna}"
+export DATABASE_URL="${DATABASE_URL:-postgresql://aii:***REMOVED***@localhost:5437/aii_kg}"
+export NO_PROXY="localhost,127.0.0.1,192.168.80.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
 export no_proxy="${NO_PROXY}"
 # ★opencode-go 直连偶发 PoolTimeout(实测 4-12s 抖动, 重试 5 次后 NIM fallback 才能救)
 #   → 走本机 7890 代理(实测稳定 2-4s)。NO_PROXY 已排除本地/内网服务。代理挂了自动回落直连。
@@ -39,8 +40,8 @@ export CUDA_VISIBLE_DEVICES=""          # 嵌入走共享 aii-embed, 不占本�
 # HF offline 由 aii/aii/.env 提供(HF_HUB_OFFLINE=1), 此处不重复设防覆盖
 
 # ★嵌入走共享 aii-embed 微服务(笔记本GPU); 不可用时走本地 BGE-M3(CPU, 慢但可用)
-if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://100.119.113.90:8102}/health" >/dev/null 2>&1; then
-  export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"
+if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://127.0.0.1:8102}/health" >/dev/null 2>&1; then
+  export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"
   echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
 else
   unset AII_EMBED_URL
@@ -61,7 +62,8 @@ echo ""
 
 # ── Step 0: 主动拉料(D盘同步+本地PDF转换+stratum分类, 含classify_md.py新分出的"论文"桶)──
 mkdir -p .locks
-flock -w 120 .locks/classify_md.lock -c "timeout 600 bash scripts/pull_ingest.sh" || true
+flock -n .locks/classify_md.lock -c "timeout --kill-after=30s 600 bash scripts/pull_ingest.sh" >> .logs/pull_ingest.out 2>&1 &
+    disown || true
 
 # ── Step 1: 发现未处理论文 ──
 echo "[1/2] 发现未处理的论文(books/MD/论文)..."

@@ -7,13 +7,26 @@
 用法: python scripts/econ_discover_all.py [--out list.txt] [--limit N] [--state state.json]
 """
 
-import asyncio, asyncpg, json, os, re, sys, hashlib, glob
+import asyncio
+import asyncpg
+import json
+import os
+import re
+import sys
+import hashlib
+import glob
 from pathlib import Path
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
-ECON_DIR = "/home/soffy/books/MD/经济学"
+# ★2026-08-29: from chapter_ingest 需要把 scripts/ 加进 sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+ECON_DIRS = [
+    str(p)
+    for p in (ROOT / "gdrive_staging" / "MD" / "经济学", Path("/home/soffy/books/MD/经济学"))
+    if p.exists()
+]
 
 # 已有 substrate_id 的书 → 保留旧 id(避免重处理/孤儿)
 KNOWN = {
@@ -38,17 +51,26 @@ def _sid(stem: str, text: str) -> str:
 
 
 def _chapters(text: str) -> int:
-    # ★口径统一: 直接用 chapter_ingest.chapter_starts——下游预检(econ_batch_run.sh 的
-    # PASS_ZH 兜底)和切章用的就是它(含 第N章/# Chapter N:/N.M小节编号三种风格)。
-    # 之前这里自带窄正则, OpenStax 等"N.M 小节编号"排版的书(拉书回流的主要产物)数出
-    # 0 章被永久静默跳过——书进了池没人捡, 最后一公里断在这。
-    from chapter_ingest import chapter_starts
-    return len(chapter_starts(text))
+    # ★2026-08-29 优化: 之前调 chapter_starts 在大文件(4MB+ '诺贝尔经济学奖合集' 等
+    # '套装书')上扫 6 个正则 + 跑 TOC 跳过逻辑, 30s+ 超时 -> discover 超时
+    # 飞轮误判"无新书"。只测 n>=3 用快速两个正则(中文 + 英文), 仅候选书
+    # 才会在预检/切章时调 chapter_starts 拿到完整起点表(8 KB / 数万行 不会超时)。
+    cn = len(_CN_CHAP.findall(text))
+    en = len(_EN_CHAP.findall(text))
+    return max(cn, en)
+
+
+_CN_CHAP = re.compile(
+    r"(?m)^\s*#{0,4}\s*第([一二三四五六七八九十百千0-9]+)(章|单元|讲|课|节|部分|回|篇)"
+)
+# 与 econ_convert.chapters() / chapter_ingest 的宽格式保持一致：
+# markitdown 常生成无冒号、全大写、或没有 Markdown '#' 的章节行。
+_EN_CHAP = re.compile(r"(?mi)^\s*#{0,4}\s*(?:Chapter|CHAPTER)\s+\d+\b")
 
 
 def discover() -> list[dict]:
     out = []
-    for md in sorted(glob.glob(f"{ECON_DIR}/*.md")):
+    for md in sorted(path for root in ECON_DIRS for path in glob.glob(f"{root}/*.md")):
         stem = Path(md).stem
         try:
             text = open(md, encoding="utf-8", errors="replace").read()

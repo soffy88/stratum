@@ -9,6 +9,7 @@ CC 验证得到的两个真相 (必须遵守):
 grade ≤ 成员 KU (成员皆 unverified → kc 也 unverified), 永不最高级.
 synthesis_marker 标 "AII综合,非原文断言".
 """
+
 from __future__ import annotations
 
 import json
@@ -31,7 +32,7 @@ def _parse(resp) -> dict:
     for blk in resp.get("content", []):
         if isinstance(blk, dict) and blk.get("type") == "text":
             txt += blk.get("text", "")
-    m = re.search(r'\{.*\}', txt, re.DOTALL)
+    m = re.search(r"\{.*\}", txt, re.DOTALL)
     if not m:
         return {}
     try:
@@ -40,16 +41,21 @@ def _parse(resp) -> dict:
         return {}
 
 
-async def cluster_and_persist(conn, llm, *, substrate_id: str,
-                              resolution: float = 1.0, min_size: int = 2) -> dict:
+async def cluster_and_persist(
+    conn, llm, *, substrate_id: str, resolution: float = 1.0, min_size: int = 2
+) -> dict:
     """在 substrate 的 KU→KU 图上跑 Louvain, 每社区写一条 kc_onto."""
     ku = await conn.fetch(
-        "SELECT ku_id, title FROM aii.ku_onto WHERE substrate_id=$1", substrate_id)
+        "SELECT ku_id, title FROM aii.ku_onto WHERE substrate_id=$1", substrate_id
+    )
     title_of = {r["ku_id"]: r["title"] for r in ku}
-    edges = await conn.fetch("""
+    edges = await conn.fetch(
+        """
         SELECT e.src_id, e.dst_id FROM aii.edge_onto e
         JOIN aii.ku_onto s ON e.src_id=s.ku_id AND s.substrate_id=$1
-        JOIN aii.ku_onto d ON e.dst_id=d.ku_id AND d.substrate_id=$1""", substrate_id)
+        JOIN aii.ku_onto d ON e.dst_id=d.ku_id AND d.substrate_id=$1""",
+        substrate_id,
+    )
 
     G = nx.Graph()
     G.add_nodes_from(title_of.keys())
@@ -58,8 +64,11 @@ async def cluster_and_persist(conn, llm, *, substrate_id: str,
             G.add_edge(e["src_id"], e["dst_id"])
 
     # ★Louvain (吃边), 不用连通分量
-    communities = [c for c in nx.community.louvain_communities(G, resolution=resolution, seed=42)
-                   if len(c) >= min_size]
+    communities = [
+        c
+        for c in nx.community.louvain_communities(G, resolution=resolution, seed=42)
+        if len(c) >= min_size
+    ]
 
     persisted = 0
     sizes = []
@@ -68,21 +77,37 @@ async def cluster_and_persist(conn, llm, *, substrate_id: str,
         titles = [title_of.get(m, "") for m in members]
         try:
             resp = await llm(
-                messages=[{"role": "user",
-                           "content": _LABEL_TMPL.format(titles="\n".join(f"- {t}" for t in titles[:15]))}],
-                system=_LABEL_SYS, max_tokens=120)
+                messages=[
+                    {
+                        "role": "user",
+                        "content": _LABEL_TMPL.format(
+                            titles="\n".join(f"- {t}" for t in titles[:15])
+                        ),
+                    }
+                ],
+                system=_LABEL_SYS,
+                max_tokens=120,
+            )
             lab = _parse(resp)
         except Exception:
             lab = {}
-        await conn.execute("""
+        await conn.execute(
+            """
             INSERT INTO aii.kc_onto
               (substrate_id, level, community_label, summary, member_ku_ids, grade, synthesis_marker)
             VALUES ($1, 1, $2, $3, $4::jsonb, 'unverified', 'AII综合,非原文断言')""",
-            substrate_id, lab.get("label"), lab.get("summary"),
-            json.dumps(members))
+            substrate_id,
+            lab.get("label"),
+            lab.get("summary"),
+            json.dumps(members),
+        )
         persisted += 1
         sizes.append(len(members))
 
-    return {"communities": persisted, "sizes": sorted(sizes, reverse=True),
-            "covered": G.number_of_nodes() - len([x for x in G if G.degree(x) == 0]),
-            "total_ku": G.number_of_nodes(), "edges": G.number_of_edges()}
+    return {
+        "communities": persisted,
+        "sizes": sorted(sizes, reverse=True),
+        "covered": G.number_of_nodes() - len([x for x in G if G.degree(x) == 0]),
+        "total_ku": G.number_of_nodes(),
+        "edges": G.number_of_edges(),
+    }

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from unittest.mock import patch
 
 
@@ -69,12 +67,32 @@ def test_parse_frontmatter_and_import(tmp_path, monkeypatch):
     with patch.object(vs, "read", side_effect=fake_read):
         with patch.object(vs, "insert", side_effect=fake_insert):
             with patch.object(vs, "update"):
-                with patch.object(vs, "query", return_value=[]):
-                    out = vs.import_notes_from_path("user-1", str(tmp_path))
+                out = vs.import_notes_from_path("user-1", str(tmp_path))
     assert out["status"] == "ok"
     assert out["created"] == 1
     assert inserts[0][1]["id"] == "01HELLO"
     assert inserts[0][1]["title"] == "Hello"
+
+
+def test_import_skips_note_symlink_outside_allowed_root(tmp_path, monkeypatch):
+    from stratum.services import vault_sync_service as vs
+
+    monkeypatch.setenv("STRATUM_VAULT_SYNC_ROOTS", str(tmp_path))
+    notes = tmp_path / "notes"
+    notes.mkdir()
+    outside = tmp_path.parent / "outside-secret.md"
+    outside.write_text("secret", encoding="utf-8")
+    (notes / "escape.md").symlink_to(outside)
+
+    with patch.object(vs, "read", return_value=None):
+        with patch.object(vs, "insert") as insert:
+            out = vs.import_notes_from_path("user-1", str(tmp_path))
+
+    assert out["scanned"] == 1
+    assert out["created"] == 0
+    assert out["skipped"] == 1
+    assert any("unsafe path" in error for error in out["errors"])
+    insert.assert_not_called()
 
 
 def test_sync_vault_mode_validation(tmp_path, monkeypatch):

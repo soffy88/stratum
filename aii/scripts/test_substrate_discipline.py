@@ -20,7 +20,7 @@ import sys
 
 import asyncpg
 
-DSN = os.getenv("DATABASE_URL", "postgresql://aii:***REMOVED***@localhost:5435/aii_kg")
+DSN = os.getenv("DATABASE_URL", "postgresql://aii:***REMOVED***@localhost:5437/aii_kg")
 CONTROLLED = {"数学", "经济学", "哲学", "心理学", "计算机", "其他"}
 _TMP = "__test_substrate_discipline_tmp__"
 

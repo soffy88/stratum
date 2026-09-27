@@ -1850,7 +1850,7 @@ For validation errors (422):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `JWT_SECRET` | `"super-secret-key-change-this-in-prod"` | HS256 signing secret — **must be changed in production** |
+| `JWT_SECRET` | `"super-secret-key-change-this-in-prod"` | HS256 signing secret — **must be changed in production**; `JWT_SECRETS=new,old` supports ordered rotation |
 | `DATABASE_PATH` | `~/.stratum/meta.duckdb` | DuckDB file path |
 | `ADMIN_SECRET` | *(unset)* | Required to use `/api/admin/stats`; if unset, endpoint returns 503 |
 | `SENTRY_DSN` | *(unset)* | Sentry error tracking DSN; telemetry disabled if unset |

@@ -109,7 +109,9 @@ def _call_nim(api_key: str, throttle: _KeyThrottle, prompt: str, *, max_tokens: 
             # OpenAI-compatible; nemotron 等可能 content=null 而 reasoning 有文
             try:
                 msg = data["choices"][0]["message"]
-                text = msg.get("content") or msg.get("reasoning") or msg.get("reasoning_content") or ""
+                text = (
+                    msg.get("content") or msg.get("reasoning") or msg.get("reasoning_content") or ""
+                )
                 return text if isinstance(text, str) else str(text or "")
             except Exception:
                 return json.dumps(data)[:2000]
@@ -126,7 +128,9 @@ def _extract_json(text: str) -> dict:
         return {}
 
 
-def polish_content(content: dict[str, Any], *, llm: Callable[[str], str] | None = None) -> dict[str, Any]:
+def polish_content(
+    content: dict[str, Any], *, llm: Callable[[str], str] | None = None
+) -> dict[str, Any]:
     """同步润色; llm(prompt)->str 可注入。失败则原样返回。"""
     cues = content.get("cues") or []
     if not cues:
@@ -145,9 +149,8 @@ def polish_content(content: dict[str, Any], *, llm: Callable[[str], str] | None 
         "summary": content.get("summary"),
         "oneLiner": content.get("oneLiner"),
     }
-    prompt = (
-        "请润色以下康奈尔笔记的线索/总结/记忆句。模块正文不在此改写。\n"
-        + json.dumps(payload, ensure_ascii=False)
+    prompt = "请润色以下康奈尔笔记的线索/总结/记忆句。模块正文不在此改写。\n" + json.dumps(
+        payload, ensure_ascii=False
     )
     try:
         if llm is None:

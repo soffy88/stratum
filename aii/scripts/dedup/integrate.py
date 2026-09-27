@@ -66,8 +66,10 @@ def build_contributions(members: list[dict]) -> tuple[list, int]:
         # ★P1 溯源增强: 从 raw_ku_id 确定性解析 chapter_anchor(引用链完整化)
         import sys as _sys
         from pathlib import Path as _P
+
         _sys.path.insert(0, str(_P(__file__).resolve().parents[1]))
         from ku_schema import parse_chapter_anchor
+
         contribs.append(
             {
                 "source_book_id": m.get("book"),

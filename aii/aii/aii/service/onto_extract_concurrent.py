@@ -15,6 +15,7 @@ chunk_idx is unique per chunk, so ids are unique and parseable regardless of com
 (serial oskill uses a global running counter; both yield the same KU set + the ku_cN_ format that
 cross_chunk_link depends on).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -22,8 +23,7 @@ import json
 import re
 
 from dataclasses import dataclass
-from aii.service.onto_vocab import (
-    VALID_RELATION_TYPES, VALID_KNOWLEDGE_TYPES, VALID_SUB_TYPES)
+from aii.service.onto_vocab import VALID_RELATION_TYPES, VALID_KNOWLEDGE_TYPES, VALID_SUB_TYPES
 
 
 # OntologyExtractResult was dropped from oprim (main-lib version drift); define the
@@ -108,12 +108,21 @@ def _process_chunk_kus(chunk_idx: int, data: dict, vkt, vst, vrt):
 
 
 async def ontology_extract_concurrent(
-    *, source_text: str, llm,
-    pass1_chunk_tmpl: str, pass1_chunk_system: str,
-    pass1_outline_tmpl: str, pass1_outline_system: str,
-    pass2_chunk_tmpl: str, pass2_system: str,
-    chunk_size: int = 2000, doc_type: str = "textbook", source_credibility: str = "medium",
-    valid_knowledge_types=None, valid_sub_types=None, valid_relation_types=None,
+    *,
+    source_text: str,
+    llm,
+    pass1_chunk_tmpl: str,
+    pass1_chunk_system: str,
+    pass1_outline_tmpl: str,
+    pass1_outline_system: str,
+    pass2_chunk_tmpl: str,
+    pass2_system: str,
+    chunk_size: int = 2000,
+    doc_type: str = "textbook",
+    source_credibility: str = "medium",
+    valid_knowledge_types=None,
+    valid_sub_types=None,
+    valid_relation_types=None,
     chunk_concurrency: int = 10,
 ) -> OntologyExtractResult:
     vkt = valid_knowledge_types or VALID_KNOWLEDGE_TYPES
@@ -121,8 +130,13 @@ async def ontology_extract_concurrent(
     vrt = valid_relation_types or VALID_RELATION_TYPES
 
     if not source_text.strip():
-        return OntologyExtractResult(outline={}, ku_candidates=[], edge_candidates=[],
-                                     concept_candidates=[], stats={"total": 0, "by_type": {}, "explains_count": 0})
+        return OntologyExtractResult(
+            outline={},
+            ku_candidates=[],
+            edge_candidates=[],
+            concept_candidates=[],
+            stats={"total": 0, "by_type": {}, "explains_count": 0},
+        )
 
     chunks = _split_chunks(source_text, chunk_size)
     sem = asyncio.Semaphore(chunk_concurrency)
@@ -130,28 +144,53 @@ async def ontology_extract_concurrent(
     # Pass 1 — per-chunk analysis, CONCURRENT (order preserved by gather)
     async def p1(chunk):
         async with sem:
-            resp = await llm(messages=[{"role": "user", "content": pass1_chunk_tmpl.format(chunk_text=chunk)}],
-                             system=pass1_chunk_system, max_tokens=512)
+            resp = await llm(
+                messages=[{"role": "user", "content": pass1_chunk_tmpl.format(chunk_text=chunk)}],
+                system=pass1_chunk_system,
+                max_tokens=512,
+            )
             return _parse_json(resp) or {"concepts": [], "topics": [], "chapter": ""}
 
     chunk_analyses = await asyncio.gather(*(p1(c) for c in chunks))
 
     # Outline — single call (same as serial)
     outline_resp = await llm(
-        messages=[{"role": "user", "content": pass1_outline_tmpl.format(
-            doc_type=doc_type, source_credibility=source_credibility,
-            chunk_analyses=json.dumps(list(chunk_analyses), ensure_ascii=False, indent=2))}],
-        system=pass1_outline_system, max_tokens=1024)
+        messages=[
+            {
+                "role": "user",
+                "content": pass1_outline_tmpl.format(
+                    doc_type=doc_type,
+                    source_credibility=source_credibility,
+                    chunk_analyses=json.dumps(list(chunk_analyses), ensure_ascii=False, indent=2),
+                ),
+            }
+        ],
+        system=pass1_outline_system,
+        max_tokens=1024,
+    )
     outline = _parse_json(outline_resp) or {
-        "chapters": [], "core_concepts": [], "main_thread": "",
-        "stance": "", "doc_type": doc_type, "source_credibility": source_credibility}
+        "chapters": [],
+        "core_concepts": [],
+        "main_thread": "",
+        "stance": "",
+        "doc_type": doc_type,
+        "source_credibility": source_credibility,
+    }
     outline_str = json.dumps(outline, ensure_ascii=False, indent=2)
 
     # Pass 2 — per-chunk KU extraction, CONCURRENT, each chunk independent
     async def p2(chunk_idx, chunk):
         async with sem:
-            resp = await llm(messages=[{"role": "user", "content": pass2_chunk_tmpl.format(
-                outline=outline_str, chunk_text=chunk)}], system=pass2_system, max_tokens=2048)
+            resp = await llm(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": pass2_chunk_tmpl.format(outline=outline_str, chunk_text=chunk),
+                    }
+                ],
+                system=pass2_system,
+                max_tokens=2048,
+            )
             return _process_chunk_kus(chunk_idx, _parse_json(resp) or {}, vkt, vst, vrt)
 
     per_chunk = await asyncio.gather(*(p2(i, c) for i, c in enumerate(chunks)))
@@ -166,8 +205,18 @@ async def ontology_extract_concurrent(
 
     by_type: dict[str, int] = {}
     for ku in all_ku:
-        by_type[ku.get("knowledge_type", "unknown")] = by_type.get(ku.get("knowledge_type", "unknown"), 0) + 1
-    stats = {"total": len(all_ku), "by_type": by_type,
-             "explains_count": sum(1 for e in all_edge if e.get("relation_type") == "explains")}
-    return OntologyExtractResult(outline=outline, ku_candidates=all_ku, edge_candidates=all_edge,
-                                 concept_candidates=all_concept, stats=stats)
+        by_type[ku.get("knowledge_type", "unknown")] = (
+            by_type.get(ku.get("knowledge_type", "unknown"), 0) + 1
+        )
+    stats = {
+        "total": len(all_ku),
+        "by_type": by_type,
+        "explains_count": sum(1 for e in all_edge if e.get("relation_type") == "explains"),
+    }
+    return OntologyExtractResult(
+        outline=outline,
+        ku_candidates=all_ku,
+        edge_candidates=all_edge,
+        concept_candidates=all_concept,
+        stats=stats,
+    )

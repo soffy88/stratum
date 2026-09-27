@@ -5,7 +5,15 @@
 输出: md路径|substrate_id|书名   (substrate_id: math_zh_<md5前10>)
 用法: python scripts/math_discover_zh.py [--out list.txt] [--limit N] [--state state.json]
 """
-import asyncio, asyncpg, json, os, re, sys, hashlib, glob
+
+import asyncio
+import asyncpg
+import json
+import os
+import re
+import sys
+import hashlib
+import glob
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -19,8 +27,8 @@ def _sid(stem: str) -> str:
 
 
 def _chapters(text: str) -> int:
-    cn = len(re.findall(r'(?m)^#{0,4}\s*第([一二三四五六七八九十]+)章', text))
-    en = len(re.findall(r'(?m)^#\s+Chapter\s+\d+:?\s*$', text))
+    cn = len(re.findall(r"(?m)^#{0,4}\s*第([一二三四五六七八九十]+)章", text))
+    en = len(re.findall(r"(?m)^#\s+Chapter\s+\d+:?\s*$", text))
     return max(cn, en)
 
 
@@ -44,13 +52,16 @@ async def _ingested(ids):
         return set()
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
     rows = await conn.fetch(
-        "SELECT substrate_id FROM aii.ingested_substrate WHERE substrate_id=ANY($1::text[]) AND ku_count>30", ids)
+        "SELECT substrate_id FROM aii.ingested_substrate WHERE substrate_id=ANY($1::text[]) AND ku_count>30",
+        ids,
+    )
     await conn.close()
     return {r["substrate_id"] for r in rows}
 
 
 async def main():
     import argparse
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=None)
     ap.add_argument("--limit", type=int, default=0)
@@ -74,7 +85,7 @@ async def main():
     if args.verbose:
         print(f"排已入库/终态后: {len(cands)} 本", file=sys.stderr)
     if args.limit > 0:
-        cands = cands[:args.limit]
+        cands = cands[: args.limit]
     lines = [f"{c['md_path']}|{c['id']}|{c['title']}" for c in cands]
     if args.out:
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)

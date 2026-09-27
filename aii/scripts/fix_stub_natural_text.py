@@ -35,7 +35,7 @@ async def main(apply: bool):
     import asyncpg
 
     conn = await asyncpg.connect(
-        os.getenv("DATABASE_URL", "postgresql://aii:***REMOVED***@localhost:5435/aii_kg")
+        os.getenv("DATABASE_URL", "postgresql://aii:***REMOVED***@localhost:5437/aii_kg")
     )
     all_rows = await conn.fetch(
         f"SELECT ku_id, substrate_id, natural_text FROM aii.ku_onto WHERE {STUB_COND}"

@@ -15,6 +15,7 @@
   - quark_pipeline/storage_state.json 供 quark_fetch.py 调 API 按需拉取
   - quark_pipeline/__puus.txt 明文凭证(备用)
 """
+
 from __future__ import annotations
 
 import http.server
@@ -35,9 +36,7 @@ QR_PNG = PIPE / "qr.png"
 STATE = PIPE / "storage_state.json"
 PUUS_TXT = PIPE / "__puus.txt"
 PORT = int(os.getenv("QUARK_QR_PORT", "8899"))
-TAILSCALE_IP = os.getenv(
-    "QUARK_QR_HOST", "100.86.95.70"
-)  # 本机 tailscale IP, 用户手机同网可访问
+TAILSCALE_IP = os.getenv("QUARK_QR_HOST", "100.86.95.70")  # 本机 tailscale IP, 用户手机同网可访问
 
 
 def _start_qr_server() -> None:
@@ -96,7 +95,7 @@ def main() -> int:
                 ok = True
                 break
             except Exception as e:
-                print(f"  打开页面失败({i+1}/5): {str(e)[:70]}", flush=True)
+                print(f"  打开页面失败({i + 1}/5): {str(e)[:70]}", flush=True)
                 pg.wait_for_timeout(3000)
         if not ok:
             print("❌ 无法打开 pan.quark.cn, 检查网络")
@@ -130,7 +129,9 @@ def main() -> int:
             pg.wait_for_timeout(2000)
             pg.screenshot(path=str(QR_PNG))
             print(f"📱 二维码已生成: {QR_PNG}")
-            print(f"📱 请用手机夸克 APP『扫一扫』访问: http://{TAILSCALE_IP}:{PORT}/  (5 分钟内有效)")
+            print(
+                f"📱 请用手机夸克 APP『扫一扫』访问: http://{TAILSCALE_IP}:{PORT}/  (5 分钟内有效)"
+            )
             print("   (若页面没显示二维码, 手机浏览器打开该地址会看到截图)")
 
             if not _wait_login(pg, ctx, timeout_s=300):
@@ -140,7 +141,7 @@ def main() -> int:
         ctx.storage_state(path=str(STATE))
         puus = next((c["value"] for c in ctx.cookies() if c["name"] == "__puus"), "")
         PUUS_TXT.write_text(puus)
-        print(f"✅ 登录成功! 会话已保存:")
+        print("✅ 登录成功! 会话已保存:")
         print(f"   storage_state: {STATE}")
         print(f"   __puus: {puus[:12]}... (已存 {PUUS_TXT.name})")
         b.close()

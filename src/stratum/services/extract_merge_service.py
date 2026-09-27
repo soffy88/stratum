@@ -57,9 +57,7 @@ def _llm_json(prompt: str) -> dict:
 def _get_markdown(substrate_id: str) -> tuple[str, str]:
     """Return (title, markdown_content)."""
     with get_conn() as conn:
-        s = conn.execute(
-            "SELECT title FROM substrates WHERE id=?", (substrate_id,)
-        ).fetchone()
+        s = conn.execute("SELECT title FROM substrates WHERE id=?", (substrate_id,)).fetchone()
         title = (s[0] if s else None) or substrate_id
         row = conn.execute(
             "SELECT content FROM derivative WHERE substrate_id=? AND kind='markdown' "

@@ -7,6 +7,7 @@
 数据源: aii_refined(rf schema) refined_concept + refined_directed_edge + refined_ku_concept。
 纯确定性, 零 LLM。图小(1.2K 边), 全量加载内存 BFS 即可。
 """
+
 from __future__ import annotations
 
 import os
@@ -15,19 +16,17 @@ from typing import Any
 
 import psycopg2
 
-REFINED_DSN = os.getenv(
-    "REFINED_URL", "postgresql://aii:***REMOVED***@localhost:5436/aii_refined"
-)
+REFINED_DSN = os.getenv("REFINED_URL", "postgresql://aii:***REMOVED***@localhost:5436/aii_refined")
 
 
 class BGraph:
     """B 仓概念图(内存邻接表)。"""
 
     def __init__(self) -> None:
-        self.adj: dict[int, set[int]] = {}      # concept_id → neighbors
-        self.names: dict[int, str] = {}         # concept_id → name
-        self.name_id: dict[str, int] = {}       # name(lower) → concept_id
-        self.ku_counts: dict[int, int] = {}     # concept_id → KU 数
+        self.adj: dict[int, set[int]] = {}  # concept_id → neighbors
+        self.names: dict[int, str] = {}  # concept_id → name
+        self.name_id: dict[str, int] = {}  # name(lower) → concept_id
+        self.ku_counts: dict[int, int] = {}  # concept_id → KU 数
 
     def load(self) -> None:
         conn = psycopg2.connect(REFINED_DSN)
@@ -38,12 +37,12 @@ class BGraph:
                 self.name_id.setdefault(str(name).lower(), cid)
             cur.execute(
                 "SELECT src_concept, dst_concept FROM rf.refined_directed_edge"
-                " WHERE src_concept IS NOT NULL AND dst_concept IS NOT NULL")
+                " WHERE src_concept IS NOT NULL AND dst_concept IS NOT NULL"
+            )
             for s, d in cur.fetchall():
                 self.adj.setdefault(s, set()).add(d)
                 self.adj.setdefault(d, set()).add(s)
-            cur.execute(
-                "SELECT concept_id, count(*) FROM rf.refined_ku_concept GROUP BY 1")
+            cur.execute("SELECT concept_id, count(*) FROM rf.refined_ku_concept GROUP BY 1")
             for cid, n in cur.fetchall():
                 self.ku_counts[cid] = n
         conn.close()
@@ -68,14 +67,15 @@ class BGraph:
                         continue
                     seen.add(nb)
                     nxt.append(nb)
-                    items.append({
-                        "concept_id": nb,
-                        "name": self.names.get(nb, f"#{nb}"),
-                        "ku_count": self.ku_counts.get(nb, 0),
-                    })
+                    items.append(
+                        {
+                            "concept_id": nb,
+                            "name": self.names.get(nb, f"#{nb}"),
+                            "ku_count": self.ku_counts.get(nb, 0),
+                        }
+                    )
             items.sort(key=lambda x: -x["ku_count"])
-            hops.append({"hop": hop, "count": len(items),
-                         "neighbors": items[:top_k]})
+            hops.append({"hop": hop, "count": len(items), "neighbors": items[:top_k]})
             frontier = nxt
             if not frontier:
                 break
@@ -93,8 +93,12 @@ class BGraph:
         s = self.resolve(src)
         d = self.resolve(dst)
         if s is None or d is None:
-            return {"found": False, "reason": "concept not found",
-                    "src_found": s is not None, "dst_found": d is not None}
+            return {
+                "found": False,
+                "reason": "concept not found",
+                "src_found": s is not None,
+                "dst_found": d is not None,
+            }
         if s == d:
             return {"found": True, "hops": 0, "path": [self.names.get(s)]}
         # 双向 BFS
@@ -133,8 +137,12 @@ class BGraph:
             if meet:
                 break
         if meet is None:
-            return {"found": False, "reason": f"no path within {max_hops} hops",
-                    "src": src, "dst": dst}
+            return {
+                "found": False,
+                "reason": f"no path within {max_hops} hops",
+                "src": src,
+                "dst": dst,
+            }
         # 重建路径
         path_ids: list[int] = []
         x = meet
@@ -154,6 +162,57 @@ class BGraph:
             "path": [self.names.get(i, f"#{i}") for i in path_ids],
         }
 
+    def ppr(
+        self,
+        concept: str,
+        top_k: int = 20,
+        damping: float = 0.85,
+        iterations: int = 20,
+    ) -> dict[str, Any]:
+        """Personalized PageRank with the requested concept as sole seed."""
+        seed = self.resolve(concept)
+        if seed is None:
+            return {"concept": concept, "found": False, "ranking": []}
+        if not 0.0 < damping < 1.0:
+            raise ValueError("damping must be between 0 and 1")
+        iterations = max(1, min(iterations, 100))
+        scores = {cid: 0.0 for cid in self.names}
+        scores[seed] = 1.0
+        for _ in range(iterations):
+            next_scores = {cid: 0.0 for cid in self.names}
+            next_scores[seed] = 1.0 - damping
+            for cid, score in scores.items():
+                neighbors = sorted(self.adj.get(cid, ()))
+                if not neighbors:
+                    next_scores[seed] += damping * score
+                    continue
+                share = damping * score / len(neighbors)
+                for neighbor in neighbors:
+                    next_scores[neighbor] = next_scores.get(neighbor, 0.0) + share
+            scores = next_scores
+
+        ranking = []
+        for cid, score in sorted(
+            scores.items(), key=lambda item: (-item[1], self.names.get(item[0], ""))
+        )[:top_k]:
+            ranking.append(
+                {
+                    "concept_id": cid,
+                    "name": self.names.get(cid, f"#{cid}"),
+                    "score": round(score, 8),
+                    "ku_count": self.ku_counts.get(cid, 0),
+                    "reason": "seed" if cid == seed else "ppr_activation_from_seed",
+                }
+            )
+        return {
+            "concept": concept,
+            "found": True,
+            "seed_id": seed,
+            "damping": damping,
+            "iterations": iterations,
+            "ranking": ranking,
+        }
+
 
 _graph: BGraph | None = None
 
@@ -169,6 +228,7 @@ def get_graph() -> BGraph:
 
 if __name__ == "__main__":
     import sys
+
     g = get_graph()
     if len(sys.argv) >= 3 and sys.argv[1] == "path":
         print(g.path(sys.argv[2], sys.argv[3]))

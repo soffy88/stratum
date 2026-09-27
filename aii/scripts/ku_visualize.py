@@ -9,17 +9,17 @@
   .venv/bin/python scripts/ku_visualize.py --substrate <sid>     # 整本书(前 N 条)
   --out <file.html> --limit 50
 """
+
 from __future__ import annotations
 
 import argparse
 import asyncio
-import glob
 import json
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DSN = "postgresql://aii:***REMOVED***@localhost:5435/aii_kg"
+DSN = "postgresql://aii:***REMOVED***@localhost:5437/aii_kg"
 MD_POOLS = [
     Path("/home/soffy/books/MD/经济学"),
     Path("/home/soffy/books/MD/中文数学"),
@@ -44,6 +44,7 @@ def _find_source_md(substrate_id: str, probe: str = "") -> str | None:
     # 内容匹配(probe 前 40 字符)
     if probe:
         import re
+
         key = re.sub(r"\s+", "", probe[:40]).lower()
         for md in files:
             try:
@@ -66,6 +67,7 @@ def _quote_spans(quotes: list[dict], text: str) -> list[tuple[int, int, str, str
         start, end = sp if isinstance(sp, list) and len(sp) == 2 else (0, 0)
         if not quote or end <= start or end > len(text) or text[start:end] != quote:
             import re
+
             norm = re.sub(r"\s+", "", quote)
             ti = re.sub(r"\s+", "", text)
             i = ti.find(norm)
@@ -85,14 +87,20 @@ def _quote_spans(quotes: list[dict], text: str) -> list[tuple[int, int, str, str
 
 
 def _render_html(title: str, text: str, spans: list[tuple[int, int, str, str]]) -> str:
-    colors = {"definition": "#ffe066", "name_hit": "#9ae6b4", "first_sentence": "#90cdf4",
-              "": "#fbb6ce"}
-    html = [f"<!DOCTYPE html><html><head><meta charset='utf-8'><title>{title}</title>"
-            "<style>body{max-width:900px;margin:24px auto;padding:0 16px;font-family:system-ui}"
-            "mark{border-radius:3px;padding:0 2px;cursor:pointer}mark b{font-size:10px;color:#fff;"
-            "background:#333;border-radius:3px;padding:0 3px;margin-right:3px}"
-            "h1{font-size:18px}pre{white-space:pre-wrap;line-height:1.7}</style></head><body>"
-            f"<h1>{title}</h1><pre>"]
+    colors = {
+        "definition": "#ffe066",
+        "name_hit": "#9ae6b4",
+        "first_sentence": "#90cdf4",
+        "": "#fbb6ce",
+    }
+    html = [
+        f"<!DOCTYPE html><html><head><meta charset='utf-8'><title>{title}</title>"
+        "<style>body{max-width:900px;margin:24px auto;padding:0 16px;font-family:system-ui}"
+        "mark{border-radius:3px;padding:0 2px;cursor:pointer}mark b{font-size:10px;color:#fff;"
+        "background:#333;border-radius:3px;padding:0 3px;margin-right:3px}"
+        "h1{font-size:18px}pre{white-space:pre-wrap;line-height:1.7}</style></head><body>"
+        f"<h1>{title}</h1><pre>"
+    ]
     if not spans:
         html.append(text.replace("<", "&lt;"))
     else:
@@ -101,8 +109,10 @@ def _render_html(title: str, text: str, spans: list[tuple[int, int, str, str]]) 
             if s < prev:
                 continue
             html.append(text[prev:s].replace("<", "&lt;"))
-            html.append(f"<mark style='background:{colors.get(kind, '#fbd38d')}'><b>{kind or 'quote'}</b>"
-                        f"{text[s:e].replace('<', '&lt;')}</mark>")
+            html.append(
+                f"<mark style='background:{colors.get(kind, '#fbd38d')}'><b>{kind or 'quote'}</b>"
+                f"{text[s:e].replace('<', '&lt;')}</mark>"
+            )
             prev = e
         html.append(text[prev:].replace("<", "&lt;"))
     html.append("</pre></body></html>")
@@ -118,15 +128,21 @@ async def main() -> int:
     args = ap.parse_args()
 
     import asyncpg
+
     conn = await asyncpg.connect(DSN, timeout=15)
     try:
         if args.ku:
             rows = await conn.fetch(
-                "SELECT ku_id, substrate_id, title, grounded_by FROM aii.ku_onto WHERE ku_id=$1", args.ku)
+                "SELECT ku_id, substrate_id, title, grounded_by FROM aii.ku_onto WHERE ku_id=$1",
+                args.ku,
+            )
         else:
             rows = await conn.fetch(
                 "SELECT ku_id, substrate_id, title, grounded_by FROM aii.ku_onto "
-                "WHERE substrate_id=$1 ORDER BY ku_id LIMIT $2", args.substrate, args.limit)
+                "WHERE substrate_id=$1 ORDER BY ku_id LIMIT $2",
+                args.substrate,
+                args.limit,
+            )
     finally:
         await conn.close()
 
@@ -145,10 +161,10 @@ async def main() -> int:
         if not src and kus:
             gb0 = kus[0]["grounded_by"]
             gb0 = json.loads(gb0) if isinstance(gb0, str) else (gb0 or {})
-            qs = (gb0.get("evidence_quotes") or [])
+            qs = gb0.get("evidence_quotes") or []
             src = _find_source_md(sid, probe=(qs[0].get("quote") or "") if qs else "")
         text = src if src else "(源 MD 未找到)"
-        for ku in kus[:args.limit]:
+        for ku in kus[: args.limit]:
             _gb_raw = ku["grounded_by"]
             gb = json.loads(_gb_raw) if isinstance(_gb_raw, str) else (_gb_raw or {})
             quotes = gb.get("evidence_quotes") or []

@@ -13,9 +13,20 @@ import { useEffect, useState } from 'react';
 import { OEmptyState, OLoadingState, OErrorState } from '@helios/blocks';
 import { useApiNoArg, useApi } from '@/aii/hooks/useApi';
 import * as api from '@/aii/lib/api-client';
-import type { BuListItem, BuDetail, BuStructureSection } from '@/aii/types/api';
+import type { BuDetail, BuStructureSection } from '@/aii/types/api';
 import { GradeDot, gradeTextClass, stanceMeta } from '@/aii/components/GradeMarkers';
 import { LearningLayer } from '@/aii/components/LearningLayer';
+
+type BuExtras = {
+  source_credibility?: { book_type?: string; credibility_level?: string; credibility_note?: string };
+  overview_oneline?: string;
+  problem_statement?: string;
+  learning_thread?: string;
+  core_takeaways?: string[];
+  applicability?: string;
+};
+type BuClaim = BuDetail['main_claims'][number] & { stance?: string };
+type BuArgument = BuDetail['argument_structure'][number] & { boundary?: string };
 
 function StructureTree({ nodes, depth = 0 }: { nodes: BuStructureSection[]; depth?: number }) {
   return (
@@ -43,7 +54,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
   const [state, run] = useApi(api.getBuDetail);
   useEffect(() => { void run(id); }, [id, run]);
-  const d = state.data as BuDetail | null;
+  const d = state.data as (BuDetail & BuExtras) | null;
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
       <div
@@ -65,50 +76,50 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
                 <h3 className="text-2xl font-semibold leading-tight">{d.book_title}</h3>
               </div>
               {/* ★ 来源可信度标签 */}
-              {(d as any).source_credibility?.book_type && (
+              {d.source_credibility?.book_type && (
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs px-2 py-0.5 rounded-full border border-[color:var(--border)] text-[color:var(--text-secondary)]">
-                    {(d as any).source_credibility.book_type}
+                    {d.source_credibility.book_type}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full border border-[color:var(--border)] text-[color:var(--text-secondary)]">
-                    可信度: {(d as any).source_credibility.credibility_level}
+                    可信度: {d.source_credibility.credibility_level}
                   </span>
-                  {(d as any).source_credibility.credibility_note && (
+                  {d.source_credibility.credibility_note && (
                     <span className="text-xs text-[color:var(--text-tertiary,#888)]">
-                      — {(d as any).source_credibility.credibility_note}
+                      — {d.source_credibility.credibility_note}
                     </span>
                   )}
                 </div>
               )}
               {/* ★ 一句话总览 */}
-              {(d as any).overview_oneline && (
-                <p className="text-base font-medium text-[color:var(--foreground)]">{(d as any).overview_oneline}</p>
+              {d.overview_oneline && (
+                <p className="text-base font-medium text-[color:var(--foreground)]">{d.overview_oneline}</p>
               )}
               <p className="text-[15px] leading-loose text-[color:var(--text-secondary)]">{d.summary}</p>
             </div>
 
             {/* ★ 核心问题 */}
-            {(d as any).problem_statement && (
+            {d.problem_statement && (
               <section className="flex flex-col gap-2">
                 <SectionHeading>核心问题 · Problem</SectionHeading>
-                <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{(d as any).problem_statement}</p>
+                <p className="text-sm leading-relaxed text-[color:var(--foreground)]">{d.problem_statement}</p>
               </section>
             )}
 
             {/* ★ 学习主线 */}
-            {(d as any).learning_thread && (
+            {d.learning_thread && (
               <section className="flex flex-col gap-2">
                 <SectionHeading>学习主线 · Thread</SectionHeading>
-                <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{(d as any).learning_thread}</p>
+                <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{d.learning_thread}</p>
               </section>
             )}
 
             {/* ★ 核心速览 */}
-            {(d as any).core_takeaways?.length > 0 && (
+            {d.core_takeaways && d.core_takeaways.length > 0 && (
               <section className="flex flex-col gap-2">
                 <SectionHeading>核心速览 · Takeaways</SectionHeading>
                 <ul className="flex flex-col gap-1.5">
-                  {(d as any).core_takeaways.map((t: string, i: number) => (
+                  {d.core_takeaways.map((t, i) => (
                     <li key={i} className="text-sm leading-relaxed flex items-start gap-2">
                       <span className="text-[color:var(--accent,#2563eb)] font-bold shrink-0">{i + 1}.</span>
                       <span>{t}</span>
@@ -119,10 +130,10 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
             )}
 
             {/* ★ 适用边界 */}
-            {(d as any).applicability && (
+            {d.applicability && (
               <section className="flex flex-col gap-2">
                 <SectionHeading>适用边界 · Applicability</SectionHeading>
-                <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{(d as any).applicability}</p>
+                <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{d.applicability}</p>
               </section>
             )}
 
@@ -131,13 +142,14 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
               <SectionHeading>主要论断 · Main Claims</SectionHeading>
               <ul className="flex flex-col gap-5">
                 {d.main_claims.map(c => {
+                  const claim = c as BuClaim;
                   const st = stanceMeta(c.stance_marker);
                   return (
                     <li key={c.id} className="flex gap-3 pl-1">
                       <span className="w-0.5 shrink-0 rounded-full self-stretch" style={{ background: st.bar }} aria-hidden />
                       <div className="flex flex-col gap-1 flex-1">
-                        {(c as any).stance && (
-                          <span className="text-xs text-[color:var(--text-tertiary,#888)]">{(c as any).stance}</span>
+                        {claim.stance && (
+                          <span className="text-xs text-[color:var(--text-tertiary,#888)]">{claim.stance}</span>
                         )}
                         <p className="text-[15px] leading-relaxed">
                           <span className="text-[color:var(--text-secondary)] font-medium">{st.prefix}:</span>{' '}
@@ -158,15 +170,17 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
             <section className="flex flex-col gap-4">
               <SectionHeading>论点 → 论据 · Argument</SectionHeading>
               <ul className="flex flex-col gap-6">
-                {d.argument_structure.map(arg => (
+                {d.argument_structure.map(arg => {
+                  const argument = arg as BuArgument;
+                  return (
                   <li key={arg.id} className="flex flex-col gap-2.5">
                     <div className="flex items-start gap-2">
                       <GradeDot grade={arg.thesis_grade} size={9} />
                       <p className="text-[15px] font-medium leading-relaxed flex-1 -mt-0.5">{arg.thesis}</p>
                     </div>
-                    {(arg as any).boundary && (
+                    {argument.boundary && (
                       <p className="text-xs text-[color:var(--text-tertiary,#888)] ml-5">
-                        边界: {(arg as any).boundary}
+                        边界: {argument.boundary}
                       </p>
                     )}
                     <ul className="flex flex-col gap-2.5 ml-4 pl-3 border-l border-[color:var(--border)]">
@@ -178,7 +192,8 @@ function BuDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
                       ))}
                     </ul>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </section>
 
@@ -220,7 +235,7 @@ export default function BooksPage() {
   const [state, run] = useApiNoArg(api.getBuList);
   const [detailId, setDetailId] = useState<string | null>(null);
   useEffect(() => { void run(); }, [run]);
-  const items = ((state.data as any)?.items ?? state.data ?? []) as BuListItem[];
+  const items = state.data ?? [];
 
   return (
     <div className="aii-page-content flex flex-col gap-5 max-w-5xl mx-auto">

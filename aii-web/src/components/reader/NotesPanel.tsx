@@ -47,7 +47,7 @@ export function NotesPanel({
     if (selectedConcept && !title) {
       setTitle(`关于「${selectedConcept.name}」的笔记`);
     }
-  }, [selectedConcept]);  // 只在选中概念变化时触发，不跟踪title
+  }, [selectedConcept, title]);
 
   const submit = async () => {
     if (!title.trim()) return;

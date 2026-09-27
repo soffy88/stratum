@@ -4,8 +4,10 @@ import asyncio
 
 from fastapi import APIRouter, Depends
 
+from stratum.api.routers.billing import get_active_tier
 from stratum.common import jwt_auth
 from stratum.db import query
+from stratum.services.access_policy import allowed_content_tiers
 
 router = APIRouter(prefix="/api/v1/recommendations", tags=["recommendations"])
 
@@ -55,10 +57,12 @@ async def get_recommendations(user_id: str = Depends(jwt_auth)):
         bookmarked=[r["content_id"] for r in bookmarked],
     )
 
+    allowed_tiers = allowed_content_tiers(get_active_tier(user_id))
     candidates_raw = query(
-        "SELECT id, title, domain, tags, related_concept_ids, published_at "
+        "SELECT id, title, domain, tags, related_concepts AS related_concept_ids, published_at "
         "FROM platform_content WHERE deleted_at IS NULL "
-        "ORDER BY published_at DESC",
+        "AND access_tier = ANY(%(allowed_tiers)s) ORDER BY published_at DESC",
+        {"allowed_tiers": list(allowed_tiers)},
         limit=100,
     )
     candidates = [

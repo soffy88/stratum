@@ -25,7 +25,7 @@ SCAN_INTERVALS = {
     "oapen": 30 * 86400,
     "openstax": 30 * 86400,
     "mit_ocw": 30 * 86400,
-    "wechat": 6 * 3600,   # 微信: 每 6h (手动 URL 列表)
+    "wechat": 6 * 3600,  # 微信: 每 6h (手动 URL 列表)
     "twitter": 3 * 3600,  # Twitter: 每 3h (用户名/关键词)
 }
 SOURCE_WATCHER_TICK = 3600  # check every hour which subscriptions are due
@@ -55,8 +55,11 @@ async def _ingest_item(result, user_id_hash: str, sub_id: str) -> str | None:
     # (2026-07-11 实测 openstax《Principles of Finance 2e》如此报废, 历史 gutenberg
     # PDF 同理)。arxiv 论文仍走 file_type(pdf→paper 正确)。
     medium_hint = (
-        "book" if source_type in ("gutenberg", "oapen", "openstax", "mit_ocw") else
-        "webpage" if source_type in ("wechat", "twitter") else file_type
+        "book"
+        if source_type in ("gutenberg", "oapen", "openstax", "mit_ocw")
+        else "webpage"
+        if source_type in ("wechat", "twitter")
+        else file_type
     )
 
     # ★2026-08-07: web sources (wechat/twitter) already have content via enhanced fetcher
@@ -65,14 +68,15 @@ async def _ingest_item(result, user_id_hash: str, sub_id: str) -> str | None:
     content_preview = (result.metadata or {}).get("content_preview", "")
 
     with tempfile.TemporaryDirectory(prefix="srcwatch_") as tmpdir:
-        ext = {"pdf": ".pdf", "epub": ".epub", "txt": ".txt", "html": ".html"}.get(file_type, ".bin")
+        ext = {"pdf": ".pdf", "epub": ".epub", "txt": ".txt", "html": ".html"}.get(
+            file_type, ".bin"
+        )
         safe_id = re.sub(r"[^A-Za-z0-9_-]", "_", result.external_id)
         file_path = Path(tmpdir) / f"{safe_id}{ext}"
 
         # Web source: 直接写入 HTML 内容 (已通过 enhanced fetcher 抓取)
         if is_web_source and content_preview:
-            file_path.write_text(
-                f"<html><body>{content_preview}</body></html>", encoding="utf-8")
+            file_path.write_text(f"<html><body>{content_preview}</body></html>", encoding="utf-8")
             ok = True
         else:
             ok = await asyncio.to_thread(
@@ -179,10 +183,9 @@ async def _ingest_item(result, user_id_hash: str, sub_id: str) -> str | None:
         # Phase 1: Generate L0/L1 layers for substrate
         try:
             from stratum.services.layer_generator import generate_substrate_layers
+
             with get_conn() as _c:
-                _row = _c.execute(
-                    "SELECT title FROM substrates WHERE id=?", (sid,)
-                ).fetchone()
+                _row = _c.execute("SELECT title FROM substrates WHERE id=?", (sid,)).fetchone()
             _title = _row[0] if _row else None
             generate_substrate_layers(sid, title=_title, content=None)
         except Exception as exc:
@@ -191,6 +194,7 @@ async def _ingest_item(result, user_id_hash: str, sub_id: str) -> str | None:
         # Phase 2: Register in directory tree (incremental update)
         try:
             from stratum.services.directory_builder import register_substrate
+
             with get_conn() as _c:
                 _row = _c.execute(
                     "SELECT title, COALESCE(meta_json->>'discipline', '') FROM substrates WHERE id=?",

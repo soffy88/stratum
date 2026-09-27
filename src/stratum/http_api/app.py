@@ -6,6 +6,10 @@ search/scheduled_jobs). Frontend rewrites send /api/auth/* and bare /api/search
 here specifically (see api/main.py's module docstring for the full routing
 table and why a merge is deferred, not abandoned)."""
 
+# Logging is intentionally configured before importing route modules; those
+# imports register handlers and may emit startup diagnostics.
+# ruff: noqa: E402
+
 import os
 
 from stratum.logging_config import configure_logging
@@ -44,7 +48,15 @@ def _validate_production_secrets() -> None:
     """Refuse to start if any critical secret is missing or too short (production only)."""
     if os.getenv("STRATUM_ENV") != "production":
         return
-    for name in ("JWT_SECRET", "COOKIE_SECRET", "ADMIN_SECRET"):
+    jwt_secrets = [item.strip() for item in os.getenv("JWT_SECRETS", "").split(",") if item.strip()]
+    legacy_jwt = os.getenv("JWT_SECRET", "").strip()
+    if legacy_jwt and legacy_jwt not in jwt_secrets:
+        jwt_secrets.append(legacy_jwt)
+    if not jwt_secrets or any(len(value) < 32 for value in jwt_secrets):
+        raise RuntimeError(
+            "JWT_SECRET or JWT_SECRETS must contain only secrets ≥ 32 chars in production"
+        )
+    for name in ("COOKIE_SECRET", "ADMIN_SECRET"):
         val = os.getenv(name, "")
         if not val or len(val) < 32:
             raise RuntimeError(
@@ -56,9 +68,34 @@ _validate_production_secrets()
 
 app = FastAPI(title="Stratum API", version="1.2.0")
 
+_DEFAULT_CORS_ORIGINS = (
+    "http://localhost:3000",
+    "http://localhost:3002",
+    "http://localhost:3101",
+    "https://stratum.kanpan.co",
+    "https://aii.kanpan.co",
+    "https://aiinote.com",
+    "https://www.aiinote.com",
+)
+
+
+def _cors_origins() -> list[str]:
+    """Return an explicit CORS allowlist for the legacy browser API."""
+    configured = os.environ.get("STRATUM_CORS_ALLOWED_ORIGINS")
+    origins = (
+        [item.strip() for item in configured.split(",")]
+        if configured
+        else list(_DEFAULT_CORS_ORIGINS)
+    )
+    origins = [item for item in origins if item]
+    if "*" in origins:
+        raise RuntimeError("STRATUM_CORS_ALLOWED_ORIGINS must not contain '*'")
+    return origins
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

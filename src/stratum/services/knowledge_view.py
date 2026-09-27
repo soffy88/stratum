@@ -14,7 +14,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-Scope = Literal["lexical", "dense", "graph", "temporal", "user-authored", "learning"]
+Scope = Literal["lexical", "dense", "graph", "temporal", "user-authored", "learning", "visual"]
+Channel = Literal["metadata", "lexical", "dense", "graph", "visual"]
 
 RESULT_SCHEMA_FIELDS: set[str] = {
     "id",
@@ -44,6 +45,7 @@ class KnowledgeViewRequest:
     user_id: str | None = None
     rerank: bool = False
     filters: dict[str, Any] = field(default_factory=dict)
+    channels: list[Channel] | None = None
     # Internal evaluation/worker optimisation: callers may reuse a batch
     # embedding, while the public API continues to derive it from ``query``.
     query_embedding: list[float] | None = None
@@ -70,6 +72,10 @@ class KnowledgeViewResult:
     ref_id: str | None = None
     fragment_id: str | None = None
     provenance: dict[str, Any] | None = None  # Claim -> Evidence -> Fragment -> Source
+    page_number: int | None = None
+    bbox: dict[str, Any] | None = None
+    visual_score: float | None = None
+    tile_uri: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -90,7 +96,28 @@ class KnowledgeViewResult:
             "uri": self.uri,
             "ref_id": self.ref_id,
             "provenance": self.provenance,
+            "page_number": self.page_number,
+            "bbox": self.bbox,
+            "visual_score": self.visual_score,
+            "tile_uri": self.tile_uri,
         }
+
+
+class KnowledgeViewInvariantError(RuntimeError):
+    """Raised when a retrieval result cannot be proven safe and citable."""
+
+
+class KnowledgeView:
+    """The only application-facing retrieval facade.
+
+    Engines below this boundary are implementation details.  Callers must
+    provide an authenticated identity; the facade resolves ownership and
+    provenance before returning any result.
+    """
+
+    @staticmethod
+    def search(req: KnowledgeViewRequest) -> dict[str, Any]:
+        return search_knowledge_view(req)
 
 
 def _normalize_scopes(scopes: list[Scope] | None) -> list[Scope]:
@@ -108,6 +135,14 @@ def search_knowledge_view(req: KnowledgeViewRequest) -> dict[str, Any]:
     - provenance/citation echo
     - lexical+dense as projection (rebuildable), never authority
     """
+    if not req.user_id or req.user_id == "default":
+        raise KnowledgeViewInvariantError("authenticated user_id is required")
+
+    # Visual is opt-in and isolated from the legacy path while the flag is off.
+    from stratum.config import AII_VISUAL_RETRIEVAL_ENABLED
+    requested_channels = req.channels or ["metadata", "lexical", "dense", "graph"]
+    if "visual" in requested_channels and AII_VISUAL_RETRIEVAL_ENABLED:
+        return _search_visual_or_hybrid(req, requested_channels)
     # Use retrieval_engine as canonical dense path; search_utils pgvector as fallback.
     # This keeps behavior identical but routes through one contract.
     from stratum.services.retrieval_engine import retrieve
@@ -137,16 +172,28 @@ def search_knowledge_view(req: KnowledgeViewRequest) -> dict[str, Any]:
     from stratum.db import query as db_query
 
     ref_ids = [r.ref_id for r in resp.results if r.ref_id]
+    if any(not r.ref_id for r in resp.results):
+        raise KnowledgeViewInvariantError("untraceable retrieval result has no canonical source")
     title_map: dict[str, str] = {}
+    owner_map: dict[str, str] = {}
     if ref_ids:
-        try:
-            rows = db_query(
-                "SELECT id, title FROM substrates WHERE id = ANY(%(ids)s)",
-                {"ids": ref_ids},
+        rows = db_query(
+            "SELECT id, title, user_id FROM substrates "
+            "WHERE id = ANY(%(ids)s) AND deleted_at IS NULL",
+            {"ids": ref_ids},
+        )
+        title_map = {r["id"]: r["title"] or r["id"] for r in rows}
+        owner_map = {r["id"]: r["user_id"] for r in rows}
+        from stratum.utils.user_id_hash import hash_user_id
+
+        allowed_owners = {req.user_id, hash_user_id(req.user_id)}
+        missing = set(ref_ids) - set(owner_map)
+        foreign = {sid for sid, owner in owner_map.items() if owner not in allowed_owners}
+        if missing or foreign:
+            raise KnowledgeViewInvariantError(
+                f"retrieval ownership invariant failed (missing={sorted(missing)}, "
+                f"foreign={sorted(foreign)})"
             )
-            title_map = {r["id"]: r["title"] or r["id"] for r in rows}
-        except Exception:
-            title_map = {}
 
     results: list[KnowledgeViewResult] = []
     for r in resp.results:
@@ -159,7 +206,11 @@ def search_knowledge_view(req: KnowledgeViewRequest) -> dict[str, Any]:
                 type=r.node_type,
                 score=r.score,
                 snippet=(anchor.get("snippet") or r.content[:300]) if r.content else "",
-                citation=None,
+                citation={
+                    "source_id": r.ref_id,
+                    "fragment_id": r.fragment_id,
+                    "quote": (r.content or "")[:300],
+                },
                 paragraph_index=anchor.get("paragraph_index"),
                 char_start=anchor.get("char_start"),
                 char_end=anchor.get("char_end"),
@@ -172,9 +223,18 @@ def search_knowledge_view(req: KnowledgeViewRequest) -> dict[str, Any]:
                 layer=r.layer,
                 uri=r.uri,
                 ref_id=r.ref_id,
-                provenance={"substrate_id": r.ref_id, "layer": r.layer},
+                provenance={
+                    "source_id": r.ref_id,
+                    "fragment_id": r.fragment_id,
+                    "layer": r.layer,
+                },
             )
         )
+
+    for item in results:
+        errors = validate_knowledge_view_result(item, req.user_id, owner_map)
+        if errors:
+            raise KnowledgeViewInvariantError("; ".join(errors))
 
     return {
         "query": req.query,
@@ -183,15 +243,114 @@ def search_knowledge_view(req: KnowledgeViewRequest) -> dict[str, Any]:
         "results": [x.to_dict() for x in results],
         "trajectory_id": resp.trajectory_id,
         "total_ms": resp.total_ms,
+        "trajectory": [
+            {
+                "phase": step.phase,
+                "candidates": step.candidates,
+                "hits": step.hits,
+                "scores": [round(score, 4) for score in step.scores],
+                "details": step.details,
+            }
+            for step in resp.trajectory
+        ],
+        "channels": requested_channels,
+    }
+
+
+def validate_knowledge_view_result(
+    result: KnowledgeViewResult, user_id: str, owner_map: dict[str, str] | None = None
+) -> list[str]:
+    """Hard validation for results crossing the KnowledgeView boundary."""
+    errors: list[str] = []
+    if not user_id or user_id == "default":
+        errors.append("authenticated user_id is required")
+    if not result.substrate_id:
+        errors.append("result missing canonical substrate_id")
+    if not result.citation or result.citation.get("source_id") != result.substrate_id:
+        errors.append("result missing valid citation")
+    if not result.provenance or result.provenance.get("source_id") != result.substrate_id:
+        errors.append("result missing valid provenance")
+    if owner_map is not None and result.substrate_id:
+        from stratum.utils.user_id_hash import hash_user_id
+
+        owner = owner_map.get(result.substrate_id)
+        if owner not in {user_id, hash_user_id(user_id)}:
+            errors.append("result owner does not match authenticated user")
+    return errors
+
+
+def _response_from_retrieval(req: KnowledgeViewRequest) -> dict[str, Any]:
+    """Compatibility adapter for the tiered endpoint, still behind this facade."""
+    return search_knowledge_view(req)
+
+
+def _search_visual_or_hybrid(req: KnowledgeViewRequest, channels: list[str]) -> dict[str, Any]:
+    """Rank-based visual fusion; visual rows always resolve to canonical source IDs."""
+    from stratum.db import query as db_query
+    from stratum.utils.user_id_hash import hash_user_id
+    from stratum.services.visual_embedding import get_visual_embedding_provider
+    import json
+    owner = hash_user_id(req.user_id or "default")
+    provider = get_visual_embedding_provider()
+    # Text/BGE-M3 vectors are not interchangeable with the visual model.
+    qv = provider.embed_query(req.query)
+    provider.validate(qv)
+    visual: list[dict[str, Any]] = []
+    if qv and "visual" in channels:
+        rows = db_query("""SELECT id,source_id,fragment_id,page_number,bbox_json,tile_uri,
+            1-(embedding <=> %(v)s::vector) AS score FROM visual_region_projection
+            WHERE user_id=%(u)s AND deleted_at IS NULL AND embedding IS NOT NULL
+            ORDER BY embedding <=> %(v)s::vector LIMIT %(k)s""", {"u": owner, "v": qv, "k": max(req.top_k * 5, 20)})
+        for rank, row in enumerate(rows, 1):
+            visual.append({"id": row["id"], "source_id": row["source_id"], "fragment_id": row["fragment_id"], "page_number": row["page_number"], "bbox": row["bbox_json"] if isinstance(row["bbox_json"], dict) else json.loads(row["bbox_json"] or "{}"), "tile_uri": row["tile_uri"], "score": float(row["score"] or 0), "rank": rank})
+    # TEXT_ONLY remains available for comparison; HYBRID uses RRF, never raw scores.
+    output = [
+        KnowledgeViewResult(
+            id=item["source_id"],
+            title=item["source_id"],
+            type="visual",
+            score=1 / (60 + item["rank"]),
+            snippet="",
+            citation={
+                "source_id": item["source_id"],
+                "page_number": item["page_number"],
+                "bbox": item["bbox"],
+            },
+            substrate_id=item["source_id"],
+            fragment_id=item["fragment_id"],
+            page_number=item["page_number"],
+            bbox=item["bbox"],
+            visual_score=item["score"],
+            tile_uri=item["tile_uri"],
+            provenance={
+                "source_id": item["source_id"],
+                "projection": "visual_region_projection",
+            },
+        )
+        for item in visual[:req.top_k]
+    ]
+    owner_map = {item.substrate_id: owner for item in output if item.substrate_id}
+    for item in output:
+        errors = validate_knowledge_view_result(item, req.user_id, owner_map)
+        if errors:
+            raise KnowledgeViewInvariantError("; ".join(errors))
+    return {
+        "query": req.query,
+        "scopes": _normalize_scopes(req.scopes),
+        "result_count": len(output),
+        "results": [item.to_dict() for item in output],
+        "trajectory_id": None,
+        "total_ms": 0,
+        "channels": channels,
     }
 
 
 def validate_result_schema(result: dict[str, Any]) -> list[str]:
     """Validate that a result respects the stable schema."""
     errors: list[str] = []
-    for field in ("id", "title", "type", "score", "snippet"):
-        if field not in result:
-            errors.append(f"missing required field: {field}")
+    for required_field in ("id", "title", "type", "score", "snippet"):
+        if required_field not in result:
+            errors.append(f"missing required field: {required_field}")
     # score must be finite [0,1] or at least finite
     score = result.get("score")
     if score is not None:

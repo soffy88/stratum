@@ -51,7 +51,7 @@ def main():
         title = title or "Untitled"
         text = text.replace("\x00", "") if text else ""
 
-        l0 = (title[:200] if title else text[:200])
+        l0 = title[:200] if title else text[:200]
         l1 = text[:3000]
         l2 = text
 
@@ -73,8 +73,15 @@ def main():
                                SET content = EXCLUDED.content,
                                    token_count = EXCLUDED.token_count,
                                    generated_at = NOW()""",
-                            (layer_id, ku_id, layer_name, content.replace("\x00", ""),
-                             _estimate_tokens(content), _MODEL, emb_str),
+                            (
+                                layer_id,
+                                ku_id,
+                                layer_name,
+                                content.replace("\x00", ""),
+                                _estimate_tokens(content),
+                                _MODEL,
+                                emb_str,
+                            ),
                         )
                     else:
                         conn.execute(
@@ -84,8 +91,14 @@ def main():
                                SET content = EXCLUDED.content,
                                    token_count = EXCLUDED.token_count,
                                    generated_at = NOW()""",
-                            (layer_id, ku_id, layer_name, content.replace("\x00", ""),
-                             _estimate_tokens(content), _MODEL),
+                            (
+                                layer_id,
+                                ku_id,
+                                layer_name,
+                                content.replace("\x00", ""),
+                                _estimate_tokens(content),
+                                _MODEL,
+                            ),
                         )
 
             processed += 1
@@ -99,8 +112,13 @@ def main():
             failed += 1
 
     elapsed = time.time() - t0
-    log.info("COMPLETE: %d processed, %d failed in %.0fs (%.1f/sec)",
-             processed, failed, elapsed, processed / elapsed if elapsed > 0 else 0)
+    log.info(
+        "COMPLETE: %d processed, %d failed in %.0fs (%.1f/sec)",
+        processed,
+        failed,
+        elapsed,
+        processed / elapsed if elapsed > 0 else 0,
+    )
 
 
 if __name__ == "__main__":

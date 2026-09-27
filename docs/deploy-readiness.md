@@ -25,17 +25,21 @@
 - [ ] robots.txt 已配置
 - [x] 无 PII：`GET /api/users/by-username/:username` / `GET /share/:token` 已确认不泄 email/user_id
 
-### 技术门控（当前实证，2026-08-02）
+### 技术门控（当前实证，2026-08-24）
 - [x] `pytest`: **367 passed / 17 skipped**（17 skipped = 平台包 oskill/omodul 依赖，镜像内有）
 - [x] 主链路 E2E：`scripts/e2e_mvp_chain.py` 线上全 PASS
      注册→剪藏/PDF→翻译→问答(sources)→概念追加→检索→导出(vault)→vault同步→Lint→日报→真删→收敛
 - [x] docling 已进 stratum-sl 镜像（v2.117.0，PDF 链实测）
+- [x] `poppler-utils` 已进 stratum-sl 镜像，作为 richer PDF parser 不可用时的 text-only fallback；
+      不代表表格/版面解析验收完成
 - [x] 入库管线三处根因已修：ntfs3 索引→ext4（STRATUM_HOME）、changefeed seq setval、
      embedding provider aii_remote（本地 BGE-M3 172.19.0.1:8102）
 - [x] 本地 LLM 兜底：agents 默认 `ollama`（qwen3-8b，think=False 防空响应）
 - [x] 音视频转写链：yt-dlp→faster-whisper→结构化→入库（sing-box 代理）
 - [x] CI：`.github/workflows/ci.yml`（backend pytest + frontend vitest/build）
-- [~] 前端 `next build` 通过（`ignoreBuildErrors: true` 容忍 95 个 @helios/blocks tsc 错，预存）
+- [x] 前端 `next build --webpack` 通过：全量 TypeScript、50/50 静态页面和 standalone
+      tracing 均完成；`ignoreBuildErrors` 已关闭，并排除了浏览器阅读器不使用的可选原生
+      `canvas` 绑定
 - [ ] Cloudflare Tunnel 配置 + TLS 证书终审（隧道已配好 ingress，发布前复核一次）
 
 ### 基础设施（必须）
@@ -49,7 +53,7 @@
 |------|------|--------|
 | /api/v1/retrieve 旧 pgvector 路径 | Ollama 网关死 → 0 命中；/api/v1/search（lance+tantivy+BGE-M3）正常；retrieve 需把 get_embedding 切到 172.19.0.1:8102 | 高 |
 | 平台包不可复现 | omodul/oprim/oskill 不随仓发布，17 测试镜像外 skip | 高 |
-| @helios/blocks tsc 错 | 私有设计系统未开源，95 错被 ignoreBuildErrors 掩盖 | 中 |
+| @helios/blocks 类型漂移 | 已切换到 vendored package contract，并通过全量 type-check；后续升级仍需回归 | 低 |
 | 无 E2EE / PgBouncer | psycopg2 直连池，无连接治理 | 中 |
 | SEARXNG_URL 占位符 | 问答 web 检索未接线 | 中 |
 | 锚点前端闭环 | sources[] 已有锚点数据，前端跳段未做 | 中 |

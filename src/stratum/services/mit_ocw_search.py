@@ -14,6 +14,7 @@ Department codes:
    2 → Mechanical Engineering
    9 → Brain & Cognitive Sciences
 """
+
 from __future__ import annotations
 
 import json
@@ -63,17 +64,24 @@ def _get_course_pdfs(course_url: str, slug: str, course_title: str, max_pdfs: in
     """Scrape /download/ page of a course and return list of PDF dicts."""
     download_url = f"{course_url.rstrip('/')}/download/"
     try:
-        import http.client, ssl
+        import http.client
+        import ssl
+
         ctx = ssl.create_default_context()
         # Use http.client directly to control redirect following
         from urllib.parse import urlparse
+
         parsed = urlparse(download_url)
         conn = http.client.HTTPSConnection(parsed.netloc, timeout=15, context=ctx)
-        conn.request("GET", parsed.path, headers={
-            "User-Agent": "stratum/1.0",
-            "Accept": "text/html",
-            "Host": parsed.netloc,
-        })
+        conn.request(
+            "GET",
+            parsed.path,
+            headers={
+                "User-Agent": "stratum/1.0",
+                "Accept": "text/html",
+                "Host": parsed.netloc,
+            },
+        )
         resp = conn.getresponse()
         if resp.status in (301, 302, 307, 308):
             location = resp.getheader("Location") or ""
@@ -87,7 +95,15 @@ def _get_course_pdfs(course_url: str, slug: str, course_title: str, max_pdfs: in
             if not parsed2.netloc:
                 parsed2 = parsed2._replace(netloc=parsed.netloc, scheme=parsed.scheme)
             conn2 = http.client.HTTPSConnection(parsed2.netloc, timeout=15, context=ctx)
-            conn2.request("GET", parsed2.path, headers={"User-Agent": "stratum/1.0", "Accept": "text/html", "Host": parsed2.netloc})
+            conn2.request(
+                "GET",
+                parsed2.path,
+                headers={
+                    "User-Agent": "stratum/1.0",
+                    "Accept": "text/html",
+                    "Host": parsed2.netloc,
+                },
+            )
             resp2 = conn2.getresponse()
             if resp2.status != 200:
                 conn2.close()
@@ -112,12 +128,14 @@ def _get_course_pdfs(course_url: str, slug: str, course_title: str, max_pdfs: in
             continue
         seen.add(filename)
         if _is_lecture_pdf(filename):
-            pdfs.append({
-                "url": _OCW_BASE + href,
-                "filename": filename,
-                "slug": slug,
-                "course_title": course_title,
-            })
+            pdfs.append(
+                {
+                    "url": _OCW_BASE + href,
+                    "filename": filename,
+                    "slug": slug,
+                    "course_title": course_title,
+                }
+            )
         if len(pdfs) >= max_pdfs:
             break
 
@@ -204,25 +222,27 @@ def mit_ocw_search(
                 for pdf in pdfs:
                     ext_id = f"{slug}/{pdf['filename']}"
                     # Strip 32-char hash prefix for a readable label
-                    raw_name = pdf['filename'].rsplit(".", 1)[0]
+                    raw_name = pdf["filename"].rsplit(".", 1)[0]
                     parts = raw_name.split("_", 1)
                     display = parts[1] if len(parts) > 1 and len(parts[0]) == 32 else raw_name
-                    results.append(SourceResult(
-                        external_id=ext_id,
-                        title=f"{title} — {display}",
-                        download_url=pdf["url"],
-                        file_type="pdf",
-                        metadata={
-                            "source_type": "mit_ocw",
-                            "course_title": title,
-                            "course_url": course_url,
-                            "department": dept,
-                            "department_label": dept_label,
-                            "readable_id": readable_id,
-                            "filename": pdf["filename"],
-                            "mit_ocw_slug": slug,
-                        },
-                    ))
+                    results.append(
+                        SourceResult(
+                            external_id=ext_id,
+                            title=f"{title} — {display}",
+                            download_url=pdf["url"],
+                            file_type="pdf",
+                            metadata={
+                                "source_type": "mit_ocw",
+                                "course_title": title,
+                                "course_url": course_url,
+                                "department": dept,
+                                "department_label": dept_label,
+                                "readable_id": readable_id,
+                                "filename": pdf["filename"],
+                                "mit_ocw_slug": slug,
+                            },
+                        )
+                    )
 
             if not data.get("next"):
                 break
@@ -230,6 +250,8 @@ def mit_ocw_search(
 
     log.info(
         "mit_ocw_search: depts=%s kw=%r → %d PDFs",
-        depts, keywords, len(results),
+        depts,
+        keywords,
+        len(results),
     )
     return results

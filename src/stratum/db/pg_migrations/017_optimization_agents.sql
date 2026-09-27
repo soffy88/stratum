@@ -5,63 +5,75 @@
 
 -- Vault Audit: monthly health audit (runs 1st of each month at 03:00 CST)
 INSERT INTO scheduled_jobs_sl (
+    id,
+    user_id,
     name,
+    agent_name,
     cron_expression,
     timezone,
-    job_type,
-    agent_name,
-    config,
     enabled,
+    max_items,
     created_at
-) VALUES (
+) SELECT
+    'builtin:vault_health_audit',
+    'system',
     'vault_health_audit',
+    'vault_audit',
     '0 3 1 * *',
     'Asia/Shanghai',
-    'native',
-    'vault_audit',
-    '{"include_graph_health": true}'::jsonb,
     true,
+    20,
     NOW()
-) ON CONFLICT (name) DO NOTHING;
+WHERE NOT EXISTS (
+    SELECT 1 FROM scheduled_jobs_sl WHERE name = 'vault_health_audit'
+);
 
 -- Knowledge Gap Analysis: weekly (Sunday 04:00 CST)
 INSERT INTO scheduled_jobs_sl (
+    id,
+    user_id,
     name,
+    agent_name,
     cron_expression,
     timezone,
-    job_type,
-    agent_name,
-    config,
     enabled,
+    max_items,
     created_at
-) VALUES (
+) SELECT
+    'builtin:knowledge_gap_analysis',
+    'system',
     'knowledge_gap_analysis',
+    'knowledge_gap',
     '0 4 * * 0',
     'Asia/Shanghai',
-    'native',
-    'knowledge_gap',
-    '{"top_k": 20}'::jsonb,
     true,
+    20,
     NOW()
-) ON CONFLICT (name) DO NOTHING;
+WHERE NOT EXISTS (
+    SELECT 1 FROM scheduled_jobs_sl WHERE name = 'knowledge_gap_analysis'
+);
 
 -- Graph Health Scoring: daily (05:00 CST)
 INSERT INTO scheduled_jobs_sl (
+    id,
+    user_id,
     name,
+    agent_name,
     cron_expression,
     timezone,
-    job_type,
-    agent_name,
-    config,
     enabled,
+    max_items,
     created_at
-) VALUES (
+) SELECT
+    'builtin:graph_health_daily',
+    'system',
     'graph_health_daily',
+    'graph_health',
     '0 5 * * *',
     'Asia/Shanghai',
-    'native',
-    'graph_health',
-    '{"include_clusters": true}'::jsonb,
     true,
+    20,
     NOW()
-) ON CONFLICT (name) DO NOTHING;
+WHERE NOT EXISTS (
+    SELECT 1 FROM scheduled_jobs_sl WHERE name = 'graph_health_daily'
+);

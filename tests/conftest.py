@@ -166,3 +166,11 @@ def db():
     conn.execute(SCHEMA_SQL)
     yield conn
     conn.close()
+
+
+@pytest.fixture
+def canonical_source_writer(db):
+    """Use the production ownership-enforced Source writer in test fixtures."""
+    from stratum.services.canonical_source_writer import CanonicalSourceWriter
+
+    return CanonicalSourceWriter(db)

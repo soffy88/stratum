@@ -12,11 +12,11 @@
 
 下载链接限时 1 小时; 下载支持断点续传(临时 .part 文件)。
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
 import time
@@ -52,8 +52,10 @@ def _req(url: str, method: str = "GET", body: dict | None = None) -> dict:
     with urllib.request.urlopen(req, timeout=30) as resp:
         payload = json.loads(resp.read().decode("utf-8"))
     if payload.get("status") != 200:
-        raise RuntimeError(f"API 错误: {payload.get('status')} {payload.get('message')} "
-                           f"(cookie 过期? 重新复制浏览器最新 Cookie 覆盖 {COOKIE_FILE.name})")
+        raise RuntimeError(
+            f"API 错误: {payload.get('status')} {payload.get('message')} "
+            f"(cookie 过期? 重新复制浏览器最新 Cookie 覆盖 {COOKIE_FILE.name})"
+        )
     return payload
 
 
@@ -80,6 +82,7 @@ def cmd_list(fid: str = "0", page: int = 1, size: int = 50) -> None:
 
 def cmd_search(keyword: str, size: int = 20) -> None:
     from urllib.parse import quote
+
     url = f"{API}/1/clouddrive/file/search?pr=ucpro&fr=pc&uc_param_str=&_page=1&_size={size}&keyword={quote(keyword)}"
     items = _req(url)["data"].get("list", [])
     if not items:
@@ -93,13 +96,16 @@ def cmd_search(keyword: str, size: int = 20) -> None:
 def _resolve_fids(keyword: str, limit: int = 5) -> list[dict]:
     """按文件名关键词找文件(搜索接口), 返回 [item...]"""
     from urllib.parse import quote
+
     url = f"{API}/1/clouddrive/file/search?pr=ucpro&fr=pc&uc_param_str=&_page=1&_size={limit}&keyword={quote(keyword)}"
     items = _req(url)["data"].get("list", [])
     files = [f for f in items if f.get("file")]
     if not files:
         # 回退: 根目录+常见目录里按名字模糊匹配
         for fid in ("0",):
-            lst = _req(f"{API}/1/clouddrive/file/sort?pr=ucpro&fr=pc&uc_param_str=&pdir_fid={fid}&_page=1&_size=200&_sort=file_type:asc,file_name:asc")["data"].get("list", [])
+            lst = _req(
+                f"{API}/1/clouddrive/file/sort?pr=ucpro&fr=pc&uc_param_str=&pdir_fid={fid}&_page=1&_size=200&_sort=file_type:asc,file_name:asc"
+            )["data"].get("list", [])
             for f in lst:
                 if f.get("file") and keyword.lower() in f["file_name"].lower():
                     files.append(f)
@@ -147,7 +153,7 @@ def _download_file(item: dict, out_dir: Path) -> Path:
         except (urllib.error.URLError, OSError) as e:
             if attempt == 2:
                 raise
-            print(f"  ⚠ 下载中断({type(e).__name__}), 重试 {attempt+2}/3...", flush=True)
+            print(f"  ⚠ 下载中断({type(e).__name__}), 重试 {attempt + 2}/3...", flush=True)
             time.sleep(3)
     if part.exists():
         part.rename(out)

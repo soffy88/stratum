@@ -16,7 +16,11 @@
 Exit: 恒 0(judge本身网络/key错也只打日志, 不拦截)。
 """
 
-import argparse, asyncio, json, os, re, sys
+import argparse
+import asyncio
+import json
+import os
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -25,17 +29,28 @@ load_dotenv(ROOT / "aii" / ".env", override=True)
 import asyncpg
 import httpx
 
-MODEL = os.getenv("ADVMATH_VERIFY_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1.5")
+# ★2026-09-21 判官改走本地 Veya 网关(默认 veya1.2-free, 免费常驻)。
+# 可用 ADVMATH_VERIFY_BASE_URL/MODEL/KEY 覆盖(设回 NIM URL+NIM key 即走回 NIM)。
+# 注: 不跟 OPENCODE_BASE_URL(飞轮导出的是 http://192.168.80.1:8791, 但网关只绑
+# 127.0.0.1, 直连 192.168.80.1 被拒; 实测 2026-09-21)。判官跑在本机, 默认走回环。
+BASE_URL = os.getenv(
+    "ADVMATH_VERIFY_BASE_URL", "http://127.0.0.1:8791/v1/chat/completions"
+)
+MODEL = os.getenv("ADVMATH_VERIFY_MODEL", "veya1.2-free")
 
 
 def _key() -> str:
-    k = os.getenv("ADVMATH_VERIFY_KEY")
-    if k:
-        return k
+    veya_key = os.getenv("OPENCODE_KEY_POOL", "sk-veya").split(",")[0].strip()
     try:
-        return json.load(open(ROOT / ".pipeline_keys.json")).get("advmath_verify", "")
+        nim_key = os.getenv("ADVMATH_VERIFY_KEY") or json.load(
+            open(ROOT / ".pipeline_keys.json")
+        ).get("advmath_verify", "")
     except Exception:
-        return ""
+        nim_key = os.getenv("ADVMATH_VERIFY_KEY", "")
+    # key 跟 endpoint 走: NIM URL 配 NIM key, 本地网关配 veya key
+    if "nvidia" in BASE_URL or "integrate.api" in BASE_URL:
+        return nim_key
+    return veya_key or nim_key
 
 
 # ── 从论文抽"自称贡献"的上下文: abstract+intro 前段 + 全文里的贡献信号句 ──
@@ -89,7 +104,7 @@ async def _chat(client, sysmsg, usermsg, key):
     for attempt in range(3):
         try:
             r = await client.post(
-                "https://integrate.api.nvidia.com/v1/chat/completions",
+                BASE_URL,
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 json=body,
             )

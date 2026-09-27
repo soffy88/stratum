@@ -3,7 +3,6 @@
 import hmac
 import os
 
-import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Header
 from starlette.responses import PlainTextResponse
 from typing import Optional
@@ -15,6 +14,7 @@ router = APIRouter()
 
 def get_db():
     from stratum.db import get_conn
+
     with get_conn() as conn:
         yield conn
 

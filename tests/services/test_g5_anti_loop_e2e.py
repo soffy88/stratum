@@ -13,6 +13,7 @@
          ORDER BY processed_at DESC LIMIT 1，无 source_type 过滤）。
          证明旧代码 arxiv 不触发，根治有效。
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -62,6 +63,7 @@ CREATE TABLE source_subscriptions (
 
 # ── DB fixture ─────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def g5_db(tmp_path):
     db_path = str(tmp_path / "g5_test.duckdb")
@@ -78,6 +80,7 @@ def g5_logs(tmp_path):
 
 # ── 헬퍼 ──────────────────────────────────────────────────────────────────────
 
+
 def _make_get_conn(db_path: str):
     @contextmanager
     def _get_conn():
@@ -86,11 +89,13 @@ def _make_get_conn(db_path: str):
             yield conn
         finally:
             conn.close()
+
     return _get_conn
 
 
 def _make_runner(ingested_map: dict, db_path: str):
     """각 source_type 의 ingested_count 를 source_subscriptions 에 직접 기록. 网络边界替身."""
+
     async def runner(sub_id, user_id, source_type, query, max_results):
         count = ingested_map.get(source_type, 0)
         conn = duckdb.connect(db_path)
@@ -99,6 +104,7 @@ def _make_runner(ingested_map: dict, db_path: str):
             (count, sub_id),
         )
         conn.close()
+
     return runner
 
 
@@ -125,13 +131,19 @@ _FIXED_QUERIES = [
 ]
 
 
-def _run(need: dict, db_path: str, runner, feedback_log: Path, unresolved_log: Path,
-         extra_patches: list | None = None):
+def _run(
+    need: dict,
+    db_path: str,
+    runner,
+    feedback_log: Path,
+    unresolved_log: Path,
+    extra_patches: list | None = None,
+):
     import stratum.services.aii_feedback_service as svc
 
     all_patches = [
-        patch.object(svc, "get_conn",      _make_get_conn(db_path)),
-        patch.object(svc, "FEEDBACK_LOG",  feedback_log),
+        patch.object(svc, "get_conn", _make_get_conn(db_path)),
+        patch.object(svc, "FEEDBACK_LOG", feedback_log),
         patch.object(svc, "UNRESOLVED_LOG", unresolved_log),
         patch.object(svc, "_map_topic", return_value=(_FIXED_QUERIES, "both")),
     ] + (extra_patches or [])
@@ -144,6 +156,7 @@ def _run(need: dict, db_path: str, runner, feedback_log: Path, unresolved_log: P
 
 # ── 主测试：新逻辑（PASS 标准）────────────────────────────────────────────────
 
+
 def test_g5_new_code_arxiv_independent_trigger(g5_db, g5_logs):
     """O1-O4 全部绿：arxiv 独立触发，gutenberg 不被污染。"""
     feedback_log, unresolved_log = g5_logs
@@ -154,8 +167,8 @@ def test_g5_new_code_arxiv_independent_trigger(g5_db, g5_logs):
     # Round 1 → arxiv miss_rounds=1 (未达阈值)
     _run(need, g5_db, runner, feedback_log, unresolved_log)
     snap1 = _db_rows(g5_db)
-    assert snap1.get("arxiv",  (None,))[0] == 1, f"Round1 arxiv miss_rounds should be 1, got {snap1}"
-    assert snap1.get("gutenberg", (None,))[0] == 0, f"Round1 gutenberg miss_rounds should be 0"
+    assert snap1.get("arxiv", (None,))[0] == 1, f"Round1 arxiv miss_rounds should be 1, got {snap1}"
+    assert snap1.get("gutenberg", (None,))[0] == 0, "Round1 gutenberg miss_rounds should be 0"
 
     # 确保 Round 2 的 NOW() > Round 1（对照组 BUG 依赖时序）
     time.sleep(0.05)
@@ -164,8 +177,8 @@ def test_g5_new_code_arxiv_independent_trigger(g5_db, g5_logs):
     _run(need, g5_db, runner, feedback_log, unresolved_log)
     snap2 = _db_rows(g5_db)
 
-    arx  = snap2.get("arxiv")
-    gut  = snap2.get("gutenberg")
+    arx = snap2.get("arxiv")
+    gut = snap2.get("gutenberg")
     unresolved_text = unresolved_log.read_text() if unresolved_log.exists() else ""
 
     # O1: arxiv → needs_human_review
@@ -188,11 +201,14 @@ def test_g5_new_code_arxiv_independent_trigger(g5_db, g5_logs):
     # O4: SUM(ingested_count) = 4 (gutenberg 2+2, arxiv 0+0)
     gut_cnt = gut[1] if gut else 0
     arx_cnt = arx[1] if arx else 0
-    total   = gut_cnt + arx_cnt
-    assert total == 4, f"O4 FAIL: SUM(ingested_count)={total}, expected 4 (gut={gut_cnt}, arx={arx_cnt})"
+    total = gut_cnt + arx_cnt
+    assert total == 4, (
+        f"O4 FAIL: SUM(ingested_count)={total}, expected 4 (gut={gut_cnt}, arx={arx_cnt})"
+    )
 
 
 # ── 对照组：旧行为（miss_rounds 不按 source_type 过滤）────────────────────────
+
 
 def _old_get_prev_miss_rounds(need_hash: str, source_type: str, db_path: str) -> int:
     """旧 SQL：ORDER BY processed_at DESC LIMIT 1，不过滤 source_type。"""
@@ -200,7 +216,7 @@ def _old_get_prev_miss_rounds(need_hash: str, source_type: str, db_path: str) ->
     row = conn.execute(
         "SELECT miss_rounds FROM aii_processed_needs "
         "WHERE need_hash=? ORDER BY processed_at DESC LIMIT 1",
-        (need_hash,)
+        (need_hash,),
     ).fetchone()
     conn.close()
     return row[0] if row else 0
@@ -215,7 +231,7 @@ def test_g5_old_code_arxiv_masked_by_gutenberg(g5_db, g5_logs):
     import stratum.services.aii_feedback_service as svc
 
     feedback_log, unresolved_log = g5_logs
-    need  = {"topic": "概率", "reason": ""}
+    need = {"topic": "概率", "reason": ""}
     runner = _make_runner({"gutenberg": 2, "arxiv": 0}, g5_db)
 
     # 用 db_path 捕获（闭包）构造旧行为 patch
@@ -228,7 +244,7 @@ def test_g5_old_code_arxiv_masked_by_gutenberg(g5_db, g5_logs):
 
     # Round 1（旧行为）
     _run(need, g5_db, runner, feedback_log, unresolved_log, extra_patches=[old_patch])
-    time.sleep(0.05)   # 确保 Round2 的 NOW() > Round1 arxiv 的 processed_at
+    time.sleep(0.05)  # 确保 Round2 的 NOW() > Round1 arxiv 的 processed_at
 
     # Round 2（旧行为）：gutenberg UPSERT 更新 processed_at=NOW()（最新），
     # 之后 arxiv 调 old_prev → ORDER BY DESC LIMIT 1 → gutenberg 行 → miss_rounds=0
@@ -242,8 +258,8 @@ def test_g5_old_code_arxiv_masked_by_gutenberg(g5_db, g5_logs):
     # 旧代码：arxiv 不触发 needs_human_review（miss_rounds=1，未达阈值 2）
     assert arx is not None, "arxiv row missing"
     assert arx[2] != "needs_human_review", (
-        f"CONTRAST FAIL: old code unexpectedly triggered needs_human_review for arxiv. "
-        f"If this fails, the bug was already fixed before this patch — recheck test setup."
+        "CONTRAST FAIL: old code unexpectedly triggered needs_human_review for arxiv. "
+        "If this fails, the bug was already fixed before this patch — recheck test setup."
     )
     assert arx[0] == 1, (
         f"CONTRAST: arxiv miss_rounds should stay 1 under old code, got {arx[0]}. "

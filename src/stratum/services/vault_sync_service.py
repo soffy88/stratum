@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from stratum.common import generate_ulid, now_utc
-from stratum.db import insert, query, read, update
+from stratum.db import insert, read, update
 from stratum.services.vault_export_service import build_vault_files
 
 log = logging.getLogger(__name__)
@@ -155,8 +155,22 @@ def import_notes_from_path(user_id: str, path_str: str) -> dict[str, Any]:
         if fp.name in ("README.md", "index.md"):
             skipped += 1
             continue
+        # A vault root may be trusted while individual files are not.  Resolve
+        # every candidate before reading so a symlink inside notes/ cannot
+        # exfiltrate a file outside the configured roots.
         try:
-            text = fp.read_text(encoding="utf-8")
+            relative = fp.relative_to(root)
+        except ValueError:
+            errors.append(f"{fp.name}: unsafe path")
+            skipped += 1
+            continue
+        safe_candidate = _safe_dest_under_root(root, str(relative))
+        if safe_candidate is None:
+            errors.append(f"{fp.name}: unsafe path")
+            skipped += 1
+            continue
+        try:
+            text = safe_candidate.read_text(encoding="utf-8")
         except Exception as e:
             errors.append(f"{fp.name}: read {e}")
             continue
@@ -225,11 +239,11 @@ def import_notes_from_path(user_id: str, path_str: str) -> dict[str, Any]:
         # rewrite id in frontmatter if present
         if content.startswith("---"):
             content = _FM_RE.sub(
-                lambda m: m.group(0).replace(
-                    f"id: {meta.get('id')}", f"id: {nid}"
-                )
-                if meta.get("id")
-                else f"---\nid: {nid}\ntype: note\ntitle: {title}\naliases: []\nsources: []\nupdated: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}\n---\n\n{body}",
+                lambda m: (
+                    m.group(0).replace(f"id: {meta.get('id')}", f"id: {nid}")
+                    if meta.get("id")
+                    else f"---\nid: {nid}\ntype: note\ntitle: {title}\naliases: []\nsources: []\nupdated: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}\n---\n\n{body}"
+                ),
                 content,
                 count=1,
             )
@@ -284,4 +298,39 @@ def sync_vault(user_id: str, path_str: str, mode: str = "export") -> dict[str, A
         out_ex = export_vault_to_path(user_id, path_str)
         out_im = import_notes_from_path(user_id, path_str)
         return {"status": "ok", "export": out_ex, "import": out_im}
+    raise ValueError("mode must be export|import|both")
+
+
+def export_obsidian_vault_to_path(user_id: str, path_str: str) -> dict[str, Any]:
+    """Export the portable vault plus minimal Obsidian workspace metadata."""
+    result = export_vault_to_path(user_id, path_str)
+    root = assert_safe_vault_path(path_str)
+    obsidian_dir = root / ".obsidian"
+    obsidian_dir.mkdir(parents=True, exist_ok=True)
+    (obsidian_dir / "app.json").write_text(
+        json.dumps({"showLineNumber": True, "foldHeading": True}, indent=2),
+        encoding="utf-8",
+    )
+    (obsidian_dir / "core-plugins.json").write_text(
+        json.dumps({"backlink": True, "graph": True, "outline": True}, indent=2),
+        encoding="utf-8",
+    )
+    result["connector"] = "obsidian"
+    result["workspace_files"] = 2
+    return result
+
+
+def sync_obsidian_vault(user_id: str, path_str: str, mode: str = "both") -> dict[str, Any]:
+    """Bidirectional Obsidian connector using stable frontmatter IDs."""
+    mode = (mode or "both").lower()
+    if mode == "export":
+        return export_obsidian_vault_to_path(user_id, path_str)
+    if mode == "import":
+        result = import_notes_from_path(user_id, path_str)
+        result["connector"] = "obsidian"
+        return result
+    if mode == "both":
+        exported = export_obsidian_vault_to_path(user_id, path_str)
+        imported = import_notes_from_path(user_id, path_str)
+        return {"status": "ok", "connector": "obsidian", "export": exported, "import": imported}
     raise ValueError("mode must be export|import|both")

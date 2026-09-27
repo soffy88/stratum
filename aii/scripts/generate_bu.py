@@ -1,4 +1,7 @@
-import asyncio, asyncpg, os, json, httpx
+import asyncio
+import asyncpg
+import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv("aii/.env", override=True)
@@ -122,22 +125,34 @@ async def _build_learning_layer() -> dict:
     """BU 学习层(2026-08-14, 按 su-learning-map 学习内容标准):
     3~7 条能力转变路径 + 深卡(证据分级由 KU grade 计算; 原文切片由代码从 grounded_by 注入, 逐字不改写)。
     LLM 只写内容字段; 质量门(bu_learning_gate)确定性修剪; 证据底限不过 → 诚实 insufficient_data。"""
-    from bu_learning_gate import evidence_class_for, validate_learning_layer
 
     if os.getenv("AII_BU_LEARNING", "1") != "1":
-        return {"learning_paths": [], "deep_cards": [],
-                "bu_quality": {"status": "skipped", "checks": [], "dropped": []}}
+        return {
+            "learning_paths": [],
+            "deep_cards": [],
+            "bu_quality": {"status": "skipped", "checks": [], "dropped": []},
+        }
     ku_meta, _kc_labels, _hub_names = await _fetch_ku_meta()
     eligible = 0
     for kid, m in ku_meta.items():
         if evidence_class_for([m["grade"]]) and m["verbatim"]:
             eligible += 1
     if eligible == 0:
-        return {"learning_paths": [], "deep_cards": [],
-                "bu_quality": {"status": "insufficient_data",
-                               "checks": [{"check": "evidence_floor", "status": "fail",
-                                           "detail": f"{len(ku_meta)} KU 采样中 0 条同时满足 grade 门槛与逐字来源(quote/program_extract)"}],
-                               "dropped": []}}
+        return {
+            "learning_paths": [],
+            "deep_cards": [],
+            "bu_quality": {
+                "status": "insufficient_data",
+                "checks": [
+                    {
+                        "check": "evidence_floor",
+                        "status": "fail",
+                        "detail": f"{len(ku_meta)} KU 采样中 0 条同时满足 grade 门槛与逐字来源(quote/program_extract)",
+                    }
+                ],
+                "dropped": [],
+            },
+        }
     ku_lines = _ku_lines(ku_meta)
     SYS = (
         "你把一本书的已抽知识单元(KU)组织成「书级学习层」: 3~7 条能力转变路径 + 8~12 张深卡。"
@@ -158,7 +173,7 @@ async def _build_learning_layer() -> dict:
         "  boundary: 误用边界/成立条件(≥40字);\n"
         "  connections: [其他卡id];\n"
         "  practice: 一道能写出具体答案的练习(挂钩学习者真实场景, 含动作词)。\n"
-        "★输出扁平 JSON: {\"learning_paths\":[…], \"deep_cards\":[…]}。"
+        '★输出扁平 JSON: {"learning_paths":[…], "deep_cards":[…]}。'
     )
     from aii.api._provider import register_providers
     from obase import ProviderRegistry
@@ -197,6 +212,7 @@ async def _build_learning_layer() -> dict:
     for cd in cards:
         if cd.get("path") is not None and not isinstance(cd.get("path"), str):
             cd["path"] = f"p{cd['path']}"
+
     # ★代码注入逐字切片 + evidence(LLM 无权): 每卡取前 2 条 KU 的逐字来源(quote 或 program_extract 原文)
     def _inject(cards_list):
         for cd in cards_list:
@@ -205,18 +221,32 @@ async def _build_learning_layer() -> dict:
             for k in kids[:2]:
                 if ku_meta[k]["verbatim"]:
                     v = ku_meta[k]["verbatim"][0]
-                    excerpts.append({"text": v["text"], "ku_id": k, "locator": f"{k}::{v['chunk_id']}"})
+                    excerpts.append(
+                        {"text": v["text"], "ku_id": k, "locator": f"{k}::{v['chunk_id']}"}
+                    )
             cd["ku_ids"] = kids
             cd["source_excerpts"] = excerpts
-            cd["excerpt"] = excerpts[0]["text"] if excerpts else ""  # ★门在字段阶段校验 excerpt 非空
+            cd["excerpt"] = (
+                excerpts[0]["text"] if excerpts else ""
+            )  # ★门在字段阶段校验 excerpt 非空
         return cards_list
 
     _inject(cards)
     res = validate_learning_layer(paths_raw, cards, ku_meta)
     # ★修复轮(≤2, 与 KU 管线 narrow 重抽同哲学): 因长度/练习不达标被门丢弃的卡 → 送回 LLM 携逐卡原因重写 → 重入门
-    _length_sigs = ("context<", "argument_chain<", "arguments<", "digest<", "boundary<", "practice_short", "practice_not_actionable")
+    _length_sigs = (
+        "context<",
+        "argument_chain<",
+        "arguments<",
+        "digest<",
+        "boundary<",
+        "practice_short",
+        "practice_not_actionable",
+    )
     for _round in range(2):
-        fixable = [d for d in res["quality"]["dropped"] if any(s in d["reason"] for s in _length_sigs)]
+        fixable = [
+            d for d in res["quality"]["dropped"] if any(s in d["reason"] for s in _length_sigs)
+        ]
         if not fixable:
             break
         fix_ids = {d["card"] for d in fixable}
@@ -226,7 +256,7 @@ async def _build_learning_layer() -> dict:
             "以下深卡被确定性质量门丢弃, 原因是内容未达长度/可操作下限。逐张重写并扩充(可合并相邻概念), 逐条满足: "
             "context≥50字; arguments 3~5条且合计≥100字; source_digest 2~3段且合计≥220字(每段至少 80 字); boundary≥40字; "
             "practice 含动作词(写/列出/找出/举/挑/选/改/算/评/设计/判断/给出/检查/对比/回答)且与学习者真实场景挂钩。"
-            "保留原 id/path(ku_ids 可微调, 仍只从 KU 清单选)。\n★输出扁平 JSON: {\"deep_cards\":[…]}"
+            '保留原 id/path(ku_ids 可微调, 仍只从 KU 清单选)。\n★输出扁平 JSON: {"deep_cards":[…]}'
         )
         body2 = (
             f"Book: {SUB}\n\nKU 清单(内容唯一依据):\n{ku_lines}\n\n"
@@ -248,14 +278,21 @@ async def _build_learning_layer() -> dict:
             if res2["ok"] and len(res2["cards"]) > before_n:
                 res = res2
                 cards = merged
-                print(f"  学习层修复轮{_round + 1}: {len(fix_new)} 张重写 → 存活 {len(res2['cards'])} (+{len(res2['cards']) - before_n})", flush=True)
+                print(
+                    f"  学习层修复轮{_round + 1}: {len(fix_new)} 张重写 → 存活 {len(res2['cards'])} (+{len(res2['cards']) - before_n})",
+                    flush=True,
+                )
             else:
                 print(f"  学习层修复轮{_round + 1}: 重写后无增益, 停止", flush=True)
                 break
         except Exception as e:  # noqa: BLE001
             print(f"  学习层修复轮{_round + 1}失败(保留当前结果): {str(e)[:100]}", flush=True)
             break
-    return {"learning_paths": res["paths"], "deep_cards": res["cards"], "bu_quality": res["quality"]}
+    return {
+        "learning_paths": res["paths"],
+        "deep_cards": res["cards"],
+        "bu_quality": res["quality"],
+    }
 
 
 async def _fetch_ku_meta():
@@ -281,8 +318,16 @@ async def _fetch_ku_meta():
     finally:
         await c.close()
     by_id = {r["ku_id"]: r for r in kus}
-    order = {"verified": 0, "high": 1, "moderate": 2, "unverified": 3,
-             "pending": 4, "low": 5, "contradicted": 6, "refuted": 7}
+    order = {
+        "verified": 0,
+        "high": 1,
+        "moderate": 2,
+        "unverified": 3,
+        "pending": 4,
+        "low": 5,
+        "contradicted": 6,
+        "refuted": 7,
+    }
     chosen = {}
     for kc in kc_rows:
         for kid in (kc["member_ku_ids"] or [])[:8]:
@@ -372,14 +417,27 @@ async def go():
     ku_meta_f, kc_labels, hub_names = await _fetch_ku_meta()
     if not ku_meta_f:
         # 与 0-KU 同等处理: 无 KU 数据则不调 LLM(防编造)
-        j = {"soul": "[数据不足] 该书暂无可用的知识抽取数据(0条KU), 尚无法生成书级理解",
-             "positioning": "", "question": "", "skeleton": "", "thinking": "", "for_whom": "", "boundary": "",
-             "main_claims": [], "argument_structure": [], "learning_paths": [], "deep_cards": [],
-             "facets_grounded": [],
-             "bu_quality": {"status": "insufficient_data", "checks": [], "dropped": []}}
+        j = {
+            "soul": "[数据不足] 该书暂无可用的知识抽取数据(0条KU), 尚无法生成书级理解",
+            "positioning": "",
+            "question": "",
+            "skeleton": "",
+            "thinking": "",
+            "for_whom": "",
+            "boundary": "",
+            "main_claims": [],
+            "argument_structure": [],
+            "learning_paths": [],
+            "deep_cards": [],
+            "facets_grounded": [],
+            "bu_quality": {"status": "insufficient_data", "checks": [], "dropped": []},
+        }
         import pathlib
+
         pathlib.Path("econ_pipeline").mkdir(exist_ok=True)
-        pathlib.Path(f"econ_pipeline/bu_{SUB}.json").write_text(json.dumps(j, ensure_ascii=False, indent=2))
+        pathlib.Path(f"econ_pipeline/bu_{SUB}.json").write_text(
+            json.dumps(j, ensure_ascii=False, indent=2)
+        )
         print(f"\n【①一句话灵魂】\n{j['soul']}")
         return
     topics = "\n".join("- " + t for t in kc_labels)
@@ -388,7 +446,7 @@ async def go():
         "你把一本书的已抽知识单元(KU)组织成「书级理解七项」——每项不是口号, 而是**带依据、可核验的判断**。\n"
         "★★数据红线: 判断只能来自给定 KC 主题/枢纽概念/KU 文本, 严禁编造清单之外的任何主张; "
         "不要写 quote(原文由代码注入), 你只选 ku_ids 或引用枢纽概念名。\n"
-        "七项(每项输出对象 {\"text\":…,\"basis\":…,\"ku_ids\":[…]}, 简体中文):\n"
+        '七项(每项输出对象 {"text":…,"basis":…,"ku_ids":[…]}, 简体中文):\n'
         "  soul: 一句话灵魂——这本书最核心的判断(具体, 不要「本书研究了X」式套话)。\n"
         "  positioning: 背景定位——它在什么传统/问题脉络里, 补了什么缺口。\n"
         "  question: 根本问题——驱动全书的那一个问题。\n"
@@ -397,7 +455,7 @@ async def go():
         "  for_whom: 适合谁能干什么——基于 KU 实际覆盖的内容判断。\n"
         "  boundary: 诚实边界——结构里没有/不讲什么, 不延伸。\n"
         "basis: 2~4句, 写清「这个判断依据哪些 KC/枢纽/KU 的什么内容」(每项必填)。\n"
-        "★输出扁平 JSON: {\"soul\":{…},\"positioning\":{…},…,\"boundary\":{…}} —— 每项都是含 text/basis/ku_ids 的对象。"
+        '★输出扁平 JSON: {"soul":{…},"positioning":{…},…,"boundary":{…}} —— 每项都是含 text/basis/ku_ids 的对象。'
     )
     body = (
         f"Book: {booktitle}\n\n"
@@ -474,8 +532,11 @@ async def go():
         j["argument_structure"] = []
 
     # ★2026-08-14: 七项证据挂接(按 su-learning-map 证据标准): 代码注入逐字切片+证据分级(LLM 无权); 门修剪
-    facets_raw = {k: j.get(k) for k in ("soul", "positioning", "question", "skeleton", "thinking", "for_whom", "boundary")
-                  if isinstance(j.get(k), dict)}
+    facets_raw = {
+        k: j.get(k)
+        for k in ("soul", "positioning", "question", "skeleton", "thinking", "for_whom", "boundary")
+        if isinstance(j.get(k), dict)
+    }
     for k in ("soul", "positioning", "question", "skeleton", "thinking", "for_whom", "boundary"):
         if isinstance(j.get(k), str) and str(j.get(k)).strip() and k not in facets_raw:
             # 防御: LLM 返回旧扁平字符串 → 无依据, 门会因 basis 过短丢弃(不伪装成有据)
@@ -529,6 +590,7 @@ async def go():
         f"【七项】证据挂接 {len(j['facets_grounded'])}/7 项存活 / "
         f"丢弃 {len(fres['quality'].get('dropped', []))}"
     )
+
 
 if __name__ == "__main__":
     asyncio.run(go())

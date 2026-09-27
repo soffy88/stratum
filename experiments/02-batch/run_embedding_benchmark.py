@@ -5,7 +5,11 @@ Tests bge-m3 / qwen3-embedding on MIRACL-zh + custom queries.
 voyage-3: SKIP (requires paid API key)
 e5-mistral: SKIP (7B model, CPU-only environment too slow)
 """
-import json, time, os, math, statistics
+
+import json
+import time
+import math
+import statistics
 from pathlib import Path
 import numpy as np
 
@@ -31,6 +35,7 @@ def _download_miracl_corpus():
     """Download MIRACL-zh corpus directly from raw files (no trust_remote_code)."""
     import gzip
     from huggingface_hub import hf_hub_download
+
     corpus = []
     for shard in range(10):
         path = hf_hub_download(
@@ -43,10 +48,12 @@ def _download_miracl_corpus():
                 if len(corpus) >= MIRACL_CORPUS_LIMIT:
                     break
                 item = json.loads(line)
-                corpus.append({
-                    "id": item["docid"],
-                    "text": (item.get("title", "") + "\n" + item["text"]).strip(),
-                })
+                corpus.append(
+                    {
+                        "id": item["docid"],
+                        "text": (item.get("title", "") + "\n" + item["text"]).strip(),
+                    }
+                )
         if len(corpus) >= MIRACL_CORPUS_LIMIT:
             break
     return corpus
@@ -55,6 +62,7 @@ def _download_miracl_corpus():
 def _download_miracl_queries():
     """Download MIRACL-zh dev queries and qrels from raw TSV files."""
     from huggingface_hub import hf_hub_download
+
     queries_path = hf_hub_download(
         "miracl/miracl",
         "miracl-v1.0-zh/topics/topics.miracl-v1.0-zh-dev.tsv",
@@ -98,7 +106,9 @@ if not MIRACL_CORPUS_PATH.exists():
         print(f"MIRACL corpus download FAIL: {e}", flush=True)
         corpus = None
 else:
-    corpus = [json.loads(l) for l in MIRACL_CORPUS_PATH.read_text("utf-8").splitlines() if l.strip()]
+    corpus = [
+        json.loads(l) for l in MIRACL_CORPUS_PATH.read_text("utf-8").splitlines() if l.strip()
+    ]
     print(f"Corpus loaded: {len(corpus)} docs", flush=True)
 
 if not MIRACL_QUERIES_PATH.exists():
@@ -117,7 +127,9 @@ if not MIRACL_QUERIES_PATH.exists():
         queries = None
         qrels = None
 else:
-    queries = [json.loads(l) for l in MIRACL_QUERIES_PATH.read_text("utf-8").splitlines() if l.strip()]
+    queries = [
+        json.loads(l) for l in MIRACL_QUERIES_PATH.read_text("utf-8").splitlines() if l.strip()
+    ]
     qrels = [json.loads(l) for l in MIRACL_QRELS_PATH.read_text("utf-8").splitlines() if l.strip()]
     print(f"Queries: {len(queries)}, qrels: {len(qrels)}", flush=True)
 
@@ -126,16 +138,40 @@ else:
 # ============================================================
 CUSTOM_QUERIES = [
     # Math (10): from S2/S3 topics
-    {"id": "math-01", "text": "Marchenko-Pastur distribution eigenvalue distribution", "domain": "mathematics"},
-    {"id": "math-02", "text": "biharmonic equation weak solution regularity", "domain": "mathematics"},
-    {"id": "math-03", "text": "covariance matrix spectral theory random matrices", "domain": "mathematics"},
-    {"id": "math-04", "text": "Brezis-Kato regularity nonlinear scalar field equations", "domain": "mathematics"},
-    {"id": "math-05", "text": "strongly integrating fermions ground state instability", "domain": "mathematics"},
+    {
+        "id": "math-01",
+        "text": "Marchenko-Pastur distribution eigenvalue distribution",
+        "domain": "mathematics",
+    },
+    {
+        "id": "math-02",
+        "text": "biharmonic equation weak solution regularity",
+        "domain": "mathematics",
+    },
+    {
+        "id": "math-03",
+        "text": "covariance matrix spectral theory random matrices",
+        "domain": "mathematics",
+    },
+    {
+        "id": "math-04",
+        "text": "Brezis-Kato regularity nonlinear scalar field equations",
+        "domain": "mathematics",
+    },
+    {
+        "id": "math-05",
+        "text": "strongly integrating fermions ground state instability",
+        "domain": "mathematics",
+    },
     {"id": "math-06", "text": "biharmonic Sobolev inequality logarithmic", "domain": "mathematics"},
     {"id": "math-07", "text": "Marchenko Pastur law free probability", "domain": "mathematics"},
     {"id": "math-08", "text": "Pohozaev manifold critical point theory", "domain": "mathematics"},
     {"id": "math-09", "text": "W^{2,2} Sobolev space biharmonic operator", "domain": "mathematics"},
-    {"id": "math-10", "text": "matrix eigenvalue distribution Wigner semicircle", "domain": "mathematics"},
+    {
+        "id": "math-10",
+        "text": "matrix eigenvalue distribution Wigner semicircle",
+        "domain": "mathematics",
+    },
     # Classical Chinese (10): from S1 topics
     {"id": "zh-01", "text": "小說起源 先秦諸子 稗官野史", "domain": "classical_chinese"},
     {"id": "zh-02", "text": "魯迅 中國小說史略 章回小說", "domain": "classical_chinese"},
@@ -148,7 +184,11 @@ CUSTOM_QUERIES = [
     {"id": "zh-09", "text": "紅樓夢 人情小說 清代文學", "domain": "classical_chinese"},
     {"id": "zh-10", "text": "六朝志怪 干寶 搜神記 神話傳說", "domain": "classical_chinese"},
     # Mixed CN/EN (10)
-    {"id": "mix-01", "text": "attention mechanism transformer self-attention 注意力机制", "domain": "mixed"},
+    {
+        "id": "mix-01",
+        "text": "attention mechanism transformer self-attention 注意力机制",
+        "domain": "mixed",
+    },
     {"id": "mix-02", "text": "Karpathy neural network 神经网络 embedding", "domain": "mixed"},
     {"id": "mix-03", "text": "softmax temperature scaling 温度参数 概率分布", "domain": "mixed"},
     {"id": "mix-04", "text": "multi-head attention 多头注意力 query key value", "domain": "mixed"},
@@ -157,7 +197,11 @@ CUSTOM_QUERIES = [
     {"id": "mix-07", "text": "cross-entropy loss 交叉熵 分类任务", "domain": "mixed"},
     {"id": "mix-08", "text": "layer normalization batch norm 归一化 训练稳定性", "domain": "mixed"},
     {"id": "mix-09", "text": "tokenizer BPE subword 分词 词汇表", "domain": "mixed"},
-    {"id": "mix-10", "text": "encoder decoder architecture seq2seq 编码器解码器", "domain": "mixed"},
+    {
+        "id": "mix-10",
+        "text": "encoder decoder architecture seq2seq 编码器解码器",
+        "domain": "mixed",
+    },
 ]
 
 CORPUS_B_LIMIT = 300  # paragraphs per source file for Part B
@@ -167,11 +211,12 @@ print("\nLoading #01 parsed corpus for Part B retrieval...", flush=True)
 corpus_b = []
 parsed = BASE / "parsed"
 import re
+
 for sid in ["S1", "S2", "S3", "S4", "S5"]:
     md = parsed / sid / "pymupdf4llm.md"
     if md.exists():
         text = md.read_text("utf-8")
-        paras = [p.strip() for p in re.split(r'\n{2,}', text) if len(p.strip()) >= 50]
+        paras = [p.strip() for p in re.split(r"\n{2,}", text) if len(p.strip()) >= 50]
         for i, p in enumerate(paras[:CORPUS_B_LIMIT]):
             corpus_b.append({"id": f"{sid}-{i}", "text": p, "domain": sid})
 print(f"Part B corpus: {len(corpus_b)} paragraphs (max {CORPUS_B_LIMIT}/source)", flush=True)
@@ -200,9 +245,9 @@ def recall_at_k(retrieved_ids, relevant_ids, k=10):
 # Evaluate a model
 # ============================================================
 def evaluate_model(model_name, hf_name, encode_kwargs=None):
-    print(f"\n{'='*60}", flush=True)
+    print(f"\n{'=' * 60}", flush=True)
     print(f"MODEL: {model_name}", flush=True)
-    print(f"{'='*60}", flush=True)
+    print(f"{'=' * 60}", flush=True)
 
     encode_kwargs = encode_kwargs or {}
     result = {"model": model_name}
@@ -210,6 +255,7 @@ def evaluate_model(model_name, hf_name, encode_kwargs=None):
     # Load model
     print(f"  Loading {hf_name} (CPU)...", flush=True)
     from sentence_transformers import SentenceTransformer
+
     t0 = time.perf_counter()
     try:
         model = SentenceTransformer(hf_name, device="cpu", trust_remote_code=True)
@@ -226,9 +272,12 @@ def evaluate_model(model_name, hf_name, encode_kwargs=None):
 
     # Part A: MIRACL-zh
     if corpus is not None and queries is not None:
-        print(f"\n  Part A: MIRACL-zh ({len(corpus)} corpus, {len(queries)} queries)...", flush=True)
+        print(
+            f"\n  Part A: MIRACL-zh ({len(corpus)} corpus, {len(queries)} queries)...", flush=True
+        )
         # Build qrel lookup: qid → list of relevant docids
         from collections import defaultdict
+
         qrel_map = defaultdict(list)
         for r in qrels:
             qrel_map[r["qid"]].append(r["docid"])
@@ -239,7 +288,10 @@ def evaluate_model(model_name, hf_name, encode_kwargs=None):
         print(f"  Valid queries with relevant docs in corpus: {len(valid_queries)}", flush=True)
 
         if len(valid_queries) == 0:
-            print("  WARNING: No valid queries (relevant docs not in corpus subset). nDCG N/A.", flush=True)
+            print(
+                "  WARNING: No valid queries (relevant docs not in corpus subset). nDCG N/A.",
+                flush=True,
+            )
             result["miracl_ndcg10"] = "N/A (no relevant docs in 1k subset)"
             result["miracl_recall10"] = "N/A"
         else:
@@ -248,17 +300,30 @@ def evaluate_model(model_name, hf_name, encode_kwargs=None):
 
             # Encode corpus
             t0 = time.perf_counter()
-            c_embs = model.encode(corpus_texts, batch_size=64, show_progress_bar=False,
-                                  normalize_embeddings=True, **encode_kwargs)
+            c_embs = model.encode(
+                corpus_texts,
+                batch_size=64,
+                show_progress_bar=False,
+                normalize_embeddings=True,
+                **encode_kwargs,
+            )
             corpus_encode_time = time.perf_counter() - t0
             result["corpus_encode_time_s"] = round(corpus_encode_time, 1)
-            result["corpus_encode_rate"] = round(len(corpus_texts)/corpus_encode_time, 1)
-            print(f"  Corpus encoded: {corpus_encode_time:.1f}s ({result['corpus_encode_rate']:.1f} docs/s)", flush=True)
+            result["corpus_encode_rate"] = round(len(corpus_texts) / corpus_encode_time, 1)
+            print(
+                f"  Corpus encoded: {corpus_encode_time:.1f}s ({result['corpus_encode_rate']:.1f} docs/s)",
+                flush=True,
+            )
 
             # Encode queries
             t0 = time.perf_counter()
-            q_embs = model.encode(query_texts_a, batch_size=64, show_progress_bar=False,
-                                  normalize_embeddings=True, **encode_kwargs)
+            q_embs = model.encode(
+                query_texts_a,
+                batch_size=64,
+                show_progress_bar=False,
+                normalize_embeddings=True,
+                **encode_kwargs,
+            )
             query_encode_time = time.perf_counter() - t0
 
             # Compute similarities and retrieve
@@ -283,18 +348,27 @@ def evaluate_model(model_name, hf_name, encode_kwargs=None):
             result["miracl_recall10"] = round(statistics.mean(recall_scores), 4)
             result["miracl_n_valid_queries"] = len(valid_queries)
             result["query_latency_p50_ms"] = round(statistics.median(query_latencies), 3)
-            print(f"  nDCG@10={result['miracl_ndcg10']}, Recall@10={result['miracl_recall10']}", flush=True)
+            print(
+                f"  nDCG@10={result['miracl_ndcg10']}, Recall@10={result['miracl_recall10']}",
+                flush=True,
+            )
             print(f"  Query latency p50={result['query_latency_p50_ms']}ms", flush=True)
 
     # Part B: Custom queries (LLM-as-judge)
     print(f"\n  Part B: Custom queries ({len(CUSTOM_QUERIES)} queries)...", flush=True)
     b_texts = [c["text"] for c in corpus_b]
-    b_embs = model.encode(b_texts, batch_size=64, show_progress_bar=False,
-                           normalize_embeddings=True, **encode_kwargs)
+    b_embs = model.encode(
+        b_texts, batch_size=64, show_progress_bar=False, normalize_embeddings=True, **encode_kwargs
+    )
     b_embs_np = np.array(b_embs)
 
-    q_custom_embs = model.encode([q["text"] for q in CUSTOM_QUERIES], batch_size=64,
-                                  show_progress_bar=False, normalize_embeddings=True, **encode_kwargs)
+    q_custom_embs = model.encode(
+        [q["text"] for q in CUSTOM_QUERIES],
+        batch_size=64,
+        show_progress_bar=False,
+        normalize_embeddings=True,
+        **encode_kwargs,
+    )
     q_custom_np = np.array(q_custom_embs)
     sims_b = q_custom_np @ b_embs_np.T
 
@@ -304,6 +378,7 @@ def evaluate_model(model_name, hf_name, encode_kwargs=None):
 
     try:
         import anthropic
+
         ac = anthropic.Anthropic()
 
         for i, q in enumerate(CUSTOM_QUERIES):
@@ -333,18 +408,28 @@ Respond with exactly: X,X,X (three integers, comma-separated, no spaces)"""
                 scores = [int(s) for s in scores_str.split(",")]
                 relevance = sum(scores) / 3.0
                 judge_scores.append(relevance)
-                custom_results.append({"query_id": q["id"], "relevance": relevance, "raw": scores_str})
+                custom_results.append(
+                    {"query_id": q["id"], "relevance": relevance, "raw": scores_str}
+                )
             except Exception as e:
                 custom_results.append({"query_id": q["id"], "relevance": None, "error": str(e)})
 
         if judge_scores:
-            result["custom_judge_pass_rate"] = round(sum(j > 0 for j in judge_scores) / len(judge_scores), 3)
+            result["custom_judge_pass_rate"] = round(
+                sum(j > 0 for j in judge_scores) / len(judge_scores), 3
+            )
             result["custom_judge_mean_relevance"] = round(statistics.mean(judge_scores), 3)
-            print(f"  LLM-judge pass rate: {result['custom_judge_pass_rate']}, mean relevance: {result['custom_judge_mean_relevance']}", flush=True)
+            print(
+                f"  LLM-judge pass rate: {result['custom_judge_pass_rate']}, mean relevance: {result['custom_judge_mean_relevance']}",
+                flush=True,
+            )
         result["custom_query_results"] = custom_results
 
     except ImportError:
-        print("  anthropic package not available for LLM-as-judge, using heuristic fallback", flush=True)
+        print(
+            "  anthropic package not available for LLM-as-judge, using heuristic fallback",
+            flush=True,
+        )
         # Heuristic: if top-1 sim > 0.5, likely relevant
         heuristic_pass = sum(1 for i in range(len(CUSTOM_QUERIES)) if sims_b[i].max() > 0.5)
         result["custom_judge_pass_rate"] = round(heuristic_pass / len(CUSTOM_QUERIES), 3)
@@ -362,7 +447,9 @@ Respond with exactly: X,X,X (three integers, comma-separated, no spaces)"""
 
     result["status"] = "OK"
     del model
-    import gc; gc.collect()
+    import gc
+
+    gc.collect()
     return result
 
 
@@ -397,5 +484,5 @@ results["qwen3-embedding-0.6B"] = evaluate_model(
 # Save
 out_path = BENCH / "embedding_results.json"
 out_path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
-print(f"\n=== DONE ===")
+print("\n=== DONE ===")
 print(f"Results saved to {out_path}")

@@ -10,7 +10,11 @@ math_ingest.py._ku_type()修过). 用独立key/独立judge调用, 只标记不�
 Exit: 0=完成(不管有没有仍不合格的, 只是打日志), 非0=判官调用本身出错(网络/key问题)
 """
 
-import asyncio, json, os, re, sys
+import asyncio
+import json
+import os
+import re
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -21,10 +25,22 @@ import asyncpg
 import httpx
 
 SUB = os.getenv("SUBSTRATE", "math_prog_placeholder")
-VERIFY_KEY = os.getenv("MATH_PROG_VERIFY_KEY") or json.load(open(ROOT / ".pipeline_keys.json")).get(
-    "math_prog_verify", ""
+# ★2026-09-21 判官改走本地 Veya 网关(默认 veya1.2-free, 免费常驻):
+# 旧逻辑 NIM key 缺失直接跳过质检; 本地网关 key 缺省 sk-veya, 不跳过。
+# 仍可用 MATH_PROG_VERIFY_BASE_URL/MODEL/KEY 覆盖(设回 NIM URL+NIM key 即走回 NIM)。
+# 注: 不跟 OPENCODE_BASE_URL(飞轮导出的是 http://192.168.80.1:8791, 但网关只绑
+# 127.0.0.1, 直连 192.168.80.1 被拒; 实测 2026-09-21)。判官跑在本机, 默认走回环。
+VERIFY_BASE_URL = os.getenv(
+    "MATH_PROG_VERIFY_BASE_URL", "http://127.0.0.1:8791/v1/chat/completions"
 )
-VERIFY_MODEL = os.getenv("MATH_PROG_VERIFY_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1.5")
+_NIM_KEY = os.getenv("MATH_PROG_VERIFY_KEY") or json.load(
+    open(ROOT / ".pipeline_keys.json")
+).get("math_prog_verify", "")
+_VEYA_KEY = os.getenv("OPENCODE_KEY_POOL", "sk-veya").split(",")[0].strip()
+# key 跟 endpoint 走: NIM URL 配 NIM key, 本地网关配 veya key(缺省 sk-veya)
+_VERIFY_NIM = "nvidia" in VERIFY_BASE_URL or "integrate.api" in VERIFY_BASE_URL
+VERIFY_KEY = _NIM_KEY if _VERIFY_NIM else (_VEYA_KEY or _NIM_KEY)
+VERIFY_MODEL = os.getenv("MATH_PROG_VERIFY_MODEL", "veya1.2-free")
 
 JUDGE_SYS = (
     "You are a QA judge for a 0-LLM programmatic extraction pipeline that slices textbook "
@@ -61,7 +77,7 @@ async def _judge(client: httpx.AsyncClient, title: str, ktype: str, text: str) -
     for attempt in range(3):
         try:
             r = await client.post(
-                "https://integrate.api.nvidia.com/v1/chat/completions",
+                VERIFY_BASE_URL,
                 headers={
                     "Authorization": f"Bearer {VERIFY_KEY}",
                     "Content-Type": "application/json",

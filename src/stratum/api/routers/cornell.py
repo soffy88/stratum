@@ -291,9 +291,7 @@ async def get_progress(topic_id: str, user_id: str = Depends(jwt_auth)):
 
 
 @router.put("/progress/{topic_id}")
-async def put_progress(
-    topic_id: str, body: ProgressBody, user_id: str = Depends(jwt_auth)
-):
+async def put_progress(topic_id: str, body: ProgressBody, user_id: str = Depends(jwt_auth)):
     """推送进度: 与云端并集合并后写回(CloudSyncAdapter.push)。"""
     if body.topic_id and body.topic_id != topic_id:
         raise HTTPException(400, "topic_id mismatch")
@@ -308,7 +306,9 @@ async def put_progress(
     local.setdefault("topicId", topic_id)
     merged = _merge_progress(local, remote)
     if not merged.get("updatedAt"):
-        merged["updatedAt"] = now_utc().isoformat() if hasattr(now_utc(), "isoformat") else str(now_utc())
+        merged["updatedAt"] = (
+            now_utc().isoformat() if hasattr(now_utc(), "isoformat") else str(now_utc())
+        )
     ts = now_utc()
     state_json = json.dumps(merged, ensure_ascii=False)
     if rows:
@@ -383,9 +383,7 @@ async def create_human_cornell(body: CornellCreate, user_id: str = Depends(jwt_a
 
 
 @router.put("/{note_id}")
-async def update_cornell(
-    note_id: str, body: CornellUpdate, user_id: str = Depends(jwt_auth)
-):
+async def update_cornell(note_id: str, body: CornellUpdate, user_id: str = Depends(jwt_auth)):
     row = read("cornell_notes", note_id)
     if not row or row.get("deleted_at"):
         raise HTTPException(404, "Cornell note not found")

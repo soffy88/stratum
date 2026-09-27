@@ -15,7 +15,10 @@ R6严格规则(数学命门, 独立于staging数据):
 Usage: python scripts/math_quality_gate.py <substrate_id> --staging <dir> [--md <md_path>] [--json <out.json>]
 Exit: 0=PASS, 1=ALARM, 2=运行错误/HARD FAIL
 """
-import json, os, re, sys
+
+import json
+import re
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -23,21 +26,23 @@ ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 
 # ── 阈值 ──
-CONTENT_MATCH_MIN = 0.90   # ≥90% KU content_match
-FORMULA_MIN       = 0.80   # ≥80% has_formula
-REAL_FACET_MAX    = 0.10   # ≤10% 真缺(非豁免)
-SHELL_MAX         = 0      # 0 空壳
-RESIDUAL_MAX      = 0      # 0 残留
-KU_FLOOR          = 10     # 整书最少KU数
+CONTENT_MATCH_MIN = 0.90  # ≥90% KU content_match
+FORMULA_MIN = 0.80  # ≥80% has_formula
+REAL_FACET_MAX = 0.10  # ≤10% 真缺(非豁免)
+SHELL_MAX = 0  # 0 空壳
+RESIDUAL_MAX = 0  # 0 残留
+KU_FLOOR = 10  # 整书最少KU数
 
 # R6 md-level 严格规则
-R6_SIGNAL_MIN     = 30     # 超过此信号数才触发R6检查
-R6_HARD_THRESHOLD = 0.0    # latex_ratio=0 → HARD FAIL
+R6_SIGNAL_MIN = 30  # 超过此信号数才触发R6检查
+R6_HARD_THRESHOLD = 0.0  # latex_ratio=0 → HARD FAIL
 R6_ALARM_THRESHOLD = 0.15  # latex_ratio<15% → ALARM
 
 _RE_MATH_SIGNAL = re.compile(r"[=Σ∑∫∂√±≤≥≠αβγδεθλμπρσφω∞·×÷→←⇒⊂⊆∈∉]|\bpercentage change\b", re.I)
 _RE_LATEX = re.compile(r"\$[^$\n]+\$|\\\[|\\\(")
-_RE_RESIDUAL = re.compile(r"未涉及|未覆盖|未出现|未给出|未提及|未定义|未讨论|需查阅|其他资料|建议参考|不在本[章节]|超出本[章节]|\*\*|##")
+_RE_RESIDUAL = re.compile(
+    r"未涉及|未覆盖|未出现|未给出|未提及|未定义|未讨论|需查阅|其他资料|建议参考|不在本[章节]|超出本[章节]|\*\*|##"
+)
 
 
 def _load_staging(staging_dir: Path) -> list[dict]:
@@ -66,7 +71,10 @@ def _check_r6_md(md_path: str) -> tuple[str, str]:
     if latexes == 0:
         return "FAIL", f"R6:数学信号{signals}但0个LaTeX公式(数学命门:OCR破坏公式)"
     if ratio < R6_ALARM_THRESHOLD:
-        return "ALARM", f"R6:公式残缺率高(信号{signals}/LaTeX{latexes}={ratio:.0%}<{R6_ALARM_THRESHOLD:.0%})"
+        return (
+            "ALARM",
+            f"R6:公式残缺率高(信号{signals}/LaTeX{latexes}={ratio:.0%}<{R6_ALARM_THRESHOLD:.0%})",
+        )
     return "PASS", f"R6:OK(信号{signals}/LaTeX{latexes}={ratio:.0%})"
 
 
@@ -95,7 +103,9 @@ def run_gate(substrate_id: str, staging_dir: Path, md_path: str = "") -> dict:
     match_pct = n_match / n_total
     details["content_match_pct"] = round(match_pct, 3)
     if match_pct < CONTENT_MATCH_MIN:
-        alarms.append(f"content_match={match_pct:.0%}<{CONTENT_MATCH_MIN:.0%}({n_total-n_match}个key_terms未出现)")
+        alarms.append(
+            f"content_match={match_pct:.0%}<{CONTENT_MATCH_MIN:.0%}({n_total - n_match}个key_terms未出现)"
+        )
 
     # ── has_formula (数学命门) ──
     n_formula = sum(1 for k in kus if k.get("has_formula", False))
@@ -125,7 +135,7 @@ def run_gate(substrate_id: str, staging_dir: Path, md_path: str = "") -> dict:
     if real_facet_pct > REAL_FACET_MAX:
         alarms.append(
             f"真缺facet={real_facet_pct:.0%}>{REAL_FACET_MAX:.0%} "
-            f"({len(real_facet)}个KU未修复): {[p for p,_ in real_facet[:5]]}"
+            f"({len(real_facet)}个KU未修复): {[p for p, _ in real_facet[:5]]}"
         )
 
     # ── 空壳KU ──
@@ -135,8 +145,7 @@ def run_gate(substrate_id: str, staging_dir: Path, md_path: str = "") -> dict:
         alarms.append(f"空壳KU(zh<200字)={len(shells)}: {shells[:5]}")
 
     # ── 残留标记 ──
-    residuals = [k["point"] for k in kus
-                 if _RE_RESIDUAL.search(k.get("zh", "") + k.get("en", ""))]
+    residuals = [k["point"] for k in kus if _RE_RESIDUAL.search(k.get("zh", "") + k.get("en", ""))]
     details["residual_count"] = len(residuals)
     if len(residuals) > RESIDUAL_MAX:
         alarms.append(f"含残留标记KU={len(residuals)}: {residuals[:5]}")
@@ -150,11 +159,17 @@ def run_gate(substrate_id: str, staging_dir: Path, md_path: str = "") -> dict:
         alarms.append(r6_detail)
 
     # ★待补清单(不漏): 薄(needs_fill)或 content未覆盖 的知识点 — 保留入库, 记录后面补
-    fill_list = [{"point": k["point"], "label": k.get("label", ""),
-                  "zh_len": k.get("zh_len", len(k.get("zh", ""))),
-                  "issues": [i for i in k.get("facet_issues", []) if i not in _SOURCE_LIMITED]
-                            + ([] if k.get("content_match", True) else ["content未覆盖"])}
-                 for k in kus if k.get("needs_fill") or not k.get("content_match", True)]
+    fill_list = [
+        {
+            "point": k["point"],
+            "label": k.get("label", ""),
+            "zh_len": k.get("zh_len", len(k.get("zh", ""))),
+            "issues": [i for i in k.get("facet_issues", []) if i not in _SOURCE_LIMITED]
+            + ([] if k.get("content_match", True) else ["content未覆盖"]),
+        }
+        for k in kus
+        if k.get("needs_fill") or not k.get("content_match", True)
+    ]
     return {
         "substrate_id": substrate_id,
         "ku_count": n_total,
@@ -168,6 +183,7 @@ def run_gate(substrate_id: str, staging_dir: Path, md_path: str = "") -> dict:
 
 if __name__ == "__main__":
     import argparse
+
     ap = argparse.ArgumentParser()
     ap.add_argument("substrate_id")
     ap.add_argument("--staging", required=True, help="暂存目录(含ch*.json)")
@@ -184,30 +200,43 @@ if __name__ == "__main__":
 
     if args.json:
         import datetime
+
         report["generated_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         Path(args.json).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.json).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        Path(args.json).write_text(
+            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
 
     ku_n = report["ku_count"]
     alarms = report["alarms"]
     details = report["details"]
 
-    print(f"\n{'='*52}")
+    print(f"\n{'=' * 52}")
     print(f"★ 数学质量门: {args.substrate_id}")
     print(f"  KU总数: {ku_n}")
-    print(f"  content_match: {details.get('content_match_pct','?'):.0%}" if ku_n else "")
-    print(f"  has_formula:   {details.get('formula_pct','?'):.0%}" if ku_n else "")
-    print(f"  真缺facet:     {details.get('real_facet_pct','?'):.0%} ({details.get('real_facet_count',0)}个)" if ku_n else "")
-    print(f"  R6:            {details.get('r6',{}).get('detail','?')}")
-    print(f"{'='*52}")
+    print(f"  content_match: {details.get('content_match_pct', '?'):.0%}" if ku_n else "")
+    print(f"  has_formula:   {details.get('formula_pct', '?'):.0%}" if ku_n else "")
+    print(
+        f"  真缺facet:     {details.get('real_facet_pct', '?'):.0%} ({details.get('real_facet_count', 0)}个)"
+        if ku_n
+        else ""
+    )
+    print(f"  R6:            {details.get('r6', {}).get('detail', '?')}")
+    print(f"{'=' * 52}")
 
     # ★待补清单(不漏): 薄/缺面/content未覆盖 的知识点 — 保留入库, 记录后面补
     fill_list = report.get("fill_list", [])
     if fill_list:
         fp = Path("math_pipeline/待补") / f"{args.substrate_id}.json"
         fp.parent.mkdir(parents=True, exist_ok=True)
-        fp.write_text(json.dumps({"substrate": args.substrate_id, "count": len(fill_list),
-                                  "待补": fill_list}, ensure_ascii=False, indent=2), encoding="utf-8")
+        fp.write_text(
+            json.dumps(
+                {"substrate": args.substrate_id, "count": len(fill_list), "待补": fill_list},
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
         print(f"  ⚑ 待补清单: {len(fill_list)} 个知识点(保留入库, 后面补) → {fp}")
 
     # ★不漏: 只在真破坏(R6 OCR坏 / 管道没跑出KU)才隔离; 质量缺面→注册+已记待补, 不丢整本

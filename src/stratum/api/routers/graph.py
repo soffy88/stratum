@@ -6,6 +6,7 @@
 纯图遍历(零 LLM, 零向量): explain=seed BFS 扩散; path=双向 BFS 最短路径。
 数据源: B 仓概念图(rf schema, 收敛终点, 权威)。
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Query
@@ -33,3 +34,14 @@ async def graph_path(
 ) -> dict:
     """最短路径(双向 BFS): hop-by-hop 概念链, 可解释。"""
     return get_graph().path(src, dst, max_hops=max_hops)
+
+
+@router.get("/ppr")
+async def graph_ppr(
+    concept: str = Query(..., description="概念名"),
+    top_k: int = Query(20, ge=1, le=100),
+    damping: float = Query(0.85, gt=0.0, lt=1.0),
+    iterations: int = Query(20, ge=1, le=100),
+) -> dict:
+    """Personalized PageRank activation with an explicit seed explanation."""
+    return get_graph().ppr(concept, top_k=top_k, damping=damping, iterations=iterations)

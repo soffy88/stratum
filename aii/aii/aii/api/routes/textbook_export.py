@@ -17,12 +17,10 @@
     }
   }
 """
+
 from __future__ import annotations
 
-import asyncio
 import json
-from pathlib import Path
-from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
@@ -80,21 +78,23 @@ async def export_textbook(textbook_id: str) -> JSONResponse:
         )
 
         if not ku_rows:
-            return JSONResponse({
-                "textbook": {
-                    "id": textbook_id,
-                    "book_name": sub["title"] or "",
-                    "subject": sub["subject"] or "",
-                    "ku_count": 0,
-                },
-                "clusters": [],
-                "units": [],
-                "curriculum_coverage": {
-                    "total_ku_count": 0,
-                    "ku_with_standard": 0,
-                    "covered_standards": [],
-                },
-            })
+            return JSONResponse(
+                {
+                    "textbook": {
+                        "id": textbook_id,
+                        "book_name": sub["title"] or "",
+                        "subject": sub["subject"] or "",
+                        "ku_count": 0,
+                    },
+                    "clusters": [],
+                    "units": [],
+                    "curriculum_coverage": {
+                        "total_ku_count": 0,
+                        "ku_with_standard": 0,
+                        "covered_standards": [],
+                    },
+                }
+            )
 
         ku_ids_uuid = [UUID(r["ku_id"]) for r in ku_rows]
 
@@ -121,7 +121,11 @@ async def export_textbook(textbook_id: str) -> JSONResponse:
             prov: dict = {}
             if r["provenance"]:
                 try:
-                    prov = json.loads(r["provenance"]) if isinstance(r["provenance"], str) else dict(r["provenance"])
+                    prov = (
+                        json.loads(r["provenance"])
+                        if isinstance(r["provenance"], str)
+                        else dict(r["provenance"])
+                    )
                 except Exception:
                     pass
 
@@ -137,26 +141,28 @@ async def export_textbook(textbook_id: str) -> JSONResponse:
                 cluster_ku_counts[cid] = cluster_ku_counts.get(cid, 0) + 1
 
             ku_id = r["ku_id"]
-            units.append({
-                "id": ku_id,
-                "name": r["natural_text"][:80] if r["natural_text"] else "",
-                "description": r["natural_text"] or "",
-                "knowledge_type": r["knowledge_type"] or "",
-                "grade": r["grade"] or "unverified",
-                "school_grade": prov.get("school_grade", ""),
-                "difficulty": prov.get("difficulty", ""),
-                "exam_frequency": prov.get("exam_frequency", ""),
-                "question_types": prov.get("question_types", []),
-                "ku_type": prov.get("ku_type", ""),
-                "mastery_levels": prov.get("mastery_levels", []),
-                "curriculum_standard": prov.get("curriculum_standard", ""),
-                "standard_code": prov.get("standard_code", ""),
-                "chapter": prov.get("chapter", ""),
-                "section": prov.get("section", ""),
-                "cluster_id": cid,
-                "prerequisites": prereqs_map.get(ku_id, []),
-                "symbolic_form": r["symbolic_form"],
-            })
+            units.append(
+                {
+                    "id": ku_id,
+                    "name": r["natural_text"][:80] if r["natural_text"] else "",
+                    "description": r["natural_text"] or "",
+                    "knowledge_type": r["knowledge_type"] or "",
+                    "grade": r["grade"] or "unverified",
+                    "school_grade": prov.get("school_grade", ""),
+                    "difficulty": prov.get("difficulty", ""),
+                    "exam_frequency": prov.get("exam_frequency", ""),
+                    "question_types": prov.get("question_types", []),
+                    "ku_type": prov.get("ku_type", ""),
+                    "mastery_levels": prov.get("mastery_levels", []),
+                    "curriculum_standard": prov.get("curriculum_standard", ""),
+                    "standard_code": prov.get("standard_code", ""),
+                    "chapter": prov.get("chapter", ""),
+                    "section": prov.get("section", ""),
+                    "cluster_id": cid,
+                    "prerequisites": prereqs_map.get(ku_id, []),
+                    "symbolic_form": r["symbolic_form"],
+                }
+            )
 
         # ── 5. 组装 clusters ─────────────────────────────────────────────
         clusters = [
@@ -165,11 +171,7 @@ async def export_textbook(textbook_id: str) -> JSONResponse:
         ]
 
         # ── 6. 课标覆盖度 ────────────────────────────────────────────────
-        covered = [
-            u["standard_code"]
-            for u in units
-            if u.get("standard_code")
-        ]
+        covered = [u["standard_code"] for u in units if u.get("standard_code")]
         coverage = {
             "total_ku_count": len(units),
             "ku_with_standard": len(covered),
@@ -179,10 +181,7 @@ async def export_textbook(textbook_id: str) -> JSONResponse:
         # ── 7. 教材元数据 ────────────────────────────────────────────────
         first_prov: dict = {}
         if units:
-            first_prov = {
-                k: units[0].get(k, "")
-                for k in ("school_grade",)
-            }
+            first_prov = {k: units[0].get(k, "") for k in ("school_grade",)}
 
         textbook_out = {
             "id": textbook_id,
@@ -192,9 +191,11 @@ async def export_textbook(textbook_id: str) -> JSONResponse:
             "ku_count": len(units),
         }
 
-    return JSONResponse({
-        "textbook": textbook_out,
-        "clusters": clusters,
-        "units": units,
-        "curriculum_coverage": coverage,
-    })
+    return JSONResponse(
+        {
+            "textbook": textbook_out,
+            "clusters": clusters,
+            "units": units,
+            "curriculum_coverage": coverage,
+        }
+    )

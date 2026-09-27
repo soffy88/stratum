@@ -57,11 +57,12 @@ async function getConceptGraph(id: string): Promise<ConceptGraph | null> {
 export default async function ConceptDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const [concept, graph] = await Promise.all([
-    getConcept(params.id),
-    getConceptGraph(params.id),
+    getConcept(id),
+    getConceptGraph(id),
   ]);
 
   if (!concept) {
@@ -69,7 +70,7 @@ export default async function ConceptDetailPage({
   }
 
   const relatedConcepts = graph?.nodes.filter(
-    (n) => n.type === "concept" && n.id !== params.id
+    (n) => n.type === "concept" && n.id !== id
   );
   const relatedSubstrates = graph?.nodes.filter((n) => n.type === "substrate");
 
@@ -79,7 +80,7 @@ export default async function ConceptDetailPage({
         <div className="flex items-start justify-between gap-2">
           <h1 className="text-2xl font-bold">{concept.name}</h1>
           <Link
-            href={`/concepts/${params.id}/graph`}
+            href={`/concepts/${id}/graph`}
             className="shrink-0 px-3 py-1.5 text-xs border border-[var(--color-border)] rounded hover:bg-[var(--color-surface)] transition"
           >
             查看图谱 →

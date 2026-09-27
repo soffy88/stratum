@@ -18,7 +18,6 @@ Usage:
 
 import argparse
 import json
-import sys
 import os
 from typing import Any
 
@@ -55,6 +54,7 @@ def _pprint(data: Any) -> None:
 
 
 # ── Commands ─────────────────────────────────────────────────────────────────
+
 
 def cmd_status(args: argparse.Namespace) -> None:
     """Show service status."""
@@ -121,10 +121,15 @@ def cmd_read(args: argparse.Namespace) -> None:
 
 def cmd_grep(args: argparse.Namespace) -> None:
     """Regex search."""
-    result = _get("/api/v1/fs/grep", {
-        "pattern": args.pattern, "scope": args.scope,
-        "layer": args.layer, "limit": args.limit,
-    })
+    result = _get(
+        "/api/v1/fs/grep",
+        {
+            "pattern": args.pattern,
+            "scope": args.scope,
+            "layer": args.layer,
+            "limit": args.limit,
+        },
+    )
     for m in result.get("matches", []):
         print(f"  {m['uri']}:{m.get('line_number', '?')}")
         print(f"    {m.get('match', '')[:100]}")
@@ -133,10 +138,15 @@ def cmd_grep(args: argparse.Namespace) -> None:
 
 def cmd_retrieve(args: argparse.Namespace) -> None:
     """Tiered retrieval."""
-    result = _post("/api/v1/retrieve", {
-        "query": args.query, "max_depth": args.depth,
-        "top_k": args.top_k, "rerank": args.rerank,
-    })
+    result = _post(
+        "/api/v1/retrieve",
+        {
+            "query": args.query,
+            "max_depth": args.depth,
+            "top_k": args.top_k,
+            "rerank": args.rerank,
+        },
+    )
     for r in result.get("results", []):
         print(f"  [{r['layer']}] {r['uri']}  (score={r['score']})")
         print(f"    {r.get('content_preview', '')[:100]}")
@@ -171,7 +181,9 @@ def cmd_memories(args: argparse.Namespace) -> None:
 
 def cmd_layers_generate(args: argparse.Namespace) -> None:
     """Generate L0/L1 layers."""
-    result = _post("/api/v1/layers/generate", {"substrate_id": args.substrate_id, "force": args.force})
+    result = _post(
+        "/api/v1/layers/generate", {"substrate_id": args.substrate_id, "force": args.force}
+    )
     _pprint(result)
 
 
@@ -182,6 +194,7 @@ def cmd_layers_stats(args: argparse.Namespace) -> None:
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
+
 
 def main():
     parser = argparse.ArgumentParser(prog="strat", description="Stratum context database CLI")

@@ -8,6 +8,7 @@ All 8 canonical objects share the same six-item contract:
 If code disagrees with this file, fix code first, then update this file
 and mention it in the PR — this file is the single source of truth.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

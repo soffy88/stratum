@@ -16,9 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -34,6 +32,7 @@ MAX_LINES = 30
 @dataclass
 class AgentState:
     """Agent 的运行时状态."""
+
     agent_name: str
     last_run: str
     version: int = 1
@@ -155,20 +154,24 @@ class StateManager:
         for path in sorted(self.states_dir.glob("*.json")):
             try:
                 data = json.loads(path.read_text())
-                states.append({
-                    "agent_name": data.get("agent_name", path.stem),
-                    "last_run": data.get("last_run", ""),
-                    "version": data.get("version", 0),
-                    "phase": data.get("phase", ""),
-                    "step": data.get("step", 0),
-                    "notes_count": len(data.get("notes", [])),
-                })
+                states.append(
+                    {
+                        "agent_name": data.get("agent_name", path.stem),
+                        "last_run": data.get("last_run", ""),
+                        "version": data.get("version", 0),
+                        "phase": data.get("phase", ""),
+                        "step": data.get("step", 0),
+                        "notes_count": len(data.get("notes", [])),
+                    }
+                )
             except Exception:
-                states.append({
-                    "agent_name": path.stem,
-                    "last_run": "",
-                    "version": 0,
-                })
+                states.append(
+                    {
+                        "agent_name": path.stem,
+                        "last_run": "",
+                        "version": 0,
+                    }
+                )
         return states
 
     def get_state_summary(self, agent_name: str) -> dict[str, Any]:
@@ -203,6 +206,7 @@ class StateManager:
 # ── Convenience Functions ─────────────────────────────────────────────────────
 
 _manager = None
+
 
 def get_manager() -> StateManager:
     global _manager

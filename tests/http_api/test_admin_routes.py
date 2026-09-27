@@ -1,6 +1,5 @@
 """Tests for admin stats endpoint."""
 
-import os
 import pytest
 from fastapi.testclient import TestClient
 
@@ -78,8 +77,12 @@ def test_admin_stats_returns_counts(client_with_admin):
 
 def test_admin_feedback_returns_list(client_with_admin, db):
     # Insert a feedback row
-    db.execute("INSERT INTO feedback (id, user_id, content, page_url) VALUES ('fb1', 'u1', 'Great app', '/search')")
-    res = client_with_admin.get("/api/admin/feedback", headers={"X-Admin-Secret": "test-secret-abc"})
+    db.execute(
+        "INSERT INTO feedback (id, user_id, content, page_url) VALUES ('fb1', 'u1', 'Great app', '/search')"
+    )
+    res = client_with_admin.get(
+        "/api/admin/feedback", headers={"X-Admin-Secret": "test-secret-abc"}
+    )
     assert res.status_code == 200
     body = res.json()
     assert body["total"] == 1

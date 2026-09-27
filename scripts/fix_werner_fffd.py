@@ -21,12 +21,12 @@ Usage:
 Reads the Werner markdown from the stratum API, applies context-based replacements,
 and optionally writes the result back to the derivative table via DuckDB.
 """
+
 from __future__ import annotations
 
 import argparse
 import collections
 import re
-import sys
 import logging
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -44,8 +44,11 @@ JWT = (
 
 # ─── 从 API 读取 markdown ─────────────────────────────────────────────────────
 
+
 def fetch_markdown() -> str:
-    import urllib.request, json
+    import urllib.request
+    import json
+
     url = f"{API_BASE}/api/v1/documents/{WERNER_ID}/derivatives"
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {JWT}"})
     with urllib.request.urlopen(req, timeout=30) as resp:
@@ -58,9 +61,10 @@ def fetch_markdown() -> str:
 
 # ─── 上下文感知单次扫描替换 ───────────────────────────────────────────────────
 
+
 def _ctx(md: str, pos: int, window: int = 12) -> tuple[str, str]:
     """返回位置 pos 处的 (left, right) 上下文字符串。"""
-    return md[max(0, pos - window): pos], md[pos + 1: pos + window + 1]
+    return md[max(0, pos - window) : pos], md[pos + 1 : pos + window + 1]
 
 
 def apply_fixes(md: str) -> tuple[str, dict[str, int]]:
@@ -87,50 +91,103 @@ def apply_fixes(md: str) -> tuple[str, dict[str, int]]:
 
     # ── 4: Notation table symbols ─────────────────────────────────────────────
     before = md.count(FFFD)
-    md = re.sub(r"�(\|summation)", r"∑\1", md)    # ∑ in table symbol column
-    md = re.sub(r"�(<br>_ai_)", r"∑\1", md)       # ∑ ai formula
-    md = re.sub(r"�(\|product)", r"∏\1", md)      # ∏ in table
-    md = re.sub(r"�(\|integral)", r"∫\1", md)     # ∫ in table
+    md = re.sub(r"�(\|summation)", r"∑\1", md)  # ∑ in table symbol column
+    md = re.sub(r"�(<br>_ai_)", r"∑\1", md)  # ∑ ai formula
+    md = re.sub(r"�(\|product)", r"∏\1", md)  # ∏ in table
+    md = re.sub(r"�(\|integral)", r"∫\1", md)  # ∫ in table
     stats["∑∏ (table)"] = before - md.count(FFFD)
 
     # ── 5: ∫ (integral) — integration chapter, single-pass scan ──────────────
     # RIGHT-context patterns that uniquely identify ∫
     INTEGRAL_RIGHT = [
-        " _f (x) dx",   " _f(x) dx",    " _f (x)_",
-        " _x_[2] _d",   " _x[x]_[2",    " _x_[3]",
-        " _x[x]_[3",    " _x_[4]",
-        " _f (x_",       " _f(x_",
-        " where _C_",   " _a[x] a[x",   " ln _a_[+]",
-        " cos _x dx",   " _dx_ = ta",   " cos[2] _x",
-        " 2[+] _[ k",   " _dx_ = − ", " sin[2] _x",
-        " ~~√~~ 1", " 1 + _x_[2",  " 1 + _x_[3",
-        "\n\nThis in",   "\n\nAlthoug",  "\n\nIn this",
-        "\n\nFirst, ",   "\n\nNote t",   "\n\nSince ",
-        " _a b_ →", " _a b b_",    "−∞ _a_",
-        " _a_ ∞",   "−∞ _b_", " _a a_ →",
-        "−1 _x_[2", "�1 x [2", "1 x [2] +",
-        "0<br>∞ 4", "�0 √ x", "0 √ x",
-        "0 (x  + 1",    " _f (x)_ dx",  " f (x) dx",
-        " _a[f][ (]",   " sin _x dx",   " _x_ dx_",
-        "� _R_ \n", " _R_ \n\n_F",
-        "� y [dx",  " y [dx dy]",
-        " _dx_ − ", " dx_·",
-        " _a_  dx",     " _dx_ ",
+        " _f (x) dx",
+        " _f(x) dx",
+        " _f (x)_",
+        " _x_[2] _d",
+        " _x[x]_[2",
+        " _x_[3]",
+        " _x[x]_[3",
+        " _x_[4]",
+        " _f (x_",
+        " _f(x_",
+        " where _C_",
+        " _a[x] a[x",
+        " ln _a_[+]",
+        " cos _x dx",
+        " _dx_ = ta",
+        " cos[2] _x",
+        " 2[+] _[ k",
+        " _dx_ = − ",
+        " sin[2] _x",
+        " ~~√~~ 1",
+        " 1 + _x_[2",
+        " 1 + _x_[3",
+        "\n\nThis in",
+        "\n\nAlthoug",
+        "\n\nIn this",
+        "\n\nFirst, ",
+        "\n\nNote t",
+        "\n\nSince ",
+        " _a b_ →",
+        " _a b b_",
+        "−∞ _a_",
+        " _a_ ∞",
+        "−∞ _b_",
+        " _a a_ →",
+        "−1 _x_[2",
+        "�1 x [2",
+        "1 x [2] +",
+        "0<br>∞ 4",
+        "�0 √ x",
+        "0 √ x",
+        "0 (x  + 1",
+        " _f (x)_ dx",
+        " f (x) dx",
+        " _a[f][ (]",
+        " sin _x dx",
+        " _x_ dx_",
+        "� _R_ \n",
+        " _R_ \n\n_F",
+        "� y [dx",
+        " y [dx dy]",
+        " _dx_ − ",
+        " dx_·",
+        " _a_  dx",
+        " _dx_ ",
     ]
 
     # LEFT-context patterns that alone identify ∫ (used if right-context scan misses)
     INTEGRAL_LEFT_EXACT = [
-        "integral_ ",   "denoted by ",  "line. (c) ",
-        " R: \n\n(a) ", "[ 0;] (b) ",   " ̸ 1 _)_ ",
-        "k]_[∈][Z] ", "os[2] _x_ ", "k][π]_[,] ",
-        "_ ∈ Z _)_ ", "_x_ + _C_ ", "x]_ + _C_ ",
-        "| + _C_ . ",   " _x dx_ = ",  "e can add ",
-        "eidentity ",   " _x dx_ . ",  "4] _dx_ . ",
-        "f (x) dx_ ",   " _a b_ →∞ ", "(x) dx_~~ ",
+        "integral_ ",
+        "denoted by ",
+        "line. (c) ",
+        " R: \n\n(a) ",
+        "[ 0;] (b) ",
+        " ̸ 1 _)_ ",
+        "k]_[∈][Z] ",
+        "os[2] _x_ ",
+        "k][π]_[,] ",
+        "_ ∈ Z _)_ ",
+        "_x_ + _C_ ",
+        "x]_ + _C_ ",
+        "| + _C_ . ",
+        " _x dx_ = ",
+        "e can add ",
+        "eidentity ",
+        " _x dx_ . ",
+        "4] _dx_ . ",
+        "f (x) dx_ ",
+        " _a b_ →∞ ",
+        "(x) dx_~~ ",
         "∞ _a_ →−∞ ",
-        "f (x) dx_ ",   "−∞ _b_ →∞ ",
-        "\n> 1 _dx_ ",  "] dx ;<br>",  " 2 x  + 1 ",
-        ") (f )<br>",   " _) dR_ , ",  "<br>\nx<br>",
+        "f (x) dx_ ",
+        "−∞ _b_ →∞ ",
+        "\n> 1 _dx_ ",
+        "] dx ;<br>",
+        " 2 x  + 1 ",
+        ") (f )<br>",
+        " _) dR_ , ",
+        "<br>\nx<br>",
     ]
 
     # Single-pass scan: for each FFFD, check context
@@ -160,8 +217,8 @@ def apply_fixes(md: str) -> tuple[str, dict[str, int]]:
     # ── 6: ∫ in improper integral limit notation (consecutive patterns) ───────
     # ∫_{-∞} and ∫_{∞} in table format: FFFD directly before -∞ / ∞ subscripts
     before = md.count(FFFD)
-    md = re.sub(r"�(−∞)", r"∫\1", md)    # FFFD-∞ → ∫-∞
-    md = re.sub(r"�(∞)", r"∫\1", md)          # FFFD∞ → ∫∞  (guard: after above)
+    md = re.sub(r"�(−∞)", r"∫\1", md)  # FFFD-∞ → ∫-∞
+    md = re.sub(r"�(∞)", r"∫\1", md)  # FFFD∞ → ∫∞  (guard: after above)
     stats["∫ (limit-∞)"] = before - md.count(FFFD)
 
     # ── 7: Large parens for binomial coefficients ─────────────────────────────
@@ -212,10 +269,10 @@ def apply_fixes(md: str) -> tuple[str, dict[str, int]]:
     # Matrix determinant: exact patterns from xref
     # Text: "determinants FF _a_11 ... _a_1_k_ FF FF FF FF _a_21 ... _a_2_k_ FF FF _Dk_=~~F F~~"
     before = md.count(FFFD)
-    md = re.sub(f"(determinants ){FFFD}{FFFD}( _a_ 1)", r"\1|\2", md)        # opening ||
+    md = re.sub(f"(determinants ){FFFD}{FFFD}( _a_ 1)", r"\1|\2", md)  # opening ||
     md = re.sub(f"(_a_ 1 _k_ ){FFFD}{FFFD} {FFFD}{FFFD}( _a_ 2)", r"\1|| ||\2", md)  # row sep
-    md = re.sub(f"(_a_ 2 _k_ ){FFFD}{FFFD}( _Dk_)", r"\1||\2", md)           # closing ||
-    md = re.sub(f"(_Dk_ = ~~){FFFD} {FFFD}(~~ ,)", r"\1| |\2", md)           # |D_k|
+    md = re.sub(f"(_a_ 2 _k_ ){FFFD}{FFFD}( _Dk_)", r"\1||\2", md)  # closing ||
+    md = re.sub(f"(_Dk_ = ~~){FFFD} {FFFD}(~~ ,)", r"\1| |\2", md)  # |D_k|
     # k-th row: "... ... ... FFFD×4 _ak_" and "_akk_ FFFD×4 i.e."
     F4 = FFFD * 4
     md = re.sub(f"(\\.\\.\\. ){re.escape(F4)}( _ak_)", r"\1|| ||\2", md)
@@ -235,15 +292,12 @@ def apply_fixes(md: str) -> tuple[str, dict[str, int]]:
     # | _b_ |; FFF FFF (5) — complex number absolute value inequality
     # Exact text: "| _b_ |; ??? ??? (5)" = 3+3 vertical bars (MTEX vextendsingle)
     before = md.count(FFFD)
-    md = md.replace(
-        f"| _b_ |; {FFFD}{FFFD}{FFFD} {FFFD}{FFFD}{FFFD} (5)",
-        "| _b_ |; ||| ||| (5)"
-    )
+    md = md.replace(f"| _b_ |; {FFFD}{FFFD}{FFFD} {FFFD}{FFFD}{FFFD} (5)", "| _b_ |; ||| ||| (5)")
     # Fallback: replace any remaining FFFDs in this window
     md = re.sub(
         f"(\\| _b_ \\|; (?:\\|+)?){FFFD}+( ?(?:\\|+)?){FFFD}*( ?\\(5\\))",
         lambda m: m.group(1) + "|" + m.group(2) + m.group(3),
-        md
+        md,
     )
     stats["|| b || bars"] = before - md.count(FFFD)
 
@@ -257,8 +311,8 @@ def apply_fixes(md: str) -> tuple[str, dict[str, int]]:
 
     # Δy/Δx difference quotient: slash or open-paren before FFFD
     before = md.count(FFFD)
-    md = re.sub(r"/�([A-Za-z])", r"/Δ\1", md)      # _Δy/_Δx case
-    md = re.sub(r"\(�([A-Za-z])", r"(Δ\1", md)    # _(Δx_1, Δx_2) vector case
+    md = re.sub(r"/�([A-Za-z])", r"/Δ\1", md)  # _Δy/_Δx case
+    md = re.sub(r"\(�([A-Za-z])", r"(Δ\1", md)  # _(Δx_1, Δx_2) vector case
     stats["Δ slash/paren"] = before - md.count(FFFD)
 
     # Negation symbol in predicate table: negation[FFFD] → negation[¬]
@@ -284,17 +338,22 @@ def apply_fixes(md: str) -> tuple[str, dict[str, int]]:
 
 # ─── 写回数据库 ───────────────────────────────────────────────────────────────
 
+
 def update_derivative_via_api(new_content: str) -> None:
     """通过 stratum admin API 更新 Werner 的 markdown derivative。
     (DuckDB 被服务器持有写锁，需通过 API 中转写入。)
     """
-    import urllib.request, json
+    import urllib.request
+    import json
+
     url = f"{API_BASE}/api/v1/admin/derivative-content"
-    body = json.dumps({
-        "substrate_id": WERNER_ID,
-        "kind": "markdown",
-        "content": new_content,
-    }).encode()
+    body = json.dumps(
+        {
+            "substrate_id": WERNER_ID,
+            "kind": "markdown",
+            "content": new_content,
+        }
+    ).encode()
     req = urllib.request.Request(
         url,
         data=body,
@@ -307,6 +366,7 @@ def update_derivative_via_api(new_content: str) -> None:
 
 
 # ─── 主程序 ───────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fix Werner FFFD chars")
@@ -337,8 +397,8 @@ def main() -> None:
         positions = [i for i, c in enumerate(md_fixed) if c == FFFD]
         seen = set()
         for pos in positions[:30]:
-            left = md_fixed[max(0, pos - 15): pos]
-            right = md_fixed[pos + 1: pos + 16]
+            left = md_fixed[max(0, pos - 15) : pos]
+            right = md_fixed[pos + 1 : pos + 16]
             ctx = repr(left[-12:]) + "|X|" + repr(right[:12])
             if ctx not in seen:
                 seen.add(ctx)

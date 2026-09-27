@@ -9,6 +9,7 @@
 
 输出: Markdown 到 stdout, 或 --out 指定文件.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -51,8 +52,11 @@ async def fetch(url: str, strategy: str, out: str | None = None) -> None:
 async def main() -> None:
     ap = argparse.ArgumentParser(description="增强 URL 抓取 (付费墙绕过 + JS渲染 + 多源适配)")
     ap.add_argument("url", nargs="?", help="URL to fetch")
-    ap.add_argument("--strategy", default="auto",
-                    help="抓取策略: auto | direct | wechat | twitter | crawl4ai | paywall | stealth")
+    ap.add_argument(
+        "--strategy",
+        default="auto",
+        help="抓取策略: auto | direct | wechat | twitter | crawl4ai | paywall | stealth",
+    )
     ap.add_argument("--out", help="输出文件路径 (默认 stdout)")
     ap.add_argument("--test", action="store_true", help="运行测试 URL 列表")
     args = ap.parse_args()
@@ -67,7 +71,7 @@ async def main() -> None:
             ("https://x.com/elonmusk/status/123", "twitter", "Twitter (示例)"),
         ]
         for url, strat, desc in tests:
-            print(f"\n{'='*60}", file=sys.stderr)
+            print(f"\n{'=' * 60}", file=sys.stderr)
             print(f"🧪 {desc}: {url}", file=sys.stderr)
             try:
                 await fetch(url, strat)

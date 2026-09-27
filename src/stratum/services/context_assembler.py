@@ -56,13 +56,12 @@ class ContextWindow:
                 if content:
                     wm_sections.append(f"  {name}: {content[:200]}")
             if wm_sections:
-                parts.append(f"<working_memory>\n" + "\n".join(wm_sections) + "\n</working_memory>")
+                parts.append("<working_memory>\n" + "\n".join(wm_sections) + "\n</working_memory>")
 
         # Long-term memories
         if self.memories:
             mem_text = "\n".join(
-                f"- [{m.get('type', '?')}] {m.get('content', '')[:200]}"
-                for m in self.memories[:10]
+                f"- [{m.get('type', '?')}] {m.get('content', '')[:200]}" for m in self.memories[:10]
             )
             parts.append(f"<memories>\n{mem_text}\n</memories>")
 
@@ -122,7 +121,7 @@ def build_context(
 
     # 1. Retrieval
     try:
-        from stratum.services.retrieval_engine import retrieve, get_embedding
+        from stratum.services.retrieval_engine import get_embedding
 
         query_emb = get_embedding(query)
         if query_emb:

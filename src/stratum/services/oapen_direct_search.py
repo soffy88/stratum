@@ -9,6 +9,7 @@ Root cause of oprim._oapen_search failure:
   2. Even if reachable: _TRUSTED_PDF_HOSTS = ("link.springer.com",) drops
      99% of books whose PDFs are hosted on library.oapen.org itself.
 """
+
 from __future__ import annotations
 
 import json
@@ -49,13 +50,15 @@ def oapen_direct_search(
 
     results = []
     for r in data.get("results", []):
-        results.append(SourceResult(
-            external_id=r["external_id"],
-            title=r["title"],
-            download_url=r["download_url"],
-            file_type="pdf",
-            metadata=r.get("metadata", {}),
-        ))
+        results.append(
+            SourceResult(
+                external_id=r["external_id"],
+                title=r["title"],
+                download_url=r["download_url"],
+                file_type="pdf",
+                metadata=r.get("metadata", {}),
+            )
+        )
 
     log.info("oapen_direct: query=%r → %d results", query, len(results))
     return results

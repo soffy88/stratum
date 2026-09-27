@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -37,6 +36,7 @@ REPORTS_DIR = Path.home() / ".stratum" / "Meta" / "health-reports"
 
 
 # ── Phase 1: Structural Scan ─────────────────────────────────────────────────
+
 
 def _phase1_structural_scan() -> dict[str, Any]:
     """扫描目录结构一致性."""
@@ -86,6 +86,7 @@ def _phase1_structural_scan() -> dict[str, Any]:
 
 # ── Phase 2: Duplicate Detection ──────────────────────────────────────────────
 
+
 def _phase2_duplicate_detection() -> dict[str, Any]:
     """检测重复/近重复内容."""
     result = {
@@ -117,12 +118,14 @@ def _phase2_duplicate_detection() -> dict[str, Any]:
                 ids = [str(ids_json)]
 
             result["exact_matches"] += 1
-            result["details"].append({
-                "type": "exact",
-                "title": title,
-                "count": cnt,
-                "ids": ids[:5],
-            })
+            result["details"].append(
+                {
+                    "type": "exact",
+                    "title": title,
+                    "count": cnt,
+                    "ids": ids[:5],
+                }
+            )
 
         # 2. (updated)/(copy) 变体
         variant_rows = conn.execute("""
@@ -136,12 +139,14 @@ def _phase2_duplicate_detection() -> dict[str, Any]:
         for sub_id, title in variant_rows:
             result["variant_matches"] += 1
 
-    logger.info("Phase 2: %d exact matches, %d variants",
-                result["exact_matches"], result["variant_matches"])
+    logger.info(
+        "Phase 2: %d exact matches, %d variants", result["exact_matches"], result["variant_matches"]
+    )
     return result
 
 
 # ── Phase 3: Link Integrity ──────────────────────────────────────────────────
+
 
 def _phase3_link_integrity() -> dict[str, Any]:
     """审计 wiki 链接完整性."""
@@ -184,12 +189,16 @@ def _phase3_link_integrity() -> dict[str, Any]:
         """).fetchone()
         result["broken_links"] = broken_rows[0] if broken_rows else 0
 
-    logger.info("Phase 3: %d orphan substrates, %d orphan entities",
-                result["orphan_substrates"], result["orphan_entities"])
+    logger.info(
+        "Phase 3: %d orphan substrates, %d orphan entities",
+        result["orphan_substrates"],
+        result["orphan_entities"],
+    )
     return result
 
 
 # ── Phase 4: Metadata Audit ──────────────────────────────────────────────────
+
 
 def _phase4_metadata_audit() -> dict[str, Any]:
     """审计元数据一致性."""
@@ -205,9 +214,9 @@ def _phase4_metadata_audit() -> dict[str, Any]:
     }
 
     with get_conn() as conn:
-        total = conn.execute(
-            "SELECT COUNT(*) FROM substrates WHERE deleted_at IS NULL"
-        ).fetchone()[0]
+        total = conn.execute("SELECT COUNT(*) FROM substrates WHERE deleted_at IS NULL").fetchone()[
+            0
+        ]
         result["notes_audited"] = total
 
         # 缺少 language 字段
@@ -234,12 +243,14 @@ def _phase4_metadata_audit() -> dict[str, Any]:
         result["auto_fixable"] = result["missing_language"] + result["missing_parser"]
         result["needs_input"] = result["missing_hash"]
 
-    logger.info("Phase 4: %d audited, %d auto-fixable",
-                result["notes_audited"], result["auto_fixable"])
+    logger.info(
+        "Phase 4: %d audited, %d auto-fixable", result["notes_audited"], result["auto_fixable"]
+    )
     return result
 
 
 # ── Phase 5: MOC Review ──────────────────────────────────────────────────────
+
 
 def _phase5_moc_review() -> dict[str, Any]:
     """审计目录索引 (MOC) 完整性."""
@@ -277,15 +288,22 @@ def _phase5_moc_review() -> dict[str, Any]:
         covered = conn.execute("""
             SELECT COUNT(DISTINCT substrate_id) FROM substrate_layers
         """).fetchone()[0]
-        total = conn.execute("SELECT COUNT(*) FROM substrates WHERE deleted_at IS NULL").fetchone()[0]
+        total = conn.execute("SELECT COUNT(*) FROM substrates WHERE deleted_at IS NULL").fetchone()[
+            0
+        ]
         result["coverage_pct"] = round(covered / total * 100, 1) if total > 0 else 0
 
-    logger.info("Phase 5: %d MOCs, %d stale, %.1f%% coverage",
-                result["mocs_found"], result["mocs_stale"], result["coverage_pct"])
+    logger.info(
+        "Phase 5: %d MOCs, %d stale, %.1f%% coverage",
+        result["mocs_found"],
+        result["mocs_stale"],
+        result["coverage_pct"],
+    )
     return result
 
 
 # ── Phase 6: Cross-Agent Integration ─────────────────────────────────────────
+
 
 def _phase6_cross_agent() -> dict[str, Any]:
     """汇总各子系统状态."""
@@ -297,14 +315,10 @@ def _phase6_cross_agent() -> dict[str, Any]:
 
     with get_conn() as conn:
         # Graph builder status
-        graph_count = conn.execute(
-            "SELECT COUNT(*) FROM graph_entities"
-        ).fetchone()[0]
+        graph_count = conn.execute("SELECT COUNT(*) FROM graph_entities").fetchone()[0]
         result["subsystems"]["graph_entities"] = graph_count
 
-        rel_count = conn.execute(
-            "SELECT COUNT(*) FROM graph_relations"
-        ).fetchone()[0]
+        rel_count = conn.execute("SELECT COUNT(*) FROM graph_relations").fetchone()[0]
         result["subsystems"]["graph_relations"] = rel_count
 
         # Layer generation status
@@ -321,17 +335,13 @@ def _phase6_cross_agent() -> dict[str, Any]:
 
         # Multimodal assets
         try:
-            multimodal_count = conn.execute(
-                "SELECT COUNT(*) FROM multimodal_assets"
-            ).fetchone()[0]
+            multimodal_count = conn.execute("SELECT COUNT(*) FROM multimodal_assets").fetchone()[0]
             result["subsystems"]["multimodal_assets"] = multimodal_count
         except Exception:
             result["subsystems"]["multimodal_assets"] = 0
 
         # Purge journal
-        purge_count = conn.execute(
-            "SELECT COUNT(*) FROM purge_journal"
-        ).fetchone()[0]
+        purge_count = conn.execute("SELECT COUNT(*) FROM purge_journal").fetchone()[0]
         result["subsystems"]["purge_journal_entries"] = purge_count
 
     logger.info("Phase 6: %d subsystems checked", len(result["subsystems"]))
@@ -339,6 +349,7 @@ def _phase6_cross_agent() -> dict[str, Any]:
 
 
 # ── Phase 7: Health Report ───────────────────────────────────────────────────
+
 
 def _phase7_health_report(
     phases: list[dict[str, Any]],
@@ -402,7 +413,9 @@ def _phase7_health_report(
                 recs.append(f"发现 {phase['exact_matches']} 组重复文件，建议合并")
         elif phase["name"] == "link_integrity":
             if phase.get("orphan_substrates", 0) > 0:
-                recs.append(f"{phase['orphan_substrates']} 个 substrate 缺少 L0/L1 层，建议重新生成")
+                recs.append(
+                    f"{phase['orphan_substrates']} 个 substrate 缺少 L0/L1 层，建议重新生成"
+                )
         elif phase["name"] == "metadata_audit":
             if phase.get("auto_fixable", 0) > 0:
                 recs.append(f"{phase['auto_fixable']} 个元数据问题可自动修复")
@@ -415,6 +428,7 @@ def _phase7_health_report(
 
 
 # ── Main Audit Entry ─────────────────────────────────────────────────────────
+
 
 def run_vault_audit(
     save_report: bool = True,
@@ -445,6 +459,7 @@ def run_vault_audit(
     if include_graph_health:
         try:
             from stratum.services.graph_health_scorer import compute_graph_health_dict
+
             graph_health = compute_graph_health_dict(include_clusters=True)
         except Exception as exc:
             logger.warning("vault_audit: graph health failed: %s", exc)
@@ -489,8 +504,7 @@ def run_vault_audit_api() -> dict[str, Any]:
                 "name": p["name"],
                 "status": "ok" if not p.get("error") else "warning",
                 "summary": {
-                    k: v for k, v in p.items()
-                    if k not in ("phase", "name", "error", "details")
+                    k: v for k, v in p.items() if k not in ("phase", "name", "error", "details")
                 },
             }
             for p in report["phases"]

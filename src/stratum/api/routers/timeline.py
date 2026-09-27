@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Query
 
 from stratum.common import jwt_auth
 from stratum.db import query
+from stratum.services.note_queries import list_user_notes_in_range
 
 router = APIRouter(prefix="/api/v1", tags=["timeline"])
 
@@ -38,15 +39,7 @@ async def get_timeline(
         params,
     )
 
-    notes = query(
-        "SELECT id, title, created_at, strftime(created_at, '%Y-%m') AS month "
-        "FROM notes "
-        "WHERE user_id = %(user_id)s "
-        "AND deleted_at IS NULL "
-        "AND created_at >= %(from_date)s AND created_at <= %(to_date)s "
-        "ORDER BY created_at DESC LIMIT 500",
-        {"user_id": user_id, "from_date": from_date.isoformat(), "to_date": to_date.isoformat()},
-    )
+    notes = list_user_notes_in_range(user_id, from_date.isoformat(), to_date.isoformat())
 
     highlights = query(
         "SELECT id, text_excerpt, substrate_id, created_at, "

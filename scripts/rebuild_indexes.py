@@ -22,6 +22,7 @@ Usage (inside a container that mounts ~/.stratum):
         python3 /app/scripts/rebuild_indexes.py --apply       # do it
     docker start stratum-sl
 """
+
 from __future__ import annotations
 
 import argparse
@@ -69,9 +70,12 @@ def _rebuild_tantivy(live: dict[str, dict], apply: bool) -> None:
         title = m["title"] or sid
         docs.append(FulltextDoc(id=sid, fields={"title": title, "content": m["content"][:10000]}))
         if len(docs) >= 200:
-            idx.add(docs); added += len(docs); docs = []
+            idx.add(docs)
+            added += len(docs)
+            docs = []
     if docs:
-        idx.add(docs); added += len(docs)
+        idx.add(docs)
+        added += len(docs)
     print(f"[tantivy] rebuilt: {added} docs indexed")
 
 
@@ -95,7 +99,7 @@ def _purge_lancedb(live: set[str], apply: bool) -> None:
         return
     # Delete in batches to keep the IN(...) predicate small (~0.4s per 2000).
     for i in range(0, len(ghosts), 2000):
-        batch = ghosts[i:i + 2000]
+        batch = ghosts[i : i + 2000]
         quoted = ",".join("'" + rid.replace("'", "''") + "'" for rid in batch)
         tbl.delete(f"id IN ({quoted})")
     print(f"[lancedb] deleted {len(ghosts)} ghost records")

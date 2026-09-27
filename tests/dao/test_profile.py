@@ -1,4 +1,5 @@
 """Tests for stratum.dao.profile — ≥8 tests per §6.6."""
+
 import pytest
 from stratum.dao.profile import ProfileDAO
 from stratum.dao.users import UserDAO

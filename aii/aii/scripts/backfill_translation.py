@@ -9,13 +9,13 @@
     nohup nice -n 19 .venv/bin/python scripts/backfill_translation.py \
         > /tmp/backfill_trans.log 2>&1 &
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import os
 import sys
-import time
 from pathlib import Path
 
 # ── 环境 ───────────────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ if _env_path.exists():
 
 DSN = os.environ.get(
     "DATABASE_URL",
-    "postgresql://aii:***REMOVED***@localhost:5435/aii_kg",
+    "postgresql://aii:***REMOVED***@localhost:5437/aii_kg",
 )
 
 # ── 日志 ───────────────────────────────────────────────────────────────────
@@ -46,9 +46,9 @@ logging.basicConfig(
 log = logging.getLogger("backfill")
 
 # ── 参数 ───────────────────────────────────────────────────────────────────
-BATCH_SIZE = 20        # 每批条数
+BATCH_SIZE = 20  # 每批条数
 INTER_BATCH_SLEEP = 2  # 批间 sleep(s)，让出资源给飞轮
-PROGRESS_EVERY = 100   # 每N条打一次进度
+PROGRESS_EVERY = 100  # 每N条打一次进度
 FAIL_PLACEHOLDER = "[翻译失败,待重试]"
 
 # ── 翻译 ───────────────────────────────────────────────────────────────────
@@ -59,6 +59,7 @@ from aii.service.ku_translate import translate_ku_to_zh, _OLLAMA_BASE, _MODEL
 def _warmup_model() -> None:
     """Ping Ollama to load qwen3.5:9b into VRAM before batch starts."""
     import requests
+
     try:
         log.info("Warming up %s ...", _MODEL)
         r = requests.post(

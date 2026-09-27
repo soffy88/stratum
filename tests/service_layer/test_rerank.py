@@ -3,6 +3,7 @@
 Inject a fake LLM so no API keys / network are needed. Verifies the previously
 inert /search `rerank` and `expand` paths now actually reorder / expand.
 """
+
 from types import SimpleNamespace
 
 import pytest
@@ -33,8 +34,7 @@ def test_rerank_reorders_by_judge_scores():
     def fake_llm(*, messages, **_):
         return {"content": "0: 1\n1: 9"}
 
-    results = [_result("a", "irrelevant", "noise"),
-               _result("b", "relevant", "the answer")]
+    results = [_result("a", "irrelevant", "noise"), _result("b", "relevant", "the answer")]
     out = rerank_results("q", results, top_k=2, llm=fake_llm)
     assert [r.id for r in out] == ["b", "a"]
 

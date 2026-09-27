@@ -1,4 +1,7 @@
-import asyncio, asyncpg, os, json, httpx
+import asyncio
+import asyncpg
+import os
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -111,10 +114,28 @@ async def go():
         await _persist_paper(flat)
         return
     # 边界用生成版(忠实校验在 generate 阶段做; 不再硬编码 microecon 边界)
+    # ★2026-08-30: generate_bu 输出 key 已改为中文(灵魂/背景定位等)，
+    #   这里做中英文 key 双向映射, 兼容两种输出
+    _KEY_MAP = {
+        "灵魂": "soul",
+        "背景定位": "positioning",
+        "根本问题": "question",
+        "知识骨架": "skeleton",
+        "思维方式": "thinking",
+        "适合谁能干什么": "for_whom",
+        "诚实边界": "boundary",
+    }
+    # normalize keys to English
+    bu_norm = {}
+    for k, v in bu.items():
+        k2 = _KEY_MAP.get(k, k)  # 已是英文则保留
+        bu_norm[k2] = v
+    # 边界用生成版(忠实校验在 generate 阶段做; 不再硬编码 microecon 边界)
     zh = {
-        k: bu.get(k, "")
+        k: bu_norm.get(k, "")
         for k in ["soul", "positioning", "question", "skeleton", "thinking", "for_whom", "boundary"]
     }
+
     # ★2026-07-09: generate_bu.py 在0-KU时直接短路输出"[数据不足]"占位(其余6字段空字符串),
     # 不是真内容——这里跟着短路,不为占位文本浪费一次翻译LLM调用,grade写'pending'(数据待收集,
     # 不是'unverified'那种"有内容但未核实"的语义)。

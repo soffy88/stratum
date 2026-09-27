@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stratum Personal Model migration manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "profile_users": {
+      "type": "object",
+      "additionalProperties": {"type": "string", "minLength": 1}
+    },
+    "learning_progress": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/learningProgressMapping"
+      }
+    },
+    "positional_beliefs": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/beliefMapping"
+      }
+    },
+    "decision_context_links": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/contextLinkMapping"
+      }
+    }
+  },
+  "$defs": {
+    "learningProgressMapping": {
+      "type": "object",
+      "required": ["object_type", "object_id"],
+      "additionalProperties": false,
+      "properties": {
+        "user_id": {"type": "string", "minLength": 1},
+        "object_type": {
+          "enum": ["claim", "evidence", "concept", "substrate", "note", "highlight"]
+        },
+        "object_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "beliefMapping": {
+      "type": "object",
+      "required": ["user_id", "claim_id", "stance"],
+      "additionalProperties": false,
+      "properties": {
+        "user_id": {"type": "string", "minLength": 1},
+        "claim_id": {"type": "string", "minLength": 1},
+        "stance": {"enum": ["agree", "disagree", "uncertain", "conditional"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "contextLinkMapping": {
+      "type": "object",
+      "required": ["user_id", "object_type", "object_id", "context_type", "context_id"],
+      "additionalProperties": false,
+      "properties": {
+        "user_id": {"type": "string", "minLength": 1},
+        "object_type": {
+          "enum": ["claim", "evidence", "concept", "substrate", "note", "highlight"]
+        },
+        "object_id": {"type": "string", "minLength": 1},
+        "context_type": {"enum": ["project", "goal", "tag", "area"]},
+        "context_id": {"type": "string", "minLength": 1},
+        "weight": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  }
+}

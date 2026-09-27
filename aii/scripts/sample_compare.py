@@ -1,8 +1,12 @@
 """For manual QA: show source 2000-char chunk -> KUs (en+zh) extracted from it.
 Picks chunks from 3 separated batches. Reconstructs source via the same split logic."""
-import asyncio, os, sys
+
+import asyncio
+import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
+
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -44,7 +48,9 @@ async def main():
             rows = await conn.fetch(
                 "SELECT knowledge_type, natural_text, natural_text_zh FROM aii.ku_onto "
                 "WHERE substrate_id=$1 AND ku_id LIKE $2 ORDER BY ku_id",
-                sub, f"%::ku_c{ci}_%")
+                sub,
+                f"%::ku_c{ci}_%",
+            )
             if 3 <= len(rows) <= 6:
                 print("\n" + "=" * 90)
                 print(f"### SOURCE  batch {bi}, chunk_idx {ci}  ({len(rows)} KUs)")

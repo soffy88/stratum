@@ -8,11 +8,11 @@ math(0-LLM 程序化) 吃「编号定理/定义/证明」— arXiv 数学论文�
 去重: watchdog/arxiv_math_state.json(已拉 arxiv_id)。
 用法: .venv/bin/python scripts/arxiv_math_fetch.py [--max N] [--per-cat K]
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
 import time
@@ -20,22 +20,41 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEST = Path("/home/soffy/books/论文")  # ★2026-08-10 论文精髓通道: PDF 源 → convert → books/MD/论文 → paper 飞轮 BU+skill
+DEST = Path(
+    "/home/soffy/books/论文"
+)  # ★2026-08-10 论文精髓通道: PDF 源 → convert → books/MD/论文 → paper 飞轮 BU+skill
 STATE = ROOT / "watchdog" / "arxiv_math_state.json"
 ARXIV_API = "http://export.arxiv.org/api/query"
 ARXIV_PDF = "https://arxiv.org/pdf/"
 
 # 数学分类(每类拉最新)
-CATS = ["math.AG", "math.NT", "math.AP", "math.CO", "math.PR", "math.ST",
-        "math.DS", "math.FA", "math.AC", "math.GR", "math.GT", "math.RT",
-        "math.OA", "math.SG", "math.AT", "math.SP"]
+CATS = [
+    "math.AG",
+    "math.NT",
+    "math.AP",
+    "math.CO",
+    "math.PR",
+    "math.ST",
+    "math.DS",
+    "math.FA",
+    "math.AC",
+    "math.GR",
+    "math.GT",
+    "math.RT",
+    "math.OA",
+    "math.SG",
+    "math.AT",
+    "math.SP",
+]
 
 
 def _opener():
     # 走 7890 代理(arXiv 国内可达性不稳); 本地/内网不在此列
     return urllib.request.build_opener(
-        urllib.request.ProxyHandler({"http": "http://127.0.0.1:7890",
-                                     "https": "http://127.0.0.1:7890"}))
+        urllib.request.ProxyHandler(
+            {"http": "http://127.0.0.1:7890", "https": "http://127.0.0.1:7890"}
+        )
+    )
 
 
 def _load_state() -> set[str]:
@@ -65,8 +84,7 @@ def _query(cat: str, per_cat: int, op: urllib.request.OpenerDirector) -> list[tu
         aid = re.search(r"<id>http://arxiv.org/abs/([^<]+)</id>", e)
         title = re.search(r"<title>([^<]+)</title>", e)
         if aid:
-            out.append((aid.group(1).strip(),
-                        (title.group(1).strip() if title else "")[:200]))
+            out.append((aid.group(1).strip(), (title.group(1).strip() if title else "")[:200]))
     return out
 
 
@@ -77,8 +95,9 @@ def _download(arxiv_id: str, op: urllib.request.OpenerDirector) -> Path | None:
     if out.exists():
         return out
     try:
-        req = urllib.request.Request(url, headers={
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) arxiv-math-fetch/1.0"})
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) arxiv-math-fetch/1.0"}
+        )
         with op.open(req, timeout=120) as r, open(out, "wb") as fh:
             total = 0
             while True:

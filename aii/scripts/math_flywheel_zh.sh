@@ -35,9 +35,13 @@ MATH_LIMIT="${MATH_LIMIT:-10}"
 # ★中文应有清单(默认 math_should_have: 定义/定理, 不设MATH_LANG) + NIM key(math_zh 专属,
 #   4飞轮各自独立: 英文econ=econ/中文econ=econ_zh/英文math=math_en/中文math=math_zh) + BGE-M3跑CPU
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('math_zh',''))" 2>/dev/null)"
+# ★统一模型链: opencodex(10100) gpt-5.6-luna 主, NIM fallback
+export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://192.168.80.1:8791/v1/chat/completions}"  # ★2026-08-27 切 Veya(10100僵死)
+export OPENCODE_MODEL="${OPENCODE_MODEL:-gpt-5.6-luna}"
+export NIM_MODEL="${NIM_MODEL:-deepseek-ai/deepseek-v4-flash-0731}"
 export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-4}"   # ★并发度=4(测试定论: 4-5低偶发超时, 6+持续过载)
 export MATH_CH_PARALLEL="${MATH_CH_PARALLEL:-1}"            # ★测试期章并行=1, 让并发=AII_SYNTH_CONCURRENCY单层(同econ)
-export DATABASE_URL="${DATABASE_URL:-postgresql://aii:***REMOVED***@localhost:5435/aii_kg}"
+export DATABASE_URL="${DATABASE_URL:-postgresql://aii:***REMOVED***@localhost:5437/aii_kg}"
 export CUDA_VISIBLE_DEVICES=""
 # ★忠实模式: KU只忠实呈现原书内容(定义/定理+公式原样), 少靠LLM判断, 不过度why/how → 快10×+忠实
 export MATH_FAITHFUL=1

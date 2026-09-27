@@ -1,6 +1,6 @@
 """Tests for stratum.auth.dependencies — ≥5 tests per §3.7."""
+
 import pytest
-from unittest.mock import AsyncMock
 from fastapi import HTTPException
 from stratum.auth.dependencies import get_current_user_data
 from stratum.auth.jwt_handler import encode_access

@@ -13,6 +13,7 @@ The DashScope output-parsing patch lives in the agents router bootstrap and is
 applied process-wide on import, so the shared ``oprim.llm.llm_call`` path works
 in the running app.
 """
+
 from __future__ import annotations
 
 import logging
@@ -60,8 +61,9 @@ _EXPAND_PROMPT = (
 def _inline_expand(query: str, num_variants: int, llm: Callable) -> list[str]:
     """Layer-4 fallback for query expansion (oprim.llm_query_expand is currently
     broken upstream by a bad relative import — §20: can't patch it)."""
-    resp = llm(messages=[{"role": "user",
-                          "content": _EXPAND_PROMPT.format(n=num_variants, q=query)}])
+    resp = llm(
+        messages=[{"role": "user", "content": _EXPAND_PROMPT.format(n=num_variants, q=query)}]
+    )
     content = (resp.get("content", "") if isinstance(resp, dict) else str(resp)) or ""
     variants = [ln.strip() for ln in content.splitlines() if ln.strip()]
     return [query] + variants[:num_variants]
@@ -76,6 +78,7 @@ def expand_query(query: str, *, num_variants: int = 3, llm: Optional[Callable] =
         return [query]
     try:
         import oprim
+
         variants = oprim.llm_query_expand(query=query, llm=llm, num_variants=num_variants)
     except Exception:
         # oprim's llm_query_expand is broken upstream; use the inline equivalent.
@@ -95,8 +98,9 @@ def expand_query(query: str, *, num_variants: int = 3, llm: Optional[Callable] =
     return out or [query]
 
 
-def rerank_results(query: str, results: list, *, top_k: Optional[int] = None,
-                   llm: Optional[Callable] = None) -> list:
+def rerank_results(
+    query: str, results: list, *, top_k: Optional[int] = None, llm: Optional[Callable] = None
+) -> list:
     """Reorder result objects via LLM judge on (title + highlight).
 
     ``results`` items expose ``.title`` and ``.highlight``. Items the judge omits

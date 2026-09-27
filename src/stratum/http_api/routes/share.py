@@ -1,10 +1,9 @@
 """Share routes: create/list/revoke shares + public access."""
-import os
+
 import re
 from datetime import datetime, timezone
 from typing import Optional
 
-import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
@@ -18,11 +17,13 @@ router = APIRouter()
 
 def get_db():
     from stratum.db import get_conn
+
     with get_conn() as conn:
         yield conn
 
 
 # --- Schemas ---
+
 
 class CreateShareRequest(BaseModel):
     expires_in_days: Optional[int] = None
@@ -58,6 +59,7 @@ class PublicNoteResponse(BaseModel):
 
 # --- Helpers ---
 
+
 def _get_auth_user(request: Request) -> dict:
     auth = request.headers.get("Authorization")
     if not auth or not auth.startswith("Bearer "):
@@ -70,10 +72,11 @@ def _get_auth_user(request: Request) -> dict:
 
 def _strip_private_refs(content: str) -> str:
     """Remove wikilinks to private notes from shared content."""
-    return re.sub(r'\[\[_private[^\]]*\]\]', '[私有引用]', content or "")
+    return re.sub(r"\[\[_private[^\]]*\]\]", "[私有引用]", content or "")
 
 
 # --- Authenticated routes ---
+
 
 @router.post("/api/share/note/{note_id}", response_model=CreateShareResponse)
 async def create_share(note_id: str, req: CreateShareRequest, request: Request, db=Depends(get_db)):
@@ -87,8 +90,11 @@ async def create_share(note_id: str, req: CreateShareRequest, request: Request, 
         raise HTTPException(404, "Note not found")
 
     share = ShareTokenDAO(db).create_share_token(
-        resource_type="note", resource_id=note_id, corpus_id=corpus_id,
-        created_by=user_id, expires_in_days=req.expires_in_days,
+        resource_type="note",
+        resource_id=note_id,
+        corpus_id=corpus_id,
+        created_by=user_id,
+        expires_in_days=req.expires_in_days,
         allow_anonymous=req.allow_anonymous,
     )
     return CreateShareResponse(
@@ -102,10 +108,17 @@ async def create_share(note_id: str, req: CreateShareRequest, request: Request, 
 async def list_shares(request: Request, db=Depends(get_db)):
     user = _get_auth_user(request)
     shares = ShareTokenDAO(db).list_user_shares(user["sub"])
-    items = [ShareTokenPublic(token=s.token, resource_type=s.resource_type,
-                              resource_id=s.resource_id, created_at=s.created_at,
-                              expires_at=s.expires_at, access_count=s.access_count)
-             for s in shares]
+    items = [
+        ShareTokenPublic(
+            token=s.token,
+            resource_type=s.resource_type,
+            resource_id=s.resource_id,
+            created_at=s.created_at,
+            expires_at=s.expires_at,
+            access_count=s.access_count,
+        )
+        for s in shares
+    ]
     return ListSharesResponse(items=items, total=len(items))
 
 
@@ -120,6 +133,7 @@ async def revoke_share(token: str, request: Request, db=Depends(get_db)):
 
 # --- Public route (no auth) ---
 
+
 @router.get("/share/{token}", response_model=PublicNoteResponse)
 async def get_public_share(token: str, db=Depends(get_db)):
     dao = ShareTokenDAO(db)
@@ -129,7 +143,11 @@ async def get_public_share(token: str, db=Depends(get_db)):
     if share.revoked_at:
         raise HTTPException(410, "Share has been revoked")
     if share.expires_at:
-        expires = share.expires_at if share.expires_at.tzinfo else share.expires_at.replace(tzinfo=timezone.utc)
+        expires = (
+            share.expires_at
+            if share.expires_at.tzinfo
+            else share.expires_at.replace(tzinfo=timezone.utc)
+        )
         if expires < datetime.now(timezone.utc):
             raise HTTPException(410, "Share has expired")
 

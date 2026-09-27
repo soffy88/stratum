@@ -4,12 +4,12 @@ POST /api/v1/documents/{id}/ocr  → 单本 OCR（后台任务）
 POST /api/v1/admin/ocr-batch     → 批量 OCR（后台任务）
 GET  /api/v1/admin/ocr-candidates → 查看待 OCR 候选列表
 """
+
 from __future__ import annotations
 
 import logging
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from fastapi.responses import JSONResponse
 
 from stratum.api.deps import get_current_user
 from stratum.db import get_conn
@@ -21,6 +21,7 @@ router = APIRouter(tags=["scan-ocr"])
 
 def _run_ocr_one(substrate_id: str, force: bool) -> None:
     from stratum.services.scan_ocr_service import ocr_one
+
     try:
         result = ocr_one(substrate_id, force=force)
         log.info("scan_ocr background done: %s", result)
@@ -30,9 +31,15 @@ def _run_ocr_one(substrate_id: str, force: bool) -> None:
 
 def _run_ocr_batch(user_id: str | None, force: bool, max_books: int) -> None:
     from stratum.services.scan_ocr_service import ocr_batch
+
     try:
         result = ocr_batch(user_id=user_id, force=force, max_books=max_books)
-        log.info("scan_ocr batch done: ok=%s err=%s skip=%s", result["ok"], result["error"], result["skipped"])
+        log.info(
+            "scan_ocr batch done: ok=%s err=%s skip=%s",
+            result["ok"],
+            result["error"],
+            result["skipped"],
+        )
     except Exception as exc:
         log.error("scan_ocr batch failed: %s", exc, exc_info=True)
 
@@ -47,8 +54,7 @@ async def trigger_ocr_one(
     """触发单本扫描书 OCR（异步后台）。"""
     with get_conn() as conn:
         row = conn.execute(
-            "SELECT id, title, parse_quality, mime FROM substrates WHERE id=?",
-            (substrate_id,)
+            "SELECT id, title, parse_quality, mime FROM substrates WHERE id=?", (substrate_id,)
         ).fetchone()
 
     if not row:
@@ -108,5 +114,6 @@ async def list_ocr_candidates(
 ):
     """列出所有待 OCR 候选（dry-run 视图）。"""
     from stratum.services.scan_ocr_service import ocr_batch
+
     result = ocr_batch(dry_run=True)
     return result

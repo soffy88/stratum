@@ -14,7 +14,12 @@ Usage:
   python scripts/econ_spot_check.py wiki microecon_en_full_v2
   python scripts/econ_spot_check.py report microecon_en_full_v2
 """
-import asyncio, asyncpg, json, os, random, sys
+
+import asyncio
+import asyncpg
+import json
+import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -44,7 +49,9 @@ async def cmd_list():
     for r in rows:
         bu = "✅" if r["has_bu"] else "❌"
         dt = r["deep_understood_at"].strftime("%m-%d") if r["deep_understood_at"] else "  --"
-        print(f"{r['substrate_id'][:30]:<30} {(r['ku_count'] or 0):>5} {r['edges']:>5} {r['kcs']:>4} {bu:>3} {dt}")
+        print(
+            f"{r['substrate_id'][:30]:<30} {(r['ku_count'] or 0):>5} {r['edges']:>5} {r['kcs']:>4} {bu:>3} {dt}"
+        )
         if len(r["title"]) > 0:
             print(f"  └─ {r['title'][:70]}")
 
@@ -71,10 +78,10 @@ async def cmd_quarantine():
     print(f"质量门拦截(等待人工审查): {len(items)} 本\n")
     for item in items:
         status = item.get("status", "?")
-        print(f"  [{status}] {item.get('substrate_id','')}")
-        print(f"    书名: {item.get('title','')[:60]}")
-        print(f"    原因: [{item.get('reason_type','')}] {item.get('reason_detail','')[:80]}")
-        print(f"    时间: {item.get('ts','')[:16]}")
+        print(f"  [{status}] {item.get('substrate_id', '')}")
+        print(f"    书名: {item.get('title', '')[:60]}")
+        print(f"    原因: [{item.get('reason_type', '')}] {item.get('reason_detail', '')[:80]}")
+        print(f"    时间: {item.get('ts', '')[:16]}")
         qf = item.get("qual_json", "")
         if qf and Path(qf).exists():
             try:
@@ -90,7 +97,10 @@ async def cmd_sample(sub: str, n: int = 5):
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
     rows = await conn.fetch(
         "SELECT ku_id, title, natural_text_zh, knowledge_type FROM aii.ku_onto"
-        " WHERE substrate_id=$1 ORDER BY random() LIMIT $2", sub, n)
+        " WHERE substrate_id=$1 ORDER BY random() LIMIT $2",
+        sub,
+        n,
+    )
     await conn.close()
 
     if not rows:
@@ -99,10 +109,10 @@ async def cmd_sample(sub: str, n: int = 5):
 
     print(f"随机抽样 {len(rows)} 个KU 来自: {sub}\n")
     for i, r in enumerate(rows, 1):
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"[{i}/{len(rows)}] {r['title']}  [{r['knowledge_type']}]")
         print(f"KU ID: {r['ku_id']}")
-        print(f"{'─'*60}")
+        print(f"{'─' * 60}")
         zh = r["natural_text_zh"] or "(无中文)"
         print(zh[:800] + ("…(截断)" if len(zh) > 800 else ""))
         print()
@@ -111,18 +121,25 @@ async def cmd_sample(sub: str, n: int = 5):
 async def cmd_wiki(sub: str):
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
     row = await conn.fetchrow(
-        "SELECT * FROM aii.bu_onto WHERE substrate_id=$1 ORDER BY created_at DESC LIMIT 1", sub)
+        "SELECT * FROM aii.bu_onto WHERE substrate_id=$1 ORDER BY created_at DESC LIMIT 1", sub
+    )
     await conn.close()
 
     if not row:
         print(f"没有找到 {sub} 的 BU(书级理解未生成或未入库)")
         return
 
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"书级理解(BU): {sub}")
-    print(f"{'='*60}")
-    fields = ["problem_statement", "overview_oneline", "learning_thread",
-              "source_credibility", "doc_type", "grade"]
+    print(f"{'=' * 60}")
+    fields = [
+        "problem_statement",
+        "overview_oneline",
+        "learning_thread",
+        "source_credibility",
+        "doc_type",
+        "grade",
+    ]
     for f in fields:
         v = row[f]
         if v:

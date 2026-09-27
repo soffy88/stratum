@@ -150,7 +150,7 @@ def test_build_vault_zip_structure():
         "README.md": "# vault\n",
         "index.json": '{"version": 1}',
         "notes/hello.md": "---\nid: 1\ntype: note\ntitle: hello\naliases: []\nsources: []\nupdated: 2026-07-29\n---\n\n# hello\n",
-        "sources/doc.md": "---\nid: 2\ntype: source\ntitle: doc\naliases: []\nsources: [\"2\"]\nupdated: 2026-07-29\n---\n\n# doc\n",
+        "sources/doc.md": '---\nid: 2\ntype: source\ntitle: doc\naliases: []\nsources: ["2"]\nupdated: 2026-07-29\n---\n\n# doc\n',
     }
     with patch.object(ves, "build_vault_files", return_value=fake_files):
         data = ves.build_vault_zip("user-1")

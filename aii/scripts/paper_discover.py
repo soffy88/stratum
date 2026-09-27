@@ -14,14 +14,25 @@ substrate_id: paper_<hash>。"已处理"判据用 deep_understood_at(BU 是否�
 用法: python scripts/paper_discover.py [--out list.txt] [--limit N] [--state state.json]
 """
 
-import asyncio, asyncpg, json, os, sys, hashlib, glob
+import asyncio
+import asyncpg
+import json
+import os
+import sys
+import hashlib
+import glob
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 
-PAPER_DIR = "/home/soffy/books/MD/论文"
+PAPER_DIRS = [
+    str(p)
+    for p in (ROOT / "gdrive_staging" / "MD" / "论文", Path("/home/soffy/books/MD/论文"))
+    if p.exists()
+]
 
 
 def _sid(stem: str) -> str:
@@ -30,7 +41,7 @@ def _sid(stem: str) -> str:
 
 def discover() -> list[dict]:
     out = []
-    for md in sorted(glob.glob(f"{PAPER_DIR}/*.md")):
+    for md in sorted(path for root in PAPER_DIRS for path in glob.glob(f"{root}/*.md")):
         stem = Path(md).stem
         try:
             n = Path(md).stat().st_size
@@ -55,6 +66,26 @@ async def _ingested(ids):
     return {r["substrate_id"] for r in rows}
 
 
+def _state_blocks(entry: dict) -> bool:
+    """Allow old transient quarantines to retry after service recovery."""
+    status = (entry or {}).get("status", "")
+    if status in {"precheck_fail", "skip"}:
+        return True
+    if status != "quarantine":
+        return False
+    stamp = (entry or {}).get("ts")
+    if not stamp:
+        return False
+    try:
+        when = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        cooldown = int(os.getenv("AII_QUARANTINE_RETRY_MINUTES", "30"))
+        return datetime.now(timezone.utc) - when < timedelta(minutes=max(0, cooldown))
+    except (TypeError, ValueError, OverflowError):
+        return False
+
+
 async def main():
     import argparse
 
@@ -74,8 +105,7 @@ async def main():
             state = json.loads(Path(args.state).read_text(encoding="utf-8"))
         except Exception:
             pass
-    done = {"ingested", "precheck_fail", "quarantine", "skip"}
-    cands = [c for c in cands if state["processed"].get(c["id"], {}).get("status") not in done]
+    cands = [c for c in cands if not _state_blocks(state["processed"].get(c["id"], {}))]
     ing = await _ingested([c["id"] for c in cands])
     cands = [c for c in cands if c["id"] not in ing]
     if args.verbose:

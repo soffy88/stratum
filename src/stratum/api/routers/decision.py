@@ -21,13 +21,19 @@ router = APIRouter(prefix="/api/v1/decision", tags=["decision"])
 
 try:
     from omodul.decision_ledger import (
-        DecisionLedgerConfig, DecisionLedgerInput, decision_ledger,
+        DecisionLedgerConfig,
+        DecisionLedgerInput,
+        decision_ledger,
     )
     from omodul.kg_reasoning import (
-        KgReasoningConfig, KgReasoningInput, kg_reasoning,
+        KgReasoningConfig,
+        KgReasoningInput,
+        kg_reasoning,
     )
     from omodul.provenance_w3c import (
-        ProvenanceW3cConfig, ProvenanceW3cInput, provenance_w3c,
+        ProvenanceW3cConfig,
+        ProvenanceW3cInput,
+        provenance_w3c,
     )
 
     _HAS_OMODUL = True
@@ -124,9 +130,13 @@ async def provenance_export(
 
     # 自动聚合决策溯源: 决策 → wasAttributedTo(决策者)
     for d in DecisionLedgerBackend(user_id).list_decisions(limit=200):
-        put_provenance(user_id, "wasAttributedTo", f"veya:decision:{d['decision_id']}",
-                       f"veya:agent:{d['decision_maker']}",
-                       {"category": d["category"], "outcome": d["outcome"]})
+        put_provenance(
+            user_id,
+            "wasAttributedTo",
+            f"veya:decision:{d['decision_id']}",
+            f"veya:agent:{d['decision_maker']}",
+            {"category": d["category"], "outcome": d["outcome"]},
+        )
     rels = list_provenance(user_id)
     try:
         result = provenance_w3c(
