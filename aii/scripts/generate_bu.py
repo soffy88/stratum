@@ -2,6 +2,8 @@ import asyncio
 import asyncpg
 import os
 import json
+import re
+import time
 from dotenv import load_dotenv
 
 load_dotenv("aii/.env", override=True)
@@ -490,7 +492,39 @@ async def go():
 
     register_providers()
     llm = ProviderRegistry.get().llm("default")
-    j = json.loads(llm.call_sync(SYS + "\n\n" + body))
+
+    # ★2026-09-27: call_sync 偶发返回空串(限流/上游空 content), 原先直接
+    # json.loads("") 抛 JSONDecodeError → advmath_pipeline.sh 判 exit 2 → 整本隔离。
+    # 实测后果: 153 本被隔离的书里 129 本的 KU 其实已落库, 只丢 BU —— 前 4 步
+    # ([1/6]合成/[3/6]概念/[4/6]KC)的成果被最后一步的空响应一笔勾销, 且重试参数
+    # 不变必然再失败, 书在冷却→重跑→同点失败的循环里出不来。
+    # 现在: 空/非法响应重试若干次; 仍失败则写出可解析的最小骨架并继续,
+    # 让 KU/BU 链其余步骤照常完成, 不再因为一个可选字段毁掉整本书。
+    j = None
+    last_err = ""
+    for _bu_attempt in range(4):
+        try:
+            raw = llm.call_sync(SYS + "\n\n" + body) or ""
+        except Exception as _e:  # 网络/限流等
+            last_err = f"{type(_e).__name__}: {str(_e)[:120]}"
+            raw = ""
+        if raw.strip():
+            m = re.search(r"\{.*\}", raw, re.DOTALL)
+            if m:
+                try:
+                    j = json.loads(m.group(0))
+                    break
+                except json.JSONDecodeError as _je:
+                    last_err = f"JSONDecodeError: {str(_je)[:120]}"
+            else:
+                last_err = "响应里没有 JSON 对象"
+        else:
+            last_err = last_err or "空响应"
+        if _bu_attempt < 3:
+            time.sleep(4 * (_bu_attempt + 1))
+    if j is None:
+        print(f"  ⚠ BU 生成失败({last_err}), 写最小骨架继续(不影响已入库的 KU)", flush=True)
+        j = {}
 
     if claims_src:
         grade_by_id = {r["ku_id"]: r["grade"] for r in claims_src}
