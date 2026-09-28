@@ -2,6 +2,7 @@ import asyncio
 import asyncpg
 import os
 import json
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -152,7 +153,18 @@ async def go():
 
         register_providers()
         llm = ProviderRegistry.get().llm("default")
-        en = json.loads(llm.call_sync(SYS + "\n\n" + json.dumps(zh, ensure_ascii=False)))
+        # ★2026-09-27 同 generate_bu: 翻译是补充字段, 空响应/坏 JSON 不该让
+        # 整本书的 BU 持久化失败(中文原文已就绪)。重试后仍失败就只存中文。
+        en = {}
+        for _t_attempt in range(3):
+            try:
+                en = json.loads(llm.call_sync(SYS + "\n\n" + json.dumps(zh, ensure_ascii=False)))
+                break
+            except json.JSONDecodeError as _je:
+                if _t_attempt == 2:
+                    print(f"  ⚠ BU 英文翻译失败({_je}), 仅存中文继续", flush=True)
+                    break
+                time.sleep(4 * (_t_attempt + 1))
     c = await asyncpg.connect(os.getenv("DATABASE_URL"))
     await c.execute("ALTER TABLE aii.bu_onto ADD COLUMN IF NOT EXISTS facets_zh jsonb")
     await c.execute("ALTER TABLE aii.bu_onto ADD COLUMN IF NOT EXISTS facets_en jsonb")

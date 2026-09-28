@@ -98,8 +98,14 @@ async def _go_paper(md: str):
             break
         except json.JSONDecodeError as e:
             if attempt == 2:
-                raise
+                # ★2026-09-27 原来这里 raise, 但论文卡只是 BU 的补充内容,
+                # 空响应/坏 JSON 不该让整本书失败(前 5 步的 KU 都已入库)。
+                # 与 _build_learning_layer / 主 BU 体 统一降级。
+                print(f"  ⚠ 论文卡生成失败({e}), 跳过论文卡继续", flush=True)
+                break
             print(f"  论文卡 JSON 解析失败(重试 {attempt + 1}/2): {e}", flush=True)
+    if not isinstance(raw, dict):
+        raw = {}
     # 防御: LLM 偶尔把字段分组进 '1'/'skill' 外层 → 拍平到顶层
     j = {}
     for k, v in raw.items():
@@ -190,7 +196,9 @@ async def _build_learning_layer() -> dict:
             break
         except json.JSONDecodeError as e:
             if attempt == 2:
-                raise
+                # ★2026-09-27 同 paper 卡: 学习层是补充内容(深卡), 失败降级而非弃书。
+                print(f"  ⚠ 学习层生成失败({e}), 写空层继续", flush=True)
+                break
             print(f"  学习层 JSON 解析失败(重试 {attempt + 1}/2): {e}", flush=True)
     if not isinstance(raw, dict):
         raw = {}
