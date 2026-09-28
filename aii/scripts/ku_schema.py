@@ -232,6 +232,21 @@ def _claim_numbers(claim: str) -> set[str]:
         flags=re.IGNORECASE,
     )
     text = re.sub(r"(?<![\d.])\d+(?:\.\d+)+\s*(?:章|节|小节)", "", text)
+
+    # ★2026-09-27 技术标识符不是事实断言, 不该触发数字对齐。
+    #   实测 200 条真实 KU 有 19 条(9%)被这条检查拒掉, 抽样看到的全是这类:
+    #     gcr.io/${PROJECT_ID}/ml_app:v1   ← 版本标签
+    #     us-central1                      ← 云 region 名
+    #     --num-nodes=2 / --replicas=3     ← CLI 参数
+    #   一个提到 --replicas=3 的 KU 不是幻觉; 原先要求这些数字出现在证据句里,
+    #   等于用反幻觉的判据去卡技术文本, 属假阳性。
+    #   只排除"数字紧贴标识符"的情形(数字前紧邻 ASCII 字母), 中文正文里的
+    #   "共3章"前面是汉字不受影响, 正常行文数字前面是空格也不受影响。
+    text = re.sub(r"`[^`]*`", " ", text)  # 行内代码片段整体不算事实
+    text = re.sub(r"--[\w-]+(?:\s+|=)\d+", " ", text)  # --port 80 / --target-port=5000
+    text = re.sub(r"(?<![A-Za-z0-9])\d+(?=[A-Za-z_-])", "", text)  # v1 / 3d
+    text = re.sub(r"(?<=[A-Za-z-])\d+", "", text)  # central1 / -1
+    text = re.sub(r"(?<==)\d+", "", text)  # --num-nodes=2
     return _number_tokens(text)
 
 
