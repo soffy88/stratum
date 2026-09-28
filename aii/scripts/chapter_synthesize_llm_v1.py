@@ -82,6 +82,15 @@ _WIN_FALLBACK = 40000  # pos 未找到时的 fallback 窗口大小(章首)
 PLAN_SYS = (
     "You identify the knowledge points a textbook chapter DIRECTLY AND SUBSTANTIVELY teaches. "
     "Output valid JSON only."
+    # ★2026-09-27 质量门把 `rationale(why)=0` 当硬性报警, 整本书因此被隔离。
+    #   _PLAN_TYPES 放宽到五分类后 rationale 已可达, 但 PLAN_SYS 从未要求过它,
+    #   选不选 rationale 全看模型即兴 —— 实测 119/227/329 个 KU 的书照样栽在这条上。
+    #   这里把要求写进规划指令: 章节里凡有"为什么成立/为何如此/机制/论据"的论述,
+    #   都要至少产出一个 rationale 点。
+    " For every chapter, you MUST include at least one point of type 'rationale' whenever the "
+    "chapter contains any WHY content at all (why it is true, why it works, the mechanism or "
+    "reasoning behind it, the evidence/causal argument). If a chapter has no WHY content, then no "
+    "rationale point is needed for it."
 )
 # ★type枚举独立成模块全局(同PLAN_SYS一样可被覆盖) ——_plan()原来把它硬编码在JSON schema
 # 字符串里, 子模块(如chapter_synthesize_advmath.py)覆盖PLAN_SYS时很容易漏改这行, 导致LLM
