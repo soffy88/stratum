@@ -325,11 +325,16 @@ def chapter_numbers(text):
 # ★刻意不收 APPENDIX: 附录常是真内容(实测 Building Your Money Machine 的
 #   APPENDIX B 是 16k 字符的金融术语表、APPENDIX E 是 7k 字符的保险指南),
 #   一刀切会把可讲透的内容丢掉。只收确定没有知识点的纯事务性章节。
+#   bibliography / references / glossary / index 是纯引用清单和词表 —— 同样收,
+#   实测 cs_en_8ce0fd912c 的 ch15(Bibliography, 74k 字符全是 [ABC+16] 引用)
+#   和 ch16(Author's Biography) 让 planner 抽不出东西, 每轮白重试。
 _BACKMATTER_HEAD = re.compile(
     r"(?i)^\s*#{0,3}\s*\[?\**\s*"
-    r"(?:end\s*notes|acknowledg(?:e)?ments|acknowledgements"
+    r"(?:end\s*notes|notes|acknowledg(?:e)?ments|acknowledgements"
     r"|about\s+the\s+author|about\s+the\s+authors|also\s+by\s+this\s+author"
-    r"|index\s+of|copyright|errata)"
+    r"|author[’'s]*s?\s+biograph\w*|biograph\w*\s+of\s+the\s+author"
+    r"|index|glossary|bibliography|references|works\s+cited"
+    r"|copyright|errata|colophon)"
 )
 
 
