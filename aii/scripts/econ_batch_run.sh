@@ -186,7 +186,21 @@ asyncio.run(chk())
     mkdir -p "$RUN_LOG_DIR"
     echo "  [管道] 运行 $PIPELINE_SCRIPT..."
     QUAL_JSON="$ECON_QUAL_DIR/${SUBSTRATE}.json"
-    export SUBSTRATE AII_MD_FILE="$MD_PATH" ECON_TITLE QUAL_DIR="$ECON_QUAL_DIR" PIPELINE_CKPT_DIR="$ECON_CKPT_DIR"
+    # ★2026-09-29 重试隔离书时打开强制重规划: 被质量门隔离的书 checkpoint 还在,
+    #   缺 rationale 的章会被跳过抽取, 拿修复前的旧 KU 反复重判 → 死循环
+    #   (实测 09-29 08:54~10:37 连续 12 本 cs 书复读, KU 停产 17.7h)。
+    #   判定: 这本书上一次是不是因质量门被隔离的。
+    _REPLAN=0
+    if [ -f "$QUARANTINE_JSON" ] && $PY -c "
+import json,sys
+d=json.load(open(sys.argv[1]))
+print('1' if any(x.get('substrate_id')==sys.argv[2] and x.get('reason_type')=='quality_gate'
+               for x in d.get('quarantined',[])) else '0')
+" "$QUARANTINE_JSON" "$SUBSTRATE" 2>/dev/null | grep -q '^1$'; then
+        _REPLAN=1
+        echo "  [重规划] $SUBSTRATE 此前因质量门被隔离 → 重抽缺 rationale 的章"
+    fi
+    export SUBSTRATE AII_MD_FILE="$MD_PATH" ECON_TITLE QUAL_DIR="$ECON_QUAL_DIR" PIPELINE_CKPT_DIR="$ECON_CKPT_DIR" AII_FORCE_REPLAN="$_REPLAN"
 
     PIPE_EXIT=0
     # ★2026-08-29 加超时: 上游 LLM (Veya/opencode-go) 经常 412/429/僵死 拖死 ECON 飞轮
