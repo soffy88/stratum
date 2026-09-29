@@ -78,6 +78,31 @@ def _is_zh_running_head(t: str) -> bool:
     return bool(_ZH_RUNNING_HEAD.match(re.sub(r"\s+", " ", (t or "").strip().upper())))
 
 
+# ★2026-09-27 黑体标记只包住了同名重复词的前一半, 后一半裸露。PDF/markdown 抽取
+#   时把同一术语连写两遍的排版很常见, 例如实测:
+#       **GDDR** GDDR6 is used in the latest gaming graphics cards...
+#       **SLIDE** is an extension to dropout
+#   于是 _BOLD_TERM 抓到这个重复副本当"应有知识点", 而合成出的 KU 名只写一次,
+#   字面匹配必然失败 → 每章假报漏。命中即判为排版噪声。
+_ECHO_TAIL = re.compile(r"^[\s:：,，.\-–—]*" + r"(\S+)")
+
+
+def _is_bold_echo(term: str, chapter_text: str, bold_end: int) -> bool:
+    """黑体词后面紧跟着同一个词(裸露副本) → 排版重复, 不是术语定义."""
+    t = term.strip()
+    if not t or not t.isascii():
+        return False
+    m = _ECHO_TAIL.match(chapter_text[bold_end : bold_end + len(t) + 4])
+    if not m:
+        return False
+    nxt = m.group(1).strip(".,;:")
+    if not nxt or not nxt.isascii():
+        return False
+    a, b = t.lower(), nxt.lower()
+    # 裸露副本完全相同, 或它以后缀方式继续这个词(GDDR → GDDR6)
+    return b == a or b.startswith(a) and len(b) > len(a) and b[len(a)].isdigit()
+
+
 # ★2026-09-27 缩写 ↔ 中文展开对照。check_completeness 的 covered() 走字面匹配,
 #   所以章节黑体术语写 **LSTM**、而 KU 名写「长短期记忆」时会被判漏 —— 用反漏判据
 #   去卡术语的两种写法, 属假阳性。只收有确定中文展开的常见缩写; 表里没有的缩写
@@ -162,6 +187,8 @@ def identify_should_have(chapter_text: str) -> dict:
     for m in _BOLD_TERM.finditer(chapter_text):
         t = m.group(1).strip()
         if t in seen or _is_spaced_noise(t) or _is_zh_running_head(t):
+            continue
+        if _is_bold_echo(t, chapter_text, m.end()):
             continue
         if any(t == s or t.startswith(s + " ") for s in _STOP):
             continue
