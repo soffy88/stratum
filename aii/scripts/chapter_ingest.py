@@ -387,11 +387,24 @@ async def main():
 
     await register_vector(conn)
     # 3. 打 chapter_id (provenance)
-    await conn.execute(
-        "UPDATE aii.ku_onto SET provenance = provenance || jsonb_build_object('chapter',$2::int) WHERE substrate_id=$1",
+    # ★2026-09-29 原来这条是 `WHERE substrate_id=$1` —— 只按书过滤, 不按本章,
+    #   等于把【整本书】已有的 KU 的 chapter 全刷成当前章 n。逐章循环下, 前面章节
+    #   抽出的 KU 会被后续章反复改写, 最终全部指向最后一次处理的章号。
+    #   实测 cs_en_8ce0fd912c: MD 16 章, 但库内 KU 只落在 7 个章号上, 且
+    #   ch1(书名页/版权页) 挂着 40 个讲 Autoencoder/Backpropagation 的 KU
+    #   (实为 Introduction 内容) —— 章节与内容整体错位。
+    #   改成只给"刚由本章落库"的 KU 打号。
+    stamped = await conn.execute(
+        """
+        UPDATE aii.ku_onto
+           SET provenance = provenance || jsonb_build_object('chapter', $2::int)
+         WHERE substrate_id = $1
+           AND NOT (provenance ? 'chapter')
+        """,
         sub,
         n,
     )
+    print(f"  stamped chapter={n} on {stamped.split()[-1]} newly-inserted KU", flush=True)
     # 4. 概念归一 (章内, 供共现预筛)
     norm = await vectorize_and_normalize(conn, llm, substrate_id=sub, discipline="经济学")
     print(f"  normalize: {norm['before']}→{norm['after']} concepts", flush=True)
