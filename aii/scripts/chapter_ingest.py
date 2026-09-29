@@ -309,7 +309,44 @@ def chapter_starts(text):
 
 
 def chapter_numbers(text):
-    return sorted(chapter_starts(text).keys())
+    """章号列表, 但剔除整章都是 back-matter 的章(见 _is_backmatter_chapter).
+
+    ★2026-09-29: 有些书(如 Building Your Money Machine)正文之后还挂着
+    ENDNOTES / ACKNOWLEDGMENTS / ABOUT THE AUTHOR / APPENDIX 等纯 back-matter,
+    _md_heading_starts 兜底把它们当正文章, 于是 planner 对这些章抽不出知识点 →
+    报"规划未返回知识点" → 不写 checkpoint → 每轮重试都卡在同一批章。
+    实测该书 31 章里 ch28~ch31 全是 back-matter, 白烧 4 轮 token。
+    抽不出知识点的 back-matter 章不该进"应有内容章"的分母, 也不该无限重试。
+    """
+    return sorted(n for n in chapter_starts(text) if not _is_backmatter_chapter(text, n))
+
+
+# 书末 back-matter 章标题(H1/H2), 命中即视为非内容章。
+# ★刻意不收 APPENDIX: 附录常是真内容(实测 Building Your Money Machine 的
+#   APPENDIX B 是 16k 字符的金融术语表、APPENDIX E 是 7k 字符的保险指南),
+#   一刀切会把可讲透的内容丢掉。只收确定没有知识点的纯事务性章节。
+_BACKMATTER_HEAD = re.compile(
+    r"(?i)^\s*#{0,3}\s*\[?\**\s*"
+    r"(?:end\s*notes|acknowledg(?:e)?ments|acknowledgements"
+    r"|about\s+the\s+author|about\s+the\s+authors|also\s+by\s+this\s+author"
+    r"|index\s+of|copyright|errata)"
+)
+
+
+def _is_backmatter_chapter(text: str, n: int) -> bool:
+    """该章标题是否 back-matter(ENDNOTES/致谢/作者简介/附录…)。是则不计入内容章."""
+    starts = chapter_starts(text)
+    if n not in starts:
+        return False
+    s = starts[n]
+    e = starts.get(n + 1, len(text))
+    head = text[s : s + 200]
+    # 标题行(前两行)命中 back-matter 特征
+    for line in head.splitlines()[:2]:
+        if _BACKMATTER_HEAD.search(line):
+            return True
+    return False
+
 
 
 def slice_chapter(text, n):
