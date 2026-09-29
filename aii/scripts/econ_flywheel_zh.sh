@@ -24,6 +24,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PY=.venv/bin/python
+# 供 quarantine_book_ku.py 读 PG 凭据(POSTGRES_*), 不导出到子进程日志
+if [ -f .env ]; then set -a; . ./.env; set +a; fi
 # ★中文经济学飞轮: 独立 _zh 状态/书单/报告(与英文/原始 econ_flywheel 不冲突)
 FLYWHEEL_STATE="econ_pipeline/flywheel_zh_state.json"
 FLYWHEEL_BOOK_LIST="econ_pipeline/flywheel_zh_booklist.txt"
@@ -238,4 +240,15 @@ echo "  报告 → $FLYWHEEL_REPORT"
 if [ "$STRATUM_FEEDBACK" = "1" ]; then
     echo "  Stratum反馈 → /home/soffy/shared/aii-to-stratum/md_rework_queue.json"
 fi
+# ── Step 5: 把隔离书的 KU 在库内封存 ──
+# 质量门报警后飞轮只写 quarantine.json; 逐章已各自 commit(onto_persist.py 每章一个
+# 事务), 所以书被隔离时 KU 仍 is_quarantined=false → 对读者/检索/下游可见。
+# 这里把状态对齐到数据层(只封存不删除, 可逆, 幂等)。
+echo "[5/5] 封存隔离书的 KU..."
+if $PY scripts/quarantine_book_ku.py 2>&1 | tail -2; then
+    echo ""
+else
+    echo "  ! 封存失败(不影响本轮抽取, 隔离书 KU 暂时仍可见)"
+fi
+
 echo "════════════════════════════════════════════════════"
