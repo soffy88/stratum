@@ -437,7 +437,12 @@ async def run():
 
     # ── 报警判断 ──
     if isinstance(complete_pct, int) and complete_pct < TH["complete_pct"]:
-        alarms.append(f"完整率{complete_pct}%<100%(漏知识点: {metrics.get('漏知识点章(前3)', [])})")
+        # ★2026-09-27 原来这里硬编码 "<100%", 而实际阈值是 TH["complete_pct"]=90。
+        #   文案与判定不一致, 排查时被误导成"这门要求 100%"。改为打印真实阈值。
+        alarms.append(
+            f"完整率{complete_pct}%<{TH['complete_pct']}%"
+            f"(漏知识点: {metrics.get('漏知识点章(前3)', [])})"
+        )
 
     if residual > TH["residual_max"]:
         alarms.append(f"残留字符KU={residual}>0(含##/***/未涉及等)")
