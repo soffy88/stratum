@@ -38,6 +38,35 @@ SC = Path(
 )
 SC.mkdir(parents=True, exist_ok=True)
 CKPT = SC / f"ckpt_{SUB}.json"
+# 重试时强制重规划"缺 rationale"的章(见 main() 里 ★2026-09-29 说明)。
+# 默认关: 正常续跑不该反复烧已完成章; 由飞轮在重试隔离书时打开。
+_FORCE_REPLAN = os.getenv("AII_FORCE_REPLAN", "0") == "1"
+
+
+async def _chapters_missing_type(conn, substrate_id: str, ktype: str) -> list[int]:
+    """已落库的 KU 里, 哪些章一条 <ktype> 都没有(质量门对该类型是硬性项)."""
+    rows = await conn.fetch(
+        """
+        SELECT DISTINCT (provenance->>'chapter')::int AS ch
+          FROM aii.ku_onto
+         WHERE substrate_id = $1
+           AND knowledge_type = $2
+           AND (provenance->>'chapter') IS NOT NULL
+        """,
+        substrate_id,
+        ktype,
+    )
+    have = {r["ch"] for r in rows}
+    got = await conn.fetch(
+        """
+        SELECT DISTINCT (provenance->>'chapter')::int AS ch
+          FROM aii.ku_onto
+         WHERE substrate_id = $1
+           AND (provenance->>'chapter') IS NOT NULL
+        """,
+        substrate_id,
+    )
+    return sorted({r["ch"] for r in got} - have)
 _TYPE_MAP = {
     "conceptual": "conceptual",
     "rationale": "rationale",
@@ -339,6 +368,23 @@ async def main():
         print("  ⚠ 检测到0 KU旧 checkpoint，清除完成标记并重新规划", flush=True)
         done.clear()
         CKPT.unlink(missing_ok=True)
+
+    # ★2026-09-29 隔离书重试死循环: 上面那个守卫只在"整书 0 KU"时清 checkpoint。
+    #   但被质量门隔离的书往往有几十上百个 KU(只是 rationale=0 / 完整率不达标),
+    #   checkpoint 仍在 → done 的章全部跳过抽取 → 直接拿旧的、修复前抽的 KU
+    #   再判一次质量门 → 结论必然一样 → 再隔离。实测 2026-09-29 08:54~10:37
+    #   连续 12 本 cs 书因 rationale=0 被隔离, 全部是这么复读出来的, KU 停产 17.7h。
+    #   修: 重试时把"质量门要命的那一类没抽到"的章从 done 里摘掉, 让修好的
+    #   planner 重新规划这些章。其它已 done 的章不重复烧 token。
+    if done and _FORCE_REPLAN:
+        stale = await _chapters_missing_type(conn, SUB, "rationale")
+        if stale:
+            print(
+                f"  ⚠ AII_FORCE_REPLAN=1: {len(stale)} 章缺 rationale KU → 重新规划 {stale}",
+                flush=True,
+            )
+            done -= set(stale)
+
     pending = [n for n in chapters if n not in done]
     chapter_parallel = max(1, int(os.getenv("AII_CHAPTER_PARALLEL", "1")))
 
