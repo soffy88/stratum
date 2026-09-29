@@ -2,6 +2,7 @@ import asyncio
 import concurrent.futures
 import itertools
 import os
+import uuid
 import logging
 import threading
 import httpx
@@ -139,6 +140,24 @@ def _make_deepseek_caller(
         if w > 0:
             _t.sleep(w)
 
+    def _headers_for(url: str, key: str) -> dict:
+        """请求头。opencode 端点要求 x-opencode-session, 缺了直接 400 拒绝路由。
+
+        ★2026-09-29: opencode.ai/zen/go 对本项目所有请求返回
+          HTTP 400 {"type":"MissingSessionID","message":"Request is missing
+          x-opencode-session and cannot be routed efficiently"}
+        —— 这是主 provider, 它一挂就 fallback 到 NIM; 而 NIM 的默认模型
+        deepseek-ai/deepseek-v4-flash-0731 已于 2026-09-21 EOL(HTTP 410 Gone),
+        两条路同时断 → 抽取全线拿不到 LLM → KU 停产 17.7 小时。
+        实测补上该头后同一请求 HTTP 200 正常返回。
+        """
+        h = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+        if "opencode" in (urlparse(url).hostname or "").lower():
+            h["x-opencode-session"] = os.getenv(
+                "OPENCODE_SESSION_ID", f"aiii-{os.getpid()}-{uuid.uuid4().hex[:8]}"
+            )
+        return h
+
     def _post_with_retry(payload: dict, max_retries: int = 5):
         # ★429限流是瞬时的(尤其NIM key被econ_zh/misc/BU等多个进程共用, _throttle()只在
         # 单进程内生效, 挡不住跨进程撞车), 之前遇到429直接抛异常、整本书(哪怕[1/5]已经
@@ -162,10 +181,7 @@ def _make_deepseek_caller(
                 try:
                     _resp2 = _client_for(fb_url).post(
                         fb_url,
-                        headers={
-                            "Authorization": f"Bearer {fb_key}",
-                            "Content-Type": "application/json",
-                        },
+                        headers=_headers_for(fb_url, fb_key),
                         json={**payload, "model": fb_model},
                     )
                     if _resp2.status_code >= 500 and _attempt2 < 2:
@@ -190,7 +206,7 @@ def _make_deepseek_caller(
             try:
                 resp = _client_for(base_url).post(
                     base_url,
-                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                    headers=_headers_for(base_url, key),
                     json=payload,
                 )
             except _httpx.HTTPError as e:
