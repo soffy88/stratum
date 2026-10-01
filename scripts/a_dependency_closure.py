@@ -22,6 +22,20 @@ Usage:
     python3 scripts/a_dependency_closure.py --layer P6_IDENTITY --verify
 
 Read-only. Creates and removes its own worktree under the system temp dir.
+
+WHAT STATIC ANALYSIS CANNOT SEE — and why --verify is not optional:
+
+A path built at RUNTIME from a computed name is invisible to a literal scan.
+P7's own test compares against
+
+    artifacts/a_repository/p7_projection/book_<book_id>_projection.json
+
+where `book_id` is computed at run time, so no string literal in the source
+names the file. Static closure reported P7 COMPLETE; only --verify found the
+missing artifact, by running the layer and letting two tests fail.
+
+Treat `complete=True` as "no *named* dependency is missing", never as
+"runnable". Only --verify answers the second question.
 """
 
 from __future__ import annotations
@@ -362,6 +376,8 @@ def render(result: Dict[str, object]) -> str:
     lines.append(f"  tests: {', '.join(result['tests'])}")
     lines.append(f"  runnable from a clean checkout: "
                  f"{'YES' if result['complete'] else 'NO'}")
+    lines.append("  (static only - a runtime-computed path cannot be seen;")
+    lines.append("   --verify is what proves runnability)")
     return "\n".join(lines)
 
 
