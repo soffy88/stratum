@@ -5,7 +5,7 @@ STATUS=RECORDED
 TASK=STRATUM_A_DEPENDENCY_CLOSURE_AUDIT
 HEAD=dc66bd5
 TOOL=`scripts/a_dependency_closure.py`
-TOOL_SHA256=`3293e248ba701f406585211e6018a8e57fa338f544d2cbfa84e945b62707d372`
+TOOL_SHA256=`fb8af6c13fc4e2af4df2ca4529e52aadc782f30dfe172759512bd43f4ce2a3e5`
 
 ---
 
@@ -104,19 +104,53 @@ tests    (1)  test_a_repository_p6_identity.py   tracked
 
 最后一行就是 P6 暴露的那条边，现在被工具直接看见。
 
+### 2.4 静态分析的盲区：运行时拼出的路径
+
+P7 测试会比对自己的 artifact：
+
+```
+artifacts/a_repository/p7_projection/book_<book_id>_projection.json
+```
+
+`book_id` 是**运行时算出来的**，源码里没有任何字符串字面量提到这个文件名。
+所以只扫字面量的闭包分析永远看不见它。
+
+实测：
+
+```
+补齐缺口 1（提交测试文件）之后，静态分析报：
+    complete = True     runnable from a clean checkout = YES
+
+只有 --verify 报出真相：
+    2 failed, 69 passed
+    FAILED test_the_committed_artifact_matches_a_fresh_build
+    FAILED test_artifact_is_named_by_an_a_repository_id
+```
+
+因此工具的契约改写为：
+
+```
+complete = True   只表示「没有 *被命名的* 依赖缺失」
+                      绝不表示「可运行」
+
+只有 --verify 能回答「可运行」
+```
+
+这条限制已写进工具 docstring 与输出末尾。一个用来审计冻结边界的工具，
+必须自己先承认看不见的地方。
+
 ### 2.3 P7_PROJECTION
 
 ```
 modules (17)  含 identity / ku_identity_runner / evolution / ku_evolution_runner
 files    (9)  migrations 070..076
-tests    (0)  test_a_repository_p7_projection.py   UNTRACKED   <-- 唯一缺口
+tests    (0)  test_a_repository_p7_projection.py   UNTRACKED   <-- 缺口 1
+artifact (0)  artifacts/a_repository/p7_projection/book_<book_id>_projection.json
+                                                            UNTRACKED   <-- 缺口 2
 ```
 
-`--verify` 在干净 worktree 实测：
-
-```
-ERROR: file or directory not found: tests/architecture/test_a_repository_p7_projection.py
-```
+缺口 1 已由 `35a362e` 补齐。缺口 2 是本审计在**补齐缺口 1 之后**才暴露的，
+而且静态分析**结构上看不见它**——见 §2.4。
 
 注意：P7 测试自身只 reach **migration**，不 reach 任何前层 artifact。
 所以 P7 的耦合比 P6 当初**更轻**——它的运行闭包只缺自己那一个测试文件。
