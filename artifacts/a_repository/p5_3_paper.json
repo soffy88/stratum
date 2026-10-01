@@ -1,0 +1,262 @@
+{
+  "A_P5_3_PAPER_IMPLEMENTATION": "PASS",
+  "A_P5_3_PAPER_SCHEMA": "PASS",
+  "MIGRATION_080": "080_a_paper_source.sql",
+  "SOURCE_TYPE": "BOOK",
+  "UNTESTED": [
+    "declaration_by_text_span",
+    "publication_year_and_doi",
+    "author_identity_resolution"
+  ],
+  "authority": "A_REPOSITORY",
+  "book": "利率史（第四版） 第四版",
+  "candidate_count": 1,
+  "candidates": [
+    {
+      "book_source_id": "bs_04a94146a35f",
+      "catalog_row": {
+        "author": "[美]悉尼·霍默 理查德·西勒",
+        "isbn": "9787508617497",
+        "publisher": "中信出版社",
+        "title": "利率史（第四版）"
+      },
+      "declarations": [
+        {
+          "catalog_source_id": "bs_04a94146a35f",
+          "declared_in": "BOOK_SOURCE_CATALOG",
+          "declared_value": "[美]悉尼·霍默 理查德·西勒",
+          "matches_record": true,
+          "statement_type": "AUTHOR"
+        },
+        {
+          "catalog_source_id": "bs_04a94146a35f",
+          "declared_in": "BOOK_SOURCE_CATALOG",
+          "declared_value": "9787508617497",
+          "matches_record": true,
+          "statement_type": "IDENTIFIER"
+        },
+        {
+          "catalog_source_id": "bs_04a94146a35f",
+          "declared_in": "BOOK_SOURCE_CATALOG",
+          "declared_value": "中信出版社",
+          "matches_record": true,
+          "statement_type": "PUBLICATION"
+        },
+        {
+          "catalog_source_id": "bs_04a94146a35f",
+          "declared_in": "BOOK_SOURCE_CATALOG",
+          "declared_value": "利率史（第四版）",
+          "matches_record": true,
+          "statement_type": "TITLE"
+        }
+      ],
+      "declared": {
+        "authors": [
+          "[美]悉尼·霍默 理查德·西勒"
+        ],
+        "doi": null,
+        "isbn": "9787508617497",
+        "publication_year": null,
+        "publisher": "中信出版社",
+        "title": "利率史（第四版）"
+      },
+      "extractor_version": "pilot-declared",
+      "paper_hash": "psh_dcb32e790d9f046a",
+      "paper_id": "psc_5a3d1a1cab6d",
+      "source_type": "BOOK",
+      "source_version_id": "sv_f548f51a5df5",
+      "status": "GENERATED"
+    }
+  ],
+  "checks": {
+    "BU2_DEPENDENCY": 0,
+    "B_CONTAMINATION": 0,
+    "C_CONTAMINATION": 0,
+    "baseline_mutated": 0,
+    "candidate_persisted": 1,
+    "declaration_fidelity": "PASS",
+    "declarations_persisted": 4,
+    "negative_cases": 23,
+    "negative_refusals": 23,
+    "orphan_declarations": 0,
+    "replay_stable": "PASS",
+    "source_isolation": "PASS",
+    "traceability_percent": 100.0,
+    "transaction_atomic": "PASS",
+    "unauthorised_type_rows": 0,
+    "unsourced_declarations": 0
+  },
+  "declaration_count": 4,
+  "declaration_coverage": {
+    "AUTHOR": true,
+    "IDENTIFIER": true,
+    "PUBLICATION": true,
+    "TITLE": true,
+    "YEAR": false
+  },
+  "durable_rows": {
+    "book_source": 1,
+    "knowledge_unit": 11,
+    "ku_condition_candidate": 6,
+    "ku_freeze_event": 12,
+    "ku_identity": 11,
+    "ku_relation": 2,
+    "ku_revision": 1,
+    "mechanism_candidate": 1,
+    "mechanism_node": 3,
+    "paper_evidence": 4,
+    "paper_source_candidate": 1,
+    "relation_candidate": 1,
+    "source_version": 1
+  },
+  "evidence_anchor": "BOOK_SOURCE_CATALOG",
+  "extracted_rows": [],
+  "final_report": {
+    "AUTHORITY_SCAN": "PASS",
+    "BU2_MUTATION": "0",
+    "B_CONTAMINATION": "0",
+    "COMMIT_SHA": "PENDING",
+    "C_CONTAMINATION": "0",
+    "DB_MUTATION": "0",
+    "EVIDENCE_ROWS": "4",
+    "FINAL_STATUS": "PASS",
+    "MIGRATION_080": "080_a_paper_source.sql",
+    "PAPER_ROWS": "1",
+    "REPLAY": "PASS",
+    "SOURCE_TYPE": "BOOK",
+    "TAG": "PENDING",
+    "TASK": "A_P5_3_PAPER",
+    "TRACEABILITY": "100.0%"
+  },
+  "forbidden_source_type": "UNKNOWN_AS_FACT",
+  "gates": {
+    "GATE_1_banned_fields": "PASS",
+    "GATE_1_column_parity": "PASS",
+    "GATE_1_constraints": "PASS",
+    "GATE_1_fk_verb": "PASS",
+    "GATE_1_frozen_index": "PASS",
+    "GATE_1_hash_formula": "PASS",
+    "GATE_1_isolation_schema": "PASS",
+    "GATE_1_not_null": "PASS",
+    "GATE_1_schema": "PASS",
+    "GATE_1_vocabulary": "PASS",
+    "GATE_2_authority": "PASS",
+    "GATE_2_baseline_unchanged": "PASS",
+    "GATE_2_catalog_untouched": "PASS",
+    "GATE_2_frozen_layers": "PASS",
+    "GATE_3_declaration_fidelity": "PASS",
+    "GATE_3_trace": "PASS",
+    "GATE_3_traceability_percent": 100.0,
+    "GATE_4_hash_stability": "PASS",
+    "GATE_4_idempotency": "PASS",
+    "GATE_4_replay": "PASS",
+    "GATE_5_isolation": "PASS",
+    "GATE_6_negative": "PASS",
+    "GATE_6_negative_detail": {
+      "approve": true,
+      "approved_status": true,
+      "confirmed_status": true,
+      "cross_source_catalog_row": true,
+      "delete_candidate": true,
+      "empty_declared_value": true,
+      "fabricated_author": true,
+      "fabricated_title": true,
+      "no_authors": true,
+      "no_such_catalog_row": true,
+      "no_such_source_version": true,
+      "other_catalog_row": true,
+      "rank_sources": true,
+      "rate_source": true,
+      "rejected_revived": true,
+      "supported_downgrade": true,
+      "unknown_as_fact": true,
+      "unknown_declared_in": true,
+      "unknown_statement_type": true,
+      "unknown_type": true,
+      "unverifiable_year": true,
+      "update_candidate": true,
+      "verified_status": true
+    }
+  },
+  "ledger": [
+    "070_a_repository_foundation.sql",
+    "071_a_evidence_quality.sql",
+    "072_a_ku_verification.sql",
+    "073_a_knowledge_unit_freeze.sql",
+    "074_a_ku_freeze_persistence.sql",
+    "075_a_ku_evolution.sql",
+    "076_a_ku_identity.sql",
+    "077_a_condition_boundary.sql",
+    "078_a_mechanism_chain.sql",
+    "079_a_relation_candidate.sql",
+    "080_a_paper_source.sql"
+  ],
+  "notes": {
+    "CATALOG_FIELD_FOR": {
+      "AUTHOR": "author",
+      "IDENTIFIER": "isbn",
+      "PUBLICATION": "publisher",
+      "TITLE": "title",
+      "YEAR": null
+    },
+    "DB_DOES_NOT_GUARANTEE": [
+      "the state machine: a CHECK cannot read a column's previous value, so a raw UPDATE can still move SUPPORTED back to GENERATED",
+      "that declared_value is what the catalog record states: the foreign key proves the record exists, not that the sentence is true",
+      "publication_year sanity: an unbounded INTEGER, because A仓 holds no year to check it against"
+    ],
+    "DB_GUARANTEES": [
+      "foreign key integrity (source_version, book_source, candidate)",
+      "the candidate's catalog row is the one its version was ingested from",
+      "source_type closed, with no UNKNOWN",
+      "status closed, with no VERIFIED and no APPROVED",
+      "authors non-empty",
+      "statement_type and declared_in vocabularies closed",
+      "replay uniqueness for both the candidate and the declaration"
+    ],
+    "DECLARED_IN": [
+      "BOOK_SOURCE_CATALOG",
+      "TITLE_PAGE",
+      "COPYRIGHT_PAGE",
+      "CIP_RECORD"
+    ],
+    "EVIDENCE_ANCHOR": "the book_source catalog row, by foreign key; declaration_by_text_span is UNTESTED because no span in this corpus declares source metadata",
+    "FORBIDDEN_SOURCE_TYPE": "UNKNOWN_AS_FACT",
+    "PILOT_SCOPE": "source metadata persistence, declaration traceability and replay; author correctness and academic quality are not measured and no extractor ships in this stage",
+    "SOURCE_TYPES": [
+      "BOOK",
+      "PAPER",
+      "ARTICLE",
+      "REPORT",
+      "ARCHIVE"
+    ],
+    "STATEMENT_TYPES": [
+      "AUTHOR",
+      "TITLE",
+      "PUBLICATION",
+      "YEAR",
+      "IDENTIFIER"
+    ],
+    "STATE_MACHINE": "GENERATED -> SUPPORTED | REJECTED; both terminal"
+  },
+  "paper_version": "a-p5-3-v0.1",
+  "pilot_rows": [
+    "psc_5a3d1a1cab6d"
+  ],
+  "run_id": "arr_d0d1473d79fc",
+  "source_types_authorised": [
+    "BOOK",
+    "PAPER",
+    "ARTICLE",
+    "REPORT",
+    "ARCHIVE"
+  ],
+  "statement_types": [
+    "AUTHOR",
+    "TITLE",
+    "PUBLICATION",
+    "YEAR",
+    "IDENTIFIER"
+  ],
+  "task": "A_P5_3_PAPER",
+  "traceability_percent": 100.0
+}

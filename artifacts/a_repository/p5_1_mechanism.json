@@ -1,0 +1,138 @@
+{
+  "A_P5_1_MECHANISM_IMPLEMENTATION": "PASS",
+  "A_P5_1_MECHANISM_SCHEMA": "PASS",
+  "authority": "A_REPOSITORY",
+  "book": "利率史（第四版） 第四版",
+  "chains": [
+    {
+      "extractor_version": "pilot-declared",
+      "mechanism_hash": "meh_39d54f61b77cd81b",
+      "mechanism_id": "mec_0feb304c720b",
+      "nodes": [
+        {
+          "evidence_ids": [
+            "ev_22f99d11e192"
+          ],
+          "knowledge_unit_id": "ku_6460a6062a10",
+          "node_role": "TRIGGER",
+          "sequence_order": 1,
+          "statement": "信贷的历史早于工业、银行业与铸币业"
+        },
+        {
+          "evidence_ids": [
+            "ev_291e662405a9"
+          ],
+          "knowledge_unit_id": "ku_93a979cb6fab",
+          "node_role": "TRANSITION",
+          "sequence_order": 2,
+          "statement": "前6世纪雅典因过度债务与普遍个人劳役偿债爆发经济危机"
+        },
+        {
+          "evidence_ids": [
+            "ev_d862c5f48966"
+          ],
+          "knowledge_unit_id": "ku_5840cc146f9f",
+          "node_role": "RESULT",
+          "sequence_order": 3,
+          "statement": "索伦法典取消利率上限，与巴比伦法典形成鲜明对比"
+        }
+      ],
+      "roles": {
+        "RESULT": 0,
+        "TRANSITION": 0,
+        "TRIGGER": 0
+      },
+      "source_version_id": "sv_f548f51a5df5",
+      "status": "GENERATED"
+    }
+  ],
+  "checks": {
+    "BU2_DEPENDENCY": 0,
+    "B_CONTAMINATION": 0,
+    "C_CONTAMINATION": 0,
+    "baseline_mutated": 0,
+    "evidence_linked": 100.0,
+    "mechanism_persisted": 1,
+    "negative_cases": 15,
+    "negative_refusals": 15,
+    "nodes_ordered": true,
+    "replay_stable": "PASS",
+    "transaction_atomic": "PASS"
+  },
+  "durable_rows": {
+    "knowledge_unit": 11,
+    "ku_boundary_candidate": 0,
+    "ku_condition_candidate": 6,
+    "ku_confidence_evolution": 15,
+    "ku_freeze_event": 12,
+    "ku_identity": 11,
+    "ku_relation": 2,
+    "ku_review_event": 5,
+    "ku_revision": 1,
+    "mechanism_candidate": 1,
+    "mechanism_node": 3
+  },
+  "extracted_rows": [],
+  "gates": {
+    "GATE_1_banned_fields": "PASS",
+    "GATE_1_column_parity": "PASS",
+    "GATE_1_constraints": "PASS",
+    "GATE_1_fk_verb": "PASS",
+    "GATE_1_schema": "PASS",
+    "GATE_2_completeness": "PASS",
+    "GATE_2_trace": "PASS",
+    "GATE_2_traceability_percent": 100.0,
+    "GATE_3_idempotency": "PASS",
+    "GATE_3_replay": "PASS",
+    "GATE_4_authority": "PASS",
+    "GATE_4_baseline_unchanged": "PASS",
+    "GATE_5_negative": "PASS",
+    "GATE_5_negative_detail": {
+      "add_cause": true,
+      "confirmed_status": true,
+      "cross_book_evidence": true,
+      "cross_source": true,
+      "duplicate_sequence": true,
+      "empty_array": true,
+      "empty_chain": true,
+      "merge_chains": true,
+      "missing_unit": true,
+      "no_evidence": true,
+      "supported_downgrade": true,
+      "trigger_only": true,
+      "unknown_role": true,
+      "verified_status": true,
+      "verify_chain": true
+    }
+  },
+  "ledger": [
+    "070_a_repository_foundation.sql",
+    "071_a_evidence_quality.sql",
+    "072_a_ku_verification.sql",
+    "073_a_knowledge_unit_freeze.sql",
+    "074_a_ku_freeze_persistence.sql",
+    "075_a_ku_evolution.sql",
+    "076_a_ku_identity.sql",
+    "077_a_condition_boundary.sql",
+    "078_a_mechanism_chain.sql"
+  ],
+  "mechanism_count": 1,
+  "mechanism_version": "a-p5-1-v0.1",
+  "node_count": 3,
+  "notes": {
+    "banned_fields": 7,
+    "extractor_versions": [
+      "mechanism_extractor_v1",
+      "pilot-declared"
+    ],
+    "legal_status_transitions": 2,
+    "roles": 3
+  },
+  "pilot_chapter": "第一章 古代时期的信贷",
+  "pilot_rows": [
+    "mec_0feb304c720b"
+  ],
+  "run_id": "arr_d0d1473d79fc",
+  "task": "A_P5_1_MECHANISM",
+  "traceability_percent": 100.0
+}

@@ -149,10 +149,21 @@ def test_074_superseded_is_defined_but_not_emitted():
 
 
 def test_074_is_additive_over_the_whole_chain():
+    """074 needs its whole chain present, in order, and depends on nothing
+    after it.
+
+    The "074 is the newest migration" half of this assertion was dropped
+    when P5 added 075: it was only ever true because P4.1 was the last
+    stage, and any future migration would have broken it. What actually
+    matters is the ordering below.
+    """
     names = sorted(p.name for p in MIGRATIONS.glob("*.sql"))
-    assert names[-1] == REQUIRED_MIGRATION
+    assert REQUIRED_MIGRATION in names
     for earlier in REQUIRED_CHAIN[:-1]:
         assert earlier in names
+    positions = [names.index(name) for name in REQUIRED_CHAIN]
+    assert positions == sorted(positions), \
+        "074's chain is not in filename order"
 
 
 # ── authority ────────────────────────────────────────────────────────────────

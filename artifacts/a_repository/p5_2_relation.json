@@ -1,0 +1,188 @@
+{
+  "A_P5_2_RELATION_IMPLEMENTATION": "PASS",
+  "A_P5_2_RELATION_SCHEMA": "PASS",
+  "DEFERRED_TYPES": [
+    "SUPPORTS",
+    "CONTRASTS",
+    "DEPENDS_ON"
+  ],
+  "MIGRATION_079": "079_a_relation_candidate.sql",
+  "RELATION_TYPE": "PRECEDES_ONLY",
+  "authority": "A_REPOSITORY",
+  "book": "利率史（第四版） 第四版",
+  "checks": {
+    "BU2_DEPENDENCY": 0,
+    "B_CONTAMINATION": 0,
+    "C_CONTAMINATION": 0,
+    "baseline_mutated": 0,
+    "both_sides_evidenced": true,
+    "deferred_types_present": 0,
+    "negative_cases": 22,
+    "negative_refusals": 22,
+    "order_declared_and_holds": true,
+    "relation_persisted": 1,
+    "replay_stable": "PASS",
+    "self_relations": 0,
+    "source_isolation": "PASS",
+    "traceability_percent": 100.0,
+    "transaction_atomic": "PASS"
+  },
+  "durable_rows": {
+    "knowledge_unit": 11,
+    "ku_boundary_candidate": 0,
+    "ku_condition_candidate": 6,
+    "ku_freeze_event": 12,
+    "ku_identity": 11,
+    "ku_relation": 2,
+    "ku_revision": 1,
+    "mechanism_candidate": 1,
+    "mechanism_node": 3,
+    "relation_candidate": 1
+  },
+  "extracted_rows": [],
+  "final_report": {
+    "075_UNTOUCHED": "PASS",
+    "AUTHORITY_SCAN": "PASS",
+    "A_P5_2_RELATION": "PASS",
+    "BU2_MUTATION": "0",
+    "B_CONTAMINATION": "0",
+    "COMMIT_SHA": "PENDING",
+    "C_CONTAMINATION": "0",
+    "DB_MUTATION": "0",
+    "FINAL_STATUS": "PASS",
+    "MIGRATION_079": "079_a_relation_candidate.sql",
+    "RELATION_ROWS": "1",
+    "RELATION_TYPE": "PRECEDES_ONLY",
+    "REPLAY": "PASS",
+    "SOURCE_ISOLATION": "PASS",
+    "TAG": "PENDING",
+    "TRACEABILITY": "100.0%"
+  },
+  "gates": {
+    "GATE_1_banned_fields": "PASS",
+    "GATE_1_column_parity": "PASS",
+    "GATE_1_constraints": "PASS",
+    "GATE_1_fk_verb": "PASS",
+    "GATE_1_frozen_index": "PASS",
+    "GATE_1_isolation_schema": "PASS",
+    "GATE_1_not_null": "PASS",
+    "GATE_1_schema": "PASS",
+    "GATE_1_vocabulary": "PASS",
+    "GATE_2_authority": "PASS",
+    "GATE_2_baseline_unchanged": "PASS",
+    "GATE_2_ku_relation_untouched": "PASS",
+    "GATE_3_double_side": "PASS",
+    "GATE_3_trace": "PASS",
+    "GATE_3_traceability_percent": 100.0,
+    "GATE_4_hash_stability": "PASS",
+    "GATE_4_idempotency": "PASS",
+    "GATE_4_replay": "PASS",
+    "GATE_5_isolation": "PASS",
+    "GATE_5_order": "PASS",
+    "GATE_6_negative": "PASS",
+    "GATE_6_negative_detail": {
+      "add_semantics": true,
+      "confirmed_status": true,
+      "cross_book_evidence": true,
+      "cross_source": true,
+      "deferred_contrasts": true,
+      "deferred_depends_on": true,
+      "deferred_supports": true,
+      "delete_relation": true,
+      "merge_relations": true,
+      "no_left_evidence": true,
+      "no_right_evidence": true,
+      "no_such_source_version": true,
+      "order_reversed": true,
+      "order_same_unit": true,
+      "rejected_revived": true,
+      "self_relation": true,
+      "supported_downgrade": true,
+      "unknown_type": true,
+      "unknown_unit": true,
+      "update_relation": true,
+      "verified_status": true,
+      "verify_relation": true
+    }
+  },
+  "ledger": [
+    "070_a_repository_foundation.sql",
+    "071_a_evidence_quality.sql",
+    "072_a_ku_verification.sql",
+    "073_a_knowledge_unit_freeze.sql",
+    "074_a_ku_freeze_persistence.sql",
+    "075_a_ku_evolution.sql",
+    "076_a_ku_identity.sql",
+    "077_a_condition_boundary.sql",
+    "078_a_mechanism_chain.sql",
+    "079_a_relation_candidate.sql"
+  ],
+  "notes": {
+    "DB_DOES_NOT_GUARANTEE": [
+      "the state machine: a CHECK cannot read a column's previous value, so a raw UPDATE can still move SUPPORTED back to GENERATED",
+      "locator order: ordering needs reading_evidence and a CHECK cannot read another table, so PRECEDES direction is a writer gate",
+      "evidence existence: TEXT[] carries no foreign key, so the CHECK proves non-empty and not real"
+    ],
+    "DB_GUARANTEES": [
+      "foreign key integrity (source_version)",
+      "same source for both units, via composite foreign keys",
+      "relation_type closed to PRECEDES",
+      "both evidence arrays non-empty",
+      "status vocabulary closed",
+      "replay hash uniqueness",
+      "self-relation exclusion"
+    ],
+    "DEFERRED_TYPES": [
+      "SUPPORTS",
+      "CONTRASTS",
+      "DEPENDS_ON"
+    ],
+    "FROZEN_RELATION_LAYER": "stratum.ku_relation (075) is untouched; vocabularies are disjoint",
+    "PILOT_SCOPE": "persistence, replay and traceability only; semantic correctness is not measured and no extractor ships in this stage",
+    "RELATION_TYPE": "PRECEDES_ONLY",
+    "STATE_MACHINE": "GENERATED -> SUPPORTED | REJECTED; both terminal"
+  },
+  "pilot_chapter": "第一章 古代时期的信贷",
+  "pilot_rows": [
+    "rlc_4d5a399df2cd"
+  ],
+  "relation_count": 1,
+  "relation_types_authorised": [
+    "PRECEDES"
+  ],
+  "relation_types_deferred": [
+    "SUPPORTS",
+    "CONTRASTS",
+    "DEPENDS_ON"
+  ],
+  "relation_version": "a-p5-2-v0.2",
+  "relations": [
+    {
+      "extractor_version": "pilot-declared",
+      "left": {
+        "evidence_ids": [
+          "ev_22f99d11e192"
+        ],
+        "page": 1,
+        "statement": "信贷的历史早于工业、银行业与铸币业",
+        "unit_id": "ku_6460a6062a10"
+      },
+      "relation_hash": "rlh_7d49298f8a2970ef",
+      "relation_id": "rlc_4d5a399df2cd",
+      "relation_type": "PRECEDES",
+      "right": {
+        "evidence_ids": [
+          "ev_fc56fbbea715"
+        ],
+        "page": 3,
+        "statement": "《汉谟拉比法典》（约前1800年）是最早的成文信贷法典之一",
+        "unit_id": "ku_59cb9040d0f0"
+      },
+      "source_version_id": "sv_f548f51a5df5",
+      "status": "GENERATED"
+    }
+  ],
+  "run_id": "arr_d0d1473d79fc",
+  "task": "A_P5_2_RELATION",
+  "traceability_percent": 100.0
+}
