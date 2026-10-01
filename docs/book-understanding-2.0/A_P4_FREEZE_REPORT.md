@@ -19,7 +19,10 @@ MIGRATION_073=PASS
 - one new table, `ALTER TABLE` count 0, **no `INSERT` — no data backfill**
 - three FKs, all `ON DELETE RESTRICT` (confirmed by query)
 - three unique constraints + four check constraints + three indexes
-- confirmed live: 10 rows exist in `stratum.knowledge_unit` after the run
+- `stratum.knowledge_unit` is **empty** after the run: the freeze stage
+  executes against the in-memory store, so this stage persists no rows.
+  The schema exists and is correct; it is not yet backfilled by any
+  writer
 - `aii_kg` untouched — its ledger still ends at `066_bu2_p4_p9_repair.sql`
 
 RESTRICT rather than CASCADE is the load-bearing choice: a frozen unit
@@ -128,10 +131,17 @@ P1 baseline is a frozen artifact and it was briefly clobbered.
 
 ## KNOWN LIMITS
 
-Carried forward and unchanged by this stage: the 10 frozen units are
-verified as *sourced and anchored*, not as correct. Six of the 17
-candidates remain rejected on P2's `CONCEPT` mislabelling, and
-`kc_babylon_grain_rate_cap` on a P3 lexicon gap. See
-`A_P4_KNOWLEDGE_UNIT_FREEZE_SPEC.md` §9.
+- `knowledge_unit_revision` (§8 of the draft) is not created; the policy
+  it implies is enforced by four refusing methods and no revision has been
+  needed
+- **no writer persists frozen units yet.** The schema is applied and
+  correct, but the freeze stage runs in-memory and nothing inserts rows.
+  A persistence writer is the next thing this chain needs before a frozen
+  unit is durable across processes
+- a frozen unit's `statement` is P2's wording, so it inherits P2's
+  compression quality; the freeze stage checks it is sourced and
+  anchored, not that it is well chosen
+- six candidates remain rejected at P3 (P2's `CONCEPT` mislabelling) and
+  one on a P3 lexicon gap — unchanged by this stage
 
 STATUS=FROZEN
