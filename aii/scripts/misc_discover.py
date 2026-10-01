@@ -18,6 +18,7 @@ import glob
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from dotenv import load_dotenv
+from nontextbook_filter import is_skipped_name, skip_words
 
 ROOT = Path(__file__).resolve().parents[1]
 # 发现器会延迟导入 chapter_ingest，而其依赖位于仓库内的 aii/ 包。
@@ -55,24 +56,10 @@ def _chapters(text: str) -> int:
 def discover() -> list[dict]:
     # ★2026-08-10 非教材预筛: 夸克大量拉入励志/文学/传记(有3+章但无KU密度),
     #   misc 啃它们 0 产出白烧算力。确定性黑名单词直接跳过(保守, 只过滤极明显的)。
-    _SKIP_WORDS = (
-        "创业",
-        "情商",
-        "成功学",
-        "散文",
-        "小说",
-        "漫画",
-        "随笔",
-        "传记",
-        "精选",
-        "合集",
-        "情商课",
-        "励志",
-    )
     out = []
     for md in sorted(path for root in MISC_DIRS for path in glob.glob(f"{root}/*.md")):
         stem = Path(md).stem
-        if any(w in stem for w in _SKIP_WORDS):
+        if is_skipped_name(stem):
             continue
         try:
             text = open(md, encoding="utf-8", errors="replace").read()
