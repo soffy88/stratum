@@ -525,54 +525,32 @@ def gate_results(result: Dict, ledger: Optional[List[str]]) -> Dict[str, object]
 
 # ── the verdict ──────────────────────────────────────────────────────────────
 #
-# There is deliberately no tuple of gate names here.
+# The contract itself lives in `verdict.py`, which imports nothing. It was
+# extracted from this module when P5-evolution needed the same rule and the two
+# runners import each other: a shared rule placed in either runner cannot be
+# imported by the other without a cycle.
 #
-# This file used to carry `GATE_ORDER`, five names, while `gate_results`
+# Re-exported here because P6's contract test imports `verdict` from this
+# module, and that name is what the P6 freeze report names.
+#
+# P6's history, kept because it is why this is a rule and not a convenience:
+# this module used to carry `GATE_ORDER`, five names, while `gate_results`
 # returned fourteen. Nine gates printed PASS or FAIL and could not affect the
-# outcome, because the verdict read the list rather than the results. Measured:
+# outcome, and a gate that never executed produced a PASS.
 #
 #   no A_P6_LEDGER_FILE  ->  schema = NOT_EXECUTED  ->  A_P6_IDENTITY = PASS
 #   with ledger          ->  schema = PASS          ->  A_P6_IDENTITY = PASS
-#
-# A gate that never executed produced a PASS. `gate_results`' own docstring said
-# "A gate that cannot be evidenced is NOT_EXECUTED", which was true and was not
-# honoured downstream.
-#
-# A parallel list is the whole mechanism of that failure, and it can drift again
-# the moment a gate is added. So the verdict derives from `gate_results` itself
-# and there is exactly one place that decides.
 
-VERDICT_PASS = "PASS"
-VERDICT_FAIL = "FAIL"
-VERDICT_BLOCKED = "BLOCKED"
-
-
-def verdict(gates: Dict[str, str]) -> str:
-    """The single authority for the P6 verdict. Derived from `gate_results`.
-
-    Three outcomes, not two:
-
-      every gate PASS          -> PASS
-      any gate FAIL            -> FAIL     (positive evidence of breakage)
-      any gate NOT_EXECUTED    -> BLOCKED  (evidence missing, not merit)
-      no gates at all          -> BLOCKED  (a vacuous all() would pass)
-
-    FAIL outranks NOT_EXECUTED: if a gate actually failed we know something is
-    wrong, and reporting only "blocked" would understate it.
-
-    An unrecognised status is treated as BLOCKED rather than PASS. A new gate
-    status someone forgets to handle here must not become a silent pass.
-    """
-    if not gates:
-        return VERDICT_BLOCKED
-    statuses = set(gates.values())
-    if VERDICT_FAIL in statuses:
-        return VERDICT_FAIL
-    if "NOT_EXECUTED" in statuses:
-        return VERDICT_BLOCKED
-    if statuses == {VERDICT_PASS}:
-        return VERDICT_PASS
-    return VERDICT_BLOCKED
+from .verdict import (  # noqa: F401  (re-exported, see above)
+    GATE_FAIL,
+    GATE_NOT_EXECUTED,
+    GATE_PASS,
+    VERDICT_BLOCKED,
+    VERDICT_FAIL,
+    VERDICT_PASS,
+    verdict,
+    verdict_inputs,
+)
 
 
 # ── reporting ────────────────────────────────────────────────────────────────
