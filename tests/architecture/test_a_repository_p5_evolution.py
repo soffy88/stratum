@@ -12,7 +12,9 @@ Contract tests for the evolution service (migration 075):
 
 from __future__ import annotations
 
+import json
 import re
+import sys
 from pathlib import Path
 from typing import Dict
 
@@ -71,9 +73,13 @@ from stratum.knowledge.a_repository.ku_evolution_runner import (  # noqa: E402
     build_persisted,
     durability_gate,
     evidence_gate,
+    FREEZE_EVIDENCE,
+    freeze_artifact,
+    freeze_blockers,
     gate_results,
     idempotency_gate,
     immutability_gate,
+    migration_evidence,
     report,
     replay_gate,
     revision_gate,
@@ -1237,3 +1243,150 @@ def test_the_ledger_reviews_only_units_the_corpus_actually_froze(evolved):
     assert reviewed <= set(evolved["sink"].units)
     assert not (reviewed & superseded), \
         "the ledger reviews the pre-revision units, not the successors"
+
+
+# --------------------------------------------------------------------------
+# Freeze artifact: the evidence a closure is allowed to accept.
+#
+# A freeze is the one place where a missing piece of evidence is easiest to
+# paper over, because everything around it already looks green. These tests pin
+# the refusal instead: an artifact that cannot be produced is recoverable, and an
+# artifact that claims more than was measured is not.
+# --------------------------------------------------------------------------
+
+FREEZE_REQUIRED_FIELDS = (
+    "stage",
+    "base_sha",
+    "migration_fingerprints",
+    "gate_results",
+    "verdict",
+    "dependency_closure",
+    "replay",
+    "db_acceptance",
+)
+
+
+def test_the_freeze_artifact_carries_every_required_field(evolved, monkeypatch):
+    for key in FREEZE_EVIDENCE:
+        monkeypatch.setenv(f"A_P5_{key.upper()}", "PASS")
+    doc = freeze_artifact(evolved["result"], None)
+    missing = [key for key in FREEZE_REQUIRED_FIELDS if key not in doc]
+    assert not missing, f"freeze artifact is missing {missing}"
+    assert doc["stage"] == "P5_EVOLUTION"
+    for key in FREEZE_EVIDENCE:
+        assert doc[key] == "PASS"
+
+
+def test_evidence_is_not_defaulted_to_a_pass(evolved, monkeypatch):
+    """Absent evidence stays UNVERIFIED rather than being filled in as PASS."""
+    for key in FREEZE_EVIDENCE:
+        monkeypatch.delenv(f"A_P5_{key.upper()}", raising=False)
+    doc = freeze_artifact(evolved["result"], None)
+    for key in FREEZE_EVIDENCE:
+        assert doc[key] == "UNVERIFIED", (
+            f"{key} defaulted to {doc[key]!r}; an unrun check must not "
+            "present itself as a pass")
+
+
+def test_a_blocked_layer_cannot_be_frozen_even_with_complete_evidence(
+        evolved, monkeypatch):
+    """The defect this closes: evidence around the gates went green while the
+    gates themselves never ran, and the freeze was written anyway."""
+    for key in FREEZE_EVIDENCE:
+        monkeypatch.setenv(f"A_P5_{key.upper()}", "PASS")
+    doc = freeze_artifact(evolved["result"], None)  # no ledger
+    assert doc["verdict"] == "BLOCKED"
+    assert "schema" in doc["verdict_inputs"]["gates_not_executed"]
+    assert set(doc[k] for k in FREEZE_EVIDENCE) == {"PASS"}, \
+        "the surrounding evidence is genuinely complete here"
+
+
+def test_the_freeze_verdict_is_the_layer_verdict(evolved, monkeypatch):
+    """One authority for the verdict. Extra recorded evidence never upgrades it."""
+    for key in FREEZE_EVIDENCE:
+        monkeypatch.setenv(f"A_P5_{key.upper()}", "PASS")
+    blocked = freeze_artifact(evolved["result"], None)
+    assert blocked["verdict"] == blocked["A_P5_KU_EVOLUTION"]
+    assert blocked["verdict_inputs"]["gate_count"] == len(blocked["gate_results"])
+
+
+def test_every_migration_in_the_a_chain_is_fingerprinted():
+    fingerprints, destructive = migration_evidence()
+    assert len(fingerprints) == 13, "the A chain is 070..082"
+    assert sorted(fingerprints) == [f"{n:03d}" for n in range(70, 83)]
+    assert all(len(value) == 16 for value in fingerprints.values())
+    assert destructive == 0, (
+        f"{destructive} destructive statement(s) in the A chain")
+
+
+def test_the_destructive_scan_would_still_notice_them():
+    """Guard the guard: a scan that cannot detect anything must not report zero."""
+    from stratum.knowledge.a_repository.ku_evolution_runner import DESTRUCTIVE_SQL
+    destructive = (
+        "DROP TABLE stratum.knowledge_unit;\n"
+        "ALTER TABLE stratum.ku_revision DROP CONSTRAINT ku_revision_not_self;\n"
+        "TRUNCATE stratum.ku_review_event;\n"
+    )
+    additive = "ALTER TABLE stratum.ku_candidate ADD COLUMN IF NOT EXISTS x TEXT;\n"
+    assert len(re.findall(DESTRUCTIVE_SQL, destructive)) == 3
+    assert not re.findall(DESTRUCTIVE_SQL, additive), \
+        "additive ALTERs are not destructive and must not be counted"
+
+
+def test_freeze_blockers_separates_absent_evidence_from_a_blocked_verdict(
+        evolved, monkeypatch):
+    for key in FREEZE_EVIDENCE:
+        monkeypatch.setenv(f"A_P5_{key.upper()}", "PASS")
+    doc = freeze_artifact(evolved["result"], None)  # no ledger
+    blockers = freeze_blockers(doc)
+    assert blockers == ["layer_verdict:BLOCKED"], (
+        "the gates blocked the freeze even though the surrounding evidence "
+        "was complete")
+
+
+def test_freeze_blockers_names_absent_evidence(evolved, monkeypatch):
+    for key in FREEZE_EVIDENCE:
+        monkeypatch.delenv(f"A_P5_{key.upper()}", raising=False)
+    blockers = freeze_blockers(freeze_artifact(evolved["result"], None))
+    assert sorted(blockers) == sorted(
+        [*FREEZE_EVIDENCE, "layer_verdict:BLOCKED"])
+
+
+def test_main_writes_no_artifact_when_the_gates_are_blocked(evolved, monkeypatch,
+                                                            tmp_path, capsys):
+    """End to end through main(), because that is where the defect lived.
+
+    An earlier version of these tests called freeze_artifact() only, and passed
+    even after the fix was reverted.
+    """
+    from stratum.knowledge.a_repository import ku_evolution_runner as R
+    target = tmp_path / "freeze.json"
+    monkeypatch.setattr(sys, "argv", ["ku_evolution_runner"])
+    for key in FREEZE_EVIDENCE:
+        monkeypatch.setenv(f"A_P5_{key.upper()}", "PASS")
+    monkeypatch.setenv("A_P5_FREEZE_ARTIFACT", str(target))
+    monkeypatch.delenv("A_P5_LEDGER_FILE", raising=False)
+    monkeypatch.setattr(R, "build_evolution", lambda *a, **k: evolved["result"])
+    with pytest.raises(SystemExit) as exit_info:
+        R.main()
+    assert exit_info.value.code == 1
+    assert not target.exists(), "a blocked freeze wrote an artifact anyway"
+    assert "BLOCKED" in capsys.readouterr().out
+
+
+def test_main_writes_the_artifact_when_the_gates_pass(evolved, monkeypatch,
+                                                     tmp_path):
+    from stratum.knowledge.a_repository import ku_evolution_runner as R
+    target = tmp_path / "freeze.json"
+    monkeypatch.setattr(sys, "argv", ["ku_evolution_runner"])
+    for key in FREEZE_EVIDENCE:
+        monkeypatch.setenv(f"A_P5_{key.upper()}", "PASS")
+    monkeypatch.setenv("A_P5_FREEZE_ARTIFACT", str(target))
+    monkeypatch.setattr(R, "build_evolution", lambda *a, **k: evolved["result"])
+    ledger = tmp_path / "ledger.sql"
+    ledger.write_text("\n".join(REQUIRED_CHAIN) + "\n", encoding="utf-8")
+    monkeypatch.setenv("A_P5_LEDGER_FILE", str(ledger))
+    R.main()
+    written = json.loads(target.read_text(encoding="utf-8"))
+    assert written["verdict"] == "PASS"
+    assert len(written["migration_fingerprints"]) == 13
