@@ -1,27 +1,32 @@
-"""A Repository P3 — Knowledge Unit Candidate Verification.
+"""A Repository P3 — Knowledge Unit Verification.
 
 Chain:
 
     ReadingEvidence -> EvidenceQuality -> KU Candidate -> KU Verified
 
-A仓 fact authority: a candidate becomes a verified unit only when its own
-evidence chain and the recorded rules say so. The inputs are the
-candidate, its evidence chain, and the rules in the trace. Nothing else
-is consulted — no external answer, no external database, no note that
-does not carry evidence.
+A candidate becomes a verified knowledge unit only when its own evidence
+chain and the four recorded checks say so.
 
-Stages:
-    1. candidate load   — candidate, evidence, quote and quality must exist
-    2. evidence sufficiency — evidence count, quality score, traceability
-    3. semantic integrity — a unit of the candidate's declared kind must
-       be present and locatable in its own evidence
-    4. decision         — VERIFIED or REJECTED, terminal
+    Evidence > Candidate > Verification
+
+A verdict never outranks its evidence, a human never overrides evidence,
+and nothing automatically combines candidates. The decision is the
+product of the candidate, its evidence chain and the checks below.
+
+State machine:
+
+    PENDING ──> VERIFYING ──> VERIFIED   (terminal)
+                   └───────> REJECTED   (terminal)
+
+Refused: VERIFIED -> REJECTED, VERIFIED -> PENDING, REJECTED -> VERIFIED.
 
 Rules:
 - resumable: a decided candidate is never re-decided.
 - idempotent: re-running produces no new rows.
-- deterministic: same inputs, same id, same trace, same decision.
-- append only: a settled decision is never rewritten.
+- deterministic: same inputs, same id, same score, same verdict.
+- append only: a settled verdict is never rewritten.
+- anchored: the quote must occur inside the evidence content. A
+  generated or paraphrased quote is never stored as verified.
 """
 
 from __future__ import annotations
@@ -35,44 +40,40 @@ from .types import KIClassification, PipelineStage
 
 
 VERIFIER_VERSION = "a-p3-v0.1"
-VERIFICATION_METHOD = "evidence_chain_rules"
+VERIFICATION_METHOD = "evidence_chain_checks"
 
-#: Stage 2 — minimum evidence quality for a verification decision.
-VERIFICATION_QUALITY_THRESHOLD = 0.8
+#: GATE_3 — a verdict of VERIFIED requires the weakest of the four checks
+#: to reach this threshold.
+VERIFICATION_THRESHOLD = 0.8
 
 
 class VerificationStatus(str, Enum):
-    """Terminal-once-decided lifecycle.
-
-        PENDING ──> VERIFIED
-           └────> REJECTED
-    """
+    """Four states, one path out of PENDING."""
 
     PENDING = "PENDING"
+    VERIFYING = "VERIFYING"
     VERIFIED = "VERIFIED"
     REJECTED = "REJECTED"
 
+
+#: The only legal transitions. VERIFIED -> REJECTED, VERIFIED -> PENDING
+#: and REJECTED -> VERIFIED are absent by construction.
+LEGAL_TRANSITIONS: Dict[VerificationStatus, frozenset] = {
+    VerificationStatus.PENDING: frozenset({VerificationStatus.VERIFYING}),
+    VerificationStatus.VERIFYING: frozenset(
+        {VerificationStatus.VERIFIED, VerificationStatus.REJECTED}),
+    VerificationStatus.VERIFIED: frozenset(),
+    VerificationStatus.REJECTED: frozenset(),
+}
 
 TERMINAL_STATUSES = frozenset(
     {VerificationStatus.VERIFIED, VerificationStatus.REJECTED}
 )
 
-#: The only legal transitions. VERIFIED -> PENDING and REJECTED ->
-#: VERIFIED are absent by construction; VERIFIED -> REJECTED is absent
-#: because a terminal state is terminal.
-LEGAL_TRANSITIONS: Dict[VerificationStatus, frozenset] = {
-    VerificationStatus.PENDING: frozenset(
-        {VerificationStatus.VERIFIED, VerificationStatus.REJECTED}
-    ),
-    VerificationStatus.VERIFIED: frozenset(),
-    VerificationStatus.REJECTED: frozenset(),
-}
-
 
 # ── semantic integrity vocabulary ─────────────────────────────────────────────
-# A predicate marker is a relation word: it is what makes a span a
-# proposition rather than a noun phrase. Matching is substring-based and
-# ordered longest-first so that a specific marker wins over a prefix of it.
+# A predicate marker is a relation word: what makes a span a proposition
+# rather than a noun phrase. Longest match wins at the leftmost position.
 PREDICATE_MARKERS: Tuple[str, ...] = (
     "确定为", "早于", "晚于", "仿效", "模仿", "取消", "废除", "禁止", "允许",
     "要求", "防止", "免除", "终止", "开启", "起源", "制订", "造成", "导致",
@@ -80,20 +81,19 @@ PREDICATE_MARKERS: Tuple[str, ...] = (
     "开始", "包括", "限制", "处以", "爆发", "是", "为", "有", "超过",
 )
 
-#: A definition marker introduces a span that says what a thing IS.
-#: Without one a span asserts something but defines nothing.
+#: A definition marker introduces a span that says what a thing IS. Without
+#: one a span asserts something but defines nothing.
 DEFINITION_MARKERS: Tuple[str, ...] = (
-    "是指", "所谓", "定义为", "意思是", "含义是", "称为", "叫做", "叫做",
+    "是指", "所谓", "定义为", "意思是", "含义是", "称为", "叫做",
 )
 
-#: An event needs a time reference to be placeable in history.
 TIME_MARKERS: Tuple[str, ...] = (
     "公元前", "世纪", "年代", "时期", "时代", "当时", "年",
 )
 
 ACTOR_MARKERS: Tuple[str, ...] = (
     "国王", "法典", "罗马", "巴比伦", "雅典", "索伦", "政府", "官员",
-    "债权人", "债主", "国王",
+    "债权人", "债主",
 )
 
 
@@ -102,8 +102,22 @@ def deterministic_id(prefix: str, *parts: str) -> str:
     return f"{prefix}_{digest[:12]}"
 
 
+def candidate_fingerprint(candidate, evidence) -> str:
+    """GATE_5 identity: source version + reading run + the candidate's own
+    text. A change to any of them is a different unit, not a duplicate."""
+    locator = (evidence.locator or {}) if evidence is not None else {}
+    return hashlib.sha256("|".join([
+        evidence.source_version_id if evidence is not None else "",
+        candidate.reading_run_id,
+        candidate.evidence_id,
+        candidate.source_span or "",
+        candidate.content or "",
+        candidate.classification or "",
+        locator.get("content_hash", ""),
+    ]).encode("utf-8")).hexdigest()
+
+
 def _first_marker(text: str, markers: Tuple[str, ...]) -> Optional[Tuple[int, str]]:
-    """Leftmost marker in `text`, longest match at that position."""
     hits = [(text.find(m), m) for m in markers if text.find(m) >= 0]
     if not hits:
         return None
@@ -115,9 +129,9 @@ def _first_marker(text: str, markers: Tuple[str, ...]) -> Optional[Tuple[int, st
 def split_proposition(text: str) -> Tuple[str, str, str]:
     """Split a candidate into (subject, predicate, object).
 
-    The predicate marker is the relation; whatever sits on either side is
-    the subject and the object. A span with no marker yields two empty
-    sides, which is exactly how a noun phrase fails this check.
+    The marker is the relation; what sits either side is subject and
+    object. A span with no marker yields two empty sides, which is exactly
+    how a noun phrase fails the check.
     """
     found = _first_marker(text, PREDICATE_MARKERS)
     if found is None:
@@ -139,8 +153,9 @@ def find_definition_span(text: str) -> str:
 
 @dataclass
 class SemanticIntegrity:
-    """Result of Stage 3 — the shape check, kept for the trace."""
+    """GATE_4 — whether the candidate is anchored in its own evidence."""
 
+    anchored: bool = False
     subject: str = ""
     predicate: str = ""
     object: str = ""
@@ -148,21 +163,36 @@ class SemanticIntegrity:
     actor: str = ""
     time: str = ""
     action: str = ""
-    slots: Dict[str, str] = field(default_factory=dict)
 
-    def has(self, slot: str) -> bool:
-        return bool(self.slots.get(slot))
+    def slots(self) -> Dict[str, bool]:
+        return {
+            "ANCHORED": self.anchored,
+            "SUBJECT": bool(self.subject),
+            "PREDICATE": bool(self.predicate),
+            "OBJECT": bool(self.object),
+            "DEFINITION_SPAN": bool(self.definition_span),
+            "ACTOR": bool(self.actor),
+            "TIME": bool(self.time),
+            "ACTION": bool(self.action),
+        }
 
 
 @dataclass
 class KnowledgeUnitVerification:
+    """Mirrors stratum.ku_verification, one row per decision."""
+
     id: str
     candidate_id: str
     verification_status: str
-    verification_method: str
-    verifier_version: str
-    verification_trace: Dict
-    created_at: str = ""
+    verification_score: float
+    definition_check: bool
+    trace_check: bool
+    source_check: bool
+    quality_check: bool
+    verified_quote: Optional[str]
+    verifier_version: str = VERIFIER_VERSION
+    verification_method: str = VERIFICATION_METHOD
+    trace: Dict = field(default_factory=dict)
 
 
 @dataclass
@@ -179,12 +209,7 @@ class VerificationViolation(Exception):
 # ── pipeline ─────────────────────────────────────────────────────────────────
 
 class AVerificationPipeline:
-    """P3 verification stage.
-
-    Append-only and decision-final. A settled verification is never
-    rewritten, so a replay can only add rows for candidates that have no
-    decision yet.
-    """
+    """P3 verification stage. Append-only and decision-final."""
 
     def __init__(self, ingestion_pipeline, quality_pipeline=None,
                  event_sink=None):
@@ -196,13 +221,112 @@ class AVerificationPipeline:
         self._events: List[VerificationEvent] = []
         self._event_sink = event_sink or (lambda e: None)
 
-    # ── Stage 1: candidate load ───────────────────────────────────────────
+    # ── GATE_4: anchor verification ───────────────────────────────────────
+
+    @staticmethod
+    def is_anchored(candidate, evidence) -> bool:
+        """The quote must occur inside the evidence content.
+
+        This is the whole anchoring guarantee. A generated quote, a
+        summary standing in for the original text, or a paraphrase that is
+        not a substring all fail here.
+        """
+        quote = candidate.source_span or ""
+        content = (evidence.content_span or "") if evidence else ""
+        return bool(quote) and quote in content
+
+    # ── the four checks ───────────────────────────────────────────────────
+
+    @staticmethod
+    def required_slots(kind: str) -> Tuple[str, ...]:
+        return {
+            KIClassification.FACT.value: ("ANCHORED", "SUBJECT", "PREDICATE", "OBJECT"),
+            KIClassification.RELATION.value: ("ANCHORED", "SUBJECT", "PREDICATE", "OBJECT"),
+            KIClassification.CONCEPT.value: ("ANCHORED", "DEFINITION_SPAN"),
+            KIClassification.EVENT.value: ("ANCHORED", "ACTOR", "TIME", "ACTION"),
+            KIClassification.ARGUMENT.value: ("ANCHORED", "DEFINITION_SPAN"),
+        }.get(kind, ("ANCHORED",))
+
+    @classmethod
+    def check_semantic_integrity(cls, candidate, evidence) -> SemanticIntegrity:
+        kind = candidate.classification or KIClassification.CONCEPT.value
+        quote = candidate.source_span or ""
+        anchored = cls.is_anchored(candidate, evidence)
+        text = candidate.content or quote
+
+        def resolve(source: str) -> SemanticIntegrity:
+            subject, predicate, obj = split_proposition(source)
+            return SemanticIntegrity(
+                anchored=anchored, subject=subject, predicate=predicate,
+                object=obj, definition_span=find_definition_span(source),
+                actor=next((m for m in ACTOR_MARKERS if m in source), ""),
+                time=next((m for m in TIME_MARKERS if m in source), ""),
+                action=predicate or obj)
+
+        primary = resolve(text)
+        if primary.predicate or primary.definition_span:
+            return primary
+        fallback = resolve(quote)
+        return fallback if (fallback.predicate
+                           or fallback.definition_span) else primary
+
+    @classmethod
+    def definition_score(cls, candidate, evidence) -> Tuple[float, SemanticIntegrity]:
+        """Satisfied required slots / required slots."""
+        kind = candidate.classification or KIClassification.CONCEPT.value
+        integrity = cls.check_semantic_integrity(candidate, evidence)
+        required = cls.required_slots(kind)
+        present = integrity.slots()
+        satisfied = sum(1 for slot in required if present.get(slot))
+        return satisfied / len(required), integrity
+
+    def trace_score(self, candidate, evidence) -> float:
+        """candidate -> evidence -> reading run."""
+        checks = [
+            bool(candidate.evidence_id),
+            evidence is not None,
+            bool(evidence is not None and evidence.reading_run_id),
+            bool(evidence is not None
+                 and evidence.reading_run_id in self.store.reading_runs),
+        ]
+        return sum(checks) / len(checks)
+
+    def source_score(self, evidence) -> float:
+        """evidence -> source version -> addressable position."""
+        locator = (evidence.locator or {}) if evidence else {}
+        checks = [
+            bool(evidence is not None and evidence.source_version_id),
+            bool(evidence is not None
+                 and evidence.source_version_id in self.store.source_versions),
+            bool(locator.get("content_hash")),
+            bool(locator.get("logical_locator") or locator.get("physical_locator")),
+        ]
+        return sum(checks) / len(checks)
+
+    @staticmethod
+    def quality_score(quality: Optional[Dict]) -> float:
+        """The weakest of the P2 scores decides."""
+        if not quality:
+            return 0.0
+        scores = [quality.get(k) for k in (
+            "source_trace_score", "locator_score",
+            "completeness_score", "confidence_score")]
+        present = [s for s in scores if s is not None]
+        return min(present) if present else 0.0
+
+    @staticmethod
+    def verification_score(definition: float, trace: float, source: float,
+                           quality: float) -> float:
+        """GATE_3 — the minimum of the four checks."""
+        return min(definition, trace, source, quality)
+
+    # ── GATE_2: candidate integrity ───────────────────────────────────────
 
     def load_candidate(self, candidate_id: str) -> Tuple[object, object, Dict]:
         """Resolve a candidate to itself, its evidence and its quality row.
 
-        Everything a decision may rely on is returned here, so a later
-        stage cannot reach for an input that is not in the evidence chain.
+        Everything a decision may rely on is returned here, so no stage can
+        reach for an input outside the evidence chain.
         """
         candidate = self.store.ku_candidates.get(candidate_id)
         if candidate is None:
@@ -215,204 +339,43 @@ class AVerificationPipeline:
                 "requires evidence.")
         quality = self.store.quality.get(
             self.store._quality_by_evidence.get(candidate.evidence_id, ""))
-        return candidate, evidence, (quality.__dict__ if quality else {})
-
-    def has_verification(self, candidate_id: str) -> bool:
-        return candidate_id in self.store._verification_by_candidate
-
-    # ── Stage 2: evidence sufficiency ─────────────────────────────────────
+        return candidate, evidence, (dict(quality.__dict__) if quality else {})
 
     @staticmethod
-    def quality_score(quality: Dict) -> float:
-        """Lowest of the four P2 scores — the weakest link decides."""
-        scores = [quality.get(k) for k in (
-            "source_trace_score", "locator_score",
-            "completeness_score", "confidence_score")]
-        if not any(s is not None for s in scores):
-            return 0.0
-        return min(s for s in scores if s is not None)
+    def candidate_is_complete(candidate, evidence) -> Tuple[bool, List[str]]:
+        """evidence_id, source_span and a resolvable content hash."""
+        missing = []
+        if not candidate.evidence_id:
+            missing.append("NO_EVIDENCE_ID")
+        if not candidate.source_span:
+            missing.append("NO_SOURCE_SPAN")
+        if not ((evidence.locator or {}).get("content_hash") if evidence else None):
+            missing.append("NO_CONTENT_HASH")
+        return not missing, missing
 
-    def evidence_is_sufficient(self, quality: Dict) -> Tuple[bool, List[str]]:
-        """evidence_count >= 1, quality >= threshold, trace complete."""
-        failed: List[str] = []
-        score = self.quality_score(quality)
+    # ── transitions ───────────────────────────────────────────────────────
 
-        if score < VERIFICATION_QUALITY_THRESHOLD:
-            failed.append("QUALITY_BELOW_THRESHOLD")
-        if not quality:
-            failed.append("NO_QUALITY_ROW")
-        return not failed, failed
-
-    def traceability_is_complete(self, evidence) -> Tuple[bool, List[str]]:
-        """evidence -> reading run -> source version, with an address.
-
-        A quality score can be perfect while the row still fails to point
-        at a source, so the chain is walked rather than trusted.
-        """
-        failed: List[str] = []
-        locator = evidence.locator or {}
-        if not evidence.source_version_id:
-            failed.append("NO_SOURCE_VERSION")
-        if not evidence.reading_run_id:
-            failed.append("NO_READING_RUN")
-        if not locator.get("content_hash"):
-            failed.append("NO_CONTENT_HASH")
-        if not (locator.get("logical_locator") or locator.get("physical_locator")):
-            failed.append("NO_ADDRESS")
-        if evidence.source_version_id not in self.store.source_versions:
-            failed.append("UNRESOLVED_SOURCE_VERSION")
-        if evidence.reading_run_id not in self.store.reading_runs:
-            failed.append("UNRESOLVED_READING_RUN")
-        return not failed, failed
-
-    # ── Stage 3: semantic integrity ───────────────────────────────────────
-
-    @staticmethod
-    def check_semantic_integrity(candidate, evidence) -> SemanticIntegrity:
-        """Is there a locatable unit of the candidate's declared kind?
-
-        `source_span` is the candidate's verbatim quote and is the anchor
-        the check resolves against: it must occur inside the evidence it
-        claims. The proposition itself is read from `content` when a
-        marker is present there, otherwise from the quote.
-        """
-        quote = candidate.source_span or ""
-        anchored = bool(quote) and quote in (evidence.content_span or "")
-        kind = candidate.classification or KIClassification.CONCEPT.value
-        text = candidate.content or quote
-        result = SemanticIntegrity()
-
-        def resolve(source: str) -> SemanticIntegrity:
-            subject, predicate, obj = split_proposition(source)
-            definition = find_definition_span(source)
-            time = next((m for m in TIME_MARKERS if m in source), "")
-            actor = next((m for m in ACTOR_MARKERS if m in source), "")
-            return SemanticIntegrity(
-                subject=subject, predicate=predicate, object=obj,
-                definition_span=definition, actor=actor, time=time,
-                action=predicate or obj,
-                slots={
-                    "ANCHORED": str(anchored),
-                    "SUBJECT": subject,
-                    "PREDICATE": predicate,
-                    "OBJECT": obj,
-                    "DEFINITION_SPAN": definition,
-                    "ACTOR": actor,
-                    "TIME": time,
-                    "ACTION": predicate or obj,
-                },
-            )
-
-        primary = resolve(text)
-        if primary.slots.get("PREDICATE") or primary.slots.get("DEFINITION_SPAN"):
-            return primary
-        fallback = resolve(quote)
-        return fallback if (
-            fallback.slots.get("PREDICATE")
-            or fallback.slots.get("DEFINITION_SPAN")
-        ) else primary
-
-    @staticmethod
-    def required_slots(kind: str) -> Tuple[str, ...]:
-        """The slots a unit of each kind must carry to be locatable."""
-        return {
-            KIClassification.FACT.value: ("ANCHORED", "SUBJECT", "PREDICATE", "OBJECT"),
-            KIClassification.RELATION.value: ("ANCHORED", "SUBJECT", "PREDICATE", "OBJECT"),
-            KIClassification.CONCEPT.value: ("ANCHORED", "DEFINITION_SPAN"),
-            KIClassification.EVENT.value: ("ANCHORED", "ACTOR", "TIME", "ACTION"),
-            KIClassification.ARGUMENT.value: ("ANCHORED", "DEFINITION_SPAN"),
-        }.get(kind, ("ANCHORED",))
-
-    def semantic_integrity_holds(self, candidate, evidence
-                                 ) -> Tuple[bool, List[str], SemanticIntegrity]:
-        kind = candidate.classification or KIClassification.CONCEPT.value
-        integrity = self.check_semantic_integrity(candidate, evidence)
-        missing = [slot for slot in self.required_slots(kind)
-                   if not integrity.has(slot)]
-        failed = [f"MISSING_{slot}" for slot in missing]
-        return not failed, failed, integrity
-
-    # ── Stage 4: verification decision ────────────────────────────────────
-
-    def verify(self, candidate_id: str,
-               verification_id: Optional[str] = None) -> KnowledgeUnitVerification:
-        """Decide one candidate. Idempotent: a decided candidate is returned
-        unchanged."""
-        settled_id = self.store._verification_by_candidate.get(candidate_id)
-        if settled_id is not None:
-            return self.store.verifications[settled_id]
-
-        candidate, evidence, quality = self.load_candidate(candidate_id)
-        rules: List[str] = []
-        failed: List[str] = []
-
-        # Stage 1
-        if candidate.source_span:
-            rules.append("HAS_SOURCE_SPAN")
-        else:
-            failed.append("NO_SOURCE_SPAN")
-        if quality:
-            rules.append("QUALITY_PRESENT")
-        else:
-            failed.append("NO_QUALITY_ROW")
-
-        # Stage 2
-        sufficient, sufficiency_failed = self.evidence_is_sufficient(quality)
-        rules.extend(["EVIDENCE_PRESENT", "QUALITY_PASS"]
-                     if sufficient else ["EVIDENCE_PRESENT"])
-        failed.extend(sufficiency_failed)
-
-        traced, trace_failed = self.traceability_is_complete(evidence)
-        rules.append("TRACE_COMPLETE" if traced else "TRACE_BROKEN")
-        failed.extend(trace_failed)
-
-        # Stage 3
-        intact, integrity_failed, integrity = self.semantic_integrity_holds(
-            candidate, evidence)
-        rules.append("SEMANTIC_INTEGRITY" if intact else "SEMANTIC_INCOMPLETE")
-        failed.extend(integrity_failed)
-
-        status = (VerificationStatus.VERIFIED if not failed
-                  else VerificationStatus.REJECTED)
-        trace = {
-            "candidate_id": candidate_id,
-            "evidence_ids": [candidate.evidence_id],
-            "rules": sorted(set(rules)),
-            "verifier_version": VERIFIER_VERSION,
-            "failed_rules": sorted(set(failed)),
-            "classification": candidate.classification,
-            "slots": {k: v for k, v in integrity.slots.items() if v},
-            "quality_score": self.quality_score(quality),
-        }
+    def _open(self, candidate_id: str, verification_id: Optional[str] = None
+              ) -> KnowledgeUnitVerification:
+        """Record a PENDING task, then move it to VERIFYING."""
         verification = KnowledgeUnitVerification(
             id=verification_id or deterministic_id(
                 "kv", candidate_id, VERIFIER_VERSION),
             candidate_id=candidate_id,
-            verification_status=status.value,
-            verification_method=VERIFICATION_METHOD,
-            verifier_version=VERIFIER_VERSION,
-            verification_trace=trace,
+            verification_status=VerificationStatus.PENDING.value,
+            verification_score=0.0,
+            definition_check=False, trace_check=False,
+            source_check=False, quality_check=False,
+            verified_quote=None,
         )
         self.store.verifications[verification.id] = verification
         self.store._verification_by_candidate[candidate_id] = verification.id
-        self._emit(PipelineStage.VERIFY, candidate.reading_run_id,
-                   {"candidate_id": candidate_id,
-                    "verification_id": verification.id,
-                    "status": status.value,
-                    "failed_rules": trace["failed_rules"]})
+        self.transition(verification.id, VerificationStatus.VERIFYING)
         return verification
-
-    def verify_all(self, candidate_ids: List[str]) -> List[KnowledgeUnitVerification]:
-        """Decide every candidate in a stable order."""
-        return [self.verify(cid) for cid in sorted(candidate_ids)]
-
-    # ── lifecycle guards ──────────────────────────────────────────────────
 
     def transition(self, verification_id: str, target: VerificationStatus
                    ) -> None:
-        """Move a verification. Only PENDING may move; both terminal
-        states are final, so VERIFIED -> PENDING and REJECTED ->
-        VERIFIED are refused."""
+        """The only way a verification changes state."""
         verification = self.store.verifications.get(verification_id)
         if verification is None:
             raise VerificationViolation(
@@ -421,44 +384,126 @@ class AVerificationPipeline:
         if target not in LEGAL_TRANSITIONS[current]:
             raise VerificationViolation(
                 f"{current.value} -> {target.value} is not a legal "
-                f"transition; a settled decision is final.")
+                "transition; a settled verdict is final.")
         verification.verification_status = target.value
+
+    def reject_verified(self, verification_id: str) -> None:
+        raise VerificationViolation(
+            "A verified unit cannot be rejected; the verdict is final.")
 
     def reopen(self, verification_id: str) -> None:
         raise VerificationViolation(
-            "A verification cannot return to PENDING; the decision is final.")
+            "A verification cannot return to PENDING; the verdict is final.")
 
     def overturn(self, verification_id: str) -> None:
         raise VerificationViolation(
-            "A rejected candidate cannot become verified; the decision "
+            "A rejected candidate cannot become verified; the verdict "
             "is final.")
+
+    # ── the decision ──────────────────────────────────────────────────────
+
+    def has_verification(self, candidate_id: str) -> bool:
+        return candidate_id in self.store._verification_by_candidate
+
+    def verify(self, candidate_id: str,
+               verification_id: Optional[str] = None
+               ) -> KnowledgeUnitVerification:
+        """GATE_2 -> GATE_3 -> GATE_4 for one candidate. Idempotent: a
+        decided candidate is returned unchanged."""
+        settled = self.store._verification_by_candidate.get(candidate_id)
+        if settled is not None:
+            return self.store.verifications[settled]
+
+        candidate, evidence, quality = self.load_candidate(candidate_id)
+        run_id = candidate.reading_run_id
+        verification = self._open(candidate_id, verification_id)
+
+        complete, missing = self.candidate_is_complete(candidate, evidence)
+        self._emit("candidate", run_id,
+                   {"candidate_id": candidate_id,
+                    "status": VerificationStatus.VERIFYING.value})
+
+        definition, integrity = self.definition_score(candidate, evidence)
+        trace = self.trace_score(candidate, evidence)
+        source = self.source_score(evidence)
+        quality_value = self.quality_score(quality)
+        score = self.verification_score(definition, trace, source, quality_value)
+
+        checks = {
+            "definition_check": definition >= VERIFICATION_THRESHOLD,
+            "trace_check": trace >= VERIFICATION_THRESHOLD,
+            "source_check": source >= VERIFICATION_THRESHOLD,
+            "quality_check": quality_value >= VERIFICATION_THRESHOLD,
+        }
+        verification.definition_check = checks["definition_check"]
+        verification.trace_check = checks["trace_check"]
+        verification.source_check = checks["source_check"]
+        verification.quality_check = checks["quality_check"]
+        verification.verification_score = score
+        # The quote is stored only when it was found in the evidence.
+        verification.verified_quote = (
+            candidate.source_span if integrity.anchored else None)
+
+        failed = sorted(k for k, ok in checks.items() if not ok)
+        if not complete:
+            failed.extend(missing)
+
+        target = (VerificationStatus.VERIFIED
+                  if not failed and score >= VERIFICATION_THRESHOLD
+                  else VerificationStatus.REJECTED)
+        self.transition(verification.id, target)
+
+        kind = candidate.classification
+        verification.trace = {
+            "candidate_id": candidate_id,
+            "fingerprint": candidate_fingerprint(candidate, evidence),
+            "evidence_ids": [candidate.evidence_id],
+            "classification": kind,
+            "required_slots": list(self.required_slots(kind)),
+            "slots_present": sorted(k for k, v in integrity.slots().items() if v),
+            "scores": {"definition": definition, "trace": trace,
+                       "source": source, "quality": quality_value},
+            "failed_checks": failed,
+            "verifier_version": VERIFIER_VERSION,
+        }
+
+        self._emit("verify", run_id,
+                   {"candidate_id": candidate_id,
+                    "verification_id": verification.id,
+                    "status": target.value,
+                    "verification_score": score,
+                    "failed_checks": failed})
+        return verification
+
+    def verify_all(self, candidate_ids: List[str]) -> List[KnowledgeUnitVerification]:
+        """Decide every candidate in a stable order (GATE_5 determinism)."""
+        return [self.verify(cid) for cid in sorted(candidate_ids)]
 
     # ── queries ───────────────────────────────────────────────────────────
 
+    def _candidates(self, reading_run_id: str):
+        return [k for k in self.store.ku_candidates.values()
+                if k.reading_run_id == reading_run_id]
+
     def verification_count(self, reading_run_id: str) -> int:
+        return sum(1 for v in self.store.verifications.values()
+                   if v.candidate_id in self.store.ku_candidates
+                   and self.store.ku_candidates[v.candidate_id].reading_run_id
+                   == reading_run_id)
+
+    def _count(self, reading_run_id: str, status: VerificationStatus) -> int:
         return sum(
             1 for v in self.store.verifications.values()
             if v.candidate_id in self.store.ku_candidates
             and self.store.ku_candidates[v.candidate_id].reading_run_id
             == reading_run_id
-        )
+            and v.verification_status == status.value)
 
     def verified_count(self, reading_run_id: str) -> int:
         return self._count(reading_run_id, VerificationStatus.VERIFIED)
 
     def rejected_count(self, reading_run_id: str) -> int:
         return self._count(reading_run_id, VerificationStatus.REJECTED)
-
-    def _count(self, reading_run_id: str,
-               status: VerificationStatus) -> int:
-        total = 0
-        for verification in self.store.verifications.values():
-            candidate = self.store.ku_candidates.get(verification.candidate_id)
-            if candidate is None or candidate.reading_run_id != reading_run_id:
-                continue
-            if verification.verification_status == status.value:
-                total += 1
-        return total
 
     def status_breakdown(self, reading_run_id: str) -> Dict[str, int]:
         counts = {s.value: 0 for s in VerificationStatus}
@@ -469,27 +514,57 @@ class AVerificationPipeline:
             counts[verification.verification_status] += 1
         return dict(sorted(counts.items()))
 
+    def false_positives(self, reading_run_id: str) -> List[str]:
+        """GATE_3/GATE_4 — a verified unit that is not anchored, or that
+        carries any failed check, is a false positive."""
+        offenders = []
+        for verification in self.store.verifications.values():
+            if verification.verification_status != VerificationStatus.VERIFIED.value:
+                continue
+            candidate = self.store.ku_candidates.get(verification.candidate_id)
+            if candidate is None or candidate.reading_run_id != reading_run_id:
+                continue
+            if not verification.verified_quote:
+                offenders.append(verification.candidate_id)
+            elif verification.verification_score < VERIFICATION_THRESHOLD:
+                offenders.append(verification.candidate_id)
+            elif not all((verification.definition_check,
+                          verification.trace_check,
+                          verification.source_check,
+                          verification.quality_check)):
+                offenders.append(verification.candidate_id)
+        return offenders
+
+    def rejection_reasons(self, reading_run_id: str) -> Dict[str, List[str]]:
+        reasons = {}
+        for verification in self.store.verifications.values():
+            candidate = self.store.ku_candidates.get(verification.candidate_id)
+            if candidate is None or candidate.reading_run_id != reading_run_id:
+                continue
+            if verification.verification_status != VerificationStatus.REJECTED.value:
+                continue
+            reasons[verification.candidate_id] = list(
+                verification.trace.get("failed_checks", []))
+        return dict(sorted(reasons.items()))
+
     def traceability(self, reading_run_id: str) -> Dict[str, object]:
-        """candidate -> evidence -> source, counted."""
-        candidates = [k for k in self.store.ku_candidates.values()
-                      if k.reading_run_id == reading_run_id]
-        decided = [self.store.verifications[self.store._verification_by_candidate[k.id]]
-                   for k in candidates
-                   if self.store._verification_by_candidate.get(k.id)]
+        """GATE_2 — candidate -> evidence -> source, counted."""
+        candidates = self._candidates(reading_run_id)
         complete = 0
-        for verification in decided:
-            candidate = self.store.ku_candidates[verification.candidate_id]
+        fingerprints = set()
+        for candidate in candidates:
             evidence = self.store.evidence.get(candidate.evidence_id)
-            if (evidence is not None
-                    and evidence.source_version_id in self.store.source_versions
-                    and (evidence.locator or {}).get("content_hash")):
+            ok, _ = self.candidate_is_complete(candidate, evidence)
+            if ok and evidence is not None:
                 complete += 1
+                fingerprints.add(candidate_fingerprint(candidate, evidence))
         return {
             "candidates": len(candidates),
-            "decided": len(decided),
-            "trace_complete": complete,
-            "percent": (round(100.0 * complete / len(decided), 2)
-                        if decided else 0.0),
+            "traceable": complete,
+            "percent": round(100.0 * complete / len(candidates), 2)
+            if candidates else 0.0,
+            "unique_fingerprints": len(fingerprints),
+            "duplicates": len(candidates) - len(fingerprints),
         }
 
     def orphan_verifications(self) -> List[str]:
@@ -502,7 +577,7 @@ class AVerificationPipeline:
     def events(self) -> List[VerificationEvent]:
         return list(self._events)
 
-    def _emit(self, stage: PipelineStage, run_id: str, payload: Dict) -> None:
+    def _emit(self, stage: str, run_id: str, payload: Dict) -> None:
         event = VerificationEvent(stage=stage, run_id=run_id, payload=payload)
         self._events.append(event)
         self._event_sink(event)
