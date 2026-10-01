@@ -306,3 +306,59 @@ repair is to how the verdict is computed, not to what the layer records.
 Open item 5 (from the re-freeze audit): `UNRESOLVED` stays an ephemeral
 in-process return value. No table — a resolution record would be a resolution
 authority, and that is a B/C semantic risk, not A仓 knowledge authority.
+
+### RE-FREEZE 验收（冻结时核对）
+
+```
+P6 tests                          98 passed
+tests/architecture  工作树         946 passed, 6 skipped
+tests/architecture  干净检出       712 passed, 6 skipped
+full tests/                       与 tagged baseline 逐项相同，无新增失败
+
+076 2b9de6b42e1c1d87  077 fe4d613f5bb95508  078 ed963f7e82854b04
+079 58910b307ea79b1f  080 6215e46078709bc8  081 0e9ebc2ddc443412
+082 db3aa8f3f7673c20                        全部逐字节未动
+
+migrations = 13    anchor = 11/12/1/11    ku_identity = 11
+```
+
+`712` 与 `946` 的差不是不一致，是范围不同：干净检出只含本层契约测试，
+工作树另含尚未归档的 P5.0 / P5-evolution / P7 测试。
+
+verdict 三态逐一构造验证：
+
+```
+{PASS, PASS}               -> PASS
+{PASS, FAIL}               -> FAIL
+{PASS, NOT_EXECUTED}       -> BLOCKED
+{FAIL, NOT_EXECUTED}       -> FAIL      证据确凿的破坏优先于证据缺失
+{}                         -> BLOCKED   空集合不是 vacuous pass
+{PASS, SOMETHING_NEW}      -> BLOCKED   未识别状态不得默认通过
+```
+
+### P6_REFREEZE_READY
+
+```
+R-1  reported_set == verdict_set          PASS  14/14，verdict() 由 gate_results 派生
+R-2  NOT_EXECUTED 不得产出 PASS            PASS  抽掉 ledger -> BLOCKED
+R-3  裁定内全 PASS                        PASS  14/14 with ledger
+R-4  schema 带 ledger 时 PASS              PASS
+R-5  076 sha256 未变                       PASS  2b9de6b42e1c1d87
+R-6  ku_identity 11 行 / anchor 11/12/1/11 PASS
+R-7  open item 1 已改为「已证明不可声明式」 PASS
+R-8  report 与 artifact 按新口径重出        PASS
+R-9  98 个 P6 测试 + P5 契约全绿            PASS
+R-10 干净 worktree 可复现                  PASS  712 passed, 6 skipped
+```
+
+### 后续顺序（已锁定）
+
+```
+P6 freeze commit + tag
+  -> P5_EVOLUTION_REFREEZE_SPEC   （同类 verdict 缺陷：reported 8 / counted 6）
+  -> P7 依赖闭包审计 + SPEC
+```
+
+P5-evolution 的缺陷**不在 P6 修**（`ORDER_LOCKED`）。
+P7 之前必须先做依赖闭包审计：P6 已经暴露过一次文件级隐藏依赖，
+P7 若不做审计，会在 freeze 时才发现，而不是在 spec 时。
