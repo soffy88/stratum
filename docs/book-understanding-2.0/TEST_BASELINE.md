@@ -158,3 +158,39 @@ as A仓 regressions.
 ## Conclusion
 > 当前“BU 已通过”究竟通过了什么？
 The BU tests pass mainly via `bu_learning_gate.py` asserting length, format, and structure during ingest. The "Architecture Closure" is largely a doc/schema-level agreement that hasn't fully propagated to the ingest core (`aii.ku_onto`).
+## Regression check at the P7 freeze (`7de6a85`)
+
+```
+working tree (dirty)      48 failed, 1335 passed, 25 skipped, 169 errors
+clean worktree @ 24290ad  48 failed, 1161 passed, 25 skipped, 170 errors
+clean worktree @ 7de6a85  (P7 freeze, this branch)
+```
+
+Failure sets compared by id, not by count:
+
+```
+CURRENT_FAILURES - BASELINE_FAILURES = EMPTY
+```
+
+So the P5 Evolution and P7 work introduced no new failure and no new error.
+The 48 failures and 169 errors remain the ambient baseline recorded above —
+mostly missing `aii` / `scripts` packages and a `ulid.ULID` import, unrelated to
+A仓.
+
+### One error disappears in the dirty working tree, and it is not ours
+
+```
+ERROR tests/http_api/test_admin_routes.py::test_admin_stats_no_secret_env_returns_503
+  src/stratum/http_api/app.py:184
+  AttributeError: 'function' object has no attribute 'router'
+```
+
+It errors in a clean worktree at **both** `24290ad` and `7de6a85`, and passes
+only in the dirty working tree. Since the two commits are checked at the same
+code path, the difference is the untracked WIP present in the working tree, not
+anything committed here. Recorded rather than counted as progress.
+
+This is also why the clean-worktree pass count is 1161 rather than 1335: the
+working tree runs additional tests and resolves additional imports that a tagged
+tree does not have. Comparing a dirty run against a clean baseline by count
+alone would have made that look like 174 new passing tests.
