@@ -73,6 +73,7 @@ from .projection import (
     identifier_keys,
 )
 from .verification import VerificationStatus
+from .verdict import VERDICT_BLOCKED, verdict, verdict_inputs
 
 
 #: §13 fixes the directory; §4 illustrates the file name. Both are honoured:
@@ -451,9 +452,9 @@ ALLOWED_IMPORT_ROOTS = frozenset({
     "__future__", "json", "re", "pathlib", "typing", "dataclasses",
     "hashlib",
     "pilot_corpus", "identity", "ku_identity_runner", "projection",
-    "verification",
+    "verification", "verdict",
     ".", ".identity", ".ku_identity_runner", ".projection",
-    ".verification", ". import pilot_corpus as C",
+    ".verification", ".verdict", ". import pilot_corpus as C",
 })
 
 
@@ -699,12 +700,23 @@ def schema_change_count() -> Dict[str, int]:
 
 # ── report ───────────────────────────────────────────────────────────────────
 
-GATE_ORDER = ("G1_authority", "G2_traceability", "G3_determinism",
-              "G4_replay", "G5_isolation")
+# There was a `GATE_ORDER` here listing five names beside the gates this
+# function returns. It was five while the function returned seven:
+# `G1_no_new_id` and `G1_read_only` were reported to the reader and missing from
+# the list. The list was short on the day it was written.
+#
+# It is deleted rather than corrected. Correcting five to seven would leave the
+# mechanism that produced the drift in place for the eighth gate, and it is the
+# mechanism -- a parallel list of names -- not the length that was wrong. Order
+# now comes from the mapping `gate_results` returns, and the verdict is computed
+# from that same mapping by the shared contract in verdict.py, the same way P5
+# Evolution and P6 compute theirs.
 
 
 def gate_results(projection: BookUnderstandingProjection) -> Dict[str, object]:
-    """The five gates. A gate that cannot be evidenced is NOT_EXECUTED."""
+    """Every gate, which is all of them. A gate that cannot be evidenced is
+    NOT_EXECUTED rather than omitted, so nothing can go missing by not being
+    reported."""
     determinism = determinism_gate()
     replay = replay_gate(projection)
     return {
@@ -729,6 +741,7 @@ def report(projection: BookUnderstandingProjection) -> Dict:
     mutation = schema_change_count()
     ids, forbidden = identifier_keys(payload)
     chain = ProjectionSource()
+    gates = gate_results(projection)
     return {
         "task": "A_P7_BOOK_UNDERSTANDING_PROJECTION",
         "authority": AUTHORITY,
@@ -737,8 +750,9 @@ def report(projection: BookUnderstandingProjection) -> Dict:
         "source_version_id": projection.source_version_id,
         "content_hash": content_hash(payload),
         "artifact": artifact_name(projection),
-        "gates": gate_results(projection),
-        "gate_order": list(GATE_ORDER),
+        "gates": gates,
+        "verdict_inputs": verdict_inputs(gates),
+        "A_P7_BOOK_UNDERSTANDING_PROJECTION": verdict(gates),
         "traceability": ("100%" if traceability_gate(projection) == "PASS"
                          else "FAIL"),
         "determinism": f"{determinism['hashes'][0]} x3="
