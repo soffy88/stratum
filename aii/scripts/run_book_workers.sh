@@ -57,6 +57,11 @@ if (( NW == 0 )); then
     exit 3
 fi
 
+# ★2026-10-01 必须在上面 rm 之前抓: 持久的历史隔离台账。主 quarantine.json
+#   跨轮累积(worker 级的 quarantine_worker*.json 每轮被删), 重试判定要读它 ——
+#   读刚清空的 worker 文件永远查不到上一轮的隔离记录。
+QUARANTINE_HISTORY="${ECON_QUARANTINE_HISTORY:-$PIPE_DIR/quarantine.json}"
+
 rm -f "$PIPE_DIR"/booklist_worker*.txt "$PIPE_DIR"/quarantine_worker*.json \
       "$PIPE_DIR"/batch_report_worker*.json "$PIPE_DIR"/worker*.log
 for i in "${!AVAILABLE[@]}"; do : > "$PIPE_DIR/booklist_worker${i}.txt"; done
@@ -78,6 +83,7 @@ for i in "${!AVAILABLE[@]}"; do
         ECON_MD_LIST="$WL" \
         NVIDIA_NIM_API_KEY="$KEY" \
         ECON_QUARANTINE_JSON="$PIPE_DIR/quarantine_worker${i}.json" \
+        ECON_QUARANTINE_HISTORY="$QUARANTINE_HISTORY" \
         ECON_BATCH_REPORT="$PIPE_DIR/batch_report_worker${i}.json" \
         ECON_STRATUM_FEEDBACK="${STRATUM_FEEDBACK:-0}" \
         ECON_DRY_RUN="${ECON_DRY_RUN:-0}" \

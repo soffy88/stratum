@@ -191,12 +191,16 @@ asyncio.run(chk())
     #   (实测 09-29 08:54~10:37 连续 12 本 cs 书复读, KU 停产 17.7h)。
     #   判定: 这本书上一次是不是因质量门被隔离的。
     _REPLAN=0
-    if [ -f "$QUARANTINE_JSON" ] && $PY -c "
+    # ★2026-10-01 读持久台账(ECON_QUARANTINE_HISTORY), 不是本轮 worker 文件:
+    #   run_book_workers.sh 每轮开头会删掉 quarantine_worker*.json, 上一轮被隔离的
+    #   书不在里面 → 这个判定永远为假 → AII_FORCE_REPLAN 从未触发(实测 0 次)。
+    _QHIST="${ECON_QUARANTINE_HISTORY:-$QUARANTINE_JSON}"
+    if [ -f "$_QHIST" ] && $PY -c "
 import json,sys
 d=json.load(open(sys.argv[1]))
 print('1' if any(x.get('substrate_id')==sys.argv[2] and x.get('reason_type')=='quality_gate'
                for x in d.get('quarantined',[])) else '0')
-" "$QUARANTINE_JSON" "$SUBSTRATE" 2>/dev/null | grep -q '^1$'; then
+" "$_QHIST" "$SUBSTRATE" 2>/dev/null | grep -q '^1$'; then
         _REPLAN=1
         echo "  [重规划] $SUBSTRATE 此前因质量门被隔离 → 重抽缺 rationale 的章"
     fi
