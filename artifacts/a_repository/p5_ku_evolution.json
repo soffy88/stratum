@@ -1,0 +1,292 @@
+{
+  "task": "A_P5_KU_EVOLUTION",
+  "book": "利率史（第四版）",
+  "authority": "A_REPOSITORY",
+  "lifecycle_version": "a-p5-v0.1",
+  "run_id": "arr_d0d1473d79fc",
+  "persisted_units": 11,
+  "status_breakdown": {
+    "ACTIVE": 10,
+    "QUARANTINED": 0,
+    "SUPERSEDED": 1
+  },
+  "revisions": 1,
+  "reviews": 5,
+  "confidence_observations": 15,
+  "relations": 2,
+  "relation_types": [
+    "REVISES",
+    "SHARES_EVIDENCE"
+  ],
+  "traceability": "100%",
+  "gate_results": {
+    "G1_traceability": "PASS",
+    "G2_immutability": "PASS",
+    "G3_revision": "PASS",
+    "G4_replay": "PASS",
+    "G5_authority": "PASS",
+    "G6_durability": "PASS",
+    "schema": "PASS",
+    "idempotency": "PASS"
+  },
+  "A_P5_KU_EVOLUTION": "PASS",
+  "ledger": [
+    "070_a_repository_foundation.sql",
+    "071_a_evidence_quality.sql",
+    "072_a_ku_verification.sql",
+    "073_a_knowledge_unit_freeze.sql",
+    "074_a_ku_freeze_persistence.sql",
+    "075_a_ku_evolution.sql"
+  ],
+  "review_ledger": [
+    {
+      "key": "rv_athens_quarantined",
+      "unit_key": "kc_athens_debt_crisis",
+      "unit_id": "ku_93a979cb6fab",
+      "review_type": "QUARANTINED",
+      "status": "QUARANTINED",
+      "written": true
+    },
+    {
+      "key": "rv_athens_released",
+      "unit_key": "kc_athens_debt_crisis",
+      "unit_id": "ku_93a979cb6fab",
+      "review_type": "RELEASED",
+      "status": "ACTIVE",
+      "written": true
+    },
+    {
+      "key": "rv_rome_rate_cap_confirmed",
+      "unit_key": "kc_rome_rate_cap",
+      "unit_id": "ku_15a527238f5c",
+      "review_type": "CONFIRMED",
+      "status": "ACTIVE",
+      "written": true
+    },
+    {
+      "key": "rv_solon_contrast_challenged",
+      "unit_key": "kc_solon_abolished_rate_cap",
+      "unit_id": "ku_5840cc146f9f",
+      "review_type": "CHALLENGED",
+      "status": "ACTIVE",
+      "written": true
+    }
+  ],
+  "revision_ledger": [
+    {
+      "key": "rev_hammurabi_code_anchor",
+      "prior_unit_id": "ku_59cb9040d0f0",
+      "prior_status": "SUPERSEDED",
+      "revised_unit_id": "ku_10fef8f2ffa4",
+      "candidate_id": "kc_696d452b1fb2",
+      "verification_id": "kv_53ff36b8bc3b",
+      "relations": [
+        "REVISES",
+        "SHARES_EVIDENCE"
+      ],
+      "written": true
+    }
+  ],
+  "units": {
+    "ku_10fef8f2ffa4": {
+      "unit_id": "ku_10fef8f2ffa4",
+      "status": "ACTIVE",
+      "successor": null,
+      "prior": "ku_59cb9040d0f0",
+      "reviews": [],
+      "confidence": [
+        {
+          "basis": "VERIFICATION_SCORE",
+          "value": 1.0
+        },
+        {
+          "basis": "REVIEW_SIGNAL",
+          "value": 1.0
+        }
+      ],
+      "relations": [
+        "REVISES",
+        "SHARES_EVIDENCE"
+      ]
+    },
+    "kc_rome_rate_cap": {
+      "unit_id": "ku_15a527238f5c",
+      "status": "ACTIVE",
+      "successor": null,
+      "prior": null,
+      "reviews": [
+        "CONFIRMED"
+      ],
+      "confidence": [
+        {
+          "basis": "VERIFICATION_SCORE",
+          "value": 1.0
+        }
+      ],
+      "relations": []
+    },
+    "kc_rome_penalty_fourfold": {
+      "unit_id": "ku_4ccc104bb7a8",
+      "status": "ACTIVE",
+      "successor": null,
+      "prior": null,
+      "reviews": [],
+      "confidence": [
+        {
+          "basis": "VERIFICATION_SCORE",
+          "value": 1.0
+        }
+      ],
+      "relations": []
+    },
+    "kc_solon_abolished_rate_cap": {
+      "unit_id": "ku_5840cc146f9f",
+      "status": "ACTIVE",
+      "successor": null,
+      "prior": null,
+      "reviews": [
+        "CHALLENGED"
+      ],
+      "confidence": [
+        {
+          "basis": "VERIFICATION_SCORE",
+          "value": 1.0
+        },
+        {
+          "basis": "REVIEW_SIGNAL",
+          "value": 0.8
+        }
+      ],
+      "relations": []
+    },
+    "kc_hammurabi_code": {
+      "unit_id": "ku_59cb9040d0f0",
+      "status": "SUPERSEDED",
+      "successor": "ku_10fef8f2ffa4",
+      "prior": null,
+      "reviews": [
+        "SUPERSEDED"
+      ],
+      "confidence": [
+        {
+          "basis": "VERIFICATION_SCORE",
+          "value": 1.0
+        }
+      ],
+      "relations": [
+        "REVISES",
+        "SHARES_EVIDENCE"
+      ]
+    },
+    "kc_twelve_tables_date": {
+      "unit_id": "ku_5d49563b2149",
+      "status": "ACTIVE",
+      "successor": null,
+      "prior": null,
+      "reviews": [],
+      "confidence": [
+        {
+          "basis": "VERIFICATION_SCORE",
+          "value": 1.0
+        }
+      ],
+      "relations": []
+    },
+    "kc_babylon_silver_rate_cap": {
+      "unit_id": "ku_639e79172556",
+      "status": "ACTIVE",
+      "successor": null,
+      "prior": null,
+      "reviews": [],
+      "confidence": [
+        {
+          "basis": "VERIFICATION_SCORE",
+          "value": 1.0
+        }
+      ],
+      "relations": []
+    },
+    "kc_credit_predates_coinage": {
+      "unit_id": "ku_6460a6062a10",
+      "status": "ACTIVE",
+      "successor": null,
+      "prior": null,
+      "reviews": [],
+      "confidence": [
+        {
+          "basis": "VERIFICATION_SCORE",
+          "value": 1.0
+        }
+      ],
+      "relations": []
+    },
+    "kc_usury_principal_forfeit": {
+      "unit_id": "ku_8b366dd7b4d1",
+      "status": "ACTIVE",
+      "successor": null,
+      "prior": null,
+      "reviews": [],
+      "confidence": [
+        {
+          "basis": "VERIFICATION_SCORE",
+          "value": 1.0
+        }
+      ],
+      "relations": []
+    },
+    "kc_athens_debt_crisis": {
+      "unit_id": "ku_93a979cb6fab",
+      "status": "ACTIVE",
+      "successor": null,
+      "prior": null,
+      "reviews": [
+        "QUARANTINED",
+        "RELEASED"
+      ],
+      "confidence": [
+        {
+          "basis": "VERIFICATION_SCORE",
+          "value": 1.0
+        },
+        {
+          "basis": "REVIEW_SIGNAL",
+          "value": 0.55
+        },
+        {
+          "basis": "REVIEW_SIGNAL",
+          "value": 0.9
+        }
+      ],
+      "relations": []
+    },
+    "kc_solon_code_date": {
+      "unit_id": "ku_fa902e0bc115",
+      "status": "ACTIVE",
+      "successor": null,
+      "prior": null,
+      "reviews": [],
+      "confidence": [
+        {
+          "basis": "VERIFICATION_SCORE",
+          "value": 1.0
+        }
+      ],
+      "relations": []
+    }
+  },
+  "durable_rows": {
+    "book_source": 1,
+    "source_version": 1,
+    "reading_run": 1,
+    "reading_evidence": 17,
+    "evidence_quality": 17,
+    "ku_candidate": 18,
+    "ku_verification": 18,
+    "knowledge_unit": 11,
+    "ku_freeze_event": 12,
+    "ku_revision": 1,
+    "ku_review_event": 5,
+    "ku_confidence_evolution": 15,
+    "ku_relation": 2
+  }
+}
