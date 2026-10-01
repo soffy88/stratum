@@ -48,6 +48,7 @@ from .freeze import AKnowledgeUnitFreezePipeline
 from .persistence import KUDurableWriter, PersistenceStatus, persisted_unit_id
 from .quality import deterministic_id
 from .verification import VerificationStatus
+from .verdict import VERDICT_BLOCKED, VERDICT_FAIL, VERDICT_PASS, verdict, verdict_inputs
 from .verification_runner import build_verification_baseline, staging_ledger
 
 
@@ -537,8 +538,25 @@ def gate_results(result: Dict, ledger: Optional[List[str]]) -> Dict[str, str]:
     }
 
 
-GATE_ORDER = ("G1_traceability", "G2_immutability", "G3_revision",
-              "G4_replay", "G5_authority", "G6_durability")
+# ── the verdict ──────────────────────────────────────────────────────────────
+#
+# There is deliberately no tuple of gate names here.
+#
+# This file used to carry `GATE_ORDER`, six names, while `gate_results`
+# returned eight. `idempotency` and `schema` printed PASS or FAIL and could not
+# affect the outcome. Measured before the repair:
+#
+#   no A_P5_LEDGER_FILE -> schema = NOT_EXECUTED -> A_P5_KU_EVOLUTION = PASS
+#
+# A gate that never executed produced a PASS. That is the same defect P6 had,
+# found in that stage's audit, and left here unfixed for two stages.
+#
+# `verdict` is imported rather than restated, so the P5-evolution contract and
+# the P6 contract are literally the same code and cannot drift apart.
+
+VERDICT_PASS = "PASS"
+VERDICT_FAIL = "FAIL"
+VERDICT_BLOCKED = "BLOCKED"
 
 
 # ── reporting ────────────────────────────────────────────────────────────────
@@ -587,7 +605,6 @@ def artifact(result: Dict, ledger: Optional[List[str]]) -> Dict:
     summary = report(result)
     gates = gate_results(result, ledger)
     trace = summary["traceability"]
-    passed = all(gates[name] == "PASS" for name in GATE_ORDER)
     return {
         "task": "A_P5_KU_EVOLUTION",
         "book": summary["book"].split(" ")[0],
@@ -604,7 +621,7 @@ def artifact(result: Dict, ledger: Optional[List[str]]) -> Dict:
         "traceability": ("100%" if trace["percent"] == 100.0
                          else f"{trace['percent']}%"),
         "gate_results": gates,
-        "A_P5_KU_EVOLUTION": "PASS" if passed else "BLOCKED",
+        "A_P5_KU_EVOLUTION": verdict(gates),
         "ledger": ledger,
         "review_ledger": summary["review_ledger"],
         "revision_ledger": summary["revision_ledger"],

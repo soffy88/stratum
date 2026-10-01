@@ -51,10 +51,13 @@ from stratum.knowledge.a_repository.persistence import (  # noqa: E402
     EventType,
     PersistenceStatus,
 )
+from stratum.knowledge.a_repository.verdict import (  # noqa: E402
+    verdict,
+    verdict_inputs,
+)
 from stratum.knowledge.a_repository.ku_evolution_runner import (  # noqa: E402
     ALLOWED_REFERENCES,
     CREATED_TABLES,
-    GATE_ORDER,
     REQUIRED_CHAIN,
     REQUIRED_MIGRATION,
     _append_revised_unit,
@@ -1093,8 +1096,8 @@ def test_artifact_shape(evolved):
     assert doc["lifecycle_version"] == EVOLUTION_VERSION
     assert doc["traceability"] == "100%"
     assert doc["A_P5_KU_EVOLUTION"] == "PASS"
-    for name in GATE_ORDER:
-        assert doc["gate_results"][name] == "PASS"
+    for name, value in doc["gate_results"].items():
+        assert value == "PASS", f"{name}={value}"
 
 
 def test_artifact_reports_the_lifecycle(evolved):
@@ -1142,12 +1145,85 @@ def test_schema_gate_fails_without_075():
                         if n != REQUIRED_MIGRATION]) == "FAIL"
 
 
-def test_all_six_gates_pass(evolved):
+def test_every_reported_gate_passes_and_counts(evolved):
+    """reported_gate_count == verdict_gate_count, and all are PASS.
+
+    This used to iterate six headline names and then spot-check `schema` and
+    `idempotency` — the same shape that left those two outside the verdict.
+    """
     gates = gate_results(evolved["result"], list(REQUIRED_CHAIN))
-    for name in GATE_ORDER:
-        assert gates[name] == "PASS", name
-    assert gates["schema"] == "PASS"
-    assert gates["idempotency"] == "PASS"
+    assert gates, "gate_results must not be empty"
+    for name, value in sorted(gates.items()):
+        assert value == "PASS", f"{name}={value}"
+    # 8 as of the re-freeze: 6 headlines plus idempotency and schema.
+    assert len(gates) == 8, sorted(gates)
+    assert verdict(gates) == "PASS"
+
+
+def test_schema_and_idempotency_each_move_the_verdict():
+    """The two gates that were previously decorative must now decide.
+
+    §2.4 of the re-freeze spec names these five cases explicitly.
+    """
+    base = {"G1_traceability": "PASS", "G2_immutability": "PASS",
+            "G3_revision": "PASS", "G4_replay": "PASS",
+            "G5_authority": "PASS", "G6_durability": "PASS"}
+    ok = dict(base, schema="PASS", idempotency="PASS")
+    assert verdict(ok) == "PASS"
+
+    # either gate failing makes the whole verdict FAIL
+    assert verdict(dict(ok, idempotency="FAIL")) == "FAIL"
+    assert verdict(dict(ok, schema="FAIL")) == "FAIL"
+    # either gate not executing blocks it
+    assert verdict(dict(ok, idempotency="NOT_EXECUTED")) == "BLOCKED"
+    assert verdict(dict(ok, schema="NOT_EXECUTED")) == "BLOCKED"
+    # A *missing* ledger is the NOT_EXECUTED case, not an absent key:
+    # gate_results always reports every gate, so the schema key is present and
+    # carries NOT_EXECUTED. Omitting a key would mean gate_results stopped
+    # reporting it — which is a different defect, and the reason the count
+    # parity is asserted separately.
+    assert verdict(dict(ok, schema="NOT_EXECUTED")) == "BLOCKED"
+
+
+def test_artifact_without_a_ledger_is_blocked(evolved):
+    """The live path, not just the truth table: no ledger, no PASS."""
+    doc = artifact(evolved["result"], None)
+    assert doc["gate_results"]["schema"] == "NOT_EXECUTED"
+    assert doc["A_P5_KU_EVOLUTION"] == "BLOCKED"
+    # and with the ledger present it does pass
+    with_ledger = artifact(evolved["result"], list(REQUIRED_CHAIN))
+    assert with_ledger["gate_results"]["schema"] == "PASS"
+    assert with_ledger["A_P5_KU_EVOLUTION"] == "PASS"
+
+
+def test_verdict_contract_truth_table():
+    """§2.3, case for case."""
+    assert verdict({"a": "PASS"}) == "PASS"
+    assert verdict({"a": "PASS", "b": "PASS"}) == "PASS"
+    assert verdict({"a": "PASS", "b": "FAIL"}) == "FAIL"
+    assert verdict({"a": "PASS", "b": "NOT_EXECUTED"}) == "BLOCKED"
+    assert verdict({"a": "FAIL", "b": "NOT_EXECUTED"}) == "FAIL"
+    assert verdict({}) == "BLOCKED"
+    assert verdict({"a": "PASS", "b": "UNKNOWN"}) == "BLOCKED"
+
+
+def test_verdict_and_the_two_runners_share_one_contract():
+    """No per-layer copy, so the two cannot drift apart."""
+    from stratum.knowledge.a_repository.ku_evolution_runner import (
+        verdict as evolution_verdict)
+    from stratum.knowledge.a_repository.ku_identity_runner import (
+        verdict as identity_verdict)
+    assert evolution_verdict is verdict
+    assert identity_verdict is verdict
+
+
+def test_verdict_inputs_name_the_evidence(evolved):
+    """A freeze artifact must say why, not just what."""
+    gates = gate_results(evolved["result"], None)
+    evidence = verdict_inputs(gates)
+    assert evidence["verdict"] == "BLOCKED"
+    assert "schema" in evidence["gates_not_executed"]
+    assert evidence["gate_count"] == len(gates)
 
 
 def test_the_first_book_is_the_frozen_pilot(evolved):
