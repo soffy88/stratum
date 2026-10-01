@@ -146,23 +146,44 @@ def module_file_reads(path: Path) -> Set[str]:
     found: Set[str] = set()
     text = path.read_text(encoding="utf-8")
     tree = ast.parse(text, filename=str(path))
+    # Fragments of f-strings, gathered first. `ast.walk` also yields those
+    # parts as ordinary Constant nodes, so without this the same literal is
+    # reported twice: once correctly as a template and once as a missing file.
+    fragments: Set[str] = set()
     for node in ast.walk(tree):
+        if isinstance(node, ast.JoinedStr):
+            for part in node.values:
+                if isinstance(part, ast.Constant) and isinstance(part.value, str):
+                    name = Path(part.value).name
+                    if name.endswith(".json") or name.endswith(".sql"):
+                        fragments.add(name)
+                        found |= _classify(part.value, template=True)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.JoinedStr):
+            continue
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            value = node.value
-            # Another layer's test file, by module or path.
-            if value.startswith("test_") and value.endswith(".py"):
-                found.add(f"test:{value}")
-            if "test_a_" in value and value.endswith(".py"):
-                found.add(f"test:{Path(value).name}")
-            # An artifact or migration another layer produced. Classified by
-            # extension exactly once: an earlier version iterated the two
-            # directories and added every .sql as BOTH kinds, so each migration
-            # also surfaced as a missing artifact.
-            name = Path(value).name
-            if name.endswith(".json"):
-                found.add(f"artifact:{name}")
-            elif name.endswith(".sql"):
-                found.add(f"migration:{name}")
+            if Path(node.value).name not in fragments:
+                found |= _classify(node.value)
+    return found
+
+
+def _classify(value: str, template: bool = False) -> Set[str]:
+    """Classify a literal as another layer's artifact, migration or test."""
+    found: Set[str] = set()
+    name = Path(value).name
+    suffix = "-template" if template else ""
+    # Another layer's test file, by module or path.
+    if value.startswith("test_") and value.endswith(".py"):
+        found.add(f"test:{Path(value).name}")
+    if "test_a_" in value and value.endswith(".py"):
+        found.add(f"test:{Path(value).name}")
+    # Classified by extension exactly once: an earlier version iterated the two
+    # directories and added every .sql as BOTH kinds, so each migration also
+    # surfaced as a missing artifact.
+    if name.endswith(".json"):
+        found.add(f"artifact{suffix}:{name}")
+    elif name.endswith(".sql"):
+        found.add(f"migration{suffix}:{name}")
     return found
 
 
@@ -214,10 +235,42 @@ def closure(layer: str) -> Dict[str, object]:
 
     files: List[Dict[str, object]] = []
     for target in sorted(file_targets):
+        kind, _, name = target.partition(":")
+        base = {"artifact": ARTIFACTS, "migration": MIGRATIONS,
+                "test": TESTS}.get(kind.removesuffix("-template"))
+        is_template = kind.endswith("-template")
+        # A glob names a set of files, not one. `root.glob("0[78][0-9]_a_*.sql")`
+        # is a real dependency on 13 migrations; resolving it as a literal path
+        # reported it MISSING, which is indistinguishable from a real gap and so
+        # trains the reader to ignore the line.
+        if base is not None and any(c in name for c in "*?["):
+            matches = sorted(p for p in base.glob(name) if p.is_file())
+            files.append({
+                "target": target, "kind": "glob",
+                "resolved": None, "tracked": False, "present": False,
+                "matches": [str(p.relative_to(ROOT)) for p in matches],
+                "all_tracked": all(tracked(p) for p in matches) if matches
+                else False,
+                "count": len(matches),
+            })
+            continue
         path = resolve(target)
-        if path is None or not path.exists():
-            files.append({"target": target, "resolved": None,
-                          "tracked": False, "present": False})
+        # An f-string fragment cannot be resolved to a path. Report what it
+        # could match so the coupling stays visible instead of vanishing.
+        if path is None or (is_template and not path.exists()):
+            matches = (sorted(q for q in base.rglob(f"*{name}") if q.is_file())
+                       if base is not None else [])
+            files.append({
+                "target": target, "kind": "template",
+                "resolved": None, "tracked": False, "present": False,
+                "matches": [str(p.relative_to(ROOT)) for p in matches
+                            if p.is_file()],
+            })
+            continue
+        if not path.exists():
+            files.append({"target": target, "kind": kind,
+                          "resolved": None, "tracked": False,
+                          "present": False})
             continue
         rel = path.relative_to(ROOT)
         files.append({
@@ -347,6 +400,26 @@ def render(result: Dict[str, object]) -> str:
     if not result["files"]:
         lines.append("  none named")
     for entry in result["files"]:
+        kind = entry.get("kind")
+        if kind == "glob":
+            count = entry.get("count") or 0
+            state = "all tracked" if entry.get("all_tracked") else (
+                "NONE TRACKED" if count else "matched nothing")
+            lines.append(f"  GLOB      {entry['target']} -> {count} file(s), "
+                         f"{state}")
+            if count:
+                lines.append(f"             {', '.join(entry['matches'])}")
+            continue
+        if kind == "template":
+            matches = entry.get("matches") or []
+            if matches:
+                lines.append(f"  TEMPLATE  {entry['target']} -> matches "
+                             f"{len(matches)} tracked file(s)")
+                lines.append(f"             {', '.join(matches)}")
+            else:
+                lines.append(f"  TEMPLATE  {entry['target']} -> f-string "
+                             "fragment, runtime-computed, nothing to resolve")
+            continue
         if not entry.get("present"):
             lines.append(f"  MISSING  {entry['target']}")
             continue

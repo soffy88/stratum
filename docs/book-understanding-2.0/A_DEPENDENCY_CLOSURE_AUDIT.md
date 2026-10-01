@@ -5,7 +5,7 @@ STATUS=RECORDED
 TASK=STRATUM_A_DEPENDENCY_CLOSURE_AUDIT
 HEAD=dc66bd5
 TOOL=`scripts/a_dependency_closure.py`
-TOOL_SHA256=`fb8af6c13fc4e2af4df2ca4529e52aadc782f30dfe172759512bd43f4ce2a3e5`
+TOOL_SHA256=`163ea0acbf5326ce3b1cdbfe63719839f56352b69795d2df5373ae05a530959d`
 
 ---
 
@@ -260,3 +260,77 @@ python3 scripts/a_dependency_closure.py --layer P7_PROJECTION --verify
 不写 P7 设计
 不提交 P7 测试（本提交之后单独一步）
 ```
+---
+
+## 2026-10-01 — tool blind spots: globs and f-strings
+
+Re-running the closure for P7 surfaced two `MISSING` lines that were both
+false, and both of the same kind: the tool could not express a pattern that is
+a perfectly ordinary way to name a file.
+
+```
+MISSING  migration:0[78][0-9]_a_*.sql
+MISSING  artifact:_projection.json
+```
+
+- the first is a **glob**. `ku_evolution_runner.migration_evidence()` reads the
+  A chain with `root.glob("0[78][0-9]_a_*.sql")`. Resolved as a literal path it
+  cannot exist, so it was reported missing.
+- the second is an **f-string fragment**. `f"book_{book_id}_projection.json"`
+  contributes the literal `_projection.json`, which is not a filename.
+
+Both now report what they actually reach:
+
+```
+GLOB      migration:0[78][0-9]_a_*.sql -> 13 file(s), all tracked
+TEMPLATE  artifact-template:_projection.json -> matches 1 tracked file(s)
+           artifacts/a_repository/p7_projection/book_bs_04a94146a35f_projection.json
+```
+
+The change matters beyond tidiness. A scanner that prints `MISSING` for files
+that are present is a scanner whose `MISSING` gets ignored — and the one line
+that *would* have mattered then looks the same as the noise around it.
+
+The tool was checked against planted failures rather than trusted:
+
+```
+planted                                     reported
+artifact:p9_does_not_exist.json              MISSING          <- still caught
+glob "999_*.sql" matching nothing            matched nothing  <- still caught
+glob "0[78][0-9]_a_*.sql"                    13 files, tracked
+```
+
+The f-string case needed a second fix: `ast.walk` yields an f-string's parts as
+ordinary `Constant` nodes, so the same literal was reported twice — once as a
+template and once as a missing file. Fragments are now gathered first and
+skipped in the plain-constant pass.
+
+## Closure status at 163ea0a
+
+```
+layer            modules  missing  untracked  clean-checkout verify
+P4_1_DURABLE          7        0         0    PASS
+P5_0_CONDITION       20        0         0    FAIL  <- see below
+P5_EVOLUTION         13        0         0    PASS
+P6_IDENTITY          16        0         0    PASS
+P7_PROJECTION        18        0         0    PASS
+```
+
+### OPEN: P5_0_CONDITION cannot be verified from a clean checkout
+
+```
+declared test : tests/architecture/test_a_condition_boundary_contract.py
+on disk       : yes, 30193 bytes
+tracked       : NO  (git status reports it as untracked)
+--verify      : returncode 4, "file or directory not found"
+```
+
+This is **pre-existing and unrelated to the tool change above** — the tool only
+surfaced it. P5.0 Condition/Boundary's contract test was never committed, so its
+gates cannot be reproduced from a tagged tree the way P4.1, P5 Evolution, P6 and
+P7 can.
+
+It is left unfixed here on purpose. The file is untracked work belonging to
+someone else's session; committing a 30KB test that no freeze has audited would
+manufacture evidence for a layer nobody has re-verified. Recorded here so the
+final acceptance cannot silently treat P5.0 as closed.
