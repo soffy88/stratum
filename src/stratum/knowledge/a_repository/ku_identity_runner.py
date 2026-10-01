@@ -523,8 +523,56 @@ def gate_results(result: Dict, ledger: Optional[List[str]]) -> Dict[str, object]
     }
 
 
-GATE_ORDER = ("G1_identity_uniqueness", "G2_historical_replay",
-              "G3_revision_chain", "G4_regression", "G5_authority")
+# ── the verdict ──────────────────────────────────────────────────────────────
+#
+# There is deliberately no tuple of gate names here.
+#
+# This file used to carry `GATE_ORDER`, five names, while `gate_results`
+# returned fourteen. Nine gates printed PASS or FAIL and could not affect the
+# outcome, because the verdict read the list rather than the results. Measured:
+#
+#   no A_P6_LEDGER_FILE  ->  schema = NOT_EXECUTED  ->  A_P6_IDENTITY = PASS
+#   with ledger          ->  schema = PASS          ->  A_P6_IDENTITY = PASS
+#
+# A gate that never executed produced a PASS. `gate_results`' own docstring said
+# "A gate that cannot be evidenced is NOT_EXECUTED", which was true and was not
+# honoured downstream.
+#
+# A parallel list is the whole mechanism of that failure, and it can drift again
+# the moment a gate is added. So the verdict derives from `gate_results` itself
+# and there is exactly one place that decides.
+
+VERDICT_PASS = "PASS"
+VERDICT_FAIL = "FAIL"
+VERDICT_BLOCKED = "BLOCKED"
+
+
+def verdict(gates: Dict[str, str]) -> str:
+    """The single authority for the P6 verdict. Derived from `gate_results`.
+
+    Three outcomes, not two:
+
+      every gate PASS          -> PASS
+      any gate FAIL            -> FAIL     (positive evidence of breakage)
+      any gate NOT_EXECUTED    -> BLOCKED  (evidence missing, not merit)
+      no gates at all          -> BLOCKED  (a vacuous all() would pass)
+
+    FAIL outranks NOT_EXECUTED: if a gate actually failed we know something is
+    wrong, and reporting only "blocked" would understate it.
+
+    An unrecognised status is treated as BLOCKED rather than PASS. A new gate
+    status someone forgets to handle here must not become a silent pass.
+    """
+    if not gates:
+        return VERDICT_BLOCKED
+    statuses = set(gates.values())
+    if VERDICT_FAIL in statuses:
+        return VERDICT_FAIL
+    if "NOT_EXECUTED" in statuses:
+        return VERDICT_BLOCKED
+    if statuses == {VERDICT_PASS}:
+        return VERDICT_PASS
+    return VERDICT_BLOCKED
 
 
 # ── reporting ────────────────────────────────────────────────────────────────
@@ -563,7 +611,6 @@ def artifact(result: Dict, ledger: Optional[List[str]]) -> Dict:
     """The evidence artifact the task asks for."""
     summary = report(result)
     gates = gate_results(result, ledger)
-    passed = all(gates[name] == "PASS" for name in GATE_ORDER)
     return {
         "task": "A_P6_KU_IDENTITY",
         "book": summary["book"].split(" ")[0],
@@ -579,7 +626,7 @@ def artifact(result: Dict, ledger: Optional[List[str]]) -> Dict:
         "resolution": summary["resolution"],
         "unregistered_units": summary["unregistered_units"],
         "gate_results": gates,
-        "A_P6_IDENTITY": "PASS" if passed else "BLOCKED",
+        "A_P6_IDENTITY": verdict(gates),
         "ledger": ledger,
         "units": summary["units"],
     }
