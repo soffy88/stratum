@@ -190,6 +190,25 @@ def _point_name(point: dict) -> str:
     return ""
 
 
+_UNPARSED_DIR = _pl.Path("/tmp/plan_unparsed")
+
+
+def _dump_unparsed(chapter: int, attempt: int, raw: str) -> None:
+    """规划返回无法解析时把原文落盘(最多留 12 份, 防止撑爆 /tmp)."""
+    try:
+        _UNPARSED_DIR.mkdir(parents=True, exist_ok=True)
+        sub = os.getenv("SUBSTRATE", "unknown")
+        f = _UNPARSED_DIR / f"{sub}_ch{chapter}_a{attempt}.txt"
+        f.write_text(
+            f"len={len(raw)}\n---\n{raw[:4000]}\n", encoding="utf-8", errors="replace"
+        )
+        old = sorted(_UNPARSED_DIR.glob("*.txt"), key=lambda p: p.stat().st_mtime)
+        for p in old[:-12]:
+            p.unlink(missing_ok=True)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 async def _plan(llm, text, n):
     """规划仍喂全章(不截断); 额外为每个知识点定位 pos 供 _synth 用."""
     # Keep the instruction before source text and bound each request.  Several
@@ -228,6 +247,11 @@ async def _plan(llm, text, n):
                 parsed_points = _parse_points(t)
                 if parsed_points:
                     return parsed_points
+                # ★2026-10-01 解析失败原本静默 return [], 报出来只有一句
+                #   "规划未返回知识点" —— 无法区分"模型返回散文" / "JSON 截断" /
+                #   "返回空" / "返回错误文本(配额)"。把原始返回落到文件, 否则
+                #   每次排查都只能靠猜(ch2~ch7 连续快速失败, 明显不是超时)。
+                _dump_unparsed(n, parse_attempt, t)
             return []
 
     planned = await asyncio.gather(*(plan_one(ck) for ck in chunks))

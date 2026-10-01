@@ -158,6 +158,13 @@ def _make_deepseek_caller(
             )
         return h
 
+    def _sneaky(r) -> str:
+        """尽力读出响应体文本, 用于识别"错误伪装成 200 内容"的响应."""
+        try:
+            return r.text or ""
+        except Exception:  # noqa: BLE001
+            return ""
+
     def _post_with_retry(payload: dict, max_retries: int = 5):
         # ★429限流是瞬时的(尤其NIM key被econ_zh/misc/BU等多个进程共用, _throttle()只在
         # 单进程内生效, 挡不住跨进程撞车), 之前遇到429直接抛异常、整本书(哪怕[1/5]已经
@@ -166,8 +173,17 @@ def _make_deepseek_caller(
         #   判 exit(2) 隔离——实测 misc 飞轮 34 本书全毁于 httpx.RemoteProtocolError。
         #   现在对 httpx.HTTPError(TransportError/RemoteProtocolError/ConnectError/Timeout
         #   等)一视同仁重试, 仅 4xx(除429)/5xx 非瞬时语义不重试。
+        import re as _re
         import time as _t
         import httpx as _httpx
+
+        # 网关在上游配额/限流时, 常把错误文本包成 HTTP 200 的 choices[].content
+        _ERR_TEXT = _re.compile(
+            r"rejected the request|usage limit has been reached|rate_limit_exceeded"
+            r"|GoUsageLimitError|FreeTierError|insufficient_quota"
+            r"|(?<!\w)model .{0,80}end of life",
+            _re.I,
+        )
 
         def _fallback(payload: dict):
             if not fallback:
@@ -240,6 +256,24 @@ def _make_deepseek_caller(
                 # 4xx(非429, 如 401/404/400)不重试 → 直接 fallback
                 return _fallback(payload)
             resp.raise_for_status()
+
+            # ★2026-10-01 网关把上游错误【当正常内容】用 HTTP 200 返回, 于是
+            #   上面所有状态码分支都不命中, fallback 永远不触发:
+            #     200 {"choices":[{"message":{"content":"openai rejected the
+            #          request (HTTP 429): {"error":{"message":"The usage limit
+            #          has been reached","code":"rate_limit_exceeded"}}"}}]}
+            #   实测后果: openai 配额早已耗尽, 但所有调用都被当成"成功且回复是
+            #   这段错误文本" → 规划器解析不出 JSON → 报"规划未返回知识点",
+            #   整章 FAILED, 而日志里既没有 429 也没有 fallback, 排查绕了很大弯。
+            #   识别这类"错误伪装成内容"的响应, 当失败处理并走 fallback。
+            _body = _sneaky(resp)
+            if _ERR_TEXT.search(_body or ""):
+                print(
+                    f"  ⚠ 网关以 200 返回错误文本(配额/限流) → fallback: "
+                    f"{_body[:110]}",
+                    flush=True,
+                )
+                return _fallback(payload)
             return resp
         # 循环耗尽(理论上不可达, 防御) → fallback
         return _fallback(payload)
