@@ -375,3 +375,95 @@ KU_CANDIDATES: List[Dict] = [
         "source_span": "在有文字历史出现之前就已经普及",
     },
 ]
+
+# ── P5 review ledger (frozen, deterministic) ────────────────────────────────
+#
+# The reviews are frozen here for the same reason the candidates are: a
+# lifecycle whose inputs live in the service is a lifecycle nobody can
+# replay. Each entry names the unit it reviews and the evidence it was
+# read against — a review with no evidence is an opinion, and opinions are
+# not recorded in A仓.
+#
+# `confidence` is a measurement of how well a unit is supported, not a
+# probability that the world is as it says. It is recorded beside the
+# review that produced it and is never allowed to move a unit on its own.
+
+KU_REVIEWS: List[Dict] = [
+    {
+        "key": "rv_rome_rate_cap_confirmed",
+        "unit_key": "kc_rome_rate_cap",
+        "review_type": "CONFIRMED",
+        "evidence_key": "ev_rome_rate_cap",
+        "rationale": (
+            "所引跨度逐字给出「贷款的利息被限制为不得超过每年8.333%」，"
+            "命题的利率、基数与年度口径均可在跨度内核对，无需改动。"
+        ),
+    },
+    {
+        "key": "rv_solon_contrast_challenged",
+        "unit_key": "kc_solon_abolished_rate_cap",
+        "review_type": "CHALLENGED",
+        "evidence_key": "ev_solon_no_interest_limit",
+        "rationale": (
+            "命题含「与巴比伦法典形成鲜明对比」，而所引跨度"
+            "（索伦的法典取消了对利率的所有限制）不含该对比；"
+            "对比句在证据首句，需扩大跨度方可引用。状态维持 ACTIVE，"
+            "仅记录异议。"
+        ),
+        "confidence": 0.80,
+    },
+    {
+        "key": "rv_athens_quarantined",
+        "unit_key": "kc_athens_debt_crisis",
+        "review_type": "QUARANTINED",
+        "evidence_key": "ev_solon_crisis",
+        "rationale": (
+            "原文以「其部分起因」作出限定，命题却写成因果断言，"
+            "并补入跨度未出现的「前6世纪」；在跨度与命题一致之前，"
+            "该单元保留可引用但不得直接采信。"
+        ),
+        "confidence": 0.55,
+    },
+    {
+        "key": "rv_athens_released",
+        "unit_key": "kc_athens_debt_crisis",
+        "review_type": "RELEASED",
+        "evidence_key": "ev_solon_crisis",
+        "rationale": (
+            "复核后确认限定语与年代均可在同一跨度内找到对应表述，"
+            "隔离理由不成立，单元回到 ACTIVE；原隔离记录保留在事件流中。"
+        ),
+        "confidence": 0.90,
+    },
+]
+
+# ── P5 revisions (frozen, deterministic) ────────────────────────────────────
+#
+# A revision is a new candidate over the SAME evidence row, re-run through
+# classification, verification and the freeze, then persisted as a new
+# durable unit. The prior unit is not edited and not deleted; it is
+# superseded, which is a fact recorded beside it.
+#
+# `basis` is the reviewer's stated reason. It is audit text: it records
+# what the reviewer said, never a new claim about the book.
+
+KU_REVISIONS: List[Dict] = [
+    {
+        "key": "rev_hammurabi_code_anchor",
+        "prior_unit_key": "kc_hammurabi_code",
+        "evidence_key": "ev_hammurabi_date",
+        "content": "《汉谟拉比法典》（约公元前1800年）是最早的成文信贷法典之一",
+        "source_span": (
+            "在大约公元前1800年，古代巴比伦王朝的第一个国王汉谟拉比"
+            "（Hammurabi）给他的臣民制订了第一部已知最早的正式法典。"
+        ),
+        "candidate_type": "FACT",
+        "confidence": 0.95,
+        "basis": (
+            "原命题断言「约前1800年」，而所引跨度"
+            "（第一部已知最早的正式法典）不含年代，"
+            "引用者无法在跨度内核对该断言；"
+            "改以整句为跨度，并用原文的「公元前」表述。"
+        ),
+    },
+]
