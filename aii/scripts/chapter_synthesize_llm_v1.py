@@ -239,7 +239,12 @@ async def _plan(llm, text, n):
                     llm,
                     messages=[{"role": "user", "content": content}],
                     system=PLAN_SYS,
-                    max_tokens=4000,
+                    # ★2026-10-01 4000 → 8000: 带推理的模型(veya-free 走的就是
+                    #   reasoning 模型)对长章会先输出一段推理散文, 再给 JSON。
+                    #   实测 cs_en_8ce0fd912c ch10 在 4000 处被截断, 返回里
+                    #   一个 '{' 都没有 → 解析必失败。max_tokens 只是上界, 正常
+                    #   响应只占 ~500 字符, 抬高只影响被截断的那种情况。
+                    max_tokens=int(os.getenv("PLAN_MAX_TOKENS", "8000")),
                 )
                 t = "".join(
                     b.get("text", "") for b in r.get("content", []) if b.get("type") == "text"
