@@ -32,6 +32,21 @@ class CandidateType(str, Enum):
     MECHANISM = "MECHANISM"
 
 
+class KIClassification(str, Enum):
+    """P2 candidate classification. Classification ONLY.
+
+    Assigning a classification reads the candidate and its own evidence
+    and returns a type. It never compares candidates against each other
+    and never writes a conclusion about the world.
+    """
+
+    FACT = "FACT"
+    EVENT = "EVENT"
+    CONCEPT = "CONCEPT"
+    RELATION = "RELATION"
+    ARGUMENT = "ARGUMENT"
+
+
 class KUCandidateStatus(str, Enum):
     EXTRACTED = "EXTRACTED"
     REVIEWED = "REVIEWED"
@@ -45,5 +60,6 @@ class PipelineStage(str, Enum):
     READ = "read"
     EXTRACT = "extract"
     CANDIDATE = "candidate"
+    QUALITY = "quality"
     VERIFY = "verify"
     FREEZE = "freeze"

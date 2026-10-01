@@ -74,6 +74,12 @@ def build_baseline() -> Dict:
                 "page": item["page_number"],
                 "section": item["section"],
                 "chapter": C.CHAPTER,
+                # Canonical locator fields per A_SOURCE_LOCATOR_SPEC.md
+                "source_type": C.SOURCE_FORMAT,
+                "source_id": sv_id,
+                "content_hash": C.CHECKSUM,
+                "logical_locator": f"{C.CHAPTER}/{item['section']}",
+                "physical_locator": f"p.{item['page_number']}",
             },
             content_span=item["content_span"],
             extractor_version=item["extractor_version"],

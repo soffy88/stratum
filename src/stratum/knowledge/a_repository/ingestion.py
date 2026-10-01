@@ -79,6 +79,8 @@ class KUCandidate:
     confidence: float
     source_span: str
     status: str = "EXTRACTED"
+    classification: Optional[str] = None
+    classified_at: Optional[str] = None
 
 
 class InMemoryAStore:
@@ -91,6 +93,9 @@ class InMemoryAStore:
         self.evidence: Dict[str, ReadingEvidence] = {}
         self.ku_candidates: Dict[str, KUCandidate] = {}
         self._file_hash_index: Dict[str, str] = {}
+        # P2 additions (migration 071)
+        self.quality: Dict[str, "EvidenceQuality"] = {}
+        self._quality_by_evidence: Dict[str, str] = {}
 
 
 class AIngestionPipeline:
