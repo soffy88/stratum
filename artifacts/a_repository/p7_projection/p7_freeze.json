@@ -1,0 +1,101 @@
+{
+  "A_P7_BOOK_UNDERSTANDING_PROJECTION": "PASS",
+  "aliases_resolvable": 11,
+  "artifact": "book_bs_04a94146a35f_projection.json",
+  "authority": "A_REPOSITORY",
+  "authority_drift": {
+    "artifact": {},
+    "external_imports": []
+  },
+  "base_sha": "5c33a2dc602a22855da4dec65eb472861381f2d5",
+  "book_id": "bs_04a94146a35f",
+  "chain_fingerprints": {
+    "070": "179e9e26c17f13e6",
+    "071": "6116f929ff5976a5",
+    "072": "7a210f1130389037",
+    "073": "4285c1be7a6c4a0c",
+    "074": "9d3651f35668ddd3",
+    "075": "b29432e8340faedc",
+    "076": "2b9de6b42e1c1d87",
+    "077": "fe4d613f5bb95508",
+    "078": "ed963f7e82854b04",
+    "079": "58910b307ea79b1f",
+    "080": "6215e46078709bc8",
+    "081": "0e9ebc2ddc443412",
+    "082": "db3aa8f3f7673c20"
+  },
+  "chain_read": 13,
+  "chapters": 1,
+  "content_hash": "aph_cf5a53e4b5965e25",
+  "coverage": {
+    "book_id": "bs_04a94146a35f",
+    "coverage_ratio": 0.5556,
+    "disclaimer": "coverage != correctness: this counts how much content has an evidence chain reaching a source version, not how much of it is true.",
+    "evidence_coverage": 1.0,
+    "rejected_candidates": 7,
+    "superseded_units": 1,
+    "total_candidates": 18,
+    "verified_units": 10
+  },
+  "db_acceptance": "PASS",
+  "db_acceptance_mode": "read-only cross-check against staging",
+  "db_mutation": 0,
+  "declared_migrations": 0,
+  "dependency_closure": "PASS",
+  "destructive_in_chain_read": 0,
+  "determinism": "aph_cf5a53e4b5965e25 x3=identical",
+  "forbidden_identifier_fields": [],
+  "gates": {
+    "G1_authority": "PASS",
+    "G1_no_new_id": "PASS",
+    "G1_read_only": "PASS",
+    "G2_traceability": "PASS",
+    "G3_determinism": "PASS",
+    "G4_replay": "PASS",
+    "G5_isolation": "PASS"
+  },
+  "identifier_fields": [
+    "book_id",
+    "last_run_id",
+    "source_version_id"
+  ],
+  "identity_drift": 0,
+  "isolation_drift": {},
+  "projection_version": "a-p7-v0.1",
+  "reading_map": {
+    "book_id": "bs_04a94146a35f",
+    "chapters": [
+      {
+        "chapter_id": "第一章 古代时期的信贷",
+        "evidence_count": 17,
+        "ku_count": 10,
+        "title": "第一章 古代时期的信贷",
+        "verified_count": 10
+      }
+    ],
+    "last_run_id": "arr_d0d1473d79fc",
+    "reading_status": "READING",
+    "source_version_id": "sv_f548f51a5df5"
+  },
+  "replay": "PASS",
+  "schema_change": 0,
+  "source_version_id": "sv_f548f51a5df5",
+  "stage": "P7_PROJECTION",
+  "superseded_units": 1,
+  "task": "A_P7_BOOK_UNDERSTANDING_PROJECTION",
+  "traceability": "100%",
+  "traversal_units": 10,
+  "unit_count": 11,
+  "verdict": "PASS",
+  "verdict_inputs": {
+    "contract": "FAIL > BLOCKED > PASS; derived from gate_results, no hardcoded gate list",
+    "gate_count": 7,
+    "gates_failed": [],
+    "gates_not_executed": [],
+    "gates_unknown_status": [],
+    "statuses_present": [
+      "PASS"
+    ],
+    "verdict": "PASS"
+  }
+}
