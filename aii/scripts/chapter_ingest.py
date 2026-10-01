@@ -361,28 +361,55 @@ def chapter_numbers(text):
 #   实测 cs_en_8ce0fd912c 的 ch15(Bibliography, 74k 字符全是 [ABC+16] 引用)
 #   和 ch16(Author's Biography) 让 planner 抽不出东西, 每轮白重试。
 _BACKMATTER_HEAD = re.compile(
-    r"(?i)^\s*#{0,3}\s*\[?\**\s*"
-    r"(?:end\s*notes|notes|acknowledg(?:e)?ments|acknowledgements"
-    r"|about\s+the\s+author|about\s+the\s+authors|also\s+by\s+this\s+author"
-    r"|author[’'s]*s?\s+biograph\w*|biograph\w*\s+of\s+the\s+author"
+    r"(?i)^\s*#{0,3}\s*\[?\**\s*(?:"
+    # ── 前置材料(2026-10-01) ──
+    # 模型对这些章正确返回 {"points":[]} —— 它们本就没知识点, 却被判 FAILED
+    # 后每轮重试, 白烧配额。实测:
+    #   cs_en_8ce0fd912c ch1 (10583 字符, 全文是编委名单/版权页)
+    #   cs_en_8ce0fd912c ch3 (# Preface)
+    #   cs_en_0fc8da609c ch1 (0 字符)
+    r"table\s+of\s+contents|contents|目录|前言|序言|版权|封面|扉页"
+    r"|preface|foreword|dedication|epigraph"
+    # ── 书末 back-matter ──
+    r"|end\s*notes|notes|acknowledg(?:e)?ments|acknowledgements"
+    r"|about\s+the\s+authors?|also\s+by\s+this\s+author"
+    r"|author[\u2019'\u2018s]*s?\s+biograph\w*|biograph\w*\s+of\s+the\s+author"
     r"|index|glossary|bibliography|references|works\s+cited"
-    r"|copyright|errata|colophon)"
+    r"|copyright|errata|colophon"
+    r")"
 )
 
 
 def _is_backmatter_chapter(text: str, n: int) -> bool:
-    """该章标题是否 back-matter(ENDNOTES/致谢/作者简介/附录…)。是则不计入内容章."""
+    """该章是否非内容章(前置材料/书末事务性章节/空章)。是则不计入内容章.
+
+    判定: 标题命中特征, 或该章几乎无正文(纯封面页/空壳)。
+    """
     starts = chapter_starts(text)
     if n not in starts:
         return False
     s = starts[n]
     e = starts.get(n + 1, len(text))
     head = text[s : s + 200]
-    # 标题行(前两行)命中 back-matter 特征
+    # 标题行(前两行)命中非内容特征
     for line in head.splitlines()[:2]:
         if _BACKMATTER_HEAD.search(line):
             return True
+    # ★2026-10-01 纯封面页/空壳: 标题外的正文几乎为空。实测
+    #   cs_en_0fc8da609c ch1 切片长度 0 → 模型正确回 {"points":[]}, 却每次
+    #   都被判 FAILED 重试。留 200 字符容差(封面页常有少量版权文字)。
+    body = text[s:e]
+    if len(_strip_md_noise(body)) < 200:
+        return True
     return False
+
+
+_MD_NOISE = re.compile(r"[#*\[\]()_\-—·•>\s]+")
+
+
+def _strip_md_noise(s: str) -> str:
+    """去掉 markdown 装饰后的可读字符数(粗略衡量章是否有实质正文)."""
+    return _MD_NOISE.sub("", s or "")
 
 
 
