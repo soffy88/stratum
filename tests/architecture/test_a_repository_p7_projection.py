@@ -40,11 +40,12 @@ from stratum.knowledge.a_repository.projection import (  # noqa: E402
     identifier_keys,
 )
 from stratum.knowledge.a_repository.verdict import verdict  # noqa: E402
-from stratum.knowledge.a_repository.projection_builder import (  # noqa: E402
-    report as B_report,
-)
+import stratum.knowledge.a_repository.projection_builder as B  # noqa: E402
 from stratum.knowledge.a_repository.projection_builder import (  # noqa: E402
     ALLOWED_IMPORT_ROOTS,
+    FREEZE_EVIDENCE,
+    freeze_artifact,
+    freeze_blockers,
     ISOLATED_TABLES,
     ProjectionError,
     ProjectionSource,
@@ -612,7 +613,6 @@ def test_every_gate_passes(projection):
 
 def test_the_gate_list_is_not_maintained_by_hand(projection):
     """The parallel list is gone, so a new gate cannot fall outside it."""
-    import stratum.knowledge.a_repository.projection_builder as B
     assert not hasattr(B, "GATE_ORDER"), \
         "a hardcoded gate list is back; it drifted from 5 to 7 while it was there"
     report = B.report(projection)
@@ -623,7 +623,7 @@ def test_the_gate_list_is_not_maintained_by_hand(projection):
 
 
 def test_the_verdict_is_derived_from_the_gates(projection):
-    report = B_report(projection)
+    report = B.report(projection)
     gates = report["gates"]
     assert report["A_P7_BOOK_UNDERSTANDING_PROJECTION"] == verdict(gates)
     assert report["verdict_inputs"]["gate_count"] == len(gates)
@@ -762,7 +762,6 @@ def test_a_failing_gate_changes_the_reported_verdict(projection, monkeypatch):
     This is the P5/P6 defect in its exact shape: a gate reported to the reader
     and left out of the thing that decides the outcome.
     """
-    import stratum.knowledge.a_repository.projection_builder as B
     monkeypatch.setattr(B, "no_new_id_gate", lambda *a, **k: "FAIL")
     blocked = B.report(projection)
     assert blocked["gates"]["G1_no_new_id"] == "FAIL"
@@ -774,3 +773,74 @@ def test_a_failing_gate_changes_the_reported_verdict(projection, monkeypatch):
     waiting = B.report(projection)
     assert waiting["A_P7_BOOK_UNDERSTANDING_PROJECTION"] == "BLOCKED", \
         "an unevidenced gate must block, not pass"
+
+
+# -- freeze gate ---------------------------------------------------------------
+#
+# Same refusal the P5 Evolution freeze needed, and for the same reason: the
+# stage around a verdict looks green long before the verdict itself can.
+
+def test_the_freeze_artifact_carries_the_stage_evidence(projection, monkeypatch):
+    for key in FREEZE_EVIDENCE:
+        monkeypatch.setenv(f"A_P7_{key.upper()}", "PASS")
+    doc = freeze_artifact(projection)
+    for key in ("stage", "base_sha", "gates", "verdict",
+                "dependency_closure", "db_acceptance"):
+        assert key in doc, f"freeze artifact is missing {key}"
+    assert doc["stage"] == "P7_PROJECTION"
+    assert doc["declared_migrations"] == 0
+    assert doc["chain_read"] == 13, "the A chain is 070..082"
+    assert doc["verdict"] == verdict(doc["gates"])
+
+
+def test_absent_freeze_evidence_blocks(projection, monkeypatch):
+    for key in FREEZE_EVIDENCE:
+        monkeypatch.delenv(f"A_P7_{key.upper()}", raising=False)
+    doc = freeze_artifact(projection)
+    # Every gate passes here, so the only reason to refuse is the absent
+    # evidence. Stated exactly, because "one of these or the other" is not a
+    # specification.
+    assert doc["verdict"] == "PASS"
+    assert sorted(freeze_blockers(doc)) == sorted(FREEZE_EVIDENCE)
+
+
+def test_a_blocked_layer_is_not_frozen(projection, monkeypatch):
+    for key in FREEZE_EVIDENCE:
+        monkeypatch.setenv(f"A_P7_{key.upper()}", "PASS")
+    monkeypatch.setattr(B, "no_new_id_gate", lambda *a, **k: "FAIL")
+    doc = freeze_artifact(projection)
+    assert doc["verdict"] == "FAIL"
+    assert freeze_blockers(doc) == ["layer_verdict:FAIL"], \
+        "complete surrounding evidence must not freeze a failing layer"
+
+
+def test_main_writes_no_freeze_artifact_when_blocked(projection, monkeypatch,
+                                                     tmp_path):
+    import sys as _sys
+    target = tmp_path / "p7_freeze.json"
+    monkeypatch.setattr(_sys, "argv", ["projection_builder"])
+    for key in FREEZE_EVIDENCE:
+        monkeypatch.setenv(f"A_P7_{key.upper()}", "PASS")
+    monkeypatch.setenv("A_P7_FREEZE_ARTIFACT", str(target))
+    monkeypatch.setattr(B, "build_projection", lambda *a, **k: projection)
+    monkeypatch.setattr(B, "no_new_id_gate", lambda *a, **k: "FAIL")
+    with pytest.raises(SystemExit) as exit_info:
+        B.main()
+    assert exit_info.value.code == 1
+    assert not target.exists(), "a blocked freeze wrote an artifact anyway"
+
+
+def test_main_writes_the_freeze_artifact_when_green(projection, monkeypatch,
+                                                    tmp_path):
+    import sys as _sys
+    target = tmp_path / "p7_freeze.json"
+    monkeypatch.setattr(_sys, "argv", ["projection_builder"])
+    for key in FREEZE_EVIDENCE:
+        monkeypatch.setenv(f"A_P7_{key.upper()}", "PASS")
+    monkeypatch.setenv("A_P7_FREEZE_ARTIFACT", str(target))
+    monkeypatch.setattr(B, "build_projection", lambda *a, **k: projection)
+    B.main()
+    written = json.loads(target.read_text(encoding="utf-8"))
+    assert written["verdict"] == "PASS"
+    assert len(written["chain_fingerprints"]) == 13
+    assert written["db_mutation"] == 0 and written["schema_change"] == 0

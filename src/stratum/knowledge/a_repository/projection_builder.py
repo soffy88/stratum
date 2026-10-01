@@ -47,11 +47,13 @@ because reporting them is P7's job and fixing them is not:
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from .identity import KUIdentityService
+from .ku_evolution_runner import base_sha, migration_evidence
 from .ku_identity_runner import build_identity
 from .projection import (
     AUTHORITY,
@@ -73,7 +75,12 @@ from .projection import (
     identifier_keys,
 )
 from .verification import VerificationStatus
-from .verdict import VERDICT_BLOCKED, verdict, verdict_inputs
+from .verdict import (
+    VERDICT_BLOCKED,
+    VERDICT_PASS,
+    verdict,
+    verdict_inputs,
+)
 
 
 #: §13 fixes the directory; §4 illustrates the file name. Both are honoured:
@@ -449,12 +456,13 @@ def write_artifact(projection: BookUnderstandingProjection,
 #: rather than a promise, since P7 cannot read a repository it cannot
 #: import.
 ALLOWED_IMPORT_ROOTS = frozenset({
-    "__future__", "json", "re", "pathlib", "typing", "dataclasses",
+    "__future__", "json", "os", "re", "pathlib", "typing", "dataclasses",
     "hashlib",
-    "pilot_corpus", "identity", "ku_identity_runner", "projection",
-    "verification", "verdict",
-    ".", ".identity", ".ku_identity_runner", ".projection",
-    ".verification", ".verdict", ". import pilot_corpus as C",
+    "pilot_corpus", "identity", "ku_identity_runner", "ku_evolution_runner",
+    "projection", "verification", "verdict",
+    ".", ".identity", ".ku_identity_runner", ".ku_evolution_runner",
+    ".projection", ".verification", ".verdict",
+    ". import pilot_corpus as C",
 })
 
 
@@ -778,7 +786,75 @@ def report(projection: BookUnderstandingProjection) -> Dict:
     }
 
 
+# ── freeze ────────────────────────────────────────────────────────────────────
+
+#: Evidence a freeze cannot be written without. Absent evidence stays
+#: UNVERIFIED and blocks, exactly as in P5 Evolution: the P5 freeze gate was
+#: first written to check only this and let a blocked layer through.
+FREEZE_EVIDENCE = ("dependency_closure", "db_acceptance")
+
+
+def freeze_artifact(projection: BookUnderstandingProjection) -> Dict:
+    """The evidence artifact that closes this stage.
+
+    P7 declares no migration, so `declared_migrations` is 0 by design rather
+    than by measurement. The A chain it reads is fingerprinted anyway: a
+    read-only projection is still entitled to say which rows it read, and the
+    chain moved from 7 to 13 underneath this stage's spec.
+    """
+    gates = gate_results(projection)
+    doc = report(projection)
+    fingerprints, destructive = migration_evidence()
+    doc.update({
+        "stage": "P7_PROJECTION",
+        "base_sha": base_sha(),
+        "declared_migrations": 0,
+        "chain_read": len(fingerprints),
+        "chain_fingerprints": fingerprints,
+        "destructive_in_chain_read": destructive,
+        "dependency_closure": os.environ.get(
+            "A_P7_DEPENDENCY_CLOSURE", "UNVERIFIED"),
+        "db_acceptance": os.environ.get("A_P7_DB_ACCEPTANCE", "UNVERIFIED"),
+        "db_acceptance_mode": "read-only cross-check against staging",
+        "verdict_inputs": verdict_inputs(gates),
+        "verdict": verdict(gates),
+    })
+    return doc
+
+
+def freeze_blockers(doc: Dict) -> List[str]:
+    """Why a freeze may not be written. Empty means it may be.
+
+    Two kinds of "no", both required: evidence that was never recorded, and a
+    layer verdict that never reached PASS.
+    """
+    blockers = [key for key in FREEZE_EVIDENCE if doc[key] != VERDICT_PASS]
+    if doc["verdict"] != VERDICT_PASS:
+        blockers.append(f"layer_verdict:{doc['verdict']}")
+    return blockers
+
+
 def main() -> None:
+    target = os.environ.get("A_P7_FREEZE_ARTIFACT")
+    if target:
+        doc = freeze_artifact(build_projection())
+        blockers = freeze_blockers(doc)
+        if blockers:
+            print(json.dumps({"A_P7_PROJECTION_FREEZE": VERDICT_BLOCKED,
+                              "blockers": blockers,
+                              "verdict": doc["verdict"]},
+                             ensure_ascii=False, indent=2))
+            raise SystemExit(1)
+        Path(target).write_text(
+            json.dumps(doc, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8")
+        print(json.dumps({"A_P7_PROJECTION_FREEZE": doc["verdict"],
+                          "artifact": target,
+                          "base_sha": doc["base_sha"],
+                          "db_mutation": doc["db_mutation"],
+                          "schema_change": doc["schema_change"]},
+                         ensure_ascii=False, indent=2))
+        return
     projection = build_projection()
     path = write_artifact(projection)
     doc = report(projection)
