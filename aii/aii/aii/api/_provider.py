@@ -181,7 +181,9 @@ def _make_deepseek_caller(
         _ERR_TEXT = _re.compile(
             r"rejected the request|usage limit has been reached|rate_limit_exceeded"
             r"|GoUsageLimitError|FreeTierError|insufficient_quota"
-            r"|(?<!\w)model .{0,80}end of life",
+            r"|(?<!\w)model .{0,80}end of life"
+            # veya 网关把内部兜底失败也包成 200 内容: "gpt-5.6-luna 兜底失败"
+            r"|兜底失败|全部候选(模型)?无效|all candidates? invalid",
             _re.I,
         )
 
