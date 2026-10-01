@@ -215,6 +215,34 @@ def _bare_english_chapter_starts(text):
     return {n: min(poses) for n, poses in cand.items()}
 
 
+# ★2026-10-01 markitdown 会把 R 的 summary()/head() 等【代码块输出】原样转成
+#   markdown 标题行, 于是真章节被挤掉。实测《Machine Learning for Hackers》
+#   (15 个真 ## 章节) 只认出 3 章, 因为下面这些代码回显被当成了 H1:
+#     # Min. 1st Qu. Median Mean 3rd Qu. Max. #54.26 63.51 66.32 66.37 69.17
+#     # Next is based on senders in threads, and threads themselves thread.
+#     # Calculate rank by interacting all weights rank <- prod(from, thread.f
+#   H1 优先分支会优先采用它们, 真 ## 章节全被忽略 → 章节数严重偏少 →
+#   后续按章号切片时大量章号不存在 → planner 报"规划未返回知识点"。
+_CODE_ECHO = re.compile(
+    r"(?:"
+    r"<-\s|<<-|\$>\s|%\s*in%\s|%\s*<-\s"          # R/Python 赋值、管道
+    r"|\bMin\.\s|\bQ[1-4]\b|\bMedian\b|\bNA's\b"   # R summary() 表头
+    r"|\[\d+\]\s*[\d.]"                            # R 向量打印 [1] 0.18 0.45
+    r"|^#\s*[\d.]|^\d+\s+[\d.]+\s+[\d.]+"          # 裸数值表
+    r"|function\s*\(|\{\s*$|^\s*\}\s*$"          # 代码块
+    r"|\bfor\s*\(\b|\bwhile\s*\(\b|^\s*return\s"  # 控制流
+    r")"
+)
+
+
+def _is_code_echo(title: str) -> bool:
+    """标题行其实是代码回显 / 数据表输出, 不是章节标题."""
+    t = (title or "").strip()
+    if not t:
+        return True
+    return bool(_CODE_ECHO.search(t))
+
+
 def _md_heading_starts(text):
     """最后兜底: 任意 markdown 标题行当章节起点.
     适用: 书有 '#'/'##' 标题但无 'Chapter N'/'第N章'/'N.' 编号格式
@@ -231,6 +259,8 @@ def _md_heading_starts(text):
     # 去重(页眉/目录重复), 保留首次出现位置
     seen: dict[str, int] = {}
     for m in re.finditer(r"(?m)^#\s+([^\n]{2,80})$", text):
+        if _is_code_echo(m.group(1)):
+            continue
         seen.setdefault(m.group(1).strip(), m.start())
     h1_uniq = sorted(seen.values())
     if len(h1_uniq) >= 3:
@@ -242,6 +272,8 @@ def _md_heading_starts(text):
             return {i + 1: picks[i] for i in range(len(picks))}
     seen2: dict[str, int] = {}
     for m in re.finditer(r"(?m)^##\s+([^\n]{2,80})$", text):
+        if _is_code_echo(m.group(1)):
+            continue
         seen2.setdefault(m.group(1).strip(), m.start())
     h2_uniq = sorted(seen2.values())
     if len(h2_uniq) >= 3:
