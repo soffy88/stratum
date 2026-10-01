@@ -844,3 +844,21 @@ def test_main_writes_the_freeze_artifact_when_green(projection, monkeypatch,
     assert written["verdict"] == "PASS"
     assert len(written["chain_fingerprints"]) == 13
     assert written["db_mutation"] == 0 and written["schema_change"] == 0
+
+
+def test_the_freeze_artifact_honours_its_own_base_sha_override(projection,
+                                                               monkeypatch):
+    """Regression: `base_sha` read A_P5_BASE_SHA unconditionally.
+
+    P7 imported that helper, so setting A_P7_BASE_SHA was silently ignored and
+    the value fell back to `git rev-parse HEAD`. It produced the right number
+    here only because the freeze was generated on top of the tree it names.
+    """
+    monkeypatch.setenv("A_P7_BASE_SHA", "deadbeef" * 5)
+    assert freeze_artifact(projection)["base_sha"] == "deadbeef" * 5
+
+
+def test_a_foreign_override_does_not_leak_between_layers(projection, monkeypatch):
+    monkeypatch.setenv("A_P7_BASE_SHA", "a" * 40)
+    monkeypatch.setenv("A_P5_BASE_SHA", "b" * 40)
+    assert freeze_artifact(projection)["base_sha"] == "a" * 40

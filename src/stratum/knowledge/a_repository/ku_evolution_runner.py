@@ -695,13 +695,19 @@ def migration_evidence() -> Tuple[Dict[str, str], int]:
     return fingerprints, destructive
 
 
-def base_sha() -> str:
+def base_sha(var: str = "A_FREEZE_BASE_SHA") -> str:
     """The commit this freeze is cut from.
 
     The freeze artifact cannot name the commit that contains it, so it names its
     parent: the tree the evidence above was actually measured against.
+
+    `var` names the environment override. It used to be read as `A_P5_BASE_SHA`
+    unconditionally, which meant a second layer calling this function had its
+    own override silently ignored and fell back to `git rev-parse HEAD` -- the
+    right answer whenever the freeze was generated on top of the tree it names,
+    and no way to tell when it was not.
     """
-    override = os.environ.get("A_P5_BASE_SHA")
+    override = os.environ.get(var)
     if override:
         return override
     try:
@@ -724,7 +730,7 @@ def freeze_artifact(result: Dict, ledger: Optional[List[str]]) -> Dict:
     fingerprints, destructive = migration_evidence()
     doc.update({
         "stage": "P5_EVOLUTION",
-        "base_sha": base_sha(),
+        "base_sha": base_sha("A_P5_BASE_SHA"),
         "migration_fingerprints": fingerprints,
         "destructive_migration_statements": destructive,
         "dependency_closure": os.environ.get(

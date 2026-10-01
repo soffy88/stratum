@@ -807,7 +807,7 @@ def freeze_artifact(projection: BookUnderstandingProjection) -> Dict:
     fingerprints, destructive = migration_evidence()
     doc.update({
         "stage": "P7_PROJECTION",
-        "base_sha": base_sha(),
+        "base_sha": base_sha("A_P7_BASE_SHA"),
         "declared_migrations": 0,
         "chain_read": len(fingerprints),
         "chain_fingerprints": fingerprints,
