@@ -29,12 +29,14 @@ verification, a candidate or an evidence row.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from . import pilot_corpus as C
 from .evolution import (
@@ -53,6 +55,15 @@ from .verification_runner import build_verification_baseline, staging_ledger
 
 
 REQUIRED_MIGRATION = "075_a_ku_evolution.sql"
+
+#: Statements that would destroy or rewrite existing rows. Counted over the A
+#: chain so the freeze reports a measured zero rather than an asserted one.
+#: Additive forms are deliberately absent: ADD COLUMN and ADD CONSTRAINT do not
+#: drop anything, and 071 and 082 are additive by design.
+DESTRUCTIVE_SQL = (
+    r"(?im)^\s*(?:DROP\s+TABLE|DROP\s+COLUMN|DROP\s+CONSTRAINT|TRUNCATE\b"
+    r"|DELETE\s+FROM|UPDATE\s+\w+\s+SET|ALTER\s+TABLE\b[^;]*\bDROP\b)"
+)
 
 REQUIRED_CHAIN = (
     "070_a_repository_foundation.sql",
@@ -665,6 +676,88 @@ def durable_counts(path: Optional[str] = None) -> Optional[Dict[str, int]]:
     return counts or None
 
 
+def migration_evidence() -> Tuple[Dict[str, str], int]:
+    """Fingerprint every A-chain migration and count destructive statements.
+
+    Both are read from the migration files on disk, not from a recorded list, so
+    the artifact cannot drift away from what the chain actually contains.
+    """
+    root = Path(__file__).resolve().parents[2] / "db" / "pg_migrations"
+    fingerprints: Dict[str, str] = {}
+    destructive = 0
+    if not root.is_dir():
+        return fingerprints, destructive
+    for path in sorted(root.glob("0[78][0-9]_a_*.sql")):
+        fingerprints[path.name.split("_", 1)[0]] = hashlib.sha256(
+            path.read_bytes()).hexdigest()[:16]
+        body = re.sub(r"--[^\n]*", "", path.read_text(encoding="utf-8"))
+        destructive += len(re.findall(DESTRUCTIVE_SQL, body))
+    return fingerprints, destructive
+
+
+def base_sha() -> str:
+    """The commit this freeze is cut from.
+
+    The freeze artifact cannot name the commit that contains it, so it names its
+    parent: the tree the evidence above was actually measured against.
+    """
+    override = os.environ.get("A_P5_BASE_SHA")
+    if override:
+        return override
+    try:
+        done = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True,
+                              text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return "UNKNOWN"
+    return (done.stdout.strip() or "UNKNOWN") if done.returncode == 0 \
+        else "UNKNOWN"
+
+
+def freeze_artifact(result: Dict, ledger: Optional[List[str]]) -> Dict:
+    """The evidence artifact that closes this layer.
+
+    Carries the same verdict as the layer artifact plus the freeze-level
+    evidence the closure asks for. The verdict still comes only from the gates,
+    so the additional recorded evidence cannot turn a blocked layer into a pass.
+    """
+    doc = artifact(result, ledger)
+    fingerprints, destructive = migration_evidence()
+    doc.update({
+        "stage": "P5_EVOLUTION",
+        "base_sha": base_sha(),
+        "migration_fingerprints": fingerprints,
+        "destructive_migration_statements": destructive,
+        "dependency_closure": os.environ.get(
+            "A_P5_DEPENDENCY_CLOSURE", "UNVERIFIED"),
+        "replay": os.environ.get("A_P5_REPLAY", "UNVERIFIED"),
+        "db_acceptance": os.environ.get("A_P5_DB_ACCEPTANCE", "UNVERIFIED"),
+        "verdict_inputs": verdict_inputs(doc["gate_results"]),
+        "verdict": verdict(doc["gate_results"]),
+    })
+    return doc
+
+
+#: Evidence a freeze cannot be written without. Recorded by whoever ran the
+#: work; absent evidence stays UNVERIFIED and blocks the freeze rather than
+#: being defaulted to a pass.
+FREEZE_EVIDENCE = ("dependency_closure", "replay", "db_acceptance")
+
+
+def freeze_blockers(doc: Dict) -> List[str]:
+    """Why a freeze may not be written. Empty means it may be.
+
+    Two different kinds of "no", and both are required. Missing evidence is an
+    absence of proof; a blocked gate verdict is positive proof that the layer
+    has not earned a freeze. Checking only the first let a freeze be written
+    with the gates never executed, which is the same defect this layer was
+    reopened for.
+    """
+    blockers = [key for key in FREEZE_EVIDENCE if doc[key] != VERDICT_PASS]
+    if doc["verdict"] != VERDICT_PASS:
+        blockers.append(f"layer_verdict:{doc['verdict']}")
+    return blockers
+
+
 def main() -> None:
     result = build_evolution()
     if "--sql" in sys.argv:
@@ -672,6 +765,30 @@ def main() -> None:
         print(write_sql(result, target))
         return
     ledger = staging_ledger(os.environ.get("A_P5_LEDGER_FILE"))
+    target = os.environ.get("A_P5_FREEZE_ARTIFACT")
+    if target:
+        doc = freeze_artifact(result, ledger)
+        blockers = freeze_blockers(doc)
+        if blockers:
+            print(json.dumps({"A_P5_EVOLUTION_FREEZE": VERDICT_BLOCKED,
+                              "blockers": blockers,
+                              "verdict": doc["verdict"],
+                              "gates_not_executed":
+                                  doc["verdict_inputs"]["gates_not_executed"]},
+                             ensure_ascii=False, indent=2))
+            raise SystemExit(1)
+        counts = durable_counts()
+        if counts is not None:
+            doc["durable_rows"] = counts
+        Path(target).write_text(
+            json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps({"A_P5_EVOLUTION_FREEZE": doc["verdict"],
+                          "artifact": target,
+                          "base_sha": doc["base_sha"],
+                          "destructive_migration_statements":
+                              doc["destructive_migration_statements"]},
+                         ensure_ascii=False, indent=2))
+        return
     doc = artifact(result, ledger)
     counts = durable_counts()
     if counts is not None:
