@@ -135,10 +135,10 @@ def test_072_is_add_only_and_does_not_touch_060_to_071():
     statements = re.sub(r"--.*", "", MIGRATION.read_text(encoding="utf-8"))
     assert "ALTER TABLE" not in statements
     assert statements.count("CREATE TABLE") == 1
-    # 072 is the newest migration; nothing after it exists.
-    names = sorted(p.name for p in MIGRATIONS.glob("*.sql"))
-    assert names[-1] == "072_a_ku_verification.sql"
+    # 072 is additive. Later migrations may exist; 072 must still be a
+    # single new table that alters nothing.
     assert (MIGRATIONS / "071_a_evidence_quality.sql").exists()
+    assert (MIGRATIONS / "070_a_repository_foundation.sql").exists()
 
 
 # ── authority ────────────────────────────────────────────────────────────────
