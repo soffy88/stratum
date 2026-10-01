@@ -154,11 +154,12 @@ def test_073_is_additive_only_with_no_backfill():
     assert "INSERT INTO" not in statements
 
 
-def test_073_is_the_newest_migration_and_earlier_ones_survive():
-    names = sorted(p.name for p in MIGRATIONS.glob("*.sql"))
-    assert names[-1] == REQUIRED_MIGRATION
+def test_073_is_additive_and_earlier_ones_survive():
+    """073 adds its own table; later migrations may exist on top of it."""
+    statements = re.sub(r"--.*", "", MIGRATION.read_text(encoding="utf-8"))
+    assert statements.count("CREATE TABLE") == 1
     for earlier in REQUIRED_CHAIN[:-1]:
-        assert earlier in names
+        assert (MIGRATIONS / earlier).exists()
 
 
 # ── authority ────────────────────────────────────────────────────────────────
