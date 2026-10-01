@@ -39,9 +39,12 @@ from stratum.knowledge.a_repository.projection import (  # noqa: E402
     forbid_write,
     identifier_keys,
 )
+from stratum.knowledge.a_repository.verdict import verdict  # noqa: E402
+from stratum.knowledge.a_repository.projection_builder import (  # noqa: E402
+    report as B_report,
+)
 from stratum.knowledge.a_repository.projection_builder import (  # noqa: E402
     ALLOWED_IMPORT_ROOTS,
-    GATE_ORDER,
     ISOLATED_TABLES,
     ProjectionError,
     ProjectionSource,
@@ -589,12 +592,62 @@ def test_evidence_coverage_is_one_or_it_fails(payload):
 
 # ── gates ────────────────────────────────────────────────────────────────────
 
-def test_all_five_gates_pass(projection):
+def test_every_gate_passes(projection):
+    """Every reported gate, not the five a hand-written list happened to name.
+
+    The old version iterated `GATE_ORDER`, which listed five names while
+    `gate_results` returned seven, and then swept the remainder with a loop that
+    allowed NOT_EXECUTED -- so a gate that never ran still satisfied a test
+    called "all five gates pass". Both escapes are closed: every gate is named
+    explicitly, and none may be unevidenced.
+    """
     gates = gate_results(projection)
-    for name in GATE_ORDER:
-        assert gates[name] == "PASS", name
-    for name, value in gates.items():
-        assert value in {"PASS", "NOT_EXECUTED"}, f"{name}={value}"
+    assert set(gates) == {
+        "G1_authority", "G1_no_new_id", "G1_read_only",
+        "G2_traceability", "G3_determinism", "G4_replay", "G5_isolation",
+    }, f"gate set changed to {sorted(gates)}"
+    unevidenced = {n: v for n, v in gates.items() if v != "PASS"}
+    assert not unevidenced, f"gates not passing: {unevidenced}"
+
+
+def test_the_gate_list_is_not_maintained_by_hand(projection):
+    """The parallel list is gone, so a new gate cannot fall outside it."""
+    import stratum.knowledge.a_repository.projection_builder as B
+    assert not hasattr(B, "GATE_ORDER"), \
+        "a hardcoded gate list is back; it drifted from 5 to 7 while it was there"
+    report = B.report(projection)
+    assert "gate_order" not in report, \
+        "the report still emits a hand-written gate order"
+    assert list(report["gates"]) == list(gate_results(projection)), \
+        "the report's gates are not the ones gate_results returned"
+
+
+def test_the_verdict_is_derived_from_the_gates(projection):
+    report = B_report(projection)
+    gates = report["gates"]
+    assert report["A_P7_BOOK_UNDERSTANDING_PROJECTION"] == verdict(gates)
+    assert report["verdict_inputs"]["gate_count"] == len(gates)
+    assert report["verdict_inputs"]["gates_not_executed"] == []
+
+
+def test_a_failing_gate_cannot_escape_the_verdict(projection):
+    """The P5/P6 defect, held shut for P7.
+
+    A gate that is reported but never read is exactly how both earlier layers
+    reported PASS while a gate they printed had not run.
+    """
+    gates = dict(gate_results(projection))
+    gates["G9_invented"] = "FAIL"
+    assert verdict(gates) == "FAIL"
+
+
+def test_an_unevidenced_or_unknown_gate_blocks(projection):
+    gates = dict(gate_results(projection))
+    gates["G9_waiting"] = "NOT_EXECUTED"
+    assert verdict(gates) == "BLOCKED"
+    gates["G9_waiting"] = "SOMETHING_NEW"
+    assert verdict(gates) == "BLOCKED", \
+        "an unrecognised status must fail closed, not open"
 
 
 def test_isolation_gate_passes(projection):
@@ -695,3 +748,29 @@ def test_an_unprojectable_unit_is_an_error_not_a_blank_row():
     source = ProjectionSource()
     with pytest.raises(ProjectionError, match="not a durable unit"):
         evidence_trace(source, "ku_does_not_exist")
+
+
+def test_a_failing_gate_changes_the_reported_verdict(projection, monkeypatch):
+    """The mutation the previous three tests could not see.
+
+    Comparing the report's verdict against `verdict(gates)` proves nothing when
+    every gate passes: a verdict computed from two gates and one computed from
+    all seven are both "PASS", so a subset wired into the report looks correct.
+    It was caught here only by breaking a gate that a subset would have
+    excluded -- `G1_no_new_id`, which the deleted `GATE_ORDER` never listed.
+
+    This is the P5/P6 defect in its exact shape: a gate reported to the reader
+    and left out of the thing that decides the outcome.
+    """
+    import stratum.knowledge.a_repository.projection_builder as B
+    monkeypatch.setattr(B, "no_new_id_gate", lambda *a, **k: "FAIL")
+    blocked = B.report(projection)
+    assert blocked["gates"]["G1_no_new_id"] == "FAIL"
+    assert blocked["A_P7_BOOK_UNDERSTANDING_PROJECTION"] == "FAIL", \
+        "a failing gate did not reach the verdict"
+    assert blocked["verdict_inputs"]["gates_failed"] == ["G1_no_new_id"]
+
+    monkeypatch.setattr(B, "no_new_id_gate", lambda *a, **k: "NOT_EXECUTED")
+    waiting = B.report(projection)
+    assert waiting["A_P7_BOOK_UNDERSTANDING_PROJECTION"] == "BLOCKED", \
+        "an unevidenced gate must block, not pass"
