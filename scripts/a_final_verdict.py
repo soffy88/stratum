@@ -71,6 +71,11 @@ BASE_ENV = {
     "PYTHONPATH": str(ROOT / "src"),
     "A_P5_LEDGER_FILE": os.environ.get("A_P5_LEDGER_FILE", ""),
     "A_P6_LEDGER_FILE": os.environ.get("A_P5_LEDGER_FILE", ""),
+    # P7's schema-closure gate reads the real catalog. Without it the gate is
+    # NOT_EXECUTED and the chain blocks, which is correct: the old version of
+    # this check passed on staging for the wrong reason, and the replacement
+    # must not be able to pass without being told what the database contains.
+    "A_P7_DB_TABLES": os.environ.get("A_P7_DB_TABLES", ""),
 }
 
 
