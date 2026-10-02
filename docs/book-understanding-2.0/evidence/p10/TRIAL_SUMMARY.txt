@@ -1,0 +1,45 @@
+P10 REAL BOOK TRIAL — §15
+================================
+book:      Thomas Calculus 14th ed (托马斯微积分第十四版)
+substrate: 01KWRXP646FQEPPRPHS3R617MZ
+text:      5,135,239 chars of derivative.content (real, no fixture)
+provider:  local ollama, qwen2.5:7b (see PROVIDER_NOTES.txt)
+date:      2026-10-02
+
+TRIAL A — full book, 11 chapters, no --persist (production untouched)
+  run_id      br_01M3XG0X030ZR4EY8RJD0MHCC3
+  chapters    11
+  evidence    32
+  verification PASS (8 checks, 0 failed)
+  wall clock  19m11s
+  gates: coverage=1.00 questions=2 theses=1 evidence=32
+         edges=3 evolution_steps=26 chapter_failures=0/11
+
+TRIAL B — 2 chapters, --persist (real DB writes, production)
+  run_id      br_01M3XHXZ5WCNSTYWKEMN0ED1RB
+  chapters    2   evidence 8   verification PASS
+  persisted   book_understandings_v2 v2, status VERIFIED
+
+PIPELINE EXECUTED (spec §15 order), all steps real:
+  substrate -> reading_run -> chapter extraction -> chapter understanding
+            -> book integration -> verification -> expression
+
+BOOK EXPRESSION (§13, 5 of 6 sections grounded)
+  13.1 ESSENCE:
+    This book sets out to answer: What are the fundamental concepts and applications of calculus in understanding functions and their behaviors?; How do we calculate areas, volumes, and other quantities using integration techniques?.
+  13.2 WORLD MODEL:
+    The author's account can be reconstructed from the theses the book defends: Calculus provides a framework for understanding and manipulating mathematical relationships through differentiation and integration.
+  13.4 ARCHITECTURE:
+    The book is organised as a dependency chain of 3 prerequisite relations across 26 concepts; the derived order runs ch1 -> ch13.
+  13.5 BOUNDARY:
+    Stated limits: The exact values of some functions' ranges may depend on specific intervals or conditions not fully detailed here.; The chapter does not explicitly state that the theorem fails for infinite intervals or discontinuous functions.; The exact volume may only approximate the true value if 
+  13.6 CONTRIBUTION:
+    Not determinable from this book alone. A contribution claim is relative to prior work, and this BU records no comparison against it.
+  13.3 CORE MECHANISMS:
+    - Defining a function with an input-output relationship
+    - Continuity of a function over a closed interval
+    - Dividing a solid into thin slices or disks perpendicular to an axis
+    - 函数是一对一的
+    - Recognizing properties of integrands
+    - Using substitution
+  grounded 5/6; ungrounded: ['contribution: no cross-book comparison is available']
