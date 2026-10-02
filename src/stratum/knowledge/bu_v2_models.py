@@ -61,8 +61,11 @@ class VerificationStatus(str, Enum):
 
 class GapStatus(str, Enum):
     OPEN = "OPEN"
+    TARGETED_REREAD_REQUIRED = "TARGETED_REREAD_REQUIRED"
+    REREAD_IN_PROGRESS = "REREAD_IN_PROGRESS"
     TARGETED_REREAD_DISPATCHED = "TARGETED_REREAD_DISPATCHED"
-    RECONCILED = "RECONCILED"
+    RESOLVED = "RESOLVED"
+    REJECTED = "REJECTED"
     WONTFIX = "WONTFIX"
 
 class LearningImportance(str, Enum):
@@ -247,6 +250,7 @@ class ClaimEvolutionStep(BaseModel):
 
 class ChapterUnderstanding(BaseModel):
     id: str
+    run_id: str
     chapter_id: str
     chapter_question: str = ""
     chapter_goal: str = ""
@@ -267,6 +271,7 @@ class ChapterUnderstanding(BaseModel):
 
 class ChapterDelta(BaseModel):
     id: str
+    run_id: str
     chapter_id: str
     new_concepts_refs: List[str] = Field(default_factory=list)
     revised_concepts_refs: List[str] = Field(default_factory=list)
@@ -281,6 +286,8 @@ class ChapterDelta(BaseModel):
 
 class BookUnderstandingV2(BaseModel):
     id: str
+    run_id: str
+    book_id: str
     substrate_id: str
     version: int = 1
     status: BUStatus = BUStatus.DRAFT
@@ -305,6 +312,7 @@ class BookUnderstandingV2(BaseModel):
 
 class UnderstandingGap(BaseModel):
     id: str
+    run_id: str
     type: GapType
     severity: Severity
     affected_component: str = ""
@@ -318,6 +326,8 @@ class UnderstandingGap(BaseModel):
 class LearningObject(BaseModel):
     id: str
     bu_id: str
+    run_id: str = ""
+    book_id: str = ""
     learning_goal: str
     knowledge_type: str
     importance: LearningImportance
@@ -353,3 +363,299 @@ class RetrievalItem(BaseModel):
     learning_object_id: str
     interaction_type: InteractionType
     payload: InteractionPayload = Field(default_factory=InteractionPayload)
+
+# ── P6: Verification Artifact ──────────────────────────────────────────────────
+
+class VerificationOutcome(str, Enum):
+    PASS = "PASS"
+    FAIL = "FAIL"
+    BLOCKED = "BLOCKED"
+
+class VerificationArtifact(BaseModel):
+    id: str
+    run_id: str
+    book_id: str
+    status: VerificationOutcome
+    checked_artifacts: List[str] = Field(default_factory=list)
+    unresolved_gap_count: int
+    verification_timestamp: str
+
+# ── P3: UnderstandingFrontier (table stratum.understanding_frontiers, 054) ────
+
+class FrontierType(str, Enum):
+    CLAIM_AWAITING_EVIDENCE = "CLAIM_AWAITING_EVIDENCE"
+    QUESTION_AWAITING_ANSWER = "QUESTION_AWAITING_ANSWER"
+    CONCEPT_AWAITING_DEFINITION = "CONCEPT_AWAITING_DEFINITION"
+    MECHANISM_AWAITING_COMPLETION = "MECHANISM_AWAITING_COMPLETION"
+    OBJECTION_AWAITING_REBUTTAL = "OBJECTION_AWAITING_REBUTTAL"
+    REFERENCE_AWAITING_EXPLANATION = "REFERENCE_AWAITING_EXPLANATION"
+    PROMISE_AWAITING_FULFILLMENT = "PROMISE_AWAITING_FULFILLMENT"
+
+class FrontierStatus(str, Enum):
+    OPEN = "OPEN"
+    RESOLVED = "RESOLVED"
+    SUPPORTED = "SUPPORTED"
+    QUALIFIED = "QUALIFIED"
+    REVISED = "REVISED"
+    CONTRADICTED = "CONTRADICTED"
+    REJECTED = "REJECTED"
+
+class FrontierResolution(str, Enum):
+    RESOLVE = "RESOLVE"
+    SUPPORT = "SUPPORT"
+    QUALIFY = "QUALIFY"
+    REVISE = "REVISE"
+    CONTRADICT = "CONTRADICT"
+    REJECT = "REJECT"
+
+class UnderstandingFrontier(BaseModel):
+    id: str
+    run_id: str
+    type: FrontierType
+    description: str = ""
+    status: FrontierStatus = FrontierStatus.OPEN
+    resolution_refs: List[str] = Field(default_factory=list)
+
+# ── P4: WorkingBU (§35: BU(t+1) = Apply(BU(t), ChapterDelta(t+1))) ────────────
+
+class WorkingBU(BaseModel):
+    id: str
+    run_id: str
+    book_id: str = ""
+    chapter_index: int = 0
+    version: int = 0
+    governing_questions: List[str] = Field(default_factory=list)
+    central_theses: List[str] = Field(default_factory=list)
+    concept_refs: List[str] = Field(default_factory=list)
+    claim_refs: List[str] = Field(default_factory=list)
+    argument_refs: List[str] = Field(default_factory=list)
+    mechanism_refs: List[str] = Field(default_factory=list)
+    qualified_claims: List[str] = Field(default_factory=list)
+    revised_claims: List[str] = Field(default_factory=list)
+    contradicted_claims: List[str] = Field(default_factory=list)
+    open_questions: List[str] = Field(default_factory=list)
+    resolved_questions: List[str] = Field(default_factory=list)
+    applied_delta_refs: List[str] = Field(default_factory=list)
+
+# ── P5: statement provenance (§§39-41) + multi-resolution (§§46-47) ───────────
+
+class StatementProvenance(str, Enum):
+    AUTHOR_EXPLICIT = "AUTHOR_EXPLICIT"
+    AUTHOR_SYNTHESIZED = "AUTHOR_SYNTHESIZED"
+    STRATUM_DERIVED = "STRATUM_DERIVED"
+
+class BUStatement(BaseModel):
+    id: str
+    statement: str
+    provenance: StatementProvenance
+    source_refs: List[str] = Field(default_factory=list)
+    synthesis_trace: str = ""
+    derived_from_ku_refs: List[str] = Field(default_factory=list)
+    argument_refs: List[str] = Field(default_factory=list)
+    evidence_refs: List[str] = Field(default_factory=list)
+    derivation_reason: str = ""
+    confidence: float = 0.0
+
+class ResolutionLevel(str, Enum):
+    ROOT = "ROOT"
+    BRANCH = "BRANCH"
+    LEAF = "LEAF"
+
+class ResolutionNode(BaseModel):
+    node_id: str
+    level: ResolutionLevel
+    label: str = ""
+    bu_refs: List[str] = Field(default_factory=list)
+    ku_refs: List[str] = Field(default_factory=list)
+    evidence_refs: List[str] = Field(default_factory=list)
+    centrality: float = 0.0
+
+class BUVerificationState(str, Enum):
+    UNVERIFIED = "UNVERIFIED"
+    PARTIAL = "PARTIAL"
+    QUALIFIED = "QUALIFIED"
+    VERIFIED = "VERIFIED"
+
+# ── P6: challenge suite objects (§§54-58, §§117-118) ──────────────────────────
+
+class AblationVerdict(str, Enum):
+    ARGUMENT_INVALID = "ARGUMENT_INVALID"
+    SUPPORT_WEAKENED = "SUPPORT_WEAKENED"
+    NO_MEANINGFUL_EFFECT = "NO_MEANINGFUL_EFFECT"
+
+class AblationResult(BaseModel):
+    target: str
+    target_type: str = ""
+    impacted_theses: List[str] = Field(default_factory=list)
+    broken_arguments: List[str] = Field(default_factory=list)
+    verdict: AblationVerdict = AblationVerdict.NO_MEANINGFUL_EFFECT
+    detail: str = ""
+
+class MutationType(str, Enum):
+    WRONG_STANCE = "WRONG_STANCE"
+    WRONG_QUANTIFIER = "WRONG_QUANTIFIER"
+    MISSING_CONDITION = "MISSING_CONDITION"
+    REVERSED_CAUSALITY = "REVERSED_CAUSALITY"
+    WRONG_CHAPTER_RELATION = "WRONG_CHAPTER_RELATION"
+    FAKE_EVIDENCE = "FAKE_EVIDENCE"
+    OVERSTATED_CONCLUSION = "OVERSTATED_CONCLUSION"
+
+class MutationCase(BaseModel):
+    id: str
+    mutation_type: MutationType
+    target_ref: str
+    original_statement: str = ""
+    mutated_statement: str = ""
+    expected: str = "REJECT"
+
+class MutationVerdict(BaseModel):
+    case_id: str
+    rejected: bool
+    reason: str = ""
+
+class HoldoutItem(BaseModel):
+    holdout_id: str
+    category: str = ""
+    probe_question: str = ""
+    required_refs: List[str] = Field(default_factory=list)
+
+class MinimalPairCase(BaseModel):
+    id: str
+    side_a: str
+    side_b: str
+    distinction: str = ""
+
+# ── P7: projection contract (§§64-67, §79 uses LearningObject) ────────────────
+
+class ExpressionProfile(BaseModel):
+    purpose: str
+    audience: str = ""
+    duration: str = ""
+    depth: str = ""
+    modality: str = ""
+    required_bu_facets: List[str] = Field(default_factory=list)
+    required_ku_types: List[str] = Field(default_factory=list)
+    evidence_policy: str = "traceable"
+    compression_policy: str = "centrality"
+    interaction_policy: str = "view"
+
+class CompressionLoss(BaseModel):
+    omitted_concepts: List[str] = Field(default_factory=list)
+    omitted_arguments: List[str] = Field(default_factory=list)
+    omitted_evidence: List[str] = Field(default_factory=list)
+    omitted_boundaries: List[str] = Field(default_factory=list)
+    thesis_preserved: bool = False
+    mechanism_preserved: bool = False
+    stance_preserved: bool = False
+
+class ProjectedArtifact(BaseModel):
+    artifact_id: str
+    bu_id: str
+    kind: str
+    thesis: str = ""
+    content_refs: List[str] = Field(default_factory=list)
+    compression_loss: CompressionLoss = Field(default_factory=CompressionLoss)
+    fidelity_checks: Dict[str, bool] = Field(default_factory=dict)
+
+# ── P8: compiled path (§82) ───────────────────────────────────────────────────
+
+class LearningPath(BaseModel):
+    id: str
+    bu_id: str = ""
+    graph_id: str = ""
+    goal: str = ""
+    time_budget_min: int = 0
+    ordered_lo_refs: List[str] = Field(default_factory=list)
+    rationale: str = ""
+
+# ── P9: tutor + errors (§§91-93) + mastery dimensions (§86, derived view) ──────
+
+class TutorState(str, Enum):
+    SELECT_OBJECTIVE = "SELECT_OBJECTIVE"
+    DIAGNOSE = "DIAGNOSE"
+    TEACH = "TEACH"
+    GUIDED_EXAMPLE = "GUIDED_EXAMPLE"
+    ACTIVE_RESPONSE = "ACTIVE_RESPONSE"
+    JUDGE = "JUDGE"
+    TRANSFER = "TRANSFER"
+    REMEDIATE = "REMEDIATE"
+    MASTERY = "MASTERY"
+    NEXT = "NEXT"
+
+class TutorSession(BaseModel):
+    session_id: str
+    bu_id: str = ""
+    current_state: TutorState = TutorState.SELECT_OBJECTIVE
+    objective_ref: str = ""
+    history: List[str] = Field(default_factory=list)
+
+class ErrorKind(str, Enum):
+    KNOWLEDGE_STRUCTURAL = "knowledge_structural"
+    UNDERSTANDING_DEVIATION = "understanding_deviation"
+    APPLICATION_ERROR = "application_error"
+    METACOGNITIVE = "metacognitive"
+
+class MisconceptionCandidate(BaseModel):
+    answer: str = ""
+    correctness: bool = False
+    confidence_before_answer: float = 0.0
+    is_candidate: bool = False
+    strategy: str = ""
+
+class MasteryDimensions(BaseModel):
+    """Derived assessment view only — never persisted as mastery authority.
+    The sole mastery authority remains cx.learning_progress."""
+    ref: str = ""
+    recognition: float = 0.0
+    recall: float = 0.0
+    explanation: float = 0.0
+    discrimination: float = 0.0
+    application: float = 0.0
+    transfer: float = 0.0
+    stability: float = 0.0
+    confidence: float = 0.0
+
+# ── Benchmark gold (§§113-118) + baselines (§119) ─────────────────────────────
+
+class BookGold(BaseModel):
+    book_id: str
+    genre: str = ""
+    governing_questions: List[str] = Field(default_factory=list)
+    central_theses: List[str] = Field(default_factory=list)
+    critical_ku_refs: List[str] = Field(default_factory=list)
+    major_arguments: List[str] = Field(default_factory=list)
+    chapter_roles: Dict[str, str] = Field(default_factory=dict)
+    cross_chapter_deps: List[str] = Field(default_factory=list)
+    qualifications: List[str] = Field(default_factory=list)
+    revisions: List[str] = Field(default_factory=list)
+    mechanisms: List[str] = Field(default_factory=list)
+    visual_evidence: List[str] = Field(default_factory=list)
+    negative_knowledge: List[str] = Field(default_factory=list)
+
+class ResolutionGold(BaseModel):
+    book_id: str
+    root: List[str] = Field(default_factory=list)
+    branch: List[str] = Field(default_factory=list)
+    leaf_sample: List[str] = Field(default_factory=list)
+
+class EvidenceGold(BaseModel):
+    question: str = ""
+    required_pages: List[int] = Field(default_factory=list)
+    required_regions: List[str] = Field(default_factory=list)
+    required_facts: List[str] = Field(default_factory=list)
+    required_ku: List[str] = Field(default_factory=list)
+    expected_reasoning_relation: str = ""
+
+class BaselineKind(str, Enum):
+    B0_CHUNK_RAG = "B0_CHUNK_RAG"
+    B1_WHOLE_CONTEXT_LLM = "B1_WHOLE_CONTEXT_LLM"
+    B2_CHAPTER_SUMMARY_BOOK_SUMMARY = "B2_CHAPTER_SUMMARY_BOOK_SUMMARY"
+    B3_PAGE_KU_EXTRACTION = "B3_PAGE_KU_EXTRACTION"
+    B4_CURRENT_STRATUM = "B4_CURRENT_STRATUM"
+    B5_BU_1_1 = "B5_BU_1_1"
+    B6_BU_2_0 = "B6_BU_2_0"
+
+class MetricScore(BaseModel):
+    metric: str
+    score: float = 0.0
+    detail: str = ""
