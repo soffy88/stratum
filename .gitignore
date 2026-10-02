@@ -65,6 +65,9 @@ STRATUM_BATCH*_CC_INSTRUCTIONS.md
 HEVI_REVISION_REQUEST.md
 deploy/aii-secrets.conf
 
+# live session cookies (凭据, 不入库; 历史中已有旧值, 见 2dbbeb5)
+aii/quark_pipeline/quark_cookies*.txt
+
 # flywheel run artifacts (可重建的飞轮运行产物)
 aii/.pipeline_keys.json
 aii/*_pipeline/bu_*.json
