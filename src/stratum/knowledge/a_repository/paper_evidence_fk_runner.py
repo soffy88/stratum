@@ -30,6 +30,8 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from .ku_identity_runner import build_identity
+from .verdict import verdict, verdict_inputs
 from .projection_builder import artifact_drift, external_imports
 
 
@@ -474,7 +476,6 @@ def gate_results() -> Dict[str, object]:
         "GATE_2_existing_data": existing_data_gate(),
         "GATE_2_baseline": baseline_gate(),
         "GATE_3_negative": "PASS" if all(negative.values()) else "FAIL",
-        "GATE_3_negative_detail": negative,
         "GATE_4_replay": "PASS" if (
             replay["duplicate_objects"] == 0
             and replay["index_present"] == 1
@@ -484,7 +485,6 @@ def gate_results() -> Dict[str, object]:
             and (replay["executed"] == 0
                  or replay["reported_already_applied"] == 1))
         else "FAIL",
-        "GATE_4_replay_detail": replay,
         "GATE_5_authority": authority_gate(),
     }
 
@@ -544,7 +544,10 @@ def acceptance() -> Dict[str, object]:
     """The spec's COMMIT GATE block, computed from measurements."""
     gates = gate_results()
     contamination = contamination_counts()
-    negative = gates["GATE_3_negative_detail"]
+    # Was also published as `GATE_3_negative_detail`, whose value was this same
+    # dict: the sibling gate is "PASS" if all of it is true, so the two were one
+    # expression counted twice. The numbers stay in `checks`.
+    negative = negative_db_gate()
     checks = {
         "composite_fk_exists": gates["GATE_1_constraint_present"],
         "fk_target_present": gates["GATE_1_index_present"],
@@ -576,6 +579,8 @@ def acceptance() -> Dict[str, object]:
               and checks["C_CONTAMINATION"] == 0)
     return {
         "checks": checks,
+        "A_P5_5_PAPER_EVIDENCE_FK": verdict(gates),
+        "verdict_inputs": verdict_inputs(gates),
         "gates": gates,
         "082_ACCEPTANCE": "PASS" if passed else "BLOCKED",
     }

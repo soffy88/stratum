@@ -28,6 +28,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from . import pilot_corpus as C
 from .ku_identity_runner import build_identity
+from .verdict import verdict, verdict_inputs
 from .mechanism import (
     EXTRACTOR_VERSION,
     MECHANISM_BANNED_FIELDS,
@@ -532,8 +533,22 @@ def _attempt_downgrade(writer: MechanismWriter, candidate) -> None:
 
 # ── gates ────────────────────────────────────────────────────────────────────
 
-GATE_ORDER = ("GATE_1_schema", "GATE_2_trace", "GATE_3_replay",
-              "GATE_4_authority", "GATE_5_negative")
+# This file used to carry `GATE_ORDER`, five names, while `gate_results`
+# returned thirteen. Two of the names it omitted were the gates asserting no
+# new identity and no mutation, and it had already drifted on the day it was
+# written. Deleted rather than corrected: the parallel list is the mechanism
+# by which a reported gate falls outside the verdict, and it drifts again for
+# the next gate added. Order now comes from the mapping itself.
+#: What the traceability gate must equal. It was previously emitted as a bare
+#: percentage inside `gates`, which the shared verdict contract cannot read --
+#: an unrecognised value is BLOCKED, so leaving it would have pinned this layer
+#: to BLOCKED forever or tempted a special case outside the contract.
+TRACEABILITY_REQUIRED = 100.0
+
+
+def _equals(measured: object, required: object) -> str:
+    """One measurement as a gate status, against a stated requirement."""
+    return "PASS" if measured == required else "FAIL"
 
 
 def gate_results(result: Dict) -> Dict[str, object]:
@@ -548,8 +563,8 @@ def gate_results(result: Dict) -> Dict[str, object]:
         "GATE_1_banned_fields": banned_field_gate(),
         "GATE_2_trace": trace_gate(result),
         "GATE_2_completeness": completeness_gate(result),
-        "GATE_2_traceability_percent":
-            result["writer"].traceability_percent(),
+        "GATE_2_traceability_percent": _equals(
+            result["writer"].traceability_percent(), TRACEABILITY_REQUIRED),
         "GATE_3_replay": "PASS" if (replay["identical_fingerprints"] == 1
                                     and replay["rewrite_is_noop"] == 1
                                     and replay["new_mechanism"] == 0
@@ -560,7 +575,6 @@ def gate_results(result: Dict) -> Dict[str, object]:
         "GATE_4_authority": authority_gate(result),
         "GATE_4_baseline_unchanged": baseline_mutation_gate(result),
         "GATE_5_negative": "PASS" if all(negative.values()) else "FAIL",
-        "GATE_5_negative_detail": negative,
     }
 
 
@@ -608,14 +622,20 @@ def acceptance(result: Dict) -> Dict[str, object]:
     gates = gate_results(result)
     replay = replay_gate()
     contamination = contamination_counts(result)
-    negative = gates["GATE_5_negative_detail"]
+    # Was also published as `GATE_5_negative_detail`, whose value was this
+    # same dict: `GATE_5_negative` is "PASS" if all of it is true, so the two
+    # gates were one expression counted twice. The numbers stay in `checks`.
+    negative = negative_gate(result)
     checks = {
         "mechanism_persisted": len(result["sink"].mechanisms),
         "nodes_ordered": all(
             [n.sequence_order for n in result["writer"].nodes_of(m.id)]
             == list(range(1, len(result["writer"].nodes_of(m.id)) + 1))
             for m in result["sink"].mechanisms.values()),
-        "evidence_linked": gates["GATE_2_traceability_percent"],
+        # The measurement, not the gate that now reports it. Reading the
+        # gate here would compare a status string to 100.0 and silently
+        # turn every IMPLEMENTATION verdict BLOCKED.
+        "evidence_linked": result["writer"].traceability_percent(),
         "replay_stable": gates["GATE_3_replay"],
         "transaction_atomic": "PASS" if gates["GATE_1_schema"] == "PASS"
         else "FAIL",
@@ -637,7 +657,14 @@ def acceptance(result: Dict) -> Dict[str, object]:
               and checks["BU2_DEPENDENCY"] == 0
               and checks["baseline_mutated"] == 0
               and checks["negative_refusals"] == checks["negative_cases"])
+    # The two keys below are kept because tests, artifacts and freeze reports
+    # read them. The layer verdict is new and is derived from every gate the
+    # function reports: the IMPLEMENTATION conjunction read five of thirteen, so
+    # completeness, trace, idempotency and authority could print PASS and change
+    # nothing. Same defect P5 Evolution, P6 and P7 were all reopened for.
     return {"checks": checks, "gates": gates,
+            "A_P5_1_MECHANISM": verdict(gates),
+            "verdict_inputs": verdict_inputs(gates),
             "A_P5_1_MECHANISM_SCHEMA":
                 "PASS" if all(gates[k] == "PASS" for k in (
                     "GATE_1_schema", "GATE_1_fk_verb", "GATE_1_constraints",
