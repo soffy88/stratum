@@ -67,22 +67,31 @@ LEDGER_LAYERS = ("P5_EVOLUTION", "P6_IDENTITY")
 
 #: Environment the runners need. A_P5_BASE_SHA / A_P7_BASE_SHA are absent on
 #: purpose: they name a freeze's parent commit and say nothing about gates.
-BASE_ENV = {
-    "PYTHONPATH": str(ROOT / "src"),
-    "A_P5_LEDGER_FILE": os.environ.get("A_P5_LEDGER_FILE", ""),
-    "A_P6_LEDGER_FILE": os.environ.get("A_P5_LEDGER_FILE", ""),
-    # P7's schema-closure gate reads the real catalog. Without it the gate is
-    # NOT_EXECUTED and the chain blocks, which is correct: the old version of
-    # this check passed on staging for the wrong reason, and the replacement
-    # must not be able to pass without being told what the database contains.
-    "A_P7_DB_TABLES": os.environ.get("A_P7_DB_TABLES", ""),
-}
+def base_env() -> Dict[str, str]:
+    """The environment every layer runs with.
+
+    Built on each call rather than once at import. A module-level snapshot reads
+    the environment as it was when the module loaded, which silently ignores
+    anything set afterwards -- the aggregator's own test suite set A_P7_DB_TABLES
+    in a fixture and watched the chain stay BLOCKED for exactly this reason.
+
+    P7's schema-closure gate needs the catalog. Without it the gate is
+    NOT_EXECUTED and the chain blocks, which is correct: the check it replaced
+    passed on staging for the wrong reason, and the replacement must not be able
+    to pass without being told what the database contains.
+    """
+    return {
+        "PYTHONPATH": str(ROOT / "src"),
+        "A_P5_LEDGER_FILE": os.environ.get("A_P5_LEDGER_FILE", ""),
+        "A_P6_LEDGER_FILE": os.environ.get("A_P5_LEDGER_FILE", ""),
+        "A_P7_DB_TABLES": os.environ.get("A_P7_DB_TABLES", ""),
+    }
 
 
 def run_layer(layer: str, module: str) -> Tuple[Dict[str, object], str]:
     """One layer's gate mapping, and its raw verdict key if it exposes one."""
     env = dict(os.environ)
-    env.update(BASE_ENV)
+    env.update(base_env())
     if layer not in LEDGER_LAYERS:
         # only the two schema-gated layers may keep an inherited path
         env.pop("A_P5_LEDGER_FILE", None)

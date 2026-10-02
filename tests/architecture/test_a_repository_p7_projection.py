@@ -90,6 +90,27 @@ def artifact(projection):
     return json.loads(canonical_json(projection.payload()))
 
 
+#: A stratum catalog for tests that need P7's schema-closure gate evidenced.
+#: Written by the test rather than inherited from the environment: the gate is
+#: NOT_EXECUTED without one, and several tests here started failing under a
+#: full-suite invocation that did not set A_P7_DB_TABLES while passing when run
+#: alone. A test that depends on ambient configuration is testing the shell.
+_A_CATALOG = (
+    "book_source source_version reading_run reading_evidence evidence_quality "
+    "ku_candidate ku_verification knowledge_unit ku_freeze_event ku_revision "
+    "ku_confidence_evolution ku_identity"
+)
+
+
+@pytest.fixture
+def db_catalog(monkeypatch, tmp_path):
+    """P7's schema-closure gate, evidenced from a catalog this test controls."""
+    catalog = tmp_path / "catalog.txt"
+    catalog.write_text(_A_CATALOG + "\n", encoding="utf-8")
+    monkeypatch.setenv("A_P7_DB_TABLES", str(catalog))
+    return str(catalog)
+
+
 # ── no migration ─────────────────────────────────────────────────────────────
 
 def test_p7_declares_no_migration():
@@ -631,7 +652,7 @@ def test_the_gate_list_is_not_maintained_by_hand(projection):
         "the report's gates are not the ones gate_results returned"
 
 
-def test_the_verdict_is_derived_from_the_gates(projection):
+def test_the_verdict_is_derived_from_the_gates(projection, db_catalog):
     report = B.report(projection)
     gates = report["gates"]
     assert report["A_P7_BOOK_UNDERSTANDING_PROJECTION"] == verdict(gates)
@@ -789,7 +810,7 @@ def test_a_failing_gate_changes_the_reported_verdict(projection, monkeypatch):
 # Same refusal the P5 Evolution freeze needed, and for the same reason: the
 # stage around a verdict looks green long before the verdict itself can.
 
-def test_the_freeze_artifact_carries_the_stage_evidence(projection, monkeypatch):
+def test_the_freeze_artifact_carries_the_stage_evidence(projection, monkeypatch, db_catalog):
     for key in FREEZE_EVIDENCE:
         monkeypatch.setenv(f"A_P7_{key.upper()}", "PASS")
     doc = freeze_artifact(projection)
@@ -802,7 +823,7 @@ def test_the_freeze_artifact_carries_the_stage_evidence(projection, monkeypatch)
     assert doc["verdict"] == verdict(doc["gates"])
 
 
-def test_absent_freeze_evidence_blocks(projection, monkeypatch):
+def test_absent_freeze_evidence_blocks(projection, monkeypatch, db_catalog):
     for key in FREEZE_EVIDENCE:
         monkeypatch.delenv(f"A_P7_{key.upper()}", raising=False)
     doc = freeze_artifact(projection)
@@ -813,7 +834,7 @@ def test_absent_freeze_evidence_blocks(projection, monkeypatch):
     assert sorted(freeze_blockers(doc)) == sorted(FREEZE_EVIDENCE)
 
 
-def test_a_blocked_layer_is_not_frozen(projection, monkeypatch):
+def test_a_blocked_layer_is_not_frozen(projection, monkeypatch, db_catalog):
     for key in FREEZE_EVIDENCE:
         monkeypatch.setenv(f"A_P7_{key.upper()}", "PASS")
     monkeypatch.setattr(B, "no_new_id_gate", lambda *a, **k: "FAIL")
@@ -824,7 +845,7 @@ def test_a_blocked_layer_is_not_frozen(projection, monkeypatch):
 
 
 def test_main_writes_no_freeze_artifact_when_blocked(projection, monkeypatch,
-                                                     tmp_path):
+                                                     tmp_path, db_catalog):
     import sys as _sys
     target = tmp_path / "p7_freeze.json"
     monkeypatch.setattr(_sys, "argv", ["projection_builder"])
@@ -840,7 +861,7 @@ def test_main_writes_no_freeze_artifact_when_blocked(projection, monkeypatch,
 
 
 def test_main_writes_the_freeze_artifact_when_green(projection, monkeypatch,
-                                                    tmp_path):
+                                                    tmp_path, db_catalog):
     import sys as _sys
     target = tmp_path / "p7_freeze.json"
     monkeypatch.setattr(_sys, "argv", ["projection_builder"])
@@ -856,7 +877,8 @@ def test_main_writes_the_freeze_artifact_when_green(projection, monkeypatch,
 
 
 def test_the_freeze_artifact_honours_its_own_base_sha_override(projection,
-                                                               monkeypatch):
+                                                               monkeypatch,
+                                                               db_catalog):
     """Regression: `base_sha` read A_P5_BASE_SHA unconditionally.
 
     P7 imported that helper, so setting A_P7_BASE_SHA was silently ignored and
@@ -867,7 +889,7 @@ def test_the_freeze_artifact_honours_its_own_base_sha_override(projection,
     assert freeze_artifact(projection)["base_sha"] == "deadbeef" * 5
 
 
-def test_a_foreign_override_does_not_leak_between_layers(projection, monkeypatch):
+def test_a_foreign_override_does_not_leak_between_layers(projection, monkeypatch, db_catalog):
     monkeypatch.setenv("A_P7_BASE_SHA", "a" * 40)
     monkeypatch.setenv("A_P5_BASE_SHA", "b" * 40)
     assert freeze_artifact(projection)["base_sha"] == "a" * 40

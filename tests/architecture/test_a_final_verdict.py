@@ -15,6 +15,7 @@ than assumed, and each assertion is mutation-checked below.
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 from pathlib import Path
 
@@ -44,9 +45,52 @@ def _load_aggregator():
 AFV = _load_aggregator()
 
 
+#: The stratum catalog P7's schema-closure gate reads. Written here rather than
+#: inherited: the gate is NOT_EXECUTED without one, and the chain verdict BLOCKS.
+#: An earlier version of this file read A_P7_DB_TABLES from the environment, so
+#: it passed under `pytest tests/architecture` and failed under `pytest tests/`.
+#: A test that depends on how pytest was invoked is testing the shell.
+_A_CATALOG = (
+    "book_source source_version reading_run reading_evidence evidence_quality "
+    "ku_candidate ku_verification knowledge_unit ku_freeze_event ku_revision "
+    "ku_confidence_evolution ku_identity"
+)
+
+
 @pytest.fixture(scope="module")
-def collected():
-    merged, report = AFV.collect()
+def collected(tmp_path_factory):
+    """Both pieces of evidence the two schema-gated layers need.
+
+    Written here rather than read from the environment. Two gates depend on it
+    and neither can pass without it: `schema` is NOT_EXECUTED with no ledger,
+    and `G5_schema_closure` is NOT_EXECUTED with no catalog. A fixture that
+    inherited either from the environment made this file pass under
+    `pytest tests/architecture` and fail under `pytest tests/`.
+    """
+    from stratum.knowledge.a_repository.ku_evolution_runner import \
+        REQUIRED_CHAIN as P5_CHAIN
+    from stratum.knowledge.a_repository.ku_identity_runner import \
+        REQUIRED_CHAIN as P6_CHAIN
+
+    root = tmp_path_factory.mktemp("evidence")
+    catalog = root / "tables.txt"
+    catalog.write_text(_A_CATALOG + "\n", encoding="utf-8")
+    ledger = root / "ledger.txt"
+    ledger.write_text("\n".join(sorted(set(P5_CHAIN) | set(P6_CHAIN))) + "\n",
+                      encoding="utf-8")
+
+    previous = {key: os.environ.get(key) for key in
+                ("A_P7_DB_TABLES", "A_P5_LEDGER_FILE")}
+    os.environ["A_P7_DB_TABLES"] = str(catalog)
+    os.environ["A_P5_LEDGER_FILE"] = str(ledger)
+    try:
+        merged, report = AFV.collect()
+    finally:
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
     return merged, report
 
 
@@ -75,6 +119,8 @@ def test_each_layers_own_verdict_agrees_with_its_gates(collected):
 def test_the_chain_verdict_is_derived_not_declared(collected):
     merged, _ = collected
     evidence = verdict_inputs(merged)
+    assert not evidence["gates_not_executed"], (
+        f"unevidenced: {evidence['gates_not_executed']}")
     assert evidence["verdict"] == VERDICT_PASS
     assert evidence["gates_not_executed"] == []
     assert evidence["gates_failed"] == []
