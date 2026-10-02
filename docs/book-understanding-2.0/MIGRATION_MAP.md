@@ -1,29 +1,29 @@
-# MIGRATION_MAP
+# MIGRATION MAP
 
-1. **deep_cards**
-   - CURRENT: `bu_onto.deep_cards` (JSON array) + frontend `localStorage` mastery.
-   - TARGET ROLE: Independent `LearningObject` projection mapped to `stratum.learning_events` and `cx.learning_progress`.
-   - REQUIRED CHANGE: Create explicit API for DeepCard mastery that writes to `learning_progress` instead of `localStorage`.
-   - RISK: Low.
-   - DEPENDENCIES: C仓 single-user to multi-tenant alignment.
+### 1. Dual Track Architecture Unification
+CURRENT: `aii.ku_onto` (A repo real DB) vs `stratum.knowledge_claims` (schema/stub)
+→ TARGET ROLE: Converge onto `aii.ku_onto` as the real storage or migrate data to `stratum.knowledge_claims`.
+→ REQUIRED CHANGE: Either deprecate `stratum.knowledge_claims` from the architectural contract and acknowledge `aii.ku_onto` as the canonical authority, or run a data migration.
+→ RISK: High
+→ DEPENDENCIES: Architecture contract `AII_ARCHITECTURE_CONTRACT.md`
 
-2. **bu_onto.argument_structure / structure**
-   - CURRENT: Flat JSON / LLM strings.
-   - TARGET ROLE: Structured relations (`stratum.concept_relations` or new Argument object mapping to Evidence).
-   - REQUIRED CHANGE: Extract arguments into explicit relational graphs, leaving `bu_onto` as projection cache.
-   - RISK: High. Requires changes to BU generation scripts.
-   - DEPENDENCIES: Cross-chapter state reasoning in `generate_bu.py`.
+### 2. Flashcards Grounding
+CURRENT: `flashcard_service.py` raw-text parsing (bypasses KU/BU/Mastery)
+→ TARGET ROLE: Knowledge-grounded flashcards
+→ REQUIRED CHANGE: Rewrite generator to source from `aii.ku_onto` / `rf.refined_ku`. Integrate review schedule with `cx.learning_progress`.
+→ RISK: Medium
+→ DEPENDENCIES: C repo authority
 
-3. **Memory Schedulers (SM-2 vs FSRS)**
-   - CURRENT: `cx.learning_progress` uses SM-2; `flashcards` uses FSRS.
-   - TARGET ROLE: Unified FSRS engine tracking `LearningObject` reviews.
-   - REQUIRED CHANGE: Migrate `learning_progress` to use FSRS parameters (`fsrs_state`, `fsrs_step`, `stability`, `difficulty`).
-   - RISK: Medium.
-   - DEPENDENCIES: FSRS integration logic for non-flashcard items.
+### 3. Mastery Convergence
+CURRENT: LocalStorage `LearningLayer`, `cornell_progress`, and `cx.learning_progress` all manage mastery/completion.
+→ TARGET ROLE: Single mastery authority
+→ REQUIRED CHANGE: Deprecate `cornell_progress.state.mastered` and LocalStorage. Route all mastery signals to `cx.learning_progress`.
+→ RISK: Medium
+→ DEPENDENCIES: API convergence in `src/stratum/api/routers/learning.py`
 
-4. **cornell_progress**
-   - CURRENT: Dedicated table `stratum.cornell_progress`.
-   - TARGET ROLE: Merge semantics into canonical `cx.learning_progress` or `stratum.learning_events`.
-   - REQUIRED CHANGE: Make cornell drill answers emit `LearningEvent`.
-   - RISK: Medium.
-   - DEPENDENCIES: `LearningObject` abstraction over Cornell drills.
+### 4. Memory Scheduler Unification
+CURRENT: `stratum.flashcards.due_at` vs `cx.learning_progress.next_review_at`
+→ TARGET ROLE: Single review scheduler
+→ REQUIRED CHANGE: Adapt flashcard review endpoint to update C repo mastery states.
+→ RISK: Low
+→ DEPENDENCIES: `flashcard_service.py` & `mastery_authority.py`
