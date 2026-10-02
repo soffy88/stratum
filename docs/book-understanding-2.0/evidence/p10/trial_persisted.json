@@ -1,0 +1,70 @@
+{
+  "run_id": "br_01M3XHXZ5WCNSTYWKEMN0ED1RB",
+  "substrate_id": "01KWRXP646FQEPPRPHS3R617MZ",
+  "chapters": 2,
+  "evidence": 8,
+  "bu_status": "VERIFIED",
+  "verification": {
+    "run_id": "br_01M3XHXZ5WCNSTYWKEMN0ED1RB",
+    "book_id": "01KWRXP646FQEPPRPHS3R617MZ",
+    "outcome": "PASS",
+    "checks": [
+      {
+        "check": "provenance_present",
+        "status": "pass",
+        "detail": "book_id=True run_id=True substrate=True"
+      },
+      {
+        "check": "coverage_floor",
+        "status": "pass",
+        "detail": "coverage=1.00 floor=0.5"
+      },
+      {
+        "check": "has_governing_questions",
+        "status": "pass",
+        "detail": "count=2"
+      },
+      {
+        "check": "has_central_theses",
+        "status": "pass",
+        "detail": "count=1"
+      },
+      {
+        "check": "evidence_present",
+        "status": "pass",
+        "detail": "evidence=8 chapters=2"
+      },
+      {
+        "check": "chapter_extraction_complete",
+        "status": "pass",
+        "detail": "failed=0/2"
+      },
+      {
+        "check": "not_self_verified",
+        "status": "pass",
+        "detail": "verification_score=0.0"
+      }
+    ],
+    "failed_count": 0
+  },
+  "expression": {
+    "book_id": "01KWRXP646FQEPPRPHS3R617MZ",
+    "run_id": "br_01M3XHXZ5WCNSTYWKEMN0ED1RB",
+    "essence": "This book sets out to answer: What are functions and their graphical representations?; How do we find and understand maxima and minima in continuous functions?.",
+    "world_model": "The author's account can be reconstructed from the theses the book defends: Functions map inputs to outputs, and understanding this mapping through graphs is crucial for analyzing function behavior.",
+    "core_mechanisms": [
+      "Defining a function with an input-output relationship",
+      "Continuity of a function over a closed interval"
+    ],
+    "logical_architecture": "The book is organised as a dependency chain of 1 prerequisite relations across 6 concepts; the derived order runs ch1 -> ch4.",
+    "boundary": "Stated limits: The exact values of some functions' ranges may depend on specific intervals or conditions not fully detailed here.; The chapter does not explicitly state that the theorem fails for infinite intervals or discontinuous functions. | Open problems: The exact values of some functions' ranges may depend on specific intervals or conditions not fully detailed here.; The chapter does not explicitly state that the theorem fails for infinite intervals or discontinuous functions.",
+    "contribution": "Not determinable from this book alone. A contribution claim is relative to prior work, and this BU records no comparison against it.",
+    "source_bu_id": "bu_br_01M3XHXZ5WCNSTYWKEMN0ED1RB",
+    "grounded_section_count": 5,
+    "ungrounded_sections": [
+      "contribution: no cross-book comparison is available"
+    ]
+  },
+  "failures": [],
+  "persisted": true
+}

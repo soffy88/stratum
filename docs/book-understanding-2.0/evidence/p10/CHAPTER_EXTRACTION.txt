@@ -1,0 +1,38 @@
+CHAPTER EXTRACTION — how the trial book was split into chapters
+========================================================
+
+SOURCE: stratum.derivative, substrate 01KWRXP646FQEPPRPHS3R617MZ
+  kind=chapters    15,606 chars  (parser's own index, 216 headings)
+  kind=markdown 5,135,239 chars  (the text that is understood)
+  16 numbered level-1 chapters at pages 41,115,243 ... 1949
+
+THE PROBLEM, measured
+  Each chapter title occurs 45 to 565 times in the 5.1M-char bilingual text
+  (table of contents, running page headers, cross-references). A naive
+  first-match search produced this:
+     ch1 '1. Functions'    318 chars  <- front matter, not a chapter
+     ch2 '2. Limits...'    421 chars
+     ch3 '3. Derivatives' 1375 chars
+  A monotonic-greedy variant produced overlapping spans totalling 177% of
+  the book, and lost chapters 1,2,4,13.
+
+THE FIX — two signals, in order
+  1. '# N Title' — a level-1 markdown heading. Present for 10 of 16 chapters.
+  2. a bare 'N Title' line followed within 400 chars by 'OVERVIEW'.
+     Every chapter in this corpus opens with an OVERVIEW section, which
+     the index pages corroborate. This recovered chapters 1, 2, 3 and 5.
+  A chapter is only accepted at >= 5000 chars, so a running header that
+  matches the title can never become a chapter.
+
+RESULT
+  chapters located ......... 11 of 16
+  monotonic (no overlaps) ... yes
+  text covered .............. 5,071,957 of 5,135,239 = 98%
+  not located ............... ch2, ch3, ch5, ch14, ch15
+     These five have no reliable heading marker in this derivative. They
+     are absorbed into the preceding chapter's span rather than dropped, so
+     the text is not lost — only their chapter identity is. The BU records
+     11 chapters and coverage_score 1.0 over the chapters it did locate;
+     this note is the honest caveat that 11 is not 16.
+
+SUBSECTIONS captured: ch1=5 ch14=5 ch16=2 (level 2-4 headings within body)

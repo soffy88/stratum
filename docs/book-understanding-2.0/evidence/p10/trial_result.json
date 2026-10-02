@@ -1,0 +1,85 @@
+{
+  "run_id": "br_01M3XG0X030ZR4EY8RJD0MHCC3",
+  "substrate_id": "01KWRXP646FQEPPRPHS3R617MZ",
+  "chapters": 11,
+  "evidence": 32,
+  "bu_status": "VERIFIED",
+  "verification": {
+    "run_id": "br_01M3XG0X030ZR4EY8RJD0MHCC3",
+    "book_id": "01KWRXP646FQEPPRPHS3R617MZ",
+    "outcome": "PASS",
+    "checks": [
+      {
+        "check": "provenance_present",
+        "status": "pass",
+        "detail": "book_id=True run_id=True substrate=True"
+      },
+      {
+        "check": "coverage_floor",
+        "status": "pass",
+        "detail": "coverage=1.00 floor=0.5"
+      },
+      {
+        "check": "has_governing_questions",
+        "status": "pass",
+        "detail": "count=2"
+      },
+      {
+        "check": "has_central_theses",
+        "status": "pass",
+        "detail": "count=1"
+      },
+      {
+        "check": "evidence_present",
+        "status": "pass",
+        "detail": "evidence=32 chapters=11"
+      },
+      {
+        "check": "structure_derived",
+        "status": "pass",
+        "detail": "edges=3 evolution_steps=26"
+      },
+      {
+        "check": "chapter_extraction_complete",
+        "status": "pass",
+        "detail": "failed=0/11"
+      },
+      {
+        "check": "not_self_verified",
+        "status": "pass",
+        "detail": "verification_score=0.0"
+      }
+    ],
+    "failed_count": 0
+  },
+  "expression": {
+    "book_id": "01KWRXP646FQEPPRPHS3R617MZ",
+    "run_id": "br_01M3XG0X030ZR4EY8RJD0MHCC3",
+    "essence": "This book sets out to answer: What are the fundamental concepts and applications of calculus in understanding functions and their behaviors?; How do we calculate areas, volumes, and other quantities using integration techniques?.",
+    "world_model": "The author's account can be reconstructed from the theses the book defends: Calculus provides a framework for understanding and manipulating mathematical relationships through differentiation and integration.",
+    "core_mechanisms": [
+      "Defining a function with an input-output relationship",
+      "Continuity of a function over a closed interval",
+      "Dividing a solid into thin slices or disks perpendicular to an axis",
+      "函数是一对一的",
+      "Recognizing properties of integrands",
+      "Using substitution",
+      "The initial condition and differential equation",
+      "Slope field construction",
+      "The behavior of the terms in a sequence as the index increases.",
+      "The need to describe motion along curves",
+      "应用勾股定理",
+      "完成平方并重写项"
+    ],
+    "logical_architecture": "The book is organised as a dependency chain of 3 prerequisite relations across 26 concepts; the derived order runs ch1 -> ch13.",
+    "boundary": "Stated limits: The exact values of some functions' ranges may depend on specific intervals or conditions not fully detailed here.; The chapter does not explicitly state that the theorem fails for infinite intervals or discontinuous functions.; The exact volume may only approximate the true value if the slices are not infinitesimally thin. | Open problems: The exact values of some functions' ranges may depend on specific intervals or conditions not fully detailed here.; The chapter does not explicitly state that the theorem fails for infinite intervals or discontinuous functions.; The exact volume may only approximate the true value if the slices are not infinitesimally thin.",
+    "contribution": "Not determinable from this book alone. A contribution claim is relative to prior work, and this BU records no comparison against it.",
+    "source_bu_id": "bu_br_01M3XG0X030ZR4EY8RJD0MHCC3",
+    "grounded_section_count": 5,
+    "ungrounded_sections": [
+      "contribution: no cross-book comparison is available"
+    ]
+  },
+  "failures": [],
+  "persisted": false
+}

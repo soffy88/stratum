@@ -1,0 +1,49 @@
+PROVIDER NOTES — what was reachable, and what the quality ceiling is
+================================================================
+
+MEASURED, not assumed. All values confirmed by command on 2026-10-02.
+
+1. NIM (NVIDIA_NIM_API_KEY present in deploy/.env, 70 chars)
+   /v1/models ....................... HTTP 200, 81 models listed
+   /v1/chat/completions ............. HTTP 404
+     detail: "Function ...: Not found for account ..."
+   VERDICT: the key authenticates and can list models, but has NO inference
+   entitlement. 404 naming the account is an entitlement error, not a bad model.
+   Also: meta/llama-3.1-70b-instruct returns 410 Gone (EOL 2026-08-26).
+
+2. DEEPSEEK_API_KEY: present in aii/.env, but not exercised; NIM was the
+   intended strong provider and is unavailable, so the trial used local.
+
+3. LOCAL OLLAMA at 127.0.0.1:11434 — WORKING
+   qwen2.5:0.5b  (379MB)  1.6s/call   <- quality too low, see below
+   qwen2.5:7b    (4.7GB) 43s/call    <- used for the trial
+   qwen2.5vl:3b  (3.0GB)             <- present, unused
+
+4. obase / oprim are NOT importable from this host
+   ModuleNotFoundError: No module named 'obase'
+   ModuleNotFoundError: No module named 'oprim'
+   Both live in the container image at /opt/platform. So the stratum-side
+   LLM path is ollama-only on this host, which is why ModelProvider needed
+   its own transport rather than reusing obase.
+
+QUALITY CEILING — measured, not guessed
+  Same chapter-extraction prompt, two models:
+
+  qwen2.5:0.5b  -> asked for the book's governing questions, returned:
+     "is this book about derivatives?"
+     -> essence was a one-word echo of the question
+     -> schema placeholder text was copied verbatim as values
+     -> evidence 0: it paraphrased, so no quote ever verified (§11 dropped all)
+
+  qwen2.5:7b    -> same prompt, returned grounded content:
+     "What are the fundamental concepts and applications of calculus"
+     "How do we calculate areas, volumes using integration techniques"
+     -> names the actual chapters in the prompt
+     -> evidence 32 of 32 locatable
+
+  CONSEQUENCE FOR THE TRIAL: the PASS in trial A is a statement about the
+  pipeline, not about comprehension quality. A 7B local model extracting
+  structure from a calculus textbook produces plausible scaffolding with
+  some real grounding and some noise — for example one recorded mechanism
+  is "函数是一对一的" (Chinese, mid-sentence). Stronger models are behind
+  the provider boundary and need no code change to use: --provider deepseek.
