@@ -31,11 +31,16 @@ except (ImportError, ModuleNotFoundError):
             return lambda function: function
 
         def streamable_http_app(self):
-            async def disabled(scope, receive, send):
-                if scope.get("type") == "http":
-                    response = JSONResponse({"error": "MCP runtime unavailable"}, status_code=503)
-                    await response(scope, receive, send)
-            return disabled
+            # app.py 的 lifespan 与 mount 都要求一个带 `.router` 的 ASGI 应用对象，
+            # 不能返回裸函数（否则启动时报 'function' object has no attribute 'router'）。
+            from starlette.applications import Starlette
+            from starlette.responses import JSONResponse
+            from starlette.routing import Route
+
+            async def _mcp_unavailable(request):  # noqa: ARG001
+                return JSONResponse({"error": "MCP runtime unavailable"}, status_code=503)
+
+            return Starlette(routes=[Route("/", _mcp_unavailable, methods=["GET", "POST"])])
 
     FastMCP = _DisabledMCP  # type: ignore[assignment,misc]
 
