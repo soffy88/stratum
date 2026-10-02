@@ -292,7 +292,12 @@ class OllamaProvider(_HTTPProvider):
         *,
         model: str | None = None,
         base_url: str | None = None,
-        timeout: int = 300,
+        # Measured on the trial book: the largest chapter takes 185s on a 7B
+        # local model. The old 300s ceiling left no margin when the host is also
+        # serving other work, and one timeout failed a whole chapter — which the
+        # verification gate then correctly, and uselessly, reported as
+        # "chapter_extraction_complete" failing.
+        timeout: int = 900,
     ):
         super().__init__(
             model=model,

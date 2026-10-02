@@ -46,6 +46,9 @@ class BookExpression:
     source_bu_id: str = ""
     grounded_section_count: int = 0
     ungrounded_sections: list[str] = field(default_factory=list)
+    # P11 §12: quality context, phrased as understanding confidence. Never a
+    # truth score, and never computed from this module.
+    quality_context: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -78,6 +81,9 @@ class BookExpression:
             "CONTRIBUTION — what does it add?",
             f"  {self.contribution or '(none recorded)'}",
         ]
+        if self.quality_context:
+            lines += ["", "UNDERSTANDING CONFIDENCE (this is about coverage, not truth)", ""]
+            lines += [f"  {line}" for line in self.quality_context]
         if self.ungrounded_sections:
             lines += [
                 "",
@@ -94,7 +100,9 @@ class BUExpressionGenerator:
     byte instead of asking whether it "looks similar".
     """
 
-    def generate(self, bu: BookUnderstandingV2) -> BookExpression:
+    def generate(
+        self, bu: BookUnderstandingV2, quality: "BUQualityReport | None" = None
+    ) -> BookExpression:
         exp = BookExpression(
             book_id=bu.book_id,
             run_id=bu.run_id,
@@ -194,6 +202,13 @@ class BUExpressionGenerator:
             )
             exp.ungrounded_sections.append("contribution: no cross-book comparison is available")
 
+        # §12: carry the quality context if one was supplied. Imported lazily so
+        # the expression module keeps no dependency on the evaluator at import
+        # time, and so the boundary stays one-directional.
+        if quality is not None:
+            from stratum.services.bu_v2_quality_evaluator import quality_context_lines
+
+            exp.quality_context = quality_context_lines(quality)
         return exp
 
 

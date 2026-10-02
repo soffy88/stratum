@@ -66,7 +66,9 @@ HEVI_REVISION_REQUEST.md
 deploy/aii-secrets.conf
 
 # live session cookies (凭据, 不入库; 历史中已有旧值, 见 2dbbeb5)
+# The .bak.NNNNNN form is produced by the cookie watchdog, so match backups too.
 aii/quark_pipeline/quark_cookies*.txt
+aii/quark_pipeline/quark_cookies*
 
 # flywheel run artifacts (可重建的飞轮运行产物)
 aii/.pipeline_keys.json

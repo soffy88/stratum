@@ -35,8 +35,11 @@ from stratum.services.bu_v2_book_integrator import BookIntegrator, IntegrationIn
 from stratum.services.bu_v2_expression import BookExpression, BUExpressionGenerator
 from stratum.services.bu_v2_producer import (
     Chapter,
+    ChapterContext,
+    ChapterRole,
     ChapterUnderstandingProducer,
     EvidenceArtifact,
+    classify_role,
 )
 from stratum.services.bu_v2_provider import (
     ModelProvider,
@@ -94,6 +97,16 @@ class RunResult:
     expression: BookExpression | None = None
     persisted: bool = False
     failures: list[str] = field(default_factory=list)
+    # P11 §5: the structure the run actually used.
+    structure: dict[str, Any] | None = None
+    # P11 §8: quality is measured, never gating.
+    quality: Any = None
+    report_bundle: Any = None
+    # P11 §6: whether chapter context was injected, and the role each chapter
+    # was given. These live on Chapter, not ChapterUnderstanding, so they are
+    # recorded here rather than read back off the wrong object.
+    context_used: bool = False
+    chapter_roles: list[dict[str, str]] = field(default_factory=list)
 
     @property
     def verified(self) -> bool:
@@ -103,9 +116,22 @@ class RunResult:
 class BookLoader:
     """§6: load a book from a substrate.
 
-    Prefers the parser's chapter index, because the parser saw page structure
-    the markdown has already lost. Falls back to markdown headings.
+    ``last_index`` retains the parser's own heading list after ``load`` returns.
+    The structure extractor needs it: without the index it cannot tell that a
+    book declares 16 chapters, so it reports 0% detection on a perfect
+    extraction. Returning it here is what makes §14 measurable.
     """
+
+    def __init__(self) -> None:
+        self.last_index: list[dict] = []
+
+    def load(self, substrate_id: str) -> tuple[str, str, list[Chapter]]:
+        """Prefer the parser's chapter index.
+
+        The parser saw page structure the markdown has already lost, so its
+        heading list is the more reliable source of chapter titles and pages.
+        Falls back to markdown headings when it is absent.
+        """
 
     def load(self, substrate_id: str) -> tuple[str, str, list[Chapter]]:
         substrate = db.read("substrates", substrate_id)
@@ -122,12 +148,14 @@ class BookLoader:
         markdown = by_kind.get("markdown") or by_kind.get("plaintext") or ""
 
         index_raw = by_kind.get("chapters")
+        self.last_index = []
         if index_raw:
             try:
                 headings = json.loads(index_raw)
             except json.JSONDecodeError:
                 headings = []
             if headings:
+                self.last_index = [h for h in headings if isinstance(h, dict)]
                 return title, markdown, self._chapters_from_index(headings, markdown)
 
         return title, markdown, self._chapters_from_headings(markdown)
@@ -256,6 +284,41 @@ class BookLoader:
         return [m.strip() for m in re.findall(r"^#{2,4}\s+(.+)$", body, re.M)][:40]
 
 
+def _detection(structure_meta: dict[str, Any], result: "RunResult") -> float:
+    """Chapter detection ratio, recomputed from what the run actually stored.
+
+    The precomputed ratio is preferred, but it is only valid when the run's
+    chapters include back matter. A run that located 16 of 16 chapters and also
+    split out answers and appendices must not report 18/16, so back-matter
+    sections are excluded from the numerator and the denominator is whatever the
+    parser index declared.
+    """
+    located = len([c for c in result.chapters if c.primary_role != "UNDERSTANDING_FAILED"])
+    expected = int(structure_meta.get("expected_chapters") or 0)
+    if not expected:
+        expected = int(structure_meta.get("chapter_count") or 0) or located
+    if not expected:
+        return 0.0
+    # Chapters are the ones the extractor typed; back matter carries an appendix
+    # flag in the structure metadata, so subtract any excess conservatively.
+    return round(min(1.0, located / expected), 4)
+
+
+def _expectation_for(chapters: list[Chapter], idx: int) -> str:
+    """What the next chapter will need, from what the parser says it covers.
+
+    Cheap and deterministic: the next chapter's subsections are known from the
+    structure, so the model is told what is coming rather than asked to guess.
+    """
+    if idx + 1 >= len(chapters):
+        return "this is the final chapter; it should close the book's argument"
+    nxt = chapters[idx + 1]
+    subs = [s for s in (nxt.subsections or [])[:3]]
+    if subs:
+        return f"the next chapter is '{nxt.title}', covering " + "; ".join(subs)
+    return f"the next chapter is '{nxt.title}'"
+
+
 class BU2Runner:
     """§6: the interface the spec defines, and the whole book pipeline."""
 
@@ -266,11 +329,23 @@ class BU2Runner:
         loader: BookLoader | None = None,
         persist: bool = False,
         chapter_limit: int | None = None,
+        use_structure_extractor: bool = True,
     ):
+        self.use_structure_extractor = use_structure_extractor
         self.provider = provider or resolve_provider()
         self.loader = loader or BookLoader()
         self.producer = ChapterUnderstandingProducer(provider=self.provider)
         self.integrator = BookIntegrator(provider=self.provider)
+        # P11 §5: structure is extracted once, then chapters are built from it
+        # with their context filled in. P10's inline heuristics are replaced
+        # rather than kept as a second path.
+        from stratum.services.bu_v2_structure_extractor import (
+            BookStructureExtractor,
+            chapter_spans_from_structure,
+        )
+
+        self.extractor = BookStructureExtractor(provider=self.provider)
+        self._spans_from_structure = chapter_spans_from_structure
         self.verifier = BUVerifier()
         self.expr = BUExpressionGenerator()
         # Persisting is opt-in. §15 runs against production, and a trial should
@@ -315,7 +390,26 @@ class BU2Runner:
         difference matters for the acceptance gate, which needs to see the
         verification report and the expression, not only the object.
         """
-        title, _text, chapters = self.loader.load(substrate_id)
+        title, text, chapters = self.loader.load(substrate_id)
+        structure = None
+        result_meta: dict[str, Any] = {}
+        if self.use_structure_extractor and text:
+            # §5: the extractor owns structure. The loader's heuristics are a
+            # fallback for texts the extractor cannot handle.
+            try:
+                structure = self.extractor.extract_from_text(
+                    text,
+                    book_id=substrate_id,
+                    title=title,
+                    # §14's denominator: what the parser says the book has.
+                    index=getattr(self.loader, "last_index", None) or None,
+                )
+                if structure.chapters:
+                    chapters = self._spans_from_structure(structure, text)
+                    result_meta["structure"] = structure.to_dict()["metadata"]
+                    result_meta["structure_method"] = structure.extraction_method
+            except Exception as exc:
+                result.failures.append(f"structure extraction fell back to loader: {exc}")
         if not chapters:
             raise BU2RunError(
                 f"{substrate_id} ({title}) yielded no chapterable structure; "
@@ -327,10 +421,27 @@ class BU2Runner:
 
         run_id = self.create_run(substrate_id)
         result = RunResult(run_id=run_id, book_id=substrate_id, substrate_id=substrate_id)
+        result.structure = result_meta.get("structure")
 
-        # ── generate_chapters ──────────────────────────────────────────────
+        # ── generate_chapters (§6: with context, not in isolation) ───────────
         prior: list[str] = []
-        for chapter in chapters:
+        total = len(chapters)
+        seen_concepts: list[str] = []
+        recent_titles: list[str] = []
+        for idx, chapter in enumerate(chapters):
+            # §6.1 context injection. A chapter read without knowing where it
+            # sits produces the same framing for chapter 1 and chapter 12.
+            chapter.context = ChapterContext(
+                book_title=title,
+                chapter_number=idx + 1,
+                chapter_total=total,
+                previous_chapter_titles=list(recent_titles),
+                previous_concepts=list(seen_concepts),
+                following_expectations=_expectation_for(chapters, idx),
+                position_ratio=round((idx + 1) / total, 3) if total else 0.0,
+            )
+            chapter.role = classify_role(chapter)
+            recent_titles.append(chapter.title)
             try:
                 cu, delta, evidence = self.producer.produce(
                     chapter, run_id=run_id, book_id=substrate_id, prior_chapter_ids=prior
@@ -343,6 +454,14 @@ class BU2Runner:
             result.deltas.append(delta)
             result.evidence.extend(evidence)
             prior.append(chapter.chapter_id)
+            for concept in cu.concepts_introduced_refs:
+                if concept and concept not in seen_concepts:
+                    seen_concepts.append(concept)
+
+        # §6: recorded after the loop, because the contexts exist only then.
+        # Reading this before the loop reports False on every run — which is
+        # what made gate 2 fail on a run that had injected context throughout.
+        result.context_used = any(c.context is not None for c in chapters)
 
         if not result.chapters:
             raise BU2RunError("no chapter produced an understanding")
@@ -386,8 +505,53 @@ class BU2Runner:
         if self.persist:
             self._persist_bu(result)
 
-        # ── generate_expression ────────────────────────────────────────────
-        result.expression = self.expr.generate(bu)
+        # ── quality evaluation (§8). Runs after verification and never
+        #    changes the verdict: §10 forbids quality from being a truth
+        #    signal and §11 forbids it from blocking publication. ──────────
+        from stratum.services.bu_v2_quality_evaluator import BUQualityEvaluator
+        from stratum.services.bu_v2_quality_report import build_report, evaluate_gates
+
+        pipeline_status = bu.status.value if bu.status else "UNKNOWN"
+        result.quality = BUQualityEvaluator().evaluate(
+            bu,
+            chapters=result.chapters,
+            evidence=result.evidence,
+            pipeline_status=pipeline_status,
+            structure=result.structure,
+        )
+        report = result.report
+        if report is not None:
+            report.quality_level = result.quality.quality_level
+
+        # ── generate_expression (§12 carries quality as confidence) ────────
+        result.expression = self.expr.generate(bu, quality=result.quality)
+
+        detection = content_cov = None
+        if structure is not None:
+            # `_detection` takes the stored metadata dict, which is what
+            # result.structure holds. Passing the BookStructure itself is a type
+            # error, and an AttributeError that only fires on a real book run.
+            detection = _detection(result.structure or {}, result)
+            content_cov = (result.structure or {}).get("content_coverage_ratio")
+        result.report_bundle = build_report(
+            result.quality,
+            run_id=result.run_id,
+            book_id=result.book_id,
+            substrate_id=result.substrate_id,
+            pipeline_status=pipeline_status,
+            gates=evaluate_gates(
+                result.quality,
+                structure=result.structure,
+                detection_ratio=detection,
+                coverage_ratio=(result.structure or {}).get("coverage_ratio"),
+                content_coverage=content_cov,
+                chapter_count=len(result.chapters),
+                context_used=result.context_used,
+            ),
+            chapter_roles=[
+                {"chapter_id": c.chapter_id, "role": c.primary_role} for c in result.chapters
+            ],
+        )
         return result
 
     @staticmethod
@@ -464,6 +628,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--chapters", type=int, default=None, help="limit chapters processed")
     parser.add_argument("--persist", action="store_true", help="write to the database")
     parser.add_argument("--json", action="store_true", help="emit JSON instead of text")
+    parser.add_argument(
+        "--legacy-id",
+        default=None,
+        help="also import this aii.bu_onto row through the legacy adapter (P11 §7)",
+    )
+    parser.add_argument("--write-report", default=None, help="write the quality report JSON here")
     args = parser.parse_args(argv)
 
     kw: dict[str, Any] = {"persist": args.persist, "chapter_limit": args.chapters}
@@ -479,6 +649,33 @@ def main(argv: list[str] | None = None) -> int:
         print(f"bu2: {exc}")
         return 2
 
+    legacy_fusion = None
+    if args.legacy_id:
+        from stratum.services.bu_v2_legacy_adapter import BU2LegacyAdapter
+
+        try:
+            fusion = BU2LegacyAdapter().import_legacy_understanding(args.legacy_id)
+            legacy_fusion = fusion.to_dict()
+            if result.report_bundle is not None:
+                result.report_bundle.legacy_fusion = legacy_fusion
+        except LookupError as exc:
+            legacy_fusion = {"error": str(exc)}
+    if result.report_bundle is not None and legacy_fusion:
+        from stratum.services.bu_v2_quality_report import evaluate_gates
+
+        # Re-evaluate gate 4 now that the legacy fusion has actually run.
+        by = {d.key: d for d in result.quality.dimensions}
+        result.report_bundle.gates = evaluate_gates(
+            result.quality,
+            structure=result.structure,
+            detection_ratio=_detection(result.structure or {}, result),
+            coverage_ratio=(result.structure or {}).get("coverage_ratio"),
+            content_coverage=(result.structure or {}).get("content_coverage_ratio"),
+            legacy_fused=bool(legacy_fusion and legacy_fusion.get("claims_mapped")),
+            chapter_count=len(result.chapters),
+            context_used=result.context_used,
+        )
+
     if args.json:
         print(
             json.dumps(
@@ -492,13 +689,19 @@ def main(argv: list[str] | None = None) -> int:
                     "expression": result.expression.to_dict() if result.expression else None,
                     "failures": result.failures,
                     "persisted": result.persisted,
+                    "structure": result.structure,
+                    "quality": result.quality.to_dict() if result.quality else None,
+                    "gates": [g.to_dict() for g in (result.report_bundle.gates if result.report_bundle else [])],
+                    "legacy_fusion": legacy_fusion,
                 },
                 indent=2,
                 ensure_ascii=False,
             )
         )
     else:
-        if result.expression:
+        if result.report_bundle is not None:
+            print(result.report_bundle.render())
+        elif result.expression:
             print(result.expression.render())
         if result.report:
             print(f"\nverification: {result.report.outcome.value} "
