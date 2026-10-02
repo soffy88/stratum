@@ -1,0 +1,39 @@
+ISOLATION CHECKS — spec §12 and §13, both clean
+====================================================
+
+§12 B-WAREHOUSE ISOLATION — BU2 must not touch rf.* or aii_refined
+
+Files searched (all 10 BU2 service modules + models):
+   src/stratum/knowledge/bu_v2_models.py
+   src/stratum/services/benchmark_gold.py
+   src/stratum/services/book_reading.py
+   src/stratum/services/bu_provenance.py
+   src/stratum/services/bu_v2_pipeline.py
+   src/stratum/services/bu_v2_repositories.py
+   src/stratum/services/challenge_suite.py
+   src/stratum/services/ku_segmentation.py
+   src/stratum/services/learning_compiler.py
+   src/stratum/services/tutor_engine.py
+   src/stratum/services/understanding_projection.py
+   src/stratum/services/working_bu.py
+
+   matches for rf. | aii_refined | refined_ku | refined_concept : 0
+   -> 0. PASS
+
+§13 LEARNING BOUNDARY — BU2 must not manage cx.learning_progress
+
+   writes/reads of cx.learning_progress in BU2 : 0
+   -> 0. PASS
+
+   Context: the C authority is unreachable from this host.
+   cx tables in production                    : 0
+   aii_context database exists                : 0
+
+   The boundary is respected; nothing is on the other side of it.
+
+§14 RUNTIME INDEPENDENCE — untestable as specified
+
+   BU2 references to aii.bu_onto : 0
+   -> 0, in EITHER direction. So 'disable the legacy runtime and BU2 still
+      works' would pass trivially, while BU2 cannot run at all with the
+      legacy runtime fully up. The test proves nothing; recorded as FAIL.

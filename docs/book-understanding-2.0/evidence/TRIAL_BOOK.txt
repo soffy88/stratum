@@ -1,0 +1,17 @@
+TRIAL BOOK — real substrate with already-extracted content
+====================================================
+id:       01KWRXP646FQEPPRPHS3R617MZ
+title:    托马斯微积分第十四版 Thomas Calculus (英文中文双语AI翻译)
+mime:     application/pdf
+mime:     application/pdf
+
+Why this book qualifies as a real trial, not a fixture:
+  - it is a row in stratum.substrates (8064 total)
+  - it has 5,135,239 chars of derivative.content already extracted
+  - no test double, no mock, no hand-written JSON input
+
+derivative content length:
+01KWRXP646FQEPPRPHS3R617MZ | chars=5135239
+
+Note: aii.bu_onto has NO row for this book, and cannot:
+bu_onto<->substrates join on substrate_id: 0 rows
