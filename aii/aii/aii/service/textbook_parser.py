@@ -13,6 +13,7 @@ Output of parse_textbook():
     "raw_ku_chunks": [{cluster_id, chapter, section, text, order}],
   }
 """
+
 from __future__ import annotations
 
 import uuid
@@ -48,13 +49,15 @@ def parse_textbook(md_text: str, textbook_meta: dict[str, Any]) -> dict[str, Any
         if current_cluster_id and current_section and buffer:
             text = "\n".join(buffer).strip()
             if text:
-                raw_ku_chunks.append({
-                    "cluster_id": current_cluster_id,
-                    "chapter": current_chapter,
-                    "section": current_section,
-                    "text": text,
-                    "order": section_order,
-                })
+                raw_ku_chunks.append(
+                    {
+                        "cluster_id": current_cluster_id,
+                        "chapter": current_chapter,
+                        "section": current_section,
+                        "text": text,
+                        "order": section_order,
+                    }
+                )
                 section_order += 1
         buffer.clear()
 
@@ -68,12 +71,14 @@ def parse_textbook(md_text: str, textbook_meta: dict[str, Any]) -> dict[str, Any
             chapter_idx += 1
             current_section = ""
             current_cluster_id = f"{textbook_id}::cluster-{chapter_idx:03d}"
-            clusters.append({
-                "id": current_cluster_id,
-                "name": current_chapter,
-                "chapter": current_chapter,
-                "order": chapter_idx,
-            })
+            clusters.append(
+                {
+                    "id": current_cluster_id,
+                    "name": current_chapter,
+                    "chapter": current_chapter,
+                    "order": chapter_idx,
+                }
+            )
         elif line.startswith("# "):
             if not book_name:
                 book_name = line[2:].strip()

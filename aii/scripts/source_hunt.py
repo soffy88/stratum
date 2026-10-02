@@ -11,9 +11,9 @@
   .venv/bin/python scripts/source_hunt.py            # 全链(OAPEN + veya 派活 + 读回结果)
   .venv/bin/python scripts/source_hunt.py --oapen-only
 """
+
 from __future__ import annotations
 
-import fcntl
 import json
 import os
 import subprocess
@@ -117,8 +117,8 @@ def run_veya() -> None:
             "linear algebra, calculus, probability theory, differential equations;"
             "(2)对找到的真PDF(可直连下载)用 curl 下载到 /home/soffy/books/Economic/ 或 /home/soffy/books/数学/, "
             "优先小文件(<5MB), 最多下载 3 本;"
-            "(3)结束时输出JSON: {\"downloaded\": [\"文件名\"], \"failed\": [\"原因\"], \"sources_used\": [\"源名\"]}。"
-            "若无法下载, 输出 {\"downloaded\": [], \"failed\": [\"具体原因\"], \"sources_used\": [\"尝试过的源\"]}。"
+            '(3)结束时输出JSON: {"downloaded": ["文件名"], "failed": ["原因"], "sources_used": ["源名"]}。'
+            '若无法下载, 输出 {"downloaded": [], "failed": ["具体原因"], "sources_used": ["尝试过的源"]}。'
         )
     }
     VEYA_CMD.write_text(json.dumps(cmd, ensure_ascii=False))
@@ -126,9 +126,20 @@ def run_veya() -> None:
     logf = open(VEYA_LOG, "a")
     try:
         subprocess.Popen(
-            ["nohup", str(VEYA_DIR / "venv/bin/python"), "-m", "cli.headless",
-             "--input", str(VEYA_CMD), "--output", str(VEYA_RESULT)],
-            cwd=VEYA_DIR, env=env, stdout=logf, stderr=subprocess.STDOUT,
+            [
+                "nohup",
+                str(VEYA_DIR / "venv/bin/python"),
+                "-m",
+                "cli.headless",
+                "--input",
+                str(VEYA_CMD),
+                "--output",
+                str(VEYA_RESULT),
+            ],
+            cwd=VEYA_DIR,
+            env=env,
+            stdout=logf,
+            stderr=subprocess.STDOUT,
             start_new_session=True,
         )
         st["veya_last"] = time.time()

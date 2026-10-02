@@ -5,10 +5,17 @@
       ADVMATH_CONVERT_AUTO_OCR=1 advmath_convert.py --do   # 连需OCR的也自主转(慢, 见 ocr_daemon.sh)
 """
 
-import os, re, sys, glob, subprocess
+import os
+import re
+import sys
+import glob
+import subprocess
 import fitz  # pymupdf
+
 try:
-    fitz.TOOLS.mupdf_display_errors(False)  # 静音 EPUB HTML/CSS 解析噪音(immersive-translate 导出书 css 大量垃圾)
+    fitz.TOOLS.mupdf_display_errors(
+        False
+    )  # 静音 EPUB HTML/CSS 解析噪音(immersive-translate 导出书 css 大量垃圾)
 except Exception:
     pass
 from collections import Counter
@@ -131,6 +138,7 @@ def convert(path):
     if str(path).lower().endswith(".pdf"):
         try:
             from oprim.parser.parse_pdf import parse_pdf
+
             # ★2026-08-07: 默认 pdf_inspector(firecrawl, benchmark 0.875/表格0.814/0.47s,
             # 原生 CID 解码); ODL_HYBRID=1 时走 opendataloader hybrid(公式 LaTeX 深加工)
             if os.getenv("ODL_HYBRID") == "1":

@@ -8,6 +8,7 @@ Enforces:
 - Note ownership: user-authored, AI never masquerades
 - Skill must carry canonical refs
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -53,13 +54,24 @@ def validate_provenance(obj_type: str, payload: dict[str, Any]) -> list[str]:
             # AI/system notes must be labeled, never masquerade as user
             if author in ("ai", "system"):
                 # allowed but must be explicit — check explicit flag
-                if payload.get("author_type") not in ("ai-generated", "system-generated", "user-authored"):
+                if payload.get("author_type") not in (
+                    "ai-generated",
+                    "system-generated",
+                    "user-authored",
+                ):
                     errors.append("note author_type must be explicit for ai/system notes")
 
     elif t == "skill":
         # skill must carry canonical refs
         has_any_ref = any(
-            payload.get(k) for k in ("concept_refs", "claim_refs", "evidence_refs", "source_refs", "knowledge_refs")
+            payload.get(k)
+            for k in (
+                "concept_refs",
+                "claim_refs",
+                "evidence_refs",
+                "source_refs",
+                "knowledge_refs",
+            )
         )
         if not has_any_ref:
             # allow transient generation but persisted skill must have refs
@@ -75,7 +87,9 @@ def validate_provenance(obj_type: str, payload: dict[str, Any]) -> list[str]:
     return errors
 
 
-def is_valid_citation_path(evidence: dict[str, Any], fragment: dict[str, Any] | None, source: dict[str, Any] | None) -> bool:
+def is_valid_citation_path(
+    evidence: dict[str, Any], fragment: dict[str, Any] | None, source: dict[str, Any] | None
+) -> bool:
     """Check Evidence -> Fragment -> Source chain is intact."""
     if not evidence.get("substrate_id"):
         return False

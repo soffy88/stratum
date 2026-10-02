@@ -9,6 +9,7 @@
     quark_pipeline/sms_code.txt    ← 短信验证码(你收到后告诉我, 我写入; 脚本轮询读取)
     quark_pipeline/storage_state.json ← 登录成功后的会话(供 quark_fetch.py 使用)
 """
+
 from __future__ import annotations
 
 import sys
@@ -42,7 +43,11 @@ def main() -> int:
     with sync_playwright() as p:
         b = p.chromium.launch(
             headless=True,
-            args=["--no-sandbox", "--no-proxy-server", "--disable-blink-features=AutomationControlled"],
+            args=[
+                "--no-sandbox",
+                "--no-proxy-server",
+                "--disable-blink-features=AutomationControlled",
+            ],
         )
         ctx = b.new_context(ignore_https_errors=True, viewport={"width": 1280, "height": 900})
         pg = ctx.new_page()
@@ -50,11 +55,13 @@ def main() -> int:
         ok = False
         for i in range(5):
             try:
-                pg.goto("https://pan.quark.cn/#/login", timeout=45000, wait_until="domcontentloaded")
+                pg.goto(
+                    "https://pan.quark.cn/#/login", timeout=45000, wait_until="domcontentloaded"
+                )
                 ok = True
                 break
             except Exception as e:
-                print(f"  打开页面失败({i+1}/5): {str(e)[:60]}", flush=True)
+                print(f"  打开页面失败({i + 1}/5): {str(e)[:60]}", flush=True)
                 pg.wait_for_timeout(3000)
         if not ok:
             print("❌ 无法打开登录页")
@@ -85,7 +92,7 @@ def main() -> int:
                 pg.wait_for_timeout(1000)
             if fr and fr.query_selector("input[name=login_name]"):
                 break
-            print(f"  iframe 未就绪(尝试 {attempt+1}/6), 刷新页面重试...", flush=True)
+            print(f"  iframe 未就绪(尝试 {attempt + 1}/6), 刷新页面重试...", flush=True)
             try:
                 pg.reload(wait_until="domcontentloaded", timeout=45000)
             except Exception:

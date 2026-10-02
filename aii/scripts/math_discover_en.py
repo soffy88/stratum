@@ -5,7 +5,15 @@
 输出: md路径|substrate_id|书名   (substrate_id: 已知书保留旧id, 新书派生 math_en_<md5前10>)
 用法: python scripts/math_discover_en.py [--out list.txt] [--limit N] [--state state.json]
 """
-import asyncio, asyncpg, json, os, re, sys, hashlib, glob
+
+import asyncio
+import asyncpg
+import json
+import os
+import re
+import sys
+import hashlib
+import glob
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -13,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 MATH_EN_DIR = "/home/soffy/books/MD/英文数学"
 
-KNOWN = {"Calculus Volume 1": "openstax_calculus_v1"}   # 已有 substrate_id 的英文数学书
+KNOWN = {"Calculus Volume 1": "openstax_calculus_v1"}  # 已有 substrate_id 的英文数学书
 
 
 def _sid(stem: str) -> str:
@@ -21,8 +29,8 @@ def _sid(stem: str) -> str:
 
 
 def _chapters(text: str) -> int:
-    cn = len(re.findall(r'(?m)^第[一二三四五六七八九十]+章', text))
-    en = len(re.findall(r'(?m)^#\s+Chapter\s+\d+:?\s*$', text))
+    cn = len(re.findall(r"(?m)^第[一二三四五六七八九十]+章", text))
+    en = len(re.findall(r"(?m)^#\s+Chapter\s+\d+:?\s*$", text))
     return max(cn, en)
 
 
@@ -35,7 +43,7 @@ def discover() -> list[dict]:
         except Exception:
             continue
         nch = _chapters(text)
-        if nch < 3:                       # 管道需 ≥3 章
+        if nch < 3:  # 管道需 ≥3 章
             continue
         out.append({"id": _sid(stem), "title": stem, "md_path": md, "chapters": nch})
     return out
@@ -46,13 +54,16 @@ async def _ingested(ids):
         return set()
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
     rows = await conn.fetch(
-        "SELECT substrate_id FROM aii.ingested_substrate WHERE substrate_id=ANY($1::text[]) AND ku_count>30", ids)
+        "SELECT substrate_id FROM aii.ingested_substrate WHERE substrate_id=ANY($1::text[]) AND ku_count>30",
+        ids,
+    )
     await conn.close()
     return {r["substrate_id"] for r in rows}
 
 
 async def main():
     import argparse
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=None)
     ap.add_argument("--limit", type=int, default=0)
@@ -76,7 +87,7 @@ async def main():
     if args.verbose:
         print(f"排已入库/终态后: {len(cands)} 本", file=sys.stderr)
     if args.limit > 0:
-        cands = cands[:args.limit]
+        cands = cands[: args.limit]
     lines = [f"{c['md_path']}|{c['id']}|{c['title']}" for c in cands]
     if args.out:
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)

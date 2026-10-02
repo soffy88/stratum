@@ -37,7 +37,10 @@ APPLY = "--apply" in sys.argv
 # 脏 → 规范(按匹配优先级)
 _RULES: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"(econ|mankiw|micro|经济|principles_econ)", re.I), "economics"),
-    (re.compile(r"(math|advmath|algebra|calculus|topology|analysis|数分|高数|微积分)", re.I), "math"),
+    (
+        re.compile(r"(math|advmath|algebra|calculus|topology|analysis|数分|高数|微积分)", re.I),
+        "math",
+    ),
     (re.compile(r"(phys|物理)", re.I), "physics"),
     (re.compile(r"(misc|paper|哲学|心理|科普)", re.I), "misc"),
 ]

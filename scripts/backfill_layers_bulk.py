@@ -25,7 +25,6 @@ def main():
     from stratum.services.layer_generator import (
         generate_substrate_layers,
         _persist_substrate_layers,
-        _get_embedding,
     )
 
     # Get ALL substrates without L0 layers
@@ -77,22 +76,34 @@ def main():
             if processed % 50 == 0:
                 elapsed = time.time() - t0
                 rate = processed / elapsed if elapsed > 0 else 0
-                log.info("[%d/%d] %.1f/sec | LLM calls: %d | %s",
-                         processed, len(rows), rate, llm_calls, title[:50])
+                log.info(
+                    "[%d/%d] %.1f/sec | LLM calls: %d | %s",
+                    processed,
+                    len(rows),
+                    rate,
+                    llm_calls,
+                    title[:50],
+                )
 
         except Exception as exc:
             log.error("Failed: %s — %s", sid[:12], exc)
             failed += 1
 
     elapsed = time.time() - t0
-    log.info("Layers done: %d processed, %d failed, %d LLM calls in %.0fs",
-             processed, failed, llm_calls, elapsed)
+    log.info(
+        "Layers done: %d processed, %d failed, %d LLM calls in %.0fs",
+        processed,
+        failed,
+        llm_calls,
+        elapsed,
+    )
 
     # Now backfill embeddings for all L0 without them
     log.info("Backfilling embeddings...")
     emb_count = 0
     while True:
         from stratum.services.layer_generator import backfill_embeddings
+
         n = backfill_embeddings(batch_size=100)
         if n == 0:
             break

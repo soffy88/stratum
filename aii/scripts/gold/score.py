@@ -14,7 +14,8 @@
   · red band 里出现任何"错合"(gold different 却 predicted same)即 FAIL —— 高危陷阱零容忍
 """
 
-import json, sys
+import json
+import sys
 from pathlib import Path
 from collections import Counter, defaultdict
 

@@ -6,7 +6,6 @@ Each entity: user A cannot read/list user B's data.
 
 import pytest
 import ulid as ulid_mod
-from datetime import datetime
 from stratum.dao.users import UserDAO
 from stratum.dao.substrate import SubstrateDAO
 from stratum.utils.user_id_hash import hash_user_id
@@ -122,6 +121,41 @@ def test_note_corpus_id_stored_correctly(two_users):
     dao = NoteDAO(db)
     note = dao.create_note(corpus_id=uA.corpus_id, title="T", content="C")
     assert note.corpus_id == uA.corpus_id
+
+
+def test_note_dao_reads_converged_notes_sl_and_maps_backlinks(two_users):
+    """The legacy DAO must remain usable against the PostgreSQL-shaped table."""
+    uA, uB, db = two_users
+    db.execute(
+        """
+        CREATE TABLE notes_sl (
+            id VARCHAR PRIMARY KEY,
+            user_id VARCHAR NOT NULL,
+            title VARCHAR NOT NULL,
+            content_markdown VARCHAR,
+            substrate_refs VARCHAR[],
+            concept_refs VARCHAR[],
+            content_refs VARCHAR[],
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP,
+            deleted_at TIMESTAMP
+        )
+        """
+    )
+    dao = NoteDAO(db)
+    target = dao.create_note(corpus_id=uA.corpus_id, title="Target", content="root")
+    backlink = str(ulid_mod.ULID())
+    db.execute(
+        "INSERT INTO notes_sl "
+        "(id, user_id, title, content_markdown, substrate_refs, concept_refs, content_refs, created_at, updated_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        (backlink, uA.id, "Backlink", f"See [[{target.id}]]", [], [], []),
+    )
+
+    assert dao.get_note(note_id=target.id, corpus_id=uA.corpus_id).title == "Target"
+    assert dao.get_note(note_id=target.id, corpus_id=uB.corpus_id) is None
+    rows = dao.list_backlinks(note_id=target.id, corpus_id=uA.corpus_id)
+    assert [(row[0], row[1]) for row in rows] == [(backlink, "Backlink")]
 
 
 # --- Concept isolation (≥3) ---

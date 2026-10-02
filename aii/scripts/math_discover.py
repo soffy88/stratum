@@ -13,7 +13,12 @@
 Usage:
   python scripts/math_discover.py [--out /path/to/list.txt] [--limit N]
 """
-import asyncio, asyncpg, json, os, re, sys
+
+import asyncio
+import asyncpg
+import json
+import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -24,18 +29,55 @@ STRATUM_DIR = Path("/home/soffy/shared/stratum-to-aii")
 STATE_FILE = ROOT / "math_pipeline" / "flywheel_state.json"
 
 MATH_KEYWORDS = [
-    "数学", "高等数学", "数学分析", "线性代数", "概率论", "微积分",
-    "calculus", "algebra", "analysis", "probability", "statistics",
-    "geometry", "代数", "几何", "拓扑", "统计学", "运筹",
-    "数值分析", "复变函数", "实变函数", "泛函分析", "微分方程",
-    "常微分", "偏微分", "离散数学", "组合数学", "数论",
-    "矩阵", "向量空间", "级数", "积分", "导数",
+    "数学",
+    "高等数学",
+    "数学分析",
+    "线性代数",
+    "概率论",
+    "微积分",
+    "calculus",
+    "algebra",
+    "analysis",
+    "probability",
+    "statistics",
+    "geometry",
+    "代数",
+    "几何",
+    "拓扑",
+    "统计学",
+    "运筹",
+    "数值分析",
+    "复变函数",
+    "实变函数",
+    "泛函分析",
+    "微分方程",
+    "常微分",
+    "偏微分",
+    "离散数学",
+    "组合数学",
+    "数论",
+    "矩阵",
+    "向量空间",
+    "级数",
+    "积分",
+    "导数",
 ]
 
 SKIP_KEYWORDS = [
-    "数学教你", "数学家的", "哲学", "philosophy", "psychology", "心理",
-    "技术大全", "经济", "管理", "金融", "finance", "economic",
-    "manipulation", "德国一流大学",
+    "数学教你",
+    "数学家的",
+    "哲学",
+    "philosophy",
+    "psychology",
+    "心理",
+    "技术大全",
+    "经济",
+    "管理",
+    "金融",
+    "finance",
+    "economic",
+    "manipulation",
+    "德国一流大学",
 ]
 
 
@@ -91,19 +133,23 @@ async def _ingested_set(candidates: list[dict]) -> set[str]:
     if not ids:
         return set()
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
-    rows = await conn.fetch("""
+    rows = await conn.fetch(
+        """
         SELECT substrate_id
         FROM aii.ingested_substrate
         WHERE substrate_id = ANY($1::text[])
           AND ku_count > 30
           AND subject = '数学'
-    """, ids)
+    """,
+        ids,
+    )
     await conn.close()
     return {r["substrate_id"] for r in rows}
 
 
 async def main():
     import argparse
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=None, help="输出书单文件路径(默认stdout)")
     ap.add_argument("--limit", type=int, default=0, help="最多输出N本(0=全部)")
@@ -119,9 +165,12 @@ async def main():
     state = _load_state()
     done_states = {"ingested", "precheck_fail", "quarantine", "skip"}
     if not args.include_done:
-        candidates = [c for c in candidates
-                      if c["id"] not in state["processed"]
-                      or state["processed"][c["id"]]["status"] not in done_states]
+        candidates = [
+            c
+            for c in candidates
+            if c["id"] not in state["processed"]
+            or state["processed"][c["id"]]["status"] not in done_states
+        ]
         if args.verbose:
             print(f"排除 flywheel 终态后: {len(candidates)} 本", file=sys.stderr)
 

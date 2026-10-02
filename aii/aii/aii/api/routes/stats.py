@@ -1,4 +1,5 @@
 """Stats endpoints — read-only dashboard data."""
+
 import os
 from pathlib import Path
 
@@ -42,18 +43,20 @@ async def stats_overview():
                 "SELECT subject, count(*) AS cnt FROM aii.ingested_substrate WHERE subject IS NOT NULL GROUP BY subject ORDER BY cnt DESC"
             )
 
-        return success_response({
-            "ku_count": ku_row["ku_count"],
-            "kc_count": kc_count,
-            "bu_count": bu_count,
-            "edge_count": edge_count,
-            "grade_dist": {r["grade"]: r["cnt"] for r in grade_rows},
-            "merge_count": ku_row["merged_ku_count"],
-            "dedup_saved": int(ku_row["dedup_saved"]),
-            "relation_type_dist": {r["relation_type"]: r["cnt"] for r in rel_rows},
-            "contradicts_count": contradicts,
-            "subject_dist": {r["subject"]: int(r["cnt"]) for r in subject_rows},
-        })
+        return success_response(
+            {
+                "ku_count": ku_row["ku_count"],
+                "kc_count": kc_count,
+                "bu_count": bu_count,
+                "edge_count": edge_count,
+                "grade_dist": {r["grade"]: r["cnt"] for r in grade_rows},
+                "merge_count": ku_row["merged_ku_count"],
+                "dedup_saved": int(ku_row["dedup_saved"]),
+                "relation_type_dist": {r["relation_type"]: r["cnt"] for r in rel_rows},
+                "contradicts_count": contradicts,
+                "subject_dist": {r["subject"]: int(r["cnt"]) for r in subject_rows},
+            }
+        )
     except Exception as e:
         return error_response("STATS_ERROR", str(e))
 
@@ -66,6 +69,7 @@ async def stats_ingestion():
         total_files = 0
         if _SHARED_DIR.is_dir():
             import json as _json
+
             for jp in _SHARED_DIR.glob("*.json"):
                 total_files += 1
                 try:
@@ -95,11 +99,13 @@ async def stats_ingestion():
                 "ingested": r["cnt"],
             }
 
-        return success_response({
-            "total_files": total_files,
-            "ingested": ingested,
-            "by_medium": by_medium,
-            "deep_understood": deep_done,
-        })
+        return success_response(
+            {
+                "total_files": total_files,
+                "ingested": ingested,
+                "by_medium": by_medium,
+                "deep_understood": deep_done,
+            }
+        )
     except Exception as e:
         return error_response("STATS_ERROR", str(e))

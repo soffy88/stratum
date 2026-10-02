@@ -119,8 +119,42 @@ generated_at, generator_version
 ```
 `status=superseded` on canonical claim → skill marked stale → must regenerate (not silently reuse).
 
-## 9. Authority Uniqueness Test Matrix
+## 9. KnowledgeRef Identity Contract
+
+Canonical identity for knowledge objects across the three warehouses:
+
+```
+KnowledgeRef = (repository, object_type, object_id, source_version?)
+```
+
+- **repository**: `A` (aii_kg) | `B` (aii_refined) | `C` (aii_context)
+- **object_type**: closed set — `source`, `fragment`, `evidence`, `claim`, `concept`, `relation`, `note`, `annotation`, `learning_object`, `skill`, `ku`, `kc`, `substrate`, `flashcard`, `cornell_note`, `learning_point`
+- **object_id**: stable identifier within the repository (never text)
+- **source_version**: optional pin for reads; NOT part of identity
+
+**Identity = (repository, object_type, object_id).** Text fields (point_name, title, content, quotes) are NEVER part of identity — no text matching is permitted.
+
+Machine-readable: `src/stratum/knowledge/knowledge_ref.py`.
+
+## 10. Mastery Authority Convergence (P1)
+
+`cx.learning_progress` (C-warehouse, `aii_context`) is the **sole canonical mastery authority**.
+
+| Store | Role | Mastery? |
+|---|---|---|
+| `cx.learning_progress` (C仓) | canonical mastery | **YES — sole authority** |
+| `stratum.flashcards` (A仓) | FSRS card scheduling state | NO — scheduling, not mastery |
+| `cornell_progress` (A仓) | Cornell note telemetry | NO — telemetry, not mastery |
+| `localStorage` (frontend) | Deep Card completion | NO — browser-local, not mastery |
+
+- Mastery reads/writes route through `MasteryAuthority` adapter (`src/stratum/services/mastery_authority.py`) → `cx.learning_progress`.
+- No new mastery store is created; existing data preserved (no destructive migration).
+- Flashcard scheduler (FSRS/SM-2) and history are preserved as-is.
+- `MASTERY_AUTHORITY_COUNT = 1` enforced by `tests/architecture/test_mastery_authority_convergence.py`.
+
+## 11. Authority Uniqueness Test Matrix
 
 See `tests/architecture/test_aii_closure.py` — 18 invariants covering spec §13.
+See `tests/architecture/test_mastery_authority_convergence.py` — P1 mastery authority + KnowledgeRef contract.
 
 Priority for conflicts: `data integrity > provenance > authority uniqueness > user isolation > backward compatibility > implementation convenience`.

@@ -52,13 +52,13 @@ export default function PipelinesPage() {
 
   const ctrl = async (id: string, action: "start" | "stop") => {
     setBusy(id + action);
-    try { await fetch(`/api/aii/api/pipelines/${id}/${action}`, { method: "POST" }); } catch {}
+    try { await fetch(`/api/aii/api/pipelines/${id}/${action}`, { method: "POST" }); } catch { /* best effort control */ }
     setTimeout(() => { load(); setBusy(""); }, 1200);
   };
 
   const ocrCtrl = async (action: "start" | "stop") => {
     setBusy("ocr" + action);
-    try { await fetch(`/api/aii/api/ocr/${action}`, { method: "POST" }); } catch {}
+    try { await fetch(`/api/aii/api/ocr/${action}`, { method: "POST" }); } catch { /* best effort control */ }
     setTimeout(() => { load(); setBusy(""); }, 1200);
   };
 

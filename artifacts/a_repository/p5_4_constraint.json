@@ -1,0 +1,233 @@
+{
+  "A_P5_4_CONSTRAINT_IMPLEMENTATION": "PASS",
+  "A_P5_4_CONSTRAINT_SCHEMA": "PASS",
+  "MIGRATION_081": "081_a_constraint_candidate.sql",
+  "TYPE_COVERAGE": {
+    "HARD": true,
+    "SELF_DEFINED": false,
+    "SOFT": false
+  },
+  "UNTESTED": [
+    "soft_constraint_extraction",
+    "self_defined_constraint",
+    "constraint_completeness",
+    "legal_correctness",
+    "advisory_wording_in_corpus"
+  ],
+  "authority": "A_REPOSITORY",
+  "book": "利率史（第四版） 第四版",
+  "checks": {
+    "BU2_DEPENDENCY": 0,
+    "B_CONTAMINATION": 0,
+    "C_CONTAMINATION": 0,
+    "baseline_mutated": 0,
+    "constraint_persisted": 1,
+    "cross_source_candidates": 0,
+    "fields_quoted_from_span": "PASS",
+    "negative_cases": 25,
+    "negative_refusals": 25,
+    "replay_stable": "PASS",
+    "source_isolation": "PASS",
+    "traceability_percent": 100.0,
+    "transaction_atomic": "PASS",
+    "unauthorised_type_rows": 0
+  },
+  "constraint_count": 1,
+  "constraint_types_declared": [
+    "HARD",
+    "SOFT",
+    "SELF_DEFINED"
+  ],
+  "constraint_version": "a-p5-4-v0.1",
+  "constraints": [
+    {
+      "all_fields_quoted_from_span": true,
+      "constraint_hash": "cnh_be4e3f7cc4c15779",
+      "constraint_id": "cnc_9b4ce2844c0b",
+      "constraint_type": "HARD",
+      "extractor_version": "pilot-declared",
+      "knowledge_unit_id": "ku_15a527238f5c",
+      "quoted": {
+        "boundary": "8.333%",
+        "object": "每年8.333%",
+        "predicate": "被限制为不得超过",
+        "subject": "利息"
+      },
+      "source_version_id": "sv_f548f51a5df5",
+      "spans": [
+        {
+          "evidence_id": "ev_0e7498adab57",
+          "page": 9,
+          "span": "贷款的利息被限制为不得超过每年8.333%"
+        }
+      ],
+      "status": "GENERATED",
+      "unit_statement": "罗马法定利率上限：8.333%/年"
+    }
+  ],
+  "durable_rows": {
+    "constraint_candidate": 1,
+    "knowledge_unit": 11,
+    "ku_boundary_candidate": 0,
+    "ku_condition_candidate": 6,
+    "ku_freeze_event": 12,
+    "ku_identity": 11,
+    "ku_relation": 2,
+    "ku_revision": 1,
+    "mechanism_candidate": 1,
+    "mechanism_node": 3,
+    "paper_evidence": 4,
+    "paper_source_candidate": 1,
+    "relation_candidate": 1
+  },
+  "extracted_rows": [],
+  "final_report": {
+    "AUTHORITY_SCAN": "PASS",
+    "BU2_MUTATION": "0",
+    "B_CONTAMINATION": "0",
+    "COMMIT_SHA": "PENDING",
+    "CONSTRAINT_ROWS": "1",
+    "C_CONTAMINATION": "0",
+    "DB_MUTATION": "0",
+    "FINAL_STATUS": "PASS",
+    "MIGRATION_081": "081_a_constraint_candidate.sql",
+    "REPLAY": "PASS",
+    "TAG": "PENDING",
+    "TASK": "A_P5_4_CONSTRAINT",
+    "TRACEABILITY": "100.0%"
+  },
+  "gates": {
+    "GATE_1_banned_fields": "PASS",
+    "GATE_1_column_parity": "PASS",
+    "GATE_1_constraints": "PASS",
+    "GATE_1_fk_verb": "PASS",
+    "GATE_1_hash_ordering": "PASS",
+    "GATE_1_index_reuse": "PASS",
+    "GATE_1_isolation_schema": "PASS",
+    "GATE_1_schema": "PASS",
+    "GATE_1_vocabulary": "PASS",
+    "GATE_2_authority": "PASS",
+    "GATE_2_baseline_unchanged": "PASS",
+    "GATE_2_frozen_layers": "PASS",
+    "GATE_3_ku_statement_not_evidence": "PASS",
+    "GATE_3_quote_authority": "PASS",
+    "GATE_4_coverage": "PASS",
+    "GATE_4_trace": "PASS",
+    "GATE_4_traceability_percent": 100.0,
+    "GATE_5_hash_stability": "PASS",
+    "GATE_5_idempotency": "PASS",
+    "GATE_5_replay": "PASS",
+    "GATE_6_isolation": "PASS",
+    "GATE_7_negative": "PASS",
+    "GATE_7_negative_detail": {
+      "approved_status": true,
+      "boundary_not_in_span": true,
+      "confirmed_status": true,
+      "cross_book_evidence": true,
+      "cross_source_unit": true,
+      "delete_candidate": true,
+      "derive_constraint": true,
+      "enforce": true,
+      "invented_boundary": true,
+      "ku_statement_not_quoted": true,
+      "merge_constraints": true,
+      "no_evidence": true,
+      "no_such_source_version": true,
+      "no_such_unit": true,
+      "object_not_in_span": true,
+      "predicate_much_worse_than_span_wording": true,
+      "predicate_not_in_span": true,
+      "recommend": true,
+      "recommended_type": true,
+      "rejected_revived": true,
+      "subject_not_in_span": true,
+      "supported_downgrade": true,
+      "unknown_type": true,
+      "update_candidate": true,
+      "verified_status": true
+    }
+  },
+  "ku_statement_as_evidence": "FORBIDDEN",
+  "ledger": [
+    "070_a_repository_foundation.sql",
+    "071_a_evidence_quality.sql",
+    "072_a_ku_verification.sql",
+    "073_a_knowledge_unit_freeze.sql",
+    "074_a_ku_freeze_persistence.sql",
+    "075_a_ku_evolution.sql",
+    "076_a_ku_identity.sql",
+    "077_a_condition_boundary.sql",
+    "078_a_mechanism_chain.sql",
+    "079_a_relation_candidate.sql",
+    "080_a_paper_source.sql",
+    "081_a_constraint_candidate.sql"
+  ],
+  "measured_rejections": {
+    "ku_4ccc104bb7a8": "高于法定上限的利息将被处以4倍损害赔偿 is a sanction attached to a limit, not the limit itself",
+    "ku_5840cc146f9f": "索伦法典取消利率上限 records the removal of a limit, not a limit stated by this source",
+    "ku_639e79172556": "span 银子贷款按重量计算每年20% states a rate with no 上限, no 不得超过 and no 禁止; the cap framing is the KU statement's, so a rate fact is not a constraint",
+    "ku_8b366dd7b4d1": "如果作弊收取的利息高于法定上限，那么债务的本金就会被免除 is a conditional consequence, not a limit on the rate",
+    "ku_93a979cb6fab": "因而必须进行重大改革 refers 必须 to reform, not to a credit constraint"
+  },
+  "notes": {
+    "CONSTRAINT_TYPES": [
+      "HARD",
+      "SOFT",
+      "SELF_DEFINED"
+    ],
+    "DB_DOES_NOT_GUARANTEE": [
+      "that the four quoted fields appear in the evidence span: a CHECK cannot read another table, so DECISION=SPAN_ONLY is the writer's to enforce",
+      "that evidence_ids members are real rows of the same book",
+      "the state machine: a CHECK cannot read a column's previous value",
+      "constraint_type: a CHECK cannot tell whether a span binds hard"
+    ],
+    "DB_GUARANTEES": [
+      "foreign key integrity (source_version, knowledge_unit)",
+      "the unit is of the annotation's own source version, via composite keys",
+      "constraint_type vocabulary closed to three values",
+      "status vocabulary closed, with no VERIFIED / CONFIRMED / APPROVED",
+      "subject, predicate, object non-empty",
+      "evidence_ids non-empty",
+      "replay hash uniqueness"
+    ],
+    "KNOWN_LIMITATIONS": [
+      "LIMITATION-1 constraint extraction quality is not proven",
+      "LIMITATION-2 soft constraint boundary depends on source wording",
+      "LIMITATION-3 evidence array FK is service verified only",
+      "LIMITATION-4 database guarantees source/KU identity, not semantic validity",
+      "LIMITATION-5 no constraint may be promoted to B仓 automatically",
+      "LIMITATION-6 some historically known constraints cannot enter A仓 when the span records a fact but not the limiting rule; this is intentional"
+    ],
+    "KU_STATEMENT_AS_EVIDENCE": "FORBIDDEN",
+    "PILOT_SCOPE": "persistence, traceability, replay and authority boundary; constraint completeness, legal correctness and economic interpretation are not measured and no extractor ships in this stage",
+    "PILOT_YIELD": 1,
+    "QUOTE_AUTHORITY": "READING_EVIDENCE_ONLY",
+    "REJECTED_BY_DECISION": [
+      "Babylon silver-loan rate cap: the span states 银子贷款按重量计算每年20% with no 上限, no 不得超过 and no 禁止. The cap framing exists only in the KU statement, which P3/P4 wrote. A rate fact is not a constraint.",
+      "p4 grain cap 法定利率上限确定为谷物贷款每年33.333%: no frozen KU, and 081 requires knowledge_unit_id",
+      "p5 所有贷款都必须附有书面合约: no frozen KU",
+      "p7 但是禁止个人劳役偿债: no frozen KU",
+      "p5 如果作弊收取的利息高于法定上限，那么债务的本金就会被免除: a conditional consequence, not a limit on the rate",
+      "p6 因而必须进行重大改革: 必须 refers to reform, not to a credit constraint",
+      "p9 高于法定上限的利息将被处以4倍损害赔偿: a sanction attached to a limit, not the limit itself"
+    ],
+    "STATE_MACHINE": "GENERATED -> SUPPORTED | REJECTED; both terminal"
+  },
+  "pilot_rows": [
+    "cnc_9b4ce2844c0b"
+  ],
+  "quote_authority": "READING_EVIDENCE_ONLY",
+  "run_id": "arr_d0d1473d79fc",
+  "task": "A_P5_4_CONSTRAINT",
+  "traceability_percent": 100.0,
+  "type_coverage": {
+    "HARD": true,
+    "SELF_DEFINED": false,
+    "SOFT": false
+  },
+  "unanchored_spans": [
+    "p4 法定利率上限确定为谷物贷款每年33.333%，以实物偿还",
+    "p5 所有贷款都必须附有书面合约，并由官员作证",
+    "p7 他们减少或者豁免了许多债务…但是禁止个人劳役偿债"
+  ]
+}

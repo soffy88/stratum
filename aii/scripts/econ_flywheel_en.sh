@@ -34,8 +34,12 @@ STRATUM_FEEDBACK="${ECON_STRATUM_FEEDBACK:-0}"   # 英文书来自本地文件�
 
 # ★NIM key(免费) + DB + BGE-M3跑CPU(不抢aii-api的GPU)
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('econ',''))" 2>/dev/null)"
+# ★统一模型链: opencodex(10100) gpt-5.6-luna 主, NIM fallback
+export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://192.168.80.1:8791/v1/chat/completions}"  # ★2026-08-27 切 Veya(10100僵死)
+export OPENCODE_MODEL="${OPENCODE_MODEL:-gpt-5.6-luna}"
+# export NIM fallback(默认由 _provider.py 选 NIM 模型)
 export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-4}"   # ★并发度=4(测试定论: 4-5低偶发超时, 6+持续过载)
-export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
+export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5437/aii_kg}"
 export CUDA_VISIBLE_DEVICES=""
 # ★忠实模式(同中文版): 只忠实呈现原书内容, 不过度LLM判断/why-how; section 默认13000
 export ECON_FAITHFUL=1

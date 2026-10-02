@@ -3,17 +3,17 @@
 These tests verify the constitutional guarantees without requiring a live PG.
 Targets: docs, contract.py, provenance.py, knowledge_view.py, and API routers.
 """
+
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
-import pytest
 
 ROOT = Path(__file__).parents[2]
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8", errors="ignore")
@@ -35,9 +35,17 @@ def test_fragment_anchor_stable():
     assert "anchor_json" in contract
     assert "parser_version" in contract
     # Migration 025 adds anchor/version columns
-    mig = _read("src/stratum/db/migrations/025_derivative_table.sql") if (ROOT / "src/stratum/db/migrations/025_derivative_table.sql").exists() else _read("src/stratum/db/pg_schema/002_substrate_chunk.sql")
+    mig = (
+        _read("src/stratum/db/migrations/025_derivative_table.sql")
+        if (ROOT / "src/stratum/db/migrations/025_derivative_table.sql").exists()
+        else _read("src/stratum/db/pg_schema/002_substrate_chunk.sql")
+    )
     # At least one schema file mentions anchor
-    found = any("anchor" in (ROOT / p).read_text() for p in ["src/stratum/db/pg_schema/002_substrate_chunk.sql"] if (ROOT / p).exists())
+    found = any(
+        "anchor" in (ROOT / p).read_text()
+        for p in ["src/stratum/db/pg_schema/002_substrate_chunk.sql"]
+        if (ROOT / p).exists()
+    )
     assert found or "anchor" in contract.lower()
 
 
@@ -82,7 +90,13 @@ def test_user_ai_ownership_separation():
     errs = validate_provenance("note", {"author": "ai", "author_type": "user-authored"})
     # ai note masquerading as user without explicit type should be flagged when type missing
     # but our validator allows explicit, so masquerading case is the missing type
-    assert any("note" in e.lower() or "author" in e.lower() for e in validate_provenance("note", {"author": "ai"})) or True
+    assert (
+        any(
+            "note" in e.lower() or "author" in e.lower()
+            for e in validate_provenance("note", {"author": "ai"})
+        )
+        or True
+    )
 
 
 # 6. Concept authority 唯一
@@ -96,7 +110,9 @@ def test_concept_authority_unique():
     concepts = [k for k, v in AUTHORITY_MAP.items() if "concept" in k.lower()]
     assert "Concept" in concepts
     # Contract lists exactly one authority per object
-    assert len(set(AUTHORITY_MAP.values())) >= len(set(AUTHORITY_MAP.keys())) - 2  # allow LO/Skill as projections
+    assert (
+        len(set(AUTHORITY_MAP.values())) >= len(set(AUTHORITY_MAP.keys())) - 2
+    )  # allow LO/Skill as projections
 
 
 # 7. Relation 有 provenance
@@ -177,7 +193,11 @@ def test_projection_rebuild():
 # 13. correction/supersede 生效
 def test_correction_supersede():
     # Claim has status + superseded_by concept
-    aii_mig = (ROOT / "aii/migrations/0001_onto_concept_storage.sql").read_text() if (ROOT / "aii/migrations/0001_onto_concept_storage.sql").exists() else ""
+    aii_mig = (
+        (ROOT / "aii/migrations/0001_onto_concept_storage.sql").read_text()
+        if (ROOT / "aii/migrations/0001_onto_concept_storage.sql").exists()
+        else ""
+    )
     stratum_claim = _read("src/stratum/api/routers/knowledge.py")
     assert "status" in stratum_claim
     # knowledge contract mentions superseded

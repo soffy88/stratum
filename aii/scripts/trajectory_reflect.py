@@ -13,6 +13,7 @@ graphify reflect 的确定性版: 按 failure_mode 聚合 trajectory_logs 的
 用法:
     .venv/bin/python scripts/trajectory_reflect.py [--days 7] [--min-fail 5] [--dry-run]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -23,7 +24,7 @@ import sys
 
 import asyncpg
 
-DSN = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+DSN = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
 
 
 async def main() -> int:
@@ -52,8 +53,14 @@ async def main() -> int:
     print(f"{'failure_mode':<28} {'失败':>5} {'恢复':>5} {'降级':>5}  判定")
     marked = 0
     for r in rows:
-        verdict = "useful" if r["n_rec"] > 0 else ("dead_end" if r["n_fail"] >= args.min_fail else "watch")
-        print(f"{r['failure_mode']:<28} {r['n_fail']:>5} {r['n_rec']:>5} {r['n_deg']:>5}  {verdict}")
+        verdict = (
+            "useful"
+            if r["n_rec"] > 0
+            else ("dead_end" if r["n_fail"] >= args.min_fail else "watch")
+        )
+        print(
+            f"{r['failure_mode']:<28} {r['n_fail']:>5} {r['n_rec']:>5} {r['n_deg']:>5}  {verdict}"
+        )
         if verdict != "dead_end":
             continue
         rule_name = f"dead_end_{r['failure_mode'][:40]}"
@@ -63,18 +70,22 @@ async def main() -> int:
             "reason": f"reflect: {r['n_fail']} 次失败 0 次恢复(近 {args.days} 天)",
         }
         exists = await conn.fetchval(
-            "SELECT rule_id FROM aii.skill_rules WHERE rule_name=$1", rule_name)
+            "SELECT rule_id FROM aii.skill_rules WHERE rule_name=$1", rule_name
+        )
         if exists and not args.dry_run:
             await conn.execute(
                 "UPDATE aii.skill_rules SET action=$2::jsonb, enabled=true WHERE rule_name=$1",
-                rule_name, json.dumps(action, ensure_ascii=False))
+                rule_name,
+                json.dumps(action, ensure_ascii=False),
+            )
         elif not exists and not args.dry_run:
             await conn.execute(
                 "INSERT INTO aii.skill_rules (rule_name, condition, action, source)"
                 " VALUES ($1, $2::jsonb, $3::jsonb, 'reflect')",
                 rule_name,
                 json.dumps({"failure_mode": r["failure_mode"]}),
-                json.dumps(action, ensure_ascii=False))
+                json.dumps(action, ensure_ascii=False),
+            )
         marked += 1
         if not args.dry_run:
             print(f"  → 已写 skill_rules: {rule_name}")

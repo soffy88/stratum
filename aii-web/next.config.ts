@@ -18,18 +18,31 @@ const slBase =
 // P2: AII routes now served by Stratum SL under /api/aii/* (unified backend).
 // The aiiBase points to slBase so all backend traffic goes through one process.
 const aiiBase = slBase;
+const projectRoot = __dirname;
 
 const config: NextConfig = {
   reactStrictMode: true,
-  // AII merge P3.5: next build's type-check doesn't honour tsconfig `exclude` for the
-  // ported (aii) pages, so @helios/blocks's .d.ts packaging incompat (see commit
-  // fccda01) resurfaces. SWC still compiles everything correctly. Type safety for
-  // Stratum's own code is gated separately by `pnpm type-check` (tsc honours exclude,
-  // 0 errors); the AII pages run un-strict-checked exactly as they do in AII itself.
-  typescript: { ignoreBuildErrors: true },
+  // The vendored Helios package now supplies the complete type contract; keep the
+  // production build fail-closed so it cannot ship a new type error unnoticed.
+  typescript: { ignoreBuildErrors: false },
   // Standalone output for Docker — produces .next/standalone/server.js
   // with minimal node_modules (~40MB vs full node_modules ~500MB).
   output: "standalone",
+  // This app has its own lockfile inside a larger workspace. Keep webpack's
+  // output tracing scoped to the app or it may walk unrelated monorepo files.
+  outputFileTracingRoot: projectRoot,
+  turbopack: { root: projectRoot },
+  webpack(config) {
+    // pdfjs-dist bundles a NodeCanvasFactory that requires the optional native
+    // `canvas` module. The reader is loaded with ssr:false and uses the browser
+    // canvas implementation, so never resolve the native binding in Next's
+    // server graph (it is absent in the minimal web image by design).
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      canvas: false,
+    };
+    return config;
+  },
   // AII merge P3.1: adopt the real @helios/blocks + @helios/oui design system
   // (vendored tarballs) instead of the local stub. These ship ESM/TS and must
   // be transpiled by Next.

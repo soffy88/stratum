@@ -46,7 +46,7 @@ async def main(apply: bool):
     import asyncpg
 
     conn = await asyncpg.connect(
-        os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+        os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
     )
 
     already = await conn.fetchval(

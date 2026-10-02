@@ -22,6 +22,8 @@
 #   ECON_MD_LIST=... ECON_DRY_RUN=1 bash scripts/econ_batch_run.sh  # 只预检
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# econ_batch_run 由多个飞轮调用，成功分支会用 rclone 归档源 MD。
+export PATH="$HOME/.local/bin:$PATH"
 
 : "${RCLONE_PROXY=http://127.0.0.1:7890}"
 if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
@@ -29,7 +31,7 @@ if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
   # ★本地/tailscale 服务(embed 100.119.113.90:8102 / postgres)必须直连:
   #   缺 NO_PROXY 会让 embed 请求也走代理 → sing-box 拨号回环/内网失败
   #   → "aii-embed unreachable ... 502" 整章 FAILED(2026-08-09 事故根因)
-  export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+  export NO_PROXY="localhost,127.0.0.1,192.168.80.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
   export no_proxy="${NO_PROXY}"
 fi
 
@@ -72,7 +74,10 @@ d["quarantined"].append({
     "reason_type": "$reason_type",
     "reason_detail": "$reason_detail",
     "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-    "qual_json": "econ_pipeline/qual/$sid.json",
+    # Keep the report pointer aligned with the caller's pipeline.  The old
+    # hard-coded econ path made cs/misc/edu quarantine entries point at another
+    # book's report, obscuring the actual failure.
+    "qual_json": "${ECON_QUAL_DIR}/$sid.json",
     "status": "pending_review",
 })
 qf.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -132,18 +137,18 @@ import asyncio, asyncpg, os; from dotenv import load_dotenv; from pathlib import
 load_dotenv(Path('aii/.env'))
 async def chk():
     c = await asyncpg.connect(os.getenv('DATABASE_URL'))
-    # 已完整入库: ingested_substrate 已登记(register.py 末端标记) 且 BU已生成
-    # (KU>100 阈值只对经济学大书成立; misc书KU常<100 → 以登记表为准)
-    r = await c.fetchrow('SELECT (SELECT count(*) FROM aii.ingested_substrate WHERE substrate_id=\$1) AS reg, (SELECT count(*) FROM aii.bu_onto WHERE substrate_id=\$1) AS bu', '$SUBSTRATE')
+    # 已完整入库: 登记 + BU + 至少1条KU。仅有登记/BU的半成品不能跳过，
+    # 否则“0 KU但已有BU”的失败书会被永久当成完成，飞轮再也不会消费。
+    r = await c.fetchrow('SELECT (SELECT count(*) FROM aii.ingested_substrate WHERE substrate_id=\$1) AS reg, (SELECT count(*) FROM aii.bu_onto WHERE substrate_id=\$1) AS bu, (SELECT count(*) FROM aii.ku_onto WHERE substrate_id=\$1) AS ku', '$SUBSTRATE')
     await c.close()
-    if r and (r['reg'] or 0) > 0 and (r['bu'] or 0) > 0:
+    if r and (r['reg'] or 0) > 0 and (r['bu'] or 0) > 0 and (r['ku'] or 0) > 0:
         print('yes')
     else:
         print('no')
 asyncio.run(chk())
 " 2>/dev/null || echo "no")
         if [ "$ALREADY" = "yes" ]; then
-            echo "  ✅ 已完整入库(已登记且BU已生成), 跳过(FORCE=0)"
+            echo "  ✅ 已完整入库(已登记+BU+KU), 跳过(FORCE=0)"
             N_SKIP=$((N_SKIP + 1))
             RESULTS[$SUBSTRATE]="SKIP:already_ingested"
             continue
@@ -181,10 +186,39 @@ asyncio.run(chk())
     mkdir -p "$RUN_LOG_DIR"
     echo "  [管道] 运行 $PIPELINE_SCRIPT..."
     QUAL_JSON="$ECON_QUAL_DIR/${SUBSTRATE}.json"
-    export SUBSTRATE AII_MD_FILE="$MD_PATH" ECON_TITLE QUAL_DIR="$ECON_QUAL_DIR" PIPELINE_CKPT_DIR="$ECON_CKPT_DIR"
+    # ★2026-09-29 重试隔离书时打开强制重规划: 被质量门隔离的书 checkpoint 还在,
+    #   缺 rationale 的章会被跳过抽取, 拿修复前的旧 KU 反复重判 → 死循环
+    #   (实测 09-29 08:54~10:37 连续 12 本 cs 书复读, KU 停产 17.7h)。
+    #   判定: 这本书上一次是不是因质量门被隔离的。
+    _REPLAN=0
+    # ★2026-10-01 读持久台账(ECON_QUARANTINE_HISTORY), 不是本轮 worker 文件:
+    #   run_book_workers.sh 每轮开头会删掉 quarantine_worker*.json, 上一轮被隔离的
+    #   书不在里面 → 这个判定永远为假 → AII_FORCE_REPLAN 从未触发(实测 0 次)。
+    _QHIST="${ECON_QUARANTINE_HISTORY:-$QUARANTINE_JSON}"
+    if [ -f "$_QHIST" ] && $PY -c "
+import json,sys
+d=json.load(open(sys.argv[1]))
+print('1' if any(x.get('substrate_id')==sys.argv[2] and x.get('reason_type')=='quality_gate'
+               for x in d.get('quarantined',[])) else '0')
+" "$_QHIST" "$SUBSTRATE" 2>/dev/null | grep -q '^1$'; then
+        _REPLAN=1
+        echo "  [重规划] $SUBSTRATE 此前因质量门被隔离 → 重抽缺 rationale 的章"
+    fi
+    export SUBSTRATE AII_MD_FILE="$MD_PATH" ECON_TITLE QUAL_DIR="$ECON_QUAL_DIR" PIPELINE_CKPT_DIR="$ECON_CKPT_DIR" AII_FORCE_REPLAN="$_REPLAN"
 
     PIPE_EXIT=0
-    bash "$PIPELINE_SCRIPT" 2>&1 | tee "$RUN_LOG_DIR/${SUBSTRATE}_run.log" || PIPE_EXIT=$?
+    # ★2026-08-29 加超时: 上游 LLM (Veya/opencode-go) 经常 412/429/僵死 拖死 ECON 飞轮
+    # 18h+ 例子(econ_pipeline.sh 卡 generate_bu.py 的 LLM call, 飞轮 2631 sleep 18h 没进度)
+    # ECON_PIPELINE_TIMEOUT 默认 1800s = 30 分钟, 超时后 SIGTERM, 飞轮继续下一本
+    ECON_PIPELINE_TIMEOUT="${ECON_PIPELINE_TIMEOUT:-1800}"
+    timeout --kill-after=30s "$ECON_PIPELINE_TIMEOUT" bash "$PIPELINE_SCRIPT" 2>&1 | tee "$RUN_LOG_DIR/${SUBSTRATE}_run.log" || PIPE_EXIT=$?
+    if [ $PIPE_EXIT -eq 124 ]; then
+        echo "  ⏱ 管道超时($((ECON_PIPELINE_TIMEOUT/60)) 分钟) → 隔离本本, 飞轮继续"
+        _quarantine_add_json "$SUBSTRATE" "$ECON_TITLE" "$MD_PATH" "pipeline_timeout" "管道超过 $((ECON_PIPELINE_TIMEOUT/60)) 分钟未完成(LLM 僵死/限流)"
+        N_FAIL=$((N_FAIL + 1))
+        RESULTS[$SUBSTRATE]="PIPELINE_TIMEOUT"
+        continue
+    fi
 
     if [ $PIPE_EXIT -eq 2 ]; then
         echo "  ❌ 管道步骤失败(exit=2) → 隔离"
@@ -222,7 +256,16 @@ asyncio.run(chk())
         if [ -f "$QUAL_JSON" ]; then
             ALARM_REASONS=$($PY -c "import json; d=json.load(open('$QUAL_JSON')); print(' | '.join(d.get('alarms',[])[:3]))" 2>/dev/null || echo "see $QUAL_JSON")
         fi
-        _quarantine_add_json "$SUBSTRATE" "$ECON_TITLE" "$MD_PATH" "quality_gate" "$ALARM_REASONS"
+        # 零 KU 不是普通质量问题：通常是 LLM 返回空壳/单语/拒答后被 persist
+        # 丢弃，必须自动重试，不能进入永久 quarantine 终态。
+        KU_COUNT=$(docker exec aii-postgres psql -U aii -d aii_kg -tAc \
+            "SELECT count(*) FROM aii.ku_onto WHERE substrate_id='$SUBSTRATE'" 2>/dev/null | tr -d '[:space:]' || echo 0)
+        if [ "${KU_COUNT:-0}" -eq 0 ]; then
+            echo "  🔁 零KU结果($KU_COUNT) → 自动重试，不写入终态"
+            _quarantine_add_json "$SUBSTRATE" "$ECON_TITLE" "$MD_PATH" "zero_ku" "零KU：$ALARM_REASONS"
+        else
+            _quarantine_add_json "$SUBSTRATE" "$ECON_TITLE" "$MD_PATH" "quality_gate" "$ALARM_REASONS"
+        fi
         N_ALARM=$((N_ALARM + 1))
         RESULTS[$SUBSTRATE]="ALARM:$ALARM_REASONS"
     fi

@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from stratum.common import generate_ulid, now_utc
-from stratum.db import insert, query, read, update
+from stratum.db import insert, query, update
 from stratum.utils.user_id_hash import hash_user_id
 
 _WIKILINK = re.compile(r"\[\[([^\]]+)\]\]")

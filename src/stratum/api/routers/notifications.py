@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from stratum.common import generate_ulid, jwt_auth, now_utc
+from stratum.common import generate_ulid, jwt_auth
 from stratum.db import insert, query as db_query
 
 router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
@@ -27,12 +27,14 @@ async def list_notifications(
     items = []
     for r in rows:
         payload = r.get("payload") or {}
-        items.append({
-            "id": r["id"],
-            "title": payload.get("title", ""),
-            "body": payload.get("body", ""),
-            "created_at": r["created_at"],
-        })
+        items.append(
+            {
+                "id": r["id"],
+                "title": payload.get("title", ""),
+                "body": payload.get("body", ""),
+                "created_at": r["created_at"],
+            }
+        )
     return {"items": items, "count": len(items)}
 
 

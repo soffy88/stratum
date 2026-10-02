@@ -30,22 +30,29 @@ for svc in $SERVICES; do
     fi
 done
 
-# 2. aii-embed: 远程真调用优先(笔记本 GPU, 已迁移); 不通再试本机 unit; 都不通 → 🚨
-EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"
+# 2. aii-embed: 只做轻量 health 检查；禁止 healer 主动调用 /embed。
+#    /embed 会加载/占用 BGE-M3，CPU fallback 可能超过 20 秒，主动探针会和生产
+#    请求争抢共享模型锁，最后把正常的慢计算误判为故障并重启服务，造成飞轮永远
+#    0 新增。真正的生产请求由飞轮自己发起，服务只要 health 可达就不重启。
+EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"
 EMBED_OK=0
-if curl -s -m 8 -o /dev/null "$EMBED_URL/health" 2>/dev/null; then
-    if curl -s -m 20 -X POST "$EMBED_URL/embed" -H "Content-Type: application/json" \
-        -d '{"texts":["体检"]}' 2>/dev/null | grep -q '"embeddings"'; then
+if curl -sS -m 8 -f -o /dev/null "$EMBED_URL/health" 2>/dev/null; then
+    EMBED_OK=1
+    log "✅ aii-embed($EMBED_URL) /health 正常；跳过主动 /embed 探针"
+else
+    # health 失败时再看是否有生产连接，连接存在时只能告警，不能杀请求。
+    if ss -Htn 2>/dev/null | awk '$1 == "ESTAB" && ($4 ~ /:8102$/ || $5 ~ /:8102$/) { found=1 } END { exit !found }'; then
+        log "⏭ aii-embed($EMBED_URL) health 暂不可达但存在生产连接，暂不重启"
         EMBED_OK=1
     else
-        log "🚨 aii-embed($EMBED_URL) /health通但 /embed 异常(维度/模型错误?) — 需人工查笔记本"
+        log "⚠ aii-embed($EMBED_URL) health 不可达，尝试重启本机 unit"
     fi
 fi
 if [ "$EMBED_OK" -eq 0 ]; then
     if systemctl --user restart aii-embed 2>/dev/null && systemctl --user is-active --quiet aii-embed 2>/dev/null; then
-        log "🔄 自愈: aii-embed 远程不可达 → 本机 unit 已重启(注意: 本机受 hevi GPU 占用条件限制)"
+        log "🔄 自愈: aii-embed health 不可达 → 本机 unit 已重启"
     else
-        log "🚨 aii-embed($EMBED_URL) 无响应且本机 unit 无法启动 — 需人工去笔记本(WSL/原生)重启 aii-embed; 所有飞轮入库会 err=N ok=0"
+        log "🚨 aii-embed($EMBED_URL) health 不可达且本机 unit 无法启动 — 需人工检查"
     fi
 fi
 
@@ -74,7 +81,7 @@ fi
 FRESH=$(.venv/bin/python -c '
 import asyncio, asyncpg, os, datetime
 async def go():
-    c = await asyncpg.connect(os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg"), timeout=10)
+    c = await asyncpg.connect(os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg"), timeout=10)
     v = await c.fetchval("SELECT max(created_at) FROM aii.ku_onto")
     await c.close()
     if v is None: print("empty")
@@ -134,7 +141,8 @@ for p in advmath_pipeline/flywheel.log math_pipeline/flywheel_prog.log misc_pipe
 done
 
 # 9. B 仓体检 + 零风险修复(每轮都跑: 打标 → 修断链 → crit 告警)
-B_LINT=$(.venv/bin/python scripts/ku_lint.py --fix-safe --json 2>/dev/null || echo '{"summary":{}}')
+# 2026-09-21: lint 全表扫描可能数分钟，套 timeout 防单步拖垮整轮
+B_LINT=$(timeout 300 .venv/bin/python scripts/ku_lint.py --fix-safe --json 2>/dev/null || echo '{"summary":{}}')
 B_CRIT=$(echo "$B_LINT" | .venv/bin/python -c "import json,sys;d=json.load(sys.stdin);print(d.get('summary',{}).get('crit',0))" 2>/dev/null || echo 0)
 B_FIXED=$(echo "$B_LINT" | .venv/bin/python -c "import json,sys;d=json.load(sys.stdin);print(d.get('summary',{}).get('fixed_rows',0))" 2>/dev/null || echo 0)
 log "📊 B 仓体检: crit=$B_CRIT, 本轮修断链=$B_FIXED"

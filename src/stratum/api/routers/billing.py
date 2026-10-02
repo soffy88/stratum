@@ -13,11 +13,12 @@ neither of which exist yet; out of scope here).
 import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from stratum.common import generate_ulid, jwt_auth, now_utc
 from stratum.config import BASE_URL, PRICES, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
-from stratum.db import insert, read, update
+from stratum.db import insert, query, update
+from stratum.services.access_policy import normalize_tier
 
 router = APIRouter(prefix="/api/v1/billing", tags=["billing"])
 
@@ -27,10 +28,14 @@ def get_active_tier(user_id: str) -> str:
 
     Used for feature gating (see stratum.api.routers.folder_watch / scheduled_jobs).
     """
-    sub = read("subscriptions", user_id, id_column="user_id")
-    if not sub or sub.get("status") != "active":
-        return "free"
-    return sub.get("tier", "free")
+    rows = query(
+        "SELECT tier FROM stratum.subscriptions "
+        "WHERE user_id = %(uid)s AND status = 'active' "
+        "AND (expires_at IS NULL OR expires_at > NOW()) "
+        "ORDER BY started_at DESC NULLS LAST, created_at DESC NULLS LAST LIMIT 1",
+        {"uid": user_id},
+    )
+    return normalize_tier(str(rows[0].get("tier") or "free")) if rows else "free"
 
 
 # Optional payment integrations
@@ -53,6 +58,48 @@ class SubscribeRequest(BaseModel):
     tier: str  # "plus" | "pro"
     plan: str  # "monthly" | "yearly"
     provider: str  # "wechat" | "stripe"
+
+
+class CreditEstimateRequest(BaseModel):
+    capability: str
+    units: int = Field(1, ge=1, le=10_000)
+
+
+@router.get("/credits")
+async def credit_policy(user_id: str = Depends(jwt_auth)):
+    """Expose concrete monthly allowances and unit costs."""
+    from stratum.services.credit_meter import (
+        CREDIT_COSTS,
+        TIER_MONTHLY_CREDITS,
+        period_key,
+        usage_snapshot,
+    )
+
+    tier = get_active_tier(user_id)
+    usage = usage_snapshot(user_id, tier)
+    return {
+        "period": period_key(),
+        "tier": tier,
+        "allowances": TIER_MONTHLY_CREDITS,
+        "unit_costs": CREDIT_COSTS,
+        "credits_used": usage.used,
+        "credits_remaining": usage.remaining,
+    }
+
+
+@router.post("/credits/estimate")
+async def credit_estimate(
+    body: CreditEstimateRequest,
+    user_id: str = Depends(jwt_auth),
+):
+    from stratum.services.credit_meter import decide, usage_snapshot
+
+    try:
+        tier = get_active_tier(user_id)
+        used = usage_snapshot(user_id, tier).used
+        return decide(tier, body.capability, used=used, units=body.units).to_dict()
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
 
 
 @router.post("/subscribe")
@@ -107,7 +154,7 @@ async def subscribe(body: SubscribeRequest, user_id: str = Depends(jwt_auth)):
         raise HTTPException(400, f"Unsupported provider: {body.provider}")
 
     insert(
-        "subscriptions",
+        "stratum.subscriptions",
         {
             "id": order_id,
             "user_id": user_id,
@@ -130,7 +177,7 @@ async def wechat_callback(request: Request):
     result = await payment_wechat(action="verify_notify", raw_body=body)
     if getattr(result, "status", "") == "success":
         order_id = getattr(result, "order_id", "")
-        update("subscriptions", order_id, {"status": "active"})
+        update("stratum.subscriptions", order_id, {"status": "active"})
     return {"return_code": "SUCCESS", "return_msg": "OK"}
 
 
@@ -156,7 +203,7 @@ async def stripe_callback(request: Request):
         order_id = session.get("client_reference_id") or session.get("metadata", {}).get("order_id")
         if order_id:
             update(
-                "subscriptions",
+                "stratum.subscriptions",
                 order_id,
                 {
                     "status": "active",
@@ -169,12 +216,12 @@ async def stripe_callback(request: Request):
             from stratum.db import query
 
             rows = query(
-                "SELECT id FROM subscriptions WHERE payment_ref = $ref LIMIT 1",
+                "SELECT id FROM stratum.subscriptions WHERE payment_ref = $ref LIMIT 1",
                 {"ref": sub_ref},
             )
             if rows:
                 update(
-                    "subscriptions",
+                    "stratum.subscriptions",
                     rows[0]["id"],
                     {"status": "cancelled", "cancelled_at": now_utc()},
                 )
@@ -184,4 +231,9 @@ async def stripe_callback(request: Request):
 
 @router.get("/subscription")
 async def subscription_status(user_id: str = Depends(jwt_auth)):
-    return read("subscriptions", user_id, id_column="user_id") or {"tier": "free"}
+    rows = query(
+        "SELECT * FROM stratum.subscriptions WHERE user_id = %(uid)s "
+        "ORDER BY started_at DESC NULLS LAST, created_at DESC NULLS LAST LIMIT 1",
+        {"uid": user_id},
+    )
+    return rows[0] if rows else {"tier": "free"}

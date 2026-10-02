@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OmniDocBench-style parser benchmark manifest",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["id", "path", "layout", "language", "structure_elements", "required_markers"],
+    "properties": {
+      "id": {"type": "string", "minLength": 1},
+      "path": {"type": "string", "minLength": 1},
+      "layout": {"type": "string", "minLength": 1},
+      "language": {"type": "string", "minLength": 1},
+      "structure_elements": {
+        "type": "array",
+        "items": {"enum": ["heading", "table", "list", "code", "formula"]}
+      },
+      "required_markers": {
+        "type": "array",
+        "items": {"type": "string", "minLength": 1}
+      },
+      "min_chars": {"type": "integer", "minimum": 0},
+      "source_ref": {"type": "string", "minLength": 1},
+      "reviewer": {"type": "string", "minLength": 1},
+      "review_status": {"enum": ["candidate", "reviewed"]},
+      "notes": {"type": "string"}
+    }
+  }
+}

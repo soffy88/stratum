@@ -7,7 +7,13 @@
 
 Usage: python scripts/math_register.py <substrate_id> <title> --staging <dir> [--subject 数学]
 """
-import asyncio, asyncpg, json, os, subprocess, sys
+
+import asyncio
+import asyncpg
+import json
+import os
+import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from dotenv import load_dotenv
@@ -53,16 +59,21 @@ async def register():
 
     # ── Step 2: 登记 ingested_substrate ──
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
-    ku_count = await conn.fetchval(
-        "SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", SUB)
-    await conn.execute("""
+    ku_count = await conn.fetchval("SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", SUB)
+    await conn.execute(
+        """
         INSERT INTO aii.ingested_substrate (substrate_id, title, medium, ku_count, subject)
         VALUES ($1, $2, 'book', $3, $4)
         ON CONFLICT (substrate_id) DO UPDATE
             SET title=EXCLUDED.title,
                 ku_count=EXCLUDED.ku_count,
                 subject=COALESCE(EXCLUDED.subject, aii.ingested_substrate.subject)
-    """, SUB, TITLE[:300], ku_count, SUBJECT)
+    """,
+        SUB,
+        TITLE[:300],
+        ku_count,
+        SUBJECT,
+    )
     await conn.close()
 
     # ── Step 3: 审计记录 ──

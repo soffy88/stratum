@@ -11,7 +11,11 @@ _extract_skeleton() 正则拼接定义句+例子+图表数据, 忠实但常见�
 Exit: 0=完成(不管有没有仍不合格的, 只是打日志), 非0=判官调用本身出错(网络/key问题)
 """
 
-import asyncio, json, os, re, sys
+import asyncio
+import json
+import os
+import re
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -22,10 +26,22 @@ import asyncpg
 import httpx
 
 SUB = os.getenv("SUBSTRATE", "econ_placeholder")
-VERIFY_KEY = os.getenv("ECON_VERIFY_KEY") or json.load(open(ROOT / ".pipeline_keys.json")).get(
-    "econ_verify", ""
+# ★2026-09-21 判官改走本地 Veya 网关(默认 veya1.2-free, 免费常驻):
+# 旧逻辑 NIM key 缺失直接跳过质检; 本地网关 key 缺省 sk-veya, 不跳过。
+# 仍可用 ECON_VERIFY_BASE_URL/MODEL/KEY 覆盖(设回 NIM URL+NIM key 即走回 NIM)。
+# 注: 不跟 OPENCODE_BASE_URL(飞轮导出的是 http://192.168.80.1:8791, 但网关只绑
+# 127.0.0.1, 直连 192.168.80.1 被拒; 实测 2026-09-21)。判官跑在本机, 默认走回环。
+VERIFY_BASE_URL = os.getenv(
+    "ECON_VERIFY_BASE_URL", "http://127.0.0.1:8791/v1/chat/completions"
 )
-VERIFY_MODEL = os.getenv("ECON_VERIFY_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1.5")
+_NIM_KEY = os.getenv("ECON_VERIFY_KEY") or json.load(
+    open(ROOT / ".pipeline_keys.json")
+).get("econ_verify", "")
+_VEYA_KEY = os.getenv("OPENCODE_KEY_POOL", "sk-veya").split(",")[0].strip()
+# key 跟 endpoint 走: NIM URL 配 NIM key, 本地网关配 veya key(缺省 sk-veya)
+_VERIFY_NIM = "nvidia" in VERIFY_BASE_URL or "integrate.api" in VERIFY_BASE_URL
+VERIFY_KEY = _NIM_KEY if _VERIFY_NIM else (_VEYA_KEY or _NIM_KEY)
+VERIFY_MODEL = os.getenv("ECON_VERIFY_MODEL", "veya1.2-free")
 
 JUDGE_SYS = (
     "You are a QA judge for a mostly-programmatic (0/low-LLM) textbook extraction pipeline. It "
@@ -41,8 +57,30 @@ JUDGE_SYS = (
     "- coherent: false only if the text reads as disconnected fragments awkwardly stitched together "
     "(e.g. a definition sentence followed by an unrelated data snippet with no connective flow, or "
     "abrupt mid-sentence cutoffs) — NOT false merely for being terse, bullet-like, or citing sources "
-    "inline; that is this pipeline's normal faithful style."
+    "inline; that is this pipeline's normal faithful style. NOTE: the KU text below may be shown "
+    "to you as an EXCERPT (truncated at a sentence boundary to fit the prompt). Never report "
+    "'abrupt cutoff' / 'truncated' / 'incoherent' on the basis of the excerpt simply ending — only "
+    "judge incoherence visible *inside* the text you were given."
 )
+
+
+def _excerpt(text: str, limit: int = 4000) -> str:
+    """截断到 limit 字符, 但回退到最近的句末/段末, 不给判官看半句话.
+
+    ★2026-09-27: 原来硬切 en[:2000] / zh[:2000]。近 3h 实测 54% 的 KU 英文长度超 2000
+    字符(均值 2551), 于是判官拿到的就是半句话, 再据此报 "abrupt mid-sentence cutoffs" /
+    "begins with truncated" —— 判官在诊断自己输入切片的假象, 不是 KU 的缺陷。判退理由里
+    "truncated/cutoff" 那一大类基本由此产生, 属纯假阳性。
+    """
+    t = text or ""
+    if len(t) <= limit:
+        return t
+    window = t[:limit]
+    for sep in ("。", "！", "？", ". ", "! ", "? ", "\n\n", "\n"):
+        idx = window.rfind(sep)
+        if idx > limit * 0.5:  # 太靠前说明这段异常长, 换更长的分隔符
+            return window[: idx + len(sep)]
+    return window
 
 
 async def _judge(client: httpx.AsyncClient, title: str, ktype: str, en: str, zh: str) -> dict:
@@ -53,7 +91,7 @@ async def _judge(client: httpx.AsyncClient, title: str, ktype: str, en: str, zh:
             {
                 "role": "user",
                 "content": f"KU title: {title}\nAssigned type: {ktype}\n\n"
-                f"English:\n{en[:2000]}\n\n中文:\n{zh[:2000]}",
+                f"English:\n{_excerpt(en)}\n\n中文:\n{_excerpt(zh)}",
             },
         ],
         "max_tokens": 250,
@@ -62,7 +100,7 @@ async def _judge(client: httpx.AsyncClient, title: str, ktype: str, en: str, zh:
     for attempt in range(3):
         try:
             r = await client.post(
-                "https://integrate.api.nvidia.com/v1/chat/completions",
+                VERIFY_BASE_URL,
                 headers={
                     "Authorization": f"Bearer {VERIFY_KEY}",
                     "Content-Type": "application/json",

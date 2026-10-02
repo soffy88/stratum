@@ -11,10 +11,10 @@
 用法:
     cd aii && .venv/bin/python scripts/quark_login_wx.py
 """
+
 from __future__ import annotations
 
 import io
-import json
 import sys
 import time
 import urllib.request
@@ -67,7 +67,11 @@ def main() -> int:
     with sync_playwright() as p:
         b = p.chromium.launch(
             headless=True,
-            args=["--no-sandbox", "--no-proxy-server", "--disable-blink-features=AutomationControlled"],
+            args=[
+                "--no-sandbox",
+                "--no-proxy-server",
+                "--disable-blink-features=AutomationControlled",
+            ],
         )
         ctx = b.new_context(ignore_https_errors=True, viewport={"width": 1280, "height": 900})
         pg = ctx.new_page()
@@ -85,11 +89,13 @@ def main() -> int:
         ok = False
         for i in range(5):
             try:
-                pg.goto("https://pan.quark.cn/#/login", timeout=45000, wait_until="domcontentloaded")
+                pg.goto(
+                    "https://pan.quark.cn/#/login", timeout=45000, wait_until="domcontentloaded"
+                )
                 ok = True
                 break
             except Exception as e:
-                print(f"  打开页面失败({i+1}/5): {str(e)[:60]}", flush=True)
+                print(f"  打开页面失败({i + 1}/5): {str(e)[:60]}", flush=True)
                 pg.wait_for_timeout(3000)
         if not ok:
             print("❌ 无法打开登录页")
@@ -130,7 +136,7 @@ def main() -> int:
             if qr_url:
                 u = qr_url[-1]
                 break
-            print(f"  二维码未出现(尝试 {attempt+1}/3), 刷新重试...", flush=True)
+            print(f"  二维码未出现(尝试 {attempt + 1}/3), 刷新重试...", flush=True)
             try:
                 pg.reload(wait_until="domcontentloaded", timeout=45000)
             except Exception:
@@ -151,7 +157,7 @@ def main() -> int:
         # 微信官方 qrconnect 页面 URL(用户可自行在浏览器打开 → 页面显示标准二维码)
         if qrconnect_url:
             (PIPE / "wx_qrconnect_url.txt").write_text(qrconnect_url[-1])
-            print(f"🔗 备用链接(浏览器打开即显示微信官方二维码):", flush=True)
+            print("🔗 备用链接(浏览器打开即显示微信官方二维码):", flush=True)
             print(f"   {qrconnect_url[-1][:200]}", flush=True)
 
         # 下载二维码 PNG(原始图, jsQR 验证过可解码) → 存文件供 scp 下载直扫
@@ -160,8 +166,11 @@ def main() -> int:
             png_bytes = resp.read()
         PNG_FILE = PIPE / "wx_qr.png"
         PNG_FILE.write_bytes(png_bytes)
-        print(f"📱 二维码图片已保存: {PNG_FILE} ({len(png_bytes)//1024}KB)", flush=True)
-        print(f"   下载方式(本机终端): scp soffy@<host>:{PNG_FILE} .  → 微信扫一扫(相册选图)", flush=True)
+        print(f"📱 二维码图片已保存: {PNG_FILE} ({len(png_bytes) // 1024}KB)", flush=True)
+        print(
+            f"   下载方式(本机终端): scp soffy@<host>:{PNG_FILE} .  → 微信扫一扫(相册选图)",
+            flush=True,
+        )
 
         # 顺带生成 ASCII 版(尽力而为, 矩阵提取依赖图片布局; 失败不影响 PNG 方案)
         try:

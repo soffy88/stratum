@@ -39,7 +39,7 @@ from ledger import DecisionLedger  # noqa: E402
 REFINED_URL = os.getenv("REFINED_URL", "postgresql://aii:aii_safe_pass@localhost:5436/aii_refined")
 NIM_BASE = "https://integrate.api.nvidia.com/v1/chat/completions"
 # 与 advmath/econ 飞轮对齐的默认 NIM 模型
-DEFAULT_NIM_MODEL = os.getenv("NIM_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1.5")
+DEFAULT_NIM_MODEL = os.getenv("NIM_MODEL", "deepseek-ai/deepseek-v4-flash-0731")
 # ★NVIDIA NIM 免费层硬顶: 每 API key 40 req/min。超过会 429。
 #   默认严格按 40 限流(间隔 1.5s/key); 可用 NIM_RPM 调低(如 36 留余量给其它飞轮同 key),
 #   但不可用 NIM_RPM 抬过 40(除非显式 NIM_RPM_CAP 放开, 付费层再用)。
@@ -102,9 +102,7 @@ def build_nim_pool(model: str | None = None, rpm: float | None = None):
     if env_key and "env" not in keys:
         keys = {**keys, "env": env_key}
     if not keys:
-        raise RuntimeError(
-            "无可用 NIM key: 需要 aii/.pipeline_keys.json 或 NVIDIA_NIM_API_KEY"
-        )
+        raise RuntimeError("无可用 NIM key: 需要 aii/.pipeline_keys.json 或 NVIDIA_NIM_API_KEY")
     pool = [
         (
             name,
@@ -276,8 +274,7 @@ async def main():
     for (s, d, t), v in agg.items():
         by_type[t] += 1
     print(
-        f"读出边: {len(agg)} 条(去重) | 类型: {dict(by_type)} | "
-        f"成功 {ok_n[0]} | 失败 {fails[0]}",
+        f"读出边: {len(agg)} 条(去重) | 类型: {dict(by_type)} | 成功 {ok_n[0]} | 失败 {fails[0]}",
         flush=True,
     )
     if fail_samples:
@@ -302,9 +299,7 @@ async def main():
             "SELECT edge_id, src_concept, dst_concept, relation_type, strength, evidence "
             "FROM rf.refined_directed_edge"
         )
-        ex_map = {
-            (r["src_concept"], r["dst_concept"], r["relation_type"]): r for r in existing
-        }
+        ex_map = {(r["src_concept"], r["dst_concept"], r["relation_type"]): r for r in existing}
         inserted = updated = 0
         for (s, d, t), v in agg.items():
             strength = min(1.0, 0.5 + 0.1 * v["n"])
@@ -326,8 +321,7 @@ async def main():
                 new_ev = {"kus": kus_old, "count": new_count}
                 new_strength = min(1.0, 0.5 + 0.1 * new_count)
                 await c.execute(
-                    "UPDATE rf.refined_directed_edge SET strength=$2, evidence=$3 "
-                    "WHERE edge_id=$1",
+                    "UPDATE rf.refined_directed_edge SET strength=$2, evidence=$3 WHERE edge_id=$1",
                     old["edge_id"],
                     new_strength,
                     json.dumps(new_ev, ensure_ascii=False),

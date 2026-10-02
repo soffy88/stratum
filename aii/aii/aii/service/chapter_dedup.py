@@ -5,6 +5,7 @@
   - 不同层次(命题/规律 vs 其背后的机制/why; 定义 vs 应用)→ 不合, 都留.
   ★只在向量相似(≥sim_threshold)的候选内判, 不全量两两(省调用).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -15,9 +16,11 @@ from collections import defaultdict
 import numpy as np
 from oprim import vector_encode
 
-_DEDUP_SYS = ("You judge whether knowledge units express the SAME knowledge point or DIFFERENT ones. "
-              "Same wording-variant → merge. Different LEVELS (a principle vs the mechanism/why behind it, "
-              "a definition vs its application) → keep separate. Output valid JSON only.")
+_DEDUP_SYS = (
+    "You judge whether knowledge units express the SAME knowledge point or DIFFERENT ones. "
+    "Same wording-variant → merge. Different LEVELS (a principle vs the mechanism/why behind it, "
+    "a definition vs its application) → keep separate. Output valid JSON only."
+)
 
 _DEDUP_TMPL = """\
 These knowledge units from ONE textbook chapter are vector-similar — decide which are true duplicates.
@@ -47,13 +50,17 @@ def _parse(resp) -> dict:
         return {"groups": []}
 
 
-async def dedup_kus(kus: list[dict], llm, *, sim_threshold: float = 0.82, concurrency: int = 5) -> dict:
+async def dedup_kus(
+    kus: list[dict], llm, *, sim_threshold: float = 0.82, concurrency: int = 5
+) -> dict:
     """返回 {kept: [...], dropped: [...], groups: [...]}. kept 保 KU 原 dict."""
     n = len(kus)
     if n < 2:
         return {"kept": list(kus), "dropped": [], "groups": []}
-    vecs = np.asarray(vector_encode(texts=[k.get("content", "") for k in kus], provider="default"),
-                      dtype=np.float32)
+    vecs = np.asarray(
+        vector_encode(texts=[k.get("content", "") for k in kus], provider="default"),
+        dtype=np.float32,
+    )
     En = vecs / (np.linalg.norm(vecs, axis=1, keepdims=True) + 1e-12)
     S = En @ En.T
 
@@ -82,20 +89,32 @@ async def dedup_kus(kus: list[dict], llm, *, sim_threshold: float = 0.82, concur
     async def judge(cluster):
         items = "\n".join(
             f"{idx + 1}. [{kus[idx].get('knowledge_type')}] {kus[idx].get('content', '')[:320]}"
-            for idx in cluster)
+            for idx in cluster
+        )
         async with sem:
             try:
-                resp = await llm(messages=[{"role": "user", "content": _DEDUP_TMPL.format(items=items)}],
-                                 system=_DEDUP_SYS, max_tokens=400)
+                resp = await llm(
+                    messages=[{"role": "user", "content": _DEDUP_TMPL.format(items=items)}],
+                    system=_DEDUP_SYS,
+                    max_tokens=400,
+                )
                 data = _parse(resp)
             except Exception:
                 data = {"groups": []}
         local = []
         for g in data.get("groups", []):
-            same = [int(x) - 1 for x in g.get("same", []) if isinstance(x, (int, str)) and str(x).strip().lstrip("-").isdigit()]
+            same = [
+                int(x) - 1
+                for x in g.get("same", [])
+                if isinstance(x, (int, str)) and str(x).strip().lstrip("-").isdigit()
+            ]
             same = [s for s in same if s in cluster]
             keep = g.get("keep")
-            keep = int(keep) - 1 if keep is not None and str(keep).strip().lstrip("-").isdigit() else (same[0] if same else None)
+            keep = (
+                int(keep) - 1
+                if keep is not None and str(keep).strip().lstrip("-").isdigit()
+                else (same[0] if same else None)
+            )
             if len(same) >= 2 and keep in same:
                 for s in same:
                     if s != keep:
@@ -108,5 +127,10 @@ async def dedup_kus(kus: list[dict], llm, *, sim_threshold: float = 0.82, concur
 
     kept = [k for i, k in enumerate(kus) if i not in drop]
     dropped = [kus[i] for i in sorted(drop)]
-    return {"kept": kept, "dropped": dropped, "groups": groups_report,
-            "before": n, "after": len(kept)}
+    return {
+        "kept": kept,
+        "dropped": dropped,
+        "groups": groups_report,
+        "before": n,
+        "after": len(kept),
+    }

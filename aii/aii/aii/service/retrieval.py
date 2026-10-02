@@ -3,11 +3,11 @@
 - llm_rerank: LLM 列表式重排(离线无 cross-encoder 时的现实选择; 有 bge-reranker 可平替).
 - 设计: 后端 search_ku_hybrid 已做 dense+lexical RRF 融合; 本模块在其上做精排.
 """
+
 from __future__ import annotations
 import json
 import re
 import logging
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ async def llm_rerank(llm, query: str, candidates: list[dict], top_k: int = 5) ->
         f"Query: {query}\n\n"
         f"Candidate knowledge units:\n{items}\n\n"
         f"Rank the candidates by how directly and completely each ANSWERS the query. "
-        f"Return ONLY JSON: {{\"ranking\":[{{\"id\":<int>,\"score\":<0-10>}}]}} "
+        f'Return ONLY JSON: {{"ranking":[{{"id":<int>,"score":<0-10>}}]}} '
         f"with the most relevant first. Include only genuinely relevant ids."
     )
     try:

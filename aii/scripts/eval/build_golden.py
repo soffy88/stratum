@@ -8,9 +8,15 @@
   ECON_LLM_PROVIDER=ollama OLLAMA_MODEL=gemma4:e4b 用本地模型生成(离线/省钱)
 输出: scripts/eval/golden.json
 """
-import asyncio, json, os, re, sys
+
+import asyncio
+import json
+import os
+import re
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
+
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 import asyncpg
@@ -36,6 +42,7 @@ async def _sample(conn, n: int) -> list[dict]:
     """)
     # round-robin 跨桶取, 保证多样
     from collections import defaultdict
+
     buckets = defaultdict(list)
     for r in rows:
         buckets[(r["substrate_id"], r["knowledge_type"])].append(dict(r))
@@ -52,13 +59,20 @@ async def _sample(conn, n: int) -> list[dict]:
 async def _gen_q(llm, ku: dict) -> str | None:
     text = (ku.get("natural_text") or "")[:1200]
     title = ku.get("title") or ""
-    r = await llm(messages=[{"role": "user", "content":
-        f"Knowledge unit (title: {title}):\n{text}\n\n"
-        f"Write ONE specific natural question whose answer is exactly this knowledge. "
-        f"Do NOT mention 'the text'/'the chapter'. Make it standalone."}],
-        system=GEN_SYS, max_tokens=120)
+    r = await llm(
+        messages=[
+            {
+                "role": "user",
+                "content": f"Knowledge unit (title: {title}):\n{text}\n\n"
+                f"Write ONE specific natural question whose answer is exactly this knowledge. "
+                f"Do NOT mention 'the text'/'the chapter'. Make it standalone.",
+            }
+        ],
+        system=GEN_SYS,
+        max_tokens=120,
+    )
     q = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text").strip()
-    q = re.sub(r'^(question|q)[:：]\s*', '', q, flags=re.I).strip().strip('"').split("\n")[0]
+    q = re.sub(r"^(question|q)[:：]\s*", "", q, flags=re.I).strip().strip('"').split("\n")[0]
     return q if 8 < len(q) < 300 else None
 
 
@@ -71,6 +85,7 @@ async def main():
     await conn.close()
     print(f"sampled {len(kus)} KUs across buckets", flush=True)
     sem = asyncio.Semaphore(3)  # 本地模型并发过高会 OOM/拒连; 降并发更稳
+
     async def one(ku):
         async with sem:
             q = None
@@ -84,9 +99,14 @@ async def main():
                     await asyncio.sleep(1.5 * (attempt + 1))
             if not q:
                 return None
-            return {"query": q, "gold_ku_id": ku["ku_id"],
-                    "substrate_id": ku["substrate_id"], "knowledge_type": ku["knowledge_type"],
-                    "gold_title": ku.get("title")}
+            return {
+                "query": q,
+                "gold_ku_id": ku["ku_id"],
+                "substrate_id": ku["substrate_id"],
+                "knowledge_type": ku["knowledge_type"],
+                "gold_title": ku.get("title"),
+            }
+
     golden = [g for g in await asyncio.gather(*(one(k) for k in kus)) if g]
     OUT.write_text(json.dumps(golden, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"DONE: {len(golden)} golden pairs → {OUT}", flush=True)

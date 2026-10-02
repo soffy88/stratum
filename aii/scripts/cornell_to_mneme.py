@@ -11,6 +11,7 @@ mneme 前端获得自动生成的康奈尔卡 → 交互回忆(线索提问→�
     .venv/bin/python scripts/cornell_to_mneme.py [--out /data/soffy/projects/mneme/data/cornell_topics]
     [--dry-run]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -23,7 +24,7 @@ from pathlib import Path
 
 import asyncpg
 
-AII_URL = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+AII_URL = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
 DEFAULT_OUT = Path("/data/soffy/projects/mneme/data/cornell_topics")
 
 
@@ -36,7 +37,8 @@ async def main() -> int:
     conn = await asyncpg.connect(AII_URL)
     rows = await conn.fetch(
         "SELECT topic_id, title, subject, content FROM stratum.cornell_notes"
-        " WHERE source='machine' AND deleted_at IS NULL ORDER BY created_at")
+        " WHERE source='machine' AND deleted_at IS NULL ORDER BY created_at"
+    )
     await conn.close()
     print(f"康奈尔卡片: {len(rows)} 张", flush=True)
 
@@ -57,14 +59,17 @@ async def main() -> int:
         if cj.get("topicId") != topic_id:
             cj["topicId"] = topic_id
         if args.dry_run:
-            print(f"[dry] {topic_id}: {cj['title'][:30]} | {len(cj['cues'])} cues"
-                  f" | {len(cj['modules'])} modules")
+            print(
+                f"[dry] {topic_id}: {cj['title'][:30]} | {len(cj['cues'])} cues"
+                f" | {len(cj['modules'])} modules"
+            )
             written += 1
             continue
         pkg = out_root / topic_id
         pkg.mkdir(parents=True, exist_ok=True)
         (pkg / "content.json").write_text(
-            json.dumps(cj, ensure_ascii=False, indent=2), encoding="utf-8")
+            json.dumps(cj, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         written += 1
     print(f"完成: {written} 张导出 → {out_root} ({'DRY-RUN' if args.dry_run else '已写入'})")
     return 0

@@ -1,11 +1,17 @@
 """Tests for stratum.middleware.abuse_detection — ≥10 tests per §5.7."""
+
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 from stratum.middleware.abuse_detection import (
-    abuse_detection_middleware, record_auth_event, reset_abuse_state,
-    _is_blocked, _blocked_cache, REGISTER_THRESHOLD, LOGIN_FAIL_THRESHOLD,
+    abuse_detection_middleware,
+    record_auth_event,
+    reset_abuse_state,
+    _is_blocked,
+    _blocked_cache,
+    REGISTER_THRESHOLD,
+    LOGIN_FAIL_THRESHOLD,
 )
 
 
@@ -27,6 +33,7 @@ def app():
     @_app.exception_handler(Exception)
     async def exc_handler(request, exc):
         from fastapi.exceptions import HTTPException
+
         if isinstance(exc, HTTPException):
             return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
         return JSONResponse(status_code=500, content={"detail": str(exc)})
@@ -45,6 +52,7 @@ def test_normal_request_passes(app):
 
 def test_blocked_ip_returns_403(app):
     import time
+
     _blocked_cache["5.5.5.5"] = time.time() + 3600
     r = app.get("/api/data", headers={"X-Real-IP": "5.5.5.5"})
     assert r.status_code == 403
@@ -52,6 +60,7 @@ def test_blocked_ip_returns_403(app):
 
 def test_expired_block_allows_request(app):
     import time
+
     _blocked_cache["7.7.7.7"] = time.time() - 1  # expired
     r = app.get("/api/data", headers={"X-Real-IP": "7.7.7.7"})
     assert r.status_code == 200
@@ -96,6 +105,7 @@ def test_different_ips_independent():
 
 def test_blocked_ip_detail_message(app):
     import time
+
     _blocked_cache["6.6.6.6"] = time.time() + 3600
     r = app.get("/api/data", headers={"X-Real-IP": "6.6.6.6"})
     assert "blocked" in r.json()["detail"].lower()

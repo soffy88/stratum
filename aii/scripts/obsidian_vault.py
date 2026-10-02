@@ -19,6 +19,7 @@ Obsidian 核心能力全部命中:
 用法:
     .venv/bin/python scripts/obsidian_vault.py [--out ~/.stratum/vault] [--full] [--dry-run]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -32,7 +33,7 @@ from pathlib import Path
 import asyncpg
 
 REFINED_URL = os.getenv("REFINED_URL", "postgresql://aii:aii_safe_pass@localhost:5436/aii_refined")
-AII_URL = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+AII_URL = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
 
 
 def _safe(name: str, maxlen: int = 60) -> str:
@@ -60,7 +61,8 @@ async def main() -> int:
         aconn = await asyncpg.connect(AII_URL)
         cornell_rows = await aconn.fetch(
             "SELECT topic_id, title, subject, content FROM stratum.cornell_notes"
-            " WHERE source='machine' AND deleted_at IS NULL ORDER BY created_at DESC")
+            " WHERE source='machine' AND deleted_at IS NULL ORDER BY created_at DESC"
+        )
         await aconn.close()
     except Exception as e:  # noqa: BLE001
         print(f"  ⚠ 康奈尔读取失败: {e}", flush=True)
@@ -68,7 +70,8 @@ async def main() -> int:
     # ── 1. 全量数据聚合 ─────────────────────────────────────
     themes = await conn.fetch(
         "SELECT kc_id, theme_name, theme_name_en, summary, summary_zh"
-        " FROM rf.refined_theme_kc WHERE is_current ORDER BY kc_id")
+        " FROM rf.refined_theme_kc WHERE is_current ORDER BY kc_id"
+    )
     members = await conn.fetch("SELECT kc_id, ku_id FROM rf.refined_kc_member")
     ku_of_theme: dict[int, list[str]] = {}
     for m in members:
@@ -77,13 +80,14 @@ async def main() -> int:
     ku_concept_map: dict[str, int] = {r["ku_id"]: r["concept_id"] for r in ku_concepts}
     kus = await conn.fetch(
         "SELECT ku_id, point, point_zh, ku_type, natural_text, natural_text_zh,"
-        " contributions FROM rf.refined_ku")
+        " contributions FROM rf.refined_ku"
+    )
     ku_info = {r["ku_id"]: r for r in kus}
-    concepts = await conn.fetch(
-        "SELECT concept_id, name, name_zh, aliases FROM rf.refined_concept")
+    concepts = await conn.fetch("SELECT concept_id, name, name_zh, aliases FROM rf.refined_concept")
     concept_info = {r["concept_id"]: r for r in concepts}
     edges = await conn.fetch(
-        "SELECT src_concept, dst_concept, relation_type FROM rf.refined_directed_edge")
+        "SELECT src_concept, dst_concept, relation_type FROM rf.refined_directed_edge"
+    )
     ku_count_by_concept: dict[int, int] = {}
     for ku_id, cid in ku_concept_map.items():
         ku_count_by_concept[cid] = ku_count_by_concept.get(cid, 0) + 1
@@ -106,14 +110,18 @@ async def main() -> int:
         # 每概念代表 KU(top3 by 主题内挂载顺序)
         for cid, _ in keep_c:
             kus_c = [k for k in kus_of if ku_concept_map.get(k) == cid]
-            for k in (kus_c if args.full else kus_c[:3]):
+            for k in kus_c if args.full else kus_c[:3]:
                 selected_kus.add(k)
         theme_meta[th["kc_id"]] = {
-            "theme": th, "kus": kus_of, "concepts": keep_c,
+            "theme": th,
+            "kus": kus_of,
+            "concepts": keep_c,
         }
 
-    print(f"精选: {len(themes)} 主题 | {len(selected_concepts)} 概念 | {len(selected_kus)} KU",
-          flush=True)
+    print(
+        f"精选: {len(themes)} 主题 | {len(selected_concepts)} 概念 | {len(selected_kus)} KU",
+        flush=True,
+    )
 
     if args.dry_run:
         await conn.close()
@@ -135,13 +143,16 @@ async def main() -> int:
         pass
     elif pdir.exists():
         import shutil
+
         shutil.rmtree(pdir)
         pdir.symlink_to(notes_dir, target_is_directory=True)
     else:
         pdir.symlink_to(notes_dir, target_is_directory=True)
     (notes_dir / "README.md").write_text(
         "此目录是 Obsidian Vault 的『个人笔记区』(= ~/.stratum/notes, 检索 personal 层)。\n"
-        "在这里记笔记/双链概念, 项目检索自动包含。\n", encoding="utf-8")
+        "在这里记笔记/双链概念, 项目检索自动包含。\n",
+        encoding="utf-8",
+    )
 
     n_theme = n_concept = n_ku = 0
 
@@ -170,8 +181,7 @@ async def main() -> int:
         # 挂载 KU(精选内)
         kus_c = [k for k in selected_kus if ku_concept_map.get(k) == cid]
         # 相关概念(边)
-        rels = [e for e in edges
-                if e["src_concept"] == cid or e["dst_concept"] == cid]
+        rels = [e for e in edges if e["src_concept"] == cid or e["dst_concept"] == cid]
         lines = [
             "---",
             "tags: [概念]",
@@ -192,7 +202,9 @@ async def main() -> int:
                 other = e["dst_concept"] if e["src_concept"] == cid else e["src_concept"]
                 if other in concept_pages:
                     rel = "←" if e["dst_concept"] == cid else "→"
-                    lines.append(f"- {_link(concept_info.get(other, {}).get('name') or str(other))} {rel} {e['relation_type']}")
+                    lines.append(
+                        f"- {_link(concept_info.get(other, {}).get('name') or str(other))} {rel} {e['relation_type']}"
+                    )
             lines.append("")
         if kus_c:
             lines += ["## 挂载知识单元", ""]
@@ -227,8 +239,7 @@ async def main() -> int:
                 lines.append(f"- {_link(concept_pages[cid])}（{cnt} KU）")
         # 主题内边
         cid_set = {c for c, _ in meta["concepts"]}
-        tedges = [e for e in edges
-                  if e["src_concept"] in cid_set and e["dst_concept"] in cid_set]
+        tedges = [e for e in edges if e["src_concept"] in cid_set and e["dst_concept"] in cid_set]
         if tedges:
             lines += ["", "## 概念关系", ""]
             for e in tedges[:12]:
@@ -243,7 +254,7 @@ async def main() -> int:
     # ── KU 页 ───────────────────────────────────────────────
     for ku_id, kp in ku_pages.items():
         k = ku_info.get(ku_id, {})
-        pt = (k.get("point") or k.get("point_zh") or "KU")
+        pt = k.get("point") or k.get("point_zh") or "KU"
         cid = ku_concept_map.get(ku_id)
         lines = [
             "---",
@@ -258,7 +269,7 @@ async def main() -> int:
         nt = (k.get("natural_text") or "")[:2000]
         if nt:
             lines += ["## 内容", "", nt, ""]
-        ntz = (k.get("natural_text_zh") or "")
+        ntz = k.get("natural_text_zh") or ""
         if ntz and ntz != nt:
             lines += ["## 中文", "", ntz[:1500], ""]
         contrib = k.get("contributions")
@@ -270,7 +281,8 @@ async def main() -> int:
                     for c in cl[:3]:
                         lines += [
                             f"- `{c.get('source_book_id') or '?'}` · {c.get('facet') or 'main'}"
-                            f" · raw: {c.get('raw_ku_id') or '?'}"]
+                            f" · raw: {c.get('raw_ku_id') or '?'}"
+                        ]
                         frag = c.get("fragment_text") or ""
                         if frag:
                             lines += [f"  > {frag[:200]}", ""]
@@ -354,8 +366,11 @@ async def main() -> int:
             txt = cf.read_text(encoding="utf-8")
             if "## 康奈尔笔记" in txt:
                 continue
-            linked = [f"- {_link(cp)}" for cr, cp in zip(cornell_rows, cornell_pages)
-                      if re.match(rf"c{cid}\d*-", cr["topic_id"] or "")]
+            linked = [
+                f"- {_link(cp)}"
+                for cr, cp in zip(cornell_rows, cornell_pages)
+                if re.match(rf"c{cid}\d*-", cr["topic_id"] or "")
+            ]
             if linked:
                 txt += "\n## 康奈尔笔记\n\n" + "\n".join(linked) + "\n"
                 cf.write_text(txt, encoding="utf-8")
@@ -375,18 +390,24 @@ async def main() -> int:
         th = meta["theme"]
         idx_lines.append(
             f"- {_link(theme_pages.get(kc_id, th['theme_name_en'] or 'theme'))}"
-            f" — {len(meta['kus'])} KU")
+            f" — {len(meta['kus'])} KU"
+        )
     if cornell_pages:
         idx_lines += ["", "## 康奈尔笔记(概念学习卡)", ""]
         for cp in cornell_pages[:40]:
             idx_lines.append(f"- {_link(cp)}")
         if len(cornell_pages) > 40:
             idx_lines.append(f"- …共 {len(cornell_pages)} 张")
-    idx_lines += ["", "## 使用说明", "",
-                  "1. **Obsidian 打开本目录**作为 Vault(设置里打开即可)",
-                  "2. 从『02-主题』开始按兴趣学习 → 概念页 → KU 页(带原文证据)",
-                  "3. 记笔记放『05-个人笔记』(自动进入项目检索 personal 层)",
-                  "4. 图谱视图(Graph View)查看知识网络(双链自动生成)", ""]
+    idx_lines += [
+        "",
+        "## 使用说明",
+        "",
+        "1. **Obsidian 打开本目录**作为 Vault(设置里打开即可)",
+        "2. 从『02-主题』开始按兴趣学习 → 概念页 → KU 页(带原文证据)",
+        "3. 记笔记放『05-个人笔记』(自动进入项目检索 personal 层)",
+        "4. 图谱视图(Graph View)查看知识网络(双链自动生成)",
+        "",
+    ]
     (root / "01-索引" / "00-KU总索引.md").write_text("\n".join(idx_lines), encoding="utf-8")
 
     # 使用说明
@@ -407,7 +428,8 @@ async def main() -> int:
         "可在笔记中 `[[双链]]` 到任意概念/KU。\n\n"
         "## 更新\n"
         "每日自动重新导出(主题/概念/KU 页刷新, 个人笔记不覆盖)。\n",
-        encoding="utf-8")
+        encoding="utf-8",
+    )
 
     await conn.close()
     print(f"完成: {n_theme} 主题 | {n_concept} 概念 | {n_ku} KU → {root}")

@@ -1,11 +1,11 @@
 """Tests for stratum.middleware.corpus_isolation — ≥10 tests per §4.6."""
+
 import time
 import pytest
 import jwt as pyjwt
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
-from starlette.middleware.base import BaseHTTPMiddleware
 from stratum.middleware.corpus_isolation import corpus_isolation_middleware
 from stratum.auth.jwt_handler import encode_access, SECRET_KEY, ALGORITHM
 
@@ -21,6 +21,7 @@ def app_with_middleware():
     @app.exception_handler(Exception)
     async def catch_all(request, exc):
         from fastapi.exceptions import HTTPException
+
         if isinstance(exc, HTTPException):
             return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
         return JSONResponse(status_code=500, content={"detail": str(exc)})
@@ -95,12 +96,19 @@ def test_missing_bearer_prefix_returns_401(app_with_middleware):
 def test_corpus_id_from_token_not_query(app_with_middleware):
     """Middleware injects corpus_id from JWT, ignoring any query param."""
     token = encode_access("u1", "corpus_u1")
-    r = app_with_middleware.get("/api/data?corpus_id=hacked", headers={"Authorization": f"Bearer {token}"})
+    r = app_with_middleware.get(
+        "/api/data?corpus_id=hacked", headers={"Authorization": f"Bearer {token}"}
+    )
     assert r.json()["corpus_id"] == "corpus_u1"
 
 
 def test_expired_token_returns_401(app_with_middleware):
-    payload = {"sub": "u1", "corpus_id": "c1", "exp": int(time.time()) - 100, "iat": int(time.time()) - 200}
+    payload = {
+        "sub": "u1",
+        "corpus_id": "c1",
+        "exp": int(time.time()) - 100,
+        "iat": int(time.time()) - 200,
+    }
     token = pyjwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     r = app_with_middleware.get("/api/data", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 401

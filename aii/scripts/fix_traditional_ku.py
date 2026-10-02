@@ -7,7 +7,10 @@ natural_text=en_or_zh 又把这份(繁体)中文误填进本该放独立英文�
 用法: python scripts/fix_traditional_ku.py [--dry-run]
 """
 
-import asyncio, os, re, sys
+import asyncio
+import os
+import re
+import sys
 
 import asyncpg
 import opencc
@@ -17,7 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 
-DSN = os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+DSN = os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
 DRY_RUN = "--dry-run" in sys.argv
 T2S = opencc.OpenCC("t2s")
 _TRAD_HINT = re.compile(r"[經學個裡這對來說時們業實現後]")

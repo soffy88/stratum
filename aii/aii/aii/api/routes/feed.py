@@ -13,4 +13,6 @@ async def feed(
     max_files: Optional[int] = Body(None),
 ):
     # 旧批量摄取(KuIngestionEngine→旧表)已退役. 摄取走 onto 飞轮(USE_ONTOLOGY).
-    return error_response("DEPRECATED", "manual /feed retired; ingestion now goes through the onto flywheel")
+    return error_response(
+        "DEPRECATED", "manual /feed retired; ingestion now goes through the onto flywheel"
+    )

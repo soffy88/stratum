@@ -9,7 +9,6 @@ Schema: feed_subscriptions(id, user_id, feed_url, feed_title, frequency_hours,
 
 from __future__ import annotations
 
-from datetime import datetime, UTC, timedelta
 from typing import Any
 
 from stratum.db import query, update

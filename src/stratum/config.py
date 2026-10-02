@@ -53,6 +53,18 @@ DATA_DIR = Path(os.environ.get("STRATUM_DATA_DIR", str(Path.home() / ".stratum")
 UPLOAD_MAX_SIZE_MB = int(os.environ.get("STRATUM_UPLOAD_MAX_MB", "500"))
 TEMP_FILE_TTL_MINUTES = int(os.environ.get("STRATUM_TEMP_TTL_MIN", "30"))
 
+# AII visual/document integration flags.  All are deliberately opt-in: a
+# disabled projection must not change the existing retrieval contract.
+AII_VISUAL_RETRIEVAL_ENABLED = os.environ.get("AII_VISUAL_RETRIEVAL_ENABLED", "false").lower() == "true"
+AII_PDF_TRANSLATION_ENABLED = os.environ.get("AII_PDF_TRANSLATION_ENABLED", "false").lower() == "true"
+AII_ARTIFACT_PROVENANCE_ENABLED = os.environ.get("AII_ARTIFACT_PROVENANCE_ENABLED", "false").lower() == "true"
+AII_VISUAL_EMBED_PROVIDER = os.environ.get("AII_VISUAL_EMBED_PROVIDER", "qwen3-vl")
+AII_VISUAL_EMBED_MODEL = os.environ.get("AII_VISUAL_EMBED_MODEL", "Qwen3-VL-Embedding-2B")
+AII_VISUAL_EMBED_DIM = int(os.environ.get("AII_VISUAL_EMBED_DIM", "2048"))
+AII_VISUAL_EMBED_BACKEND = os.environ.get("AII_VISUAL_EMBED_BACKEND", "local").lower()
+AII_VISUAL_EMBED_BASE_URL = os.environ.get("AII_VISUAL_EMBED_BASE_URL", "").rstrip("/")
+AII_VISUAL_EMBED_TIMEOUT = float(os.environ.get("AII_VISUAL_EMBED_TIMEOUT", "30"))
+
 # ── LLM defaults ──────────────────────────────────────────────────────────────
 DEFAULT_LLM_PROVIDER = os.environ.get("STRATUM_LLM_PROVIDER", "qwen3")
 DEFAULT_LLM_MODEL = os.environ.get("STRATUM_LLM_MODEL", "qwen3-max")
@@ -60,6 +72,9 @@ DEFAULT_BUDGET_USD = float(os.environ.get("STRATUM_BUDGET_USD", "5.0"))
 
 # ── JWT ───────────────────────────────────────────────────────────────────────
 JWT_SECRET = os.environ.get("JWT_SECRET", "")
+JWT_SECRETS = tuple(
+    item.strip() for item in os.environ.get("JWT_SECRETS", "").split(",") if item.strip()
+)
 JWT_EXPIRE_HOURS = int(os.environ.get("STRATUM_JWT_EXPIRE_HOURS", "168"))
 
 # ── WeChat ────────────────────────────────────────────────────────────────────

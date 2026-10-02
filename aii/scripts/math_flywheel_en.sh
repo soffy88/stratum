@@ -36,10 +36,14 @@ MATH_LIMIT="${MATH_LIMIT:-10}"
 export MATH_LANG=en
 # ★忠实模式(同中文版): 只忠实呈现原书内容, 不过度LLM判断/why-how; 但 section 保持默认13000(英文研究书证明远→多上下文)
 export MATH_FAITHFUL=1
+# ★统一模型链: opencodex(10100) gpt-5.6-luna 主, NIM fallback
+export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://192.168.80.1:8791/v1/chat/completions}"  # ★2026-08-27 切 Veya(10100僵死)
+export OPENCODE_MODEL="${OPENCODE_MODEL:-gpt-5.6-luna}"
+export NIM_MODEL="${NIM_MODEL:-deepseek-ai/deepseek-v4-flash-0731}"
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('math_en',''))" 2>/dev/null)"
 export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-4}"   # ★并发度=4(测试定论: 4-5低偶发超时, 6+持续过载)
 export MATH_CH_PARALLEL="${MATH_CH_PARALLEL:-1}"            # ★测试期章并行=1, 让并发=AII_SYNTH_CONCURRENCY单层(同econ)
-export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5435/aii_kg}"
+export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5437/aii_kg}"
 export CUDA_VISIBLE_DEVICES=""
 
 mkdir -p math_pipeline

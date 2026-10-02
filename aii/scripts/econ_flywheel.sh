@@ -21,6 +21,12 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PY=.venv/bin/python
+
+# ★统一模型链: opencodex(10100) gpt-5.6-luna 主, NIM fallback
+export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://192.168.80.1:8791/v1/chat/completions}"  # ★2026-08-27 切 Veya(10100僵死)
+export OPENCODE_MODEL="${OPENCODE_MODEL:-gpt-5.6-luna}"
+export NIM_MODEL="${NIM_MODEL:-deepseek-ai/deepseek-v4-flash-0731}"
+
 FLYWHEEL_STATE="econ_pipeline/flywheel_state.json"
 FLYWHEEL_BOOK_LIST="econ_pipeline/flywheel_booklist.txt"
 FLYWHEEL_REPORT="econ_pipeline/flywheel_report.json"
@@ -96,7 +102,7 @@ for item in quarantine.get('quarantined', []):
     reason_type = item.get('reason_type', '')
     if sid:
         state['processed'][sid] = {
-            'status': 'precheck_fail' if reason_type == 'precheck' else 'quarantine',
+            'status': 'precheck_fail' if reason_type == 'precheck' else ('retry' if reason_type == 'zero_ku' or (reason_type == 'quality_gate' and '实抽0' in item.get('reason_detail', '')) else 'quarantine'),
             'reason': item.get('reason_detail', '')[:200],
             'ts': item.get('ts', ts),
         }

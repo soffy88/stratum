@@ -12,7 +12,12 @@ AII-REFINED-REPO-MASTER-001 第五部分。验证 ②KU判同先行 + ③片段�
 
 用法: cd <repo>; .venv/bin/python scripts/refined_dedup_dryrun.py [--sim 0.78] [--max 200] [--books mankiw_principles_econ_10e,microecon_en_full_v2,micro_clean]
 """
-import asyncio, os, re, json, sys
+
+import asyncio
+import os
+import re
+import json
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -27,17 +32,38 @@ DEFAULT_BOOKS = ["mankiw_principles_econ_10e", "microecon_en_full_v2", "micro_cl
 
 # ---- 判别词硬闸(港自 concept_onto_ops, 作用在 KU 标题) -----------------------
 _DISC_FAMILIES = [
-    {"price", "income"}, {"supply", "demand"}, {"import", "export"},
-    {"short-run", "long-run"}, {"short run", "long run"}, {"nominal", "real"},
-    {"gross", "net"}, {"micro", "macro"}, {"buyer", "seller"}, {"employer", "employee"},
-    {"consumer", "producer"},                                   # 首跑错合: 生产者剩余↔消费者剩余
-    {"供给", "需求"}, {"价格", "收入"}, {"短期", "长期"}, {"进口", "出口"},
+    {"price", "income"},
+    {"supply", "demand"},
+    {"import", "export"},
+    {"short-run", "long-run"},
+    {"short run", "long run"},
+    {"nominal", "real"},
+    {"gross", "net"},
+    {"micro", "macro"},
+    {"buyer", "seller"},
+    {"employer", "employee"},
+    {"consumer", "producer"},  # 首跑错合: 生产者剩余↔消费者剩余
+    {"供给", "需求"},
+    {"价格", "收入"},
+    {"短期", "长期"},
+    {"进口", "出口"},
     {"消费者", "生产者"},
 ]
 _DISC_QUALIFIERS = [
-    "increasing", "decreasing", "perfectly", "unitary", "cross",
-    "marginal", "inferior", "complement", "substitute", "递增", "递减", "边际",
-    "inelastic", "diminishing",   # M0发现: elastic↔inelastic互斥; X↔diminishing X上下位
+    "increasing",
+    "decreasing",
+    "perfectly",
+    "unitary",
+    "cross",
+    "marginal",
+    "inferior",
+    "complement",
+    "substitute",
+    "递增",
+    "递减",
+    "边际",
+    "inelastic",
+    "diminishing",  # M0发现: elastic↔inelastic互斥; X↔diminishing X上下位
 ]
 
 
@@ -56,7 +82,8 @@ def _forced_different(a: str, b: str) -> bool:
 
 # ---- 候选对: 三书之间, 跨书近邻 sim≥阈值 -------------------------------------
 async def _pairs(conn, books, sim, limit):
-    rows = await conn.fetch("""
+    rows = await conn.fetch(
+        """
         WITH pool AS (
           SELECT ku_id, title, knowledge_type, natural_text, substrate_id, embedding
           FROM aii.ku_onto
@@ -74,7 +101,10 @@ async def _pairs(conn, books, sim, limit):
         ) n
         WHERE (1-(a.embedding<=>n.embedding)) >= $2
         ORDER BY sim DESC
-    """, books, sim)
+    """,
+        books,
+        sim,
+    )
     seen, out = set(), []
     for r in rows:
         key = tuple(sorted([r["a_id"], r["b_id"]]))
@@ -101,7 +131,7 @@ JUDGE_SYS = (
     "(6)『沿需求曲线移动 Movement along the Demand Curve』vs『需求曲线 Demand Curve』→ DIFFERENT(前者是曲线上的子现象, 后者是曲线概念本身, 整体-部分非同一点)。"
     "★规则: 只有两者讲的核心是【同一个】东西才SAME; 一个比另一个范围更大/是其分类/是其下位/只是相关 → 一律DIFFERENT。"
     "★限定词检查(范围闸): 若一方标题/内容带具体化限定(for X / 某要素 / Labor / Market / 某子类), 另一方是无此限定的一般概念 → 范围不同 → 判 DIFFERENT(宁碎片不错合)。"
-    "只输出 JSON: {\"verdict\":\"SAME|DIFFERENT|UNCERTAIN\",\"why\":\"≤20字\"}。"
+    '只输出 JSON: {"verdict":"SAME|DIFFERENT|UNCERTAIN","why":"≤20字"}。'
 )
 
 
@@ -110,9 +140,16 @@ async def _one_vote(llm, sem, p):
     b = f"标题:{p['b_title']} | 类型:{p['b_kt']}\n{(p['b_tx'] or '')[:600]}"
     async with sem:
         try:
-            r = await llm(messages=[{"role": "user", "content":
-                f"KU-A:\n{a}\n\nKU-B:\n{b}\n\n它们是同一个知识点吗? 只输出JSON。"}],
-                system=JUDGE_SYS, max_tokens=80)
+            r = await llm(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"KU-A:\n{a}\n\nKU-B:\n{b}\n\n它们是同一个知识点吗? 只输出JSON。",
+                    }
+                ],
+                system=JUDGE_SYS,
+                max_tokens=80,
+            )
             t = "".join(x.get("text", "") for x in r.get("content", []) if x.get("type") == "text")
             m = re.search(r"\{.*\}", t, re.DOTALL)
             if not m:
@@ -149,7 +186,7 @@ INTEG_SYS = (
     "两条KU已判定为同一个知识点。请抽取【各自独有的内容贡献】(越读越厚): "
     "A独有=A讲了而B没讲的实质内容; B独有=反之; 共有=两者都讲的核心。"
     "忠实, 不臆造; 没有独有内容就写空。只输出JSON: "
-    "{\"shared\":\"\",\"a_only\":\"\",\"b_only\":\"\"}。"
+    '{"shared":"","a_only":"","b_only":""}。'
 )
 
 
@@ -158,8 +195,11 @@ async def _integrate(llm, sem, p):
     b = f"标题:{p['b_title']}\n{(p['b_tx'] or '')[:700]}"
     async with sem:
         try:
-            r = await llm(messages=[{"role": "user", "content": f"KU-A:\n{a}\n\nKU-B:\n{b}"}],
-                          system=INTEG_SYS, max_tokens=400)
+            r = await llm(
+                messages=[{"role": "user", "content": f"KU-A:\n{a}\n\nKU-B:\n{b}"}],
+                system=INTEG_SYS,
+                max_tokens=400,
+            )
             t = "".join(x.get("text", "") for x in r.get("content", []) if x.get("type") == "text")
             m = re.search(r"\{.*\}", t, re.DOTALL)
             return json.loads(m.group(0)) if m else {}
@@ -174,6 +214,7 @@ def _short(s):
 async def main():
     def arg(flag, default):
         return sys.argv[sys.argv.index(flag) + 1] if flag in sys.argv else default
+
     sim = float(arg("--sim", "0.78"))
     mx = int(arg("--max", "200"))
     books = arg("--books", ",".join(DEFAULT_BOOKS)).split(",")
@@ -184,7 +225,7 @@ async def main():
     await register_vector(conn)
 
     cands = await _pairs(conn, books, sim, mx)
-    print(f"== B仓步骤2 KU判同 dry_run ==", flush=True)
+    print("== B仓步骤2 KU判同 dry_run ==", flush=True)
     print(f"书={books}  sim≥{sim}  候选对={len(cands)}  (只算+打印, 不落库)\n", flush=True)
 
     sem = asyncio.Semaphore(4)
@@ -195,20 +236,28 @@ async def main():
     unc = [j for j in judged if j["verdict"] == "UNCERTAIN"]
     gated = [j for j in judged if j.get("gate")]
 
-    print(f"裁决: SAME={len(same)}  DIFFERENT={len(diff)}(其中硬闸{len(gated)})  UNCERTAIN={len(unc)}\n")
+    print(
+        f"裁决: SAME={len(same)}  DIFFERENT={len(diff)}(其中硬闸{len(gated)})  UNCERTAIN={len(unc)}\n"
+    )
 
     print("── SAME (会合并/整合, 越读越厚) ──────────────────────────")
     for j in sorted(same, key=lambda x: -x["sim"]):
-        print(f"  {j['sim']:.3f} [{j['a_sub'][:6]}]{_short(j['a_title'])}  ≡  [{j['b_sub'][:6]}]{_short(j['b_title'])}  ({j['why']})")
+        print(
+            f"  {j['sim']:.3f} [{j['a_sub'][:6]}]{_short(j['a_title'])}  ≡  [{j['b_sub'][:6]}]{_short(j['b_title'])}  ({j['why']})"
+        )
 
     print("\n── UNCERTAIN (命门: 保留两份不合) ───────────────────────")
     for j in sorted(unc, key=lambda x: -x["sim"]):
-        print(f"  {j['sim']:.3f} [{j['a_sub'][:6]}]{_short(j['a_title'])}  ?  [{j['b_sub'][:6]}]{_short(j['b_title'])}  ({j['why']})")
+        print(
+            f"  {j['sim']:.3f} [{j['a_sub'][:6]}]{_short(j['a_title'])}  ?  [{j['b_sub'][:6]}]{_short(j['b_title'])}  ({j['why']})"
+        )
 
     print("\n── DIFFERENT (含假朋友, 应被挡) ─ 抽样前20 ──────────────")
     for j in sorted(diff, key=lambda x: -x["sim"])[:20]:
         g = "硬闸" if j.get("gate") else "LLM"
-        print(f"  {j['sim']:.3f} [{j['a_sub'][:6]}]{_short(j['a_title'])}  ≠  [{j['b_sub'][:6]}]{_short(j['b_title'])}  ({g}:{j['why']})")
+        print(
+            f"  {j['sim']:.3f} [{j['a_sub'][:6]}]{_short(j['a_title'])}  ≠  [{j['b_sub'][:6]}]{_short(j['b_title'])}  ({g}:{j['why']})"
+        )
 
     # ③ 片段整合: 只对前若干 SAME 演示(看"越读越厚"长什么样)
     demo = sorted(same, key=lambda x: -x["sim"])[:6]
@@ -221,7 +270,10 @@ async def main():
             print(f"    A独有: {(g.get('a_only') or '(无)')[:140]}")
             print(f"    B独有: {(g.get('b_only') or '(无)')[:140]}")
 
-    print(f"\nDONE (dry-run, 无写库). 人工核查: 真同点是否全在 SAME? 假朋友是否全在 DIFFERENT? 模糊是否落 UNCERTAIN?", flush=True)
+    print(
+        "\nDONE (dry-run, 无写库). 人工核查: 真同点是否全在 SAME? 假朋友是否全在 DIFFERENT? 模糊是否落 UNCERTAIN?",
+        flush=True,
+    )
     await conn.close()
 
 

@@ -1,0 +1,92 @@
+{
+  "task": "A_P4_KNOWLEDGE_UNIT_FREEZE",
+  "book": "利率史（第四版）",
+  "verification_input": 17,
+  "frozen_count": 10,
+  "authority": "A_REPOSITORY",
+  "traceability": "100%",
+  "replay": "PASS",
+  "run_id": "arr_d0d1473d79fc",
+  "freeze_version": "a-p4-v0.1",
+  "ledger": [
+    "070_a_repository_foundation.sql",
+    "071_a_evidence_quality.sql",
+    "072_a_ku_verification.sql",
+    "073_a_knowledge_unit_freeze.sql"
+  ],
+  "gate_results": {
+    "gate1": "PASS",
+    "gate2": "PASS",
+    "gate3": "PASS",
+    "gate4": "PASS",
+    "gate5": "PASS"
+  },
+  "status_breakdown": {
+    "FREEZE_PENDING": 0,
+    "FROZEN": 10,
+    "REJECTED": 0,
+    "VERIFIED": 0
+  },
+  "units": {
+    "kc_athens_debt_crisis": {
+      "unit_id": "ku_786628598c94",
+      "canonical_text": "雅典出现了一次经济危机",
+      "evidence_count": 1,
+      "verification_score": 1.0
+    },
+    "kc_babylon_silver_rate_cap": {
+      "unit_id": "ku_d3f2fe6c4a16",
+      "canonical_text": "银子贷款按重量计算每年20%",
+      "evidence_count": 1,
+      "verification_score": 1.0
+    },
+    "kc_credit_predates_coinage": {
+      "unit_id": "ku_a44f563cfe25",
+      "canonical_text": "信贷在古代和中世纪时期就得到了普遍应用",
+      "evidence_count": 1,
+      "verification_score": 1.0
+    },
+    "kc_hammurabi_code": {
+      "unit_id": "ku_5598d00f0c90",
+      "canonical_text": "第一部已知最早的正式法典",
+      "evidence_count": 1,
+      "verification_score": 1.0
+    },
+    "kc_rome_penalty_fourfold": {
+      "unit_id": "ku_1f5ed939b386",
+      "canonical_text": "将被处以4倍损害赔偿",
+      "evidence_count": 1,
+      "verification_score": 1.0
+    },
+    "kc_rome_rate_cap": {
+      "unit_id": "ku_35059d773f8d",
+      "canonical_text": "贷款的利息被限制为不得超过每年8.333%",
+      "evidence_count": 1,
+      "verification_score": 1.0
+    },
+    "kc_solon_abolished_rate_cap": {
+      "unit_id": "ku_740f36615879",
+      "canonical_text": "索伦的法典取消了对利率的所有限制",
+      "evidence_count": 1,
+      "verification_score": 1.0
+    },
+    "kc_solon_code_date": {
+      "unit_id": "ku_413413c3af3d",
+      "canonical_text": "古希腊的法律史始于索伦（Solon）的法典",
+      "evidence_count": 1,
+      "verification_score": 1.0
+    },
+    "kc_twelve_tables_date": {
+      "unit_id": "ku_a66d80954630",
+      "canonical_text": "更多的是模仿《汉谟拉比法典》",
+      "evidence_count": 1,
+      "verification_score": 1.0
+    },
+    "kc_usury_principal_forfeit": {
+      "unit_id": "ku_e0cbaa2f8ba4",
+      "canonical_text": "债务的本金就会被免除",
+      "evidence_count": 1,
+      "verification_score": 1.0
+    }
+  }
+}

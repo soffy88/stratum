@@ -7,6 +7,7 @@ POST /api/v1/admin/dedup-by-hash        → 同 SHA256 去重
 POST /api/v1/admin/bulk-meta-patch      → 批量写 meta_json 字段
 POST /api/v1/admin/bulk-delete          → 批量删除 substrates + derivatives
 """
+
 from __future__ import annotations
 
 import logging
@@ -30,6 +31,7 @@ async def trigger_split_one(
 ):
     """拆分单个 EPUB 套装（同步执行，结果直接返回）。"""
     from stratum.services.bundle_split_service import split_one
+
     result = split_one(substrate_id, force=force)
     if result["status"] == "not_found":
         raise HTTPException(status_code=404, detail="substrate not found")
@@ -43,8 +45,10 @@ async def trigger_split_batch(
     user=Depends(get_current_user),
 ):
     """批量拆分所有检测到的 EPUB 套装（后台任务）。"""
+
     def _run():
         from stratum.services.bundle_split_service import split_batch
+
         result = split_batch(force=force)
         log.info("bundle_split batch done: %s", result)
 
@@ -58,6 +62,7 @@ async def trigger_hash_backfill(
 ):
     """回填所有 file_hash=NULL 的 EPUB substrates（同步）。"""
     from stratum.services.bundle_split_service import fix_hash_batch
+
     result = fix_hash_batch(only_null=True)
     return result
 
@@ -69,13 +74,11 @@ async def trigger_dedup(
 ):
     """找同 title + 同 SHA256 的重复，保留最旧，其余标 duplicate。"""
     from stratum.services.bundle_split_service import deduplicate_same_hash, fix_file_hash
-    import hashlib
     from pathlib import Path
 
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT id, source_path, file_hash FROM substrates WHERE title LIKE ?",
-            (title_like,)
+            "SELECT id, source_path, file_hash FROM substrates WHERE title LIKE ?", (title_like,)
         ).fetchall()
 
     if not rows:
@@ -89,8 +92,7 @@ async def trigger_dedup(
     # 重新读 hash
     with get_conn() as conn:
         rows2 = conn.execute(
-            "SELECT id, file_hash FROM substrates WHERE title LIKE ?",
-            (title_like,)
+            "SELECT id, file_hash FROM substrates WHERE title LIKE ?", (title_like,)
         ).fetchall()
 
     by_hash: dict[str, list[str]] = {}
@@ -125,13 +127,12 @@ async def bulk_meta_patch(
     Body: {"ids": ["01K..."], "patch": {"medium": "textbook", "category": "k12"}}
     """
     import json as _json
+
     updated = 0
     skipped = 0
     with get_conn() as conn:
         for sid in body.ids:
-            row = conn.execute(
-                "SELECT meta_json FROM substrates WHERE id=?", (sid,)
-            ).fetchone()
+            row = conn.execute("SELECT meta_json FROM substrates WHERE id=?", (sid,)).fetchone()
             if not row:
                 skipped += 1
                 continue
@@ -139,7 +140,7 @@ async def bulk_meta_patch(
             meta.update(body.patch)
             conn.execute(
                 "UPDATE substrates SET meta_json=?, updated_at=NOW() WHERE id=?",
-                (_json.dumps(meta, ensure_ascii=False), sid)
+                (_json.dumps(meta, ensure_ascii=False), sid),
             )
             updated += 1
     log.info("bulk_meta_patch: updated=%d skipped=%d patch=%s", updated, skipped, body.patch)
@@ -164,9 +165,7 @@ async def bulk_delete(
     deriv_deleted = 0
     with get_conn() as conn:
         for sid in body.ids:
-            exists = conn.execute(
-                "SELECT id FROM substrates WHERE id=?", (sid,)
-            ).fetchone()
+            exists = conn.execute("SELECT id FROM substrates WHERE id=?", (sid,)).fetchone()
             if not exists:
                 skipped += 1
                 continue
@@ -178,4 +177,9 @@ async def bulk_delete(
             deleted += 1
             deriv_deleted += d
     log.info("bulk_delete: deleted=%d deriv=%d skipped=%d", deleted, deriv_deleted, skipped)
-    return {"status": "ok", "deleted": deleted, "derivatives_deleted": deriv_deleted, "skipped": skipped}
+    return {
+        "status": "ok",
+        "deleted": deleted,
+        "derivatives_deleted": deriv_deleted,
+        "skipped": skipped,
+    }

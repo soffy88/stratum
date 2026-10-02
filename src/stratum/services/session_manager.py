@@ -14,7 +14,6 @@ import asyncio
 import json
 import logging
 import time
-from dataclasses import dataclass, field
 from typing import Any
 
 from stratum.db import get_conn
@@ -23,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 # ── Defaults ─────────────────────────────────────────────────────────────────
 
-AUTO_COMMIT_THRESHOLD = 8000   # tokens before auto-compress
-KEEP_RECENT_COUNT = 20         # keep last N messages after archive
+AUTO_COMMIT_THRESHOLD = 8000  # tokens before auto-compress
+KEEP_RECENT_COUNT = 20  # keep last N messages after archive
 DEFAULT_RETENTION_BUDGET = 4000  # token budget for retained messages
 
 
@@ -35,13 +34,16 @@ def _run_auto_commit(session_id: str, user_id: str) -> None:
         asyncio.set_event_loop(loop)
         result = loop.run_until_complete(commit_session(session_id, user_id))
         loop.close()
-        logger.info("auto-commit completed for session %s: %s", session_id[:12], result.get("status", "ok"))
+        logger.info(
+            "auto-commit completed for session %s: %s", session_id[:12], result.get("status", "ok")
+        )
     except Exception as exc:
         logger.warning("auto-commit failed for session %s: %s", session_id[:12], exc)
 
 
 def _gen_id(prefix: str = "sess") -> str:
     import hashlib
+
     raw = f"{prefix}-{time.time()}-{id(prefix)}"
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
@@ -50,13 +52,13 @@ def _estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 
-
 def require_session_owner(session_id: str, user_id: str) -> dict[str, Any] | None:
     """Return session dict if it exists and belongs to user_id; else None."""
     return get_session(session_id, user_id=user_id)
 
 
 # ── Session CRUD ─────────────────────────────────────────────────────────────
+
 
 def create_session(user_id: str, title: str | None = None) -> dict[str, Any]:
     """Create a new agent session."""
@@ -78,9 +80,13 @@ def create_session(user_id: str, title: str | None = None) -> dict[str, Any]:
     }
 
 
-def add_message(session_id: str, role: str, content: str,
-                parts: list[dict] | None = None,
-                user_id: str | None = None) -> dict[str, Any]:
+def add_message(
+    session_id: str,
+    role: str,
+    content: str,
+    parts: list[dict] | None = None,
+    user_id: str | None = None,
+) -> dict[str, Any]:
     """Add a message to a session. If user_id is set, enforce ownership."""
     if user_id is not None and require_session_owner(session_id, user_id) is None:
         return {"error": "not_found"}
@@ -99,8 +105,14 @@ def add_message(session_id: str, role: str, content: str,
         conn.execute(
             """INSERT INTO session_messages (id, session_id, role, content, parts_json, estimated_tokens)
                VALUES (?, ?, ?, ?, ?::jsonb, ?)""",
-            (msg_id, session_id, role, content,
-             json.dumps(parts or [], ensure_ascii=False), tokens),
+            (
+                msg_id,
+                session_id,
+                role,
+                content,
+                json.dumps(parts or [], ensure_ascii=False),
+                tokens,
+            ),
         )
         conn.execute(
             """UPDATE agent_sessions
@@ -129,6 +141,7 @@ def add_message(session_id: str, role: str, content: str,
         user_id = session[1]
         try:
             import threading
+
             thread = threading.Thread(
                 target=lambda: _run_auto_commit(session_id, user_id),
                 daemon=True,
@@ -141,8 +154,9 @@ def add_message(session_id: str, role: str, content: str,
     return result
 
 
-def get_messages(session_id: str, limit: int = 50, offset: int = 0,
-                user_id: str | None = None) -> list[dict]:
+def get_messages(
+    session_id: str, limit: int = 50, offset: int = 0, user_id: str | None = None
+) -> list[dict]:
     """Get messages from a session. If user_id is set, enforce ownership."""
     if user_id is not None and require_session_owner(session_id, user_id) is None:
         return []
@@ -205,8 +219,7 @@ def get_session(session_id: str, user_id: str | None = None) -> dict[str, Any] |
     }
 
 
-def list_sessions(user_id: str, status: str | None = None,
-                  limit: int = 20) -> list[dict]:
+def list_sessions(user_id: str, status: str | None = None, limit: int = 20) -> list[dict]:
     """List sessions for a user."""
     with get_conn() as conn:
         if status:
@@ -229,15 +242,21 @@ def list_sessions(user_id: str, status: str | None = None,
             ).fetchall()
     return [
         {
-            "id": r[0], "title": r[1], "status": r[2],
-            "message_count": r[3], "total_tokens": r[4],
-            "commit_count": r[5], "created_at": str(r[6]), "updated_at": str(r[7]),
+            "id": r[0],
+            "title": r[1],
+            "status": r[2],
+            "message_count": r[3],
+            "total_tokens": r[4],
+            "commit_count": r[5],
+            "created_at": str(r[6]),
+            "updated_at": str(r[7]),
         }
         for r in rows
     ]
 
 
 # ── Commit (compress + extract memory + update WM) ──────────────────────────
+
 
 async def commit_session(session_id: str, user_id: str) -> dict[str, Any]:
     """Commit a session: archive old messages, extract memory, update WM.
@@ -267,6 +286,7 @@ async def commit_session(session_id: str, user_id: str) -> dict[str, Any]:
     # Step 2: Update Working Memory
     try:
         from stratum.services.working_memory import update_working_memory
+
         wm = update_working_memory(session_id, messages)
         results["working_memory"] = {"sections_updated": len(wm)}
     except Exception as exc:
@@ -276,6 +296,7 @@ async def commit_session(session_id: str, user_id: str) -> dict[str, Any]:
     # Step 3: Extract long-term memory (async, don't block)
     try:
         from stratum.services.memory_extractor import extract_memories
+
         memories = await extract_memories(session_id, user_id, messages)
         results["memories_extracted"] = memories
     except Exception as exc:
@@ -322,8 +343,7 @@ async def _archive_messages(session_id: str, messages: list[dict]) -> dict[str, 
             """INSERT INTO session_archives
                (id, session_id, archive_index, overview, message_count, token_count)
                VALUES (?, ?, ?, ?, ?, ?)""",
-            (archive_id, session_id, next_index, overview,
-             len(archive), archive_tokens),
+            (archive_id, session_id, next_index, overview, len(archive), archive_tokens),
         )
 
         # Delete archived messages
@@ -366,9 +386,10 @@ def _generate_archive_overview(messages: list[dict]) -> str:
 
 # ── Context injection ────────────────────────────────────────────────────────
 
-async def get_context(session_id: str, query: str | None = None,
-                      user_id: str = "default",
-                      max_tokens: int = 4000) -> dict[str, Any]:
+
+async def get_context(
+    session_id: str, query: str | None = None, user_id: str = "default", max_tokens: int = 4000
+) -> dict[str, Any]:
     """Get context for an agent turn: WM + memories + retrieval results.
 
     This is what an Agent would call before generating a response.
@@ -382,6 +403,7 @@ async def get_context(session_id: str, query: str | None = None,
     # 1. Working Memory
     try:
         from stratum.services.working_memory import get_working_memory
+
         wm = get_working_memory(session_id)
         if wm:
             wm_tokens = _estimate_tokens(json.dumps(wm, ensure_ascii=False))
@@ -394,11 +416,14 @@ async def get_context(session_id: str, query: str | None = None,
     # 2. Long-term memories
     try:
         from stratum.services.memory_extractor import get_relevant_memories
+
         memories = get_relevant_memories(user_id, query or "", limit=5)
         if memories:
             mem_tokens = sum(_estimate_tokens(m["content"]) for m in memories)
             if total_tokens + mem_tokens < max_tokens:
-                context_parts.append({"type": "memories", "content": memories, "tokens": mem_tokens})
+                context_parts.append(
+                    {"type": "memories", "content": memories, "tokens": mem_tokens}
+                )
                 total_tokens += mem_tokens
     except Exception as exc:
         logger.debug("Memory retrieval not available: %s", exc)
@@ -406,15 +431,25 @@ async def get_context(session_id: str, query: str | None = None,
     # 3. Retrieval results (if query provided)
     if query:
         try:
-            from stratum.services.retrieval_engine import retrieve
-            resp = retrieve(query=query, max_depth=2, top_k=5, user_id=user_id)
+            from stratum.services.knowledge_view import KnowledgeView, KnowledgeViewRequest
+
+            resp = KnowledgeView.search(
+                KnowledgeViewRequest(query=query, top_k=5, user_id=user_id)
+            )
             retrieval_items = [
-                {"uri": r.uri, "layer": r.layer, "content": r.content[:500], "score": r.score}
-                for r in resp.results[:5]
+                {
+                    "uri": r.get("uri") or r.get("deep_link"),
+                    "layer": r.get("layer"),
+                    "content": r.get("snippet", "")[:500],
+                    "score": r.get("score", 0),
+                }
+                for r in resp["results"][:5]
             ]
             ret_tokens = sum(_estimate_tokens(item["content"]) for item in retrieval_items)
             if total_tokens + ret_tokens < max_tokens:
-                context_parts.append({"type": "retrieval", "content": retrieval_items, "tokens": ret_tokens})
+                context_parts.append(
+                    {"type": "retrieval", "content": retrieval_items, "tokens": ret_tokens}
+                )
                 total_tokens += ret_tokens
         except Exception as exc:
             logger.debug("Retrieval not available: %s", exc)
@@ -427,6 +462,7 @@ async def get_context(session_id: str, query: str | None = None,
 
 
 # ── Archive ──────────────────────────────────────────────────────────────────
+
 
 def archive_session(session_id: str, user_id: str | None = None) -> dict[str, Any]:
     """Archive a session (mark as completed). Enforces ownership when user_id set."""

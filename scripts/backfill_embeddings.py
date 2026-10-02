@@ -1,9 +1,7 @@
 import asyncio
 import os
 import sys
-import json
 import duckdb
-from pathlib import Path
 
 # Add src to path
 sys.path.append("/app/src")
@@ -12,10 +10,11 @@ from oprim.embedding import embed_text
 from oprim.vector_db import open_vector_db
 from oskill.knowledge._context import lancedb_path
 
+
 async def backfill(limit=300):
     db_path = os.path.expanduser("~/.stratum/meta.duckdb")
     lancedb_dir = lancedb_path()
-    
+
     print(f"Connecting to DuckDB: {db_path}")
     is_read_only = False
     try:
@@ -37,20 +36,20 @@ async def backfill(limit=300):
     """
     rows = conn.execute(query, [limit]).fetchall()
     print(f"Found {len(rows)} substrates to process (limit={limit})")
-    
+
     if not rows:
         return
 
     # 2. Open LanceDB
     vdb = open_vector_db(lancedb_dir, "vectors_text", 1024)
     from oprim.vector_db import VectorRecord
-    
+
     for sid, user_id, content, title in rows:
         print(f"Processing: {title} ({sid})")
         if not content:
-            print(f"  Skipping: Empty content")
+            print("  Skipping: Empty content")
             continue
-            
+
         try:
             # 3. Handle length limit (8192 for DashScope)
             # Use a safe margin
@@ -63,12 +62,12 @@ async def backfill(limit=300):
             # 4. Embed text
             vectors = embed_text([safe_content])
             if not vectors:
-                print(f"  Error: Failed to get embedding")
+                print("  Error: Failed to get embedding")
                 continue
-            
+
             vector = vectors[0]
             emb_id = f"emb_{sid}"
-            
+
             # 5. Upsert to LanceDB
             record = VectorRecord(
                 id=emb_id,
@@ -77,24 +76,25 @@ async def backfill(limit=300):
                     "substrate_id": sid,
                     "user_id": user_id,
                     "title": title,
-                    "kind": "markdown"
-                }
+                    "kind": "markdown",
+                },
             )
             vdb.upsert([record])
             print(f"  Upserted to LanceDB: {emb_id}")
-            
+
             # 6. Update DuckDB
             if not is_read_only:
                 conn.execute(
                     "UPDATE derivative SET embedding_id = ?, embedding_dim = ? WHERE substrate_id = ? AND kind = 'markdown'",
-                    [emb_id, len(vector), sid]
+                    [emb_id, len(vector), sid],
                 )
-                print(f"  Updated DuckDB")
+                print("  Updated DuckDB")
             else:
-                print(f"  Skipped DuckDB update (read-only)")
-                
+                print("  Skipped DuckDB update (read-only)")
+
         except Exception as e:
             print(f"  Error processing {sid}: {e}")
+
 
 if __name__ == "__main__":
     limit = int(sys.argv[1]) if len(sys.argv) > 1 else 300

@@ -35,10 +35,23 @@ from pathlib import Path
 
 GLUE_THRESHOLD = float(__import__("os").getenv("MD_GLUE_THRESHOLD", "0.30"))
 
-# 粘连判据: 连续 12+ 个小写字母不带空格。正常英文单词极少这么长(longest common
-# words ~10), 中文行不受影响(无小写字母)。故意用同一条判据测 title 和正文, 与
-# 2026-07-20 量化 math_prog 时用的判据一致(那次算出全库 19.1% 粘连)。
-_GLUE = re.compile(r"[a-z]{12,}")
+# 粘连判据(2026-09-09 修订): 旧正则 [a-z]{12,} 把合法长词系统性误判为粘连——
+# approximation(12)/identification(14)/differential(12), 德语 wissenschaftlicher(17)、
+# Nationalbibliothek(17)。pdf_inspector 重转测试中 88%→51.5% 里 560/562 行是此类
+# 长词误报, 真拼接仅 2 行。真粘连 = 空格丢失, 必然留下"词界被吞"的证据:
+#   1. 大小写翻转拼接:   [a-z]{8,}[A-Z]         (小写词尾紧贴大写词首, 如 theTheorem)
+#   2. 长字母流内夹数字:  [A-Za-z]{8,}\d[A-Za-z]{8,}  (公式/编号与词拼死)
+#   3. 标点后无空格:      [a-z]{2,}[.,;:!?][a-z]{2,}  (词,词 / 词.词)
+#   4. 超长纯小写拼接:    [a-z]{18,}            (任何数学/物理/德语常词 <18 字母;
+#                             只有空格全丢才拼出 Permissionisgrantedtoquotebriefpassages)
+# 实测: 真粘连书(Circle Method, markitdown) 73.7% 仍被拦; 新引擎(afdr) 2.5% 通过。
+# 中文行不受影响(无小写字母)。
+_GLUE = re.compile(
+    r"[a-z]{8,}[A-Z]"                       # 1. 大小写翻转(拼接)
+    r"|[A-Za-z]{8,}\d[A-Za-z]{8,}"          # 2. 长字母流内夹数字(公式拼接)
+    r"|[a-z]{2,}[.,;:!?][a-z]{2,}"          # 3. 标点后无空格
+    r"|[a-z]{18,}"                          # 4. 超长纯小写拼接
+)
 
 
 def glue_ratio(text: str) -> tuple[float, int, int]:

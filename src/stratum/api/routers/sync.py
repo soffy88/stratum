@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from stratum.common import get_local_state, jwt_auth, user_changefeed_path
+from stratum.common import get_local_state, jwt_auth
 from stratum.db import query
 from stratum.utils.user_id_hash import hash_user_id
 
@@ -24,6 +24,11 @@ _ALL_SCOPE_KEYS = list(_EVENT_TYPES_BY_SCOPE)
 class VaultSyncRequest(BaseModel):
     path: str = Field(..., description="Local or mounted cloud path under allowed roots")
     mode: str = Field("export", description="export | import | both")
+
+
+class ObsidianSyncRequest(BaseModel):
+    path: str = Field(..., description="Obsidian vault path under allowed roots")
+    mode: str = Field("both", description="export | import | both")
 
 
 @router.get("/status")
@@ -63,6 +68,19 @@ async def vault_sync(body: VaultSyncRequest, user_id: str = Depends(jwt_auth)):
 
     try:
         return sync_vault(user_id, body.path, mode=body.mode)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    except OSError as e:
+        raise HTTPException(500, f"filesystem error: {e}") from e
+
+
+@router.post("/obsidian")
+async def obsidian_sync(body: ObsidianSyncRequest, user_id: str = Depends(jwt_auth)):
+    """Bidirectional Obsidian sync with stable frontmatter IDs."""
+    from stratum.services.vault_sync_service import sync_obsidian_vault
+
+    try:
+        return sync_obsidian_vault(user_id, body.path, mode=body.mode)
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
     except OSError as e:

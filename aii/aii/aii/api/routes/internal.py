@@ -6,6 +6,7 @@ ingest-time embeddings. Reusing this single loaded model avoids baking a ~7GB
 torch+model stack into every API image and avoids vector-space drift from a
 different embedder (e.g. Ollama qwen3-embedding).
 """
+
 from fastapi import APIRouter, Body
 from oprim import vector_encode
 

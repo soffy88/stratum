@@ -2,6 +2,7 @@
 不碰同名但内容不同的(如数学 '定义1' 多个不同定义, 余弦低→保留). 用现成 embedding, 不重算.
 用法: DATABASE_URL=... python scripts/dedup_within_book.py <substrate_id> [cos_threshold=0.80]
 """
+
 import asyncio
 import os
 import sys
@@ -14,15 +15,22 @@ async def dedup(sid: str, thr: float = 0.80) -> int:
     try:
         grps = await c.fetch(
             "SELECT title FROM aii.ku_onto WHERE substrate_id=$1 AND title IS NOT NULL "
-            "GROUP BY title HAVING count(*)>1", sid)
+            "GROUP BY title HAVING count(*)>1",
+            sid,
+        )
         deleted = 0
         for g in grps:
             kus = await c.fetch(
                 "SELECT ku_id, length(coalesce(natural_text_zh,natural_text,'')) ln, embedding "
-                "FROM aii.ku_onto WHERE substrate_id=$1 AND title=$2 ORDER BY ln DESC", sid, g["title"])
+                "FROM aii.ku_onto WHERE substrate_id=$1 AND title=$2 ORDER BY ln DESC",
+                sid,
+                g["title"],
+            )
             keep = kus[0]
             for k in kus[1:]:
-                cos = await c.fetchval("SELECT 1-($1::vector<=>$2::vector)", keep["embedding"], k["embedding"])
+                cos = await c.fetchval(
+                    "SELECT 1-($1::vector<=>$2::vector)", keep["embedding"], k["embedding"]
+                )
                 if cos and cos > thr:
                     await c.execute("DELETE FROM aii.ku_onto WHERE ku_id=$1", k["ku_id"])
                     deleted += 1

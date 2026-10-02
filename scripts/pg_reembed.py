@@ -14,9 +14,10 @@ ONCE at startup.
 Resumable: substrates already present in substrate_chunk are skipped. Re-run any time.
 After all rows are embedded it builds the HNSW index.
 """
+
 import asyncio
+import json
 import os
-import sys
 import time
 
 PG = dict(
@@ -28,6 +29,8 @@ PG = dict(
 )
 BATCH = int(os.environ.get("REEMBED_BATCH", "32"))
 MIN_CHARS, MAX_CHARS = 500, 2000
+FRAGMENT_VERSION = int(os.environ.get("STRATUM_FRAGMENT_VERSION", "1"))
+PARSER_VERSION = os.environ.get("STRATUM_PARSER_VERSION", "structural_chunk-v1")
 
 
 def _log(msg: str) -> None:
@@ -50,43 +53,77 @@ async def main() -> int:
     conn = await asyncpg.connect(server_settings={"search_path": "stratum"}, **PG)
     await register_vector(conn)
 
-    done = {r["substrate_id"] for r in
-            await conn.fetch("SELECT DISTINCT substrate_id FROM substrate_chunk")}
+    done = {
+        r["substrate_id"]
+        for r in await conn.fetch("SELECT DISTINCT substrate_id FROM substrate_chunk")
+    }
     rows = await conn.fetch(
         "SELECT s.id, ("
         "  SELECT d.content FROM derivative d "
         "  WHERE d.substrate_id = s.id AND d.kind='markdown' AND length(d.content) > 0 "
         "  ORDER BY length(d.content) DESC LIMIT 1) AS content "
-        "FROM substrates s")
+        "FROM substrates s"
+    )
     targets = [(r["id"], r["content"]) for r in rows if r["content"] and r["id"] not in done]
     _log(f"substrates: {len(rows)} total, {len(done)} done, {len(targets)} to embed")
 
     total_chunks = 0
     for n, (sid, content) in enumerate(targets, 1):
         raw = structural_chunk(text=content, min_chars=MIN_CHARS, max_chars=MAX_CHARS) or []
-        chunks = [c.get("content", "") if isinstance(c, dict) else str(c) for c in raw]
-        chunks = [c for c in chunks if c.strip()] or [content[:MAX_CHARS]]
+        chunks = []
+        for c in raw:
+            if isinstance(c, dict):
+                chunk_text = c.get("content", "")
+                anchor = {
+                    key: c[key]
+                    for key in ("heading_path", "start_pos", "end_pos", "block_types")
+                    if c.get(key) is not None
+                }
+            else:
+                chunk_text = str(c)
+                anchor = {}
+            if chunk_text and chunk_text.strip():
+                chunks.append((chunk_text, anchor))
+        chunks = chunks or [(content[:MAX_CHARS], {"fallback": True})]
         recs = []
         for i in range(0, len(chunks), BATCH):
-            batch = chunks[i:i + BATCH]
-            embs = vector_encode(texts=batch, provider="default")
-            for j, (text, emb) in enumerate(zip(batch, embs)):
-                recs.append((f"{sid}#{i + j}", sid, i + j, text, list(emb)))
+            batch = chunks[i : i + BATCH]
+            batch_text = [text for text, _ in batch]
+            embs = vector_encode(texts=batch_text, provider="default")
+            for j, ((text, anchor), emb) in enumerate(zip(batch, embs)):
+                recs.append(
+                    (
+                        f"{sid}#{i + j}",
+                        sid,
+                        i + j,
+                        text,
+                        list(emb),
+                        FRAGMENT_VERSION,
+                        json.dumps(anchor, ensure_ascii=False),
+                        PARSER_VERSION,
+                    )
+                )
         # one substrate = one transaction (resumable at substrate granularity)
         await conn.executemany(
-            "INSERT INTO substrate_chunk (id, substrate_id, chunk_idx, text, embedding) "
-            "VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING", recs)
+            "INSERT INTO substrate_chunk "
+            "(id, substrate_id, chunk_idx, text, embedding, version, anchor_json, parser_version) "
+            "VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8) ON CONFLICT (id) DO NOTHING",
+            recs,
+        )
         total_chunks += len(recs)
         if n % 10 == 0 or n == len(targets):
-            _log(f"  {n}/{len(targets)} substrates · {total_chunks} chunks · "
-                 f"{(time.time()-t0)/60:.1f}min")
+            _log(
+                f"  {n}/{len(targets)} substrates · {total_chunks} chunks · "
+                f"{(time.time() - t0) / 60:.1f}min"
+            )
 
     _log("building HNSW index (cosine) …")
     await conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_substrate_chunk_vec "
-        "ON substrate_chunk USING hnsw (embedding vector_cosine_ops)")
+        "ON substrate_chunk USING hnsw (embedding vector_cosine_ops)"
+    )
     cnt = await conn.fetchval("SELECT count(*) FROM substrate_chunk")
-    _log(f"DONE — {cnt} chunks embedded, {(time.time()-t0)/60:.1f}min total")
+    _log(f"DONE — {cnt} chunks embedded, {(time.time() - t0) / 60:.1f}min total")
     await conn.close()
     return 0
 

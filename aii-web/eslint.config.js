@@ -13,5 +13,15 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
-  { ignores: [".next/", "node_modules/", "playwright-report/", "storybook-static/"] },
+  {
+    ignores: [
+      ".next/",
+      "node_modules/",
+      "playwright-report/",
+      "storybook-static/",
+      // Vendored PDF.js workers are generated third-party bundles, not source.
+      "public/*.min.js",
+      "public/*.min.mjs",
+    ],
+  },
 );

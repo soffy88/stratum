@@ -68,14 +68,17 @@ def _clean_event_state():
     _pg_execute("DELETE FROM concepts WHERE user_id IN %(uids)s", {"uids": _TEST_USER_IDS})
     _pg_execute("DELETE FROM highlights WHERE user_id IN %(uids)s", {"uids": _TEST_USER_IDS})
     _pg_execute("DELETE FROM user_saved_views WHERE user_id IN %(uids)s", {"uids": _TEST_USER_IDS})
-    _pg_execute("DELETE FROM substrates WHERE id IN ('SUB-PIN-01', 'SUB-UNP-01')")
+    _pg_execute("DELETE FROM substrates WHERE id IN ('SUB-PIN-01', 'SUB-UNP-01', 'PC-001')")
+    _pg_execute(
+        "INSERT INTO substrates (id, user_id) VALUES (%(sid)s, %(uid)s)",
+        {"sid": "PC-001", "uid": hash_user_id("user-alice")},
+    )
     yield
 
 
 def _events_of_type(event_type: str, user_id: str = "user-alice") -> int:
     rows = _pg_query(
-        "SELECT COUNT(*) AS n FROM changefeed "
-        "WHERE user_id IN %(uids)s AND event_type = %(t)s",
+        "SELECT COUNT(*) AS n FROM changefeed WHERE user_id IN %(uids)s AND event_type = %(t)s",
         {"uids": (user_id, hash_user_id(user_id)), "t": event_type},
         limit=1,
     )
@@ -129,18 +132,14 @@ def test_note_delete_emits_event(client):
 
 def test_substrate_pin_emits_event(client):
     # The documents router matches substrates on the hashed user id.
-    _db_insert(
-        "substrates", {"id": "SUB-PIN-01", "user_id": hash_user_id("user-alice")}
-    )
+    _db_insert("substrates", {"id": "SUB-PIN-01", "user_id": hash_user_id("user-alice")})
     r = client.post("/api/v1/documents/SUB-PIN-01/pin", headers=_auth())
     assert r.status_code == 200
     assert _events_of_type("substrate_pin") >= 1
 
 
 def test_substrate_unpin_emits_event(client):
-    _db_insert(
-        "substrates", {"id": "SUB-UNP-01", "user_id": hash_user_id("user-alice")}
-    )
+    _db_insert("substrates", {"id": "SUB-UNP-01", "user_id": hash_user_id("user-alice")})
     client.post("/api/v1/documents/SUB-UNP-01/pin", headers=_auth())
     r = client.post("/api/v1/documents/SUB-UNP-01/unpin", headers=_auth())
     assert r.status_code == 200

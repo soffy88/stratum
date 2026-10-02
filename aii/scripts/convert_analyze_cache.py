@@ -4,25 +4,35 @@
 需OCR/无章节/打不开 的书永远不转 → 每轮都重新付全价(扫描版单本 15~25s)。
 书本体不变时按 (mtime, size) 缓存分类结果, 变了才重算。
 
-用法: 
+用法:
     from convert_analyze_cache import get as _cat_cache_get, put as _cat_cache_put
     hit = _cat_cache_get(path)      # 返回 (cat, stem, npg) 或 None
     _cat_cache_put(path, result)    # result 为 analyze() 返回的三元组
 写入批量落盘(脏计数≥200 或解释器退出), 原子替换, 多进程经 flock 串行无并发写。
 """
+
 import atexit
 import json
 import os
 import time
 from pathlib import Path
 
-_CACHE_FILE = Path(os.getenv(
-    "AII_CONVERT_CACHE",
-    str(Path(__file__).resolve().parent.parent / "context_pipeline" / "convert_analyze_cache.json"),
-))
+_CACHE_FILE = Path(
+    os.getenv(
+        "AII_CONVERT_CACHE",
+        str(
+            Path(__file__).resolve().parent.parent
+            / "context_pipeline"
+            / "convert_analyze_cache.json"
+        ),
+    )
+)
 _db = None
 _dirty = 0
 _loaded_at = 0.0
+# ★2026-09-21 门禁改 distinct 章节计数(v2): 旧缓存的"无章节结构"结论是窄正则误杀,
+#   必须失效重判, 否则新门禁永不生效。
+_GATE_VERSION = 2
 
 
 def _load():
@@ -47,7 +57,11 @@ def get(path):
     except OSError:
         return None
     ent = _load().get(str(path))
-    if ent and (ent.get("mtime"), ent.get("size")) == key:
+    if (
+        ent
+        and (ent.get("mtime"), ent.get("size")) == key
+        and ent.get("ver", 1) == _GATE_VERSION
+    ):
         return (ent["cat"], Path(path).stem, ent.get("npg"))
     return None
 
@@ -67,7 +81,7 @@ def put(path, result):
     old = db.get(p)
     if old and (old.get("mtime"), old.get("size")) == key and old.get("cat") == result[0]:
         return  # 没变化, 不写
-    db[p] = {"mtime": key[0], "size": key[1], "cat": result[0], "npg": result[2]}
+    db[p] = {"mtime": key[0], "size": key[1], "cat": result[0], "npg": result[2], "ver": _GATE_VERSION}
     _dirty += 1
     if _dirty >= 200:
         _flush()

@@ -3,7 +3,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -208,9 +208,7 @@ async def delete_document(
         raise HTTPException(404 if out["status"] == "not_found" else 403, out["status"])
 
     try:
-        await emit_event(
-            uid, "substrate_delete", {"substrate_id": substrate_id, "mode": "hard"}
-        )
+        await emit_event(uid, "substrate_delete", {"substrate_id": substrate_id, "mode": "hard"})
     except Exception:
         pass
     return {

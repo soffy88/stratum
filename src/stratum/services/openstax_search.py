@@ -4,6 +4,7 @@ API: https://openstax.org/apps/cms/api/v2/pages/?type=books.Book&format=json&fie
 One request returns all 129 books with high_resolution_pdf_url directly.
 No authentication required. CC license.
 """
+
 from __future__ import annotations
 
 import json
@@ -78,14 +79,19 @@ def openstax_search(
         if max_pdf_mb > 0:
             try:
                 head = urllib.request.urlopen(
-                    urllib.request.Request(pdf_url, method="HEAD",
-                                          headers={"User-Agent": "stratum/1.0"}),
+                    urllib.request.Request(
+                        pdf_url, method="HEAD", headers={"User-Agent": "stratum/1.0"}
+                    ),
                     timeout=5,
                 )
                 size_mb = int(head.headers.get("Content-Length", 0)) / 1_048_576
                 if size_mb > max_pdf_mb:
-                    log.info("openstax_search: skip %r size=%.1fMB > %.0fMB limit",
-                             title, size_mb, max_pdf_mb)
+                    log.info(
+                        "openstax_search: skip %r size=%.1fMB > %.0fMB limit",
+                        title,
+                        size_mb,
+                        max_pdf_mb,
+                    )
                     continue
             except Exception:
                 pass  # if HEAD fails, include anyway
@@ -109,22 +115,24 @@ def openstax_search(
         isbn = book.get("digital_isbn_13") or book.get("print_isbn_13") or ""
         license_name = book.get("license_name") or ""
 
-        results.append(SourceResult(
-            external_id=cnx_id,
-            title=title,
-            download_url=pdf_url,
-            file_type="pdf",
-            metadata={
-                "source_type": "openstax",
-                "openstax_slug": slug,
-                "cnx_id": cnx_id,
-                "subjects": subjects_str,
-                "isbn": isbn,
-                "license": license_name,
-                "openstax_url": f"https://openstax.org/details/books/{slug}",
-                "rex_url": book.get("webview_rex_link") or "",
-            },
-        ))
+        results.append(
+            SourceResult(
+                external_id=cnx_id,
+                title=title,
+                download_url=pdf_url,
+                file_type="pdf",
+                metadata={
+                    "source_type": "openstax",
+                    "openstax_slug": slug,
+                    "cnx_id": cnx_id,
+                    "subjects": subjects_str,
+                    "isbn": isbn,
+                    "license": license_name,
+                    "openstax_url": f"https://openstax.org/details/books/{slug}",
+                    "rex_url": book.get("webview_rex_link") or "",
+                },
+            )
+        )
 
     log.info(
         "openstax_search: subjects=%s kw=%r → %d results",

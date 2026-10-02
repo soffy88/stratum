@@ -34,11 +34,16 @@ interface StuckItem {
   stuck_id: number; point_name: string; stuck_pattern: string; occurrences: number; resolved: boolean;
   error_type: string | null;
 }
-interface NextObjective {
-  done?: boolean; empty?: boolean; waiting?: boolean; reason?: string;
-  action?: "code" | "feynman" | "derivation" | "quiz";
-  prompt?: string; quiz_question?: string; next_review_at?: string | null;
-  objective?: { point_id: number; point_name: string; knowledge_type: string | null; grade: string; mastery_score: number };
+interface JudgeVerdict {
+  passed?: boolean;
+  judge?: string;
+  mastery_score?: number;
+  grade?: string;
+  error_type?: string;
+  error_label?: string;
+  reason?: string;
+  remediation?: string;
+  verdict?: { issues?: string[]; feedback?: string };
 }
 const ERROR_LABEL: Record<string, string> = {
   knowledge_structural: "知识结构缺失", understanding_deviation: "理解偏差",
@@ -77,7 +82,7 @@ export default function LearningProfilePage({ params }: { params: Promise<{ id: 
   const [submission, setSubmission] = useState("");
   const [submissionType, setSubmissionType] = useState<"auto" | "derivation" | "feynman" | "code">("auto");
   const [expectedStdout, setExpectedStdout] = useState("");
-  const [lastVerdict, setLastVerdict] = useState<any>(null);
+  const [lastVerdict, setLastVerdict] = useState<JudgeVerdict | null>(null);
 
   // 自动生成知识点 (P1.2)
   const [genScope, setGenScope] = useState("");
@@ -86,11 +91,11 @@ export default function LearningProfilePage({ params }: { params: Promise<{ id: 
   const [quizPointId, setQuizPointId] = useState<number | null>(null);
   const [quizQuestion, setQuizQuestion] = useState("");
   const [quizAnswer, setQuizAnswer] = useState("");
-  const [quizVerdict, setQuizVerdict] = useState<any>(null);
+  const [quizVerdict, setQuizVerdict] = useState<JudgeVerdict | null>(null);
 
   // 主动督学 (P2.2)
   // 统一学习教练对话入口 (3O oskill learning_coach_turn)
-  interface CoachMsg { role: "coach" | "student"; text: string; verdict?: any; objective?: string; kt?: string | null; }
+  interface CoachMsg { role: "coach" | "student"; text: string; verdict?: JudgeVerdict; objective?: string; kt?: string | null; }
   const [coachMsgs, setCoachMsgs] = useState<CoachMsg[]>([]);
   const [coachInput, setCoachInput] = useState("");
   const [coachAction, setCoachAction] = useState<string>("");  // 上一回合的 action, 决定下次是否交裁判
@@ -563,9 +568,9 @@ export default function LearningProfilePage({ params }: { params: Promise<{ id: 
                   </div>
                   {lastVerdict.reason && <p className="mt-1 text-[var(--color-muted)]">{lastVerdict.reason}</p>}
                   {lastVerdict.remediation && <p className="mt-1 text-[var(--color-muted)]">补救: {lastVerdict.remediation}</p>}
-                  {lastVerdict.verdict?.issues?.length > 0 && (
+                  {(lastVerdict.verdict?.issues ?? []).length > 0 && (
                     <ul className="list-disc pl-5 mt-1">
-                      {lastVerdict.verdict.issues.map((x: string, i: number) => <li key={i}>{x}</li>)}
+                      {(lastVerdict.verdict?.issues ?? []).map((x, i) => <li key={i}>{x}</li>)}
                     </ul>
                   )}
                   {lastVerdict.verdict?.feedback && <p className="mt-1 text-[var(--color-muted)]">{lastVerdict.verdict.feedback}</p>}
@@ -664,8 +669,8 @@ export default function LearningProfilePage({ params }: { params: Promise<{ id: 
                 <div className={`mt-2 p-2 rounded border ${quizVerdict.passed ? "border-green-500/40 bg-green-500/10" : "border-red-500/40 bg-red-500/10"}`}>
                   <span className="font-medium">{quizVerdict.passed ? "✓ 通过" : "✗ 未通过"}</span>
                   <span className="text-xs ml-2 text-[var(--color-muted)]">{quizVerdict.grade} · 掌握度 {Math.round((quizVerdict.mastery_score ?? 0) * 100)}%</span>
-                  {quizVerdict.verdict?.issues?.length > 0 && (
-                    <ul className="list-disc pl-5 mt-1">{quizVerdict.verdict.issues.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul>
+                  {(quizVerdict.verdict?.issues ?? []).length > 0 && (
+                    <ul className="list-disc pl-5 mt-1">{(quizVerdict.verdict?.issues ?? []).map((x, i) => <li key={i}>{x}</li>)}</ul>
                   )}
                 </div>
               )}

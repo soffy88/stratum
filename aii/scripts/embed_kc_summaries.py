@@ -5,9 +5,13 @@
 
 用法: python3 scripts/embed_kc_summaries.py [--all]
 """
-import asyncio, os, sys
+
+import asyncio
+import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
+
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 import asyncpg
@@ -17,7 +21,8 @@ from obase import ProviderRegistry
 
 
 def _norm(v):
-    a = np.array(v, dtype="float32"); n = float(np.linalg.norm(a))
+    a = np.array(v, dtype="float32")
+    n = float(np.linalg.norm(a))
     return [float(x) / n for x in a] if n > 0 else [float(x) for x in a]
 
 
@@ -35,13 +40,15 @@ async def main():
     print(f"embedding {len(rows)} KC summaries...", flush=True)
     n = 0
     for r in rows:
-        text = " — ".join(filter(None, [
-            r["community_label"], r["summary_en"] or r["summary"]]))[:2000]
+        text = " — ".join(filter(None, [r["community_label"], r["summary_en"] or r["summary"]]))[
+            :2000
+        ]
         if not text.strip():
             continue
         vec = _norm(embed_fn([text])[0])
-        await conn.execute("UPDATE aii.kc_onto SET embedding = $1 WHERE kc_id = $2",
-                           str(vec), r["kc_id"])
+        await conn.execute(
+            "UPDATE aii.kc_onto SET embedding = $1 WHERE kc_id = $2", str(vec), r["kc_id"]
+        )
         n += 1
     print(f"DONE: embedded {n} KC", flush=True)
     await conn.close()

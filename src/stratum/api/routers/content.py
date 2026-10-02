@@ -4,18 +4,13 @@ import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from stratum.api.routers.billing import get_active_tier
 from stratum.common import jwt_auth
 from stratum.db import query, read
+from stratum.services.access_policy import allowed_content_tiers, can_access_content
+from stratum.services.note_queries import list_user_notes_for_content
 
 router = APIRouter(prefix="/api/v1/content", tags=["content"])
-
-try:
-    from oskill.cross_layer_search import cross_layer_search
-
-    _HAS_SEARCH = True
-except ImportError:
-    _HAS_SEARCH = False
-
 
 @router.get("/feed")
 async def content_feed(
@@ -25,8 +20,13 @@ async def content_feed(
     user_id: str = Depends(jwt_auth),
 ):
     offset = (page - 1) * page_size
-    params: dict = {"limit": page_size, "offset": offset}
-    where = "deleted_at IS NULL"
+    allowed_tiers = allowed_content_tiers(get_active_tier(user_id))
+    params: dict = {
+        "limit": page_size,
+        "offset": offset,
+        "allowed_tiers": list(allowed_tiers),
+    }
+    where = "deleted_at IS NULL AND access_tier = ANY(%(allowed_tiers)s)"
     if domain:
         where += " AND $domain = ANY(domain)"
         params["domain"] = domain
@@ -48,31 +48,34 @@ async def content_detail(content_id: str, user_id: str = Depends(jwt_auth)):
     content = read("platform_content", content_id)
     if not content:
         raise HTTPException(404, "Content not found")
+    tier = get_active_tier(user_id)
+    if not can_access_content(tier, content.get("access_tier")):
+        raise HTTPException(
+            402,
+            detail={
+                "code": "content_tier_required",
+                "required_tier": content.get("access_tier") or "free",
+                "current_tier": tier,
+            },
+        )
 
     related_user: list = []
-    if _HAS_SEARCH:
-        result = await asyncio.to_thread(
-            cross_layer_search,
-            query=content["title"],
-            scope=["user_substrate", "user_notes"],
-            top_k=5,
-            lancedb_mgr=None,
-            tantivy_mgr=None,
-            pgvector_mgr=None,
-        )
-        # Defensive post-filter: only include rows that belong to this user
-        # when the backend sets user_id on results.
-        related_user = [r for r in result.results if getattr(r, "user_id", None) in (None, user_id)]
+    from stratum.services.knowledge_view import KnowledgeView, KnowledgeViewRequest
+
+    result = await asyncio.to_thread(
+        KnowledgeView.search,
+        KnowledgeViewRequest(
+            query=content["title"], top_k=5, user_id=user_id,
+            scopes=["user-authored"], channels=["metadata", "lexical", "dense"],
+        ),
+    )
+    related_user = result["results"]
 
     highlights = query(
         "SELECT * FROM highlights WHERE user_id = %(uid)s AND content_id = %(cid)s",
         {"uid": user_id, "cid": content_id},
     )
-    user_notes = query(
-        "SELECT id, title FROM notes "
-        "WHERE $cid = ANY(content_refs) AND user_id = $uid AND deleted_at IS NULL",
-        {"cid": content_id, "uid": user_id},
-    )
+    user_notes = list_user_notes_for_content(user_id, content_id)
 
     return {
         **{
@@ -93,12 +96,12 @@ async def content_detail(content_id: str, user_id: str = Depends(jwt_auth)):
         "domain": content.get("domain") or [],
         "tags": content.get("tags") or [],
         "related_user_substrate": [
-            {"id": r.id, "title": r.title, "relevance": round(r.score, 3)}
+            {"id": r["id"], "title": r["title"], "relevance": round(r["score"], 3)}
             for r in related_user
-            if r.type == "user_substrate"
+            if r["type"] == "user_substrate"
         ],
         "related_user_notes": [
-            {"id": r.id, "title": r.title} for r in related_user if r.type == "user_note"
+            {"id": r["id"], "title": r["title"]} for r in related_user if r["type"] == "user_note"
         ],
         "user_highlights": highlights,
         "user_notes_on_this": user_notes,

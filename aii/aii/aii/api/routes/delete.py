@@ -6,6 +6,7 @@
   - 只 AII_API_KEY 可调用(STRATUM_API_KEY 是只读 key,不能删)
   - 共享 KU(多来源支撑)由 cascade_delete 自动保留
 """
+
 from __future__ import annotations
 
 import os
@@ -53,15 +54,17 @@ async def delete_source(
             db_conn=backend,
             dry_run=dry_run,
         )
-        return success_response({
-            "source_id": source_id,
-            "dry_run": result.dry_run,
-            "deleted_ku_count": len(result.deleted_ku_ids),
-            "preserved_ku_count": len(result.preserved_ku_ids),
-            "dangling_deps_cleared": result.dangling_deps_cleared,
-            "deleted_ku_ids": result.deleted_ku_ids,
-            "preserved_ku_ids": result.preserved_ku_ids,
-        })
+        return success_response(
+            {
+                "source_id": source_id,
+                "dry_run": result.dry_run,
+                "deleted_ku_count": len(result.deleted_ku_ids),
+                "preserved_ku_count": len(result.preserved_ku_ids),
+                "dangling_deps_cleared": result.dangling_deps_cleared,
+                "deleted_ku_ids": result.deleted_ku_ids,
+                "preserved_ku_ids": result.preserved_ku_ids,
+            }
+        )
     except Exception as e:
         return error_response("CASCADE_DELETE_ERROR", str(e))
 
@@ -80,11 +83,13 @@ async def delete_ku(
         dep_count = await backend.get_dangling_deps_count(ku_id)
         if not dry_run:
             await backend.delete_ku(ku_id)
-        return success_response({
-            "ku_id": ku_id,
-            "dry_run": dry_run,
-            "dangling_deps_cleared": dep_count,
-            "deleted": not dry_run,
-        })
+        return success_response(
+            {
+                "ku_id": ku_id,
+                "dry_run": dry_run,
+                "dangling_deps_cleared": dep_count,
+                "deleted": not dry_run,
+            }
+        )
     except Exception as e:
         return error_response("DELETE_KU_ERROR", str(e))

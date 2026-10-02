@@ -1,4 +1,5 @@
 """Tests for stratum.auth.refresh_handler — ≥8 tests per §3.7."""
+
 import hashlib
 from stratum.auth.refresh_handler import create_refresh
 

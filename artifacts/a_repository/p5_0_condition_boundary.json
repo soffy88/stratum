@@ -1,0 +1,150 @@
+{
+  "A_P5_0_CONDITION_BOUNDARY": "PASS",
+  "authority": "A_REPOSITORY",
+  "book": "利率史（第四版） 第四版",
+  "boundaries": [],
+  "boundary_candidates": 0,
+  "boundary_types": [],
+  "checks": {
+    "ANCHORING": "PASS",
+    "BOUNDARY_CANDIDATES": 0,
+    "B_CONTAMINATION": 0,
+    "CONDITION_CANDIDATES": 6,
+    "C_CONTAMINATION": 0,
+    "EVIDENCE_TRACEABILITY": 100.0,
+    "FROZEN_KU_MUTATION": 0,
+    "NEW_BOUNDARY_ON_REPLAY": 0,
+    "NEW_CONDITION_ON_REPLAY": 0,
+    "ORPHAN": 0,
+    "REPLAY": "PASS",
+    "SCHEMA_COLUMN_PARITY": "PASS",
+    "SCHEMA_VOCABULARY": "PASS",
+    "VERIFICATION_LOGIC_MUTATION": 0
+  },
+  "condition_candidates": 6,
+  "condition_types": [
+    "ACTOR",
+    "TIME"
+  ],
+  "conditions": [
+    {
+      "condition_type": "ACTOR",
+      "confidence": 1.0,
+      "evidence_ids": [
+        "ev_fc56fbbea715"
+      ],
+      "id": "kcc_22812cc0d5ef",
+      "knowledge_unit_id": "ku_10fef8f2ffa4",
+      "statement": "古代巴比伦王朝的第一个国王汉谟拉比",
+      "status": "GENERATED"
+    },
+    {
+      "condition_type": "ACTOR",
+      "confidence": 1.0,
+      "evidence_ids": [
+        "ev_d862c5f48966"
+      ],
+      "id": "kcc_60cb0bc1bf82",
+      "knowledge_unit_id": "ku_5840cc146f9f",
+      "statement": "索伦的法典取消了对利率的所有限制",
+      "status": "GENERATED"
+    },
+    {
+      "condition_type": "TIME",
+      "confidence": 1.0,
+      "evidence_ids": [
+        "ev_fc56fbbea715"
+      ],
+      "id": "kcc_74408aa444f7",
+      "knowledge_unit_id": "ku_10fef8f2ffa4",
+      "statement": "在大约公元前1800年",
+      "status": "GENERATED"
+    },
+    {
+      "condition_type": "ACTOR",
+      "confidence": 1.0,
+      "evidence_ids": [
+        "ev_9e49cc45bcdc"
+      ],
+      "id": "kcc_8c40c30b7cd5",
+      "knowledge_unit_id": "ku_fa902e0bc115",
+      "statement": "古希腊的法律史始于索伦",
+      "status": "GENERATED"
+    },
+    {
+      "condition_type": "ACTOR",
+      "confidence": 1.0,
+      "evidence_ids": [
+        "ev_291e662405a9"
+      ],
+      "id": "kcc_996ea63fa646",
+      "knowledge_unit_id": "ku_93a979cb6fab",
+      "statement": "雅典出现了一次经济危机",
+      "status": "GENERATED"
+    },
+    {
+      "condition_type": "TIME",
+      "confidence": 1.0,
+      "evidence_ids": [
+        "ev_22f99d11e192"
+      ],
+      "id": "kcc_a81827ed0326",
+      "knowledge_unit_id": "ku_6460a6062a10",
+      "statement": "信贷在古代和中世纪时期就得到了普遍应用",
+      "status": "GENERATED"
+    }
+  ],
+  "durable_rows": {
+    "knowledge_unit": 11,
+    "ku_boundary_candidate": 0,
+    "ku_condition_candidate": 6,
+    "ku_confidence_evolution": 15,
+    "ku_freeze_event": 12,
+    "ku_identity": 11,
+    "ku_relation": 2,
+    "ku_review_event": 5,
+    "ku_revision": 1
+  },
+  "extractor_version": "a-p5-0-v0.1",
+  "gates": {
+    "GATE_A_frozen_ku_immutable": "PASS",
+    "GATE_A_upstream_untouched": "PASS",
+    "GATE_A_verification_logic": "PASS",
+    "GATE_B_evidence_trace": "PASS",
+    "GATE_B_traceability_percent": 100.0,
+    "GATE_C_B_REFERENCE": 0,
+    "GATE_C_C_REFERENCE": 0,
+    "GATE_C_isolation": "PASS",
+    "GATE_D_baseline_invariance": "PASS",
+    "GATE_D_extraction_purity": "PASS",
+    "GATE_E_idempotency": "PASS",
+    "GATE_E_replay": "PASS",
+    "GATE_F_anchoring": "PASS",
+    "schema_column_parity": "PASS",
+    "schema_vocabulary": "PASS"
+  },
+  "ledger": [
+    "070_a_repository_foundation.sql",
+    "071_a_evidence_quality.sql",
+    "072_a_ku_verification.sql",
+    "073_a_knowledge_unit_freeze.sql",
+    "074_a_ku_freeze_persistence.sql",
+    "075_a_ku_evolution.sql",
+    "076_a_ku_identity.sql",
+    "077_a_condition_boundary.sql"
+  ],
+  "mode": "ADDITIVE_ONLY",
+  "run_id": "arr_d0d1473d79fc",
+  "task": "A_P5_0_CONDITION_BOUNDARY",
+  "units_considered": 10,
+  "units_with_a_condition": 5,
+  "withheld_boundary_types": [
+    "SCOPE_LIMIT",
+    "EXCEPTION"
+  ],
+  "withheld_condition_types": [
+    "STATE",
+    "LOCATION",
+    "PREREQUISITE"
+  ]
+}

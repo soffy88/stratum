@@ -31,12 +31,12 @@ import json
 import os
 import re
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 
 import asyncpg
 
-DSN = os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+DSN = os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
 DEFAULT_STAGING = Path("scripts/_staging/math_prog_rename")
 
 # ── 闸2: 与 math_program_ingest 同一把尺(复制而非 import: 那个脚本模块级读 sys.argv) ──

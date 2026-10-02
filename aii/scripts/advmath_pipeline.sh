@@ -45,6 +45,24 @@ echo "════════════════════════�
 echo ""
 echo "[1/6] 逐章讲透(高中生可懂桥梁+原书深度不减) + ★完整性校验严(不能遗漏) + 打磨"
 $PY scripts/synthesize_book_advmath.py || { echo "❌ [1/6] 失败"; exit 2; }
+
+# 复杂数学书的章节讲透模型偶尔会完成章节 checkpoint 但产出 0 KU
+# (例如目录/章节识别成功，定义/定理标记未被讲透模板抽出)。不能把这类书
+# 直接送进质量门隔离后永久空转；用 B 管道忠实抠 Definition/Theorem/... 作为
+# 可审计兜底，内容不改写，仍必须经过后面的质量门。
+KU_AFTER_SYNTH="$(docker exec aii-postgres psql -U aii -d aii_kg -tAc \
+    "SELECT count(*) FROM aii.ku_onto WHERE substrate_id='${SUBSTRATE}'" 2>/dev/null | tr -d '[:space:]')"
+if [ "${KU_AFTER_SYNTH:-0}" -eq 0 ]; then
+    echo "⚠ [1/6] 讲透阶段产出 0 KU，启动忠实数学标记抽取兜底"
+    # 紧急兜底只需要忠实产出 KU；规划审核/命名是可选增强，继承高数 LLM
+    # 环境会把 0-KU 故障拖成分钟级。显式清掉 key，走 fail-open 的纯程序抽取。
+    env -u NVIDIA_NIM_API_KEY AII_FLYWHEEL="advmath-fallback" $PY scripts/math_program_ingest.py \
+        "$AII_MD_FILE" "$SUBSTRATE" --staging "scripts/_staging/advmath_fallback/$SUBSTRATE" \
+        || echo "  ⚠ 数学标记抽取兜底失败(继续走质量门)"
+    AII_FLYWHEEL="advmath-fallback" $PY scripts/math_ingest.py \
+        --substrate "$SUBSTRATE" --staging "scripts/_staging/advmath_fallback/$SUBSTRATE" \
+        || echo "  ⚠ 数学KU入库兜底失败(继续走质量门)"
+fi
 $PY scripts/dedup_within_book.py "$SUBSTRATE" 2>/dev/null || echo "  ⚠ 书内去重跳过(非致命)"
 
 echo ""

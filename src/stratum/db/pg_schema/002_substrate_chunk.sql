@@ -6,6 +6,11 @@ CREATE TABLE IF NOT EXISTS stratum.substrate_chunk (
     chunk_idx    INTEGER NOT NULL,
     text         TEXT NOT NULL,
     embedding    vector(1024),
+    version      INTEGER NOT NULL DEFAULT 1,
+    anchor_json  JSONB NOT NULL DEFAULT '{}'::jsonb,
+    parser_version TEXT,
     created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_substrate_chunk_sub ON stratum.substrate_chunk(substrate_id);
+CREATE INDEX IF NOT EXISTS idx_substrate_chunk_sub_version
+    ON stratum.substrate_chunk(substrate_id, version, chunk_idx);

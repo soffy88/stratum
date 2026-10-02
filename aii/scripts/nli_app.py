@@ -10,6 +10,7 @@ id2label 从 config 读取(不写死 0/1/2)。fp16 推理。
 
 启动: .venv/bin/python scripts/nli_app.py  (127.0.0.1:8103)
 """
+
 from __future__ import annotations
 
 import os
@@ -64,8 +65,12 @@ class Batch(BaseModel):
 
 def _verify_batch_tensors(evidences: list[str], claims: list[str]) -> list[dict]:
     tok = _tokenizer(
-        evidences, claims, padding=True, truncation=True,
-        max_length=MAX_LEN, return_tensors="pt",
+        evidences,
+        claims,
+        padding=True,
+        truncation=True,
+        max_length=MAX_LEN,
+        return_tensors="pt",
     )
     tok = {k: v.to(_device) for k, v in tok.items()}
     with torch.inference_mode():
@@ -77,12 +82,14 @@ def _verify_batch_tensors(evidences: list[str], claims: list[str]) -> list[dict]
         pe = dist.get("entailment", 0.0)
         pc = dist.get("contradiction", 0.0)
         label = max(dist, key=dist.get)
-        out.append({
-            "label": label,
-            "probs": dist,
-            "pass_support": pe >= TAU_ENT and pc <= TAU_CON,
-            "score_entailment": pe,
-        })
+        out.append(
+            {
+                "label": label,
+                "probs": dist,
+                "pass_support": pe >= TAU_ENT and pc <= TAU_CON,
+                "score_entailment": pe,
+            }
+        )
     return out
 
 
@@ -93,15 +100,24 @@ def _startup() -> None:
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": _model is not None, "device": _device,
-            "model": MODEL, "tau_ent": TAU_ENT, "tau_con": TAU_CON}
+    return {
+        "ok": _model is not None,
+        "device": _device,
+        "model": MODEL,
+        "tau_ent": TAU_ENT,
+        "tau_con": TAU_CON,
+    }
 
 
 @app.post("/verify")
 def verify(p: Pair) -> dict:
     if not p.evidence.strip() or not p.claim.strip():
-        return {"label": "neutral", "probs": {"entailment": 0.0, "neutral": 1.0,
-                "contradiction": 0.0}, "pass_support": False, "score_entailment": 0.0}
+        return {
+            "label": "neutral",
+            "probs": {"entailment": 0.0, "neutral": 1.0, "contradiction": 0.0},
+            "pass_support": False,
+            "score_entailment": 0.0,
+        }
     return _verify_batch_tensors([p.evidence], [p.claim])[0]
 
 

@@ -16,47 +16,74 @@
   result.strategy_used  # 实际使用的策略
   result.content_type  # "generic" | "wechat_article" | "twitter_thread" | "js_rendered"
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any
 
 log = logging.getLogger(__name__)
 
 # 已知 JS 渲染/SPA 域名 (触发 Crawl4AI)
-_JS_HEAVY_DOMAINS = frozenset((
-    "notion.so", "airtable.com", "medium.com", "substack.com",
-    "threads.net", "instagram.com", "tiktok.com", "reddit.com",
-    "github.com", "gitlab.com", "bitbucket.org",
-))
+_JS_HEAVY_DOMAINS = frozenset(
+    (
+        "notion.so",
+        "airtable.com",
+        "medium.com",
+        "substack.com",
+        "threads.net",
+        "instagram.com",
+        "tiktok.com",
+        "reddit.com",
+        "github.com",
+        "gitlab.com",
+        "bitbucket.org",
+    )
+)
 
 
 @dataclass
 class FetchResult:
     """增强抓取结果."""
-    html: str                    # HTML/Markdown 内容
-    title: str                   # 提取的标题
-    strategy_used: str           # 实际使用的策略
-    content_type: str            # "generic" | "wechat_article" | "twitter_thread" | "js_rendered"
-    source_url: str              # 原始 URL
-    success: bool                # 是否成功
-    error: str | None            # 失败原因
+
+    html: str  # HTML/Markdown 内容
+    title: str  # 提取的标题
+    strategy_used: str  # 实际使用的策略
+    content_type: str  # "generic" | "wechat_article" | "twitter_thread" | "js_rendered"
+    source_url: str  # 原始 URL
+    success: bool  # 是否成功
+    error: str | None  # 失败原因
 
 
 def _detect_paywall_domain(url: str) -> str | None:
     """快速检测 URL 是否属于已知付费墙/JS 渲染域名."""
     from urllib.parse import urlparse
+
     host = (urlparse(url).hostname or "").lower()
     # 付费墙 (Bot UA 策略)
-    if any(host == d or host.endswith("." + d) for d in (
-        "nytimes.com", "wsj.com", "ft.com", "economist.com", "bloomberg.com",
-        "washingtonpost.com", "newyorker.com", "wired.com", "theatlantic.com",
-        "medium.com", "businessinsider.com", "technologyreview.com", "scmp.com",
-        "forbes.com", "foreignaffairs.com", "theinformation.com",
-    )):
+    if any(
+        host == d or host.endswith("." + d)
+        for d in (
+            "nytimes.com",
+            "wsj.com",
+            "ft.com",
+            "economist.com",
+            "bloomberg.com",
+            "washingtonpost.com",
+            "newyorker.com",
+            "wired.com",
+            "theatlantic.com",
+            "medium.com",
+            "businessinsider.com",
+            "technologyreview.com",
+            "scmp.com",
+            "forbes.com",
+            "foreignaffairs.com",
+            "theinformation.com",
+        )
+    ):
         return "paywall"
     # 微信
     if host in ("mp.weixin.qq.com",):
@@ -88,8 +115,9 @@ async def fetch_url_enhanced(
       6. 所有策略失败 → 回退普通抓取
     """
     domain_type = _detect_paywall_domain(url)
-    log.info("fetch_url_enhanced url=%s domain_type=%s strategy=%s",
-             url[:80], domain_type, strategy)
+    log.info(
+        "fetch_url_enhanced url=%s domain_type=%s strategy=%s", url[:80], domain_type, strategy
+    )
 
     # 源专用抓取
     if domain_type in ("wechat", "twitter"):
@@ -113,7 +141,9 @@ async def fetch_url_enhanced(
 
 
 async def _fetch_with_crawl4ai(
-    url: str, timeout: int, max_bytes: int,
+    url: str,
+    timeout: int,
+    max_bytes: int,
 ) -> FetchResult:
     """通过 Crawl4AI (Playwright) 抓取 JS 渲染页面."""
     try:
@@ -121,8 +151,12 @@ async def _fetch_with_crawl4ai(
     except ImportError:
         log.warning("crawl4ai not installed, skipping JS render fetch")
         return FetchResult(
-            html="", title="", strategy_used="crawl4ai_unavailable",
-            content_type="js_rendered", source_url=url, success=False,
+            html="",
+            title="",
+            strategy_used="crawl4ai_unavailable",
+            content_type="js_rendered",
+            source_url=url,
+            success=False,
             error="crawl4ai not installed (pip install crawl4ai)",
         )
 
@@ -166,24 +200,36 @@ async def _fetch_with_crawl4ai(
                 error=None,
             )
 
-        log.warning("crawl4ai_failed url=%s success=%s md_len=%d",
-                    url[:80], result.success, len(md))
+        log.warning(
+            "crawl4ai_failed url=%s success=%s md_len=%d", url[:80], result.success, len(md)
+        )
         return FetchResult(
-            html="", title="", strategy_used="crawl4ai_error",
-            content_type="js_rendered", source_url=url, success=False,
+            html="",
+            title="",
+            strategy_used="crawl4ai_error",
+            content_type="js_rendered",
+            source_url=url,
+            success=False,
             error="Crawl4AI returned empty content",
         )
     except Exception as e:
         log.warning("crawl4ai_exception url=%s error=%s", url[:80], e)
         return FetchResult(
-            html="", title="", strategy_used="crawl4ai_exception",
-            content_type="js_rendered", source_url=url, success=False,
+            html="",
+            title="",
+            strategy_used="crawl4ai_exception",
+            content_type="js_rendered",
+            source_url=url,
+            success=False,
             error=str(e),
         )
 
 
 async def _fetch_with_bypass(
-    url: str, strategy: str, timeout: int, max_bytes: int,
+    url: str,
+    strategy: str,
+    timeout: int,
+    max_bytes: int,
 ) -> FetchResult:
     """通过 oprim.fetch_url_with_bypass 抓取."""
     try:
@@ -194,7 +240,9 @@ async def _fetch_with_bypass(
 
     try:
         result = await asyncio.to_thread(
-            fetch_url_with_bypass, url, strategy=strategy if strategy not in ("auto", "paywall") else "stealth",
+            fetch_url_with_bypass,
+            url,
+            strategy=strategy if strategy not in ("auto", "paywall") else "stealth",
         )
     except Exception as e:
         log.warning("bypass_fetch_error url=%s strategy=%s error=%s", url[:80], strategy, e)
@@ -214,14 +262,20 @@ async def _fetch_with_bypass(
             error=None,
         )
 
-    log.warning("bypass_failed url=%s strategy=%s error=%s", url[:80],
-                result.get("strategy"), result.get("error"))
+    log.warning(
+        "bypass_failed url=%s strategy=%s error=%s",
+        url[:80],
+        result.get("strategy"),
+        result.get("error"),
+    )
     # 降级: 尝试 SSRF-safe 直取
     return await _fetch_direct(url, timeout, max_bytes)
 
 
 async def _fetch_direct(
-    url: str, timeout: int, max_bytes: int,
+    url: str,
+    timeout: int,
+    max_bytes: int,
 ) -> FetchResult:
     """SSRF-safe 直取 (标准 oprim 流程)."""
     try:
@@ -232,20 +286,31 @@ async def _fetch_direct(
         except ImportError:
             log.warning("SSRF-safe fetch not available")
             return FetchResult(
-                html="", title="", strategy_used="unavailable",
-                content_type="generic", source_url=url, success=False,
+                html="",
+                title="",
+                strategy_used="unavailable",
+                content_type="generic",
+                source_url=url,
+                success=False,
                 error="URL fetch unavailable",
             )
 
     try:
         result = await asyncio.to_thread(
-            fetch_url_ssrf_safe, url=url, timeout=timeout, max_bytes=max_bytes,
+            fetch_url_ssrf_safe,
+            url=url,
+            timeout=timeout,
+            max_bytes=max_bytes,
         )
     except Exception as e:
         log.warning("direct_fetch_error url=%s error=%s", url[:80], e)
         return FetchResult(
-            html="", title="", strategy_used="direct_failed",
-            content_type="generic", source_url=url, success=False,
+            html="",
+            title="",
+            strategy_used="direct_failed",
+            content_type="generic",
+            source_url=url,
+            success=False,
             error=str(e),
         )
 
@@ -253,24 +318,36 @@ async def _fetch_direct(
     if err:
         log.warning("direct_fetch_error url=%s error=%s", url[:80], err)
         return FetchResult(
-            html="", title="", strategy_used="direct_error",
-            content_type="generic", source_url=url, success=False,
+            html="",
+            title="",
+            strategy_used="direct_error",
+            content_type="generic",
+            source_url=url,
+            success=False,
             error=err,
         )
 
     status = result.get("status_code")
     if status and status >= 400:
         return FetchResult(
-            html="", title="", strategy_used=f"http_{status}",
-            content_type="generic", source_url=url, success=False,
+            html="",
+            title="",
+            strategy_used=f"http_{status}",
+            content_type="generic",
+            source_url=url,
+            success=False,
             error=f"HTTP {status}",
         )
 
     html = result.get("body_text", "")
     if not html:
         return FetchResult(
-            html="", title="", strategy_used="empty_response",
-            content_type="generic", source_url=url, success=False,
+            html="",
+            title="",
+            strategy_used="empty_response",
+            content_type="generic",
+            source_url=url,
+            success=False,
             error="Empty response",
         )
 

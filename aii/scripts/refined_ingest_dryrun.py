@@ -13,7 +13,12 @@ AII-REFINED-REPO-MASTER-001 §5.1。经济三书首跑(已验证判同+人工签
       [--commit] [--rejudge] [--sim 0.78] [--sample 6]
 """
 
-import asyncio, os, re, json, hashlib, sys
+import asyncio
+import os
+import re
+import json
+import hashlib
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -277,7 +282,7 @@ async def main():
     # ★跟其它管道统一走共享 aii-embed 服务(笔记本GPU), 不在本进程加载本地BGE-M3——
     # 本地GPU常被 ocr-vllm 占满(9.65G卡装不下两个都要显存的模型), 之前直接在这里
     # local-load 会跟正在跑的 OCR daemon 撞显存 OOM(实测复现)。
-    embed_url = os.getenv("AII_EMBED_URL", "http://100.119.113.90:8102")
+    embed_url = os.getenv("AII_EMBED_URL", "http://127.0.0.1:8102")
     from oprim.embedding.aii_remote import AiiRemoteEmbedder
 
     embedder = AiiRemoteEmbedder(embed_url)
@@ -350,7 +355,7 @@ async def main():
                 )
                 print(f"    正文(原语言,存原): {(p['ntext'] or '')[:110]}")
         print(
-            f"\nDONE (dry-run, 无写库). 人工核: 整合是否忠实越读越厚? 翻译是否失真? sources是否全溯源?",
+            "\nDONE (dry-run, 无写库). 人工核: 整合是否忠实越读越厚? 翻译是否失真? sources是否全溯源?",
             flush=True,
         )
         await aconn.close()
@@ -360,7 +365,7 @@ async def main():
     # ---- COMMIT: 全量并发组装 → 批量嵌入 → 插入 ----
     print(f"\n[COMMIT] 并发组装 {len(cluster_list)} 条(轮转{len(pool)}key)...", flush=True)
     prepped = await asyncio.gather(*(_prep(i, m) for i, m in enumerate(cluster_list)))
-    print(f"[COMMIT] 文本就绪, 批量 BGE-M3 嵌入 ...", flush=True)
+    print("[COMMIT] 文本就绪, 批量 BGE-M3 嵌入 ...", flush=True)
     # ★一次性把全部文本塞给 embed() 会在远端/本地都炸: 远端502(疑似请求体过大/超时),
     # 本地兜底 OOM——实测根因不是"7000+条太多", 是单条文本长度(math_prog实测最长
     # 8000字符, 逼近BGE-M3 8192 token上限)导致attention显存随序列长度平方级增长,

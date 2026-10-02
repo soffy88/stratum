@@ -3,7 +3,7 @@
 
 用法:
   python split_collection_epub.py [--do] [--dry-run] [--output-dir DIR]
-  
+
   --do        实际执行拆分+转换 (默认 dry-run)
   --dry-run   只列出会拆哪些, 不执行
   --output-dir  输出目录 (默认 books/MD/_split_staging/)
@@ -20,8 +20,6 @@ import argparse
 import logging
 import os
 import re
-import sys
-import zipfile
 from concurrent.futures import ProcessPoolExecutor, TimeoutError as FuturesTimeout
 from pathlib import Path
 
@@ -63,19 +61,19 @@ def is_collection_by_name(filename, title):
 
 def _read_epub_worker(path):
     """子进程里读 epub — 防止大合集在父进程里读挂(D状态不可杀, 拖死整轮 pull_ingest)."""
-    import ebooklib
     from ebooklib import epub
+
     return epub.read_epub(path)
 
 
 def detect_collections():
     """扫描本地书目录, 返回 (epub_path, title, sections) 列表。
-    
+
     合集检测策略 (同时满足):
     1. 文件大小 > 20MB (普通教材很少这么大)
     2. 文件名/标题含合集关键词 (套装/全集/文集/共N册/Boxed Set等)
     3. TOC 有 ≥2 个顶层 Section (每个有 ≥3 个子项)
-    
+
     ★2026-08-22 修复: epub.read_epub 在父进程里读大合集时曾卡入 D 状态
     (磁盘IO挂起, 连 SIGKILL 都杀不掉, 单轮 pull_ingest 拖死 55 分钟)。
     改到独立子进程读 + 120s 超时, 超时直接跳过该书(下轮 24h 后再试)。
@@ -124,8 +122,7 @@ def detect_collections():
             sections = [
                 (sec, children)
                 for sec, children in (
-                    item if isinstance(item, tuple) else (None, [])
-                    for item in toc
+                    item if isinstance(item, tuple) else (None, []) for item in toc
                 )
                 if sec is not None and len(children) >= MIN_CHILDREN_PER_SECTION
             ]
@@ -134,7 +131,9 @@ def detect_collections():
                 results.append((str(f), title, sections))
                 log.info(
                     "合集: %s (%dMB) → %d 本子书",
-                    f.name[:50], fsize // (1024 * 1024), len(sections),
+                    f.name[:50],
+                    fsize // (1024 * 1024),
+                    len(sections),
                 )
             else:
                 # Flat structure: top-level Links are books
@@ -146,12 +145,16 @@ def detect_collections():
                     results.append((str(f), title, [(None, top_links)]))
                     log.info(
                         "扁平合集: %s (%dMB) → %d 个Link子书",
-                        f.name[:50], fsize // (1024 * 1024), len(top_links),
+                        f.name[:50],
+                        fsize // (1024 * 1024),
+                        len(top_links),
                     )
                 elif len(top_links) > 50:
                     log.info(
                         "跳过: %s (%dMB, %d个顶层Link=章节非子书, 当整本处理)",
-                        f.name[:50], fsize // (1024 * 1024), len(top_links),
+                        f.name[:50],
+                        fsize // (1024 * 1024),
+                        len(top_links),
                     )
 
     pool.shutdown(wait=False)
@@ -160,7 +163,6 @@ def detect_collections():
 
 def split_epub_to_md(epub_path, title, sections, output_dir, dry_run=False):
     """拆分单个合集 epub 为多个 MD 文件。"""
-    import ebooklib
     from ebooklib import epub as epub_mod
 
     book = epub_mod.read_epub(epub_path)
@@ -230,11 +232,11 @@ def split_epub_to_md(epub_path, title, sections, output_dir, dry_run=False):
 
     # Process each book
     os.makedirs(output_dir, exist_ok=True)
-    safe_title = re.sub(r'[\\/:*?"<>|\n\r]', '_', title)[:40]
+    safe_title = re.sub(r'[\\/:*?"<>|\n\r]', "_", title)[:40]
 
     for idx, (btitle, start, end) in enumerate(final_books):
-        safe_btitle = re.sub(r'[\\/:*?"<>|\n\r]', '_', btitle)[:50]
-        out_name = f"{safe_title}_{idx+1:02d}_{safe_btitle}.md"
+        safe_btitle = re.sub(r'[\\/:*?"<>|\n\r]', "_", btitle)[:50]
+        out_name = f"{safe_title}_{idx + 1:02d}_{safe_btitle}.md"
         out_path = os.path.join(output_dir, out_name)
 
         if os.path.exists(out_path):

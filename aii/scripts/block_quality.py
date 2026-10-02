@@ -10,6 +10,7 @@
     from block_quality import check_chunk_quality
     ok, issues = check_chunk_quality(chapter_text)
 """
+
 from __future__ import annotations
 
 import re

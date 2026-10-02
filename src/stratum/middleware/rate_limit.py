@@ -54,7 +54,7 @@ LIMITS = {
 
 # AII rate limits (matches AII's original APIKeyMiddleware)
 _AII_DEFAULT_LIMIT = (60, 300)  # 300 req/min for all /api/aii/* routes
-_AII_CHAT_LIMIT = (60, 20)      # 20 req/min for /api/aii/api/chat
+_AII_CHAT_LIMIT = (60, 20)  # 20 req/min for /api/aii/api/chat
 
 
 def _get_ip(request: Request) -> str:
@@ -95,7 +95,7 @@ def _classify_path(path: str) -> str:
     # (Next.js rewrite strips the /api/aii prefix before forwarding to
     # stratum-sl).
     if path.startswith("/api/") and not path.startswith("/api/v1/"):
-        segment = path[len("/api/"):].split("/", 1)[0]
+        segment = path[len("/api/") :].split("/", 1)[0]
         if segment in _LEGACY_API_SEGMENTS:
             return "api_default"
         return "aii"

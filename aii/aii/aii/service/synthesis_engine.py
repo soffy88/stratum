@@ -38,8 +38,7 @@ class _GraphAdapter:
     def get_ku_data(self, ku_id: str) -> dict:
         ku = self._ku_data.get(ku_id, {})
         sub = ku.get("substrate_id")
-        ku_edges = [e for e in self._norm_edges
-                    if e["source"] == ku_id or e["target"] == ku_id]
+        ku_edges = [e for e in self._norm_edges if e["source"] == ku_id or e["target"] == ku_id]
         return {
             "sources": [str(sub)] if sub else [],
             "type": str(ku.get("knowledge_type") or "observation"),
@@ -47,6 +46,7 @@ class _GraphAdapter:
             "edges": ku_edges,
             "neighbor_degree": self._degree,
         }
+
 
 # Strong global triggers: always route to Global regardless of other keywords
 _GLOBAL_STRONG = ["什么关系", "关系是", "总结", "综述", "概括", "全书", "脉络", "体系"]
@@ -64,6 +64,7 @@ def _embed_query(query: str) -> list[float] | None:
         if embed_fn is None:
             return None
         import numpy as np
+
         vecs = embed_fn([query])
         arr = np.array(vecs, dtype="float32")
         norm = float(np.linalg.norm(arr[0]))
@@ -82,15 +83,18 @@ class SynthesisEngine:
     async def chat(self, message: str) -> dict[str, Any]:
         """Process a user message. Routes via LLM intent(global/grounded/chitchat); 关键词兜底."""
         import os as _os
+
         intent = None
         if _os.getenv("AII_LLM_ROUTER", "1") == "1":
             try:
                 from aii.service.query_understanding import route_intent
+
                 intent = await route_intent(ProviderRegistry.get().llm("default"), message)
             except Exception as e:
                 logger.warning("LLM router failed, keyword fallback: %s", e)
         if intent is None:
             from aii.service.query_understanding import _keyword_route
+
             intent = _keyword_route(message)
         if intent == "global":
             return await self._handle_global(message)
@@ -113,28 +117,42 @@ class SynthesisEngine:
         KC 摘要是 AII 综合(synthesis_marker), 比拼凑细节 KU 更适合全局问题."""
         qv = _embed_query(query)
         if qv is None:
-            return {"mode": "error", "answer": "内部错误：无法编码查询", "epistemic_confidence": 0.0}
+            return {
+                "mode": "error",
+                "answer": "内部错误：无法编码查询",
+                "epistemic_confidence": 0.0,
+            }
 
         # 1. ★检索 KC 社区摘要(替代恒空的 search_synthesis_kus)
         kcs = await self.backend.search_kc_by_vector(qv, limit=4)
         if kcs:
-            kc_ctx = [{
-                "ku_id": f"KC:{kc['kc_id']}",
-                "natural_text": (kc.get("summary_en") or kc.get("summary") or ""),
-                "grade": kc.get("grade", "unverified"),
-                "is_synthesis": True,
-                "community_label": kc.get("community_label"),
-            } for kc in kcs if (kc.get("summary_en") or kc.get("summary"))]
+            kc_ctx = [
+                {
+                    "ku_id": f"KC:{kc['kc_id']}",
+                    "natural_text": (kc.get("summary_en") or kc.get("summary") or ""),
+                    "grade": kc.get("grade", "unverified"),
+                    "is_synthesis": True,
+                    "community_label": kc.get("community_label"),
+                }
+                for kc in kcs
+                if (kc.get("summary_en") or kc.get("summary"))
+            ]
             # ★GraphRAG 社区→细节下钻: 取最相关 KC 的少量成员 KU 作具体支撑(摘要+实证)
             try:
-                top_members = (kcs[0].get("member_ku_ids") or [])
+                top_members = kcs[0].get("member_ku_ids") or []
                 if isinstance(top_members, str):
                     top_members = _json.loads(top_members)
                 if top_members:
                     detail = await self.backend.get_kus_by_ids([str(m) for m in top_members[:3]])
                     for d in detail:
-                        kc_ctx.append({"ku_id": str(d["ku_id"]), "natural_text": d.get("natural_text", ""),
-                                       "grade": d.get("grade", "unverified"), "is_synthesis": False})
+                        kc_ctx.append(
+                            {
+                                "ku_id": str(d["ku_id"]),
+                                "natural_text": d.get("natural_text", ""),
+                                "grade": d.get("grade", "unverified"),
+                                "is_synthesis": False,
+                            }
+                        )
             except Exception as _e:
                 logger.warning("KC member drilldown failed: %s", _e)
             grades = [k["grade"] for k in kc_ctx]
@@ -147,9 +165,15 @@ class SynthesisEngine:
                 "mode": "global",
                 "answer": answer,
                 "epistemic_confidence": confidence,
-                "citations": [{"ku_id": k["ku_id"], "grade": k["grade"],
-                               "is_synthesis": True,
-                               "snippet": (k["natural_text"] or "")[:100]} for k in kc_ctx],
+                "citations": [
+                    {
+                        "ku_id": k["ku_id"],
+                        "grade": k["grade"],
+                        "is_synthesis": True,
+                        "snippet": (k["natural_text"] or "")[:100],
+                    }
+                    for k in kc_ctx
+                ],
                 "confidence_basis": f"社区摘要(KC)检索，共 {len(kc_ctx)} 个知识簇",
                 "disclaimer": "本回答基于 AII 综合摘要(非原文断言)，仅供参考。",
             }
@@ -196,8 +220,12 @@ class SynthesisEngine:
                     ku = ku_by_id.get(r.ku_id)
                     if ku and not ku.get("is_synthesis"):
                         graph_kus.append(ku)
-                logger.info("Global graph_expand: seeds=%d expanded=%d graph_kus=%d",
-                            len(seed_ids), len(expanded), len(graph_kus))
+                logger.info(
+                    "Global graph_expand: seeds=%d expanded=%d graph_kus=%d",
+                    len(seed_ids),
+                    len(expanded),
+                    len(graph_kus),
+                )
             except Exception as _e:
                 logger.warning("Global graph_expand_retrieval failed, falling back: %s", _e)
 
@@ -234,7 +262,8 @@ class SynthesisEngine:
                     "grade": r.get("grade"),
                     "is_synthesis": bool(r.get("is_synthesis")),
                     "snippet": r.get("natural_text", "")[:100],
-                } for r in context
+                }
+                for r in context
             ],
             "confidence_basis": f"全局摘要检索 + 图谱扩展，共 {len(context)} 条上下文",
             "disclaimer": "本回答基于 AII 综合摘要，非原文断言，仅供参考。",
@@ -257,6 +286,7 @@ class SynthesisEngine:
         # ★混合检索(dense+lexical RRF)召回候选 → LLM 重排精排到 top-k
         # 治 dense-only 召回弱; 重排治融合稀释(评测: hybrid+rerank ≥ dense). 失败逐级降级.
         import os as _os
+
         try:
             candidates = await self.backend.search_ku_hybrid(qv, query, limit=15)
         except Exception as _e:
@@ -267,6 +297,7 @@ class SynthesisEngine:
         if _os.getenv("AII_RERANK", "1") == "1" and len(candidates) > 1:
             try:
                 from aii.service.retrieval import llm_rerank
+
                 _llm = ProviderRegistry.get().llm("default")
                 candidates = await llm_rerank(_llm, query, candidates, top_k=5)
             except Exception as _e:
@@ -284,9 +315,9 @@ class SynthesisEngine:
 
                 seed_ids = [str(r["ku_id"]) for r in results]
                 # Get edges for seeds (targeted queries, 避免拉全量17k边)
-                edge_batches = await _asyncio.gather(*[
-                    self.backend.get_relation_edges(ku_id=sid) for sid in seed_ids
-                ])
+                edge_batches = await _asyncio.gather(
+                    *[self.backend.get_relation_edges(ku_id=sid) for sid in seed_ids]
+                )
                 seed_edges = [e for batch in edge_batches for e in batch]
 
                 if seed_edges:
@@ -321,8 +352,13 @@ class SynthesisEngine:
                         ku = local_ku_data.get(r.ku_id)
                         if ku and not ku.get("is_synthesis") and r.ku_id not in seen_vec:
                             extra_kus.append(ku)
-                    logger.info("Local graph_expand: seeds=%d edges=%d expanded=%d extra=%d",
-                                len(seed_ids), len(seed_edges), len(expanded), len(extra_kus))
+                    logger.info(
+                        "Local graph_expand: seeds=%d edges=%d expanded=%d extra=%d",
+                        len(seed_ids),
+                        len(seed_edges),
+                        len(expanded),
+                        len(extra_kus),
+                    )
             except Exception as _e:
                 logger.warning("Local graph_expand_retrieval failed, skipping: %s", _e)
 
@@ -333,6 +369,7 @@ class SynthesisEngine:
         if (not results or best_dist > 0.75) and _os.getenv("AII_HYDE", "1") == "1":
             try:
                 from aii.service.query_understanding import hyde_embed
+
                 _embed_fn = ProviderRegistry.get()._generic.get("embedding", {}).get("default")
                 hv = await hyde_embed(ProviderRegistry.get().llm("default"), _embed_fn, query)
                 if hv:
@@ -366,7 +403,7 @@ class SynthesisEngine:
                 "answer": "抱歉，我的知识库中尚未覆盖相关内容，无法为您提供准确解答。",
                 "epistemic_confidence": 0.0,
                 "citations": [],
-                "disclaimer": "AI 的回答基于有限库，当前无可靠依据。"
+                "disclaimer": "AI 的回答基于有限库，当前无可靠依据。",
             }
 
         # 3. Compute Epistemic Confidence
@@ -393,11 +430,12 @@ class SynthesisEngine:
                 {
                     "ku_id": str(r["ku_id"]),
                     "grade": r.get("grade"),
-                    "snippet": r.get("natural_text", "")[:100]
-                } for r in results
+                    "snippet": r.get("natural_text", "")[:100],
+                }
+                for r in results
             ],
             "confidence_basis": f"基于检索到的 {len(results)} 条记录加权计算 (最高等级: {grades[0] if grades else 'N/A'})",
-            "disclaimer": "本回答由 AI 基于内部知识图谱生成，仅供参考。"
+            "disclaimer": "本回答由 AI 基于内部知识图谱生成，仅供参考。",
         }
 
     async def _handle_chitchat(self, message: str) -> dict[str, Any]:
@@ -409,7 +447,7 @@ class SynthesisEngine:
             "epistemic_confidence": 0.0,
             "citations": [],
             "confidence_basis": "非知识查询，无事实依据",
-            "disclaimer": "一般对话模式"
+            "disclaimer": "一般对话模式",
         }
 
     async def _call_deepseek(self, query: str, context: list[dict]) -> str:
@@ -422,7 +460,7 @@ class SynthesisEngine:
 
         system_prompt = "你是一个严谨的 AI 助手。请基于以下知识回答问题。如果知识未提及，请说不知道。不要给出投资建议。\n\n"
         for i, ku in enumerate(context):
-            system_prompt += f"[{i+1}] {ku.get('natural_text')}\n"
+            system_prompt += f"[{i + 1}] {ku.get('natural_text')}\n"
 
         try:
             resp = await llm(
@@ -437,4 +475,3 @@ class SynthesisEngine:
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
             return f"(LLM_ERROR) {e}"
-

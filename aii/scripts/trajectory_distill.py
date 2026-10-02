@@ -17,6 +17,7 @@
     .venv/bin/python scripts/trajectory_distill.py [--days 7] [--dry-run] [--min-count 3]
 环境: NVIDIA_NIM_API_KEY(缺省读 .pipeline_keys.json), NIM_MODEL
 """
+
 from __future__ import annotations
 
 import argparse
@@ -62,7 +63,7 @@ async def main() -> int:
     ap.add_argument("--min-count", type=int, default=3)
     args = ap.parse_args()
 
-    dsn = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+    dsn = os.getenv("AII_KG_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
     conn = await asyncpg.connect(dsn)
 
     # 1. 失败模式分组
@@ -73,7 +74,8 @@ async def main() -> int:
         " FROM aii.trajectory_logs"
         " WHERE ts > now() - make_interval(days => $1) AND outcome <> 'recovered'"
         " GROUP BY failure_mode HAVING count(*) >= $2 ORDER BY n DESC",
-        args.days, args.min_count,
+        args.days,
+        args.min_count,
     )
     if not rows:
         print("近 7 天无显著失败模式(或记录为空)")
@@ -84,12 +86,14 @@ async def main() -> int:
     evidence = []
     for r in rows[:8]:
         ctx_samples = [c for c in (r["contexts"] or []) if isinstance(c, dict)][:5]
-        evidence.append({
-            "failure_mode": r["failure_mode"],
-            "count": r["n"],
-            "sample_error": r["sample_sig"],
-            "sample_contexts": ctx_samples,
-        })
+        evidence.append(
+            {
+                "failure_mode": r["failure_mode"],
+                "count": r["n"],
+                "sample_error": r["sample_sig"],
+                "sample_contexts": ctx_samples,
+            }
+        )
     prompt = json.dumps(evidence, ensure_ascii=False)[:12000]
     print(f"蒸馏输入: {len(rows)} 个失败模式 ({sum(r['n'] for r in rows)} 事件)", flush=True)
 
@@ -105,34 +109,73 @@ async def main() -> int:
         await conn.close()
         return 2
 
-    async with httpx.AsyncClient(timeout=300) as client:
+    endpoint = os.getenv(
+        "TRAJECTORY_LLM_BASE_URL",
+        os.getenv("OPENCODE_BASE_URL", "http://192.168.80.1:8791/v1/chat/completions"),
+    ).replace("192.168.80.1", "127.0.0.1")  # ★2026-09-21: 网关只绑回环, 192.168.80.1 直连被拒
+    if endpoint.startswith("https://integrate.api.nvidia.com"):
+        api_key = key
+        model = os.getenv("NIM_MODEL", "deepseek-ai/deepseek-v4-flash-0731")
+    else:
+        api_key = os.getenv("VEYA_API_KEY") or os.getenv("OPENCODE_KEY_POOL", "sk-veya").split(",")[0]
+        model = os.getenv("TRAJECTORY_MODEL", os.getenv("OPENCODE_MODEL", "gpt-5.6-luna"))
+
+    async with httpx.AsyncClient(timeout=300, trust_env=False) as client:
         resp = await client.post(
-            "https://integrate.api.nvidia.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+            endpoint,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
-                "model": os.getenv("NIM_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1.5"),
+                "model": model,
                 "messages": [
                     {"role": "system", "content": SYS},
                     {"role": "user", "content": prompt},
                 ],
-                "response_format": {"type": "json_object"},
                 "max_tokens": 1200,
             },
         )
-        out = resp.json()["choices"][0]["message"]["content"]
+        if resp.status_code >= 400:
+            print(f"❌ LLM HTTP {resp.status_code}: {resp.text[:500]}")
+            await conn.close()
+            return 3
+        try:
+            payload = resp.json()
+            out = (payload.get("choices") or [{}])[0].get("message", {}).get("content")
+        except (ValueError, AttributeError, IndexError, TypeError) as exc:
+            print(f"❌ LLM 响应无法解析: {exc}; body={resp.text[:500]}")
+            await conn.close()
+            return 3
         if not out:
-            print("❌ LLM 空响应")
+            print(f"❌ LLM 空响应: {resp.text[:500]}")
             await conn.close()
             return 3
 
-    # 3. 解析 + 落库(schema 校验)
-    try:
-        payload = json.loads(out)
-        rules = payload.get("rules") or []
-    except json.JSONDecodeError:
-        print("❌ 蒸馏输出非 JSON, 丢弃")
+    # 3. 解析 + 落库(schema 校验)。网关模型偶尔会用 ```json ...``` 包裹结果，
+    #    或在 JSON 前后补一句说明；提取对象后再校验，避免把可用结果误判为失败。
+    candidates = [out.strip()]
+    for block in out.split("```"):
+        block = block.strip()
+        if block.lower().startswith("json"):
+            block = block[4:].lstrip(" :\n")
+        if block.startswith("{"):
+            candidates.append(block)
+    start, end = out.find("{"), out.rfind("}")
+    if start >= 0 and end > start:
+        candidates.append(out[start : end + 1])
+
+    payload = None
+    for candidate in candidates:
+        try:
+            parsed = json.loads(candidate)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if isinstance(parsed, dict):
+            payload = parsed
+            break
+    if payload is None:
+        print(f"⚠ 蒸馏输出无法提取 JSON，本轮无新增规则: {out[:300]!r}")
         await conn.close()
-        return 4
+        return 0
+    rules = payload.get("rules") or []
 
     added = updated = rejected = 0
     for rule in rules:
@@ -143,8 +186,15 @@ async def main() -> int:
             rejected += 1
             continue
         # 安全校验: condition 必须是静态可判定字段
-        allowed = {"file_name_contains", "file_name_matches", "size_mb_gt", "size_mb_lt",
-                   "ext", "text_layer_chars_lt", "phase"}
+        allowed = {
+            "file_name_contains",
+            "file_name_matches",
+            "size_mb_gt",
+            "size_mb_lt",
+            "ext",
+            "text_layer_chars_lt",
+            "phase",
+        }
         if not set(cond).issubset(allowed):
             rejected += 1
             print(f"  ⚠ 拒绝 {name}: condition 含非静态字段 {set(cond) - allowed}")
@@ -154,7 +204,9 @@ async def main() -> int:
             " VALUES ($1, $2::jsonb, $3::jsonb, 'distilled')"
             " ON CONFLICT (rule_name) DO UPDATE SET condition=$2::jsonb, action=$3::jsonb,"
             " source='distilled', enabled=true",
-            name, json.dumps(cond, ensure_ascii=False), json.dumps(act, ensure_ascii=False),
+            name,
+            json.dumps(cond, ensure_ascii=False),
+            json.dumps(act, ensure_ascii=False),
         )
         added += 1
         print(f"  ✅ {name}: {json.dumps(cond, ensure_ascii=False)[:80]}")

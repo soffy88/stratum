@@ -209,7 +209,9 @@ def build_cornell_content(bundle: dict[str, Any]) -> dict[str, Any]:
 
     mod_i = 0
 
-    def add_mod(title_m: str, body: str, kind: str, cue_text: str | None = None, hint: str | None = None):
+    def add_mod(
+        title_m: str, body: str, kind: str, cue_text: str | None = None, hint: str | None = None
+    ):
         nonlocal mod_i
         mod_i += 1
         mid = f"m{mod_i}"
@@ -331,18 +333,28 @@ def build_cornell_content(bundle: dict[str, Any]) -> dict[str, Any]:
             body = _body_from_ku(k) or pt
             mod_i += 1
             mid = f"m{mod_i}"
-            modules.append({"id": mid, "title": f"要点：{str(pt)[:24]}",
-                            "body": body, "kind": k.get("ku_type") or "conceptual"})
+            modules.append(
+                {
+                    "id": mid,
+                    "title": f"要点：{str(pt)[:24]}",
+                    "body": body,
+                    "kind": k.get("ku_type") or "conceptual",
+                }
+            )
             if len(cues) < 12:
-                cues.append({
-                    "id": f"q{len(cues) + 1}",
-                    "mod": mid,
-                    "text": f"关于「{str(pt)[:40]}」你能说出什么？",
-                    "hint": _hint(k.get("ku_type") or "conceptual"),
-                })
+                cues.append(
+                    {
+                        "id": f"q{len(cues) + 1}",
+                        "mod": mid,
+                        "text": f"关于「{str(pt)[:40]}」你能说出什么？",
+                        "hint": _hint(k.get("ku_type") or "conceptual"),
+                    }
+                )
 
     # 总结
-    pts = [k.get("point_zh") or k.get("point") for k in kus[:4] if k.get("point_zh") or k.get("point")]
+    pts = [
+        k.get("point_zh") or k.get("point") for k in kus[:4] if k.get("point_zh") or k.get("point")
+    ]
     summary = (
         f"「{title}」属于 {subject} 领域。"
         + (" 关联要点：" + "；".join(str(p) for p in pts[:3]) + "。" if pts else "")

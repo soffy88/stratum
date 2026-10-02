@@ -7,6 +7,7 @@
 只更新 natural_text / title 两列(不碰 embedding/grade 等); fingerprint 重算为
 sha256(natural_text) 前缀, 用于后续去重。--dry-run 只看不改。
 """
+
 from __future__ import annotations
 
 import argparse
@@ -38,7 +39,8 @@ async def main() -> int:
     args = ap.parse_args()
 
     import os
-    dsn = os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+
+    dsn = os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
     conn = await asyncpg.connect(dsn)
 
     cond = "natural_text LIKE '%(cid:%'"
@@ -57,15 +59,22 @@ async def main() -> int:
             continue
         changed += 1
         if args.dry_run:
-            print(f"[dry] {r['ku_id']}\n  title: {r['title'][:40]!r} -> {t2[:40]!r}\n  nt:    {r['natural_text'][:60]!r} -> {nt2[:60]!r}")
+            print(
+                f"[dry] {r['ku_id']}\n  title: {r['title'][:40]!r} -> {t2[:40]!r}\n  nt:    {r['natural_text'][:60]!r} -> {nt2[:60]!r}"
+            )
             continue
         await conn.execute(
             "UPDATE aii.ku_onto SET natural_text=$1, title=$2, fingerprint=$3, "
             "updated_at=now() WHERE ku_id=$4",
-            nt2, t2, fp(nt2), r["ku_id"],
+            nt2,
+            t2,
+            fp(nt2),
+            r["ku_id"],
         )
     await conn.close()
-    print(f"命中 {len(rows)} 条: 修改 {changed} / 无变化 {skipped} ({'DRY-RUN' if args.dry_run else '已写库'})")
+    print(
+        f"命中 {len(rows)} 条: 修改 {changed} / 无变化 {skipped} ({'DRY-RUN' if args.dry_run else '已写库'})"
+    )
     return 0
 
 

@@ -117,9 +117,5 @@ def enrich_result_with_anchor(
         "snippet": anchor.get("snippet"),
         "anchor_status": anchor.get("anchor_status"),
         "deep_link": f"stratum://substrate/{substrate_id}"
-        + (
-            f"#p{anchor['paragraph_index']}"
-            if anchor.get("paragraph_index") is not None
-            else ""
-        ),
+        + (f"#p{anchor['paragraph_index']}" if anchor.get("paragraph_index") is not None else ""),
     }

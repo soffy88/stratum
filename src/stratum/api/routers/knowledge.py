@@ -482,4 +482,3 @@ async def get_evidence(evidence_id: str, user_id: str = Depends(jwt_auth)):
         "created_at": str(row[7]),
         "updated_at": str(row[8]),
     }
-

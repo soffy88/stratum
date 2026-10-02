@@ -224,6 +224,9 @@ CREATE TABLE IF NOT EXISTS stratum.highlights (
     "text" TEXT NOT NULL,
     "note" TEXT,
     "location_json" JSONB,
+    "confidence" DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+    "quote_hash" TEXT,
+    "locator_json" JSONB,
     "created_at" TIMESTAMPTZ,
     "updated_at" TIMESTAMPTZ
 );
@@ -402,6 +405,7 @@ CREATE TABLE IF NOT EXISTS stratum.substrates (
     "updated_at" TIMESTAMPTZ,
     "meta_json" JSONB,
     "source" TEXT,
+    "license" TEXT,
     "published_at" TIMESTAMPTZ,
     "parse_quality" TEXT,
     "quality_reason" TEXT

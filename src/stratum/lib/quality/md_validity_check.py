@@ -2,6 +2,7 @@
 
 扫描版例外: omodul 已设 scanned/empty/garbled 时跳过，不覆盖。
 """
+
 from __future__ import annotations
 
 MD_MIN_CHARS = 500
@@ -9,9 +10,7 @@ MD_MIN_CHARS = 500
 _PQ_OMODUL_HANDLED = frozenset(["scanned", "empty", "garbled", "ocr_ok"])
 
 
-def check_md_validity(
-    content: str | None, current_pq: str | None
-) -> tuple[bool, str | None]:
+def check_md_validity(content: str | None, current_pq: str | None) -> tuple[bool, str | None]:
     """Return (valid, reason_if_not).
 
     reason: md_empty | md_too_short

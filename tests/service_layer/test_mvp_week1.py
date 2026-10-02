@@ -43,6 +43,43 @@ def test_pdf_to_markdown_writes_md_on_success(tmp_path: Path):
     assert parser == "docling"
 
 
+def test_pdf_to_markdown_uses_pdftotext_as_text_only_fallback(tmp_path: Path):
+    from stratum.services import pdf_to_markdown as m
+
+    pdf = tmp_path / "text-only.pdf"
+    pdf.write_bytes(b"%PDF-1.4")
+    body = "Extracted text from a local Poppler fallback with enough content."
+
+    with patch.object(m, "_via_docling", side_effect=ImportError("no docling")):
+        with patch.object(m, "_via_pymupdf4llm", side_effect=ImportError("no pymupdf4llm")):
+            with patch.object(m, "_via_pdftotext", return_value=body):
+                out, parser = m.pdf_to_markdown(pdf)
+
+    assert out.read_text(encoding="utf-8") == body
+    assert parser == "pdftotext"
+
+
+def test_via_pdftotext_uses_argv_and_checks_process_result(tmp_path: Path):
+    from stratum.services import pdf_to_markdown as m
+
+    pdf = tmp_path / "input.pdf"
+    pdf.write_bytes(b"%PDF-1.4")
+    completed = m.subprocess.CompletedProcess(
+        args=["pdftotext"], returncode=0, stdout="hello\n", stderr=""
+    )
+    with patch.object(m.shutil, "which", return_value="/usr/bin/pdftotext"):
+        with patch.object(m.subprocess, "run", return_value=completed) as run:
+            assert m._via_pdftotext(pdf) == "hello\n"
+
+    run.assert_called_once_with(
+        ["/usr/bin/pdftotext", "-layout", str(pdf), "-"],
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=60,
+    )
+
+
 def test_reading_companion_sources_shape():
     sources = [
         {

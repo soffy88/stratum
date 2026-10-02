@@ -13,10 +13,9 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from stratum.db import get_conn
@@ -27,6 +26,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GapAnalysis:
     """单一主题的知识缺口分析结果."""
+
     topic: str
     well_covered: list[dict[str, Any]]
     thin_coverage: list[dict[str, Any]]
@@ -37,6 +37,7 @@ class GapAnalysis:
 
 
 # ── Topic Discovery ──────────────────────────────────────────────────────────
+
 
 def discover_topics(top_k: int = 20) -> list[dict[str, Any]]:
     """从 KU 库中自动发现主题领域.
@@ -50,23 +51,29 @@ def discover_topics(top_k: int = 20) -> list[dict[str, Any]]:
 
     with get_conn() as conn:
         # 1. Entity types as topic proxies
-        type_rows = conn.execute("""
+        type_rows = conn.execute(
+            """
             SELECT entity_type, COUNT(*) AS cnt
             FROM graph_entities
             GROUP BY entity_type
             ORDER BY cnt DESC
             LIMIT %s
-        """, (top_k // 2,)).fetchall()
+        """,
+            (top_k // 2,),
+        ).fetchall()
 
         for ent_type, cnt in type_rows:
-            topics.append({
-                "topic": ent_type,
-                "ku_count": cnt,
-                "source": "entity_type",
-            })
+            topics.append(
+                {
+                    "topic": ent_type,
+                    "ku_count": cnt,
+                    "source": "entity_type",
+                }
+            )
 
         # 2. Substrate source paths (directory structure)
-        path_rows = conn.execute("""
+        path_rows = conn.execute(
+            """
             SELECT
                 CASE
                     WHEN source_path LIKE '%math%' THEN 'mathematics'
@@ -86,14 +93,18 @@ def discover_topics(top_k: int = 20) -> list[dict[str, Any]]:
             GROUP BY domain
             ORDER BY cnt DESC
             LIMIT %s
-        """, (top_k // 2,)).fetchall()
+        """,
+            (top_k // 2,),
+        ).fetchall()
 
         for domain, cnt in path_rows:
-            topics.append({
-                "topic": domain,
-                "ku_count": cnt,
-                "source": "source_path",
-            })
+            topics.append(
+                {
+                    "topic": domain,
+                    "ku_count": cnt,
+                    "source": "source_path",
+                }
+            )
 
     # Deduplicate by topic name, prefer higher count
     unique: dict[str, dict] = {}
@@ -106,6 +117,7 @@ def discover_topics(top_k: int = 20) -> list[dict[str, Any]]:
 
 
 # ── Gap Analysis for Single Topic ────────────────────────────────────────────
+
 
 def analyze_topic_gap(
     topic: str,
@@ -135,7 +147,8 @@ def analyze_topic_gap(
         search_pattern = f"%{topic}%"
 
         # Substrates whose source_path or title matches the topic
-        sub_rows = conn.execute("""
+        sub_rows = conn.execute(
+            """
             SELECT s.id, s.title, s.source_path,
                    (SELECT COUNT(*) FROM substrate_layers sl
                     WHERE sl.substrate_id = s.id) AS layer_count,
@@ -145,7 +158,9 @@ def analyze_topic_gap(
               AND (s.title ILIKE %s OR s.source_path ILIKE %s)
             ORDER BY s.updated_at DESC
             LIMIT 50
-        """, (search_pattern, search_pattern)).fetchall()
+        """,
+            (search_pattern, search_pattern),
+        ).fetchall()
 
         analysis.total_ku = len(sub_rows)
 
@@ -177,7 +192,8 @@ def analyze_topic_gap(
         for item in analysis.well_covered + analysis.thin_coverage:
             if item["updated_at"]:
                 try:
-                    from datetime import datetime, timezone, timedelta
+                    from datetime import datetime, timezone
+
                     upd = datetime.fromisoformat(item["updated_at"])
                     if upd.tzinfo is None:
                         upd = upd.replace(tzinfo=timezone.utc)
@@ -188,13 +204,15 @@ def analyze_topic_gap(
                     pass
 
         if stale_ids:
-            analysis.missing.append({
-                "id": "stale_count",
-                "title": f"{len(stale_ids)} items > 90 days old",
-                "path": "",
-                "layer_count": 0,
-                "updated_at": "",
-            })
+            analysis.missing.append(
+                {
+                    "id": "stale_count",
+                    "title": f"{len(stale_ids)} items > 90 days old",
+                    "path": "",
+                    "layer_count": 0,
+                    "updated_at": "",
+                }
+            )
 
     # Generate suggested notes (LLM-free heuristic approach)
     if include_suggestions and analysis.total_ku > 0:
@@ -202,9 +220,12 @@ def analyze_topic_gap(
 
     logger.info(
         "knowledge_gap: topic=%s ku=%d well=%d thin=%d missing=%d score=%.0f",
-        topic, analysis.total_ku,
-        len(analysis.well_covered), len(analysis.thin_coverage),
-        len(analysis.missing), analysis.health_score,
+        topic,
+        analysis.total_ku,
+        len(analysis.well_covered),
+        len(analysis.thin_coverage),
+        len(analysis.missing),
+        analysis.health_score,
     )
     return analysis
 
@@ -226,14 +247,17 @@ def _suggest_missing_notes(
     # 1. 缺少结构化概览的 KU
     if analysis.thin_coverage:
         for item in analysis.thin_coverage[:3]:
-            suggestions.append({
-                "title": f"[Bridge] {item['title'] or 'Topic Overview'} — Structured Overview",
-                "purpose": f"为 {topic} 领域的 {item['title'] or '该笔记'} 生成 L1 结构化概览",
-                "type": "enrichment",
-            })
+            suggestions.append(
+                {
+                    "title": f"[Bridge] {item['title'] or 'Topic Overview'} — Structured Overview",
+                    "purpose": f"为 {topic} 领域的 {item['title'] or '该笔记'} 生成 L1 结构化概览",
+                    "type": "enrichment",
+                }
+            )
 
     # 2. 检查 KG 中与该 topic 相关的孤立实体
-    orphan_rows = conn.execute("""
+    orphan_rows = conn.execute(
+        """
         SELECT name, entity_type, mention_count, source_substrate_ids
         FROM graph_entities
         WHERE entity_type ILIKE %s
@@ -244,27 +268,34 @@ def _suggest_missing_notes(
           )
         ORDER BY mention_count DESC
         LIMIT 5
-    """, (f"%{topic}%",)).fetchall()
+    """,
+        (f"%{topic}%",),
+    ).fetchall()
 
     for name, etype, mc, sj in orphan_rows:
-        suggestions.append({
-            "title": f"[Connect] {name} — Link to {topic} Knowledge Graph",
-            "purpose": f"将实体 '{name}' ({etype}, {mc} mentions) 加入 {topic} 知识图谱",
-            "type": "connection",
-        })
+        suggestions.append(
+            {
+                "title": f"[Connect] {name} — Link to {topic} Knowledge Graph",
+                "purpose": f"将实体 '{name}' ({etype}, {mc} mentions) 加入 {topic} 知识图谱",
+                "type": "connection",
+            }
+        )
 
     # 3. 建议桥梁笔记 (连接两个不同的子主题)
     if len(analysis.well_covered) >= 2 and len(analysis.missing) >= 2:
-        suggestions.append({
-            "title": f"[Bridge] {topic} — Cross-Domain Integration",
-            "purpose": f"连接 {topic} 领域内已覆盖和未覆盖的子主题",
-            "type": "bridge",
-        })
+        suggestions.append(
+            {
+                "title": f"[Bridge] {topic} — Cross-Domain Integration",
+                "purpose": f"连接 {topic} 领域内已覆盖和未覆盖的子主题",
+                "type": "bridge",
+            }
+        )
 
     return suggestions
 
 
 # ── Comprehensive Gap Analysis ───────────────────────────────────────────────
+
 
 def analyze_all_gaps(
     topic_filter: str | None = None,
@@ -310,10 +341,12 @@ def analyze_all_gaps(
     all_suggestions = []
     for a in analyses:
         for s in a.suggested_notes:
-            all_suggestions.append({
-                "topic": a.topic,
-                **s,
-            })
+            all_suggestions.append(
+                {
+                    "topic": a.topic,
+                    **s,
+                }
+            )
 
     # Rank topics by health (ascending = most need improvement)
     weakest = sorted(analyses, key=lambda a: a.health_score)[:5]

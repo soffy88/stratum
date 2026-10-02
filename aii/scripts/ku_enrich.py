@@ -16,6 +16,7 @@
     cd aii && .venv/bin/python scripts/ku_enrich.py --limit 200 [--dry-run] [--substrate math]
 环境: NVIDIA_NIM_API_KEY(缺省读 .pipeline_keys.json 的 econ 槽), NIM_MODEL。
 """
+
 from __future__ import annotations
 
 import argparse
@@ -60,9 +61,13 @@ def fp(s: str) -> str:
 
 async def enrich_one(client: httpx.AsyncClient, model: str, title: str, text: str) -> dict:
     prompt = f"KU title: {title}\nKU text:\n{text[:4000]}"
+    # 2026-09-21: 默认仍走 NIM；设 AII_LLM_BASE_URL/AII_LLM_KEY 可切 Veya 本地网关
+    # （NIM 免费层 429 限流曾导致整批超时被 systemd 误杀，见 aii-ku-enrich）。
+    base = os.getenv("AII_LLM_BASE_URL", "https://integrate.api.nvidia.com/v1").rstrip("/")
+    key = os.getenv("AII_LLM_KEY") or _nim_key()
     resp = await client.post(
-        "https://integrate.api.nvidia.com/v1/chat/completions",
-        headers={"Authorization": f"Bearer {_nim_key()}", "Content-Type": "application/json"},
+        f"{base}/chat/completions",
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
         json={
             "model": model,
             "messages": [
@@ -94,7 +99,7 @@ async def main() -> int:
     ap.add_argument("--substrate", default="")
     args = ap.parse_args()
 
-    dsn = os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5435/aii_kg")
+    dsn = os.getenv("DATABASE_URL", "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
     conn = await asyncpg.connect(dsn)
 
     cond = "k.grade='unverified' AND (k.intuition IS NULL OR k.sources='[]'::jsonb)"
@@ -114,7 +119,7 @@ async def main() -> int:
         await conn.close()
         return 0
 
-    model = os.getenv("NIM_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1.5")
+    model = os.getenv("NIM_MODEL", "deepseek-ai/deepseek-v4-flash-0731")
     if not _nim_key():
         print("❌ 无 NIM key(设 NVIDIA_NIM_API_KEY 或 .pipeline_keys.json 的 econ 槽)")
         await conn.close()
@@ -129,7 +134,9 @@ async def main() -> int:
                 # content=null 属瞬时抖动, 重试 1 次
                 if "empty content" in str(e):
                     try:
-                        enr = await enrich_one(client, model, r["title"] or "", r["natural_text"] or "")
+                        enr = await enrich_one(
+                            client, model, r["title"] or "", r["natural_text"] or ""
+                        )
                     except Exception as e2:  # noqa: BLE001
                         print(f"  ⚠ {r['ku_id']}: {type(e2).__name__} {e2}")
                         fail += 1
@@ -147,13 +154,15 @@ async def main() -> int:
             fail = 0
             sources = []
             if r["src_title"]:
-                sources.append({
-                    "title": r["src_title"],
-                    "medium": r["src_medium"] or "unknown",
-                    "subject": r["src_subject"] or "",
-                })
+                sources.append(
+                    {
+                        "title": r["src_title"],
+                        "medium": r["src_medium"] or "unknown",
+                        "subject": r["src_subject"] or "",
+                    }
+                )
             if args.dry_run:
-                print(f"[dry] {r['ku_id']}: intuition={enr.get('intuition_zh','')[:30]}…")
+                print(f"[dry] {r['ku_id']}: intuition={enr.get('intuition_zh', '')[:30]}…")
                 ok += 1
                 continue
             await conn.execute(
@@ -162,13 +171,18 @@ async def main() -> int:
                      sources=$4::jsonb, fingerprint=$5, grade='moderate',
                      updated_at=now()
                    WHERE ku_id=$6""",
-                enr.get("intuition_zh"), enr.get("insight_zh"), enr.get("example_zh"),
-                json.dumps(sources, ensure_ascii=False), fp(r["natural_text"] or ""),
+                enr.get("intuition_zh"),
+                enr.get("insight_zh"),
+                enr.get("example_zh"),
+                json.dumps(sources, ensure_ascii=False),
+                fp(r["natural_text"] or ""),
                 r["ku_id"],
             )
             ok += 1
     await conn.close()
-    print(f"本批 {len(rows)} 条: enriched {ok} / 失败 {fail} ({'DRY-RUN' if args.dry_run else '已写库'})")
+    print(
+        f"本批 {len(rows)} 条: enriched {ok} / 失败 {fail} ({'DRY-RUN' if args.dry_run else '已写库'})"
+    )
     return 0
 
 

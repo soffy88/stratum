@@ -12,6 +12,7 @@
     from evaluate_ku import score_ku
     score = score_ku(claim=..., title=..., quotes=[...])
 """
+
 from __future__ import annotations
 
 import os
@@ -39,8 +40,13 @@ def infer_claim_type(claim: str, ku_type: str = "") -> str:
         return "relation"
     if re.search(r"(我认为|建议|应该|可能更|it seems|should|arguably)", c, re.IGNORECASE):
         return "opinion"
-    return {"conceptual": "fact", "rationale": "relation", "procedural": "procedure",
-            "factual": "fact", "positional": "opinion"}.get(ku_type, "fact")
+    return {
+        "conceptual": "fact",
+        "rationale": "relation",
+        "procedural": "procedure",
+        "factual": "fact",
+        "positional": "opinion",
+    }.get(ku_type, "fact")
 
 
 def check_lang_mix(text: str, lang: str = "zh") -> list[str]:
@@ -61,13 +67,15 @@ def embedding_coarse_filter(claim: str, quotes: list[dict], min_sim: float = 0.2
     """
     import json as _json
     import urllib.request as _ur
+
     try:
         ev = " ".join(q.get("quote", "") for q in (quotes or []))[:1500]
         if not ev or len(claim) < 20:
             return []
         body = _json.dumps({"texts": [claim[:1500], ev]}).encode()
-        req = _ur.Request("http://127.0.0.1:8102/embed", data=body,
-                          headers={"Content-Type": "application/json"})
+        req = _ur.Request(
+            "http://127.0.0.1:8102/embed", data=body, headers={"Content-Type": "application/json"}
+        )
         with _ur.urlopen(req, timeout=10) as resp:
             vecs = _json.loads(resp.read())["embeddings"]
         a, b = vecs[0], vecs[1]
@@ -80,6 +88,8 @@ def embedding_coarse_filter(claim: str, quotes: list[dict], min_sim: float = 0.2
     except Exception:  # noqa: BLE001
         pass
     return []
+
+
 _ALNUM = re.compile(r"[A-Za-z0-9\u4e00-\u9fff]")
 _KNOWLEDGE_KW = re.compile(
     r"(is |are |means |defined|refers|因为|因此|如果|则|定理|定义|命题|"
@@ -110,7 +120,7 @@ def score_ku(claim: str, title: str = "", quotes: list[dict] | None = None) -> d
     if not claim:
         atomicity = 0.0
     elif len(claim) > 600:
-        atomicity = 0.2          # 超长 = 多主题粘连
+        atomicity = 0.2  # 超长 = 多主题粘连
     elif sentences <= 3:
         atomicity = 0.9
     elif sentences <= 5:
@@ -137,8 +147,7 @@ def score_ku(claim: str, title: str = "", quotes: list[dict] | None = None) -> d
         ratio = len(claim) / max(qlen, 1)
         alignment = 1.0 if ratio <= 3 else max(0.1, 1.5 - ratio * 0.15)
 
-    total = (density * 0.35 + atomicity * 0.25
-             + retrievability * 0.20 + alignment * 0.20)
+    total = density * 0.35 + atomicity * 0.25 + retrievability * 0.20 + alignment * 0.20
     return {
         "density": round(density, 3),
         "atomicity": round(atomicity, 3),
@@ -152,7 +161,9 @@ def score_ku(claim: str, title: str = "", quotes: list[dict] | None = None) -> d
 if __name__ == "__main__":
     good = score_ku(
         "机会成本是指为了得到某种东西而必须放弃的其他东西的价值，稀缺性导致选择。",
-        "机会成本", [{"quote": "机会成本是指为了得到某种东西而必须放弃的其他东西的价值"}])
+        "机会成本",
+        [{"quote": "机会成本是指为了得到某种东西而必须放弃的其他东西的价值"}],
+    )
     print("好 KU:", good)
     bad = score_ku("嗯嗯 好的 谢谢 哈哈哈哈", "x", [])
     print("垃圾:", bad)
