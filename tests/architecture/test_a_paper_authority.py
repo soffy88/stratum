@@ -715,9 +715,6 @@ def test_all_gates_pass(paper):
     for name, value in gates.items():
         if isinstance(value, dict):
             continue
-        if name == "GATE_3_traceability_percent":
-            assert value == 100.0
-            continue
         assert value == "PASS", f"{name}={value}"
 
 
@@ -777,3 +774,10 @@ def test_committed_artifact_matches_a_fresh_run():
                 "evidence_anchor", "declaration_coverage"):
         assert committed[key] == fresh[key], key
     assert committed["candidates"] == fresh["candidates"]
+
+
+def test_the_converted_percent_gate_reports_a_real_measurement(paper):
+    """`GATE_3_traceability_percent` is a status now. Assert the number it stands for too,
+    or a PASS would say nothing about traceability."""
+    assert gate_results(paper)["GATE_3_traceability_percent"] == "PASS"
+    assert paper["writer"].traceability_percent() == 100.0

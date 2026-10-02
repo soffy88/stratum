@@ -626,9 +626,6 @@ def test_all_gates_pass(constraint):
     for name, value in gates.items():
         if isinstance(value, dict):
             continue
-        if name == "GATE_4_traceability_percent":
-            assert value == 100.0
-            continue
         assert value == "PASS", f"{name}={value}"
 
 
@@ -685,3 +682,10 @@ def test_committed_artifact_matches_a_fresh_run():
                 "type_coverage", "measured_rejections", "unanchored_spans"):
         assert committed[key] == fresh[key], key
     assert committed["constraints"] == fresh["constraints"]
+
+
+def test_the_converted_percent_gate_reports_a_real_measurement(constraint):
+    """`GATE_4_traceability_percent` is a status now. Assert the number it stands for too,
+    or a PASS would say nothing about traceability."""
+    assert gate_results(constraint)["GATE_4_traceability_percent"] == "PASS"
+    assert constraint["writer"].traceability_percent() == 100.0

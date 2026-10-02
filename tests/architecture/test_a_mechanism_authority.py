@@ -542,7 +542,10 @@ def test_all_five_gates_pass(chain):
                  "GATE_2_trace", "GATE_2_completeness", "GATE_3_replay",
                  "GATE_4_authority", "GATE_5_negative"):
         assert gates[name] == "PASS", f"{name}={gates[name]}"
-    assert gates["GATE_2_traceability_percent"] == 100.0
+    # The gate now reports a status, not the raw percentage. Assert both: a
+    # PASS with a measurement that is not 100.0 would be a gate that lies.
+    assert gates["GATE_2_traceability_percent"] == "PASS"
+    assert chain["writer"].traceability_percent() == 100.0
 
 
 def test_acceptance_block(chain):

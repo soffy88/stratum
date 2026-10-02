@@ -58,6 +58,7 @@ from .constraint_writer import (
     unquoted_fields,
 )
 from .ku_identity_runner import build_identity
+from .verdict import verdict, verdict_inputs
 from .projection_builder import artifact_drift, external_imports
 
 
@@ -736,6 +737,16 @@ def negative_gate(result: Dict) -> Dict[str, bool]:
 
 # ── gates ────────────────────────────────────────────────────────────────────
 
+#: What the traceability gate must equal. It was previously emitted as a bare
+#: percentage inside `gates`, which the shared verdict contract cannot read.
+TRACEABILITY_REQUIRED = 100.0
+
+
+def _equals(measured: object, required: object) -> str:
+    """One measurement as a gate status, against a stated requirement."""
+    return "PASS" if measured == required else "FAIL"
+
+
 def gate_results(result: Dict) -> Dict[str, object]:
     """The acceptance gates plus the checks behind them."""
     replay = replay_gate()
@@ -757,7 +768,8 @@ def gate_results(result: Dict) -> Dict[str, object]:
         "GATE_3_ku_statement_not_evidence": ku_statement_not_evidence_gate(result),
         "GATE_4_trace": trace_gate(result),
         "GATE_4_coverage": coverage_gate(result),
-        "GATE_4_traceability_percent": result["writer"].traceability_percent(),
+        "GATE_4_traceability_percent": _equals(result["writer"].traceability_percent(),
+                                   TRACEABILITY_REQUIRED),
         "GATE_5_replay": "PASS" if (replay["identical_fingerprints"] == 1
                                     and replay["rewrite_is_noop"] == 1
                                     and replay["new_constraint"] == 0
@@ -767,7 +779,6 @@ def gate_results(result: Dict) -> Dict[str, object]:
         "GATE_5_hash_stability": hash_stability_gate(),
         "GATE_6_isolation": same_source_gate(result),
         "GATE_7_negative": "PASS" if all(negative.values()) else "FAIL",
-        "GATE_7_negative_detail": negative,
     }
 
 
@@ -847,12 +858,13 @@ def acceptance(result: Dict) -> Dict[str, object]:
     """§20 acceptance, computed from measurements."""
     gates = gate_results(result)
     contamination = contamination_counts(result)
-    negative = gates["GATE_7_negative_detail"]
+    negative = negative_gate(result)
     writer: ConstraintWriter = result["writer"]
     checks = {
         "constraint_persisted": len(result["sink"].constraint_candidates),
         "fields_quoted_from_span": gates["GATE_3_quote_authority"],
-        "traceability_percent": gates["GATE_4_traceability_percent"],
+        # The measurement, not the gate that now reports it.
+        "traceability_percent": result["writer"].traceability_percent(),
         "source_isolation": gates["GATE_6_isolation"],
         "replay_stable": gates["GATE_5_replay"],
         "transaction_atomic": "PASS" if gates["GATE_1_schema"] == "PASS"
@@ -883,6 +895,12 @@ def acceptance(result: Dict) -> Dict[str, object]:
     return {
         "checks": checks,
         "gates": gates,
+        # Derived from every reported gate. The IMPLEMENTATION conjunction
+        # below reads a subset, so gates outside it could print PASS and change
+        # nothing; the legacy keys are kept for the tests, artifacts and freeze
+        # reports that read them.
+        "A_P5_4_CONSTRAINT": verdict(gates),
+        "verdict_inputs": verdict_inputs(gates),
         "A_P5_4_CONSTRAINT_SCHEMA":
             "PASS" if all(gates[k] == "PASS" for k in _SCHEMA_GATES)
             else "BLOCKED",
@@ -911,7 +929,9 @@ def final_report(result: Dict) -> Dict[str, str]:
         "TASK": "A_P5_4_CONSTRAINT",
         "MIGRATION_081": REQUIRED_MIGRATION,
         "CONSTRAINT_ROWS": str(len(result["sink"].constraint_candidates)),
-        "TRACEABILITY": f"{gates['GATE_4_traceability_percent']}%",
+        # The measurement. This field reads the gate's status when it does not,
+        # which renders the report as "PASS%" instead of "100.0%".
+        "TRACEABILITY": f"{result['writer'].traceability_percent()}%",
         "REPLAY": str(gates["GATE_5_replay"]),
         "AUTHORITY_SCAN": str(gates["GATE_2_authority"]),
         "B_CONTAMINATION": str(contamination["B_REFERENCE"]),
