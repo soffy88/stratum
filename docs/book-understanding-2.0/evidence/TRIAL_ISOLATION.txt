@@ -1,0 +1,46 @@
+TRIAL ISOLATION — is the status literal the ONLY blocker, or is the trial
+blocked by a missing producer as well? Answer: BOTH, and the producer is the real one.
+======================================================================
+
+TEST 1 — insert with the corrected status, staging, inside a rolled-back txn.
+  (confirms the constraint is the only thing between the current code and a created run)
+
+  BEGIN
+  INSERT 0 0
+                              ?column?                             
+  -----------------------------------------------------------------
+   RUN CREATED OK -> status literal was the only blocker at step 1
+  (1 row)
+  
+  ROLLBACK
+
+TEST 2 — with a run created, what produces step 2 (ChapterUnderstanding)?
+
+  Every reference to the three chapter/book repositories outside
+  bu_v2_repositories.py, excluding tests:
+
+    src/stratum/services/bu_v2_pipeline.py:16:    ChapterUnderstandingRepository,
+    src/stratum/services/bu_v2_pipeline.py:17:    ChapterDeltaRepository,
+    src/stratum/services/bu_v2_pipeline.py:18:    BookUnderstandingRepository,
+    src/stratum/services/bu_v2_pipeline.py:131:        if not ChapterUnderstandingRepository.check_exists(self.run_id):
+    src/stratum/services/bu_v2_pipeline.py:133:        if not ChapterDeltaRepository.check_exists(self.run_id):
+    src/stratum/services/bu_v2_pipeline.py:141:        if not ChapterUnderstandingRepository.check_exists(self.run_id):
+    src/stratum/services/bu_v2_pipeline.py:143:        if not ChapterDeltaRepository.check_exists(self.run_id):
+    src/stratum/services/bu_v2_pipeline.py:145:        if not BookUnderstandingRepository.check_exists(self.run_id):
+    src/stratum/services/bu_v2_pipeline.py:177:            bu = BookUnderstandingRepository.get_by_run(self.run_id)
+
+  All of them are READS inside the gate functions:
+
+    131:        if not ChapterUnderstandingRepository.check_exists(self.run_id):
+    133:        if not ChapterDeltaRepository.check_exists(self.run_id):
+    141:        if not ChapterUnderstandingRepository.check_exists(self.run_id):
+    143:        if not ChapterDeltaRepository.check_exists(self.run_id):
+    145:        if not BookUnderstandingRepository.check_exists(self.run_id):
+    177:            bu = BookUnderstandingRepository.get_by_run(self.run_id)
+
+  check_exists / get_by_run only. Nothing anywhere CONSTRUCTS a
+  ChapterUnderstanding, ChapterDelta or BookUnderstandingV2.
+
+CONCLUSION
+  Fixing book_reading.py:82 is necessary and is one line.
+  It advances the trial ZERO steps, because step 2 has no producer.

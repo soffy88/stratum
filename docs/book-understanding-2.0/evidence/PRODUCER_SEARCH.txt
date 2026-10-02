@@ -1,0 +1,46 @@
+PRODUCER SEARCH — proving BU2 has no producer, no entrypoint, no LLM
+================================================================
+
+1. Repository.save() call sites in the entire repository
+   (14 save() methods exist in bu_v2_repositories.py)
+
+   src/stratum/services/bu_v2_pipeline.py:291:                    LearningObjectRepository.save(LearningObject(
+   src/stratum/services/bu_v2_pipeline.py:308:                    RetrievalItemRepository.save(RetrievalItem(
+
+   -> both are inside _project_learning, in the state machine.
+
+2. BU2PipelineStateMachine instantiations
+
+        23 tests/architecture/test_bu_v2_foundation.py
+
+   -> tests/ only. Zero instantiations in src/ or scripts/.
+
+3. Entrypoints
+
+   CLI commands      : 0
+   API routes        : 0
+   scheduler jobs    : 0
+   (all counts are 0)
+
+4. LLM capability in the whole BU2 surface
+
+   matches for llm|oprim|llm_call|deepseek|nim_|openai|anthropic in:
+0
+   -> 0. BU2 has no LLM capability at all.
+
+   ku_segmentation.py:3 states it outright:
+     Deterministic baseline (no LLM): proposition splitting, cue-based discourse /
+
+   Its PropositionAnalyzer protocol has exactly one implementation:
+     202:class PropositionAnalyzer(Protocol):
+     207:class DeterministicAnalyzer:
+
+5. What the one producing function emits
+
+   bu_v2_pipeline.py:259 _project_learning — the only code in BU2 that
+   constructs anything:
+     300:                        target_refs=[],
+     301:                        prerequisites_refs=[],
+     315:                            expected_answer="",
+
+   -> structurally empty placeholders. And unreachable (see 1 and 2).

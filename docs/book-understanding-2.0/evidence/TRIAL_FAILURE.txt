@@ -1,0 +1,38 @@
+TRIAL FAILURE — §15 step 1 of 7, reading run creation
+======================================================
+
+$ PYTHONPATH=src STRATUM_PG_PORT=5437 STRATUM_PG_PASSWORD=*** \
+    python3 scripts/qualify_book_reading_run.py
+
+Qualifying source 01KVA1XD27CH2CW7C3BJ7EKC3H...
+Traceback (most recent call last):
+  File "/data/soffy/projects/stratum/scripts/qualify_book_reading_run.py", line 48, in <module>
+    qualify()
+  File "/data/soffy/projects/stratum/scripts/qualify_book_reading_run.py", line 28, in qualify
+    run = create_reading_run(s["user_id"], s["id"], source_version="v1")
+  File "/data/soffy/projects/stratum/src/stratum/services/book_reading.py", line 91, in create_reading_run
+    db.insert("stratum.book_reading_run", data)
+  File "/data/soffy/projects/stratum/src/stratum/db/__init__.py", line 199, in insert
+    cur.execute(sql, d)
+psycopg2.errors.CheckViolation: new row for relation "book_reading_run" violates
+  check constraint "book_reading_run_status_check"
+DETAIL:  Failing row contains (br_2156dbafb2954bf09e5fc87a4d585ef9,
+  56d6bc01edc35765, 01KVA1XD27CH2CW7C3BJ7EKC3H, v1, planned, 1, null, null,
+  null, null, {"reading": {}, "evidence": {}, "understanding": {}}, [], null,
+  null, 2026-10-02 03:32:47.382208+00, 2026-10-02 03:32:47.382208+00, null).
+
+ROOT CAUSE
+---------
+writer   src/stratum/services/book_reading.py:82   "status": "planned"
+constraint (migration 065):
+  CHECK ((status = ANY (ARRAY['CREATED'::text, 'PERCEIVED'::text, 'INSPECTED'::text, 
+  'DEEP_READ_COMPLETE'::text, 'CHAPTER_MODELLED'::text, 'BOOK_INTEGRATED'::text, 
+  'VERIFICATION_PENDING'::text, 'VERIFIED'::text, 'COMPRESSION_TESTED'::text, 'FAILED'::text])))
+
+  'planned' is not in that set. Migration 065 dropped the original 6-value
+  check (which contained 'planned') and replaced it with the 10-state pipeline set.
+
+Second defect in the same file, same cause:
+  book_reading.py:68  filters on status NOT IN ('completed','failed')
+  'completed' was also removed by 065, so the idempotency guard can never
+  match a terminal run.

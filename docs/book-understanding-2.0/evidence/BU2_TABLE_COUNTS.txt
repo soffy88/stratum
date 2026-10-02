@@ -1,0 +1,18 @@
+BU2 TABLE COUNTS — production aii_kg (aii-postgres:5437), 2026-10-02
+===========================================================
+book_reading_run           0
+reading_ledger             0
+visual_semantic_unit       0
+evidence_trajectory        0
+arguments                  0
+author_mechanisms          0
+situation_models           0
+understanding_frontiers    0
+chapter_understandings     0
+chapter_deltas             0
+book_understandings_v2     0
+understanding_gaps         0
+learning_objects           0
+learning_graphs            0
+retrieval_items            0
+verification_artifacts     0
