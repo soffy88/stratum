@@ -18,8 +18,10 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,6 +32,18 @@ LOG_FILE = PIPE / "quark_transfer_2_4.log"
 BBC_TARGETS = PIPE / "bbc_targets.json"
 EDU_TARGETS = PIPE / "edu_targets.json"
 BILI_TARGETS = PIPE / "bilibili_targets.json"
+
+# ── 并发/性能调优 ──────────────────────────────────────────────
+# 单文件内多分片并发数。实测（535MB 样本，夸克侧）：6→4.06MB/s, 10→7.79MB/s,
+# 16→8.69MB/s（最优）, 24→3.53MB/s 且报错（触发 CDN 限流）。
+CHUNK_CONCURRENCY = int(os.environ.get("QUARK_CHUNK_CONCURRENCY", "16"))
+# 跨文件并发数：Google Drive 使用的是 rclone 公共 client_id，天然被限流
+# （403 rateLimitExceeded）。并发越高越容易触发，实测 2 会频繁失败，
+# 因此保持 1，靠分片并发（16）拉高带宽。
+FILE_CONCURRENCY = int(os.environ.get("QUARK_FILE_CONCURRENCY", "1"))
+# rclone 写入 Drive 失败时的重试策略（应对 403 限流）
+RCLONE_RETRIES = int(os.environ.get("QUARK_RCLONE_RETRIES", "10"))
+RCLONE_LOW_LEVEL_RETRIES = int(os.environ.get("QUARK_RCLONE_LL_RETRIES", "20"))
 
 API = "https://drive.quark.cn"
 UA = (
@@ -96,6 +110,14 @@ def save_state(state: dict):
             pass
 
 
+class SourceGone(Exception):
+    """夸克端源文件已不存在（404），通常因哈希去重：同内容孪生文件被一并删除。"""
+
+
+class CookieExpired(Exception):
+    """夸克返回 412，Cookie（__pus token）已过期，必须停止并刷新。"""
+
+
 def get_download_url(fid: str) -> str | None:
     try:
         res = _req(f"{API}/1/clouddrive/file/download?pr=ucpro&fr=pc&uc_param_str=", "POST", {"fids": [fid]})
@@ -103,6 +125,9 @@ def get_download_url(fid: str) -> str | None:
         if items and items[0].get("download_url"):
             return items[0]["download_url"]
     except Exception as e:
+        if getattr(e, "code", None) == 404:
+            # 源文件已被删除且无重试价值，立即上抛让调用方跳过
+            raise SourceGone(f"fid={fid}") from e
         log(f"  ⚠ 获取下载链接失败 (fid={fid}): {e}")
     return None
 
@@ -136,7 +161,7 @@ def stream_to_gdrive(
     remote_dest_path: str,
     expected_size: int,
     chunk_size: int = 8 * 1024 * 1024,
-    concurrency: int = 6
+    concurrency: int = CHUNK_CONCURRENCY
 ) -> bool:
     """使用 multi-range chunking 多线程拉取 + rclone rcat 零磁盘流式写入 GDrive"""
     if expected_size <= 0:
@@ -157,6 +182,7 @@ def stream_to_gdrive(
     num_chunks = (expected_size + chunk_size - 1) // chunk_size
 
     for attempt in range(1, 4):
+        # 源文件已消失：不再浪费重试时间，直接放弃该条目
         dl_url = get_download_url(fid)
         if not dl_url:
             log(f"  ⚠ 尝试 {attempt}: 获取下载链接失败，重试中...")
@@ -165,7 +191,13 @@ def stream_to_gdrive(
 
         proc = None
         try:
-            rcat_cmd = ["rclone", "rcat", "--size", str(expected_size), remote_dest_path]
+            rcat_cmd = [
+                "rclone", "rcat",
+                "--size", str(expected_size),
+                "--retries", str(RCLONE_RETRIES),
+                "--low-level-retries", str(RCLONE_LOW_LEVEL_RETRIES),
+                remote_dest_path,
+            ]
             proc = subprocess.Popen(
                 rcat_cmd,
                 stdin=subprocess.PIPE,
@@ -191,7 +223,9 @@ def stream_to_gdrive(
                     try:
                         with opener.open(creq, timeout=45) as resp:
                             return idx, resp.read()
-                    except Exception:
+                    except Exception as e:
+                        if getattr(e, "code", None) == 412:
+                            raise CookieExpired("HTTP 412 Precondition Failed: Cookie likely expired. Please refresh cookie.") from e
                         if sub_retry == 2:
                             raise
                         time.sleep(1)
@@ -232,7 +266,15 @@ def stream_to_gdrive(
 
                 proc.stdin.flush()
                 proc.stdin.close()
-                stdout, stderr = proc.communicate(timeout=120)
+                # rclone 关闭 stdin 后仍需把缓冲区的数据推完并向 Drive 提交元数据，
+                # 大文件 + Drive 限流下可能远超 120s。原固定 120s 会误判为失败并
+                # 重建 rcat，重复上传浪费带宽。按体积估算：假设最差 2MB/s。
+                flush_timeout = max(600, int(expected_size / (2 * 1024 * 1024)) + 300)
+                try:
+                    stdout, stderr = proc.communicate(timeout=flush_timeout)
+                except subprocess.TimeoutExpired:
+                    log(f"  ⚠ rcat 收尾超时 (>{flush_timeout}s)，放弃本次尝试")
+                    raise
 
                 if proc.returncode == 0:
                     chk = subprocess.run(
@@ -247,7 +289,20 @@ def stream_to_gdrive(
                             return True
                         log(f"  ⚠ 校验大小不匹配: 期望 {expected_size}, 实际 {info.get('bytes', 0)}")
                 else:
-                    log(f"  ⚠ rcat 退出码异常 ({proc.returncode}): {stderr.decode('utf-8', errors='ignore')[:150]}")
+                    err_txt = stderr.decode("utf-8", errors="ignore")
+                    # 完整错误写入单独文件，终端只显示关键尾部
+                    try:
+                        with open(PIPE / "rclone_errors.log", "a", encoding="utf-8") as ef:
+                            ef.write(f"--- {time.strftime('%Y-%m-%d %H:%M:%S')} {remote_dest} rc={proc.returncode}\n{err_txt}\n")
+                    except Exception:
+                        pass
+                    # 过滤掉无意义的 NOTICE 行，只留真正的错误
+                    key_lines = [l for l in err_txt.splitlines()
+                                 if l.strip() and "NOTICE:" not in l and "INFO :" not in l]
+                    log(f"  ⚠ rcat 退出码异常 ({proc.returncode}): {(key_lines[-1] if key_lines else err_txt.strip())[:200]}")
+        except (CookieExpired, SourceGone):
+            # 致命/不可重试：直接上抛到主循环，由 stop_flag 收敛全局
+            raise
         except Exception as e:
             log(f"  ⚠ 流式传输尝试 {attempt} 异常: {e}")
         finally:
@@ -299,6 +354,7 @@ def main():
 
     if BILI_TARGETS.exists():
         bili_list = json.loads(BILI_TARGETS.read_text(encoding="utf-8"))
+        # If it's a raw catalog without remote_path, just use what we can
         all_targets.extend(bili_list)
         log(f"  ✓ 成功载入 B站付费课程 目标: {len(bili_list)} 个文件")
 
@@ -310,8 +366,21 @@ def main():
             seen_fids.add(it["fid"])
             unique_targets.append(it)
 
+    # 夸克按哈希去重：同名同大小 = 同一份内容，仅需搬运一次。
+    # 重复条目建立指纹映射，命中则直接跳过，避免后续 404 重试浪费。
+    content_fp = {}
+    dup_fids = set()
+    for it in unique_targets:
+        key = (it.get("file_name", ""), it.get("size", 0))
+        if key in content_fp:
+            dup_fids.add(it["fid"])
+        else:
+            content_fp[key] = it["fid"]
+    if dup_fids:
+        log(f"  ℹ️ 检测到 {len(dup_fids)} 个同名同大小重复条目（夸克哈希去重），已预先折叠")
+
     # 过滤掉已完全处理好的文件
-    pending_files = [x for x in unique_targets if x["fid"] not in deleted_fids]
+    pending_files = [x for x in unique_targets if x["fid"] not in deleted_fids and x["fid"] not in dup_fids]
     pending_bytes = sum(x.get("size", 0) for x in pending_files)
     
     log(f"\n📊 汇总待传输规模:")
@@ -330,74 +399,120 @@ def main():
 
     success_count = 0
     fail_count = 0
+    skip_count = 0
     bytes_in_session = 0
+    gone_fids = set(state.get("source_gone_fids", []))
+    stop_flag = threading.Event()
+    counter_lock = threading.Lock()
 
-    for idx, item in enumerate(pending_files, 1):
+    def dest_of(item: dict) -> str:
+        """解析目标 GDrive 路径，兼容缺失 remote_path 的旧版清单"""
+        if "remote_path" in item:
+            return item["remote_path"]
+        file_path = item.get("file_path", "")
+        if file_path:
+            return f"gdrive-kimia:{file_path}"
+        return f"gdrive-kimia:B站付费课程/{item.get('file_name', '')}"
+
+    def process_one(item: dict) -> str:
+        """处理单个文件，返回 'success' / 'skip' / 'fail'。仅由工作线程调用。"""
+        nonlocal success_count, fail_count, skip_count, bytes_in_session
         fid = item["fid"]
         fname = item.get("file_name", "")
         fsize = item.get("size", 0)
-        remote_dest = item["remote_path"]
+        remote_dest = dest_of(item)
         fsize_mb = fsize / (1024 * 1024)
         fsize_gb = fsize / (1024**3)
 
-        # 如果之前已上传到 GDrive 但未成功删除夸克原件
-        if fid in done_fids and fid not in deleted_fids:
-            log(f"[{idx}/{len(pending_files)}] [补偿删除] {fname} ({fsize_mb:.1f} MB) 已在 GDrive，正在补删夸克端原文件...")
-            if delete_quark_file(fid):
-                deleted_fids.add(fid)
-                state["deleted_fids"].append(fid)
-                bytes_in_session += fsize
-                save_state(state)
-                log(f"  🎉 夸克原文件已补删成功！")
-            continue
-
-        log(f"[{idx}/{len(pending_files)}] 📥 开始流式推送: {fname} ({fsize_gb:.2f} GB) -> {remote_dest}")
-
         t0 = time.time()
-        ok = stream_to_gdrive(fid, remote_dest, fsize)
+        try:
+            ok = stream_to_gdrive(fid, remote_dest, fsize)
+        except SourceGone:
+            # 夸克哈希去重：同内容的孪生条目已随首个文件一并消失，属预期情况
+            log(f"  ⏭ 源文件在夸克已不存在（哈希去重），跳过: {fname}")
+            with counter_lock:
+                gone_fids.add(fid)
+                state.setdefault("source_gone_fids", []).append(fid)
+                save_state(state)
+                skip_count += 1
+            return "skip"
+        except CookieExpired as e:
+            # 致命错误（412 Cookie 过期）——置位停止信号，全局尽快收敛
+            log(f"  ❌ 遇到致命错误: {e}")
+            stop_flag.set()
+            return "fail"
         dur = max(0.1, time.time() - t0)
         speed = fsize_mb / dur
-        if ok:
-            log(f"  ✓ GDrive 上传校验通过！耗时 {dur:.1f}s (均速 {speed:.2f} MB/s)，正在删除夸克端原文件以释放空间...")
-            del_ok = delete_quark_file(fid)
-            if del_ok:
-                log(f"  🎉 夸克原文件已删除，即时释放 {fsize_gb:.2f} GB 空间！")
-                deleted_fids.add(fid)
-                state["deleted_fids"].append(fid)
+
+        with counter_lock:
+            if ok:
+                log(f"  ✓ GDrive 上传校验通过！耗时 {dur:.1f}s (均速 {speed:.2f} MB/s)，正在删除夸克端原文件以释放空间...")
+                del_ok = delete_quark_file(fid)
+                if del_ok:
+                    log(f"  🎉 夸克原文件已删除，即时释放 {fsize_gb:.2f} GB 空间！")
+                    deleted_fids.add(fid)
+                    state["deleted_fids"].append(fid)
+                else:
+                    log(f"  ⚠ 夸克删除接口返回非成功，记录稍后统一重试")
+
+                done_fids.add(fid)
+                state["transferred_fids"].append(fid)
+                state["total_bytes_transferred"] += fsize
+                bytes_in_session += fsize
+                save_state(state)
+                success_count += 1
             else:
-                log(f"  ⚠ 夸克删除接口返回非成功，记录稍后统一重试")
+                log(f"  ❌ 流式传输失败: {fname}")
+                fail_count += 1
+            return "success" if ok else "fail"
 
-            done_fids.add(fid)
-            state["transferred_fids"].append(fid)
-            state["total_bytes_transferred"] += fsize
-            bytes_in_session += fsize
-            save_state(state)
-            success_count += 1
-        else:
-            log(f"  ❌ 流式传输失败: {fname}")
-            fail_count += 1
+    # ── 并发调度：多文件同时传输 ────────────────────────────────
+    workers = max(1, min(FILE_CONCURRENCY, len(pending_files)))
+    log(f"   并发配置: 文件并发 {workers} × 分片并发 {CHUNK_CONCURRENCY}")
 
-        # 动态汇报累计进度与网盘容量
-        if success_count > 0:
-            current_tb = get_quark_used_tb()
-            if False: # current_tb and current_tb <= 6.000:
-                freed_session_gb = bytes_in_session / (1024**3)
-                log(f"🎉 夸克网盘当前占用已降至 {current_tb:.3f} TB，已达标 (< 6.0 TB 安全线)！本次累计释放 {freed_session_gb:.2f} GB。")
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {}
+        for item in pending_files:
+            if stop_flag.is_set():
                 break
-            if success_count % 5 == 0:
-                freed_session_gb = bytes_in_session / (1024**3)
-                tb_str = f"，当前网盘实际占用: {current_tb:.3f} TB" if current_tb else ""
-                log(f"📈 [阶段进度] 已成功迁移 {success_count} 项，本次累计释放 {freed_session_gb:.2f} GB{tb_str}")
+            f = pool.submit(process_one, item)
+            futures[f] = item
 
-        if args.target_freed_gb > 0 and (bytes_in_session / (1024**3)) >= args.target_freed_gb:
-            log(f"🎯 已达成目标释放量 ({args.target_freed_gb:.1f} GB)，自动暂停。")
-            break
+        done_n = 0
+        total_n = len(futures)
+        for fut in as_completed(futures):
+            done_n += 1
+            try:
+                fut.result()
+            except Exception as e:
+                log(f"  ⚠ 工作线程异常: {e}")
+                with counter_lock:
+                    fail_count += 1
+
+            if stop_flag.is_set():
+                log("⚠ 收到停止信号，不再提交新任务，等待在途任务结束...")
+                break
+
+            # 每完成 10 个任务汇报一次进度
+            if done_n % 10 == 0 or done_n == total_n:
+                current_tb = get_quark_used_tb()
+                freed_gb = bytes_in_session / (1024**3)
+                tb_str = f"，当前网盘实际占用: {current_tb:.3f} TB" if current_tb else ""
+                log(f"📈 [阶段进度] 已扫描 {done_n}/{total_n}，成功 {success_count}，跳过 {skip_count}，失败 {fail_count}，本次释放 {freed_gb:.2f} GB{tb_str}")
+
+            if args.target_freed_gb > 0 and (bytes_in_session / (1024**3)) >= args.target_freed_gb:
+                log(f"🎯 已达成目标释放量 ({args.target_freed_gb:.1f} GB)，自动暂停。")
+                stop_flag.set()
+                break
+
+    if stop_flag.is_set():
+        log("⚠ 任务提前终止（致命错误或达成目标），已保存状态，下次运行可从断点继续。")
 
     total_freed_gb = bytes_in_session / (1024**3)
     final_tb = get_quark_used_tb()
     tb_str = f"，网盘当前占用: {final_tb:.3f} TB" if final_tb else ""
     log("\n════════════════════════════════════════════════════")
-    log(f"🏁 本轮迁移结束: 成功 {success_count} 项, 失败 {fail_count} 项, 累计释放 {total_freed_gb:.2f} GB{tb_str}")
+    log(f"🏁 本轮迁移结束: 成功 {success_count} 项, 跳过 {skip_count} 项, 失败 {fail_count} 项, 累计释放 {total_freed_gb:.2f} GB{tb_str}")
     log("════════════════════════════════════════════════════")
 
 
