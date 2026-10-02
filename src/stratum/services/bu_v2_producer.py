@@ -71,6 +71,70 @@ class EvidenceArtifact:
         )
 
 
+class ChapterRole(str):
+    """§6.2: the role a chapter plays in the book's argument.
+
+    A plain string rather than an Enum because the role is often inferred and
+    must remain serialisable into the existing ``primary_role`` column.
+    """
+
+    INTRODUCTION = "INTRODUCTION"
+    FOUNDATION = "FOUNDATION"
+    CONCEPT_BUILDING = "CONCEPT_BUILDING"
+    APPLICATION = "APPLICATION"
+    PROOF = "PROOF"
+    SUMMARY = "SUMMARY"
+    TRANSITION = "TRANSITION"
+
+
+# Order matters: "Applications of Derivatives" matches both application and
+# concept_building, and it is an application chapter. The first match wins, so
+# the more specific intent comes first.
+ROLE_HINTS = {
+    "application": [r"\bapplications?\b", r"\busing\b", r"\btechniques?\b",
+                    r"\bprojections?\b", r"\bgeometry of\b"],
+    "summary": [r"\bsummary\b", r"\breview\b", r"\bconclusion\b", r"\brevisit\b"],
+    "foundation": [r"\blimits?\b", r"\bdefinitions?\b", r"\baxioms?\b", r"\bfoundations?\b"],
+    "introduction": [r"\bintroduction\b", r"\bpreface\b", r"\bwhy we (?:study|need)\b"],
+    "concept_building": [r"\bderivatives?\b", r"\bintegrals?\b", r"\bvectors?\b",
+                         r"\bseries\b", r"\bequations?\b"],
+}
+
+
+@dataclass
+class ChapterContext:
+    """§6.1: what the producer needs to know beyond the chapter's own text.
+
+    Without this the model sees a 300,000-character slice with no idea where it
+    sits in the book, so it reports the same framing for chapter 1 and
+    chapter 12. These fields are the difference.
+    """
+
+    book_title: str = ""
+    chapter_number: int = 0
+    chapter_total: int = 0
+    chapter_role: str = ChapterRole.CONCEPT_BUILDING
+    previous_chapter_titles: list[str] = field(default_factory=list)
+    previous_concepts: list[str] = field(default_factory=list)
+    following_expectations: str = ""
+    position_ratio: float = 0.0
+
+    def render(self) -> str:
+        lines = [
+            f"BOOK: {self.book_title or 'unknown'}",
+            f"THIS IS CHAPTER {self.chapter_number} of {self.chapter_total}"
+            f" ({self.position_ratio:.0%} through the book)",
+            f"ITS ROLE IN THE BOOK: {self.chapter_role}",
+        ]
+        if self.previous_chapter_titles:
+            lines.append("PREVIOUS CHAPTERS: " + "; ".join(self.previous_chapter_titles[-3:]))
+        if self.previous_concepts:
+            lines.append("CONCEPTS ALREADY ESTABLISHED: " + "; ".join(self.previous_concepts[:12]))
+        if self.following_expectations:
+            lines.append("WHAT THE READER WILL NEED NEXT: " + self.following_expectations)
+        return "\n".join(lines)
+
+
 @dataclass
 class Chapter:
     """One chapter, already separated from the book.
@@ -86,6 +150,11 @@ class Chapter:
     start: int = 0
     end: int = 0
     subsections: list[str] = field(default_factory=list)
+    context: ChapterContext | None = None
+    confidence: float = 1.0
+    kind: str = "chapter"
+    # §6.2 role, set once the chapter knows its position in the book.
+    role: str = ""
 
     @property
     def char_count(self) -> int:
@@ -193,8 +262,10 @@ class ChapterUnderstandingProducer:
         understanding with its uncertainties recorded, which is honest and
         keeps the book run alive.
         """
+        context_block = chapter.context.render() if chapter.context else ""
         prompt = (
-            f"TITLE: {chapter.title}\n"
+            f"{context_block}\n\n"
+            f"CHAPTER: {chapter.title}\n"
             f"CHARACTERS: {chapter.char_count}\n\n"
             f"CHAPTER TEXT:\n{chapter.text[: self.max_chars]}\n\n"
             f"Extract the structure. Respond with exactly this JSON shape:\n{_schema_hint()}"
@@ -220,9 +291,13 @@ class ChapterUnderstandingProducer:
                 chapter_id=chapter.chapter_id,
                 chapter_question="",
                 chapter_goal="",
-                chapter_thesis="",
+                # The reason is kept verbatim in both the thesis and the
+                # qualification. A gate that reports "1 chapter failed" without
+                # saying why is not actionable, and this is the only place the
+                # cause survives the run.
+                chapter_thesis=f"[not understood] {failure[:160]}",
                 primary_role="UNDERSTANDING_FAILED",
-                qualifications=[f"extraction failed: {failure[:200]}"],
+                qualifications=[f"extraction failed: {failure[:400]}"],
             )
             delta = ChapterDelta(
                 id=f"cd_{run_id}_{chapter.chapter_id}",
@@ -307,8 +382,14 @@ class ChapterUnderstandingProducer:
                 chapter_question=_as_str(data.get("chapter_question")),
                 chapter_goal=_as_str(data.get("chapter_goal")),
                 chapter_thesis=_as_str(data.get("chapter_thesis")),
-                primary_role=_as_str(data.get("primary_role")) or "CONCEPT_INTRODUCTION",
-                secondary_roles=[r for r in _as_list(data.get("secondary_roles")) if isinstance(r, str)],
+                primary_role=(
+                    _as_str(data.get("chapter_role")).upper()
+                    or _as_str(data.get("primary_role")).upper()
+                    or classify_role(chapter)
+                ),
+                secondary_roles=[
+                    r.upper() for r in _as_list(data.get("secondary_roles")) if isinstance(r, str)
+                ][:6],
                 concepts_introduced_refs=concepts_introduced,
                 major_ku_refs=[c for c in concepts_introduced if c],
                 supporting_ku_refs=[e.evidence_id for e in evidence],
@@ -362,6 +443,60 @@ class ChapterUnderstandingProducer:
             ],
             resolves_questions=[],
         )
+
+
+def classify_role(chapter: "Chapter") -> str:
+    """§6.2: classify a chapter's role from position, title and content.
+
+    Deterministic, and it exists because a small model either omits the field or
+    invents one. Position carries real signal — the first chapter opens and the
+    last closes — and the title carries the argument's shape ("Applications of
+    Derivatives" is application work, "Limits and Continuity" is foundation).
+    """
+    title = (chapter.title or "").lower()
+    total = chapter.context.chapter_total if chapter.context else 0
+    num = chapter.context.chapter_number if chapter.context else chapter.number
+
+    if num == 1:
+        chapter.role = ChapterRole.INTRODUCTION
+        return chapter.role
+    if total and num == total:
+        chapter.role = ChapterRole.SUMMARY
+        return chapter.role
+    for role, patterns in ROLE_HINTS.items():
+        if any(re.search(p, title) for p in patterns):
+            chapter.role = {
+                "introduction": ChapterRole.INTRODUCTION,
+                "foundation": ChapterRole.FOUNDATION,
+                "concept_building": ChapterRole.CONCEPT_BUILDING,
+                "application": ChapterRole.APPLICATION,
+                "summary": ChapterRole.SUMMARY,
+            }[role]
+            return chapter.role
+    if re.search(r"\bproof|\btheorem|\blemma|\bderivation\b", title):
+        chapter.role = ChapterRole.PROOF
+        return chapter.role
+    # A chapter that introduces nothing new but depends on earlier ones is a
+    # transition: it carries the book forward rather than adding to it.
+    if chapter.context and chapter.context.previous_concepts and not _mentions_new_concepts(chapter):
+        chapter.role = ChapterRole.TRANSITION
+        return chapter.role
+    chapter.role = ChapterRole.CONCEPT_BUILDING
+    return chapter.role
+
+
+def _mentions_new_concepts(chapter: "Chapter") -> bool:
+    """Whether the chapter's opening looks like it defines something.
+
+    A crude but real signal: a defining chapter opens by naming its object,
+    a transition chapter opens by referring back to what came before.
+    """
+    head = (chapter.text or "")[:1200].lower()
+    return bool(
+        re.search(r"\bwe (?:now )?(?:define|introduce|consider)\b", head)
+        or re.search(r"\bis defined as\b", head)
+        or re.search(r"\bdefinition\b", head)
+    )
 
 
 # ── coercion helpers ─────────────────────────────────────────────────────────

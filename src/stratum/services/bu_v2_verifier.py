@@ -46,6 +46,11 @@ class VerificationReport:
     run_id: str
     book_id: str
     checks: list[CheckResult] = field(default_factory=list)
+    # P11 §11: quality_level is carried here for convenience but COMPUTED by the
+    # quality evaluator and never gates verification. A low-quality
+    # understanding is still a correctly produced one, and §11 explicitly
+    # forbids quality from blocking publication.
+    quality_level: str = ""
 
     @property
     def failed(self) -> list[CheckResult]:
@@ -71,6 +76,8 @@ class VerificationReport:
             "outcome": self.outcome.value,
             "checks": [c.to_dict() for c in self.checks],
             "failed_count": len(self.failed),
+            "quality_level": self.quality_level,
+            "quality_is_not_a_verdict": True,
         }
 
 

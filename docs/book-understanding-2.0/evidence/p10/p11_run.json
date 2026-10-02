@@ -1,0 +1,262 @@
+{
+  "run_id": "br_01M3YE3PA9D8ZKQ9H9W95S36RK",
+  "substrate_id": "01KWRXP646FQEPPRPHS3R617MZ",
+  "chapters": 18,
+  "evidence": 54,
+  "bu_status": "VERIFIED",
+  "verification": {
+    "run_id": "br_01M3YE3PA9D8ZKQ9H9W95S36RK",
+    "book_id": "01KWRXP646FQEPPRPHS3R617MZ",
+    "outcome": "PASS",
+    "checks": [
+      {
+        "check": "provenance_present",
+        "status": "pass",
+        "detail": "book_id=True run_id=True substrate=True"
+      },
+      {
+        "check": "coverage_floor",
+        "status": "pass",
+        "detail": "coverage=1.00 floor=0.5"
+      },
+      {
+        "check": "has_governing_questions",
+        "status": "pass",
+        "detail": "count=2"
+      },
+      {
+        "check": "has_central_theses",
+        "status": "pass",
+        "detail": "count=1"
+      },
+      {
+        "check": "evidence_present",
+        "status": "pass",
+        "detail": "evidence=54 chapters=18"
+      },
+      {
+        "check": "structure_derived",
+        "status": "pass",
+        "detail": "edges=1 evolution_steps=45"
+      },
+      {
+        "check": "chapter_extraction_complete",
+        "status": "pass",
+        "detail": "failed=0/18"
+      },
+      {
+        "check": "not_self_verified",
+        "status": "pass",
+        "detail": "verification_score=0.0"
+      }
+    ],
+    "failed_count": 0,
+    "quality_level": "A",
+    "quality_is_not_a_verdict": true
+  },
+  "expression": {
+    "book_id": "01KWRXP646FQEPPRPHS3R617MZ",
+    "run_id": "br_01M3YE3PA9D8ZKQ9H9W95S36RK",
+    "essence": "This book sets out to answer: What are the fundamental concepts in calculus and how do they relate to each other?; How can we use derivatives, integrals, and their applications to analyze functions and solve real-world problems?.",
+    "world_model": "The author's account can be reconstructed from the theses the book defends: Calculus provides a framework for understanding and analyzing the behavior of functions through derivatives and integrals.",
+    "core_mechanisms": [
+      "Plotting input-output pairs",
+      "The approach of a secant line to a tangent line as the interval shrinks.",
+      "Approaching a limit",
+      "Continuity and closed interval",
+      "Dividing the interval into smaller subintervals",
+      "Slicing a solid into thin cross-sections",
+      "函数的单调性",
+      "The presence of a symmetric interval in definite integrals.",
+      "The differential equation and its slope field",
+      "The definition of convergence or divergence",
+      "Eliminating the parameter between two equations.",
+      "Constructing a rectangular box with faces parallel to coordinate planes"
+    ],
+    "logical_architecture": "The book is organised as a dependency chain of 1 prerequisite relations across 42 concepts; the derived order runs ch11 -> ch16.",
+    "boundary": "Stated limits: Exact appearance between plotted points, which requires calculus for precise determination.; The exact definition of a tangent line for non-differentiable functions.; The existence of the derivative for all points on a function's graph is not guaranteed, especially at discontinuities or sharp corners. | Open problems: Exact appearance between plotted points, which requires calculus for precise determination.; The exact definition of a tangent line for non-differentiable functions.; The existence of the derivative for all points on a function's graph is not guaranteed, especially at discontinuities or sharp corners.",
+    "contribution": "Within the book, 3 concept(s) are refined after first definition; the book advances its own subject by redefining Derivative; redefining Difference Quotient; redefining Function. Novelty relative to the existing literature cannot be determined from this book alone and is not claimed here.",
+    "source_bu_id": "bu_br_01M3YE3PA9D8ZKQ9H9W95S36RK",
+    "grounded_section_count": 6,
+    "ungrounded_sections": [],
+    "quality_context": [
+      "Structure (Q1): A — 16 of 16 chapters located, mean confidence 0.91",
+      "Evidence (Q6): A — 54 artifacts, 100% with a locator",
+      "Mechanism (Q3): A — 20 chapter mechanisms, 20 carried to book level",
+      "Integration (Q5): B — 1 cross-chapter edges, 18 arc steps, 1 book theses",
+      "Boundary (Q7): A — 24 limitations, 24 open problems, 24 unresolved questions, coverage 100%",
+      "Overall understanding confidence: A (0.91) — comprehensive: structure, concept, mechanism, argument and boundary all present",
+      "Pipeline status: VERIFIED (independent of understanding quality)"
+    ]
+  },
+  "failures": [],
+  "persisted": false,
+  "structure": {
+    "extraction_method": "overview_anchor",
+    "version": "p11",
+    "chapter_count": 16,
+    "back_matter_count": 2,
+    "expected_chapters": 16,
+    "chapter_detection_ratio": 1.0,
+    "confidence_mean": 0.9125,
+    "coverage_ratio": 0.9613,
+    "content_coverage_ratio": 1.0,
+    "front_matter_chars": 63299,
+    "back_matter_chars": 135333,
+    "total_chars": 5135239
+  },
+  "quality": {
+    "book_id": "01KWRXP646FQEPPRPHS3R617MZ",
+    "run_id": "br_01M3YE3PA9D8ZKQ9H9W95S36RK",
+    "bu_id": "bu_br_01M3YE3PA9D8ZKQ9H9W95S36RK",
+    "structure_score": 0.965,
+    "concept_score": 1.0,
+    "mechanism_score": 1.0,
+    "argument_score": 0.85,
+    "integration_score": 0.7176,
+    "evidence_score": 0.8056,
+    "boundary_score": 1.0,
+    "overall": 0.9055,
+    "quality_level": "A",
+    "quality_meaning": "comprehensive: structure, concept, mechanism, argument and boundary all present",
+    "pipeline_status": "VERIFIED",
+    "chapter_count": 18,
+    "evidence_count": 54,
+    "dimensions": [
+      {
+        "key": "Q1",
+        "name": "Structure",
+        "score": 0.965,
+        "weight": 1.0,
+        "level": "A",
+        "detail": "16 of 16 chapters located, mean confidence 0.91",
+        "findings": []
+      },
+      {
+        "key": "Q2",
+        "name": "Concept",
+        "score": 1.0,
+        "weight": 1.0,
+        "level": "A",
+        "detail": "42 book concepts, 45 introduced, 45 evolution steps",
+        "findings": [
+          "concept: no chapter recorded redefinition of an earlier concept"
+        ]
+      },
+      {
+        "key": "Q3",
+        "name": "Mechanism",
+        "score": 1.0,
+        "weight": 1.0,
+        "level": "A",
+        "detail": "20 chapter mechanisms, 20 carried to book level",
+        "findings": []
+      },
+      {
+        "key": "Q4",
+        "name": "Argument",
+        "score": 0.85,
+        "weight": 1.0,
+        "level": "A",
+        "detail": "1 root arguments, 5 supporting, 19 evidenced claims",
+        "findings": []
+      },
+      {
+        "key": "Q5",
+        "name": "Integration",
+        "score": 0.7176,
+        "weight": 1.0,
+        "level": "B",
+        "detail": "1 cross-chapter edges, 18 arc steps, 1 book theses",
+        "findings": []
+      },
+      {
+        "key": "Q6",
+        "name": "Evidence",
+        "score": 0.8056,
+        "weight": 1.0,
+        "level": "A",
+        "detail": "54 artifacts, 100% with a locator",
+        "findings": [
+          "evidence: not every artifact is referenced by a chapter's evidence program"
+        ]
+      },
+      {
+        "key": "Q7",
+        "name": "Boundary",
+        "score": 1.0,
+        "weight": 1.0,
+        "level": "A",
+        "detail": "24 limitations, 24 open problems, 24 unresolved questions, coverage 100%",
+        "findings": []
+      }
+    ],
+    "limitations": [
+      "concept: no chapter recorded redefinition of an earlier concept",
+      "evidence: not every artifact is referenced by a chapter's evidence program"
+    ]
+  },
+  "gates": [
+    {
+      "gate": "1_structure",
+      "status": "PASS",
+      "detail": "detection 100% of declared chapters, mean confidence 0.91"
+    },
+    {
+      "gate": "2_producer",
+      "status": "PASS",
+      "detail": "book/chapter/role/position context injected for 18 chapters"
+    },
+    {
+      "gate": "3_integration",
+      "status": "PASS",
+      "detail": "integration 0.72: 1 cross-chapter edges, 18 arc steps, 1 book theses"
+    },
+    {
+      "gate": "4_legacy_fusion",
+      "status": "PASS",
+      "detail": "one real legacy BU mapped through the adapter"
+    },
+    {
+      "gate": "5_quality_report",
+      "status": "PASS",
+      "detail": "7 of 7 dimensions scored, overall 0.91 (level A)"
+    },
+    {
+      "gate": "6_boundary",
+      "status": "PASS",
+      "detail": "B warehouse isolated=True, learning isolated=True"
+    },
+    {
+      "gate": "7_real_book_coverage",
+      "status": "PASS",
+      "detail": "document 96.13%, content 100.00% (document coverage counts front matter and index as uncovered)"
+    }
+  ],
+  "legacy_fusion": {
+    "legacy_id": "854",
+    "claims_mapped": 11,
+    "arguments_mapped": 11,
+    "limitations_mapped": 0,
+    "unmapped_fields": [
+      "core_explanations: BU2 carries mechanisms per chapter; legacy had no equivalent populated",
+      "concept_network: legacy field was empty in 4005 of 4005 rows",
+      "structure: legacy field was empty in 4005 of 4005 rows",
+      "applicability: legacy field was empty in 4005 of 4005 rows",
+      "core_takeaways: legacy field was empty in 4005 of 4005 rows",
+      "key_concept_ku_ids: legacy field was empty in 4005 of 4005 rows; BU2 uses located evidence",
+      "embedding: BU2 stores no BU-level vector; concept vectors live in the B warehouse",
+      "facets_zh: BU2 has no facet table; roles are carried on chapter understandings",
+      "agent_skill: C-warehouse concern, out of BU2 scope per spec 2.2",
+      "bu_quality: superseded by stratum.verification_artifacts",
+      "synthesis_marker: carried as a degradation note rather than a column"
+    ],
+    "degradations": [
+      "all 11 legacy claims carried grade 'unverified'; BU2 does not upgrade them",
+      "11 legacy evidence items have no source locator or content hash; they cannot satisfy BU2 traceability and are recorded as unverified",
+      "legacy synthesis marker: AII综合-书级理解,非原文断言"
+    ],
+    "bu_id": "bu_legacy_854",
+    "bu_status": "DRAFT"
+  }
+}

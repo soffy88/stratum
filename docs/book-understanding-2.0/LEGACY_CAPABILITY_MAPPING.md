@@ -56,11 +56,16 @@ the target now holds live data.
 | Book mental model | *(legacy has none)* | `discourse_arc` + derived dependency graph | — | ch1 → ch13 order derived | **BU2 SUPERIOR** |
 | Expression | *(legacy has none)* | `BUExpressionGenerator`, 6 sections | — | 5 of 6 grounded | **BU2 SUPERIOR** |
 
+| Book structure | *(legacy had none)* | `bu_v2_structure_extractor.BookStructure` | — | 16 of 16 chapters, confidence 0.91 | **BU2 SUPERIOR** |
+| Chapter role | *(legacy had none)* | `chapter_understandings.primary_role`, §6.2 vocabulary | — | 7 roles classified | **BU2 SUPERIOR** |
+| Understanding quality | *(legacy had `bu_quality`)* | `BUQualityReport`, 7 dimensions, 4 levels | 1017 | quality report per run | **BU2 SUPERIOR** |
+| Self-reported limits | `bu_onto.bu_quality.checks[].detail` | `BUQualityReport.limitations` | 1017 | every gap named | **BU2 SUPERIOR** |
+
 ### Totals
 
 ```
 FULL             20
-BU2 SUPERIOR      5
+BU2 SUPERIOR      9
 PARTIAL           0
 MISSING           0
 OBSOLETE          0
@@ -68,6 +73,36 @@ OBSOLETE          0
 
 **Zero capabilities remain PARTIAL or MISSING.** Every one either has a live
 counterpart or is carried by a projection.
+
+## 1a. §7.3 fusion is mapping, not copying
+
+P11 added `BU2LegacyAdapter`, and the distinction is now enforced rather than
+asserted. The decisive case is a real one:
+
+```
+legacy main_claims[0]
+  {claim: "儒家不是宗教，而是一种哲学。", stance: "儒家", stance_marker: "宗教"}
+
+copied into central_theses[0]          <- forbidden by §7.3
+  "儒家不是宗教，而是一种哲学。"
+  the claim now has no holder; it reads as an unattributed assertion
+
+mapped by BU2LegacyAdapter (§7.4, real row bu_id=854)
+  "儒家不是宗教，而是一种哲学。 (regarding 儒家 vs 宗教)"
+  the distinction the book actually draws survives
+```
+
+Verified end to end in `tests/bu2/test_legacy_adapter.py`:
+`test_stance_survives_the_mapping`, and two tests against the live
+`aii.bu_onto` row rather than a fixture.
+
+A mapped BU is also never self-certifying: `coverage_score = 0.0`,
+`verification_score = 0.0`, `status = DRAFT`. It has read no text, so it claims
+no understanding — asserted by `test_import_is_never_self_verifying`.
+
+Eleven legacy fields have no BU2 counterpart and are named explicitly in
+`FusionResult.unmapped_fields` rather than dropped silently. Six of them were
+empty in all 4,005 legacy rows anyway.
 
 ## 2. Six capabilities that were empty in the legacy system
 
@@ -130,3 +165,14 @@ Honest limits, so the FULL column above is not read wider than it is:
 - **Quality is bounded by a 7B local model.** See `PROVIDER_NOTES.txt`. The
   structure is real; the prose contains noise. `--provider deepseek` needs no code
   change.
+## 6. Fusion gaps that remain after P11
+
+Recorded so the FULL column is not read as "nothing is left to do".
+
+| gap | detail |
+|---|---|
+| no shared book | `bu_onto.substrate_id` and `substrates.id` still join to 0 rows. The trial book has no legacy BU; the fusion test used `bu_id=854` on its own. No book has been through both systems. |
+| legacy claims stay unverified | All 11 claims on `bu_id=854` carry `grade='unverified'`, and the adapter does not upgrade them. Upgrading would be a claim about the claim, which §7.3 forbids. |
+| legacy evidence cannot satisfy §11 | The 11 evidence items on that row are `{text, grade}` with no locator and no content hash. They are recorded as a degradation, not converted into `EvidenceArtifact`. |
+| learning projection not migrated | `learning_paths` and `deep_cards` are deliberately not imported (§2.3). They belong to the C warehouse, which remains unreachable from this host: `cx` has 0 tables. |
+| one book, one discipline | The fusion test is one Chinese intellectual history. Nothing here shows the mapping holds across genres or languages. |
