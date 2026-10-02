@@ -50,7 +50,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from .identity import KUIdentityService
 from .ku_evolution_runner import base_sha, migration_evidence
@@ -659,6 +659,66 @@ ISOLATED_TABLES = {
 }
 
 
+#: The tables P7 reads. Named here so the gate can check they are all present
+#: rather than trusting that a database it has never connected to has them.
+REQUIRED_TABLES = frozenset({
+    "book_source", "source_version", "reading_run", "reading_evidence",
+    "evidence_quality", "ku_candidate", "ku_verification", "knowledge_unit",
+    "ku_freeze_event", "ku_revision", "ku_confidence_evolution",
+    "ku_identity",
+})
+
+
+def catalog_tables(path: Optional[str] = None) -> Optional[Set[str]]:
+    """The tables a DBA-side query found, from A_P7_DB_TABLES.
+
+    Absent means unknown, and unknown is NOT_PASS rather than PASS. The previous
+    form of this check counted tables whose *name* contained "projection" and
+    required the answer to be zero. That is true on staging and false on a
+    complete database, where migrations 047-049 create three tables belonging
+    to other subsystems -- so it passed for the wrong reason, and a substring is
+    not a statement about ownership in any case.
+    """
+    target = path or os.environ.get("A_P7_DB_TABLES")
+    if not target:
+        return None
+    source = Path(target)
+    if not source.exists():
+        return None
+    # An empty catalog is a fact, not an absence of one: a database with no A
+    # tables is a database P7 cannot read, and that is FAIL. Only a missing or
+    # unset file means the catalog is unknown.
+    return {word.strip() for word in re.split(r"[\s,]+",
+                                             source.read_text(encoding="utf-8"))
+            if word.strip()}
+
+
+def schema_closure_gate() -> str:
+    """G5's schema half: P7 needs its tables, and owns none.
+
+    Two questions, both answered from the catalog rather than from a name:
+
+      are all the tables P7 reads present?   missing -> FAIL
+      does P7 own a table?                   declared -> FAIL
+
+    The second stays a migration-history question, because that is where the
+    truth lives: a stage cannot own a table it never declared.
+    """
+    if schema_change_count()["schema_change"] != 0:
+        return "FAIL"
+    present = catalog_tables()
+    if present is None:
+        return "NOT_EXECUTED"
+    if not REQUIRED_TABLES <= present:
+        return "FAIL"
+    # P7 owns nothing. Only P7's own naming counts here; `*projection*` belongs
+    # to other repositories and says nothing about this stage.
+    if any(name.lower().startswith("p7") or "_p7" in name.lower()
+           for name in present):
+        return "FAIL"
+    return "PASS"
+
+
 def isolation_gate(projection: BookUnderstandingProjection) -> str:
     """BU2, B仓 and C仓 are untouched by this stage.
 
@@ -671,6 +731,8 @@ def isolation_gate(projection: BookUnderstandingProjection) -> str:
     if artifact_drift(projection.payload()):
         return "FAIL"
     if external_imports():
+        return "FAIL"
+    if schema_closure_gate() == "FAIL":
         return "FAIL"
     return "PASS"
 
@@ -738,6 +800,7 @@ def gate_results(projection: BookUnderstandingProjection) -> Dict[str, object]:
                                 and replay["same_hash"] == 1
                                 and replay["no_mutation"] == 1) else "FAIL",
         "G5_isolation": isolation_gate(projection),
+        "G5_schema_closure": schema_closure_gate(),
     }
 
 

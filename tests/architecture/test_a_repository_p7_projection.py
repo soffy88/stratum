@@ -69,6 +69,7 @@ from stratum.knowledge.a_repository.projection_builder import (  # noqa: E402
     replay_gate,
     report,
     schema_change_count,
+    schema_closure_gate,
     trace_complete,
     write_artifact,
 )
@@ -593,7 +594,7 @@ def test_evidence_coverage_is_one_or_it_fails(payload):
 
 # ── gates ────────────────────────────────────────────────────────────────────
 
-def test_every_gate_passes(projection):
+def test_every_gate_passes(projection, monkeypatch, tmp_path):
     """Every reported gate, not the five a hand-written list happened to name.
 
     The old version iterated `GATE_ORDER`, which listed five names while
@@ -602,10 +603,18 @@ def test_every_gate_passes(projection):
     called "all five gates pass". Both escapes are closed: every gate is named
     explicitly, and none may be unevidenced.
     """
+    catalog = tmp_path / "tables.txt"
+    catalog.write_text(
+        "book_source source_version reading_run reading_evidence "
+        "evidence_quality ku_candidate ku_verification knowledge_unit "
+        "ku_freeze_event ku_revision ku_confidence_evolution ku_identity\n",
+        encoding="utf-8")
+    monkeypatch.setenv("A_P7_DB_TABLES", str(catalog))
     gates = gate_results(projection)
     assert set(gates) == {
         "G1_authority", "G1_no_new_id", "G1_read_only",
         "G2_traceability", "G3_determinism", "G4_replay", "G5_isolation",
+        "G5_schema_closure",
     }, f"gate set changed to {sorted(gates)}"
     unevidenced = {n: v for n, v in gates.items() if v != "PASS"}
     assert not unevidenced, f"gates not passing: {unevidenced}"
@@ -862,3 +871,64 @@ def test_a_foreign_override_does_not_leak_between_layers(projection, monkeypatch
     monkeypatch.setenv("A_P7_BASE_SHA", "a" * 40)
     monkeypatch.setenv("A_P5_BASE_SHA", "b" * 40)
     assert freeze_artifact(projection)["base_sha"] == "a" * 40
+
+
+# -- G5 schema closure (P2) ----------------------------------------------------
+#
+# The previous check counted tables whose name contained "projection" and
+# required zero. That is true on staging and false on a complete database, where
+# 047-049 create three tables belonging to other subsystems, so it passed for the
+# wrong reason. And a substring is not a statement about ownership.
+
+def test_the_schema_closure_gate_needs_a_catalog(projection, monkeypatch):
+    monkeypatch.delenv("A_P7_DB_TABLES", raising=False)
+    assert schema_closure_gate() == "NOT_EXECUTED", \
+        "with no catalog the gate must not claim a pass"
+
+
+def test_the_schema_closure_gate_passes_on_a_complete_database(projection,
+                                                               monkeypatch,
+                                                               tmp_path):
+    catalog = tmp_path / "tables.txt"
+    catalog.write_text("book_source source_version reading_run reading_evidence "
+                       "evidence_quality ku_candidate ku_verification "
+                       "knowledge_unit ku_freeze_event ku_revision "
+                       "ku_confidence_evolution ku_identity "
+                       # three tables from 047-049, other repositories:
+                       "translation_projection translation_fragment_projection "
+                       "visual_region_projection\n", encoding="utf-8")
+    monkeypatch.setenv("A_P7_DB_TABLES", str(catalog))
+    assert schema_closure_gate() == "PASS", \
+        "another repository's projection tables must not fail this stage"
+
+
+def test_the_schema_closure_gate_fails_on_an_empty_database(projection,
+                                                           monkeypatch,
+                                                           tmp_path):
+    catalog = tmp_path / "tables.txt"
+    catalog.write_text("\n", encoding="utf-8")
+    monkeypatch.setenv("A_P7_DB_TABLES", str(catalog))
+    assert schema_closure_gate() == "FAIL", \
+        "a database with none of P7's tables is FAIL, not NOT_EXECUTED"
+
+
+def test_the_schema_closure_gate_fails_on_a_partial_database(projection,
+                                                             monkeypatch,
+                                                             tmp_path):
+    catalog = tmp_path / "tables.txt"
+    catalog.write_text("book_source source_version reading_run\n",
+                       encoding="utf-8")
+    monkeypatch.setenv("A_P7_DB_TABLES", str(catalog))
+    assert schema_closure_gate() == "FAIL"
+
+
+def test_a_table_p7_owns_fails_the_gate(projection, monkeypatch, tmp_path):
+    catalog = tmp_path / "tables.txt"
+    catalog.write_text("book_source source_version reading_run reading_evidence "
+                       "evidence_quality ku_candidate ku_verification "
+                       "knowledge_unit ku_freeze_event ku_revision "
+                       "ku_confidence_evolution ku_identity p7_something\n",
+                       encoding="utf-8")
+    monkeypatch.setenv("A_P7_DB_TABLES", str(catalog))
+    assert schema_closure_gate() == "FAIL", \
+        "P7 declares no table, so a p7-named one is a violation"
