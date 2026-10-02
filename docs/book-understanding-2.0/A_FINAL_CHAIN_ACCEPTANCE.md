@@ -2,7 +2,7 @@
 
 BASELINE=A_P5_EVOLUTION_FREEZE + A_P7_FREEZE
 DATABASE=stratum_a_p3_fresh (scratch), compared against stratum_a_p3_staging
-METHOD=apply from zero, replay, interrupt/resume, row-for-row compare
+METHOD=apply from zero, replay, interrupt/resume, semantic row compare
 STATUS=PASS (with two recorded caveats)
 
 ## What was built, and how
@@ -46,7 +46,7 @@ The applied-migration ledger is `public._pg_migrations`, not a table in the
 Staging: 13 rows, the same 13 A-chain names — which independently confirms the
 ledger file the P5 Evolution `schema` gate was given.
 
-## STEP 12 — row-for-row equality with staging
+## STEP 12 — semantic row equality with staging
 
 ### Schema
 
@@ -72,11 +72,30 @@ Every id, content, locator, score, hash and status is identical. The **only**
 difference is `created_at`, which records when a row was written — 23:37 on
 the fresh run against 07:26 in staging, 157 timestamp fields in each.
 
-This exclusion is deliberate and is the one caveat worth stating plainly: the
-comparison masks insertion-time timestamps and nothing else. A first attempt
+This is **semantic row equality**, and it is deliberately not called
+row-for-row. The two claims are different and only one of them is true here.
+
+```
+semantic row equality
+  compared   id, content_hash, locator, payload, score, status, version,
+             every hash and every foreign key
+  excluded   created_at, and only created_at
+```
+
+`created_at` records when a row was written, so two databases built at different
+times cannot agree on it; a fresh run at 23:37 and staging at 07:26 differ in
+157 fields across 146 rows. Requiring them to match would mean freezing the
+clock, and a normalised clock is a weaker guarantee than an honest exclusion:
+it would let a future migration rewrite history undetected.
+
+The exclusion is stated rather than buried, and it is narrow. A first attempt
 compared positionally and reported 40 differing rows, which are the same rows
 in a different physical order — the differing timestamp changed the sort.
 Compared as multisets the two are equal.
+
+What this does **not** claim: byte-identical dumps. `pg_dump` of the two
+databases differs in 146 timestamp fields and in the physical row order of the
+`reading_evidence` table, and nothing else.
 
 ## STEP 13 — replay x3 and interrupt/resume
 

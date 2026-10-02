@@ -68,6 +68,29 @@ LAYERS: Dict[str, Dict[str, object]] = {
         "modules": ["condition_boundary", "condition_boundary_runner"],
         "tests": ["test_a_condition_boundary_contract.py"],
     },
+    # P5.1-P5.5 had no entry until the final acceptance needed a closure
+    # figure for every layer that reports gates. A layer absent from this table
+    # is a layer whose closure nobody has checked.
+    "P5_1_MECHANISM": {
+        "modules": ["mechanism", "mechanism_runner"],
+        "tests": ["test_a_mechanism_authority.py"],
+    },
+    "P5_2_RELATION": {
+        "modules": ["relation", "relation_runner"],
+        "tests": ["test_a_relation_authority.py"],
+    },
+    "P5_3_PAPER": {
+        "modules": ["paper_writer", "paper_runner"],
+        "tests": ["test_a_paper_authority.py"],
+    },
+    "P5_4_CONSTRAINT": {
+        "modules": ["constraint_writer", "constraint_runner"],
+        "tests": ["test_a_constraint_authority.py"],
+    },
+    "P5_5_PAPER_EVIDENCE_FK": {
+        "modules": ["paper_evidence_fk_runner"],
+        "tests": [],
+    },
     "P5_EVOLUTION": {
         "modules": ["evolution", "ku_evolution_runner"],
         "tests": ["test_a_repository_p5_evolution.py"],
