@@ -96,7 +96,8 @@ def _make_deepseek_caller(
     model: str = "deepseek-v4-flash",
     base_url: str = "https://api.deepseek.com/chat/completions",
     rpm: float = 0,
-    fallback: tuple[str, str, str] | None = None,
+    fallback: tuple[str, str, str] | list[tuple[str, str, str]] | None = None,
+    # ★2026-10-01 支持多级 fallback(列表按序尝试); 传单个三元组向后兼容。
     key_pool_env: str = "NIM_KEY_POOL",  # ★2026-08-16: 多 key 池 env 名可配(opencode 用 OPENCODE_KEY_POOL)
 ) -> callable:
     """Return an async callable compatible with both omodul (messages/system/max_tokens kwargs)
@@ -187,37 +188,61 @@ def _make_deepseek_caller(
             _re.I,
         )
 
-        def _fallback(payload: dict):
+        def _fb_specs() -> list[tuple[str, str, str]]:
+            """fallback 规范: 单个三元组 或 三元组列表(后者按序逐个尝试)."""
             if not fallback:
+                return []
+            if isinstance(fallback, (list, tuple)) and fallback and isinstance(fallback[0], (list, tuple)):
+                return [tuple(x) for x in fallback]  # type: ignore[misc]
+            return [tuple(fallback)]  # type: ignore[arg-type]
+
+        def _fallback(payload: dict):
+            specs = _fb_specs()
+            if not specs:
                 raise RuntimeError("LLM 主 provider 失败且无 fallback")
-            fb_url, fb_key, fb_model = fallback
             import time as _t2
 
-            print(f"  ⚠ 主 LLM 重试耗尽 → fallback({fb_model})", flush=True)
             last2 = None
-            for _attempt2 in range(3):
-                try:
-                    _resp2 = _client_for(fb_url).post(
-                        fb_url,
-                        headers=_headers_for(fb_url, fb_key),
-                        json={**payload, "model": fb_model},
-                    )
-                    if _resp2.status_code >= 500 and _attempt2 < 2:
-                        _t2.sleep(5 * (_attempt2 + 1))
-                        continue
-                    if _resp2.status_code >= 400:
-                        last2 = _resp2.status_code
+            # ★2026-10-01 支持多级兜底: 按序逐个尝试, 前一个彻底失败才用后一个。
+            #   实测各上游都会整片耗尽(veya-free 池候选轮换、openai 日配额、
+            #   opencode-go 月配额、NIM 401), 单层兜底在这种局面下等于没有。
+            for fb_url, fb_key, fb_model in specs:
+                print(f"  ⚠ 主 LLM 重试耗尽 → fallback({fb_model})", flush=True)
+                last2 = None
+                for _attempt2 in range(3):
+                    try:
+                        _resp2 = _client_for(fb_url).post(
+                            fb_url,
+                            headers=_headers_for(fb_url, fb_key),
+                            json={**payload, "model": fb_model},
+                        )
+                        if _resp2.status_code >= 500 and _attempt2 < 2:
+                            _t2.sleep(5 * (_attempt2 + 1))
+                            continue
+                        if _resp2.status_code >= 400:
+                            last2 = _resp2.status_code
+                            if _attempt2 >= 2:
+                                break
+                            _t2.sleep(5 * (_attempt2 + 1))
+                            continue
+                        # 兜底链路自身也可能"错误伪装成 200 内容", 同口径识别
+                        _b2 = _sneaky(_resp2)
+                        if _ERR_TEXT.search(_b2 or ""):
+                            last2 = _b2[:100]
+                            print(
+                                f"  ⚠ fallback({fb_model}) 返回错误文本 → 试下一级: "
+                                f"{_b2[:100]}",
+                                flush=True,
+                            )
+                            break
+                        return _resp2
+                    except Exception as _e2:
+                        last2 = _e2
                         if _attempt2 >= 2:
                             break
                         _t2.sleep(5 * (_attempt2 + 1))
-                        continue
-                    return _resp2
-                except Exception as _e2:
-                    last2 = _e2
-                    if _attempt2 >= 2:
-                        break
-                    _t2.sleep(5 * (_attempt2 + 1))
-            raise RuntimeError(f"fallback opencode 失败: {str(last2)[:80]}")
+                print(f"  ⚠ fallback({fb_model}) 也失败({str(last2)[:80]})", flush=True)
+            raise RuntimeError(f"全部 {len(specs)} 级 fallback 均失败: {str(last2)[:80]}")
 
         for attempt in range(max_retries):
             key = next(_key_iter)  # 轮换 key(池>1 时每次尝试用不同 key, 撞 504/429 换槽位)
@@ -486,12 +511,24 @@ def register_providers():
         }
         if oc_pool and not os.getenv("OPENCODE_KEY_POOL"):
             os.environ["OPENCODE_KEY_POOL"] = oc_pool  # ★必须早于 caller 创建(内部读 env)
+        # ★2026-10-01 第三道防线: CLIProxyAPI(本地 8317, Antigravity 订阅)。
+        #   实测该端点 13 个模型里 3 个可用且 3/3 稳定: claude-sonnet-4-6(1.4s)、
+        #   gpt-oss-120b-medium(1.5s)、claude-opus-4-6-thinking(3.2s);
+        #   gemini 全系因地域封锁不可用("User location is not supported"),
+        #   gpt-5.6-luna 配额冷却。claude-sonnet-4-6 抽中文知识点 7 点含 2 个
+        #   rationale, 比 NIM nemotron(23s)还快 5 倍。
+        #   之所以放最后: 它是本地服务, 只有在外部上游全挂时才该被用到。
+        cpa_base = _fix_local_url(os.getenv("CPA_BASE_URL", "http://127.0.0.1:8317/v1/chat/completions"))
+        cpa_key = os.getenv("CPA_API_KEY", "")
+        cpa_model = os.getenv("CPA_MODEL", "claude-sonnet-4-6")
+        cpa_spec = [(cpa_base, cpa_key, cpa_model)] if cpa_key else []
+
         nim_caller = _make_deepseek_caller(
             nim_key,
             model=nim_model,
             base_url="https://integrate.api.nvidia.com/v1/chat/completions",
             rpm=nim_rpm,
-            fallback=((oc_base, oc_key, oc_model) if oc_key else None),
+            fallback=([(oc_base, oc_key, oc_model)] if oc_key else None) + cpa_spec,
         )
         ProviderRegistry.register("llm", "nim", nim_caller)
         if use_nim:
@@ -505,19 +542,21 @@ def register_providers():
                     base_url=oc_base,
                     rpm=0,
                     key_pool_env="OPENCODE_KEY_POOL",
-                    fallback=(
-                        "https://integrate.api.nvidia.com/v1/chat/completions",
-                        nim_key,
-                        nim_model,
-                    ),
+                    fallback=[
+                        (
+                            "https://integrate.api.nvidia.com/v1/chat/completions",
+                            nim_key,
+                            nim_model,
+                        )
+                    ]
+                    + cpa_spec,
                 )
                 ProviderRegistry.register("llm", "default", oc_caller)
                 logger.info(
-                    "opencode-go(%s) DEFAULT, NIM fallback (pool=%d)",
+                    "opencode-go(%s) DEFAULT, fallback 链: NIM(%s)%s",
                     oc_model,
-                    len(os.getenv("OPENCODE_KEY_POOL", "").split(","))
-                    if os.getenv("OPENCODE_KEY_POOL")
-                    else 1,
+                    nim_model,
+                    f" → CPA({cpa_model})" if cpa_spec else "",
                 )
             else:
                 ProviderRegistry.register("llm", "default", nim_caller)
