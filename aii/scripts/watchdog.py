@@ -21,7 +21,6 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -46,8 +45,8 @@ try:
 except Exception:
     pass
 
-DSN = os.getenv("DATABASE_URL", "postgresql://aii:***REMOVED***@localhost:5435/aii_kg")
-AII_EMBED_URL = os.getenv("AII_EMBED_URL", "http://100.119.113.90:8102")
+DSN = os.getenv("DATABASE_URL", "postgresql://aii:***REMOVED***@localhost:5437/aii_kg")
+AII_EMBED_URL = os.getenv("AII_EMBED_URL", "http://127.0.0.1:8102")
 SHARED_INBOX = Path("/home/soffy/shared/stratum-to-aii")
 
 FLYWHEELS = {
@@ -61,6 +60,9 @@ FLYWHEELS = {
     },
     "aii-flywheel-math-prog": {"prefixes": ["math_prog_"], "booklist": None},
     "aii-flywheel-advmath": {"prefixes": ["advmath_zh_", "advmath_en_"], "booklist": None},
+    "aii-flywheel-cs": {"prefixes": ["cs_zh_", "cs_en_"], "booklist": ROOT / "cs_pipeline/flywheel_cs_booklist.txt"},
+    "aii-flywheel-edu": {"prefixes": ["edu_zh_", "edu_en_"], "booklist": ROOT / "edu_pipeline/flywheel_edu_booklist.txt"},
+    # Paper BU is intentionally KU=0; keep it out of KU freshness checks.
 }
 
 SEV = {"info": 0, "warn": 1, "crit": 2}
@@ -434,30 +436,55 @@ def check_stuck_pulls() -> list[dict]:
 def check_docs_service() -> list[dict]:
     """stratum-docs 转换容器健康(2026-08-11 微服务化后 convert 走它)。"""
     import urllib.request
+
     try:
         with urllib.request.urlopen("http://127.0.0.1:8300/health", timeout=5) as r:
             ok = r.status == 200
-        return [{"name": "docs-service", "status": "ok" if ok else "down",
-                 "severity": "info" if ok else "crit",
-                 "detail": "stratum-docs 转换服务 OK" if ok
-                 else "stratum-docs 状态异常(convert 已回退本地兜底)"}]
+        return [
+            {
+                "name": "docs-service",
+                "status": "ok" if ok else "down",
+                "severity": "info" if ok else "crit",
+                "detail": "stratum-docs 转换服务 OK"
+                if ok
+                else "stratum-docs 状态异常(convert 已回退本地兜底)",
+            }
+        ]
     except Exception as e:
-        return [{"name": "docs-service", "status": "down", "severity": "crit",
-                 "detail": f"stratum-docs 不可达: {str(e)[:60]}(convert 已回退本地兜底, 需检查容器)"}]
+        return [
+            {
+                "name": "docs-service",
+                "status": "down",
+                "severity": "crit",
+                "detail": f"stratum-docs 不可达: {str(e)[:60]}(convert 已回退本地兜底, 需检查容器)",
+            }
+        ]
 
 
 def check_extract_service() -> list[dict]:
     """宿主 LangExtract grounded extraction 服务(:8301, 2026-08-12 内化)。"""
     import urllib.request
+
     try:
         with urllib.request.urlopen("http://127.0.0.1:8301/health", timeout=5) as r:
             ok = r.status == 200
-        return [{"name": "extract-service", "status": "ok" if ok else "down",
-                 "severity": "info" if ok else "crit",
-                 "detail": "LangExtract 提取服务 OK" if ok else "LangExtract 提取服务不可达"}]
+        return [
+            {
+                "name": "extract-service",
+                "status": "ok" if ok else "down",
+                "severity": "info" if ok else "crit",
+                "detail": "LangExtract 提取服务 OK" if ok else "LangExtract 提取服务不可达",
+            }
+        ]
     except Exception as e:
-        return [{"name": "extract-service", "status": "down", "severity": "crit",
-                 "detail": f"LangExtract 不可达: {str(e)[:60]}"}]
+        return [
+            {
+                "name": "extract-service",
+                "status": "down",
+                "severity": "crit",
+                "detail": f"LangExtract 不可达: {str(e)[:60]}",
+            }
+        ]
 
 
 def check_convert_output() -> list[dict]:
@@ -468,39 +495,80 @@ def check_convert_output() -> list[dict]:
     try:
         log = ROOT / "econ_pipeline/feeder.log"
         if not log.exists():
-            return [{"name": "convert-output", "status": "unknown", "severity": "info",
-                     "detail": "feeder.log 不存在"}]
+            return [
+                {
+                    "name": "convert-output",
+                    "status": "unknown",
+                    "severity": "info",
+                    "detail": "feeder.log 不存在",
+                }
+            ]
         recent = log.read_text(encoding="utf-8", errors="replace").splitlines()[-200:]
-        bad = [l for l in recent if re.search(
-            r"Traceback|UnboundLocal|cannot access|NameError|Error:", l)]
+        bad = [
+            l
+            for l in recent
+            if re.search(r"Traceback|UnboundLocal|cannot access|NameError|Error:", l)
+        ]
         if bad:
-            return [{"name": "convert-output", "status": "error", "severity": "crit",
-                     "detail": f"convert 最近输出异常: {bad[-1][:110]}"}]
-        tots = [int(m.group(1)) for l in recent
-                for m in [re.search(r"新转: (\d+)", l)] if m]
+            return [
+                {
+                    "name": "convert-output",
+                    "status": "error",
+                    "severity": "crit",
+                    "detail": f"convert 最近输出异常: {bad[-1][:110]}",
+                }
+            ]
+        tots = [int(m.group(1)) for l in recent for m in [re.search(r"新转: (\d+)", l)] if m]
         pool = sum(
             len(list(d.glob("*.pdf"))) + len(list(d.glob("*.epub")))
-            for d in (Path("/home/soffy/books/数学"), Path("/home/soffy/books/Economic"),
-                      Path("/home/soffy/books/其它"))
+            for d in (
+                Path("/home/soffy/books/数学"),
+                Path("/home/soffy/books/Economic"),
+                Path("/home/soffy/books/其它"),
+            )
             if d.exists()
         )
         md_pool = sum(
             len(list(d.glob("*.md")))
-            for d in (Path("/home/soffy/books/MD/经济学"), Path("/home/soffy/books/MD/中文数学"),
-                      Path("/home/soffy/books/MD/英文数学"), Path("/home/soffy/books/MD/其它"))
+            for d in (
+                Path("/home/soffy/books/MD/经济学"),
+                Path("/home/soffy/books/MD/中文数学"),
+                Path("/home/soffy/books/MD/英文数学"),
+                Path("/home/soffy/books/MD/其它"),
+            )
             if d.exists()
         )
         if not tots:
-            return [{"name": "convert-output", "status": "unknown", "severity": "info",
-                     "detail": f"feeder 近期无 convert 统计; 待转池{pool}, books/MD池{md_pool}"}]
+            return [
+                {
+                    "name": "convert-output",
+                    "status": "unknown",
+                    "severity": "info",
+                    "detail": f"feeder 近期无 convert 统计; 待转池{pool}, books/MD池{md_pool}",
+                }
+            ]
         recent_sum = sum(tots[-3:])
         if recent_sum == 0 and pool > 10 and md_pool < 10:
-            return [{"name": "convert-output", "status": "starving", "severity": "warn",
-                     "detail": f"convert 最近3轮新转和=0, books/MD池仅{md_pool}本且待转池{pool} — 供料质量不足(待转多为非教材), 需补教材源"}]
-        return [{"name": "convert-output", "status": "ok", "severity": "info",
-                 "detail": f"最近3轮新转和={recent_sum}, 待转池{pool}, books/MD池{md_pool}"}]
+            return [
+                {
+                    "name": "convert-output",
+                    "status": "starving",
+                    "severity": "warn",
+                    "detail": f"convert 最近3轮新转和=0, books/MD池仅{md_pool}本且待转池{pool} — 供料质量不足(待转多为非教材), 需补教材源",
+                }
+            ]
+        return [
+            {
+                "name": "convert-output",
+                "status": "ok",
+                "severity": "info",
+                "detail": f"最近3轮新转和={recent_sum}, 待转池{pool}, books/MD池{md_pool}",
+            }
+        ]
     except Exception as e:
-        return [{"name": "convert-output", "status": "error", "severity": "info", "detail": str(e)[:60]}]
+        return [
+            {"name": "convert-output", "status": "error", "severity": "info", "detail": str(e)[:60]}
+        ]
 
 
 def check_repeat_extraction() -> list[dict]:
@@ -526,19 +594,29 @@ def check_repeat_extraction() -> list[dict]:
             for sub, n in cnt.most_common(3):
                 if n >= 3:
                     stage = ROOT / stagebase / sub
-                    out.append({
-                        "name": f"repeat-extract:{name}",
-                        "status": "spinning",
-                        "severity": "crit",
-                        "sub": sub,
-                        "stage": str(stage),
-                        "detail": f"{sub} 近日志抽取 {n} 次(≥3) — 入库未成功反复重跑, 自动 touch .done 翻篇",
-                    })
+                    out.append(
+                        {
+                            "name": f"repeat-extract:{name}",
+                            "status": "spinning",
+                            "severity": "crit",
+                            "sub": sub,
+                            "stage": str(stage),
+                            "detail": f"{sub} 近日志抽取 {n} 次(≥3) — 入库未成功反复重跑, 自动 touch .done 翻篇",
+                        }
+                    )
         except Exception as e:
-            out.append({"name": f"repeat-extract:{name}", "status": "error", "severity": "info",
-                        "detail": str(e)[:60]})
+            out.append(
+                {
+                    "name": f"repeat-extract:{name}",
+                    "status": "error",
+                    "severity": "info",
+                    "detail": str(e)[:60],
+                }
+            )
     if not out:
-        out.append({"name": "repeat-extract", "status": "ok", "severity": "info", "detail": "无重复抽取"})
+        out.append(
+            {"name": "repeat-extract", "status": "ok", "severity": "info", "detail": "无重复抽取"}
+        )
     return out
 
 
@@ -552,31 +630,41 @@ def diagnose_llm(report: dict) -> str | None:
 
         keys = json.loads((ROOT / ".pipeline_keys.json").read_text())
         key = keys.get("math_en") or keys.get("econ") or next(iter(keys.values()))
-        body = json.dumps({
-            "model": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
-            "messages": [
-                {"role": "system", "content": (
-                    "你是AII知识飞轮系统运维诊断专家。根据看门狗告警, 给出最可能的根因、"
-                    "验证命令、修复动作。简洁中文, 不超过150字。")},
-                {"role": "user", "content": "看门狗告警:\n" + "\n".join(crits)},
-            ],
-            "max_tokens": 300,
-        }).encode()
+        body = json.dumps(
+            {
+                "model": "deepseek-ai/deepseek-v4-flash-0731",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "你是AII知识飞轮系统运维诊断专家。根据看门狗告警, 给出最可能的根因、"
+                            "验证命令、修复动作。简洁中文, 不超过150字。"
+                        ),
+                    },
+                    {"role": "user", "content": "看门狗告警:\n" + "\n".join(crits)},
+                ],
+                "max_tokens": 300,
+            }
+        ).encode()
         req = urllib.request.Request(
             "https://integrate.api.nvidia.com/v1/chat/completions",
-            data=body, method="POST",
+            data=body,
+            method="POST",
             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
         )
         # 显式代理(7890 sing-box), 不依赖进程环境
         opener = urllib.request.build_opener(
-            urllib.request.ProxyHandler({"http": "http://127.0.0.1:7890",
-                                          "https": "http://127.0.0.1:7890"}))
+            urllib.request.ProxyHandler(
+                {"http": "http://127.0.0.1:7890", "https": "http://127.0.0.1:7890"}
+            )
+        )
         with opener.open(req, timeout=60) as resp:
             data = json.loads(resp.read().decode())
         msg = data["choices"][0]["message"]
         # nemotron 是 reasoning 模型: content 可能为 None, 回答在 reasoning_content/reasoning
-        content = (msg.get("content") or msg.get("reasoning_content")
-                   or msg.get("reasoning") or "")[:600]
+        content = (
+            msg.get("content") or msg.get("reasoning_content") or msg.get("reasoning") or ""
+        )[:600]
         return content or None
     except Exception as e:
         return f"(LLM诊断失败: {str(e)[:80]})"
@@ -594,17 +682,23 @@ def notify_crit(report: dict) -> None:
 
             conn = await asyncpg.connect(DSN, timeout=10)
             try:
-                row = await conn.fetchrow("SELECT id FROM stratum.users ORDER BY created_at LIMIT 1")
+                row = await conn.fetchrow(
+                    "SELECT id FROM stratum.users ORDER BY created_at LIMIT 1"
+                )
                 uid = str(row["id"]) if row else None
                 await conn.execute(
                     "INSERT INTO stratum.changefeed (event_id, user_id, device_id, timestamp, event_type, payload) "
                     "VALUES ($1,$2,'server',now(),'notification',$3)",
-                    f"watchdog-{int(time.time())}", uid,
-                    json.dumps({
-                        "title": f"🚨 AII看门狗: {len(report['needs_human'])}项严重",
-                        "body": "\n".join(report["needs_human"])[:500],
-                        "channels": ["web"],
-                    }, ensure_ascii=False),
+                    f"watchdog-{int(time.time())}",
+                    uid,
+                    json.dumps(
+                        {
+                            "title": f"🚨 AII看门狗: {len(report['needs_human'])}项严重",
+                            "body": "\n".join(report["needs_human"])[:500],
+                            "channels": ["web"],
+                        },
+                        ensure_ascii=False,
+                    ),
                 )
             finally:
                 await conn.close()
@@ -634,21 +728,49 @@ def check_ku_growth() -> list[dict]:
 
         h6, h24 = asyncio.run(_run())
         if h24 == 0:
-            return [{"name": "ku-growth", "status": "zero", "severity": "crit",
-                     "detail": f"24h KU 增量=0(历史正常 400-700/天) — 产能停摆, 查飞轮/入库"}]
+            return [
+                {
+                    "name": "ku-growth",
+                    "status": "zero",
+                    "severity": "crit",
+                    "detail": "24h KU 增量=0(历史正常 400-700/天) — 产能停摆, 查飞轮/入库",
+                }
+            ]
         if h24 < 50:
-            return [{"name": "ku-growth", "status": "low", "severity": "warn",
-                     "detail": f"24h KU 增量={h24}(6h={h6}), 历史正常 400-700 — 产能偏低"}]
-        return [{"name": "ku-growth", "status": "ok", "severity": "info",
-                 "detail": f"24h KU 增量={h24}(6h={h6})"}]
+            return [
+                {
+                    "name": "ku-growth",
+                    "status": "low",
+                    "severity": "warn",
+                    "detail": f"24h KU 增量={h24}(6h={h6}), 历史正常 400-700 — 产能偏低",
+                }
+            ]
+        return [
+            {
+                "name": "ku-growth",
+                "status": "ok",
+                "severity": "info",
+                "detail": f"24h KU 增量={h24}(6h={h6})",
+            }
+        ]
     except Exception as e:
         return [{"name": "ku-growth", "status": "error", "severity": "info", "detail": str(e)[:60]}]
 
 
 def build_report(state: dict) -> dict:
     checks: list[dict] = []
-    for fn in (check_services, check_gpu, check_embed, check_backlog, check_stuck_pulls,
-               check_convert_output, check_repeat_extraction, check_ku_growth, check_docs_service, check_extract_service):
+    for fn in (
+        check_services,
+        check_gpu,
+        check_embed,
+        check_backlog,
+        check_stuck_pulls,
+        check_convert_output,
+        check_repeat_extraction,
+        check_ku_growth,
+        check_docs_service,
+        check_extract_service,
+    ):
         try:
             checks += fn()
         except Exception as e:
@@ -669,23 +791,28 @@ def build_report(state: dict) -> dict:
         )
 
     # ★供料哨兵: ≥3 个飞轮同时 idle(无新书) = 供料不足, 触发主动找料(2026-08-10)
-    idle_fw = [c for c in checks
-               if c.get("name", "").startswith("flywheel:") and c.get("status") == "idle"]
+    idle_fw = [
+        c for c in checks if c.get("name", "").startswith("flywheel:") and c.get("status") == "idle"
+    ]
     if len(idle_fw) >= 3:
-        checks.append({
-            "name": "flywheel-idle-count",
-            "status": "starving",
-            "severity": "warn",
-            "idle_count": len(idle_fw),
-            "detail": f"{len(idle_fw)} 个飞轮同时无新书: {', '.join(c['name'].split(':')[-1] for c in idle_fw)} — 供料不足, 触发主动找料",
-        })
+        checks.append(
+            {
+                "name": "flywheel-idle-count",
+                "status": "starving",
+                "severity": "warn",
+                "idle_count": len(idle_fw),
+                "detail": f"{len(idle_fw)} 个飞轮同时无新书: {', '.join(c['name'].split(':')[-1] for c in idle_fw)} — 供料不足, 触发主动找料",
+            }
+        )
     else:
-        checks.append({
-            "name": "flywheel-idle-count",
-            "status": "ok",
-            "severity": "info",
-            "detail": f"空闲飞轮 {len(idle_fw)} 个(<3 供料充足)",
-        })
+        checks.append(
+            {
+                "name": "flywheel-idle-count",
+                "status": "ok",
+                "severity": "info",
+                "detail": f"空闲飞轮 {len(idle_fw)} 个(<3 供料充足)",
+            }
+        )
 
     worst = max((SEV.get(c["severity"], 0) for c in checks), default=0)
     overall = ["ok", "degraded", "critical"][worst]
@@ -866,8 +993,7 @@ def _execute(action: str, target: str) -> tuple[bool, str]:
     if action == "fetch-materials":
         # 断料主动找料: OAPEN 按需 + veya 异步派活(内部 flock/限速)
         try:
-            rc, out = _sh([str(ROOT / ".venv/bin/python"), "scripts/source_hunt.py"],
-                          timeout=60)
+            rc, out = _sh([str(ROOT / ".venv/bin/python"), "scripts/source_hunt.py"], timeout=60)
             return rc == 0, out[:150] or "source_hunt done"
         except Exception as e:
             return False, f"找料异常: {str(e)[:80]}"

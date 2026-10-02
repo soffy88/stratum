@@ -37,6 +37,7 @@ DEFAULT_TIMEOUT = 300.0  # 5 minutes max for entire chain
 @dataclass
 class ChainStep:
     """链式调用中的单步记录."""
+
     agent_name: str
     status: str  # "running" | "completed" | "skipped" | "failed"
     start_time: float
@@ -49,6 +50,7 @@ class ChainStep:
 @dataclass
 class CallChain:
     """完整的调用链记录."""
+
     chain_id: str
     chain: list[str]
     steps: list[ChainStep]
@@ -177,11 +179,15 @@ class ChainTracker:
 
         logger.info(
             "chain[%s]: step %d/%d — %s",
-            self.chain_id, self.current_depth + 1, self.max_depth, agent_name,
+            self.chain_id,
+            self.current_depth + 1,
+            self.max_depth,
+            agent_name,
         )
 
         try:
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(fn, *args, **kwargs)
                 result = future.result(timeout=timeout)
@@ -239,8 +245,11 @@ class ChainTracker:
 
         logger.info(
             "chain[%s]: completed depth=%d/%d elapsed=%.0fms overflow=%d",
-            self.chain_id, len(self.chain), self.max_depth,
-            total_elapsed, len(self.deferred_suggestions),
+            self.chain_id,
+            len(self.chain),
+            self.max_depth,
+            total_elapsed,
+            len(self.deferred_suggestions),
         )
         return chain
 
@@ -265,6 +274,7 @@ class ChainTracker:
 
 
 # ── Mix Retrieval Integration ────────────────────────────────────────────────
+
 
 def mix_retrieve_with_chain(
     query: str,
@@ -291,7 +301,10 @@ def mix_retrieve_with_chain(
         带 chain 信息的检索结果.
     """
     from stratum.services.mix_retrieval import (
-        _vector_search, _kg_entity_expansion, _chunk_search, _merge_rrf,
+        _vector_search,
+        _kg_entity_expansion,
+        _chunk_search,
+        _merge_rrf,
     )
 
     if tracker is None:
@@ -329,6 +342,7 @@ def mix_retrieve_with_chain(
 
 
 # ── Pipeline Chain Tracker ───────────────────────────────────────────────────
+
 
 def execute_pipeline_chain(
     pipeline_name: str,

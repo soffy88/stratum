@@ -19,12 +19,12 @@ Source Packet 标准:
 用法:
     from ku_schema import build_grounded_by, validate_ku_point, ku_fingerprint
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
 import re
-from typing import Any, Literal
 
 # ── KU 类型枚举(对齐 aii.ku_onto.knowledge_type 约束) ──────────
 KU_TYPES: frozenset[str] = frozenset(
@@ -122,10 +122,26 @@ def _split_sentences(text: str) -> list[tuple[str, int]]:
     """按句子边界切分, 返回 [(sentence, start_offset)]。"""
     out: list[tuple[str, int]] = []
     start = 0
-    for m in re.finditer(r"[^。！？.!?\n]+[。！？.!?\n]*", text):
-        seg = m.group(0).strip()
+    # 不能用“任意句点”做边界：教材里的 0.01、1.5、v2.0 会被拆开，
+    # 随后数字级证据补齐就会失效。仅把非小数点的句点视为句末。
+    for i, ch in enumerate(text or ""):
+        boundary = ch in "。！？!?\n"
+        if ch == ".":
+            prev_is_digit = i > 0 and text[i - 1].isdigit()
+            next_is_digit = i + 1 < len(text) and text[i + 1].isdigit()
+            boundary = not (prev_is_digit and next_is_digit)
+        if not boundary:
+            continue
+        raw = text[start : i + 1]
+        left = len(raw) - len(raw.lstrip())
+        seg = raw.strip()
         if seg:
-            out.append((seg, m.start()))
+            out.append((seg, start + left))
+        start = i + 1
+    tail = text[start:] if text else ""
+    if tail.strip():
+        left = len(tail) - len(tail.lstrip())
+        out.append((tail.strip(), start + left))
     return out
 
 
@@ -149,7 +165,7 @@ def extract_evidence_quotes(
     name_key = (name or "").strip().lower()[:30]
     # 1) 含知识点名
     for sent, off in sents:
-        if name_key and name_key in sent.lower():
+        if len(sent.strip()) >= 10 and name_key and name_key in sent.lower():
             picked.append((sent, off, "name_hit"))
         if len(picked) >= max_q:
             break
@@ -159,11 +175,13 @@ def extract_evidence_quotes(
             break
         if any((sent, off, "name_hit") == p for p in picked):
             continue
-        if _DEF_KW.search(sent):
+        if len(sent.strip()) >= 10 and _DEF_KW.search(sent):
             picked.append((sent, off, "definition"))
     # 3) 首句兜底
-    if not picked and sents:
-        picked.append((sents[0][0], sents[0][1], "first_sentence"))
+    if not picked:
+        first = next(((sent, off) for sent, off in sents if len(sent.strip()) >= 10), None)
+        if first:
+            picked.append((first[0], first[1], "first_sentence"))
     # 截断超长句(≤ 400 字符), 保持子串性质
     quotes = []
     for sent, off, kind in picked[:max_q]:
@@ -175,21 +193,136 @@ def extract_evidence_quotes(
 _CLAIM_NUM_RE = re.compile(r"\d+(?:\.\d+)?%?|\d+(?:[,.]\d+)+")
 
 
+def _number_tokens(text: str) -> set[str]:
+    """抽取数字时兼容 OCR/PDF 把小数点与数字拆开的写法。"""
+    normalized = re.sub(r"(?<=\d)\s*[.．]\s*(?=\d)", ".", text or "")
+    return set(_CLAIM_NUM_RE.findall(normalized))
+
+
+def _claim_numbers(claim: str) -> set[str]:
+    """提取事实数字，排除多行正文的结构性列表序号。
+
+    LLM 常把一个 KU 写成“1. ...\n2. ...”；这些编号不是书中事实，
+    不应要求它们出现在证据句里。教材还常在正文中写“详见1.2节”这类
+    章节交叉引用；它们是导航标记而非知识断言，也不应触发数字对齐。
+    行内数字、年份、比例和小数仍全部保留，继续接受严格的原文对齐检查。
+    """
+    # ASCII/全角编号与中文教材常见的“10　正文”编号都属于结构噪声。
+    # 小数必须要求点后紧接数字，因此不会误删“1.3 billion”这类事实。
+    text = re.sub(
+        r"(?m)^\s*(?:#{1,4}\s*)?(?:[-*•]\s*)?(?:\d{1,3}(?:[)]|、|．|。)(?=\s|[\u4e00-\u9fffA-Za-z])"
+        r"|\d{1,3}\.(?=\s)|\d{1,3}(?=\u3000+)"
+        r"|\d+(?:\.\d+)+(?=\u3000))\s*",
+        "",
+        claim or "",
+    )
+    # 骨架抽取可能把原文的多项列表合并进同一行；这些行内“1．/2)/3.”
+    # 仍是编号，不是事实数字。小数点后紧跟数字不会命中。
+    text = re.sub(
+        r"(?<![\d.])(?:\d{1,3}(?:[)）、．。、]|\.(?=\s))(?=\s|[\u4e00-\u9fffA-Za-z])"
+        r"|\d{1,3}(?=\u3000+))\s*",
+        "",
+        text,
+    )
+    # 只去除明确的章节导航引用，避免误伤正文中的 1.2、1.3 等真实小数。
+    text = re.sub(
+        r"(?:详见|参见|见|参阅|见第)\s*\d+(?:\.\d+)+\s*(?:章|节|小节)?",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"(?<![\d.])\d+(?:\.\d+)+\s*(?:章|节|小节)", "", text)
+
+    # ★2026-09-27 技术标识符不是事实断言, 不该触发数字对齐。
+    #   实测 200 条真实 KU 有 19 条(9%)被这条检查拒掉, 抽样看到的全是这类:
+    #     gcr.io/${PROJECT_ID}/ml_app:v1   ← 版本标签
+    #     us-central1                      ← 云 region 名
+    #     --num-nodes=2 / --replicas=3     ← CLI 参数
+    #   一个提到 --replicas=3 的 KU 不是幻觉; 原先要求这些数字出现在证据句里,
+    #   等于用反幻觉的判据去卡技术文本, 属假阳性。
+    #   只排除"数字紧贴标识符"的情形(数字前紧邻 ASCII 字母), 中文正文里的
+    #   "共3章"前面是汉字不受影响, 正常行文数字前面是空格也不受影响。
+    text = re.sub(r"`[^`]*`", " ", text)  # 行内代码片段整体不算事实
+    text = re.sub(r"--[\w-]+(?:\s+|=)\d+", " ", text)  # --port 80 / --target-port=5000
+    text = re.sub(r"(?<![A-Za-z0-9])\d+(?=[A-Za-z_-])", "", text)  # v1 / 3d
+    text = re.sub(r"(?<=[A-Za-z-])\d+", "", text)  # central1 / -1
+    text = re.sub(r"(?<==)\d+", "", text)  # --num-nodes=2
+    return _number_tokens(text)
+
+
 def check_number_alignment(claim: str, quotes: list[dict]) -> list[str]:
     """反幻觉(数字级): claim 中的数字必须出现在某条 evidence quote 中。
 
     确定性零模型(规格: 数字/实体对不齐 → reject, 不依赖 NLI)。
     无数字的 claim 直接通过。
     """
-    claim_nums = set(_CLAIM_NUM_RE.findall(claim or ""))
+    claim_nums = _claim_numbers(claim)
     if not claim_nums:
         return []
     quote_text = " ".join(q.get("quote") or "" for q in (quotes or []))
-    quote_nums = set(_CLAIM_NUM_RE.findall(quote_text))
+    quote_nums = _number_tokens(quote_text)
     missing = claim_nums - quote_nums
     if missing:
         return [f"HALLUCINATION: claim 数字 {sorted(missing)} 不在 evidence 中"]
     return []
+
+
+def ensure_evidence_number_coverage(
+    claim: str,
+    quotes: list[dict],
+    section_text: str,
+    name: str = "",
+    max_q: int = 8,
+    fallback_text: str = "",
+) -> list[dict]:
+    """从原文窗口补齐 claim 中缺失数字的证据句。
+
+    初始 evidence 选择优先知识点名/定义句，教材中的表格、比例和年份可能
+    位于后续句子。先查定向窗口；窗口没有覆盖时再查同一章节的完整原文。
+    只从原文逐字句子补证据，不生成或修改任何内容；找不到原文数字时仍由
+    check_number_alignment 拒绝。
+    """
+    out = [
+        dict(q)
+        for q in (quotes or [])
+        if len(str(q.get("quote") or "").strip()) >= 10
+    ]
+    if len(out) >= max_q:
+        return out
+    quote_norm = {re.sub(r"\s+", "", (q.get("quote") or "")).lower() for q in out}
+    quote_text = " ".join(q.get("quote") or "" for q in out)
+    missing = _claim_numbers(claim) - _number_tokens(quote_text)
+    if not missing:
+        return out
+    sources = []
+    for label, source in (("window", section_text), ("chapter", fallback_text)):
+        if source and source not in [item[1] for item in sources]:
+            sources.append((label, source))
+    for label, source in sources:
+        for sent, off in _split_sentences(source):
+            if len(sent.strip()) < 10:
+                continue
+            nums = _number_tokens(sent)
+            if not nums & missing:
+                continue
+            key = re.sub(r"\s+", "", sent).lower()
+            if not key or key in quote_norm:
+                continue
+            s = sent[:400]
+            out.append(
+                {
+                    "quote": s,
+                    "span": [off, off + len(s)],
+                    "kind": "number_alignment" if label == "window" else "number_alignment_chapter",
+                }
+            )
+            quote_norm.add(key)
+            missing -= _number_tokens(s)
+            if not missing or len(out) >= max_q:
+                break
+        if not missing or len(out) >= max_q:
+            break
+    return out
 
 
 def validate_quotes(quotes: list[dict], section_text: str) -> list[str]:
@@ -221,6 +354,6 @@ if __name__ == "__main__":
     assert ku_fingerprint("abc") != ku_fingerprint("abd")
     assert validate_ku_point("x", "短", "conceptual", "长文本" * 10, None)
     assert not validate_ku_point(
-        "x", "Externalities", "conceptual", "长文本" * 10,
-        build_grounded_by("book", "ch1"))
+        "x", "Externalities", "conceptual", "长文本" * 10, build_grounded_by("book", "ch1")
+    )
     print("✅ ku_schema 自检通过")

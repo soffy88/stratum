@@ -6,6 +6,9 @@
     notes/          # 人类笔记 + 概念生长页 (notes_sl)
     concepts/       # graph_entities 摘要页
     sources/        # substrate 原文 markdown derivative
+    evidence/       # W3C-style Evidence JSON (highlights)
+    learning/       # FSRS cards + user review settings
+    manifest.json   # versioned machine-readable manifest
     index.json      # 清单 + 统计
 
 YAML frontmatter 规范 (MVP):
@@ -20,7 +23,6 @@ import logging
 import re
 import zipfile
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from stratum.db import query
@@ -78,6 +80,23 @@ def _ensure_body_has_title(title: str, body: str) -> str:
     if body.startswith("#"):
         return body + "\n"
     return f"# {title}\n\n{body}\n"
+
+
+def _json_value(value: Any, fallback: Any) -> Any:
+    if value is None:
+        return fallback
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except (TypeError, json.JSONDecodeError):
+            return fallback
+    return value
+
+
+def _iso_value(value: Any) -> str | None:
+    if value is None:
+        return None
+    return value.isoformat() if hasattr(value, "isoformat") else str(value)
 
 
 def build_vault_files(user_id: str) -> dict[str, str]:
@@ -216,33 +235,164 @@ def build_vault_files(user_id: str) -> dict[str, str]:
         files[path] = fm + _ensure_body_has_title(title, content)
         source_index.append({"id": sid, "title": title, "path": path})
 
+    # --- Evidence / highlights (machine-readable and portable) ---
+    evidence_rows: list[dict[str, Any]] = []
+    try:
+        evidence_rows = query(
+            """
+            SELECT e.id, e.substrate_id, h.color, e.quote AS text, h.note,
+                   h.location_json, e.confidence, e.quote_hash, e.locator_json,
+                   e.created_at, e.updated_at
+            FROM stratum.evidence e
+            LEFT JOIN highlights h ON h.id = e.source_highlight_id
+            WHERE e.user_id IN (%(uh)s, %(uid)s)
+            ORDER BY e.created_at DESC
+            """,
+            {"uh": uid_hash, "uid": user_id},
+        )
+    except Exception as exc:
+        log.warning("vault export: canonical evidence unavailable, using highlights: %s", exc)
+        try:
+            evidence_rows = query(
+                """
+                SELECT id, substrate_id, color, text, note, location_json,
+                       confidence, quote_hash, locator_json, created_at, updated_at
+                FROM highlights
+                WHERE user_id = %(uh)s
+                ORDER BY created_at DESC
+                """,
+                {"uh": uid_hash},
+            )
+        except Exception as legacy_exc:
+            log.warning("vault export: highlight evidence unavailable: %s", legacy_exc)
+
+    evidence_index: list[dict[str, Any]] = []
+    for row in evidence_rows:
+        evidence_id = row["id"]
+        evidence = {
+            "id": evidence_id,
+            "type": "Evidence",
+            "source": f"substrate://{row.get('substrate_id')}",
+            "quote": row.get("text") or "",
+            "quote_hash": row.get("quote_hash"),
+            "confidence": float(row.get("confidence") or 1.0),
+            "color": row.get("color") or "yellow",
+            "note": row.get("note"),
+            "locator": _json_value(row.get("locator_json"), {}),
+            "legacy_location": _json_value(row.get("location_json"), {}),
+            "created_at": _iso_value(row.get("created_at")),
+            "updated_at": _iso_value(row.get("updated_at")),
+        }
+        path = f"evidence/{_slug(str(evidence_id), str(evidence_id))}.json"
+        files[path] = json.dumps(evidence, ensure_ascii=False, indent=2)
+        evidence_index.append({"id": evidence_id, "path": path, "type": "Evidence"})
+
+    # --- Learning state (FSRS cards + user preference) ---
+    flashcards: list[dict[str, Any]] = []
+    learning_preferences: dict[str, Any] = {"desired_retention": 0.9}
+    try:
+        flashcards = query(
+            "SELECT id, source_kind, source_id, source_title, front, back, tags, "
+            "repetitions, easiness, interval_days, due_at, fsrs_state, fsrs_step, "
+            "stability, difficulty, last_review_at, desired_retention, created_at, updated_at "
+            "FROM flashcards WHERE user_id = %(uid)s ORDER BY due_at ASC",
+            {"uid": user_id},
+        )
+        prefs = query(
+            "SELECT desired_retention, updated_at FROM learning_preferences "
+            "WHERE user_id = %(uid)s LIMIT 1",
+            {"uid": user_id},
+        )
+        if prefs:
+            learning_preferences = {
+                "desired_retention": float(prefs[0].get("desired_retention") or 0.9),
+                "updated_at": _iso_value(prefs[0].get("updated_at")),
+            }
+    except Exception as exc:
+        log.warning("vault export: learning tables unavailable: %s", exc)
+
+    learning_rows = []
+    for card in flashcards:
+        learning_rows.append(
+            {
+                key: (
+                    _json_value(value, [])
+                    if key == "tags"
+                    else _iso_value(value)
+                    if key in {"due_at", "last_review_at", "created_at", "updated_at"}
+                    else value
+                )
+                for key, value in card.items()
+            }
+        )
+    files["learning/flashcards.json"] = json.dumps(
+        {"schema": "stratum.fsrs-card", "cards": learning_rows},
+        ensure_ascii=False,
+        indent=2,
+    )
+    files["learning/preferences.json"] = json.dumps(
+        {"schema": "stratum.fsrs-preferences", **learning_preferences},
+        ensure_ascii=False,
+        indent=2,
+    )
+
     # --- index + readme ---
     index = {
-        "version": 1,
+        "version": 2,
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "user_id_hash": uid_hash[:12] + "…",
         "counts": {
             "notes": len(note_index),
             "concepts": len(concept_index),
             "sources": len(source_index),
-            "files": len(files) + 2,
+            "evidence": len(evidence_index),
+            "flashcards": len(learning_rows),
+            "files": len(files) + 3,
         },
         "notes": note_index,
         "concepts": concept_index,
         "sources": source_index[:500],  # cap index size
+        "evidence": evidence_index,
+        "learning": {
+            "flashcards": "learning/flashcards.json",
+            "preferences": "learning/preferences.json",
+        },
     }
     files["index.json"] = json.dumps(index, ensure_ascii=False, indent=2)
+    files["manifest.json"] = json.dumps(
+        {
+            "schema": "stratum.vault",
+            "schema_version": 2,
+            "exported_at": index["exported_at"],
+            "user_id_hash": index["user_id_hash"],
+            "resources": {
+                "notes": "notes/",
+                "concepts": "concepts/",
+                "sources": "sources/",
+                "evidence": "evidence/",
+                "learning": "learning/",
+            },
+            "index": "index.json",
+        },
+        ensure_ascii=False,
+        indent=2,
+    )
     files["README.md"] = (
-        f"# AII Note 知识库导出\n\n"
+        f"# Stratum Personal Knowledge Foundation 导出\n\n"
         f"- 导出时间: {index['exported_at']}\n"
         f"- 笔记: {index['counts']['notes']}\n"
         f"- 概念: {index['counts']['concepts']}\n"
-        f"- 资料源: {index['counts']['sources']}\n\n"
+        f"- 资料源: {index['counts']['sources']}\n"
+        f"- Evidence: {index['counts']['evidence']}\n"
+        f"- 闪卡: {index['counts']['flashcards']}\n\n"
         f"## 目录\n\n"
         f"- `notes/` — 人类笔记与概念生长页\n"
         f"- `concepts/` — 图谱实体摘要\n"
         f"- `sources/` — 入库原文 Markdown\n"
-        f"- `index.json` — 清单\n\n"
+        f"- `evidence/` — 可引用 Evidence（含 quote_hash/confidence/locator）\n"
+        f"- `learning/` — FSRS 闪卡与 Desired Retention\n"
+        f"- `manifest.json` — 版本化机器清单\n"
+        f"- `index.json` — 详细清单\n\n"
         f"YAML frontmatter: `id, type, title, aliases, sources, updated`\n"
     )
     return files

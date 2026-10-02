@@ -12,6 +12,7 @@
 所有向量同一套 BGE-M3 1024 维 (oprim.vector_encode provider='default'),
 与 ku_onto.embedding 同空间, 可直接比较.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -52,6 +53,7 @@ def _union_groups(items: list, vecs: np.ndarray, threshold: float, forbid=None) 
         if _cos(vecs[i], vecs[j]) >= threshold:
             parent[find(i)] = find(j)
     from collections import defaultdict
+
     g = defaultdict(list)
     for i in range(n):
         g[find(i)].append(i)
@@ -71,6 +73,7 @@ def _union_pairs(n: int, pairs) -> list[list[int]]:
     for i, j in pairs:
         parent[find(i)] = find(j)
     from collections import defaultdict
+
     g = defaultdict(list)
     for i in range(n):
         g[find(i)].append(i)
@@ -80,7 +83,8 @@ def _union_pairs(n: int, pairs) -> list[list[int]]:
 _CONCEPT_JUDGE_SYS = (
     "You judge whether two concept NAMES denote the SAME concept or DIFFERENT concepts. "
     "★ Antonyms / opposite directions / opposite poles are DIFFERENT, even though their wording "
-    "and embeddings are nearly identical. Output valid JSON only.")
+    "and embeddings are nearly identical. Output valid JSON only."
+)
 
 _CONCEPT_JUDGE_TMPL = """\
 Concept A: "{a}"
@@ -108,7 +112,7 @@ def _parse_same(resp) -> bool:
     for blk in resp.get("content", []):
         if isinstance(blk, dict) and blk.get("type") == "text":
             txt += blk.get("text", "")
-    m = re.search(r'\{.*\}', txt, re.DOTALL)
+    m = re.search(r"\{.*\}", txt, re.DOTALL)
     if not m:
         return False
     try:
@@ -125,8 +129,11 @@ async def _judge_same_pairs(llm, names, cand, concurrency: int) -> set:
         async with sem:
             prompt = _CONCEPT_JUDGE_TMPL.format(a=names[i], b=names[j])
             try:
-                resp = await llm(messages=[{"role": "user", "content": prompt}],
-                                 system=_CONCEPT_JUDGE_SYS, max_tokens=20)
+                resp = await llm(
+                    messages=[{"role": "user", "content": prompt}],
+                    system=_CONCEPT_JUDGE_SYS,
+                    max_tokens=20,
+                )
                 return (i, j, _parse_same(resp))
             except Exception:
                 return (i, j, False)  # 判不了就不合 (保守)
@@ -139,8 +146,15 @@ async def _judge_same_pairs(llm, names, cand, concurrency: int) -> set:
     return same
 
 
-async def vectorize_and_normalize(conn, llm, *, substrate_id: str, discipline: str,
-                                  screen_threshold: float = 0.85, concurrency: int = 5) -> dict:
+async def vectorize_and_normalize(
+    conn,
+    llm,
+    *,
+    substrate_id: str,
+    discipline: str,
+    screen_threshold: float = 0.85,
+    concurrency: int = 5,
+) -> dict:
     """里程碑3: 给 substrate 的概念算向量并填 vector/discipline, 然后语义归一.
 
     归一规则 (★向量只筛候选, LLM 判同一才合 — 复用 cross_chunk/converge 套路, 治 0.90 纯余弦反义误并):
@@ -167,16 +181,26 @@ async def vectorize_and_normalize(conn, llm, *, substrate_id: str, discipline: s
         await conn.execute(
             "UPDATE aii.concept_onto SET vector = $1, discipline = COALESCE(discipline, $2) "
             "WHERE concept_id = $3",
-            vec.tolist(), discipline, cid,
+            vec.tolist(),
+            discipline,
+            cid,
         )
 
     # link 数用于选 canonical (最中心的留)
-    link_cnt = {r["concept_id"]: r["n"] for r in await conn.fetch(
-        "SELECT concept_id, count(*) n FROM aii.ku_concept_onto GROUP BY 1")}
+    link_cnt = {
+        r["concept_id"]: r["n"]
+        for r in await conn.fetch(
+            "SELECT concept_id, count(*) n FROM aii.ku_concept_onto GROUP BY 1"
+        )
+    }
 
     # ★每概念 discipline → 禁止跨学科同名误合 (供给弹性 vs 需求弹性)
-    disc_by_cid = {r["concept_id"]: r["discipline"] for r in await conn.fetch(
-        "SELECT concept_id, discipline FROM aii.concept_onto WHERE concept_id = ANY($1)", cids)}
+    disc_by_cid = {
+        r["concept_id"]: r["discipline"]
+        for r in await conn.fetch(
+            "SELECT concept_id, discipline FROM aii.concept_onto WHERE concept_id = ANY($1)", cids
+        )
+    }
     disciplines = [disc_by_cid.get(c) for c in cids]
 
     def _forbid(i, j):
@@ -189,8 +213,9 @@ async def vectorize_and_normalize(conn, llm, *, substrate_id: str, discipline: s
     S = En @ En.T
     iu = np.triu_indices(len(cids), k=1)
     hits = np.asarray(S[iu] >= screen_threshold).nonzero()[0]
-    cand = [(int(iu[0][h]), int(iu[1][h])) for h in hits
-            if not _forbid(int(iu[0][h]), int(iu[1][h]))]
+    cand = [
+        (int(iu[0][h]), int(iu[1][h])) for h in hits if not _forbid(int(iu[0][h]), int(iu[1][h]))
+    ]
     # ② LLM 判同一 → ③ 仅 SAME 的进并查集
     same_pairs = await _judge_same_pairs(llm, names, cand, concurrency)
     groups = _union_pairs(len(cids), same_pairs)
@@ -209,67 +234,105 @@ async def vectorize_and_normalize(conn, llm, *, substrate_id: str, discipline: s
                 """INSERT INTO aii.ku_concept_onto(ku_id, concept_id)
                    SELECT ku_id, $1 FROM aii.ku_concept_onto WHERE concept_id = ANY($2)
                    ON CONFLICT DO NOTHING""",
-                can_id, dup_ids,
+                can_id,
+                dup_ids,
             )
             # 别名归并
             await conn.execute(
                 "UPDATE aii.concept_onto SET aliases = aliases || $1::jsonb WHERE concept_id = $2",
-                json.dumps([d[1] for d in dups]), can_id,
+                json.dumps([d[1] for d in dups]),
+                can_id,
             )
             # ★把 dup 的 level/discipline/invariant_id 带到 canonical (canonical 空才补)
             d = await conn.fetchrow(
                 """SELECT (array_agg(level) FILTER (WHERE level IS NOT NULL))[1] level,
                           (array_agg(discipline) FILTER (WHERE discipline IS NOT NULL))[1] discipline,
                           (array_agg(invariant_id) FILTER (WHERE invariant_id IS NOT NULL))[1] invariant_id
-                   FROM aii.concept_onto WHERE concept_id = ANY($1)""", dup_ids)
+                   FROM aii.concept_onto WHERE concept_id = ANY($1)""",
+                dup_ids,
+            )
             await conn.execute(
                 """UPDATE aii.concept_onto SET
                      level=COALESCE(level,$2), discipline=COALESCE(discipline,$3),
                      invariant_id=COALESCE(invariant_id,$4)
                    WHERE concept_id=$1""",
-                can_id, d["level"], d["discipline"], d["invariant_id"])
-            await conn.execute(
-                "DELETE FROM aii.concept_onto WHERE concept_id = ANY($1)", dup_ids)
+                can_id,
+                d["level"],
+                d["discipline"],
+                d["invariant_id"],
+            )
+            await conn.execute("DELETE FROM aii.concept_onto WHERE concept_id = ANY($1)", dup_ids)
             merged_total += len(dups)
             group_report.append({"canonical": can_name, "merged": [d[1] for d in dups]})
 
-    return {"before": len(cids), "after": len(cids) - merged_total,
-            "merged": merged_total, "candidates": len(cand), "groups": group_report}
+    return {
+        "before": len(cids),
+        "after": len(cids) - merged_total,
+        "merged": merged_total,
+        "candidates": len(cand),
+        "groups": group_report,
+    }
 
 
 # ★判别词硬闸(确定性, 在 LLM 判同之前): 挡 LLM 漏判的 price/income/supply/demand 等混淆.
 # 互斥家族: 两名各取该家族不同值 → 强制 DIFFERENT(price-inelastic vs income-inelastic).
 _DISC_FAMILIES = [
-    {"price", "income"}, {"supply", "demand"}, {"import", "export"},
-    {"short-run", "long-run"}, {"short run", "long run"}, {"nominal", "real"},
-    {"gross", "net"}, {"micro", "macro"}, {"buyer", "seller"}, {"employer", "employee"},
-    {"供给", "需求"}, {"价格", "收入"}, {"短期", "长期"}, {"进口", "出口"},
+    {"price", "income"},
+    {"supply", "demand"},
+    {"import", "export"},
+    {"short-run", "long-run"},
+    {"short run", "long run"},
+    {"nominal", "real"},
+    {"gross", "net"},
+    {"micro", "macro"},
+    {"buyer", "seller"},
+    {"employer", "employee"},
+    {"供给", "需求"},
+    {"价格", "收入"},
+    {"短期", "长期"},
+    {"进口", "出口"},
 ]
 # 区分性修饰词: 一名有、另一名没有 → 强制 DIFFERENT(perfectly inelastic ≠ inelastic; increasing OC ≠ OC).
 # (arc/point 故意不在内 → 它们是同一量的测量法变体, 交给 LLM 判可能 SAME)
 _DISC_QUALIFIERS = [
-    "increasing", "decreasing", "perfectly", "unitary", "cross",
-    "marginal", "inferior", "complement", "substitute", "递增", "递减", "边际",
+    "increasing",
+    "decreasing",
+    "perfectly",
+    "unitary",
+    "cross",
+    "marginal",
+    "inferior",
+    "complement",
+    "substitute",
+    "递增",
+    "递减",
+    "边际",
 ]
 
 
 def _forced_different(a: str, b: str) -> bool:
     """★判别词硬闸: 判别词矛盾则强制 DIFFERENT(不进 LLM, 确定性挡混淆)."""
     la, lb = (a or "").lower(), (b or "").lower()
-    for fam in _DISC_FAMILIES:                      # 互斥家族取不同值
+    for fam in _DISC_FAMILIES:  # 互斥家族取不同值
         va = {w for w in fam if w in la}
         vb = {w for w in fam if w in lb}
         if va and vb and va != vb:
             return True
-    for q in _DISC_QUALIFIERS:                       # 区分性修饰词一边有一边无
+    for q in _DISC_QUALIFIERS:  # 区分性修饰词一边有一边无
         if (q in la) != (q in lb):
             return True
     return False
 
 
-async def vectorize_and_normalize_global(conn, llm, *, name_filter: str | None = None,
-                                         screen_threshold: float = 0.85, concurrency: int = 5,
-                                         dry_run: bool = False) -> dict:
+async def vectorize_and_normalize_global(
+    conn,
+    llm,
+    *,
+    name_filter: str | None = None,
+    screen_threshold: float = 0.85,
+    concurrency: int = 5,
+    dry_run: bool = False,
+) -> dict:
     """★M0: 全局/跨书概念语义归一. 复用 per-book 同一套逻辑(向量筛候选 + LLM 判同 + 防错合闸),
     唯一区别 = 作用域从单本(WHERE substrate_id=$1)扩到全库(concept_onto 全集).
 
@@ -285,7 +348,9 @@ async def vectorize_and_normalize_global(conn, llm, *, name_filter: str | None =
     where = "WHERE name ILIKE $1" if name_filter else ""
     args = [name_filter] if name_filter else []
     rows = await conn.fetch(
-        f"SELECT concept_id, name, discipline, vector FROM aii.concept_onto {where} ORDER BY name", *args)
+        f"SELECT concept_id, name, discipline, vector FROM aii.concept_onto {where} ORDER BY name",
+        *args,
+    )
     cids = [r["concept_id"] for r in rows]
     names = [r["name"] for r in rows]
     if len(cids) < 2:
@@ -295,11 +360,16 @@ async def vectorize_and_normalize_global(conn, llm, *, name_filter: str | None =
     vecs = _encode(names)
     for cid, vec, r in zip(cids, vecs, rows):
         if r["vector"] is None:
-            await conn.execute("UPDATE aii.concept_onto SET vector=$1 WHERE concept_id=$2",
-                               vec.tolist(), cid)
+            await conn.execute(
+                "UPDATE aii.concept_onto SET vector=$1 WHERE concept_id=$2", vec.tolist(), cid
+            )
 
-    link_cnt = {r["concept_id"]: r["n"] for r in await conn.fetch(
-        "SELECT concept_id, count(*) n FROM aii.ku_concept_onto GROUP BY 1")}
+    link_cnt = {
+        r["concept_id"]: r["n"]
+        for r in await conn.fetch(
+            "SELECT concept_id, count(*) n FROM aii.ku_concept_onto GROUP BY 1"
+        )
+    }
     disciplines = [r["discipline"] for r in rows]
 
     def _forbid(i, j):  # ★防错合闸①: 同名不同学科禁合
@@ -318,7 +388,7 @@ async def vectorize_and_normalize_global(conn, llm, *, name_filter: str | None =
         i, j = int(iu[0][h]), int(iu[1][h])
         if _forbid(i, j):
             continue
-        if _forced_different(names[i], names[j]):    # ★判别词硬闸: 直接 DIFFERENT, 不进 LLM
+        if _forced_different(names[i], names[j]):  # ★判别词硬闸: 直接 DIFFERENT, 不进 LLM
             blocked += 1
             continue
         cand.append((i, j))
@@ -341,30 +411,50 @@ async def vectorize_and_normalize_global(conn, llm, *, name_filter: str | None =
                 await conn.execute(
                     """INSERT INTO aii.ku_concept_onto(ku_id, concept_id)
                        SELECT ku_id, $1 FROM aii.ku_concept_onto WHERE concept_id = ANY($2)
-                       ON CONFLICT DO NOTHING""", can_id, dup_ids)
+                       ON CONFLICT DO NOTHING""",
+                    can_id,
+                    dup_ids,
+                )
                 await conn.execute(
                     "UPDATE aii.concept_onto SET aliases = aliases || $1::jsonb WHERE concept_id = $2",
-                    json.dumps([d[1] for d in dups]), can_id)
+                    json.dumps([d[1] for d in dups]),
+                    can_id,
+                )
                 d = await conn.fetchrow(
                     """SELECT (array_agg(level) FILTER (WHERE level IS NOT NULL))[1] level,
                               (array_agg(discipline) FILTER (WHERE discipline IS NOT NULL))[1] discipline,
                               (array_agg(invariant_id) FILTER (WHERE invariant_id IS NOT NULL))[1] invariant_id
-                       FROM aii.concept_onto WHERE concept_id = ANY($1)""", dup_ids)
+                       FROM aii.concept_onto WHERE concept_id = ANY($1)""",
+                    dup_ids,
+                )
                 await conn.execute(
                     """UPDATE aii.concept_onto SET level=COALESCE(level,$2), discipline=COALESCE(discipline,$3),
                          invariant_id=COALESCE(invariant_id,$4) WHERE concept_id=$1""",
-                    can_id, d["level"], d["discipline"], d["invariant_id"])
-                await conn.execute("DELETE FROM aii.concept_onto WHERE concept_id = ANY($1)", dup_ids)
+                    can_id,
+                    d["level"],
+                    d["discipline"],
+                    d["invariant_id"],
+                )
+                await conn.execute(
+                    "DELETE FROM aii.concept_onto WHERE concept_id = ANY($1)", dup_ids
+                )
 
-    return {"before": len(cids), "after": len(cids) - (0 if dry_run else merged_total),
-            "would_merge" if dry_run else "merged": merged_total,
-            "candidates": len(cand), "hardgate_blocked": blocked, "dry_run": dry_run,
-            "groups": group_report}
+    return {
+        "before": len(cids),
+        "after": len(cids) - (0 if dry_run else merged_total),
+        "would_merge" if dry_run else "merged": merged_total,
+        "candidates": len(cand),
+        "hardgate_blocked": blocked,
+        "dry_run": dry_run,
+        "groups": group_report,
+    }
 
 
-_INV_JUDGE_SYS = ("You judge whether two stated invariants describe the SAME underlying intrinsic law "
-                  "(the same 道 / necessary tendency) — possibly across different domains or languages. "
-                  "You only say same=true when the intrinsic law is genuinely the same. Output valid JSON only.")
+_INV_JUDGE_SYS = (
+    "You judge whether two stated invariants describe the SAME underlying intrinsic law "
+    "(the same 道 / necessary tendency) — possibly across different domains or languages. "
+    "You only say same=true when the intrinsic law is genuinely the same. Output valid JSON only."
+)
 
 _INV_JUDGE_TMPL = """\
 Two invariants (each = a concept's intrinsic LAW / necessary tendency, NOT its definition):
@@ -386,7 +476,7 @@ def _parse_same(resp) -> bool:
     for blk in resp.get("content", []):
         if isinstance(blk, dict) and blk.get("type") == "text":
             txt += blk.get("text", "")
-    m = re.search(r'\{.*\}', txt, re.DOTALL)
+    m = re.search(r"\{.*\}", txt, re.DOTALL)
     if not m:
         return False
     try:
@@ -395,8 +485,9 @@ def _parse_same(resp) -> bool:
         return False
 
 
-async def _converge_core(conn, llm, *, candidate_threshold: float, concurrency: int,
-                         restrict_new) -> dict:
+async def _converge_core(
+    conn, llm, *, candidate_threshold: float, concurrency: int, restrict_new
+) -> dict:
     """本性同一收敛核心: ★向量低阈筛候选 + LLM 判同一 → 并查集合并(传递性自动处理).
 
     操作对象 = 统一本性表 aii.invariant (单本性 is_concept=false + 本性概念 is_concept=true 同表).
@@ -405,8 +496,7 @@ async def _converge_core(conn, llm, *, candidate_threshold: float, concurrency: 
     ★传递性: 新 X 同时同源于存量 A、B → 并查集 {A,X,B} 同分量 → 三者合并成一个(成员全合并, 概念改指).
     ★red line: 余弦只筛候选, LLM 判 yes 才合并, 绝不靠余弦直接判同源. 跨学科不隔离. <2 行 no-op.
     """
-    rows = await conn.fetch(
-        "SELECT id, statement, vector, member_concept_ids FROM aii.invariant")
+    rows = await conn.fetch("SELECT id, statement, vector, member_concept_ids FROM aii.invariant")
     n = len(rows)
     if n < 2:
         return {"invariants": n, "candidates": 0, "judged_same": 0, "merged": 0, "groups": []}
@@ -417,6 +507,7 @@ async def _converge_core(conn, llm, *, candidate_threshold: float, concurrency: 
     def _members(v):
         v = json.loads(v) if isinstance(v, str) else (v or [])
         return [str(x) for x in v]
+
     members = [_members(r["member_concept_ids"]) for r in rows]
     vecs = np.asarray([[float(x) for x in r["vector"]] for r in rows])
 
@@ -436,8 +527,11 @@ async def _converge_core(conn, llm, *, candidate_threshold: float, concurrency: 
         async with sem:
             prompt = _INV_JUDGE_TMPL.format(a=stmts[i] or "", b=stmts[j] or "")
             try:
-                resp = await llm(messages=[{"role": "user", "content": prompt}],
-                                 system=_INV_JUDGE_SYS, max_tokens=60)
+                resp = await llm(
+                    messages=[{"role": "user", "content": prompt}],
+                    system=_INV_JUDGE_SYS,
+                    max_tokens=60,
+                )
                 same = _parse_same(resp)
             except Exception:
                 same = False
@@ -451,11 +545,14 @@ async def _converge_core(conn, llm, *, candidate_threshold: float, concurrency: 
 
     def find(x):
         while parent[x] != x:
-            parent[x] = parent[parent[x]]; x = parent[x]
+            parent[x] = parent[parent[x]]
+            x = parent[x]
         return x
+
     for i, j in yes_pairs:
         parent[find(i)] = find(j)
     from collections import defaultdict
+
     comp = defaultdict(list)
     for i in range(n):
         comp[find(i)].append(i)
@@ -465,7 +562,7 @@ async def _converge_core(conn, llm, *, candidate_threshold: float, concurrency: 
     report = []
     async with conn.transaction():
         for grp in groups:
-            keep = max(grp, key=lambda i: len(members[i]))   # 成员最多的本性行作保留
+            keep = max(grp, key=lambda i: len(members[i]))  # 成员最多的本性行作保留
             drop = [i for i in grp if i != keep]
             keep_id = ids[keep]
             drop_ids = [ids[i] for i in drop]
@@ -477,38 +574,64 @@ async def _converge_core(conn, llm, *, candidate_threshold: float, concurrency: 
             # 被并行的概念 invariant_id 改指保留行 + keep 行更新 member/is_concept + 删被并行
             await conn.execute(
                 "UPDATE aii.concept_onto SET invariant_id=$1 WHERE invariant_id = ANY($2)",
-                keep_id, drop_ids)
+                keep_id,
+                drop_ids,
+            )
             await conn.execute(
                 "UPDATE aii.invariant SET member_concept_ids=$1::jsonb, is_concept=$2 WHERE id=$3",
-                json.dumps(all_members), len(all_members) >= 2, keep_id)
+                json.dumps(all_members),
+                len(all_members) >= 2,
+                keep_id,
+            )
             await conn.execute("DELETE FROM aii.invariant WHERE id = ANY($1)", drop_ids)
             merged += len(drop)
             cnames = await conn.fetch(
                 "SELECT name, discipline FROM aii.concept_onto WHERE concept_id = ANY($1)",
-                [int(m) for m in all_members])
-            report.append({"statement": stmts[keep][:55],
-                           "members": [f"{r['name']}({r['discipline']})" for r in cnames]})
+                [int(m) for m in all_members],
+            )
+            report.append(
+                {
+                    "statement": stmts[keep][:55],
+                    "members": [f"{r['name']}({r['discipline']})" for r in cnames],
+                }
+            )
 
-    return {"invariants": n, "candidates": len(candidates), "judged_same": len(yes_pairs),
-            "merged": merged, "groups": report}
+    return {
+        "invariants": n,
+        "candidates": len(candidates),
+        "judged_same": len(yes_pairs),
+        "merged": merged,
+        "groups": report,
+    }
 
 
-async def converge_invariants(conn, llm, *, candidate_threshold: float = 0.45,
-                              concurrency: int = 5) -> dict:
+async def converge_invariants(
+    conn, llm, *, candidate_threshold: float = 0.45, concurrency: int = 5
+) -> dict:
     """全量收敛 (首次建库 / 全量重算用): 所有 invariant 两两筛候选 O(N²)."""
-    return await _converge_core(conn, llm, candidate_threshold=candidate_threshold,
-                                concurrency=concurrency, restrict_new=None)
+    return await _converge_core(
+        conn,
+        llm,
+        candidate_threshold=candidate_threshold,
+        concurrency=concurrency,
+        restrict_new=None,
+    )
 
 
-async def converge_invariants_incremental(conn, llm, new_invariant_ids, *,
-                                          candidate_threshold: float = 0.45,
-                                          concurrency: int = 5) -> dict:
+async def converge_invariants_incremental(
+    conn, llm, new_invariant_ids, *, candidate_threshold: float = 0.45, concurrency: int = 5
+) -> dict:
     """增量收敛 (飞轮摄新书用): 只比 新×全量(含新), 跳过存量×存量(已converge), O(M×N).
     ★传递性由并查集处理: 新本性桥接两个存量本性 → 三者并查集同分量 → 合并成一个.
     new_invariant_ids: 本批新 invariant 的 id 列表.
     """
-    return await _converge_core(conn, llm, candidate_threshold=candidate_threshold,
-                                concurrency=concurrency, restrict_new=new_invariant_ids)
+    return await _converge_core(
+        conn,
+        llm,
+        candidate_threshold=candidate_threshold,
+        concurrency=concurrency,
+        restrict_new=new_invariant_ids,
+    )
 
 
 async def query_invariant_siblings(conn, concept_name: str) -> list[dict]:
@@ -519,14 +642,18 @@ async def query_invariant_siblings(conn, concept_name: str) -> list[dict]:
     例: query("边际成本") → [导数(math), 导函数(math)] (本性同一: 瞬时变化率, 跨学科).
     返回 [{"name":..., "discipline":...}], 无同一概念则空列表.
     """
-    return [dict(r) for r in await conn.fetch(
-        """SELECT c2.name, c2.discipline
+    return [
+        dict(r)
+        for r in await conn.fetch(
+            """SELECT c2.name, c2.discipline
            FROM aii.concept_onto c1
            JOIN aii.concept_onto c2 ON c1.invariant_id = c2.invariant_id
            WHERE c1.name = $1 AND c2.name <> c1.name
                  AND c1.invariant_id IS NOT NULL
            ORDER BY c2.discipline, c2.name""",
-        concept_name)]
+            concept_name,
+        )
+    ]
 
 
 # ─────────────────────────────────────────────────────────────────────────────

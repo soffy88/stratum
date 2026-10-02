@@ -73,14 +73,22 @@ def is_corrupted(text: str) -> tuple[bool, dict]:
     # 也不含表格打碎、但逐条抽查确认同样是乱码("Acategoryissaidtobelocallysmall"
     # 这类连写), 说明前两个信号在 KU 粒度(而非整书粒度)下不足以覆盖同一本
     # 坏书的所有段落——三信号独立判定, 不互相依赖.
-    bad = (
-        omitted_ratio > 0.01
-        or sup_ratio > 0.05
-        or replacement_ratio > 0.05
-        or cid_ratio > 0.005
-        or table_shred_ratio > 0.05
-        or long_run_ratio > 0.003
-    )
+    # ★2026-08-29 修复单信号假阳性: 2026-07-25 阈值是为当时样本书定, 但 markitdown 转
+    # 中文数学教材(斯图尔特微积分/托马斯微积分)的版权页+排版表会产生大量 2-3 字段的
+    # "| 内容 | 内容 |" 表格碎片(其实是真实表格, 不是转换损坏), 单看 table_shred_ratio
+    # 0.06 会被误判为乱码→quarantine→后续飞轮重转→同误判, 死循环。新逻辑: 单信号
+    # 阈值放宽 0.05→0.10, 但要求"≥2 个独立信号同时超阈"才判定坏, 兼顾萨金特一案
+    # (omitted 极高+sup+replacement 一起出) 的检测能力, 避免单信号假阳性。
+    signals = [
+        omitted_ratio > 0.01,
+        sup_ratio > 0.10,
+        replacement_ratio > 0.10,
+        cid_ratio > 0.005,
+        table_shred_ratio > 0.10,
+        long_run_ratio > 0.003,
+    ]
+    n_bad_signals = sum(signals)
+    bad = n_bad_signals >= 2  # 至少 2 个独立信号同时超阈, 才判定坏
     return bad, sig
 
 

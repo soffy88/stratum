@@ -4,6 +4,7 @@ Pipeline per subscription:
   oprim.arxiv_search → diff vs processed_ids → download PDF (oprim.http_download_file) →
   process_inbox_substrate(medium_hint=pdf) → md_export → mark_processed
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -20,6 +21,7 @@ ARXIV_CHECK_INTERVAL = 6 * 3600  # 6小时
 
 
 # ── Ingest one paper ──────────────────────────────────────────────────────────
+
 
 async def _ingest_paper(paper, user_id_hash: str, sub_id: str) -> str | None:
     """Download PDF and ingest via process_inbox_substrate. Returns substrate_id or None."""
@@ -60,7 +62,9 @@ async def _ingest_paper(paper, user_id_hash: str, sub_id: str) -> str | None:
                 output_dir=pdf_path.parent,
             )
         except Exception as exc:
-            log.error("arxiv_ingest: process_inbox_substrate failed arxiv=%s: %s", paper.arxiv_id, exc)
+            log.error(
+                "arxiv_ingest: process_inbox_substrate failed arxiv=%s: %s", paper.arxiv_id, exc
+            )
             return None
 
         if result.get("status") == "failed":
@@ -72,6 +76,7 @@ async def _ingest_paper(paper, user_id_hash: str, sub_id: str) -> str | None:
             return None
 
         import re
+
         m = re.search(r"[0-9A-Z]{26}", str(sid_raw))
         if not m:
             return None
@@ -79,6 +84,7 @@ async def _ingest_paper(paper, user_id_hash: str, sub_id: str) -> str | None:
 
         # Patch title + arxiv metadata into substrates
         import json
+
         try:
             with get_conn() as conn:
                 row = conn.execute("SELECT meta_json FROM substrates WHERE id=?", (sid,)).fetchone()
@@ -98,11 +104,13 @@ async def _ingest_paper(paper, user_id_hash: str, sub_id: str) -> str | None:
         # Quality gate then export
         try:
             from stratum.lib.quality.ingest_quality_gate import run_quality_gate
+
             run_quality_gate(sid)
         except Exception as exc:
             log.warning("arxiv_ingest: quality gate failed sid=%s: %s", sid, exc)
         try:
             from stratum.services.md_export_service import export_one
+
             export_one(sid)
         except Exception as exc:
             log.warning("arxiv_ingest: md_export failed sid=%s: %s", sid, exc)
@@ -111,6 +119,7 @@ async def _ingest_paper(paper, user_id_hash: str, sub_id: str) -> str | None:
 
 
 # ── Per-subscription scan ─────────────────────────────────────────────────────
+
 
 async def _check_one_subscription(sub_id: str, user_id_hash: str, sub_cfg: dict):
     categories = sub_cfg.get("categories") or []
@@ -130,6 +139,7 @@ async def _check_one_subscription(sub_id: str, user_id_hash: str, sub_cfg: dict)
 
     try:
         from oprim import arxiv_search
+
         papers = await asyncio.to_thread(
             arxiv_search,
             categories=categories,
@@ -208,6 +218,7 @@ async def arxiv_watcher_loop():
                     "after_date, max_results FROM arxiv_subscriptions WHERE status='active'"
                 ).fetchall()
             import json
+
             for row in subs:
                 sub_id, user_id_hash = row[0], row[1]
                 sub_cfg = {

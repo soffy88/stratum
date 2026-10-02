@@ -28,7 +28,9 @@ def main():
     parser = argparse.ArgumentParser(description="Backfill L0/L1 layers for substrates")
     parser.add_argument("--limit", type=int, default=50, help="Max substrates to process")
     parser.add_argument("--dry-run", action="store_true", help="Only show what would be processed")
-    parser.add_argument("--delay", type=float, default=2.0, help="Delay between LLM calls (seconds)")
+    parser.add_argument(
+        "--delay", type=float, default=2.0, help="Delay between LLM calls (seconds)"
+    )
     args = parser.parse_args()
 
     from stratum.db import get_conn
@@ -47,7 +49,7 @@ def main():
         return
 
     if args.dry_run:
-        for sid in pending_ids[:args.limit]:
+        for sid in pending_ids[: args.limit]:
             with get_conn() as conn:
                 row = conn.execute(
                     "SELECT title, source_path FROM substrates WHERE id = ?", (sid,)
@@ -59,7 +61,7 @@ def main():
     processed = 0
     failed = 0
 
-    for sid in pending_ids[:args.limit]:
+    for sid in pending_ids[: args.limit]:
         with get_conn() as conn:
             row = conn.execute(
                 "SELECT title, source_path FROM substrates WHERE id = ?", (sid,)
@@ -90,9 +92,14 @@ def main():
             layers = generate_substrate_layers(sid, title=title, content=content)
             l0_len = len(layers.get("L0", ""))
             l1_len = len(layers.get("L1", ""))
-            log.info("[%d/%d] %s: L0=%d chars, L1=%d chars",
-                     processed + 1, min(args.limit, len(pending_ids)),
-                     title[:50], l0_len, l1_len)
+            log.info(
+                "[%d/%d] %s: L0=%d chars, L1=%d chars",
+                processed + 1,
+                min(args.limit, len(pending_ids)),
+                title[:50],
+                l0_len,
+                l1_len,
+            )
             processed += 1
         except Exception as exc:
             log.error("Failed to generate layers for %s: %s", sid, exc)

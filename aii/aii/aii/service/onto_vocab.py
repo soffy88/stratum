@@ -7,26 +7,55 @@
   替代主库默认的 "explanatory". 其余三套与数据设计(AII-DATA-MODEL-001)一致.
 """
 
-VALID_KNOWLEDGE_TYPES = frozenset({
-    "conceptual",    # 概念性(是什么/本质/原理)
-    "rationale",     # 释因性(为何如此/机制/所以然) —— 原 explanatory
-    "factual",       # 事实性(可验证事实)
-    "metacognitive", # 元认知(怎么学/反思)
-    "positional",    # 立场性(无真值/相对立场)
-    "procedural",    # 程序性(怎么做/步骤)
-})
+VALID_KNOWLEDGE_TYPES = frozenset(
+    {
+        "conceptual",  # 概念性(是什么/本质/原理)
+        "rationale",  # 释因性(为何如此/机制/所以然) —— 原 explanatory
+        "factual",  # 事实性(可验证事实)
+        "metacognitive",  # 元认知(怎么学/反思)
+        "positional",  # 立场性(无真值/相对立场)
+        "procedural",  # 程序性(怎么做/步骤)
+    }
+)
 
-VALID_SUB_TYPES = frozenset({
-    "classification", "conditional", "principle", "self_knowledge", "skill",
-    "strategic", "task_knowledge", "technique", "theory",
-})
+VALID_SUB_TYPES = frozenset(
+    {
+        "classification",
+        "conditional",
+        "principle",
+        "self_knowledge",
+        "skill",
+        "strategic",
+        "task_knowledge",
+        "technique",
+        "theory",
+    }
+)
 
-VALID_RELATION_TYPES = frozenset({
-    "causes", "contradicts", "contrasts_with", "explains", "opposes",
-    "prerequisite_of", "same_as", "special_case_of", "subsumes", "supported_by",
-})
+VALID_RELATION_TYPES = frozenset(
+    {
+        "causes",
+        "contradicts",
+        "contrasts_with",
+        "explains",
+        "opposes",
+        "prerequisite_of",
+        "same_as",
+        "special_case_of",
+        "subsumes",
+        "supported_by",
+    }
+)
 
-VALID_GRADES = frozenset({
-    "contradicted", "high", "low", "moderate", "pending", "refuted",
-    "unverified", "verified",
-})
+VALID_GRADES = frozenset(
+    {
+        "contradicted",
+        "high",
+        "low",
+        "moderate",
+        "pending",
+        "refuted",
+        "unverified",
+        "verified",
+    }
+)

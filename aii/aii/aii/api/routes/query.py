@@ -26,20 +26,24 @@ async def query_ku(
         qv = vector_encode(texts=[query], provider="default")[0]
 
         # 2. Search DB (Ensure plain Python floats for asyncpg/pgvector)
-        results = await backend.search_ku_by_vector([float(x) for x in qv], limit=top_k, knowledge_type=kt)
-        
+        results = await backend.search_ku_by_vector(
+            [float(x) for x in qv], limit=top_k, knowledge_type=kt
+        )
+
         # 3. Format output
         formatted = []
         for r in results:
-            formatted.append({
-                "ku_id": str(r["ku_id"]),
-                "natural_text": r.get("natural_text"),
-                "natural_text_zh": r.get("natural_text_zh"),
-                "knowledge_type": r.get("knowledge_type"),
-                "grade": r.get("grade"),
-                "score": 1.0 - r.get("distance", 1.0) # Similarity score
-            })
-            
+            formatted.append(
+                {
+                    "ku_id": str(r["ku_id"]),
+                    "natural_text": r.get("natural_text"),
+                    "natural_text_zh": r.get("natural_text_zh"),
+                    "knowledge_type": r.get("knowledge_type"),
+                    "grade": r.get("grade"),
+                    "score": 1.0 - r.get("distance", 1.0),  # Similarity score
+                }
+            )
+
         return success_response(formatted)
     except Exception as e:
         return error_response("QUERY_ERROR", str(e))

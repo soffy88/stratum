@@ -27,7 +27,13 @@ from stratum.services.retrieval_engine import (
 )
 from stratum.services.mix_retrieval import _kg_entity_expansion
 
-DB = dict(host="127.0.0.1", port=5435, user="aii", password="***REMOVED***", dbname="aii_kg")
+DB = dict(
+    host=os.environ.get("STRATUM_PG_HOST", "127.0.0.1"),
+    port=int(os.environ.get("STRATUM_PG_PORT", "5435")),
+    user=os.environ.get("STRATUM_PG_USER", "aii"),
+    password=os.environ.get("STRATUM_PG_PASSWORD", "***REMOVED***"),
+    dbname=os.environ.get("STRATUM_PG_DB", "aii_kg"),
+)
 HASHED_OWNER = "56d6bc01edc35765"
 RAW_OWNER = "soffy88@gmail.com"
 
@@ -604,7 +610,7 @@ def run(gold_path: Path, output: Path, limit: int | None) -> int:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gold", type=Path, required=True)
+    parser.add_argument("--gold", type=Path, default=Path("gold_retrieval_verified_v1.json"))
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--limit", type=int)
     args = parser.parse_args()

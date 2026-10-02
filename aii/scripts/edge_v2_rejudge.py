@@ -1,13 +1,19 @@
 """v2 验证: 收紧 judge 重判 ch3 现有 643 边(judge 只能剪不能加 → v2⊆643), 看 over-link 降否+不误杀."""
-import asyncio, os, re, json
+
+import asyncio
+import os
+import re
+import json
 from pathlib import Path
-from collections import Counter, defaultdict
+from collections import Counter
 from dotenv import load_dotenv
+
 load_dotenv(Path(__file__).resolve().parents[1] / "aii" / ".env", override=True)
 import asyncpg
 from aii.api._provider import register_providers
 from aii.service.chapter_edges import judge_pairs_v2, topk_cap
 from obase import ProviderRegistry
+
 SUB = "microecon_en_ch3"
 SC = "/tmp/claude-1000/-home-soffy-projects-AII/bebc9349-7f09-4086-abef-c4c9a94f4c0c/scratchpad"
 
@@ -25,7 +31,8 @@ async def main():
     await c.close()
     texts = {}
     for e in edges:
-        texts[e["s"]] = e["sa"]; texts[e["d"]] = e["sb"]
+        texts[e["s"]] = e["sa"]
+        texts[e["d"]] = e["sb"]
     pairs = [(e["s"], e["d"]) for e in edges]
     orig_rel = {(e["s"], e["d"]): e["rel"] for e in edges}
     print(f"re-judging {len(pairs)} existing edges with STRICT v2 judge...", flush=True)
@@ -36,28 +43,53 @@ async def main():
 
     kept = [e for e in edges if (e["s"], e["d"]) in surv_either]
     demoted = [e for e in edges if (e["s"], e["d"]) not in surv_either]
-    print(f"\n=== v2 strict re-judge: {len(edges)} → kept {len(kept)} (demoted-to-none {len(demoted)}) ===")
-    print(f"  density: {len(edges)/101:.1f}/KU → {len(kept)/101:.1f}/KU")
+    print(
+        f"\n=== v2 strict re-judge: {len(edges)} → kept {len(kept)} (demoted-to-none {len(demoted)}) ==="
+    )
+    print(f"  density: {len(edges) / 101:.1f}/KU → {len(kept) / 101:.1f}/KU")
     print(f"  kept by relation: {dict(Counter(e['rel'] for e in kept))}")
     print(f"  demoted by relation: {dict(Counter(e['rel'] for e in demoted))}")
 
     # ★no-误杀 check: the real edges from last turn (contrasts + 'because' causal explains)
     contrasts = [e for e in edges if e["rel"] == "contrasts_with"]
     contrasts_kept = [e for e in contrasts if (e["s"], e["d"]) in surv_either]
-    causal = [e for e in edges if e["rel"] == "explains" and re.search(r'\bbecause\b', (e["sa"] or "") + (e["sb"] or ""), re.I)]
+    causal = [
+        e
+        for e in edges
+        if e["rel"] == "explains"
+        and re.search(r"\bbecause\b", (e["sa"] or "") + (e["sb"] or ""), re.I)
+    ]
     causal_kept = [e for e in causal if (e["s"], e["d"]) in surv_either]
-    print(f"\n=== ★不误杀检验 ===")
-    print(f"  contrasts_with: {len(contrasts)} → kept {len(contrasts_kept)} ({100*len(contrasts_kept)/max(len(contrasts),1):.0f}%)")
-    print(f"  'because'-causal explains: {len(causal)} → kept {len(causal_kept)} ({100*len(causal_kept)/max(len(causal),1):.0f}%)")
+    print("\n=== ★不误杀检验 ===")
+    print(
+        f"  contrasts_with: {len(contrasts)} → kept {len(contrasts_kept)} ({100 * len(contrasts_kept) / max(len(contrasts), 1):.0f}%)"
+    )
+    print(
+        f"  'because'-causal explains: {len(causal)} → kept {len(causal_kept)} ({100 * len(causal_kept) / max(len(causal), 1):.0f}%)"
+    )
 
     # top-K cap on survivors
-    strength_of = {(min(e["s"], e["d"]), max(e["s"], e["d"])): e["shared"] + e["sim"] for e in edges}
+    strength_of = {
+        (min(e["s"], e["d"]), max(e["s"], e["d"])): e["shared"] + e["sim"] for e in edges
+    }
     capped = topk_cap([(e["s"], e["d"], e["rel"]) for e in kept], strength_of, k=4)
-    print(f"\n=== top-K(4) cap: {len(kept)} → {len(capped)} edges, density {len(capped)/101:.1f}/KU ===")
+    print(
+        f"\n=== top-K(4) cap: {len(kept)} → {len(capped)} edges, density {len(capped) / 101:.1f}/KU ==="
+    )
 
     # save kept sample for judgment
-    sample = [{"rel": e["rel"], "a": (e["sa"] or "")[:90], "b": (e["sb"] or "")[:90], "strength": e["strength"]} for e in kept[:30]]
-    Path(SC + "/v2_kept.json").write_text(json.dumps(sample, ensure_ascii=False, indent=2), encoding="utf-8")
+    sample = [
+        {
+            "rel": e["rel"],
+            "a": (e["sa"] or "")[:90],
+            "b": (e["sb"] or "")[:90],
+            "strength": e["strength"],
+        }
+        for e in kept[:30]
+    ]
+    Path(SC + "/v2_kept.json").write_text(
+        json.dumps(sample, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     print(f"saved {len(sample)} kept-edge samples to v2_kept.json", flush=True)
 
 

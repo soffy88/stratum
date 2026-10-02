@@ -6,7 +6,7 @@ export function cleanTitle(raw: string | null | undefined): string {
   if (!raw) return '';
   let s = raw.replace(ZLIB_RE, '').trim();
   // 删末尾人名/机构括号，保护版本号 / 上下册
-  s = s.replace(/\s+[\(（]([^)）]{1,40})[\)）]\s*$/, (_m, inner: string) => {
+  s = s.replace(/\s+[(（]([^)）]{1,40})[)）]\s*$/, (_m, inner: string) => {
     if (/[0-9]|第.{1,3}[版卷册]|^[上下]册?$|《|》/.test(inner)) return _m;
     return '';
   });

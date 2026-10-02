@@ -142,6 +142,21 @@ CREATE TABLE IF NOT EXISTS feedback (
     page_url VARCHAR,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS book_reading_run (
+    id VARCHAR PRIMARY KEY, user_id VARCHAR NOT NULL, source_id VARCHAR NOT NULL,
+    source_version VARCHAR, status VARCHAR NOT NULL, current_pass INTEGER DEFAULT 1,
+    parser_version VARCHAR, reader_version VARCHAR, extractor_version VARCHAR,
+    verifier_version VARCHAR, coverage_json JSON DEFAULT '{}', open_gaps_json JSON DEFAULT '[]',
+    started_at TIMESTAMP, completed_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS reading_ledger (
+    id VARCHAR PRIMARY KEY, run_id VARCHAR NOT NULL, item_type VARCHAR NOT NULL,
+    item_identifier VARCHAR NOT NULL, status VARCHAR NOT NULL, locator_json JSON DEFAULT '{}',
+    page_number INTEGER, expected BOOLEAN DEFAULT TRUE, trace_json JSON DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(run_id, item_type, item_identifier)
+);
 """
 
 
@@ -166,3 +181,11 @@ def db():
     conn.execute(SCHEMA_SQL)
     yield conn
     conn.close()
+
+
+@pytest.fixture
+def canonical_source_writer(db):
+    """Use the production ownership-enforced Source writer in test fixtures."""
+    from stratum.services.canonical_source_writer import CanonicalSourceWriter
+
+    return CanonicalSourceWriter(db)

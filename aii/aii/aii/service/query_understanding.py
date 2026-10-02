@@ -4,6 +4,7 @@
 - route_intent: LLM 分类 global/grounded/chitchat; 失败 → 关键词兜底(保旧行为, 不崩).
 - hyde_embed: 低召回时用 LLM 生成假设答案再编码检索(HyDE), 缩小 query-doc 语义差.
 """
+
 from __future__ import annotations
 import json
 import logging
@@ -41,9 +42,15 @@ async def route_intent(llm, message: str) -> str:
     """LLM 路由 → global/grounded/chitchat. 失败回退关键词路由."""
     try:
         r = await llm(
-            messages=[{"role": "user", "content":
-                f'Query: "{message}"\nClassify. JSON: {{"intent":"global|grounded|chitchat"}}'}],
-            system=_ROUTE_SYS, max_tokens=60)
+            messages=[
+                {
+                    "role": "user",
+                    "content": f'Query: "{message}"\nClassify. JSON: {{"intent":"global|grounded|chitchat"}}',
+                }
+            ],
+            system=_ROUTE_SYS,
+            max_tokens=60,
+        )
         t = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
         m = re.search(r"\{.*\}", t, re.DOTALL)
         intent = json.loads(m.group(0)).get("intent", "") if m else ""
@@ -58,13 +65,21 @@ async def hyde_embed(llm, embed_fn, message: str) -> list[float] | None:
     """HyDE: 让 LLM 写一段假设答案, 编码它(而非原 query)做检索 — 缩小问答语义差.
     用于低召回回退. 失败返回 None(调用方退回普通 query 编码)."""
     import numpy as np
+
     try:
         r = await llm(
-            messages=[{"role": "user", "content":
-                f"Write a concise factual passage (2-3 sentences) that would directly answer: {message}"}],
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Write a concise factual passage (2-3 sentences) that would directly answer: {message}",
+                }
+            ],
             system="You write a hypothetical answer passage for retrieval. Output the passage only.",
-            max_tokens=200)
-        hyp = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text").strip()
+            max_tokens=200,
+        )
+        hyp = "".join(
+            b.get("text", "") for b in r.get("content", []) if b.get("type") == "text"
+        ).strip()
         if len(hyp) < 15:
             return None
         arr = np.array(embed_fn([hyp]), dtype="float32")[0]

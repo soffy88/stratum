@@ -13,6 +13,7 @@
 为什么砍掉 LLM 判: 共享概念对 O(热概念²) 爆炸(整本微观 22.7 万对), 每对一次 LLM 判=不可行;
 而"共现"本就不需要 LLM 判真关系 —— 它不是边, 只是共含概念的可计算联系. 几秒算完全量.
 """
+
 from __future__ import annotations
 
 _DDL = """
@@ -63,7 +64,9 @@ async def compute_cooccurrence(conn, *, substrate_id: str, sim_threshold: float 
     await conn.execute(_COMPUTE, substrate_id, sim_threshold)
     dist = await conn.fetch(
         "SELECT strength, count(*) n FROM aii.ku_cooccurrence WHERE substrate_id=$1 GROUP BY 1",
-        substrate_id)
+        substrate_id,
+    )
     total = await conn.fetchval(
-        "SELECT count(*) FROM aii.ku_cooccurrence WHERE substrate_id=$1", substrate_id)
+        "SELECT count(*) FROM aii.ku_cooccurrence WHERE substrate_id=$1", substrate_id
+    )
     return {"total": total, "by_strength": {r["strength"]: r["n"] for r in dist}}

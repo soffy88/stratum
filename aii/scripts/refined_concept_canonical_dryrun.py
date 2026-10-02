@@ -20,7 +20,12 @@ AII-REFINED-REPO-MASTER-001 §6 "真正同一才合一" 四道关。
   示例: 数学  --books advmath_tongji_full,math_en_d8fa481c5f,math_zh_7f821e3fba,math_zh_a55c5ec7ac,openstax_calculus_v1,math_zh_edf801aadc --tag math --cross-book
        econzh --books econ_zh_9ea2a19eac,econ_zh_131d7dbd3b,econ_zh_df1f5d7fef,econ_zh_621c6b96b0 --tag econzh --cross-book
 """
-import asyncio, os, re, json, sys
+
+import asyncio
+import os
+import re
+import json
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -30,8 +35,8 @@ import asyncpg
 from pgvector.asyncpg import register_vector
 
 sys.path.insert(0, str(ROOT / "scripts"))
-from refined_dedup_dryrun import _forced_different      # 判别词硬闸(price/income, consumer/producer...)
-from refined_ingest_dryrun import _build_nim_pool       # 4 NIM key 池
+from refined_dedup_dryrun import _forced_different  # 判别词硬闸(price/income, consumer/producer...)
+from refined_ingest_dryrun import _build_nim_pool  # 4 NIM key 池
 
 # 默认 econ 三书(micro_clean 已清根删除, 移出默认); 可 --books 覆盖。
 DEFAULT_BOOKS = ["mankiw_principles_econ_10e", "microecon_en_full_v2"]
@@ -50,29 +55,35 @@ JUDGE_SYS = (
     "(5)机会成本 vs 经济成本 → DIFFERENT(近义非同一)。"
     "(6)price floor vs price ceiling → DIFFERENT(方向相反)。"
     "只有两概念指【同一个】东西(判别维度全同、非上下位、非互斥)才 SAME; 像/相关/上下位/互斥/反义 → DIFFERENT; 模糊→CANDIDATE。"
-    "只输出 JSON: {\"verdict\":\"SAME|DIFFERENT|CANDIDATE\",\"why\":\"≤20字\"}。"
+    '只输出 JSON: {"verdict":"SAME|DIFFERENT|CANDIDATE","why":"≤20字"}。'
 )
 
 
 # ---- 概念 + 代表KU上下文 ----
 async def _concepts(conn, books):
-    rows = await conn.fetch("""
+    rows = await conn.fetch(
+        """
         SELECT DISTINCT co.concept_id, co.name, co.name_zh, co.discipline, co.vector
         FROM aii.concept_onto co
         JOIN aii.ku_concept_onto kc USING(concept_id)
         JOIN aii.ku_onto k USING(ku_id)
         WHERE k.substrate_id = ANY($1) AND co.vector IS NOT NULL
-    """, books)
+    """,
+        books,
+    )
     return rows
 
 
 async def _example(conn, cid, cache):
     if cid in cache:
         return cache[cid]
-    r = await conn.fetchrow("""
+    r = await conn.fetchrow(
+        """
         SELECT k.title, left(k.natural_text, 300) tx
         FROM aii.ku_concept_onto kc JOIN aii.ku_onto k USING(ku_id)
-        WHERE kc.concept_id=$1 ORDER BY length(k.natural_text) DESC LIMIT 1""", cid)
+        WHERE kc.concept_id=$1 ORDER BY length(k.natural_text) DESC LIMIT 1""",
+        cid,
+    )
     cache[cid] = (r["title"], r["tx"]) if r else ("", "")
     return cache[cid]
 
@@ -80,7 +91,8 @@ async def _example(conn, cid, cache):
 async def _pairs(conn, books, sim, limit, cross_book):
     # cross_book: 去掉 discipline 相等约束(同域书集跨书归一); 否则只配同 discipline。
     disc = "" if cross_book else "AND a.discipline = b.discipline"
-    rows = await conn.fetch(f"""
+    rows = await conn.fetch(
+        f"""
         WITH c AS (
           SELECT DISTINCT co.concept_id, co.name, co.name_zh, co.discipline, co.vector
           FROM aii.concept_onto co
@@ -93,12 +105,20 @@ async def _pairs(conn, books, sim, limit, cross_book):
         FROM c a JOIN c b ON a.concept_id < b.concept_id {disc}
         WHERE (1-(a.vector<=>b.vector)) >= $2
         ORDER BY sim DESC LIMIT $3
-    """, books, sim, limit)
+    """,
+        books,
+        sim,
+        limit,
+    )
     return [dict(r) for r in rows]
 
 
 def _ctx(name, name_zh, disc, ex):
-    return f"概念:{name}" + (f" / {name_zh}" if name_zh else "") + f" [{disc}]\n代表知识: {ex[0]} — {ex[1]}"
+    return (
+        f"概念:{name}"
+        + (f" / {name_zh}" if name_zh else "")
+        + f" [{disc}]\n代表知识: {ex[0]} — {ex[1]}"
+    )
 
 
 async def _vote(llm, sem, p, ca, cb):
@@ -106,16 +126,28 @@ async def _vote(llm, sem, p, ca, cb):
     b = _ctx(p["bn"], p["bnz"], p["bd"], cb)
     async with sem:
         try:
-            r = await asyncio.wait_for(llm(messages=[{"role": "user", "content":
-                f"概念A:\n{a}\n\n概念B:\n{b}\n\n它们是否真正同一(本体级)? 只输出JSON。"}],
-                system=JUDGE_SYS, max_tokens=80), timeout=120)
+            r = await asyncio.wait_for(
+                llm(
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": f"概念A:\n{a}\n\n概念B:\n{b}\n\n它们是否真正同一(本体级)? 只输出JSON。",
+                        }
+                    ],
+                    system=JUDGE_SYS,
+                    max_tokens=80,
+                ),
+                timeout=120,
+            )
             t = "".join(x.get("text", "") for x in r.get("content", []) if x.get("type") == "text")
             m = re.search(r"\{.*\}", t, re.DOTALL)
             if not m:
                 return "CANDIDATE", "无JSON"
             j = json.loads(m.group(0))
             v = (j.get("verdict") or "CANDIDATE").upper()
-            return (v if v in ("SAME", "DIFFERENT", "CANDIDATE") else "CANDIDATE"), (j.get("why") or "")[:30]
+            return (v if v in ("SAME", "DIFFERENT", "CANDIDATE") else "CANDIDATE"), (
+                j.get("why") or ""
+            )[:30]
         except Exception as e:
             return "CANDIDATE", f"err:{type(e).__name__}"
 
@@ -138,22 +170,28 @@ async def _judge(pool, sem, conn, cache, idx, p):
 
 
 def _s(p, side):
-    return f"{p[side+'n']}" + (f"/{p[side+'nz']}" if p[side+'nz'] else "")
+    return f"{p[side + 'n']}" + (f"/{p[side + 'nz']}" if p[side + "nz"] else "")
 
 
 async def main():
-    def arg(f, d): return sys.argv[sys.argv.index(f) + 1] if f in sys.argv else d
+    def arg(f, d):
+        return sys.argv[sys.argv.index(f) + 1] if f in sys.argv else d
+
     sim = float(arg("--sim", "0.80"))
     mx = int(arg("--max", "150"))
     books = [b for b in arg("--books", ",".join(DEFAULT_BOOKS)).split(",") if b]
     tag = arg("--tag", "econ")
     cross_book = "--cross-book" in sys.argv
 
-    conn = await asyncpg.connect(A_DSN); await register_vector(conn)
+    conn = await asyncpg.connect(A_DSN)
+    await register_vector(conn)
     cands = await _pairs(conn, books, sim, mx, cross_book)
     print(f"== B仓步骤4 M0 concept canonical dry_run (tag={tag}) ==", flush=True)
-    print(f"书={books}  {'跨书(无discipline约束)' if cross_book else '同discipline'}  "
-          f"sim≥{sim}  候选对={len(cands)}  (只算+打印, 不落库)\n", flush=True)
+    print(
+        f"书={books}  {'跨书(无discipline约束)' if cross_book else '同discipline'}  "
+        f"sim≥{sim}  候选对={len(cands)}  (只算+打印, 不落库)\n",
+        flush=True,
+    )
 
     pool = _build_nim_pool()
     sem = asyncio.Semaphore(len(pool))
@@ -161,33 +199,57 @@ async def main():
     # 单连接不可并发查 → 先串行预取所有候选概念的代表KU填cache, 之后 _judge 只读cache
     for cid in {p["ai"] for p in cands} | {p["bi"] for p in cands}:
         await _example(conn, cid, cache)
-    judged = await asyncio.gather(*(_judge(pool, sem, conn, cache, i, p) for i, p in enumerate(cands)))
+    judged = await asyncio.gather(
+        *(_judge(pool, sem, conn, cache, i, p) for i, p in enumerate(cands))
+    )
 
     same = [j for j in judged if j["verdict"] == "SAME"]
     diff = [j for j in judged if j["verdict"] == "DIFFERENT"]
     cand = [j for j in judged if j["verdict"] == "CANDIDATE"]
     gated = [j for j in judged if j.get("gate")]
-    print(f"裁决: SAME={len(same)}(合canonical)  DIFFERENT={len(diff)}(硬闸{len(gated)})  CANDIDATE={len(cand)}(不自动合)\n")
+    print(
+        f"裁决: SAME={len(same)}(合canonical)  DIFFERENT={len(diff)}(硬闸{len(gated)})  CANDIDATE={len(cand)}(不自动合)\n"
+    )
 
     print("── SAME (会归一为同一 canonical 概念) ──────────────────")
     for j in sorted(same, key=lambda x: -x["sim"]):
-        print(f"  {j['sim']:.3f} [{j['ad'][:4]}] {_s(j,'a')[:34]}  ≡  {_s(j,'b')[:34]}  ({j['why']})")
+        print(
+            f"  {j['sim']:.3f} [{j['ad'][:4]}] {_s(j, 'a')[:34]}  ≡  {_s(j, 'b')[:34]}  ({j['why']})"
+        )
     print("\n── CANDIDATE (命门: 高风险不自动合, 人工裁) ─────────────")
     for j in sorted(cand, key=lambda x: -x["sim"]):
-        print(f"  {j['sim']:.3f} [{j['ad'][:4]}] {_s(j,'a')[:34]}  ?  {_s(j,'b')[:34]}  ({j['why']})")
+        print(
+            f"  {j['sim']:.3f} [{j['ad'][:4]}] {_s(j, 'a')[:34]}  ?  {_s(j, 'b')[:34]}  ({j['why']})"
+        )
     print("\n── DIFFERENT (应被挡的假朋友) ─ 抽样前20 ────────────────")
     for j in sorted(diff, key=lambda x: -x["sim"])[:20]:
         g = "硬闸" if j.get("gate") else "LLM"
-        print(f"  {j['sim']:.3f} [{j['ad'][:4]}] {_s(j,'a')[:30]}  ≠  {_s(j,'b')[:30]}  ({g}:{j['why']})")
+        print(
+            f"  {j['sim']:.3f} [{j['ad'][:4]}] {_s(j, 'a')[:30]}  ≠  {_s(j, 'b')[:30]}  ({g}:{j['why']})"
+        )
 
     # 持久化裁决(带concept_id, 供M0落库确定性应用; 不落库本身)
-    dump = [{"ai": j["ai"], "bi": j["bi"], "an": j["an"], "bn": j["bn"],
-             "ad": j["ad"], "sim": float(j["sim"]), "verdict": j["verdict"],
-             "why": j.get("why", ""), "gate": j.get("gate", False)} for j in judged]
+    dump = [
+        {
+            "ai": j["ai"],
+            "bi": j["bi"],
+            "an": j["an"],
+            "bn": j["bn"],
+            "ad": j["ad"],
+            "sim": float(j["sim"]),
+            "verdict": j["verdict"],
+            "why": j.get("why", ""),
+            "gate": j.get("gate", False),
+        }
+        for j in judged
+    ]
     out = ROOT / "econ_pipeline" / "ckpts" / f"refined_concept_verdicts_{tag}.json"
     out.write_text(json.dumps(dump, ensure_ascii=False, indent=1))
-    print(f"\nDONE (dry-run, 无写库). 裁决已存 {out.name}(带concept_id)。"
-          f"人工核: SAME无错合? CANDIDATE该停? 假朋友全DIFFERENT?", flush=True)
+    print(
+        f"\nDONE (dry-run, 无写库). 裁决已存 {out.name}(带concept_id)。"
+        f"人工核: SAME无错合? CANDIDATE该停? 假朋友全DIFFERENT?",
+        flush=True,
+    )
     await conn.close()
 
 

@@ -41,4 +41,3 @@ class AgentContract:
 
 
 DEFAULT_AGENT_CONTRACT = AgentContract()
-

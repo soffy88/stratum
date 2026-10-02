@@ -66,9 +66,7 @@ async def source_subscribe(
             (sub_id, uh, body.source_type, name, json.dumps(q, ensure_ascii=False), max_r),
         )
 
-    background_tasks.add_task(
-        run_first_check, sub_id, uh, body.source_type, q, max_r
-    )
+    background_tasks.add_task(run_first_check, sub_id, uh, body.source_type, q, max_r)
     return {"status": "subscribed", "subscription_id": sub_id}
 
 
@@ -82,7 +80,7 @@ def _default_name(source_type: str, q: dict) -> str:
     if source_type == "oapen":
         return q.get("query") or "OAPEN"
     if source_type == "openstax":
-        subjs = ",".join((q.get("subjects") or ["Math","Science"])[:2])
+        subjs = ",".join((q.get("subjects") or ["Math", "Science"])[:2])
         kw = q.get("keywords") or ""
         return f"OpenStax {subjs}" + (f" — {kw}" if kw else "")
     if source_type == "mit_ocw":
@@ -131,15 +129,11 @@ def _row_to_dict(r) -> dict:
 async def delete_source_subscription(sub_id: str, user_id: str = Depends(jwt_auth)):
     uh = hash_user_id(user_id)
     with get_conn() as conn:
-        conn.execute(
-            "DELETE FROM source_subscriptions WHERE id=? AND user_id=?", (sub_id, uh)
-        )
+        conn.execute("DELETE FROM source_subscriptions WHERE id=? AND user_id=?", (sub_id, uh))
 
 
 @router.patch("/api/v1/sources/{sub_id}")
-async def toggle_source_subscription(
-    sub_id: str, body: dict, user_id: str = Depends(jwt_auth)
-):
+async def toggle_source_subscription(sub_id: str, body: dict, user_id: str = Depends(jwt_auth)):
     uh = hash_user_id(user_id)
     status = body.get("status")
     if status not in ("active", "paused"):
@@ -154,13 +148,14 @@ async def toggle_source_subscription(
 
 # ── /api/v1/arxiv/* compat shim（保持旧前端可用，读 source_subscriptions）────
 
+
 @router.post("/api/v1/arxiv/subscribe", status_code=202)
 async def arxiv_subscribe_compat(
     body: dict,
     background_tasks: BackgroundTasks,
     user_id: str = Depends(jwt_auth),
 ):
-    from pydantic import ValidationError
+
     cats = body.get("categories") or []
     kw = body.get("keywords") or ""
     auth = body.get("author") or ""
@@ -200,19 +195,21 @@ async def list_arxiv_compat(user_id: str = Depends(jwt_auth)):
     result = []
     for r in rows:
         q = json.loads(r[3] or "{}")
-        result.append({
-            "id": r[0],
-            "name": r[2],
-            "categories": q.get("categories") or [],
-            "keywords": q.get("keywords"),
-            "author": q.get("author"),
-            "status": r[5],
-            "scan_status": r[6],
-            "last_check": str(r[7]) if r[7] else None,
-            "found_count": r[8],
-            "ingested_count": r[9],
-            "current_paper": r[10],
-        })
+        result.append(
+            {
+                "id": r[0],
+                "name": r[2],
+                "categories": q.get("categories") or [],
+                "keywords": q.get("keywords"),
+                "author": q.get("author"),
+                "status": r[5],
+                "scan_status": r[6],
+                "last_check": str(r[7]) if r[7] else None,
+                "found_count": r[8],
+                "ingested_count": r[9],
+                "current_paper": r[10],
+            }
+        )
     return result
 
 

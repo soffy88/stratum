@@ -49,6 +49,11 @@ def get_all_metrics() -> dict[str, Any]:
     except Exception as exc:
         metrics["directory"] = {"error": str(exc)}
 
+    try:
+        metrics["wukr"] = _wukr_metrics()
+    except Exception as exc:
+        metrics["wukr"] = {"error": str(exc)}
+
     metrics["collected_at"] = time.time()
     return metrics
 
@@ -111,8 +116,8 @@ def _retrieval_metrics() -> dict[str, Any]:
         "total_queries": total,
         "avg_latency_ms": round(float(avg_ms), 1),
         "avg_result_count": round(float(avg_results), 1),
-        "p50_latency_ms": sorted(latencies)[len(latencies)//2] if latencies else 0,
-        "p95_latency_ms": sorted(latencies)[int(len(latencies)*0.95)] if latencies else 0,
+        "p50_latency_ms": sorted(latencies)[len(latencies) // 2] if latencies else 0,
+        "p95_latency_ms": sorted(latencies)[int(len(latencies) * 0.95)] if latencies else 0,
     }
 
 
@@ -173,6 +178,25 @@ def _directory_metrics() -> dict[str, Any]:
     }
 
 
+def _wukr_metrics() -> dict[str, float | int]:
+    """Compute the weekly north-star metric from auditable interactions."""
+    with get_conn() as conn:
+        active = conn.execute(
+            "SELECT count(DISTINCT user_id) FROM user_content_interaction "
+            "WHERE created_at >= NOW() - INTERVAL '7 days'"
+        ).fetchone()[0]
+        useful = conn.execute(
+            "SELECT count(DISTINCT user_id) FROM user_content_interaction "
+            "WHERE created_at >= NOW() - INTERVAL '7 days' AND ("
+            "interaction_type IN ('bookmark', 'note_reuse', 'flashcard_review') "
+            "OR (interaction_type='view' AND COALESCE(payload->>'completed', 'false')='true')"
+            ")"
+        ).fetchone()[0]
+    from stratum.services.wukr import calculate_wukr
+
+    return calculate_wukr(active, useful)
+
+
 def format_prometheus(metrics: dict[str, Any]) -> str:
     """Format metrics as Prometheus exposition format."""
     lines = []
@@ -180,27 +204,32 @@ def format_prometheus(metrics: dict[str, Any]) -> str:
     # Layer metrics
     lm = metrics.get("layers", {})
     if isinstance(lm, dict) and "error" not in lm:
-        lines.append(f'stratum_substrates_with_layers {lm.get("substrates_with_layers", 0)}')
-        lines.append(f'stratum_total_substrates {lm.get("total_substrates", 0)}')
-        lines.append(f'stratum_layer_coverage_pct {lm.get("coverage_pct", 0)}')
-        lines.append(f'stratum_avg_l0_tokens {lm.get("avg_l0_tokens", 0)}')
+        lines.append(f"stratum_substrates_with_layers {lm.get('substrates_with_layers', 0)}")
+        lines.append(f"stratum_total_substrates {lm.get('total_substrates', 0)}")
+        lines.append(f"stratum_layer_coverage_pct {lm.get('coverage_pct', 0)}")
+        lines.append(f"stratum_avg_l0_tokens {lm.get('avg_l0_tokens', 0)}")
 
     # Retrieval metrics
     rm = metrics.get("retrieval", {})
     if isinstance(rm, dict) and "error" not in rm:
-        lines.append(f'stratum_total_queries {rm.get("total_queries", 0)}')
-        lines.append(f'stratum_avg_latency_ms {rm.get("avg_latency_ms", 0)}')
-        lines.append(f'stratum_p50_latency_ms {rm.get("p50_latency_ms", 0)}')
+        lines.append(f"stratum_total_queries {rm.get('total_queries', 0)}")
+        lines.append(f"stratum_avg_latency_ms {rm.get('avg_latency_ms', 0)}")
+        lines.append(f"stratum_p50_latency_ms {rm.get('p50_latency_ms', 0)}")
 
     # Session metrics
     sm = metrics.get("sessions", {})
     if isinstance(sm, dict) and "error" not in sm:
-        lines.append(f'stratum_total_sessions {sm.get("total_sessions", 0)}')
-        lines.append(f'stratum_active_sessions {sm.get("active_sessions", 0)}')
+        lines.append(f"stratum_total_sessions {sm.get('total_sessions', 0)}")
+        lines.append(f"stratum_active_sessions {sm.get('active_sessions', 0)}")
+
+    wm = metrics.get("wukr", {})
+    if isinstance(wm, dict) and "error" not in wm:
+        lines.append(f"stratum_wukr {wm.get('wukr', 0)}")
+        lines.append(f"stratum_wukr_active_users {wm.get('active_users', 0)}")
 
     # Memory metrics
     mm = metrics.get("memories", {})
     if isinstance(mm, dict) and "error" not in mm:
-        lines.append(f'stratum_total_memories {mm.get("total_memories", 0)}')
+        lines.append(f"stratum_total_memories {mm.get('total_memories', 0)}")
 
     return "\n".join(lines) + "\n"

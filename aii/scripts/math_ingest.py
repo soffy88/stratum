@@ -3,7 +3,11 @@ Usage: uv run python scripts/math_ingest.py [--substrate SUBSTRATE] [--staging D
 默认 substrate = shufen_huadong_full, staging = scripts/_staging/math_full/
 """
 
-import asyncio, os, json, sys, argparse
+import asyncio
+import os
+import json
+import sys
+import argparse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,13 +25,34 @@ from pgvector.asyncpg import register_vector
 from aii.api._provider import register_providers
 from oprim import vector_encode
 
+try:
+    from oprim.embedding.aii_remote import AiiRemoteEmbedder
+except ImportError:
+    AiiRemoteEmbedder = None
+
 register_providers()
+
+# 入库阶段优先直连共享 embedding 服务。vector_encode 的 provider 注册链在
+# CPU/GPU 切换或模型冷启动时可能落回进程内 BGE-M3，表现为长时间无输出；
+# 飞轮已通过 AII_EMBED_URL 做过健康检查，这里直接复用该已验证的服务。
+_REMOTE_EMBEDDER = (
+    AiiRemoteEmbedder(os.environ["AII_EMBED_URL"], timeout=120.0)
+    if os.getenv("AII_EMBED_URL") and AiiRemoteEmbedder is not None
+    else None
+)
+
+
+def _encode(texts):
+    if _REMOTE_EMBEDDER is not None:
+        return _REMOTE_EMBEDDER.embed(texts)
+    return vector_encode(texts=texts, provider="default")
 
 
 def _traj_sync(phase: str, failure_mode: str, error_sig: str, context: dict | None = None) -> None:
     """海关拒绝事件静默落 trajectory_logs。"""
     import importlib.util as _ilu
     from pathlib import Path as _P
+
     try:
         p = _P(__file__).resolve().parent / "traj_log.py"
         if not p.exists():
@@ -36,6 +61,7 @@ def _traj_sync(phase: str, failure_mode: str, error_sig: str, context: dict | No
         mod = _ilu.module_from_spec(spec)
         spec.loader.exec_module(mod)
         import os as _os
+
         flywheel = _os.getenv("AII_FLYWHEEL", "unknown")
         mod.traj_log_sync(flywheel, phase, failure_mode, error_sig, context or {})
     except Exception:  # noqa: BLE001
@@ -119,12 +145,12 @@ async def main(substrate: str, staging_dir: Path, dry_run: bool = False):
     for i in range(0, len(rows), B):
         chunk = [t for _, t in rows[i : i + B]]
         try:
-            embs.extend(vector_encode(texts=chunk, provider="default"))
+                embs.extend(_encode(chunk))
         except Exception as e:
             print(f"  ★batch embed fail @{i} 降级逐条: {e}", flush=True)
             for t in chunk:
                 try:
-                    embs.append(vector_encode(texts=[t], provider="default")[0])
+                    embs.append(_encode([t])[0])
                 except Exception as e2:
                     print(f"  ★embed fail: {e2}", flush=True)
                     embs.append(None)
@@ -156,32 +182,60 @@ async def main(substrate: str, staging_dir: Path, dry_run: bool = False):
 
         # ★统一质检链(规格 6): 0LLM 程序抽取的自引用证据(内容即原文片段)
         from ku_pipeline import evaluate_ku_chain
-        quotes = [{"quote": en[:400], "span": [0, min(len(en), 400)], "kind": "program_extract"}]
+
+        # 程序抽取的 KU 本身就是原文逐字片段；证据必须覆盖完整片段。
+        # 只取前 400 字会漏掉后半段的公式/编号，导致数字对齐门把真实抽取
+        # 误判为 HALLUCINATION。embedding 粗滤仍自行截断到安全长度。
+        quotes = [{"quote": en, "span": [0, len(en)], "kind": "program_extract"}]
         chain = await evaluate_ku_chain(
-            ku_id, en, title, quotes, en, ku_type=ktype, source_type="math_prog")
+            ku_id,
+            en,
+            title,
+            quotes,
+            en,
+            ku_type=ktype,
+            source_type="math_prog",
+            nli_off=True,
+            coarse_embed_off=True,
+        )
         if chain["status"] != "pass":
             sig = chain["signatures"][0] if chain["signatures"] else "REJECT"
-            _traj_sync("persist", sig, f"{chain['quality']['checks'][:2]}",
-                       {"ku_id": ku_id, "substrate": substrate})
+            _traj_sync(
+                "persist",
+                sig,
+                f"{chain['quality']['checks'][:2]}",
+                {"ku_id": ku_id, "substrate": substrate},
+            )
             print(f"  ⚠ {sig} {ku_id}: ({chain['status']})", flush=True)
             continue
         quality = chain["quality"]
-        grounded_by = build_grounded_by(substrate, parse_chapter_anchor(ku_id) or str(ch),
-                                        extraction_method="program_extract",
-                                        evidence_quotes=quotes)
+        grounded_by = build_grounded_by(
+            substrate,
+            parse_chapter_anchor(ku_id) or str(ch),
+            extraction_method="program_extract",
+            evidence_quotes=quotes,
+        )
         violations = validate_ku_point(ku_id, title, ktype, en, grounded_by)
         if violations:
-            _traj_sync("persist", "schema_reject", "; ".join(violations)[:200],
-                       {"ku_id": ku_id, "substrate": substrate})
+            _traj_sync(
+                "persist",
+                "schema_reject",
+                "; ".join(violations)[:200],
+                {"ku_id": ku_id, "substrate": substrate},
+            )
             print(f"  ⚠ 海关拒绝 {ku_id}: {violations[0]}", flush=True)
             continue
         fp = ku_fingerprint(en)
         dup = await conn.fetchval(
-            "SELECT 1 FROM aii.ku_onto WHERE fingerprint=$1 AND ku_id <> $2 LIMIT 1",
-            fp, ku_id)
+            "SELECT 1 FROM aii.ku_onto WHERE fingerprint=$1 AND ku_id <> $2 LIMIT 1", fp, ku_id
+        )
         if dup:
-            _traj_sync("persist", "DUPLICATE", f"fingerprint 已存在: {fp[:16]}...",
-                       {"ku_id": ku_id, "substrate": substrate})
+            _traj_sync(
+                "persist",
+                "DUPLICATE",
+                f"fingerprint 已存在: {fp[:16]}...",
+                {"ku_id": ku_id, "substrate": substrate},
+            )
             print(f"  ⚠ DUPLICATE {ku_id}", flush=True)
             continue
         try:

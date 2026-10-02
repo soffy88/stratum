@@ -17,7 +17,12 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 PY=.venv/bin/python
-IDLE="${FEEDER_IDLE:-600}"
+# ★2026-08-27 修复 LLM 412/429: feeder 调 pull_ingest 触发的 math/econ convert 同样走 Veya 网关
+export OPENCODE_BASE_URL="http://192.168.80.1:8791/v1/chat/completions"
+export OPENCODE_MODEL="gpt-5.6-luna"
+export OPENCODE_KEY_POOL="sk-veya"
+export AII_LLM_PRIMARY="opencode"
+IDLE="${FEEDER_IDLE:-120}"
 
 echo "════════════════════════════════════════════════════"
 echo "★ 喂书守护启动 $(date '+%Y-%m-%d %H:%M')  (每 ${IDLE}s 一轮)"
@@ -31,7 +36,10 @@ while true; do
     # D盘同步 + math_convert + econ_convert + classify_md, 一次做全
     # (flock: 三个飞轮各自也会主动拉料, 防撞车挪同一文件)
     mkdir -p .locks
-    flock -w 120 .locks/classify_md.lock -c "timeout 600 bash scripts/pull_ingest.sh" 2>&1
+    # ★2026-08-27 提速: -n 非阻塞(已被别人持有时立即跳), pull_ingest 放后台跑(timeout 7200=2h
+    # 足够处理 ~5000 本 PDF). 飞轮本身不依赖 pull_ingest 完成,下一轮发现新 MD 即可处理.
+flock -n .locks/classify_md.lock -c "timeout --kill-after=30s 600 bash scripts/pull_ingest.sh" >> .logs/pull_ingest.out 2>&1 &
+    disown
 
     after=$(ls /home/soffy/books/MD/经济学/*.md /home/soffy/books/MD/中文数学/*.md /home/soffy/books/MD/英文数学/*.md 2>/dev/null | wc -l)
     echo "── [喂书] $(date '+%H:%M') /books/MD 教材: ${before}→${after}; sleep ${IDLE}s ──"

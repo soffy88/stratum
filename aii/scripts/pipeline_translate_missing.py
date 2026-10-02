@@ -32,7 +32,7 @@ if not SUBSTRATE:
 async def main():
     import asyncpg
 
-    db_url = os.getenv("DATABASE_URL", "postgresql://aii:***REMOVED***@localhost:5435/aii_kg")
+    db_url = os.getenv("DATABASE_URL", "postgresql://aii:***REMOVED***@localhost:5437/aii_kg")
     conn = await asyncpg.connect(db_url)
 
     rows = await conn.fetch(

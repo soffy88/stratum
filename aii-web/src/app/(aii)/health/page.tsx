@@ -75,7 +75,6 @@ export default function HealthPage() {
               counts={state.data.grade_distribution}
               // TODO: AII business logic — onSegmentClick={(grade) => router.push(`/query?grade=${grade}`)}
               onSegmentClick={(grade, count) => {
-                // eslint-disable-next-line no-console
                 console.log('[health] clicked', grade, count);
               }}
             />

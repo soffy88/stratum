@@ -3,6 +3,7 @@
 Calls gen_candidates() (shared-concept + 0.80 cosine, cross-block, no existing edge) and reports
 how many pairs WOULD be sent to the flash judge in step 4. Also breaks down by source.
 """
+
 import asyncio
 import os
 import sys
@@ -22,6 +23,7 @@ async def main():
     dsn = os.getenv("DATABASE_URL")
     conn = await asyncpg.connect(dsn)
     from pgvector.asyncpg import register_vector
+
     await register_vector(conn)
 
     ku = await conn.fetchval("SELECT count(*) FROM aii.ku_onto WHERE substrate_id=$1", substrate_id)

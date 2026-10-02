@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import json
 import logging
-import math
 from typing import Any
 
 from stratum.db import get_conn
@@ -32,6 +31,7 @@ _RRF_K = 60  # Reciprocal Rank Fusion smoothing constant
 
 
 # ── RRF (Reciprocal Rank Fusion) ─────────────────────────────────────────────
+
 
 def _rrf_score(rank: int, k: int = _RRF_K) -> float:
     """Standard RRF scoring: 1 / (k + rank). rank is 1-based."""
@@ -77,12 +77,14 @@ def _merge_rrf(
                 agg[sid]["layer"] = doc["layer"]
             if not agg[sid]["title"] and doc.get("title"):
                 agg[sid]["title"] = doc["title"]
-            agg[sid]["details"].append({
-                "source": source_name,
-                "rank": rank,
-                "rrf": rrf,
-                "original_score": doc.get("score", 0),
-            })
+            agg[sid]["details"].append(
+                {
+                    "source": source_name,
+                    "rank": rank,
+                    "rrf": rrf,
+                    "original_score": doc.get("score", 0),
+                }
+            )
 
     # Sort by combined RRF score descending
     results = sorted(agg.values(), key=lambda x: x["rrf_score"], reverse=True)
@@ -90,6 +92,7 @@ def _merge_rrf(
 
 
 # ── Vector Retrieval (L0 — existing pgvector) ────────────────────────────────
+
 
 def _vector_search(query_embedding: list[float], top_k: int = 10) -> list[dict[str, Any]]:
     """Search substrate_layers L0 using pgvector cosine similarity.
@@ -110,17 +113,20 @@ def _vector_search(query_embedding: list[float], top_k: int = 10) -> list[dict[s
 
     results = []
     for substrate_id, content, similarity in rows:
-        results.append({
-            "substrate_id": substrate_id,
-            "score": float(similarity),
-            "layer": "L0",
-            "content_preview": (content or "")[:500],
-            "source": "vector",
-        })
+        results.append(
+            {
+                "substrate_id": substrate_id,
+                "score": float(similarity),
+                "layer": "L0",
+                "content_preview": (content or "")[:500],
+                "source": "vector",
+            }
+        )
     return results
 
 
 # ── KG Entity Search ──────────────────────────────────────────────────────────
+
 
 def _kg_search(query_embedding: list[float], top_k: int = 10) -> list[dict[str, Any]]:
     """Search graph_entities using embedding + name fuzzy match, expand via relations.
@@ -140,7 +146,10 @@ def _kg_search(query_embedding: list[float], top_k: int = 10) -> list[dict[str, 
                FROM graph_entities
                ORDER BY name <-> %s  -- placeholder; actual impl uses LLM query→entity mapping
                LIMIT %s""",
-            (query_embedding[0], top_k),  # Simplified — real impl would embed query → entity matching
+            (
+                query_embedding[0],
+                top_k,
+            ),  # Simplified — real impl would embed query → entity matching
         ).fetchall()
 
     # Since graph_entities doesn't have embedding column yet, use name matching
@@ -154,9 +163,11 @@ def _kg_search(query_embedding: list[float], top_k: int = 10) -> list[dict[str, 
                WHERE description ILIKE %s OR name ILIKE %s
                ORDER BY mention_count DESC
                LIMIT %s""",
-            (f"%{query_embedding[0] if isinstance(query_embedding[0], str) else ''}%",
-             f"%{query_embedding[0] if isinstance(query_embedding[0], str) else ''}%",
-             top_k),
+            (
+                f"%{query_embedding[0] if isinstance(query_embedding[0], str) else ''}%",
+                f"%{query_embedding[0] if isinstance(query_embedding[0], str) else ''}%",
+                top_k,
+            ),
         ).fetchall()
 
     results = []
@@ -176,13 +187,15 @@ def _kg_search(query_embedding: list[float], top_k: int = 10) -> list[dict[str, 
             seen_substrates.add(sid)
             # Score: normalize mention_count (higher = more central entity)
             score = min(1.0, (mention_count or 1) / 50.0)
-            results.append({
-                "substrate_id": sid,
-                "score": score,
-                "layer": "KG",
-                "content_preview": f"Entity: {name} ({ent_type}) — {desc or ''}",
-                "source": "kg",
-            })
+            results.append(
+                {
+                    "substrate_id": sid,
+                    "score": score,
+                    "layer": "KG",
+                    "content_preview": f"Entity: {name} ({ent_type}) — {desc or ''}",
+                    "source": "kg",
+                }
+            )
 
     return results
 
@@ -224,8 +237,12 @@ def _kg_entity_expansion(query: str, top_k: int = 10) -> list[dict[str, Any]]:
                     except (json.JSONDecodeError, TypeError):
                         sids = []
                     all_entities[eid] = {
-                        "id": eid, "name": name, "type": etype,
-                        "desc": desc, "mentions": mc or 0, "sources": sids,
+                        "id": eid,
+                        "name": name,
+                        "type": etype,
+                        "desc": desc,
+                        "mentions": mc or 0,
+                        "sources": sids,
                     }
 
         # Phase 2: 1-hop relation expansion
@@ -260,8 +277,12 @@ def _kg_entity_expansion(query: str, top_k: int = 10) -> list[dict[str, Any]]:
                         except (json.JSONDecodeError, TypeError):
                             sids = []
                         all_entities[src_eid] = {
-                            "id": e_row[0], "name": e_row[1], "type": e_row[2],
-                            "desc": e_row[3], "mentions": e_row[4] or 0, "sources": sids,
+                            "id": e_row[0],
+                            "name": e_row[1],
+                            "type": e_row[2],
+                            "desc": e_row[3],
+                            "mentions": e_row[4] or 0,
+                            "sources": sids,
                         }
 
             # Outgoing relations
@@ -289,8 +310,12 @@ def _kg_entity_expansion(query: str, top_k: int = 10) -> list[dict[str, Any]]:
                         except (json.JSONDecodeError, TypeError):
                             sids = []
                         all_entities[tgt_eid] = {
-                            "id": e_row[0], "name": e_row[1], "type": e_row[2],
-                            "desc": e_row[3], "mentions": e_row[4] or 0, "sources": sids,
+                            "id": e_row[0],
+                            "name": e_row[1],
+                            "type": e_row[2],
+                            "desc": e_row[3],
+                            "mentions": e_row[4] or 0,
+                            "sources": sids,
                         }
 
     # Phase 3: Aggregate substrates from all entities
@@ -325,6 +350,7 @@ def _kg_entity_expansion(query: str, top_k: int = 10) -> list[dict[str, Any]]:
 
 # ── Chunk Search (L1) ────────────────────────────────────────────────────────
 
+
 def _chunk_search(query_embedding: list[float], top_k: int = 10) -> list[dict[str, Any]]:
     """Search substrate_chunk table using pgvector.
 
@@ -344,17 +370,20 @@ def _chunk_search(query_embedding: list[float], top_k: int = 10) -> list[dict[st
 
     results = []
     for substrate_id, chunk_idx, text, similarity in rows:
-        results.append({
-            "substrate_id": substrate_id,
-            "score": float(similarity),
-            "layer": "L1-chunk",
-            "content_preview": (text or "")[:500],
-            "source": "chunk",
-        })
+        results.append(
+            {
+                "substrate_id": substrate_id,
+                "score": float(similarity),
+                "layer": "L1-chunk",
+                "content_preview": (text or "")[:500],
+                "source": "chunk",
+            }
+        )
     return results
 
 
 # ── Main Mix Entry Point ──────────────────────────────────────────────────────
+
 
 def mix_retrieve(
     query: str,
@@ -411,7 +440,9 @@ def mix_retrieve(
 
     logger.info(
         "mix_retrieve: query=%r mode=%s results=%d sources=%s",
-        query[:50], mode, len(results),
+        query[:50],
+        mode,
+        len(results),
         {k: len(v) for k, v in sources.items()},
     )
     return results

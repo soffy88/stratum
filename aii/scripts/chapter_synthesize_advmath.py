@@ -5,6 +5,7 @@ econ_zh/misc 现有书高得多, 用户明确要求: 讲解到一个没有专业
 这条要求(那条现役管线 _synth 甚至已经是0LLM程序抠, 根本不改写语言, 见 chapter_synthesize.py)。
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -12,21 +13,20 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 import chapter_synthesize_llm_v1 as _base
 from chapter_synthesize_llm_v1 import (
-    _CTX,
     _WIN_FALLBACK,
     _WIN_POST,
     _WIN_PRE,
     _call_with_retry,
     _facets,
-    _find_pos,
     _plan,
+    _find_pos,
 )  # noqa: F401
 
 PLAN_SYS = (
     "You identify the knowledge points a textbook chapter DIRECTLY AND SUBSTANTIALLY teaches. "
     f"★Select at MOST {os.getenv('KU_MAX_POINTS_PER_CHAPTER', '40')} points — keep only the "
     "most important, prefer atomic points over umbrella topics. Output valid JSON only."
-)# ★_plan() 引用的是它自己模块里的全局 PLAN_SYS/_PLAN_TYPES(不是参数), 要在这里覆盖模块属性
+)  # ★_plan() 引用的是它自己模块里的全局 PLAN_SYS/_PLAN_TYPES(不是参数), 要在这里覆盖模块属性
 # 才能生效——否则 import 进来的 _plan 会悄悄继续用 chapter_synthesize_llm_v1 自己的默认版本。
 # ⚠2026-07-11修复: 之前只覆盖了PLAN_SYS, 漏了_PLAN_TYPES——LLM被_plan()里硬编码的窄枚举
 # (concept|principle|method)限死, rationale永远选不到, 而下面_TYPE_MAP明明按五分类写的,
@@ -66,7 +66,7 @@ SYN_SYS = (
     'gets squashed to zero volume) [Ch3]."\n'
     "Notice: the good version LOSES NOTHING — the formula, the recursion, the citation are all still "
     "there. It just ALSO tells you plainly what the object means before the symbols land."
- "\n★ANCHOR PROTOCOL: your synthesis MUST open with a verbatim sentence or term from the given section (anchor), then expand around it — never invent content absent from the section."
+    "\n★ANCHOR PROTOCOL: your synthesis MUST open with a verbatim sentence or term from the given section (anchor), then expand around it — never invent content absent from the section."
 )
 
 
@@ -98,6 +98,7 @@ async def _synth(llm, text, n, name, typ, pos: int = 0, narrow: bool = False):
     text_out = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
     # ★Grounded 协议(A1): 从合成窗口原文确定性提取证据句(零 LLM)
     from ku_schema import extract_evidence_quotes
+
     try:
         quotes = extract_evidence_quotes(section if pos > 0 else text[:_WIN_FALLBACK], name)
     except Exception:

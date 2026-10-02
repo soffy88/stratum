@@ -10,7 +10,6 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  OEpistemicBadge,
   OEmptyState,
   OLoadingState,
   OErrorState,
@@ -18,7 +17,7 @@ import {
 import { useApi } from '@/aii/hooks/useApi';
 import * as api from '@/aii/lib/api-client';
 import { MathText } from '@/aii/components/MathText';
-import type { KcListItem, KcDetail } from '@/aii/types/api';
+import type { KcDetail } from '@/aii/types/api';
 
 function BiText({ zh, en }: { zh: string; en?: string }) {
   const [showEn, setShowEn] = useState(false);
@@ -127,7 +126,7 @@ function ClustersPage() {
     });
   }, [substrate]);
 
-  const items = ((state.data as any)?.items ?? state.data ?? []) as KcListItem[];
+  const items = state.data ?? [];
 
   return (
     <div className="aii-page-content flex flex-col gap-4 max-w-5xl mx-auto">

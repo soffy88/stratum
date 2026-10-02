@@ -1,4 +1,5 @@
 """DAO for share_tokens table."""
+
 import secrets
 import string
 from dataclasses import dataclass
@@ -36,23 +37,46 @@ class ShareTokenDAO:
     def _row(self, r) -> ShareToken:
         return ShareToken(*r)
 
-    def create_share_token(self, *, resource_type: str, resource_id: str, corpus_id: str,
-                           created_by: str, expires_in_days: Optional[int] = None,
-                           allow_anonymous: bool = True) -> ShareToken:
+    def create_share_token(
+        self,
+        *,
+        resource_type: str,
+        resource_id: str,
+        corpus_id: str,
+        created_by: str,
+        expires_in_days: Optional[int] = None,
+        allow_anonymous: bool = True,
+    ) -> ShareToken:
         token = _nanoid()
         now = datetime.now(timezone.utc)
         expires_at = (now + timedelta(days=expires_in_days)) if expires_in_days else None
-        self.conn.execute(f"""
+        self.conn.execute(
+            """
             INSERT INTO share_tokens (token, resource_type, resource_id, corpus_id, created_by, created_at, expires_at, allow_anonymous)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (token, resource_type, resource_id, corpus_id, created_by, now, expires_at, allow_anonymous))
+        """,
+            (
+                token,
+                resource_type,
+                resource_id,
+                corpus_id,
+                created_by,
+                now,
+                expires_at,
+                allow_anonymous,
+            ),
+        )
         return self.get_share_token(token)
 
     def get_share_token(self, token: str) -> Optional[ShareToken]:
-        res = self.conn.execute(f"SELECT {self._COLS} FROM share_tokens WHERE token = ?", (token,)).fetchone()
+        res = self.conn.execute(
+            f"SELECT {self._COLS} FROM share_tokens WHERE token = ?", (token,)
+        ).fetchone()
         return self._row(res) if res else None
 
-    def list_user_shares(self, user_id: str, resource_type: Optional[str] = None) -> List[ShareToken]:
+    def list_user_shares(
+        self, user_id: str, resource_type: Optional[str] = None
+    ) -> List[ShareToken]:
         sql = f"SELECT {self._COLS} FROM share_tokens WHERE created_by = ? AND revoked_at IS NULL"
         params: list = [user_id]
         if resource_type:
@@ -74,4 +98,5 @@ class ShareTokenDAO:
         now = datetime.now(timezone.utc)
         self.conn.execute(
             "UPDATE share_tokens SET access_count = access_count + 1, last_accessed_at = ? WHERE token = ?",
-            (now, token))
+            (now, token),
+        )

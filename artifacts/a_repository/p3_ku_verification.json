@@ -1,0 +1,49 @@
+{
+  "task": "A_P3_KU_VERIFICATION",
+  "book": "利率史（第四版）",
+  "candidate_count": 17,
+  "verified_count": 10,
+  "rejected_count": 7,
+  "verification_threshold": 0.8,
+  "traceability": "100%",
+  "authority_scan": "PASS",
+  "replay": "PASS",
+  "false_positives": 0,
+  "run_id": "arr_d0d1473d79fc",
+  "verifier_version": "a-p3-v0.1",
+  "ledger": [
+    "070_a_repository_foundation.sql",
+    "071_a_evidence_quality.sql",
+    "072_a_ku_verification.sql"
+  ],
+  "gate_results": {
+    "gate1": "PASS",
+    "gate2": "PASS",
+    "gate3": "PASS",
+    "gate4": "PASS",
+    "gate5": "PASS"
+  },
+  "rejection_reasons": {
+    "kc_solon_debt_relief": [
+      "definition_check"
+    ],
+    "kc_credit_neolithic_origin": [
+      "definition_check"
+    ],
+    "kc_rome_servitude_allowed": [
+      "definition_check"
+    ],
+    "kc_credit_precedes_writing": [
+      "definition_check"
+    ],
+    "kc_babylon_grain_rate_cap": [
+      "definition_check"
+    ],
+    "kc_babylon_collateral_scope": [
+      "definition_check"
+    ],
+    "kc_written_contract_required": [
+      "definition_check"
+    ]
+  }
+}

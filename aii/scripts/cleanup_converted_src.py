@@ -8,6 +8,7 @@
 
 用法: .venv/bin/python scripts/cleanup_converted_src.py [--dry-run]
 """
+
 import os
 import re
 import sys

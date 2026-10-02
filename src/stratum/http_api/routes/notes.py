@@ -1,10 +1,8 @@
 """Note routes: get single note + backlinks."""
 
 import json
-import os
 from typing import Any, Optional
 
-import duckdb
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
@@ -15,6 +13,7 @@ router = APIRouter()
 
 def get_db():
     from stratum.db import get_conn
+
     with get_conn() as conn:
         yield conn
 
@@ -78,11 +77,9 @@ async def get_backlinks(note_id: str, request: Request, db=Depends(get_db)):
     if not note:
         raise HTTPException(404, "Note not found")
 
-    # Find notes that reference this note_id in their wikilinks
-    rows = db.execute(
-        "SELECT id, title, content FROM note WHERE corpus_id = ? AND wikilinks LIKE ?",
-        (corpus_id, f"%{note_id}%"),
-    ).fetchall()
+    # The DAO handles both the legacy singular note table and the converged
+    # PostgreSQL notes_sl table, whose links live in content_markdown.
+    rows = NoteDAO(db).list_backlinks(note_id=note_id, corpus_id=corpus_id)
     backlinks = [
         BacklinkItem(id=r[0], title=r[1], snippet=(r[2] or "")[:100])
         for r in rows

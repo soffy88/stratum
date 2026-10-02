@@ -2,6 +2,7 @@
 
 Real in-memory DuckDB fixture; patches get_conn like test_graph_routes.
 """
+
 from unittest.mock import patch, MagicMock
 
 import duckdb
@@ -53,6 +54,7 @@ def test_case_and_whitespace_insensitive_merge(graph_db):
 
     sids = graph_db.execute("SELECT source_substrate_ids FROM graph_entities").fetchone()[0]
     import json
+
     assert set(json.loads(sids)) == {"sub1", "sub2", "sub3"}
 
 

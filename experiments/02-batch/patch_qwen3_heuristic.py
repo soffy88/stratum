@@ -3,7 +3,10 @@
 Patch: compute heuristic custom_judge_pass_rate for qwen3-embedding-0.6B
 if LLM-as-judge failed (no API key). Adds heuristic from top-1 cosine sim.
 """
-import json, re, os
+
+import json
+import re
+import os
 from pathlib import Path
 import numpy as np
 
@@ -17,7 +20,9 @@ results = json.loads((BENCH / "embedding_results.json").read_text("utf-8"))
 qwen3 = results.get("qwen3-embedding-0.6B", {})
 
 if "custom_judge_pass_rate" in qwen3:
-    print(f"qwen3 already has custom_judge_pass_rate={qwen3['custom_judge_pass_rate']}, no patch needed")
+    print(
+        f"qwen3 already has custom_judge_pass_rate={qwen3['custom_judge_pass_rate']}, no patch needed"
+    )
     exit(0)
 
 if qwen3.get("status") != "OK":
@@ -64,24 +69,32 @@ for sid in ["S1", "S2", "S3", "S4", "S5"]:
     md = parsed / sid / "pymupdf4llm.md"
     if md.exists():
         text = md.read_text("utf-8")
-        paras = [p.strip() for p in re.split(r'\n{2,}', text) if len(p.strip()) >= 50]
+        paras = [p.strip() for p in re.split(r"\n{2,}", text) if len(p.strip()) >= 50]
         for i, p in enumerate(paras[:CORPUS_B_LIMIT]):
             corpus_b.append({"id": f"{sid}-{i}", "text": p, "domain": sid})
 print(f"Corpus_b: {len(corpus_b)} paragraphs", flush=True)
 
 from sentence_transformers import SentenceTransformer
+
 print("Loading qwen3-embedding-0.6B...", flush=True)
 model = SentenceTransformer("Qwen/Qwen3-Embedding-0.6B", device="cpu", trust_remote_code=True)
 print("Loaded", flush=True)
 
 b_texts = [c["text"] for c in corpus_b]
 print(f"Encoding {len(b_texts)} corpus_b...", flush=True)
-b_embs = model.encode(b_texts, batch_size=64, show_progress_bar=True, normalize_embeddings=True, prompt_name="query")
+b_embs = model.encode(
+    b_texts, batch_size=64, show_progress_bar=True, normalize_embeddings=True, prompt_name="query"
+)
 b_embs_np = np.array(b_embs)
 
 print(f"Encoding {len(CUSTOM_QUERIES)} custom queries...", flush=True)
-q_embs = model.encode([q["text"] for q in CUSTOM_QUERIES], batch_size=64,
-                       show_progress_bar=False, normalize_embeddings=True, prompt_name="query")
+q_embs = model.encode(
+    [q["text"] for q in CUSTOM_QUERIES],
+    batch_size=64,
+    show_progress_bar=False,
+    normalize_embeddings=True,
+    prompt_name="query",
+)
 q_np = np.array(q_embs)
 sims_b = q_np @ b_embs_np.T
 
@@ -91,6 +104,8 @@ print(f"Heuristic pass_rate: {pass_rate}", flush=True)
 
 results["qwen3-embedding-0.6B"]["custom_judge_pass_rate"] = pass_rate
 results["qwen3-embedding-0.6B"]["custom_judge_method"] = "heuristic (top1_sim > 0.5)"
-(BENCH / "embedding_results.json").write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
+(BENCH / "embedding_results.json").write_text(
+    json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8"
+)
 print("Results updated", flush=True)
 print("=== DONE ===", flush=True)

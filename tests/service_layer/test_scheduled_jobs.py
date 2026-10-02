@@ -278,7 +278,7 @@ def test_list_job_runs(client):
 
 
 def test_list_seeds_default_jobs_once(client):
-    from stratum.db import execute, query
+    from stratum.db import execute
 
     uid = "user-seed-test"
     execute("DELETE FROM scheduled_jobs_sl WHERE user_id = %(uid)s", {"uid": uid})

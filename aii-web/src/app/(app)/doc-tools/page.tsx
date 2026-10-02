@@ -14,6 +14,9 @@ type DocumentAnalysisResult = {
 
 const DOCS_BASE = process.env.NEXT_PUBLIC_DOCS_BASE || '/docs';
 
+type ExtractedItem = { class?: string; text?: string };
+type ExtractResult = { extractions?: ExtractedItem[]; count?: number };
+
 export default function DocToolsPage() {
   const [tab, setTab] = useState<'convert' | 'generate' | 'analyze' | 'extract' | 'ku'>('convert');
   const [busy, setBusy] = useState(false);
@@ -73,6 +76,17 @@ export default function DocToolsPage() {
   }, [genType, genTopic, genPrompt]);
 
   // ── 分析 ──
+  type AnalyzeResult = {
+    pdf_type?: string;
+    confidence?: number | string;
+    page_count?: number;
+    chapters?: number | string;
+    pages_needing_ocr?: number[];
+    category?: string;
+  };
+  const [anFile, setAnFile] = useState<File | null>(null);
+  const [anResult, setAnResult] = useState<AnalyzeResult | null>(null);
+
   // ── KU 证据审查 ──
   const [kuSub, setKuSub] = useState('');
   const [kuHtml, setKuHtml] = useState('');
@@ -99,7 +113,7 @@ export default function DocToolsPage() {
   // ── 结构化提取(LangExtract) ──
   const [exFile, setExFile] = useState<File | null>(null);
   const [exPrompt, setExPrompt] = useState('');
-  const [exResult, setExResult] = useState<any>(null);
+  const [exResult, setExResult] = useState<ExtractResult | null>(null);
 
   const runExtract = useCallback(async () => {
     if (!exFile) { toast.error('请选择文件'); return; }
@@ -136,6 +150,7 @@ export default function DocToolsPage() {
   const tabBtn = (id: typeof tab, label: string) => (
     <button onClick={() => setTab(id)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{label}</button>
   );
+  const ocrPages = anResult?.pages_needing_ocr ?? [];
 
   const fileInput = (set: (f: File | null) => void) => (
     <input type="file" onChange={(e) => set(e.target.files?.[0] || null)} className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:text-sm file:font-medium" />
@@ -208,8 +223,8 @@ export default function DocToolsPage() {
             <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
               <p><span className="text-gray-500">类型：</span><b>{anResult.pdf_type}</b> <span className="text-gray-400">(置信度 {anResult.confidence})</span></p>
               <p><span className="text-gray-500">页数：</span>{anResult.page_count} 页 · 章节 {anResult.chapters}</p>
-              {(anResult.pages_needing_ocr ?? []).length > 0 && (
-                <p><span className="text-amber-600">⚠ 需要 OCR 的页：</span>{(anResult.pages_needing_ocr ?? []).slice(0, 30).join(', ')}{(anResult.pages_needing_ocr ?? []).length > 30 ? '...' : ''}</p>
+              {ocrPages.length > 0 && (
+                <p><span className="text-amber-600">⚠ 需要 OCR 的页：</span>{ocrPages.slice(0, 30).join(', ')}{ocrPages.length > 30 ? '...' : ''}</p>
               )}
               <p><span className="text-gray-500">分类：</span>{anResult.category}</p>
             </div>
@@ -231,7 +246,7 @@ export default function DocToolsPage() {
           <button onClick={runExtract} disabled={busy} className="px-5 py-2 rounded-lg bg-violet-600 text-white text-sm font-medium disabled:opacity-50">{busy ? '提取中...' : '开始提取'}</button>
           {exResult?.extractions && (
             <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1 max-h-80 overflow-auto">
-              {exResult.extractions.slice(0, 30).map((e: any, i: number) => (
+              {exResult.extractions.slice(0, 30).map((e: ExtractedItem, i: number) => (
                 <p key={i}><span className="text-violet-600 font-medium">[{e.class}]</span> {e.text}</p>
               ))}
               <p className="text-xs text-gray-400">共 {exResult.count} 条</p>

@@ -10,6 +10,7 @@
 
 表: aii.trajectory_logs(ts, flywheel, phase, failure_mode, error_sig, context, outcome)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -17,7 +18,7 @@ import os
 
 import asyncpg
 
-_DSN = os.getenv("AII_KG_URL", "postgresql://aii:***REMOVED***@localhost:5435/aii_kg")
+_DSN = os.getenv("AII_KG_URL", "postgresql://aii:***REMOVED***@localhost:5437/aii_kg")
 _INSERT = (
     "INSERT INTO aii.trajectory_logs"
     " (flywheel, phase, failure_mode, error_sig, context, outcome)"
@@ -39,7 +40,9 @@ async def traj_log(
         try:
             await conn.execute(
                 _INSERT,
-                flywheel, phase, failure_mode,
+                flywheel,
+                phase,
+                failure_mode,
                 (error_sig or "")[:300],
                 __import__("json").dumps(context or {}, ensure_ascii=False),
                 outcome,
@@ -60,6 +63,13 @@ def traj_log_sync(
 ) -> None:
     """同步版(非 asyncio 环境用)。"""
     try:
-        asyncio.run(traj_log(flywheel, phase, failure_mode, error_sig, context, outcome))
+        # 质量门通常运行在 async pipeline 内；在已有 event loop 中不能调用
+        # asyncio.run，否则既报 RuntimeError 又遗留“coroutine was never awaited”。
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(traj_log(flywheel, phase, failure_mode, error_sig, context, outcome))
+        else:
+            loop.create_task(traj_log(flywheel, phase, failure_mode, error_sig, context, outcome))
     except Exception:  # noqa: BLE001
         pass

@@ -1,6 +1,5 @@
 """Account management — delete account."""
 
-import asyncio
 
 from fastapi import APIRouter, Depends
 

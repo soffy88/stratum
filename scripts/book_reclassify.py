@@ -23,13 +23,20 @@ book_reclassify.py — 修复扫描版误判 + 为无 markdown 书补跑 parse_p
   # 3. 只补单本
   python3 book_reclassify.py --run --substrate 01KVAJCXHEV751E9NTADMZ7RGV
 """
+
 from __future__ import annotations
-import sys, os, re, json, time, logging, argparse, pathlib
+import sys
+import os
+import json
+import time
+import logging
+import argparse
+import pathlib
 
-sys.path.insert(0, '/app/src')
-os.environ.setdefault('STRATUM_ENV', 'prod')
+sys.path.insert(0, "/app/src")
+os.environ.setdefault("STRATUM_ENV", "prod")
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)-8s %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s")
 log = logging.getLogger(__name__)
 
 
@@ -37,12 +44,14 @@ log = logging.getLogger(__name__)
 # 改进的 PDF 类型检测（stratum 层，不改 oprim）
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def is_text_pdf(pdf_path: pathlib.Path, sample_pages: int = 10) -> tuple[bool, int, int]:
     """判断 PDF 是否有文本层。跳过前2页（封面/版权），采样后续页。
 
     Returns: (is_text, total_text_chars, pages_sampled)
     """
     import fitz
+
     doc = fitz.open(str(pdf_path))
     total_pages = doc.page_count
     text_chars = 0
@@ -66,6 +75,7 @@ def is_text_pdf(pdf_path: pathlib.Path, sample_pages: int = 10) -> tuple[bool, i
 def has_bookmarks(pdf_path: pathlib.Path) -> int:
     """返回书签数量（>0 意味着有 chapter 结构）。"""
     import fitz
+
     doc = fitz.open(str(pdf_path))
     n = len(doc.get_toc())
     doc.close()
@@ -76,9 +86,11 @@ def has_bookmarks(pdf_path: pathlib.Path) -> int:
 # 找没有 markdown derivative 的 book 基底
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def find_books_without_markdown() -> list[dict]:
     """查 DuckDB: book 类基底里没有 markdown derivative 的。"""
     from stratum.db import get_conn
+
     with get_conn() as conn:
         rows = conn.execute("""
             SELECT s.id, s.file_path
@@ -91,12 +103,13 @@ def find_books_without_markdown() -> list[dict]:
               )
             ORDER BY s.id
         """).fetchall()
-    return [{'id': r[0], 'file_path': r[1]} for r in rows]
+    return [{"id": r[0], "file_path": r[1]} for r in rows]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 补跑 parse_pdf + 存 derivative
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def parse_and_store(substrate_id: str, pdf_path: pathlib.Path) -> bool:
     """用 pymupdf4llm 解析 PDF，存 markdown+chapters+plaintext derivative。"""
@@ -105,7 +118,7 @@ def parse_and_store(substrate_id: str, pdf_path: pathlib.Path) -> bool:
 
     log.info("  Parsing %s ...", pdf_path.name[-50:])
     try:
-        parsed = parse_pdf(pdf_path, provider='pymupdf4llm')
+        parsed = parse_pdf(pdf_path, provider="pymupdf4llm")
     except Exception as e:
         log.error("  parse_pdf failed: %s", e)
         return False
@@ -116,19 +129,23 @@ def parse_and_store(substrate_id: str, pdf_path: pathlib.Path) -> bool:
 
     with get_conn() as conn:
         for kind, content in [
-            ('markdown', parsed.markdown),
-            ('plaintext', parsed.plaintext or ''),
-            ('chapters', json.dumps(parsed.chapters) if parsed.chapters else '[]'),
+            ("markdown", parsed.markdown),
+            ("plaintext", parsed.plaintext or ""),
+            ("chapters", json.dumps(parsed.chapters) if parsed.chapters else "[]"),
         ]:
             if not content:
                 continue
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT OR REPLACE INTO derivative (substrate_id, kind, content, updated_at)
                 VALUES (?, ?, ?, NOW())
-            """, (substrate_id, kind, content))
+            """,
+                (substrate_id, kind, content),
+            )
 
-    log.info("  Stored markdown (%d chars), chapters (%d)", len(parsed.markdown),
-             len(parsed.chapters))
+    log.info(
+        "  Stored markdown (%d chars), chapters (%d)", len(parsed.markdown), len(parsed.chapters)
+    )
     return True
 
 
@@ -136,15 +153,21 @@ def parse_and_store(substrate_id: str, pdf_path: pathlib.Path) -> bool:
 # Main
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def main() -> int:
-    p = argparse.ArgumentParser(description='Fix PDF scanned misclassification + generate md')
-    p.add_argument('--report', action='store_true',
-                   help='Only report: how many books are text-PDF vs truly scanned')
-    p.add_argument('--run', action='store_true',
-                   help='Parse text-PDFs and store markdown derivatives')
-    p.add_argument('--substrate', default='',
-                   help='Single substrate ID (optional, for targeted run)')
-    p.add_argument('--limit', type=int, default=0, help='Max books to process (0=all)')
+    p = argparse.ArgumentParser(description="Fix PDF scanned misclassification + generate md")
+    p.add_argument(
+        "--report",
+        action="store_true",
+        help="Only report: how many books are text-PDF vs truly scanned",
+    )
+    p.add_argument(
+        "--run", action="store_true", help="Parse text-PDFs and store markdown derivatives"
+    )
+    p.add_argument(
+        "--substrate", default="", help="Single substrate ID (optional, for targeted run)"
+    )
+    p.add_argument("--limit", type=int, default=0, help="Max books to process (0=all)")
     args = p.parse_args()
 
     if not args.report and not args.run:
@@ -154,22 +177,22 @@ def main() -> int:
     log.info("Finding books without markdown derivative...")
     books = find_books_without_markdown()
     if args.substrate:
-        books = [b for b in books if b['id'] == args.substrate]
+        books = [b for b in books if b["id"] == args.substrate]
     log.info("Found %d books without markdown", len(books))
 
     if args.limit:
-        books = books[:args.limit]
+        books = books[: args.limit]
 
     text_pdfs, scanned_pdfs, missing_files, errors = [], [], [], []
 
     for i, book in enumerate(books, 1):
-        sid = book['id']
-        fp = pathlib.Path(book['file_path']) if book['file_path'] else None
+        sid = book["id"]
+        fp = pathlib.Path(book["file_path"]) if book["file_path"] else None
 
         if fp is None or not fp.exists():
             # 文件路径可能是相对于 data 目录的
             # 尝试从 substrate 目录查找
-            candidates = list(pathlib.Path('/root/.stratum/data/substrate/book').glob(f'{sid}*'))
+            candidates = list(pathlib.Path("/root/.stratum/data/substrate/book").glob(f"{sid}*"))
             if candidates:
                 fp = candidates[0]
             else:
@@ -180,14 +203,22 @@ def main() -> int:
         is_text, text_chars, pages_checked = is_text_pdf(fp)
         bookmarks = has_bookmarks(fp)
 
-        status = 'TEXT_PDF' if is_text else 'SCANNED'
-        log.info("[%d/%d] %s: %s (text_chars=%d over %d pages, bookmarks=%d)",
-                 i, len(books), sid[:12], status, text_chars, pages_checked, bookmarks)
+        status = "TEXT_PDF" if is_text else "SCANNED"
+        log.info(
+            "[%d/%d] %s: %s (text_chars=%d over %d pages, bookmarks=%d)",
+            i,
+            len(books),
+            sid[:12],
+            status,
+            text_chars,
+            pages_checked,
+            bookmarks,
+        )
 
         if is_text:
-            text_pdfs.append({'id': sid, 'path': str(fp), 'bookmarks': bookmarks})
+            text_pdfs.append({"id": sid, "path": str(fp), "bookmarks": bookmarks})
         else:
-            scanned_pdfs.append({'id': sid, 'path': str(fp)})
+            scanned_pdfs.append({"id": sid, "path": str(fp)})
 
         if args.run and is_text:
             ok = parse_and_store(sid, fp)
@@ -200,14 +231,16 @@ def main() -> int:
     log.info("=== Summary ===")
     log.info("Total books without markdown : %d", len(books))
     log.info("Text PDF (misdetected)       : %d (→ can use pymupdf4llm)", len(text_pdfs))
-    log.info("  With bookmarks (has TOC)   : %d", sum(1 for b in text_pdfs if b['bookmarks'] > 0))
+    log.info("  With bookmarks (has TOC)   : %d", sum(1 for b in text_pdfs if b["bookmarks"] > 0))
     log.info("Truly scanned                : %d (→ needs Unlimited-OCR)", len(scanned_pdfs))
     log.info("File missing                 : %d", len(missing_files))
     if args.run:
-        log.info("Markdown generated (errors)  : %d (%d)", len(text_pdfs) - len(errors), len(errors))
+        log.info(
+            "Markdown generated (errors)  : %d (%d)", len(text_pdfs) - len(errors), len(errors)
+        )
 
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

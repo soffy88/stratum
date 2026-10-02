@@ -1,10 +1,11 @@
 """Agent execution — wires to omodul workflow functions and Agent classes.
 
 Phase 15 P1-A (Wave 1):
-  AGENT_REGISTRY: 3 real workflows + 4 NOT_IMPLEMENTED stubs (501)
+  AGENT_REGISTRY: real workflows + optional Agent-class implementations
 Phase 15 P1-C (Wave 5, post omodul PR #1 merge):
   Activated 3 Agent-class agents: translation_worker / reading_companion / lint_bot
-  Only audio_generator remains 501 (oprim.tts_synthesize not exported, no providers).
+  audio_generator is registered when omodul/obase is available; local environments
+  without the optional platform stack return a controlled not-implemented result.
   Advisor-authorized name mapping (§7 stop-and-report, R-4 explicit auth):
     knowledge_curator → process_inbox_substrate (InboxConfig/InboxInput)
   All runs persisted to agent_runs_sl table; GET /runs + GET /runs/{run_id} added.
@@ -17,23 +18,22 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 
-# LLM provider config — read from env, default to qwen3_dashscope (DASHSCOPE_API_KEY set).
-# Valid oprim.llm.llm_call providers: "qwen3_dashscope", "claude".
-# Set STRATUM_LLM_PROVIDER=claude to switch to Anthropic; future deepseek support: add to oprim.
-_DEFAULT_LLM_PROVIDER: str = os.environ.get("STRATUM_LLM_PROVIDER", "qwen3_dashscope")
-_DEFAULT_LLM_MODEL: str = os.environ.get("STRATUM_LLM_MODEL", "qwen-plus")
-
 from stratum.changefeed import emit_event
 from stratum.common import (
     ensure_dir,
     generate_ulid,
     jwt_auth,
     now_utc,
-    sha256_hex,
     user_agent_runs_dir,
 )
 from stratum.db import insert, query, read, update
 from stratum.utils.user_id_hash import hash_user_id
+
+# LLM provider config — read from env, default to qwen3_dashscope (DASHSCOPE_API_KEY set).
+# Valid oprim.llm.llm_call providers: "qwen3_dashscope", "claude".
+# Set STRATUM_LLM_PROVIDER=claude to switch to Anthropic; future deepseek support: add to oprim.
+_DEFAULT_LLM_PROVIDER: str = os.environ.get("STRATUM_LLM_PROVIDER", "qwen3_dashscope")
+_DEFAULT_LLM_MODEL: str = os.environ.get("STRATUM_LLM_MODEL", "qwen-plus")
 
 # ── oservice ResearcherAgent ──────────────────────────────────────────────────
 
@@ -146,7 +146,6 @@ try:
     import os as _os
     from obase import ProviderRegistry as _PR
     from obase.secrets import register_backend as _reg_secrets
-    from oprim.llm.llm_call import llm_call as _oprim_llm_call
 
     # 1. Env-backed secrets so obase.get_secret("DASHSCOPE_API_KEY") works.
     class _EnvSecretsBackend:
@@ -428,6 +427,66 @@ async def agent_run(
         _oservice_query = (params or {}).get("query") or ""
         if not _oservice_query:
             raise HTTPException(422, "params.query is required for researcher")
+
+        idempotency_key = (params or {}).get("idempotency_key")
+        if idempotency_key is not None:
+            if (
+                not isinstance(idempotency_key, str)
+                or not idempotency_key.strip()
+                or len(idempotency_key) > 200
+            ):
+                raise HTTPException(
+                    422,
+                    "params.idempotency_key must be a non-empty string of at most 200 characters",
+                )
+            idempotency_key = idempotency_key.strip()
+
+        # Reserve the high-compute allowance before creating a research run.
+        # The atomic ledger charge prevents a burst of concurrent requests from
+        # bypassing the monthly Free/Plus/Pro budget.
+        from stratum.api.routers.billing import get_active_tier
+        from stratum.services.credit_meter import CreditIdempotencyConflict, consume_credits
+
+        try:
+            credit = consume_credits(
+                user_id,
+                get_active_tier(user_id),
+                "deep_research",
+                idempotency_key=idempotency_key,
+            )
+        except CreditIdempotencyConflict as exc:
+            raise HTTPException(
+                409,
+                detail={
+                    "code": "idempotency_key_conflict",
+                    "message": str(exc),
+                },
+            ) from exc
+        if credit.outcome == "replayed":
+            return {
+                "agent_name": agent_name,
+                "status": "replayed",
+                "message": "This idempotent research operation was already charged and accepted.",
+                **credit.to_dict(),
+            }
+        if not credit.allowed:
+            if credit.outcome == "in_flight":
+                raise HTTPException(
+                    409,
+                    detail={
+                        "code": "credits_request_in_progress",
+                        "message": "An idempotent research request with this key is still in progress",
+                        **credit.to_dict(),
+                    },
+                )
+            raise HTTPException(
+                402,
+                detail={
+                    "code": "credits_exhausted",
+                    "message": "Monthly research credits exhausted",
+                    **credit.to_dict(),
+                },
+            )
 
     out_dir = ensure_dir(user_agent_runs_dir(user_id))
     run_id = generate_ulid()

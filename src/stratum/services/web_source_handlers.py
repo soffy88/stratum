@@ -8,9 +8,9 @@ Twitter: 用户名/关键词 → r.jina.ai 级联抓取
 ★ 注意: 微信文章通常无 RSS, 需手动提供 URL 列表或通过第三方 API 发现.
 Twitter 同样受反爬限制, jina.ai 是主要获取路径.
 """
+
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -42,19 +42,23 @@ async def wechat_fetch_articles(
             result = await fetch_url_enhanced(url, strategy="wechat")
             if result.success and result.html:
                 ext_id = f"wechat_{abs(hash(url)) % 10**12}"
-                results.append(SourceResult(
-                    external_id=ext_id,
-                    title=result.title or f"WeChat Article {ext_id[-8:]}",
-                    download_url=url,  # 原文链接
-                    file_type="html",
-                    metadata={
-                        "source_type": "wechat",
-                        "url": url,
-                        "strategy": result.strategy_used,
-                        "content_preview": result.html[:500] if result.html else "",
-                    },
-                ))
-                log.info("wechat_fetch: OK %s title=%s len=%d", ext_id, result.title, len(result.html))
+                results.append(
+                    SourceResult(
+                        external_id=ext_id,
+                        title=result.title or f"WeChat Article {ext_id[-8:]}",
+                        download_url=url,  # 原文链接
+                        file_type="html",
+                        metadata={
+                            "source_type": "wechat",
+                            "url": url,
+                            "strategy": result.strategy_used,
+                            "content_preview": result.html[:500] if result.html else "",
+                        },
+                    )
+                )
+                log.info(
+                    "wechat_fetch: OK %s title=%s len=%d", ext_id, result.title, len(result.html)
+                )
             else:
                 log.warning("wechat_fetch: FAIL %s error=%s", url[:60], result.error)
         except Exception as e:
@@ -84,6 +88,7 @@ async def twitter_fetch_threads(
     if keyword:
         # Twitter 搜索 URL (jina.ai 可能无法完整解析)
         import urllib.parse
+
         tweet_urls.append(f"https://twitter.com/search?q={urllib.parse.quote(keyword)}")
 
     # 允许直接提供 URL
@@ -96,18 +101,20 @@ async def twitter_fetch_threads(
             result = await fetch_url_enhanced(url, strategy="twitter")
             if result.success and result.html:
                 ext_id = f"tweet_{abs(hash(url)) % 10**12}"
-                results.append(SourceResult(
-                    external_id=ext_id,
-                    title=result.title or f"Twitter Thread {ext_id[-8:]}",
-                    download_url=url,
-                    file_type="html",
-                    metadata={
-                        "source_type": "twitter",
-                        "url": url,
-                        "strategy": result.strategy_used,
-                        "content_preview": result.html[:500] if result.html else "",
-                    },
-                ))
+                results.append(
+                    SourceResult(
+                        external_id=ext_id,
+                        title=result.title or f"Twitter Thread {ext_id[-8:]}",
+                        download_url=url,
+                        file_type="html",
+                        metadata={
+                            "source_type": "twitter",
+                            "url": url,
+                            "strategy": result.strategy_used,
+                            "content_preview": result.html[:500] if result.html else "",
+                        },
+                    )
+                )
                 log.info("twitter_fetch: OK %s len=%d", ext_id, len(result.html))
             else:
                 log.warning("twitter_fetch: FAIL %s error=%s", url[:60], result.error)

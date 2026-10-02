@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -72,6 +73,10 @@ def _find_source_pdf(sid):
 
 path = Path(sys.argv[1])
 text = path.read_text(encoding="utf-8", errors="replace")
+# GDrive 书库挂载点是只读输入源。路由/隔离属于本地状态变更，不能对挂载内
+# 文件执行 rename/unlink，否则会出现跨设备链接或 Read-only file system，进而
+# 把整个数学飞轮打成异常循环。
+READ_ONLY_SOURCE = path.is_relative_to(Path("/home/soffy/books"))
 
 # ★2026-08-10 arXiv 数学论文直接放行乱码门: 论文公式/表格密集, _TABLE_SHRED_ROW
 #   误判(实测 table_shred_ratio 0.073>0.05); arXiv 渲染 PDF 文字层可靠, 不需要乱码门。
@@ -80,10 +85,36 @@ if not path.stem.startswith("arxiv_"):
 else:
     bad, sig = False, {}
 if bad:
+    if READ_ONLY_SOURCE:
+        print(f"  ⏭ GDrive只读源命中乱码门，跳过本轮隔离/重写: {path.name[:60]}")
+        sys.exit(1)
     from markitdown import MarkItDown
 
     sid = _frontmatter_field(text, "substrate_id")
     src_pdf = _find_source_pdf(sid)
+    # ★2026-08-29 force_convert / pull_ingest 产出的 MD 没有 frontmatter,
+    #   _find_source_pdf() 找不到 substrate_id; 退而求其次, 用 MD 同名在
+    #   books/{数学,教辅,计算机,其它,Economic,论文} 本地找源 PDF 重转.
+    if not src_pdf:
+        cand_stems = [path.stem, re.sub(r"\.md$", "", path.name)]
+        for d in (
+            "/home/soffy/books/数学",
+            "/home/soffy/books/教辅",
+            "/home/soffy/books/计算机",
+            "/home/soffy/books/其它",
+            "/home/soffy/books/Economic",
+            "/home/soffy/books/论文",
+        ):
+            for stem in cand_stems:
+                for ext in (".pdf", ".epub"):
+                    cand = Path(d) / (stem + ext)
+                    if cand.exists():
+                        src_pdf = cand
+                        break
+                if src_pdf:
+                    break
+            if src_pdf:
+                break
     if src_pdf:
         new_text = MarkItDown().convert(str(src_pdf)).text_content
         language = _frontmatter_field(text, "language") or "zh"
@@ -99,7 +130,17 @@ if bad:
     else:
         QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
         dst = QUARANTINE_DIR / path.name
-        if not dst.exists():
+        if dst.exists():
+            # 同名隔离副本已存在时，原文件不能继续留在扫描目录，否则每轮都会
+            # 重复命中同一条乱码门。保留副本到 duplicates/，不删除用户资产。
+            dup_dir = QUARANTINE_DIR / "duplicates"
+            dup_dir.mkdir(parents=True, exist_ok=True)
+            dup = dup_dir / path.name
+            if dup.exists():
+                dup = dup_dir / f"{path.stem}__duplicate_{path.stat().st_size}.md"
+            shutil.move(str(path), str(dup))
+            print(f"  → 同名隔离副本已存在，移出扫描目录: {dup.name[:40]}")
+        else:
             shutil.move(str(path), str(dst))
         print(f"  → 乱码门命中{sig}但找不到源PDF, 隔离等人工: {path.name[:40]}")
         sys.exit(1)
@@ -107,6 +148,10 @@ if bad:
 ok, n = is_extractable(text)
 if ok:
     sys.exit(0)
+
+if READ_ONLY_SOURCE:
+    print(f"  ⏭ GDrive只读源不可抽取，保留原文件并交由其它飞轮处理: {path.name[:60]}")
+    sys.exit(1)
 
 MISC_DIR.mkdir(parents=True, exist_ok=True)
 dst = MISC_DIR / path.name

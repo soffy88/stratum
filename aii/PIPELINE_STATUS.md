@@ -2,6 +2,59 @@
 
 最后确认: 2026-07-06 10:25, 有🚨(ocr-vllm exited, GPU硬件故障未恢复——详见下方"GPU硬件故障"章节的后续更新)
 
+> **2026-09-26 修复记录(先读这段, 下面"三个飞轮"时代的老拓扑已不完整)**
+>
+> 本次修复了"7 个飞轮全在空转、一本新书都不产"的断流。根因**不是**飞轮本身, 是三个叠加的环境故障:
+>
+> 1. **`/home/soffy/books` 上悬着一个死掉的 rclone FUSE 挂载点**(Errno 107
+>    `Transport endpoint is not connected`)。它把挂载点底下 **21G 本地 PDF 全部遮住**,
+>    同时让 rclone 报 `mkdir /home/soffy/books: file exists` —— 供料和落盘双向死锁,
+>    `feeder_run.sh` 因此 60s 一轮地打印 `教材: 0→0`。
+> 2. **根分区 `/` 100% 满(0 可用)**。`~/.cache/rclone` 的 VFS 缓存涨到 6.1G 且因磁盘满无法回收,
+>    rclone FUSE 拿不到 scratch 就崩 —— 这是 1 的起因。已清掉该缓存。
+> 3. **书池错放在 `/`(98G 小盘)且转换后永不清理**, 而 `/data` 有 120G+ 空余。已整目录删除。
+>
+> **已做的处置(不要再回退)**:
+>
+> - **`aii-books-gdrive-mount.service` 已恢复 `enable` + `running`**, FUSE 只读挂载
+>   `gdrive:aii-books` → `/home/soffy/books`。这就是**原设计**, 零 PDF 暂存:
+>   飞轮通过挂载点直读 GDrive 的 PDF, 转换产物只写本地 `gdrive_staging/MD/<学科>`。
+>   判定入口是 `pull_ingest.sh:12` 的 `GDRIVE_MOUNT_ACTIVE` 探测。
+> - **本地书池已清空并从磁盘删除**。核查依据: 对 6 个学科夹逐个跑
+>   `rclone copy <本地池> gdrive:aii-books/<学科> --dry-run`, **待传数量全部为 0** ——
+>   本地每一本在 GDrive 上都已有同名同尺寸副本, 属纯冗余。删除时释放 55G。
+>   `/data` 可用空间从 87G 回到 117G。
+> - **挂载会遮住挂载点底下的一切**, 所以删除前先把已转好的 MD 全部并入
+>   `gdrive_staging/MD/<学科>`(各 `*_discover.py` 本来就优先扫这个目录, 不会丢)。
+>   注意 `rsync --ignore-existing` 会**静默漏掉长文件名**, 有 2 个真实文件
+>   (含一个 1.97MB 的) 没并进去, 已用逐个 `cp` 补齐; 另有 3 个 0 字节空 MD
+>   (转换失败残留) 未并入, 直接随书池删除。
+> - `aii-gdrive-mount.service`(`~/gdrive`, 累计重启 8251 次的那台)**保持 stopped**。
+>   实测全链路无人读 `~/gdrive`, 只有 `context_archiver.py` 一句注释说明与它无关。
+>
+> **两条供料路径互斥, 别同时开**:
+>
+> | | FUSE 挂载(当前, `GDRIVE_MOUNT_ACTIVE=1`) | rclone copy 降级(挂载挂掉时) |
+> |---|---|---|
+> | PDF 落盘 | 不落盘, 直读 | 全量 copy 到本地, 转换后因 `_rm_src` 的 `is_relative_to` 守卫**永不删除** |
+> | 补料 | `refill_feed.sh:23` 直接 `exit 0` 短路 | 跑 `rclone copy`, 每轮 2G 预算 |
+> | D盘 `/mnt/d/books` | **被跳过**(`pull_ingest.sh:19`) | 参与同步 |
+> | 磁盘 | 只占 VFS 缓存(上限 4G) | 无上限增长(实测能到 55G) |
+>
+> ⚠️ 曾因根分区 `/` 满(0 可用)导致 rclone 拿不到 VFS scratch 而崩, 崩后留下悬空挂载点,
+> 又反过来遮住 21G 本地书池 —— 这就是本次断流的完整因果链。
+> **FUSE 挂载无 VFS scratch 可用时必然重演, 巡检时先看 `df -h /`。**
+>
+> **恢复后实测**: cs 飞轮跑完 `31/31 chapters → 51 KUs`, edu 走完 KU→KC→BU,
+> KU 总量 41562 → 41985 持续增长(切 FUSE 模式前后 econ-zh 稳定 +64/60min)。
+>
+> 🚨 **GPU 仍未恢复(用户已决定放弃)**: `nvidia-smi` 报
+> `Unable to determine the device handle for GPU0: 0000:05:00.0: Unknown Error`,
+> 驱动模块和 `/dev/nvidia*` 都在、lspci 也认得 05:00.0, 但驱动句柄打不开。
+> **需重启机器或 GPU reset 才能恢复。** 后果: OCR 通道全废 ——
+> advmath 有 1 本待 OCR, math-prog 有 2 本被粘连率门禁挡下(粘连率靠 CPU 判, 但转换需 OCR),
+> math-prog 自 2026-09-14 起零产出。
+
 ## 拓扑(源文件 → MD → KU)
 
 ```
@@ -124,9 +177,19 @@ NVRM: GPU 0000:01:00.0: GPU has fallen off the bus.
 - **宿主机内存告急导致 econ-zh 飞轮持续 OOM kill**（2026-08-02 观察）: 30G RAM 用 24G、**31G swap 全满**；`aii-flywheel-econ-zh` 重启计数已达 45（今日 07:02–08:42 被 OOM kill 8 次），今日 0 KU 入库。内存大头是跨项目 `platform-postgres` 容器（8.8G，helios/selene/aegis 共享库），非 AII 代码问题。若要让 econ-zh 稳定跑，需要人工决定释放/限制内存（如给 platform-postgres 设内存上限、或暂时停掉非关键容器），或提高宿主 RAM/swap 上限——这超出 AII 软件层面可处理范围
 
 <!-- WATCHDOG:START -->
-## 🚨 Needs Human (看门狗自动维护, 2026-08-13T01:33:42Z)
+## 🚨 Needs Human (看门狗自动维护, 2026-09-24T14:25:52Z)
 
+- svc:aii-books-gdrive-mount.service: enabled但未运行 → systemctl --user start aii-books-gdrive-mount.service
+- svc:aii-flywheel-advmath.service: enabled但未运行 → systemctl --user start aii-flywheel-advmath.service
+- svc:aii-flywheel-cs.service: enabled但未运行 → systemctl --user start aii-flywheel-cs.service
+- svc:aii-flywheel-econ-zh.service: enabled但未运行 → systemctl --user start aii-flywheel-econ-zh.service
+- svc:aii-flywheel-edu.service: enabled但未运行 → systemctl --user start aii-flywheel-edu.service
+- svc:aii-flywheel-math-prog.service: enabled但未运行 → systemctl --user start aii-flywheel-math-prog.service
+- svc:aii-flywheel-misc.service: enabled但未运行 → systemctl --user start aii-flywheel-misc.service
+- svc:aii-flywheel-paper.service: enabled但未运行 → systemctl --user start aii-flywheel-paper.service
 - ku-growth: 24h KU 增量=0(历史正常 400-700/天) — 产能停摆, 查飞轮/入库
+- stratum-sl: 容器状态=exited
+- ingestion-freshness: 最新substrate已 265.3h 前, 但有88个活跃订阅 — 入库可能已停摆
 
 <!-- WATCHDOG:END -->
 

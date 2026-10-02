@@ -4,7 +4,12 @@ Qwen3-Embedding-0.6B evaluation (supplement to run_embedding_benchmark.py).
 Adds/replaces qwen3-embedding-0.6B entry in embedding_results.json.
 Requires: transformers>=5.8.0, MIRACL data already downloaded.
 """
-import json, time, math, statistics, re
+
+import json
+import time
+import math
+import statistics
+import re
 from pathlib import Path
 import numpy as np
 
@@ -16,9 +21,21 @@ out_path = BENCH / "embedding_results.json"
 results = json.loads(out_path.read_text("utf-8")) if out_path.exists() else {}
 
 # Load MIRACL data (already downloaded)
-corpus = [json.loads(l) for l in (BENCH / "miracl_zh_corpus.jsonl").read_text("utf-8").splitlines() if l.strip()]
-queries = [json.loads(l) for l in (BENCH / "miracl_zh_queries.jsonl").read_text("utf-8").splitlines() if l.strip()]
-qrels = [json.loads(l) for l in (BENCH / "miracl_zh_qrels.jsonl").read_text("utf-8").splitlines() if l.strip()]
+corpus = [
+    json.loads(l)
+    for l in (BENCH / "miracl_zh_corpus.jsonl").read_text("utf-8").splitlines()
+    if l.strip()
+]
+queries = [
+    json.loads(l)
+    for l in (BENCH / "miracl_zh_queries.jsonl").read_text("utf-8").splitlines()
+    if l.strip()
+]
+qrels = [
+    json.loads(l)
+    for l in (BENCH / "miracl_zh_qrels.jsonl").read_text("utf-8").splitlines()
+    if l.strip()
+]
 print(f"Corpus: {len(corpus)}, queries: {len(queries)}, qrels: {len(qrels)}")
 
 # Load corpus_b
@@ -29,22 +46,46 @@ for sid in ["S1", "S2", "S3", "S4", "S5"]:
     md = parsed / sid / "pymupdf4llm.md"
     if md.exists():
         text = md.read_text("utf-8")
-        paras = [p.strip() for p in re.split(r'\n{2,}', text) if len(p.strip()) >= 50]
+        paras = [p.strip() for p in re.split(r"\n{2,}", text) if len(p.strip()) >= 50]
         for i, p in enumerate(paras[:CORPUS_B_LIMIT]):
             corpus_b.append({"id": f"{sid}-{i}", "text": p, "domain": sid})
 print(f"Corpus_b: {len(corpus_b)} paragraphs")
 
 CUSTOM_QUERIES = [
-    {"id": "math-01", "text": "Marchenko-Pastur distribution eigenvalue distribution", "domain": "mathematics"},
-    {"id": "math-02", "text": "biharmonic equation weak solution regularity", "domain": "mathematics"},
-    {"id": "math-03", "text": "covariance matrix spectral theory random matrices", "domain": "mathematics"},
-    {"id": "math-04", "text": "Brezis-Kato regularity nonlinear scalar field equations", "domain": "mathematics"},
-    {"id": "math-05", "text": "strongly integrating fermions ground state instability", "domain": "mathematics"},
+    {
+        "id": "math-01",
+        "text": "Marchenko-Pastur distribution eigenvalue distribution",
+        "domain": "mathematics",
+    },
+    {
+        "id": "math-02",
+        "text": "biharmonic equation weak solution regularity",
+        "domain": "mathematics",
+    },
+    {
+        "id": "math-03",
+        "text": "covariance matrix spectral theory random matrices",
+        "domain": "mathematics",
+    },
+    {
+        "id": "math-04",
+        "text": "Brezis-Kato regularity nonlinear scalar field equations",
+        "domain": "mathematics",
+    },
+    {
+        "id": "math-05",
+        "text": "strongly integrating fermions ground state instability",
+        "domain": "mathematics",
+    },
     {"id": "math-06", "text": "biharmonic Sobolev inequality logarithmic", "domain": "mathematics"},
     {"id": "math-07", "text": "Marchenko Pastur law free probability", "domain": "mathematics"},
     {"id": "math-08", "text": "Pohozaev manifold critical point theory", "domain": "mathematics"},
     {"id": "math-09", "text": "W^{2,2} Sobolev space biharmonic operator", "domain": "mathematics"},
-    {"id": "math-10", "text": "matrix eigenvalue distribution Wigner semicircle", "domain": "mathematics"},
+    {
+        "id": "math-10",
+        "text": "matrix eigenvalue distribution Wigner semicircle",
+        "domain": "mathematics",
+    },
     {"id": "zh-01", "text": "小說起源 先秦諸子 稗官野史", "domain": "classical_chinese"},
     {"id": "zh-02", "text": "魯迅 中國小說史略 章回小說", "domain": "classical_chinese"},
     {"id": "zh-03", "text": "唐代傳奇 志怪小說 古典文學", "domain": "classical_chinese"},
@@ -55,7 +96,11 @@ CUSTOM_QUERIES = [
     {"id": "zh-08", "text": "儒林外史 諷刺小說 吳敬梓", "domain": "classical_chinese"},
     {"id": "zh-09", "text": "紅樓夢 人情小說 清代文學", "domain": "classical_chinese"},
     {"id": "zh-10", "text": "六朝志怪 干寶 搜神記 神話傳說", "domain": "classical_chinese"},
-    {"id": "mix-01", "text": "attention mechanism transformer self-attention 注意力机制", "domain": "mixed"},
+    {
+        "id": "mix-01",
+        "text": "attention mechanism transformer self-attention 注意力机制",
+        "domain": "mixed",
+    },
     {"id": "mix-02", "text": "Karpathy neural network 神经网络 embedding", "domain": "mixed"},
     {"id": "mix-03", "text": "softmax temperature scaling 温度参数 概率分布", "domain": "mixed"},
     {"id": "mix-04", "text": "multi-head attention 多头注意力 query key value", "domain": "mixed"},
@@ -64,7 +109,11 @@ CUSTOM_QUERIES = [
     {"id": "mix-07", "text": "cross-entropy loss 交叉熵 分类任务", "domain": "mixed"},
     {"id": "mix-08", "text": "layer normalization batch norm 归一化 训练稳定性", "domain": "mixed"},
     {"id": "mix-09", "text": "tokenizer BPE subword 分词 词汇表", "domain": "mixed"},
-    {"id": "mix-10", "text": "encoder decoder architecture seq2seq 编码器解码器", "domain": "mixed"},
+    {
+        "id": "mix-10",
+        "text": "encoder decoder architecture seq2seq 编码器解码器",
+        "domain": "mixed",
+    },
 ]
 
 
@@ -80,9 +129,9 @@ def recall_at_k(retrieved_ids, relevant_ids, k=10):
     return len(rel_set & set(retrieved_ids[:k])) / max(len(rel_set), 1)
 
 
-print("\n" + "="*60)
+print("\n" + "=" * 60)
 print("MODEL: qwen3-embedding-0.6B")
-print("="*60)
+print("=" * 60)
 
 from sentence_transformers import SentenceTransformer
 import os
@@ -100,6 +149,7 @@ result = {"model": "qwen3-embedding-0.6B", "load_time_s": round(load_time, 1), "
 
 # Part A: MIRACL-zh
 from collections import defaultdict
+
 qrel_map = defaultdict(list)
 for r in qrels:
     qrel_map[r["qid"]].append(r["docid"])
@@ -110,8 +160,13 @@ print(f"Valid MIRACL queries: {len(valid_queries)}/{len(queries)}")
 
 corpus_texts = [c["text"] for c in corpus]
 t0 = time.perf_counter()
-c_embs = model.encode(corpus_texts, batch_size=64, show_progress_bar=False,
-                       normalize_embeddings=True, prompt_name="query")
+c_embs = model.encode(
+    corpus_texts,
+    batch_size=64,
+    show_progress_bar=False,
+    normalize_embeddings=True,
+    prompt_name="query",
+)
 corpus_encode_time = time.perf_counter() - t0
 rate = len(corpus_texts) / corpus_encode_time
 print(f"Corpus encoded: {corpus_encode_time:.1f}s ({rate:.1f} docs/s)")
@@ -120,7 +175,13 @@ result["corpus_encode_rate"] = round(rate, 1)
 
 if valid_queries:
     q_texts = [q["text"] for q in valid_queries]
-    q_embs = model.encode(q_texts, batch_size=64, show_progress_bar=False, normalize_embeddings=True, prompt_name="query")
+    q_embs = model.encode(
+        q_texts,
+        batch_size=64,
+        show_progress_bar=False,
+        normalize_embeddings=True,
+        prompt_name="query",
+    )
     c_embs_np = np.array(c_embs)
     q_embs_np = np.array(q_embs)
     sims = q_embs_np @ c_embs_np.T
@@ -148,11 +209,18 @@ else:
 # Part B: Custom queries with LLM-as-judge
 print(f"\nPart B: Custom queries ({len(CUSTOM_QUERIES)} queries)...")
 b_texts = [c["text"] for c in corpus_b]
-b_embs = model.encode(b_texts, batch_size=64, show_progress_bar=False, normalize_embeddings=True, prompt_name="query")
+b_embs = model.encode(
+    b_texts, batch_size=64, show_progress_bar=False, normalize_embeddings=True, prompt_name="query"
+)
 b_embs_np = np.array(b_embs)
 
-q_custom_embs = model.encode([q["text"] for q in CUSTOM_QUERIES], batch_size=64,
-                               show_progress_bar=False, normalize_embeddings=True, prompt_name="query")
+q_custom_embs = model.encode(
+    [q["text"] for q in CUSTOM_QUERIES],
+    batch_size=64,
+    show_progress_bar=False,
+    normalize_embeddings=True,
+    prompt_name="query",
+)
 q_custom_np = np.array(q_custom_embs)
 sims_b = q_custom_np @ b_embs_np.T
 
@@ -161,6 +229,7 @@ judge_scores = []
 
 try:
     import anthropic
+
     ac = anthropic.Anthropic()
 
     for i, q in enumerate(CUSTOM_QUERIES):
@@ -192,15 +261,19 @@ Respond with exactly: X,X,X (three integers, comma-separated, no spaces)"""
             judge_scores.append(relevance)
             custom_results.append({"query_id": q["id"], "relevance": relevance, "raw": scores_str})
             if (i + 1) % 5 == 0:
-                print(f"  Judge: {i+1}/{len(CUSTOM_QUERIES)} done", flush=True)
+                print(f"  Judge: {i + 1}/{len(CUSTOM_QUERIES)} done", flush=True)
         except Exception as e:
             custom_results.append({"query_id": q["id"], "relevance": None, "error": str(e)})
 
     if judge_scores:
-        result["custom_judge_pass_rate"] = round(sum(j > 0 for j in judge_scores) / len(judge_scores), 3)
+        result["custom_judge_pass_rate"] = round(
+            sum(j > 0 for j in judge_scores) / len(judge_scores), 3
+        )
         result["custom_judge_mean_relevance"] = round(statistics.mean(judge_scores), 3)
         result["custom_judge_method"] = "LLM (claude-haiku-4-5-20251001)"
-        print(f"LLM-judge pass rate: {result['custom_judge_pass_rate']}, mean relevance: {result['custom_judge_mean_relevance']}")
+        print(
+            f"LLM-judge pass rate: {result['custom_judge_pass_rate']}, mean relevance: {result['custom_judge_mean_relevance']}"
+        )
     result["custom_query_results"] = custom_results
 
 except ImportError:
@@ -212,7 +285,13 @@ except ImportError:
 # Throughput benchmark
 sample_texts = b_texts[:50]
 t0 = time.perf_counter()
-model.encode(sample_texts, batch_size=32, show_progress_bar=False, normalize_embeddings=True, prompt_name="query")
+model.encode(
+    sample_texts,
+    batch_size=32,
+    show_progress_bar=False,
+    normalize_embeddings=True,
+    prompt_name="query",
+)
 throughput_time = time.perf_counter() - t0
 result["throughput_50texts_s"] = round(throughput_time, 2)
 result["throughput_texts_per_s"] = round(50 / throughput_time, 1)
@@ -224,9 +303,11 @@ result["status"] = "OK"
 results["qwen3-embedding-0.6B"] = result
 out_path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
 print(f"\nResults saved to {out_path}")
-print(f"\nbge-m3 vs qwen3 summary:")
+print("\nbge-m3 vs qwen3 summary:")
 for m in ["bge-m3", "qwen3-embedding-0.6B"]:
     r = results.get(m, {})
     if r.get("status") == "OK":
-        print(f"  {m}: nDCG@10={r.get('miracl_ndcg10', 'N/A')}, pass_rate={r.get('custom_judge_pass_rate', 'N/A')}, tput={r.get('throughput_texts_per_s', 'N/A')} texts/s")
+        print(
+            f"  {m}: nDCG@10={r.get('miracl_ndcg10', 'N/A')}, pass_rate={r.get('custom_judge_pass_rate', 'N/A')}, tput={r.get('throughput_texts_per_s', 'N/A')} texts/s"
+        )
 print("=== DONE ===")

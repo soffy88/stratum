@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   RATING_LABELS,
-  type Flashcard,
   type Rating,
   useDeleteCard,
   useDueStats,

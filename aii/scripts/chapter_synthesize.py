@@ -8,7 +8,11 @@
 Usage: chapter_synthesize.py <chapter_n>
 """
 
-import asyncio, json, os, re, sys
+import asyncio
+import json
+import os
+import re
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -404,6 +408,11 @@ def _find_pos(text: str, name: str) -> int:
     for m in re.finditer(rf"\b{re.escape(name.lower()[:30])}", tl):
         if m.start() >= fm_end and _not_toc(tl, m.start()) and not _bad_anchor(text, m.start()):
             return m.start()
+    # 中文规划器常把“X为什么/原因”写成整句式名称，全文没有逐字同名短语。
+    # 不能再用“名词/原因”等通用词的首次出现作为锚点；返回未定位，调用方
+    # 才能使用 rationale 的 explains 原术语，或走宁缺毋滥的空结果。
+    if re.search(r"[\u4e00-\u9fff]", name) and not re.search(r"[A-Za-z]", name):
+        return -1
     for word in sorted(name.split(), key=len, reverse=True):
         if len(word) > 4:
             for mm in re.finditer(rf"\b{re.escape(word.lower())}", tl):
@@ -427,17 +436,42 @@ def _find_pos(text: str, name: str) -> int:
     return -1
 
 
+def _salvage_points(t: str) -> list:
+    """★2026-09-27 从截断的 JSON 里抢救完整知识点对象。
+
+    背景: 密度高的章, 模型输出的 {"points":[...]} 列表很长, 会在结构中间被截断
+    (而 max_tokens 在当前网关路由上被模型忽略, 想写多少写多少, 截断经常发生)。
+    原来 json.loads 失败就 return [], 于是**整块章颗粒无收**, 且重试参数不变必然再失败。
+    实测症状: "ch1 FAILED: 规划未返回知识点" + 质量门报
+    "KU密度不足: 实抽4仅17%×预期24(基准~6/章×4章)"。
+
+    不追求还原完整 JSON, 只把列表里**已经闭合的** {"name":..,"type":..} 逐个抠出来
+    —— 丢掉末尾那个不完整的对象, 其余全部保留。
+    """
+    out = []
+    for m in re.finditer(r'\{\s*"name"\s*:.*?"type"\s*:\s*"[a-z]+"\s*\}', t, re.DOTALL):
+        try:
+            d = json.loads(m.group(0))
+        except Exception:
+            continue
+        nm = d.get("name")
+        if isinstance(nm, str) and nm.strip():
+            out.append({"name": nm.strip(), "type": d.get("type", "concept")})
+    return out
+
+
 def _parse_points(t: str) -> list:
     """从LLM返回稳健提取知识点列表.
     标准: {"points":[{"name","type"}]} (DeepSeek遵守). 兜底: 本地模型(gemma)常自拟schema
-    (如 {"analysis":{"key_concepts":[{"concept":..}]}}) → 递归找含 name/concept/term 的对象."""
+    (如 {"analysis":{"key_concepts":[{"concept":..}]}}) → 递归找含 name/concept/term 的对象.
+    ★2026-09-27: JSON 被截断时先抢救已闭合对象再放弃(见 _salvage_points)。"""
     m = re.search(r"\{.*\}", t, re.DOTALL)
     if not m:
-        return []
+        return _salvage_points(t)
     try:
         data = json.loads(m.group(0))
     except Exception:
-        return []
+        return _salvage_points(t)
     pts = data.get("points") if isinstance(data, dict) else None
     if pts:  # 标准 schema, 原样返回(保持 DeepSeek 路径行为不变)
         return pts
@@ -477,39 +511,46 @@ async def _plan(llm, text, n):
     #   小块→每块都granular抽概念→合并后覆盖更全. Ollama 上限更小则取更小.
     _ck = min(_CTX, max(8000, _lim - 2500), int(os.getenv("PLAN_CHUNK_CHARS", "14000")))
     chunks = [text] if len(text) <= _ck else [text[i : i + _ck] for i in range(0, len(text), _ck)]
-    pts = []
-    for ck in chunks:
-        r = await llm(
-            messages=[
-                {
-                    "role": "user",
-                    "content":
-                    # ★指令在前(防 Ollama 截断切掉指令), 章节文本在后
-                    "List the knowledge points this chapter text DIRECTLY AND SUBSTANTIVELY teaches "
-                    "(each with its own definition or ≥2 paragraphs), classified by TYPE:\n"
-                    "• conceptual: a concept / principle / law (what X is, what holds) — e.g. price elasticity, law of demand\n"
-                    "• rationale: a WHY / mechanism the text EXPLICITLY explains (why something holds, the causal chain). "
-                    "★Only the causation the text actually states — DO NOT invent causation the text doesn't say.\n"
-                    "• procedural: a method / how-to (steps to do/compute something)\n"
-                    "• positional: a CONTESTED claim with no settled truth (schools disagree) — give the holder. "
-                    "★Only genuine disputes the text presents — DO NOT turn a consensus principle into a 'dispute'.\n"
-                    "• factual: a specific verifiable fact (only if the text really states one)\n\n"
-                    "★MAIN WHY (深度): for EACH conceptual point, IF the text explains why it holds / its mechanism, "
-                    'ALSO add a rationale point with "explains":<that concept name>.\n'
-                    "★ADMISSION GATE: cases / experiments / stories / examples are NOT points (they SUPPORT a point) — exclude them.\n"
-                    "★TYPES REFLECT THE BOOK: a normal econ textbook is mostly conceptual/rationale/procedural; "
-                    "positional/factual may be few or NONE — that is correct, NEVER force them.\n\n"
-                    'Output JSON: {"points":[{"name":"..","type":"conceptual|rationale|procedural|positional|factual",'
-                    '"explains":"<concept name — ONLY if type=rationale>",'
-                    '"stance_holder":"<who holds it — ONLY if positional>","opposing":"<opposing stance — ONLY if positional>"}]}\n\n'
-                    f"Chapter {n} text:\n\n{ck}",
-                }
-            ],
-            system=PLAN_SYS,
-            max_tokens=1200,
-        )
-        t = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
-        pts += _parse_points(t)
+    plan_sem = asyncio.Semaphore(int(os.getenv("AII_PLAN_CONCURRENCY", "3")))
+
+    async def plan_one(ck):
+        async with plan_sem:
+            r = await llm(
+                messages=[
+                    {
+                        "role": "user",
+                        "content":
+                        # ★指令在前(防 Ollama 截断切掉指令), 章节文本在后
+                        "List the knowledge points this chapter text DIRECTLY AND SUBSTANTIVELY teaches "
+                        "(each with its own definition or ≥2 paragraphs), classified by TYPE:\n"
+                        "• conceptual: a concept / principle / law (what X is, what holds) — e.g. price elasticity, law of demand\n"
+                        "• rationale: a WHY / mechanism the text EXPLICITLY explains (why something holds, the causal chain). "
+                        "★Only the causation the text actually states — DO NOT invent causation the text doesn't say.\n"
+                        "• procedural: a method / how-to (steps to do/compute something)\n"
+                        "• positional: a CONTESTED claim with no settled truth (schools disagree) — give the holder. "
+                        "★Only genuine disputes the text presents — DO NOT turn a consensus principle into a 'dispute'.\n"
+                        "• factual: a specific verifiable fact (only if the text really states one)\n\n"
+                        "★MAIN WHY (深度): for EACH conceptual point, IF the text explains why it holds / its mechanism, "
+                        'ALSO add a rationale point with "explains":<that concept name>.\n'
+                        "★ADMISSION GATE: cases / experiments / stories / examples are NOT points (they SUPPORT a point) — exclude them.\n"
+                        "★TYPES REFLECT THE BOOK: a normal econ textbook is mostly conceptual/rationale/procedural; "
+                        "positional/factual may be few or NONE — that is correct, NEVER force them.\n\n"
+                        'Output JSON: {"points":[{"name":"..","type":"conceptual|rationale|procedural|positional|factual",'
+                        '"explains":"<concept name — ONLY if type=rationale>",'
+                        '"stance_holder":"<who holds it — ONLY if positional>","opposing":"<opposing stance — ONLY if positional>"}]}\n\n'
+                        f"Chapter {n} text:\n\n{ck}",
+                    }
+                ],
+                system=PLAN_SYS,
+                max_tokens=1200,
+            )
+            t = "".join(
+                b.get("text", "") for b in r.get("content", []) if b.get("type") == "text"
+            )
+            return _parse_points(t)
+
+    planned = await asyncio.gather(*(plan_one(ck) for ck in chunks))
+    pts = [p for chunk_points in planned for p in chunk_points]
     # dedup by normalized name (单复数/大小写归一)
     seen, out = set(), []
     for p in pts:
@@ -559,6 +600,7 @@ async def _synth(llm, text, n, name, typ, pos: int = 0, narrow: bool = False):
             quotes.append({"quote": es[:400], "span": [0, 0], "kind": "example"})
     if not quotes and content and len(content) >= 40:
         from ku_schema import extract_evidence_quotes
+
         try:
             quotes = extract_evidence_quotes(content, name)
         except Exception:

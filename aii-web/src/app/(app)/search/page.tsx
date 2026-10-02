@@ -155,6 +155,7 @@ function RetrievalPanel() {
     const res = await retrieve(query, {
       max_results: maxResults,
       use_rerank: useRerank,
+      substrate_ids: Array.isArray(viewFilter.substrate_ids) ? viewFilter.substrate_ids as string[] : undefined,
     });
     if (res) {
       setResponse(res);

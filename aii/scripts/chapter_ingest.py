@@ -1,9 +1,11 @@
 """单章全链路: 修复版md按章切 → 打磨版HQ抽KU(双语) → 打chapter_id → 归一 → 章内建边.
 验证 抽KU(双语)+章内建边 完整机制. Usage: chapter_ingest.py <chapter_n>"""
 
-import asyncio, json, os, re, sys
+import asyncio
+import os
+import re
+import sys
 from pathlib import Path
-from collections import Counter
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,14 +37,20 @@ def _cn2int(s):
     # 原逻辑只认汉字数字, 阿拉伯数字全部 return 0(falsy)被静默丢弃, 导致这些书识别不到任何章节.
     if s.isdigit():
         return int(s)
+    # ★2026-08-30 修复: PDF 误转换偶尔产出"一百一""一百二十"这类非法串，
+    #   原逻辑 `_CN[a] * 10 + (_CN.get(b, 0) ...)` 遇 `_CN["一百二"]` 直接 KeyError 崩飞轮.
+    #   改为对所有查表统一 .get(..., 0) 容错, 非法数字串一律 return 0(交给下游判"无此章").
     # 一..九 / 十 / 十一..十九 / 二十..
     if s in _CN:
         return _CN[s]
+    if "百" in s or "千" in s:
+        # 百/千 级组合(百一/一千/一百二十): 无法可靠解析 → 视为 0, 不崩
+        return 0
     if s.startswith("十"):
         return 10 + (_CN.get(s[1:], 0))
     if "十" in s:  # 二十/二十一..
         a, _, b = s.partition("十")
-        return _CN[a] * 10 + (_CN.get(b, 0) if b else 0)
+        return _CN.get(a, 0) * 10 + (_CN.get(b, 0) if b else 0)
     return _CN.get(s, 0)
 
 
@@ -60,7 +68,9 @@ def _zh_chapter_starts(text):
     raw = []
     # ★2026-08-10 扩展教辅结构: 除 第N章 外兼容 第N单元/第N讲/第N课/第N节/第N部分
     #   (夸克教辅=知识点/考点/真题, 常用这些章节词, 原正则只认"章"→ 54 本全判无章节)
-    for m in re.finditer(r"(?m)^#{0,4}\s*第([一二三四五六七八九十百千0-9]+)(章|单元|讲|课|节|部分|回|篇)", text):
+    for m in re.finditer(
+        r"(?m)^#{0,4}\s*第([一二三四五六七八九十百千0-9]+)(章|单元|讲|课|节|部分|回|篇)", text
+    ):
         num = _cn2int(m.group(1))
         if num:
             raw.append((m.start(), num, m.group(2)))
@@ -125,9 +135,7 @@ def _bare_n_decimal_starts(text):
     MIN_GAP = 3000
     cand: dict[int, list[tuple[int, str]]] = {}
     # 英文: 1. Introduction  (Title Case 短语, 无句末标点, 行尾)
-    for m in re.finditer(
-        r"(?m)^[ \t]*(\d{1,2})\.\s+[A-Z][A-Za-z0-9 ,'\-]{2,70}$", text
-    ):
+    for m in re.finditer(r"(?m)^[ \t]*(\d{1,2})\.\s+[A-Z][A-Za-z0-9 ,'\-]{2,70}$", text):
         n = int(m.group(1))
         cand.setdefault(n, []).append((m.start(), m.group(0).strip()))
     # 中文: 一、标题 / 1、标题 / 1. 标题 (排除句末标点→非标题)
@@ -148,7 +156,9 @@ def _bare_n_decimal_starts(text):
             if txt in seen_txt:  # 页眉重复: 同编号同文本跳过
                 continue
             seen_txt.add(txt)
-            if prev_pos < 0 or pos > prev_pos + MIN_GAP:  # 与上一已选章节的间距(页眉/练习题密集区被跳过)
+            if (
+                prev_pos < 0 or pos > prev_pos + MIN_GAP
+            ):  # 与上一已选章节的间距(页眉/练习题密集区被跳过)
                 result[n] = pos
                 prev_pos = pos
                 break  # 每编号取一个(正文首次出现)
@@ -164,13 +174,73 @@ def _bare_english_chapter_starts(text):
       - 同编号多次出现(页眉/目录重复)只取首个位置
     """
     cand: dict[int, list[int]] = {}
+    exact: dict[int, list[int]] = {}
     for m in re.finditer(
         r"(?m)^[ \t]*#{0,2}[ \t]*(?:Chapter|CHAPTER)\s+([0-9]{1,3})\b[^\n]{0,80}$",
         text,
     ):
         n = int(m.group(1))
         cand.setdefault(n, []).append(m.start())
+        # 实际章节页常把标题放在下一行，表现为独占的“# Chapter N”；
+        # 目录/导读通常在同一行带冒号、页码或长标题。先用独占标题寻找
+        # 连续且相隔足够远的章节序列，避免把目录和页眉当成章节正文。
+        if re.match(
+            r"(?mi)^[ \t]*#{0,2}[ \t]*(?:Chapter|CHAPTER)\s+[0-9]{1,3}[ \t]*$",
+            m.group(0),
+        ):
+            exact.setdefault(n, []).append(m.start())
+
+    def ordered_run(pool: dict[int, list[int]], min_gap: int = 3000):
+        best: dict[int, int] = {}
+        nums = sorted(pool)
+        for start_n in nums:
+            for start_pos in sorted(pool[start_n]):
+                cur = {start_n: start_pos}
+                prev = start_pos
+                n = start_n + 1
+                while n in pool:
+                    nxt = next((p for p in sorted(pool[n]) if p > prev + min_gap), None)
+                    if nxt is None:
+                        break
+                    cur[n] = nxt
+                    prev = nxt
+                    n += 1
+                if len(cur) > len(best):
+                    best = cur
+        return best
+
+    real = ordered_run(exact)
+    if len(real) >= 3:
+        return real
     return {n: min(poses) for n, poses in cand.items()}
+
+
+# ★2026-10-01 markitdown 会把 R 的 summary()/head() 等【代码块输出】原样转成
+#   markdown 标题行, 于是真章节被挤掉。实测《Machine Learning for Hackers》
+#   (15 个真 ## 章节) 只认出 3 章, 因为下面这些代码回显被当成了 H1:
+#     # Min. 1st Qu. Median Mean 3rd Qu. Max. #54.26 63.51 66.32 66.37 69.17
+#     # Next is based on senders in threads, and threads themselves thread.
+#     # Calculate rank by interacting all weights rank <- prod(from, thread.f
+#   H1 优先分支会优先采用它们, 真 ## 章节全被忽略 → 章节数严重偏少 →
+#   后续按章号切片时大量章号不存在 → planner 报"规划未返回知识点"。
+_CODE_ECHO = re.compile(
+    r"(?:"
+    r"<-\s|<<-|\$>\s|%\s*in%\s|%\s*<-\s"          # R/Python 赋值、管道
+    r"|\bMin\.\s|\bQ[1-4]\b|\bMedian\b|\bNA's\b"   # R summary() 表头
+    r"|\[\d+\]\s*[\d.]"                            # R 向量打印 [1] 0.18 0.45
+    r"|^#\s*[\d.]|^\d+\s+[\d.]+\s+[\d.]+"          # 裸数值表
+    r"|function\s*\(|\{\s*$|^\s*\}\s*$"          # 代码块
+    r"|\bfor\s*\(\b|\bwhile\s*\(\b|^\s*return\s"  # 控制流
+    r")"
+)
+
+
+def _is_code_echo(title: str) -> bool:
+    """标题行其实是代码回显 / 数据表输出, 不是章节标题."""
+    t = (title or "").strip()
+    if not t:
+        return True
+    return bool(_CODE_ECHO.search(t))
 
 
 def _md_heading_starts(text):
@@ -189,6 +259,8 @@ def _md_heading_starts(text):
     # 去重(页眉/目录重复), 保留首次出现位置
     seen: dict[str, int] = {}
     for m in re.finditer(r"(?m)^#\s+([^\n]{2,80})$", text):
+        if _is_code_echo(m.group(1)):
+            continue
         seen.setdefault(m.group(1).strip(), m.start())
     h1_uniq = sorted(seen.values())
     if len(h1_uniq) >= 3:
@@ -200,6 +272,8 @@ def _md_heading_starts(text):
             return {i + 1: picks[i] for i in range(len(picks))}
     seen2: dict[str, int] = {}
     for m in re.finditer(r"(?m)^##\s+([^\n]{2,80})$", text):
+        if _is_code_echo(m.group(1)):
+            continue
         seen2.setdefault(m.group(1).strip(), m.start())
     h2_uniq = sorted(seen2.values())
     if len(h2_uniq) >= 3:
@@ -245,6 +319,18 @@ def chapter_starts(text):
     canon = {int(m.group(1)): m.start() for m in re.finditer(r"(?m)^#\s+Chapter\s+(\d+):", text)}
     zh = _zh_chapter_starts(text)
     bare_en = _bare_english_chapter_starts(text)
+    # 独占“Chapter N”连续序列比目录式 “Chapter N: ...” 更可靠；
+    # 优先使用它，不能让 H1/page-header 兜底覆盖真实章节边界。
+    if len(bare_en) >= 3:
+        bare_nums = sorted(bare_en)
+        # 只有编号连续且章节间距明显大于重复页眉时，才把裸 Chapter N
+        # 视为可靠边界；否则继续走其它格式/兜底检测。
+        reliable = all(
+            b == a + 1 and bare_en[b] > bare_en[a] + 3000
+            for a, b in zip(bare_nums, bare_nums[1:])
+        )
+        if reliable:
+            return bare_en
     dec = _decimal_chapter_starts(text)
     bare_n = _bare_n_decimal_starts(text)
     md_h = _md_heading_starts(text)
@@ -255,7 +341,76 @@ def chapter_starts(text):
 
 
 def chapter_numbers(text):
-    return sorted(chapter_starts(text).keys())
+    """章号列表, 但剔除整章都是 back-matter 的章(见 _is_backmatter_chapter).
+
+    ★2026-09-29: 有些书(如 Building Your Money Machine)正文之后还挂着
+    ENDNOTES / ACKNOWLEDGMENTS / ABOUT THE AUTHOR / APPENDIX 等纯 back-matter,
+    _md_heading_starts 兜底把它们当正文章, 于是 planner 对这些章抽不出知识点 →
+    报"规划未返回知识点" → 不写 checkpoint → 每轮重试都卡在同一批章。
+    实测该书 31 章里 ch28~ch31 全是 back-matter, 白烧 4 轮 token。
+    抽不出知识点的 back-matter 章不该进"应有内容章"的分母, 也不该无限重试。
+    """
+    return sorted(n for n in chapter_starts(text) if not _is_backmatter_chapter(text, n))
+
+
+# 书末 back-matter 章标题(H1/H2), 命中即视为非内容章。
+# ★刻意不收 APPENDIX: 附录常是真内容(实测 Building Your Money Machine 的
+#   APPENDIX B 是 16k 字符的金融术语表、APPENDIX E 是 7k 字符的保险指南),
+#   一刀切会把可讲透的内容丢掉。只收确定没有知识点的纯事务性章节。
+#   bibliography / references / glossary / index 是纯引用清单和词表 —— 同样收,
+#   实测 cs_en_8ce0fd912c 的 ch15(Bibliography, 74k 字符全是 [ABC+16] 引用)
+#   和 ch16(Author's Biography) 让 planner 抽不出东西, 每轮白重试。
+_BACKMATTER_HEAD = re.compile(
+    r"(?i)^\s*#{0,3}\s*\[?\**\s*(?:"
+    # ── 前置材料(2026-10-01) ──
+    # 模型对这些章正确返回 {"points":[]} —— 它们本就没知识点, 却被判 FAILED
+    # 后每轮重试, 白烧配额。实测:
+    #   cs_en_8ce0fd912c ch1 (10583 字符, 全文是编委名单/版权页)
+    #   cs_en_8ce0fd912c ch3 (# Preface)
+    #   cs_en_0fc8da609c ch1 (0 字符)
+    r"table\s+of\s+contents|contents|目录|前言|序言|版权|封面|扉页"
+    r"|preface|foreword|dedication|epigraph"
+    # ── 书末 back-matter ──
+    r"|end\s*notes|notes|acknowledg(?:e)?ments|acknowledgements"
+    r"|about\s+the\s+authors?|also\s+by\s+this\s+author"
+    r"|author[\u2019'\u2018s]*s?\s+biograph\w*|biograph\w*\s+of\s+the\s+author"
+    r"|index|glossary|bibliography|references|works\s+cited"
+    r"|copyright|errata|colophon"
+    r")"
+)
+
+
+def _is_backmatter_chapter(text: str, n: int) -> bool:
+    """该章是否非内容章(前置材料/书末事务性章节/空章)。是则不计入内容章.
+
+    判定: 标题命中特征, 或该章几乎无正文(纯封面页/空壳)。
+    """
+    starts = chapter_starts(text)
+    if n not in starts:
+        return False
+    s = starts[n]
+    e = starts.get(n + 1, len(text))
+    head = text[s : s + 200]
+    # 标题行(前两行)命中非内容特征
+    for line in head.splitlines()[:2]:
+        if _BACKMATTER_HEAD.search(line):
+            return True
+    # ★2026-10-01 纯封面页/空壳: 标题外的正文几乎为空。实测
+    #   cs_en_0fc8da609c ch1 切片长度 0 → 模型正确回 {"points":[]}, 却每次
+    #   都被判 FAILED 重试。留 200 字符容差(封面页常有少量版权文字)。
+    body = text[s:e]
+    if len(_strip_md_noise(body)) < 200:
+        return True
+    return False
+
+
+_MD_NOISE = re.compile(r"[#*\[\]()_\-—·•>\s]+")
+
+
+def _strip_md_noise(s: str) -> str:
+    """去掉 markdown 装饰后的可读字符数(粗略衡量章是否有实质正文)."""
+    return _MD_NOISE.sub("", s or "")
+
 
 
 def slice_chapter(text, n):
@@ -333,11 +488,24 @@ async def main():
 
     await register_vector(conn)
     # 3. 打 chapter_id (provenance)
-    await conn.execute(
-        "UPDATE aii.ku_onto SET provenance = provenance || jsonb_build_object('chapter',$2::int) WHERE substrate_id=$1",
+    # ★2026-09-29 原来这条是 `WHERE substrate_id=$1` —— 只按书过滤, 不按本章,
+    #   等于把【整本书】已有的 KU 的 chapter 全刷成当前章 n。逐章循环下, 前面章节
+    #   抽出的 KU 会被后续章反复改写, 最终全部指向最后一次处理的章号。
+    #   实测 cs_en_8ce0fd912c: MD 16 章, 但库内 KU 只落在 7 个章号上, 且
+    #   ch1(书名页/版权页) 挂着 40 个讲 Autoencoder/Backpropagation 的 KU
+    #   (实为 Introduction 内容) —— 章节与内容整体错位。
+    #   改成只给"刚由本章落库"的 KU 打号。
+    stamped = await conn.execute(
+        """
+        UPDATE aii.ku_onto
+           SET provenance = provenance || jsonb_build_object('chapter', $2::int)
+         WHERE substrate_id = $1
+           AND NOT (provenance ? 'chapter')
+        """,
         sub,
         n,
     )
+    print(f"  stamped chapter={n} on {stamped.split()[-1]} newly-inserted KU", flush=True)
     # 4. 概念归一 (章内, 供共现预筛)
     norm = await vectorize_and_normalize(conn, llm, substrate_id=sub, discipline="经济学")
     print(f"  normalize: {norm['before']}→{norm['after']} concepts", flush=True)

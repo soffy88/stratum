@@ -18,6 +18,7 @@
 每一步打印 PASS / FAIL / WARN; 任一 FAIL 则 exit 1。
 WARN 项 (如 /api/v1/retrieve 旧 pgvector 路径 0 命中) 不阻塞 MVP 判定。
 """
+
 from __future__ import annotations
 
 import argparse
@@ -42,9 +43,13 @@ _ASCII_WORDS = re.compile(r"[a-zA-Z]{3,}")
 _STOPWORDS = {"the", "and", "for", "with", "https", "http", "www", "com"}
 
 
-def _request(method: str, url: str, body: bytes | None = None,
-             headers: dict[str, str] | None = None,
-             timeout: float = 120.0) -> tuple[int, dict]:
+def _request(
+    method: str,
+    url: str,
+    body: bytes | None = None,
+    headers: dict[str, str] | None = None,
+    timeout: float = 120.0,
+) -> tuple[int, dict]:
     req = urllib.request.Request(url, data=body, method=method, headers=headers or {})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -57,8 +62,9 @@ def _request(method: str, url: str, body: bytes | None = None,
             return exc.code, {"detail": raw.decode(errors="replace")[:500]}
 
 
-def _request_raw(method: str, url: str, headers: dict[str, str] | None = None,
-                 timeout: float = 120.0) -> tuple[int, bytes]:
+def _request_raw(
+    method: str, url: str, headers: dict[str, str] | None = None, timeout: float = 120.0
+) -> tuple[int, bytes]:
     req = urllib.request.Request(url, method=method, headers=headers or {})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -67,16 +73,18 @@ def _request_raw(method: str, url: str, headers: dict[str, str] | None = None,
         return exc.code, exc.read()
 
 
-def _multipart(fields: dict[str, str], files: dict[str, tuple[str, bytes]] | None = None,
-               ) -> tuple[bytes, str]:
+def _multipart(
+    fields: dict[str, str],
+    files: dict[str, tuple[str, bytes]] | None = None,
+) -> tuple[bytes, str]:
     boundary = "----e2e" + hex(int(time.time() * 1e6))[2:]
     parts = []
     for k, v in fields.items():
-        parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n")
+        parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n')
     for k, (fname, data) in (files or {}).items():
         parts.append(
-            f"--{boundary}\r\nContent-Disposition: form-data; name=\"{k}\"; "
-            f"filename=\"{fname}\"\r\nContent-Type: application/octet-stream\r\n\r\n"
+            f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"; '
+            f'filename="{fname}"\r\nContent-Type: application/octet-stream\r\n\r\n'
         )
         parts.append(data.decode(errors="replace"))
         parts.append("\r\n")
@@ -122,7 +130,8 @@ def main() -> int:
 
     # 1. 注册
     code, body = _request(
-        "POST", f"{AUTH_BASE}/api/auth/register",
+        "POST",
+        f"{AUTH_BASE}/api/auth/register",
         json.dumps({"email": email, "username": username, "password": password}).encode(),
         {"Content-Type": "application/json"},
     )
@@ -134,7 +143,8 @@ def main() -> int:
 
     # 2. 登录
     code, body = _request(
-        "POST", f"{AUTH_BASE}/api/auth/login",
+        "POST",
+        f"{AUTH_BASE}/api/auth/login",
         json.dumps({"email_or_username": email, "password": password}).encode(),
         {"Content-Type": "application/json"},
     )
@@ -161,9 +171,13 @@ def main() -> int:
             {"file": (os.path.basename(pdf_path), pdf_data)},
         )
         code, body = _request(
-            "POST", f"{SL_BASE}/api/v1/inbox/submit", payload,
-            {"Authorization": f"Bearer {token}",
-             "Content-Type": f"multipart/form-data; boundary={boundary}"},
+            "POST",
+            f"{SL_BASE}/api/v1/inbox/submit",
+            payload,
+            {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": f"multipart/form-data; boundary={boundary}",
+            },
             timeout=300.0,
         )
         sid = body.get("substrate_id") or ""
@@ -176,9 +190,13 @@ def main() -> int:
     else:
         payload, boundary = _multipart({"url": args.url, "fetch_mode": "full"})
         code, body = _request(
-            "POST", f"{SL_BASE}/api/v1/inbox/web-clip", payload,
-            {"Authorization": f"Bearer {token}",
-             "Content-Type": f"multipart/form-data; boundary={boundary}"},
+            "POST",
+            f"{SL_BASE}/api/v1/inbox/web-clip",
+            payload,
+            {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": f"multipart/form-data; boundary={boundary}",
+            },
             timeout=300.0,
         )
         sid = body.get("substrate_id") or ""
@@ -201,7 +219,10 @@ def main() -> int:
 
     # 5. 翻译 (substrate → zh)
     t_code, t_body = _request(
-        "POST", f"{SL_BASE}/api/v1/translate/substrate/{sid}?target_lang=zh", b"", h,
+        "POST",
+        f"{SL_BASE}/api/v1/translate/substrate/{sid}?target_lang=zh",
+        b"",
+        h,
         timeout=300.0,
     )
     t_status = t_body.get("status", "")
@@ -216,8 +237,10 @@ def main() -> int:
     qa = {}
     for _ in range(3):
         q_code, q_body = _request(
-            "POST", f"{SL_BASE}/api/v1/agents/reading_companion/run",
-            json.dumps({"substrate_id": sid, "question": "这篇文章主要讲了什么?"}).encode(), h,
+            "POST",
+            f"{SL_BASE}/api/v1/agents/reading_companion/run",
+            json.dumps({"substrate_id": sid, "question": "这篇文章主要讲了什么?"}).encode(),
+            h,
             timeout=300.0,
         )
         qa = q_body
@@ -244,14 +267,18 @@ def main() -> int:
 
     # 7. 概念追加 (create concept + substrate_refs + verify)
     c_code, c_body = _request(
-        "POST", f"{SL_BASE}/api/v1/concepts",
-        json.dumps({"name": f"E2E概念{stamp}", "type": "concept_idea"}).encode(), h,
+        "POST",
+        f"{SL_BASE}/api/v1/concepts",
+        json.dumps({"name": f"E2E概念{stamp}", "type": "concept_idea"}).encode(),
+        h,
     )
     cid = c_body.get("concept_id", "")
     if c_code == 200 and cid:
         u_code, u_body = _request(
-            "PUT", f"{SL_BASE}/api/v1/concepts/{cid}",
-            json.dumps({"substrate_refs": [sid]}).encode(), h,
+            "PUT",
+            f"{SL_BASE}/api/v1/concepts/{cid}",
+            json.dumps({"substrate_refs": [sid]}).encode(),
+            h,
         )
         g_code, g_body = _request("GET", f"{SL_BASE}/api/v1/concepts/{cid}", headers=h)
         refs = (g_body.get("related_substrates") or []) if isinstance(g_body, dict) else []
@@ -268,8 +295,10 @@ def main() -> int:
     hits, seen_in_search = 0, False
     for _ in range(POLL_ATTEMPTS):
         code, body = _request(
-            "POST", f"{SL_BASE}/api/v1/search",
-            json.dumps({"query": query, "top_k": 20}).encode(), h,
+            "POST",
+            f"{SL_BASE}/api/v1/search",
+            json.dumps({"query": query, "top_k": 20}).encode(),
+            h,
         )
         hits = len(body.get("results", []))
         seen_in_search = any(
@@ -278,8 +307,7 @@ def main() -> int:
         if seen_in_search:
             break
         time.sleep(POLL_INTERVAL)
-    step("检索命中", "PASS" if seen_in_search else "FAIL",
-         f"query={query!r} hits={hits}")
+    step("检索命中", "PASS" if seen_in_search else "FAIL", f"query={query!r} hits={hits}")
 
     # 9. 整库导出 (markdown + vault zip)
     code, body = _request("GET", f"{SL_BASE}/api/v1/export/markdown", headers=h)
@@ -290,8 +318,11 @@ def main() -> int:
     try:
         with zipfile.ZipFile(io.BytesIO(z_data)) as zf:
             names = zf.namelist()
-        step("导出vault", "PASS" if z_code == 200 and names else "FAIL",
-             f"zip={len(z_data)}B files={len(names)}")
+        step(
+            "导出vault",
+            "PASS" if z_code == 200 and names else "FAIL",
+            f"zip={len(z_data)}B files={len(names)}",
+        )
     except zipfile.BadZipFile:
         step("导出vault", "FAIL", f"bad zip: {z_data[:120]!r}")
 
@@ -299,8 +330,10 @@ def main() -> int:
     r_code, r_body = _request("GET", f"{SL_BASE}/api/v1/sync/vault/roots", headers=h)
     roots = [r for r in r_body.get("roots", []) if r]
     v_code, v_body = _request(
-        "POST", f"{SL_BASE}/api/v1/sync/vault",
-        json.dumps({"path": f"{roots[0]}/e2e-vault-{stamp}", "mode": "export"}).encode(), h,
+        "POST",
+        f"{SL_BASE}/api/v1/sync/vault",
+        json.dumps({"path": f"{roots[0]}/e2e-vault-{stamp}", "mode": "export"}).encode(),
+        h,
     )
     v_status = v_body.get("status", "")
     if roots and v_code == 200 and v_status not in ("error",):
@@ -312,21 +345,29 @@ def main() -> int:
 
     # 11. Lint (写报告笔记)
     l_code, l_body = _request(
-        "POST", f"{SL_BASE}/api/v1/agents/knowledge_lint/run",
-        json.dumps({"write_report": True}).encode(), h, timeout=300.0,
+        "POST",
+        f"{SL_BASE}/api/v1/agents/knowledge_lint/run",
+        json.dumps({"write_report": True}).encode(),
+        h,
+        timeout=300.0,
     )
     l_status = l_body.get("status", "")
-    step("Lint", "PASS" if l_code == 200 and l_status == "ok" else "FAIL",
-         f"status={l_status}")
+    step("Lint", "PASS" if l_code == 200 and l_status == "ok" else "FAIL", f"status={l_status}")
 
     # 12. 日报
     d_code, d_body = _request(
-        "POST", f"{SL_BASE}/api/v1/agents/daily_digest_simple/run",
-        json.dumps({"days": 1, "notify": False}).encode(), h, timeout=300.0,
+        "POST",
+        f"{SL_BASE}/api/v1/agents/daily_digest_simple/run",
+        json.dumps({"days": 1, "notify": False}).encode(),
+        h,
+        timeout=300.0,
     )
     d_status = d_body.get("status", "")
-    step("日报", "PASS" if d_code == 200 and d_status == "ok" else "FAIL",
-         f"status={d_status} note_id={d_body.get('note_id')}")
+    step(
+        "日报",
+        "PASS" if d_code == 200 and d_status == "ok" else "FAIL",
+        f"status={d_status} note_id={d_body.get('note_id')}",
+    )
 
     # 13. 分层检索 (后台生成 L0/L1/L2 是异步任务, 轮询等它就位)
     import time as _time
@@ -335,8 +376,10 @@ def main() -> int:
     for _attempt in range(12):
         try:
             code, body = _request(
-                "POST", f"{SL_BASE}/api/v1/retrieve",
-                json.dumps({"query": query, "max_depth": 2, "top_k": 5}).encode(), h,
+                "POST",
+                f"{SL_BASE}/api/v1/retrieve",
+                json.dumps({"query": query, "max_depth": 2, "top_k": 5}).encode(),
+                h,
             )
             retr_count = body.get("result_count", 0) or 0
             if code == 200 and retr_count > 0:
@@ -345,7 +388,8 @@ def main() -> int:
             pass
         _time.sleep(5)
     step(
-        "retrieve分层检索", "PASS" if retr_count > 0 else "WARN",
+        "retrieve分层检索",
+        "PASS" if retr_count > 0 else "WARN",
         f"result_count={retr_count}",
     )
 
@@ -365,8 +409,10 @@ def main() -> int:
     gone_from_search = True
     for _ in range(5):
         code, body = _request(
-            "POST", f"{SL_BASE}/api/v1/search",
-            json.dumps({"query": query, "top_k": 20}).encode(), h,
+            "POST",
+            f"{SL_BASE}/api/v1/search",
+            json.dumps({"query": query, "top_k": 20}).encode(),
+            h,
         )
         gone_from_search = not any(
             r.get("substrate_id") == sid or r.get("id") == sid for r in body.get("results", [])
@@ -374,15 +420,17 @@ def main() -> int:
         if gone_from_search:
             break
         time.sleep(POLL_INTERVAL)
-    step("删除收敛", "PASS" if gone_from_inbox and gone_from_search else "FAIL",
-         f"inbox_gone={gone_from_inbox} search_gone={gone_from_search}")
+    step(
+        "删除收敛",
+        "PASS" if gone_from_inbox and gone_from_search else "FAIL",
+        f"inbox_gone={gone_from_inbox} search_gone={gone_from_search}",
+    )
 
     return _finish(results)
 
 
 def _make_test_pdf(path: str) -> None:
     """生成一个最小英文 PDF (含 'attention mechanism' 段落), 无第三方依赖。"""
-    import zlib
 
     lines = [
         "E2E Attention Mechanism Paper",
@@ -404,7 +452,7 @@ def _make_test_pdf(path: str) -> None:
         b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
     ]
     # (simplified: recompute length)
-    stream = f"BT /F1 11 Tf 40 750 Td 18 TL\n".encode()
+    stream = "BT /F1 11 Tf 40 750 Td 18 TL\n".encode()
     for ln in lines:
         stream += f"({ln}) Tj\nT*\n".encode()
     stream += b"ET"
@@ -421,7 +469,8 @@ def _make_test_pdf(path: str) -> None:
     for off in offsets[1:]:
         out += f"{off:010d} 00000 n \n".encode()
     out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF" % (
-        len(objs) + 1, xref_pos,
+        len(objs) + 1,
+        xref_pos,
     )
     with open(path, "wb") as f:
         f.write(out)

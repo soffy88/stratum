@@ -15,6 +15,7 @@
 用法:
     .venv/bin/python scripts/edge_backfill.py [--dry-run] [--source readout|explicit|hyperedge]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,7 +26,7 @@ import sys
 
 import asyncpg
 
-AII_URL = os.getenv("AII_KG_URL", "postgresql://aii:***REMOVED***@localhost:5435/aii_kg")
+AII_URL = os.getenv("AII_KG_URL", "postgresql://aii:***REMOVED***@localhost:5437/aii_kg")
 REFINED_URL = os.getenv("REFINED_URL", "postgresql://aii:***REMOVED***@localhost:5436/aii_refined")
 
 _REL_MAP = {"prerequisite": "prerequisite", "derives": "derives", "subsumes": "subsumes"}
@@ -39,7 +40,7 @@ async def _concept_lookup(conn) -> dict[str, int]:
         for cand in (r["name"], r["name_zh"]):
             if cand:
                 idx[cand.lower()] = r["concept_id"]
-        for al in (r["aliases"] or []):
+        for al in r["aliases"] or []:
             if al:
                 idx[str(al).lower()] = r["concept_id"]
     return idx
@@ -62,7 +63,9 @@ async def _a_ku_concept(a, r, idx, ku_id: str) -> int | None:
     name = await a.fetchval(
         "SELECT c.name FROM aii.ku_concept_onto kc"
         " JOIN aii.concept_onto c ON c.concept_id=kc.concept_id"
-        " WHERE kc.ku_id=$1 LIMIT 1", ku_id)
+        " WHERE kc.ku_id=$1 LIMIT 1",
+        ku_id,
+    )
     if not name:
         return None
     return idx.get(str(name).lower())
@@ -71,7 +74,8 @@ async def _a_ku_concept(a, r, idx, ku_id: str) -> int | None:
 async def backfill_readout(a, r, idx, dry: bool) -> int:
     rows = await a.fetch(
         "SELECT DISTINCT src_name, dst_name, relation_type FROM aii.concept_readout_edge"
-        " WHERE src_name IS NOT NULL AND dst_name IS NOT NULL")
+        " WHERE src_name IS NOT NULL AND dst_name IS NOT NULL"
+    )
     n = 0
     for row in rows:
         src = idx.get((row["src_name"] or "").lower())
@@ -82,7 +86,10 @@ async def backfill_readout(a, r, idx, dry: bool) -> int:
         exists = await r.fetchval(
             "SELECT 1 FROM rf.refined_directed_edge WHERE src_concept=$1"
             " AND dst_concept=$2 AND relation_type=$3 AND edge_source='readout'",
-            src, dst, rel)
+            src,
+            dst,
+            rel,
+        )
         if exists:
             continue
         if not dry:
@@ -91,7 +98,12 @@ async def backfill_readout(a, r, idx, dry: bool) -> int:
                 " (src_concept, dst_concept, relation_type, grade, edge_source, evidence)"
                 " VALUES ($1,$2,$3,'unverified','readout',"
                 " jsonb_build_object('backfill', true, 'src', $4::text, 'dst', $5::text))",
-                src, dst, rel, row["src_name"], row["dst_name"])
+                src,
+                dst,
+                rel,
+                row["src_name"],
+                row["dst_name"],
+            )
         n += 1
     print(f"readout 回填: {n} 条新边(去重后)")
     return n
@@ -104,7 +116,8 @@ async def backfill_explicit(a, r, idx, dry: bool) -> tuple[int, int]:
     EXTRACTED 类(源数据显式声明)。"""
     rows = await a.fetch(
         "SELECT ku_id, provenance FROM aii.ku_onto"
-        " WHERE provenance->>'explains' IS NOT NULL AND provenance->>'explains' <> 'null'")
+        " WHERE provenance->>'explains' IS NOT NULL AND provenance->>'explains' <> 'null'"
+    )
     n_edge = n_hyper = 0
     for row in rows:
         try:
@@ -116,8 +129,9 @@ async def backfill_explicit(a, r, idx, dry: bool) -> tuple[int, int]:
             continue
         ex_names = ex if isinstance(ex, list) else [ex]
         src_c = await r.fetchval(
-            "SELECT kc.concept_id FROM rf.refined_ku_concept kc"
-            " WHERE kc.ku_id=$1 LIMIT 1", row["ku_id"])
+            "SELECT kc.concept_id FROM rf.refined_ku_concept kc WHERE kc.ku_id=$1 LIMIT 1",
+            row["ku_id"],
+        )
         if not src_c:
             src_c = await _a_ku_concept(a, r, idx, row["ku_id"])
         for ex_name in ex_names:
@@ -130,7 +144,10 @@ async def backfill_explicit(a, r, idx, dry: bool) -> tuple[int, int]:
                 exists2 = await r.fetchval(
                     "SELECT 1 FROM rf.refined_directed_edge WHERE src_concept=$1"
                     " AND dst_concept=$2 AND relation_type='explains'"
-                    " AND edge_source='explicit'", src_c, dst_c)
+                    " AND edge_source='explicit'",
+                    src_c,
+                    dst_c,
+                )
                 if not exists2:
                     n_edge += 1
                     if not dry:
@@ -139,17 +156,25 @@ async def backfill_explicit(a, r, idx, dry: bool) -> tuple[int, int]:
                             " (src_concept, dst_concept, relation_type, grade, edge_source, evidence)"
                             " VALUES ($1,$2,'explains','unverified','explicit',"
                             " jsonb_build_object('backfill', true, 'head_ku', $3::text, 'explains', $4::text))",
-                            src_c, dst_c, row["ku_id"], en)
+                            src_c,
+                            dst_c,
+                            row["ku_id"],
+                            en,
+                        )
             # B 仓 ku_id 是哈希, A 仓原始 id 在 contributions.raw_ku_id
             b_ku = await r.fetchval(
                 "SELECT ku_id FROM rf.refined_ku WHERE EXISTS ("
                 " SELECT 1 FROM jsonb_array_elements(contributions) e"
-                " WHERE e->>'raw_ku_id' = $1) LIMIT 1", row["ku_id"])
+                " WHERE e->>'raw_ku_id' = $1) LIMIT 1",
+                row["ku_id"],
+            )
             if b_ku:
                 exists_h = await r.fetchval(
                     "SELECT 1 FROM rf.refined_hyperedge WHERE relation_type='explains'"
                     " AND head_ku_id=$1 AND evidence->>'explains'=$2",
-                    b_ku, en)
+                    b_ku,
+                    en,
+                )
                 if not exists_h:
                     n_hyper += 1
                     if not dry:
@@ -158,7 +183,9 @@ async def backfill_explicit(a, r, idx, dry: bool) -> tuple[int, int]:
                             " (relation_type, head_ku_id, grade, evidence)"
                             " VALUES ('explains', $1, 'unverified',"
                             " jsonb_build_object('explains', $2::text, 'backfill', true))",
-                            b_ku, en)
+                            b_ku,
+                            en,
+                        )
     print(f"explicit 回填: 概念边 {n_edge} | 超边 {n_hyper}")
     return n_edge, n_hyper
 

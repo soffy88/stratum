@@ -58,6 +58,7 @@ def _gen_id(prefix: str = "dir") -> str:
     import hashlib
     import time
     import random
+
     raw = f"{prefix}-{time.time()}-{random.randint(0, 999999)}"
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
@@ -65,6 +66,7 @@ def _gen_id(prefix: str = "dir") -> str:
 def _slugify(name: str) -> str:
     """Create a URI-safe slug from a name."""
     import re
+
     # Keep CJK characters, alphanumerics, underscores
     safe = re.sub(r"[^\w\u4e00-\u9fff_]", "_", name)
     return safe.strip("_") or "untitled"
@@ -72,8 +74,10 @@ def _slugify(name: str) -> str:
 
 # ── Core operations ──────────────────────────────────────────────────────────
 
-def ensure_directory(parent_uri: str | None, name: str,
-                     l0: str | None = None, l1: str | None = None) -> str:
+
+def ensure_directory(
+    parent_uri: str | None, name: str, l0: str | None = None, l1: str | None = None
+) -> str:
     """Ensure a directory node exists, return its URI.
 
     Args:
@@ -133,9 +137,9 @@ def ensure_directory(parent_uri: str | None, name: str,
     return uri
 
 
-def register_substrate(substrate_id: str, title: str,
-                       discipline: str | None = None,
-                       l0: str | None = None) -> str:
+def register_substrate(
+    substrate_id: str, title: str, discipline: str | None = None, l0: str | None = None
+) -> str:
     """Register a substrate in the directory tree.
 
     Args:
@@ -179,8 +183,9 @@ def register_substrate(substrate_id: str, title: str,
     return uri
 
 
-def register_ku(ku_id: str, title: str, parent_uri: str | None = None,
-                l0: str | None = None) -> str:
+def register_ku(
+    ku_id: str, title: str, parent_uri: str | None = None, l0: str | None = None
+) -> str:
     """Register a KU in the directory tree."""
     if not parent_uri:
         parent_uri = f"{_URILIB_PREFIX}resources/其他"
@@ -213,6 +218,7 @@ def register_ku(ku_id: str, title: str, parent_uri: str | None = None,
 
 
 # ── Build full tree from existing data ────────────────────────────────────────
+
 
 def build_initial_tree() -> dict[str, int]:
     """Build the initial directory tree from existing substrates and KUs.
@@ -262,13 +268,14 @@ def build_initial_tree() -> dict[str, int]:
 
 # ── Query operations ─────────────────────────────────────────────────────────
 
+
 def ls(uri: str, depth: int = 1) -> list[dict[str, Any]]:
     """List children of a directory node."""
     with get_conn() as conn:
         # Find the node
         node = conn.execute(
             "SELECT id, node_type, l0_content FROM context_directory WHERE uri = ?",
-            (uri.rstrip("/") + "/" if not uri.endswith("/") else uri,)
+            (uri.rstrip("/") + "/" if not uri.endswith("/") else uri,),
         ).fetchone()
 
         if not node:
@@ -357,8 +364,14 @@ def get_stats() -> dict[str, Any]:
 
 # ── Grep / Find operations ───────────────────────────────────────────────────
 
-def grep(pattern: str, scope_uri: str = "viking://", layer: str = "L2",
-         case_sensitive: bool = False, limit: int = 50) -> list[dict[str, Any]]:
+
+def grep(
+    pattern: str,
+    scope_uri: str = "viking://",
+    layer: str = "L2",
+    case_sensitive: bool = False,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
     """Regex search within layer content under a URI scope.
 
     Args:
@@ -418,15 +431,17 @@ def grep(pattern: str, scope_uri: str = "viking://", layer: str = "L2",
                 end = min(len(lines), line_no + 2)
                 context = "\n".join(lines[start:end])
 
-                results.append({
-                    "uri": uri,
-                    "node_type": node_type,
-                    "ref_id": ref_id,
-                    "layer": layer,
-                    "match": line.strip()[:200],
-                    "line_number": line_no,
-                    "context": context[:500],
-                })
+                results.append(
+                    {
+                        "uri": uri,
+                        "node_type": node_type,
+                        "ref_id": ref_id,
+                        "layer": layer,
+                        "match": line.strip()[:200],
+                        "line_number": line_no,
+                        "context": context[:500],
+                    }
+                )
 
                 if len(results) >= limit:
                     return results
@@ -434,8 +449,9 @@ def grep(pattern: str, scope_uri: str = "viking://", layer: str = "L2",
     return results
 
 
-def find_by_name(name_pattern: str, node_type: str | None = None,
-                 limit: int = 50) -> list[dict[str, Any]]:
+def find_by_name(
+    name_pattern: str, node_type: str | None = None, limit: int = 50
+) -> list[dict[str, Any]]:
     """Find nodes by URI name pattern (glob-like).
 
     Args:
@@ -473,8 +489,9 @@ def find_by_name(name_pattern: str, node_type: str | None = None,
     ]
 
 
-def find_by_content(query: str, layer: str = "L0", top_k: int = 20,
-                    user_id: str = "default") -> list[dict[str, Any]]:
+def find_by_content(
+    query: str, layer: str = "L0", top_k: int = 20, user_id: str = "default"
+) -> list[dict[str, Any]]:
     """Semantic + text search for content. Wraps retrieval_engine with directory context.
 
     Args:
@@ -486,24 +503,17 @@ def find_by_content(query: str, layer: str = "L0", top_k: int = 20,
     Returns:
         List of results with URI, content preview, score
     """
-    from stratum.services.retrieval_engine import retrieve
+    from stratum.services.knowledge_view import KnowledgeView, KnowledgeViewRequest
 
-    # Use retrieval engine which handles vector + text search
-    layers_list = [layer]
-    response = retrieve(query=query, max_depth=1, top_k=top_k,
-                        layers=layers_list, user_id=user_id)
-
-    return [
-        {
-            "uri": r.uri,
-            "node_type": r.node_type,
-            "ref_id": r.ref_id,
-            "layer": r.layer,
-            "score": round(r.score, 4),
-            "content_preview": r.content[:300],
-        }
-        for r in response.results
-    ]
+    response = KnowledgeView.search(
+        KnowledgeViewRequest(
+            query=query,
+            top_k=top_k,
+            user_id=user_id,
+            scopes=["dense"] if layer != "L0" else ["lexical", "dense"],
+        )
+    )
+    return response["results"]
 
 
 def cat(uri: str, layer: str = "L2") -> dict[str, Any] | None:

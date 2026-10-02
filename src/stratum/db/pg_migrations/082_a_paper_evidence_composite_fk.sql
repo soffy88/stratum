@@ -1,0 +1,115 @@
+-- 082: A Repository P5.5 — paper evidence composite foreign key repair
+--
+-- Rules respected: additive only; never edits migrations 060-081.
+--   NO DROP. NO RENAME. NO UPDATE. NO DELETE. No data backfill.
+--   The single ALTER permitted here is ADD CONSTRAINT.
+-- Re-runnable: STEP 1 is IF NOT EXISTS. STEP 2 is deliberately not guarded —
+--   see the idempotency note below.
+--
+-- A仓 scope: nothing new is recorded. This migration hardens a relationship
+--   that A仓 already stores and already enforces in the writer.
+--
+--   paper_evidence ──> paper_source_candidate ──> book_source
+--
+-- ── the gap being closed ───────────────────────────────────────────────────
+--
+-- 080_a_paper_source.sql gives paper_evidence two independent foreign keys:
+--
+--   paper_id          -> paper_source_candidate(id)
+--   catalog_source_id -> book_source(id)
+--
+-- Both are individually satisfied by a cross-catalog declaration. Measured
+-- against staging before this migration:
+--
+--   INSERT INTO paper_evidence (paper_id = <candidate A>,
+--                               catalog_source_id = <some other catalog row>)
+--   => ACCEPTED
+--
+-- so a declaration could claim to have been made by a catalog record that the
+-- candidate it belongs to does not own. The writer refuses it
+-- (DECLARATION_OTHER_CATALOG_ROW), so no such row was ever written — but the
+-- schema permitted it, and a schema that permits corruption is a hole whether
+-- or not the current writer happens to walk around it.
+--
+-- The tie is expressible: paper_source_candidate carries book_source_id, so
+--
+--   FOREIGN KEY (paper_id, catalog_source_id)
+--     REFERENCES paper_source_candidate (id, book_source_id)
+--
+-- states "this declaration was made by the catalog row its own candidate is
+-- about", declaratively. Recorded in the P5.3 freeze report as §3.3 and
+-- deferred there to a follow-up migration precisely because 080 was already
+-- applied and A仓 never edits an applied migration. This is that migration.
+--
+-- ── the one ALTER in A仓 ────────────────────────────────────────────────────
+--
+-- 078 through 081 are additive only: CREATE TABLE and CREATE INDEX, no ALTER.
+-- This is the first ALTER TABLE in A仓, and the scope is one clause:
+--
+--   ALTER TABLE ... ADD CONSTRAINT ...
+--
+-- which adds a *rule*, not a row, column or value. Nothing is rewritten, no
+-- existing row changes value, and the constraint is droppable in the ordinary
+-- way if it were ever wrong. The alternative was to leave the tie service-only
+-- forever, which leaves a schema that accepts a known corruption.
+--
+-- ALTER COLUMN, DROP, RENAME, UPDATE and DELETE are all absent from this file.
+--
+-- ── STEP 1 must come first ─────────────────────────────────────────────────
+--
+-- A foreign key needs unique coverage on the referenced columns. Measured
+-- across 079 and 080 already: with the index declared after the table,
+-- PostgreSQL refuses with
+--
+--   ERROR: there is no unique constraint matching given keys for referenced
+--          table "..."
+--
+-- (id, book_source_id) is already unique because id is the primary key, so
+-- this index asserts no new fact about the data and cannot fail on existing
+-- rows. It exists to be a foreign-key target and costs write amplification only.
+--
+-- ── existing data is validated by the DDL itself ───────────────────────────
+--
+-- ADD CONSTRAINT for a foreign key validates every existing row unless it is
+-- declared NOT VALID. So this migration is its own GATE_2: if any stored
+-- declaration pointed at a foreign catalog row, the ALTER below would abort and
+-- the whole migration would roll back with nothing applied. Measured before
+-- writing: all 4 stored rows satisfy the tie.
+--
+-- ── idempotency ────────────────────────────────────────────────────────────
+--
+-- STEP 1 uses IF NOT EXISTS and is safe to re-run. STEP 2 is deliberately NOT
+-- wrapped in a conditional, because PostgreSQL has no IF NOT EXISTS for ADD
+-- CONSTRAINT and the usual workaround is a DO block — which is an anonymous
+-- function, and this project does not introduce functions into A仓.
+--
+-- So a second execution is expected to fail with
+--
+--   ERROR: constraint "paper_evidence_same_catalog_source_fk" already exists
+--
+-- That failure is the replay signal, not a defect: it proves the constraint is
+-- present and that no duplicate object was created. The repair runner classifies
+-- it as MIGRATION_ALREADY_APPLIED and the replay gate asserts that classification
+-- rather than asserting a silent no-op.
+--
+-- ── no new lifecycle ───────────────────────────────────────────────────────
+--
+-- No freeze_event, no verification_event, no revision, no status column. 082 is
+-- a schema integrity repair, not a new knowledge artifact. Nothing about what
+-- A仓 records has changed; only what the database will tolerate.
+--
+-- 082_a_paper_evidence_composite_fk.sql is applied to a staging database only.
+-- It was never executed against a production or development data database.
+-- ── STEP 1: the foreign-key target ──────────────────────────────────────────
+CREATE UNIQUE INDEX IF NOT EXISTS paper_source_candidate_id_book_source_uniq
+    ON stratum.paper_source_candidate (id, book_source_id);
+
+-- ── STEP 2: the tie itself ──────────────────────────────────────────────────
+-- A declaration may only be attributed to the catalog row its own candidate is
+-- about. ON DELETE RESTRICT: a declaration is A仓 evidence trace, and a
+-- candidate may not be able to take its declarations with it.
+ALTER TABLE stratum.paper_evidence
+    ADD CONSTRAINT paper_evidence_same_catalog_source_fk
+    FOREIGN KEY (paper_id, catalog_source_id)
+    REFERENCES stratum.paper_source_candidate (id, book_source_id)
+    ON DELETE RESTRICT;

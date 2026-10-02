@@ -1,0 +1,110 @@
+{
+  "task": "A_P4_1_KU_DURABLE_WRITER",
+  "book": "利率史（第四版）",
+  "input_verified": 10,
+  "persisted": 10,
+  "events": 10,
+  "duplicates": 0,
+  "traceability": "100%",
+  "replay": "PASS",
+  "authority": "A_REPOSITORY",
+  "persistence_version": "a-p4-1-v0.1",
+  "run_id": "arr_d0d1473d79fc",
+  "ledger": [
+    "070_a_repository_foundation.sql",
+    "071_a_evidence_quality.sql",
+    "072_a_ku_verification.sql",
+    "073_a_knowledge_unit_freeze.sql",
+    "074_a_ku_freeze_persistence.sql"
+  ],
+  "gate_results": {
+    "schema": "PASS",
+    "transaction": "PASS",
+    "replay": "PASS",
+    "authority": "PASS",
+    "recovery": "PASS"
+  },
+  "event_types": [
+    "FROZEN"
+  ],
+  "units": {
+    "kc_athens_debt_crisis": {
+      "unit_id": "ku_93a979cb6fab",
+      "events": [
+        "FROZEN"
+      ],
+      "verification_score": 1.0
+    },
+    "kc_babylon_silver_rate_cap": {
+      "unit_id": "ku_639e79172556",
+      "events": [
+        "FROZEN"
+      ],
+      "verification_score": 1.0
+    },
+    "kc_credit_predates_coinage": {
+      "unit_id": "ku_6460a6062a10",
+      "events": [
+        "FROZEN"
+      ],
+      "verification_score": 1.0
+    },
+    "kc_hammurabi_code": {
+      "unit_id": "ku_59cb9040d0f0",
+      "events": [
+        "FROZEN"
+      ],
+      "verification_score": 1.0
+    },
+    "kc_rome_penalty_fourfold": {
+      "unit_id": "ku_4ccc104bb7a8",
+      "events": [
+        "FROZEN"
+      ],
+      "verification_score": 1.0
+    },
+    "kc_rome_rate_cap": {
+      "unit_id": "ku_15a527238f5c",
+      "events": [
+        "FROZEN"
+      ],
+      "verification_score": 1.0
+    },
+    "kc_solon_abolished_rate_cap": {
+      "unit_id": "ku_5840cc146f9f",
+      "events": [
+        "FROZEN"
+      ],
+      "verification_score": 1.0
+    },
+    "kc_solon_code_date": {
+      "unit_id": "ku_fa902e0bc115",
+      "events": [
+        "FROZEN"
+      ],
+      "verification_score": 1.0
+    },
+    "kc_twelve_tables_date": {
+      "unit_id": "ku_5d49563b2149",
+      "events": [
+        "FROZEN"
+      ],
+      "verification_score": 1.0
+    },
+    "kc_usury_principal_forfeit": {
+      "unit_id": "ku_8b366dd7b4d1",
+      "events": [
+        "FROZEN"
+      ],
+      "verification_score": 1.0
+    }
+  },
+  "durable_rows": {
+    "knowledge_unit": 10,
+    "ku_freeze_event": 10,
+    "ku_verification": 17,
+    "ku_candidate": 17,
+    "reading_evidence": 17,
+    "evidence_quality": 17
+  }
+}

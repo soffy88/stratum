@@ -15,6 +15,7 @@ Usage:
   python scripts/check_aii_naming.py            # check staged + working tree diff
   python scripts/check_aii_naming.py --all      # scan entire repo source
 """
+
 from __future__ import annotations
 
 import re
@@ -42,7 +43,9 @@ ALLOWLIST_SUBSTRINGS = [
 ]
 
 # Product-semantic pattern: Stratum + Knowledge/Agent/Layer/Runtime as product name
-FORBIDDEN_RE = re.compile(r"Stratum\s+(Knowledge|Agent|Layer|Runtime|Retrieval|Learning)", re.IGNORECASE)
+FORBIDDEN_RE = re.compile(
+    r"Stratum\s+(Knowledge|Agent|Layer|Runtime|Retrieval|Learning)", re.IGNORECASE
+)
 
 
 def _is_allowed(path: str, line: str) -> bool:
@@ -60,7 +63,9 @@ def _get_files_to_check(all_files: bool) -> list[str]:
         for p in ROOT.rglob("*"):
             if p.is_file() and p.suffix in exts:
                 rel = str(p.relative_to(ROOT))
-                if any(x in rel for x in (".git/", "node_modules/", ".venv/", ".next/", ".stratum/")):
+                if any(
+                    x in rel for x in (".git/", "node_modules/", ".venv/", ".next/", ".stratum/")
+                ):
                     continue
                 files.append(rel)
         return files
@@ -100,7 +105,9 @@ def main() -> int:
             print(f"  {v}")
         print("\nAllowed: src/stratum/ path, stratum-sl container, docs/history/")
         print("Forbidden: Stratum Knowledge/Agent/Layer/Runtime as product title.")
-        print("Fix: use AII / AII Knowledge Runtime / AII Knowledge Store / AII Retrieval / AII Learning.")
+        print(
+            "Fix: use AII / AII Knowledge Runtime / AII Knowledge Store / AII Retrieval / AII Learning."
+        )
         return 1
 
     print("AII naming guard PASS")

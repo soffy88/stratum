@@ -20,10 +20,9 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from stratum.db import get_conn
@@ -34,6 +33,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DimensionScore:
     """单个评分维度的结果."""
+
     name: str
     weight: float
     raw_value: float
@@ -44,6 +44,7 @@ class DimensionScore:
 @dataclass
 class GraphHealthReport:
     """完整的图谱健康报告."""
+
     timestamp: float
     total_score: float
     dimensions: list[DimensionScore]
@@ -61,6 +62,7 @@ class GraphHealthReport:
 
 # ── Dimension 1: Orphan Rate (孤立率) — 25% ──────────────────────────────────
 
+
 def _score_orphan_rate(conn) -> DimensionScore:
     """计算孤立实体的比例。理想值 < 5%."""
     # 统计没有任何关系的实体数量
@@ -73,9 +75,7 @@ def _score_orphan_rate(conn) -> DimensionScore:
     """).fetchone()
     orphan_count = orphan_rows[0] if orphan_rows else 0
 
-    total_rows = conn.execute(
-        "SELECT COUNT(*) FROM graph_entities"
-    ).fetchone()
+    total_rows = conn.execute("SELECT COUNT(*) FROM graph_entities").fetchone()
     total = total_rows[0] if total_rows else 0
 
     orphan_pct = (orphan_count / total * 100) if total > 0 else 0
@@ -92,11 +92,10 @@ def _score_orphan_rate(conn) -> DimensionScore:
 
 # ── Dimension 2: Link Density (链接密度) — 20% ──────────────────────────────
 
+
 def _score_link_density(conn) -> DimensionScore:
     """计算平均每个实体的关系数。理想值 3-5."""
-    total_rows = conn.execute(
-        "SELECT COUNT(*) FROM graph_entities"
-    ).fetchone()
+    total_rows = conn.execute("SELECT COUNT(*) FROM graph_entities").fetchone()
     total = total_rows[0] if total_rows else 0
 
     total_rel_rows = conn.execute(
@@ -125,6 +124,7 @@ def _score_link_density(conn) -> DimensionScore:
 
 # ── Dimension 3: MOC Coverage (目录覆盖率) — 20% ─────────────────────────────
 
+
 def _score_moc_coverage(conn) -> DimensionScore:
     """计算可从 MOC (Map of Content) 到达的实体比例。理想值 > 90%."""
     # MOC 实体: entity_type='moc' 或 name 包含 'MOC'/'index'/'map'
@@ -144,9 +144,7 @@ def _score_moc_coverage(conn) -> DimensionScore:
     """).fetchone()
     covered = covered_rows[0] if covered_rows else 0
 
-    total_rows = conn.execute(
-        "SELECT COUNT(*) FROM graph_entities"
-    ).fetchone()
+    total_rows = conn.execute("SELECT COUNT(*) FROM graph_entities").fetchone()
     total = total_rows[0] if total_rows else 0
 
     coverage_pct = (covered / total * 100) if total > 0 else 0
@@ -163,12 +161,11 @@ def _score_moc_coverage(conn) -> DimensionScore:
 
 # ── Dimension 4: Cluster Connectivity (聚类连通性) — 15% ─────────────────────
 
+
 def _score_cluster_connectivity(conn) -> DimensionScore:
     """计算图的连通分量数。理想值 1 个连通分量."""
     # 使用简单的 BFS 计算连通分量数
-    entity_rows = conn.execute(
-        "SELECT id FROM graph_entities"
-    ).fetchall()
+    entity_rows = conn.execute("SELECT id FROM graph_entities").fetchall()
     all_ids = {r[0] for r in entity_rows}
 
     if not all_ids:
@@ -234,6 +231,7 @@ def _score_cluster_connectivity(conn) -> DimensionScore:
 
 # ── Dimension 5: Dead-end Rate (死端率) — 10% ────────────────────────────────
 
+
 def _score_dead_end(conn) -> DimensionScore:
     """计算只有入边没有出边的实体比例。理想值 < 10%."""
     dead_rows = conn.execute("""
@@ -247,9 +245,7 @@ def _score_dead_end(conn) -> DimensionScore:
     """).fetchone()
     dead_end_count = dead_rows[0] if dead_rows else 0
 
-    total_rows = conn.execute(
-        "SELECT COUNT(*) FROM graph_entities"
-    ).fetchone()
+    total_rows = conn.execute("SELECT COUNT(*) FROM graph_entities").fetchone()
     total = total_rows[0] if total_rows else 0
 
     dead_pct = (dead_end_count / total * 100) if total > 0 else 0
@@ -266,11 +262,10 @@ def _score_dead_end(conn) -> DimensionScore:
 
 # ── Dimension 6: Reciprocal Link Rate (双向链接率) — 10% ─────────────────────
 
+
 def _score_reciprocal(conn) -> DimensionScore:
     """计算双向关系的比例。理想值 > 50%."""
-    total_rows = conn.execute(
-        "SELECT COUNT(*) FROM graph_relations"
-    ).fetchone()
+    total_rows = conn.execute("SELECT COUNT(*) FROM graph_relations").fetchone()
     total = total_rows[0] if total_rows else 0
 
     if total == 0:
@@ -306,9 +301,11 @@ def _score_reciprocal(conn) -> DimensionScore:
 
 # ── Top Connected Entities ───────────────────────────────────────────────────
 
+
 def _top_connected(conn, limit: int = 10) -> list[dict[str, Any]]:
     """返回连接数最多的 Top-N 实体."""
-    rows = conn.execute("""
+    rows = conn.execute(
+        """
         SELECT e.id, e.name, e.entity_type, e.mention_count,
                COUNT(DISTINCT r.id) AS relation_count
         FROM graph_entities e
@@ -317,7 +314,9 @@ def _top_connected(conn, limit: int = 10) -> list[dict[str, Any]]:
         HAVING COUNT(DISTINCT r.id) > 0
         ORDER BY relation_count DESC
         LIMIT %s
-    """, (limit,)).fetchall()
+    """,
+        (limit,),
+    ).fetchall()
 
     return [
         {
@@ -333,9 +332,11 @@ def _top_connected(conn, limit: int = 10) -> list[dict[str, Any]]:
 
 # ── Top Orphan Entities ──────────────────────────────────────────────────────
 
+
 def _top_orphans(conn, limit: int = 10) -> list[dict[str, Any]]:
     """返回孤立实体的 Top-N (高 mention_count 优先建议)."""
-    rows = conn.execute("""
+    rows = conn.execute(
+        """
         SELECT id, name, entity_type, mention_count
         FROM graph_entities
         WHERE NOT EXISTS (
@@ -344,7 +345,9 @@ def _top_orphans(conn, limit: int = 10) -> list[dict[str, Any]]:
         )
         ORDER BY mention_count DESC
         LIMIT %s
-    """, (limit,)).fetchall()
+    """,
+        (limit,),
+    ).fetchall()
 
     return [
         {
@@ -358,6 +361,7 @@ def _top_orphans(conn, limit: int = 10) -> list[dict[str, Any]]:
 
 
 # ── Recommendations Generator ────────────────────────────────────────────────
+
 
 def _generate_recommendations(dimensions: list[DimensionScore]) -> list[str]:
     """根据各维度得分生成可操作建议."""
@@ -378,17 +382,11 @@ def _generate_recommendations(dimensions: list[DimensionScore]) -> list[str]:
                     f"[HIGH] MOC 覆盖率低 ({d.raw_value:.1f}%) — 确保新入库 substrate 的实体有明确归属"
                 )
             elif d.name == "cluster_connectivity":
-                recs.append(
-                    f"[MEDIUM] 图谱分裂为 {int(d.raw_value)} 个独立簇 — 添加跨域桥梁关系"
-                )
+                recs.append(f"[MEDIUM] 图谱分裂为 {int(d.raw_value)} 个独立簇 — 添加跨域桥梁关系")
             elif d.name == "dead_end_rate":
-                recs.append(
-                    f"[LOW] 死端率偏高 ({d.raw_value:.1f}%) — 增加实体的外向关系"
-                )
+                recs.append(f"[LOW] 死端率偏高 ({d.raw_value:.1f}%) — 增加实体的外向关系")
             elif d.name == "reciprocal_rate":
-                recs.append(
-                    f"[LOW] 双向链接率低 ({d.raw_value:.1f}%) — 双向关系增强语义一致性"
-                )
+                recs.append(f"[LOW] 双向链接率低 ({d.raw_value:.1f}%) — 双向关系增强语义一致性")
 
     if not recs:
         recs.append("图谱健康状态良好，暂无紧急改进项")
@@ -397,6 +395,7 @@ def _generate_recommendations(dimensions: list[DimensionScore]) -> list[str]:
 
 
 # ── Main Entry ───────────────────────────────────────────────────────────────
+
 
 def compute_graph_health(
     user_id: str | None = None,
@@ -425,7 +424,10 @@ def compute_graph_health(
             cluster_info = result[1]
         else:
             dim_cluster = DimensionScore(
-                name="cluster_connectivity", weight=0.15, raw_value=1, score=100,
+                name="cluster_connectivity",
+                weight=0.15,
+                raw_value=1,
+                score=100,
                 detail="skipped",
             )
             cluster_info = []
@@ -464,7 +466,9 @@ def compute_graph_health(
 
     logger.info(
         "graph_health: score=%.1f entities=%d relations=%d orphans=%d",
-        total_score, total_entities, total_relations,
+        total_score,
+        total_entities,
+        total_relations,
         int(dim_orphan.raw_value * total_entities / 100) if total_entities else 0,
     )
     return report

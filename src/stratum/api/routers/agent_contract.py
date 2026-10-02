@@ -11,4 +11,3 @@ router = APIRouter(prefix="/api/v1/agent-contract", tags=["agents"])
 @router.get("")
 async def get_agent_contract(user_id: str = Depends(jwt_auth)):
     return DEFAULT_AGENT_CONTRACT.to_dict()
-

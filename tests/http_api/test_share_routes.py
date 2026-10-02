@@ -1,4 +1,5 @@
 """Tests for share routes + data leak red-line tests — §6.6."""
+
 import pytest
 from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI
@@ -31,7 +32,9 @@ def user_b(db):
 
 @pytest.fixture
 def note_a(db, user_a):
-    return NoteDAO(db).create_note(corpus_id=user_a.corpus_id, title="Alice Note", content="Hello world [[_private_ref]]")
+    return NoteDAO(db).create_note(
+        corpus_id=user_a.corpus_id, title="Alice Note", content="Hello world [[_private_ref]]"
+    )
 
 
 def _auth(user):
@@ -39,6 +42,7 @@ def _auth(user):
 
 
 # --- Create share ---
+
 
 def test_create_share_success(client, user_a, note_a):
     r = client.post(f"/api/share/note/{note_a.id}", json={}, headers=_auth(user_a))
@@ -59,11 +63,14 @@ def test_create_share_other_users_note(client, user_a, user_b, db):
 
 
 def test_create_share_with_expiry(client, user_a, note_a):
-    r = client.post(f"/api/share/note/{note_a.id}", json={"expires_in_days": 7}, headers=_auth(user_a))
+    r = client.post(
+        f"/api/share/note/{note_a.id}", json={"expires_in_days": 7}, headers=_auth(user_a)
+    )
     assert r.json()["expires_at"] is not None
 
 
 # --- List shares ---
+
 
 def test_list_shares(client, user_a, note_a):
     client.post(f"/api/share/note/{note_a.id}", json={}, headers=_auth(user_a))
@@ -78,6 +85,7 @@ def test_list_shares_empty(client, user_a):
 
 
 # --- Revoke ---
+
 
 def test_revoke_share(client, user_a, note_a):
     create_r = client.post(f"/api/share/note/{note_a.id}", json={}, headers=_auth(user_a))
@@ -95,6 +103,7 @@ def test_user_B_cannot_revoke_user_A_share(client, user_a, user_b, note_a):
 
 
 # --- Public access ---
+
 
 def test_public_access_success(client, user_a, note_a):
     create_r = client.post(f"/api/share/note/{note_a.id}", json={}, headers=_auth(user_a))
@@ -120,7 +129,9 @@ def test_public_access_revoked_returns_410(client, user_a, note_a):
 
 def test_public_access_expired_returns_410(client, user_a, note_a, db):
     """Expired share returns 410."""
-    create_r = client.post(f"/api/share/note/{note_a.id}", json={"expires_in_days": 1}, headers=_auth(user_a))
+    create_r = client.post(
+        f"/api/share/note/{note_a.id}", json={"expires_in_days": 1}, headers=_auth(user_a)
+    )
     token = create_r.json()["token"]
     # Manually expire it
     past = datetime.now(timezone.utc) - timedelta(days=2)
@@ -130,6 +141,7 @@ def test_public_access_expired_returns_410(client, user_a, note_a, db):
 
 
 # --- Data leak red-line tests ---
+
 
 def test_public_response_no_user_id(client, user_a, note_a):
     """Red-line: public response must not contain user_id."""

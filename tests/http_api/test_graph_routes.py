@@ -3,6 +3,7 @@
 Uses real DuckDB in-memory fixture with 029/030 DDL.
 graph_builder_service unit test mocks oprim.llm_call.
 """
+
 import json
 import pytest
 import duckdb
@@ -65,8 +66,10 @@ def graph_db(tmp_path):
 
 # ── DAO unit tests ─────────────────────────────────────────────────────────────
 
+
 def test_upsert_entity_insert(graph_db):
     from stratum.dao.graph import upsert_entity
+
     with patch("stratum.dao.graph.get_conn") as mock_gc:
         mock_gc.return_value.__enter__ = lambda s: graph_db
         mock_gc.return_value.__exit__ = MagicMock(return_value=False)
@@ -81,6 +84,7 @@ def test_upsert_entity_insert(graph_db):
 
 def test_upsert_entity_merge(graph_db):
     from stratum.dao.graph import upsert_entity
+
     with patch("stratum.dao.graph.get_conn") as mock_gc:
         mock_gc.return_value.__enter__ = lambda s: graph_db
         mock_gc.return_value.__exit__ = MagicMock(return_value=False)
@@ -95,6 +99,7 @@ def test_upsert_entity_merge(graph_db):
 
 def test_upsert_relation(graph_db):
     from stratum.dao.graph import upsert_entity, upsert_relation
+
     with patch("stratum.dao.graph.get_conn") as mock_gc:
         mock_gc.return_value.__enter__ = lambda s: graph_db
         mock_gc.return_value.__exit__ = MagicMock(return_value=False)
@@ -111,6 +116,7 @@ def test_upsert_relation(graph_db):
 
 def test_get_entity_neighbors_empty(graph_db):
     from stratum.dao.graph import get_entity_neighbors
+
     with patch("stratum.dao.graph.get_conn") as mock_gc:
         mock_gc.return_value.__enter__ = lambda s: graph_db
         mock_gc.return_value.__exit__ = MagicMock(return_value=False)
@@ -119,6 +125,7 @@ def test_get_entity_neighbors_empty(graph_db):
 
 
 # ── graph_builder_service unit test ───────────────────────────────────────────
+
 
 @requires_oprim
 @pytest.mark.asyncio
@@ -144,25 +151,33 @@ async def test_build_graph_llm_extract(graph_db):
     from stratum.services.graph_builder_service import build_graph_from_substrate
 
     fake_llm_response = MagicMock()
-    fake_llm_response.text = json.dumps({
-        "entities": [
-            {"name": "Attention", "type": "concept", "description": "Self-attention mechanism"},
-            {"name": "Transformer", "type": "method", "description": "Attention-based arch"},
-        ],
-        "relations": [
-            {"source": "Attention", "target": "Transformer",
-             "relation_type": "part_of", "description": "Attention is part of Transformer"},
-        ]
-    })
+    fake_llm_response.text = json.dumps(
+        {
+            "entities": [
+                {"name": "Attention", "type": "concept", "description": "Self-attention mechanism"},
+                {"name": "Transformer", "type": "method", "description": "Attention-based arch"},
+            ],
+            "relations": [
+                {
+                    "source": "Attention",
+                    "target": "Transformer",
+                    "relation_type": "part_of",
+                    "description": "Attention is part of Transformer",
+                },
+            ],
+        }
+    )
 
     derivative_conn = MagicMock()
     derivative_conn.execute.return_value.fetchone.return_value = ("# Title\n\nLong content " * 50,)
 
-    with patch("stratum.services.graph_builder_service.get_conn") as mock_gc, \
-         patch("stratum.services.graph_builder_service.upsert_entity") as mock_ue, \
-         patch("stratum.services.graph_builder_service.upsert_relation") as mock_ur, \
-         patch("oprim.structural_chunk", return_value=[{"content": "test content " * 100}]), \
-         patch("oprim.llm_call", return_value=fake_llm_response):
+    with (
+        patch("stratum.services.graph_builder_service.get_conn") as mock_gc,
+        patch("stratum.services.graph_builder_service.upsert_entity") as mock_ue,
+        patch("stratum.services.graph_builder_service.upsert_relation") as mock_ur,
+        patch("oprim.structural_chunk", return_value=[{"content": "test content " * 100}]),
+        patch("oprim.llm_call", return_value=fake_llm_response),
+    ):
         mock_gc.return_value.__enter__ = lambda s: derivative_conn
         mock_gc.return_value.__exit__ = MagicMock(return_value=False)
         mock_ue.side_effect = lambda **kw: f"eid_{kw['name']}"

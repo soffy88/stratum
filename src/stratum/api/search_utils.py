@@ -29,6 +29,7 @@ except ImportError:  # pragma: no cover — 平台包仅部署于容器
     def lancedb_path() -> Path:
         return _index_path_fallback("lance")
 
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -94,7 +95,9 @@ def _clean_snippet(content: str) -> str:
 
 
 def get_tantivy_mgr():
-    def tantivy_mgr(*, query: str, top_k: int, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    def tantivy_mgr(
+        *, query: str, top_k: int, filters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         if not _HAS_3O_PLATFORM:
             logger.warning("Tantivy source disabled: 3O platform unavailable (no /opt/platform)")
             return []
@@ -108,10 +111,11 @@ def get_tantivy_mgr():
             # substrates). Pull extra so enough survive ghost-filtering below.
             hits = idx.search(query, top_k=max(top_k * 5, 50))
             logger.info(f"Tantivy search for '{query}' returned {len(hits)} hits")
-            
+
             # Fetch titles + content snippets from DB
             ids = [h.id for h in hits]
-            if not ids: return []
+            if not ids:
+                return []
 
             meta_map = _fetch_meta(ids)
 
@@ -124,15 +128,20 @@ def get_tantivy_mgr():
                     "title": meta_map[h.id].get("title") or h.id,
                     # oprim tantivy highlight is empty → fall back to content snippet
                     "highlight": (h.highlight or "").strip() or meta_map[h.id].get("snippet", ""),
-                    "user_id": meta_map[h.id].get("user_id")
-                } for h in hits if h.id in meta_map
+                    "user_id": meta_map[h.id].get("user_id"),
+                }
+                for h in hits
+                if h.id in meta_map
             ]
         except Exception as e:
             logger.error(f"Tantivy search failed: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
             return []
+
     return tantivy_mgr
+
 
 def get_pgvector_user_mgr(user_id: str):
     """User-scoped semantic dense source backed by PG substrate_layers (L0).
@@ -142,8 +151,14 @@ def get_pgvector_user_mgr(user_id: str):
     embeddings come from the identical model → consistent cosine space.
     Satisfies the LanceDBMgr protocol (query_embedding/query/top_k/filters).
     """
-    def pgvector_user_mgr(*, query_embedding: list[float] | None, query: str,
-                          top_k: int, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+
+    def pgvector_user_mgr(
+        *,
+        query_embedding: list[float] | None,
+        query: str,
+        top_k: int,
+        filters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         from stratum.services.retrieval_engine import _vector_search_layers, get_embedding
 
         if query_embedding is None:
@@ -161,19 +176,28 @@ def get_pgvector_user_mgr(user_id: str):
             sid = h["substrate_id"]
             if sid not in meta_map:
                 continue  # stale layer row, substrate gone
-            results.append({
-                "id": sid,
-                "type": "user_substrate",
-                "title": meta_map[sid].get("title") or sid,
-                "highlight": meta_map[sid].get("snippet", ""),
-                "user_id": meta_map[sid].get("user_id"),
-            })
+            results.append(
+                {
+                    "id": sid,
+                    "type": "user_substrate",
+                    "title": meta_map[sid].get("title") or sid,
+                    "highlight": meta_map[sid].get("snippet", ""),
+                    "user_id": meta_map[sid].get("user_id"),
+                }
+            )
         return results
+
     return pgvector_user_mgr
 
 
 def get_lancedb_mgr():
-    def lancedb_mgr(*, query_embedding: list[float] | None, query: str, top_k: int, filters: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    def lancedb_mgr(
+        *,
+        query_embedding: list[float] | None,
+        query: str,
+        top_k: int,
+        filters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         if not _HAS_3O_PLATFORM:
             logger.warning("LanceDB source disabled: 3O platform unavailable (no /opt/platform)")
             return []
@@ -183,7 +207,7 @@ def get_lancedb_mgr():
             return []
         try:
             db = open_vector_db(path, "vectors_text", 1024)
-            
+
             if query_embedding is None:
                 from oprim.embedding import embed_text
 
@@ -194,18 +218,19 @@ def get_lancedb_mgr():
                 except Exception as e:
                     logger.error(f"embed_text failed: {e}")
                     return []
-                
+
             if hasattr(db, "_table"):
                 tbl = db._table
             else:
                 import lancedb
+
                 ldb = lancedb.connect(path)
                 tbl = ldb.open_table("vectors_text")
-            
+
             # Over-fetch to survive ghost-filtering of stale vector entries.
             hits = tbl.search(query_embedding).limit(max(top_k * 5, 50)).to_list()
             logger.info(f"LanceDB search for '{query}' returned {len(hits)} hits")
-            
+
             processed_hits = []
             for h in hits:
                 m = h.get("metadata")
@@ -215,10 +240,19 @@ def get_lancedb_mgr():
                     except:
                         m = {}
                 processed_hits.append({"id": h["id"], "metadata": m, "text": h.get("text", "")})
-            
+
             # Fetch titles + content snippets from DB for substrate_id in metadata
-            sub_ids = list(set([h["metadata"].get("substrate_id") for h in processed_hits if h["metadata"] and h["metadata"].get("substrate_id")]))
-            if not sub_ids: return []
+            sub_ids = list(
+                set(
+                    [
+                        h["metadata"].get("substrate_id")
+                        for h in processed_hits
+                        if h["metadata"] and h["metadata"].get("substrate_id")
+                    ]
+                )
+            )
+            if not sub_ids:
+                return []
 
             meta_map = _fetch_meta(sub_ids)
 
@@ -229,17 +263,21 @@ def get_lancedb_mgr():
                     continue
                 # Prefer the matched chunk text; fall back to content snippet.
                 hl = (h.get("text") or "").strip() or meta_map[sid].get("snippet", "")
-                results.append({
-                    "id": sid,
-                    "type": "user_substrate",
-                    "title": meta_map[sid].get("title") or sid,
-                    "highlight": hl,
-                    "user_id": meta_map[sid].get("user_id")
-                })
+                results.append(
+                    {
+                        "id": sid,
+                        "type": "user_substrate",
+                        "title": meta_map[sid].get("title") or sid,
+                        "highlight": hl,
+                        "user_id": meta_map[sid].get("user_id"),
+                    }
+                )
             return results
         except Exception as e:
             logger.error(f"LanceDB search failed: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
             return []
+
     return lancedb_mgr

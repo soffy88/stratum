@@ -15,6 +15,7 @@ from aii.service.formal_proof_engine import FormalProofEngine
 
 logger = logging.getLogger(__name__)
 
+
 class EvolutionEngine:
     """Orchestrates the self-evolution flywheel for the AII system."""
 
@@ -24,7 +25,7 @@ class EvolutionEngine:
 
     async def evolve(self) -> dict[str, Any]:
         """Run a single iteration of the evolution cycle.
-        
+
         Orchestrates 4 steps: Reflux -> Verify -> Distill -> Govern.
         Adheres strictly to H1-modul (services orchestrate omoduls, no omodul internal calling).
         """
@@ -48,7 +49,7 @@ class EvolutionEngine:
         logger.info("Step 1: Graph Reflux")
         reflux_config = omodul.knowledge_reflux.KnowledgeRefluxConfig(
             backend=self.backend,
-            auto_apply_low=True # Auto-apply coherence_boost and missing_inverse
+            auto_apply_low=True,  # Auto-apply coherence_boost and missing_inverse
         )
         try:
             reflux_result = await loop.run_in_executor(
@@ -59,15 +60,21 @@ class EvolutionEngine:
             if reflux_report is not None:
                 # auto_applied: low-risk items already executed by run_reflux
                 for f in reflux_report.auto_applied:
-                    report["reflux_applied"].append({
-                        "kind": f.kind, "subject": f.subject,
-                        "severity": f.severity, "detail": f.detail,
-                    })
+                    report["reflux_applied"].append(
+                        {
+                            "kind": f.kind,
+                            "subject": f.subject,
+                            "severity": f.severity,
+                            "detail": f.detail,
+                        }
+                    )
                 # needs_review: high-risk items for governance/human-in-the-loop
                 for f in reflux_report.needs_review:
                     item = {
-                        "kind": f.kind, "subject": f.subject,
-                        "severity": f.severity, "detail": f.detail,
+                        "kind": f.kind,
+                        "subject": f.subject,
+                        "severity": f.severity,
+                        "detail": f.detail,
                     }
                     report["needs_review"].append(item)
                     # coherence_defeater: record failure lesson (bypass, don't change grade)
@@ -95,16 +102,15 @@ class EvolutionEngine:
         pool = await self.backend._ensure_pool()
         async with pool.acquire() as conn:
             # onto: ku_onto 全是真 KU, 无 quarantine
-            candidate_rows = await conn.fetch(
-                "SELECT * FROM aii.ku_onto WHERE grade != 'proven'"
-            )
-        
+            candidate_rows = await conn.fetch("SELECT * FROM aii.ku_onto WHERE grade != 'proven'")
+
         vk_config = omodul.verify_knowledge.VerifyKnowledgeConfig()
 
         import json
+
         for row in candidate_rows:
             ku = dict(row)
-            
+
             # Parse JSON fields if they are returned as strings by asyncpg
             for json_field in ["symbolic_form", "provenance"]:
                 if ku.get(json_field) and isinstance(ku[json_field], str):
@@ -115,15 +121,23 @@ class EvolutionEngine:
 
             ku_id = str(ku["ku_id"])
             k_type = ku.get("knowledge_type")
-            name = ku.get("natural_text", "")[:10] # snippet for logging
-            
+            name = ku.get("natural_text", "")[:10]  # snippet for logging
+
             # 2a. Mathematical Theorems -> FormalProofEngine
             if k_type == "theorem":
                 # 确证前查重蹈：已知失败则跳过，省成本
                 theorem_name = (
-                    ku.get("symbolic_form", {}).get("name", "") if isinstance(ku.get("symbolic_form"), dict) else ""
-                ) or ku.get("name", "") or ku.get("natural_text", "")[:30]
-                if theorem_name and await self.backend.has_failure_lesson_async("verify_failed", theorem_name):
+                    (
+                        ku.get("symbolic_form", {}).get("name", "")
+                        if isinstance(ku.get("symbolic_form"), dict)
+                        else ""
+                    )
+                    or ku.get("name", "")
+                    or ku.get("natural_text", "")[:30]
+                )
+                if theorem_name and await self.backend.has_failure_lesson_async(
+                    "verify_failed", theorem_name
+                ):
                     logger.info(f"Skipping known failure theorem: {theorem_name}")
                     report["skipped"].append(ku_id)
                     continue
@@ -156,30 +170,30 @@ class EvolutionEngine:
 
             v_type = None
             v_input = {"ku": ku}
-            
+
             # Check for CMI or Backtest evidence
             if "cmi_treatment" in provenance and "cmi_control" in provenance:
                 v_type = "cmi"
-                v_input.update({
-                    "type": "cmi",
-                    "treatment": provenance["cmi_treatment"],
-                    "control": provenance["cmi_control"]
-                })
+                v_input.update(
+                    {
+                        "type": "cmi",
+                        "treatment": provenance["cmi_treatment"],
+                        "control": provenance["cmi_control"],
+                    }
+                )
             elif "backtest_returns" in provenance:
                 v_type = "backtest"
-                v_input.update({
-                    "type": "backtest",
-                    "returns": provenance["backtest_returns"]
-                })
-            
+                v_input.update({"type": "backtest", "returns": provenance["backtest_returns"]})
+
             if v_type:
                 logger.debug(f"Verifying empirical KU ({v_type}): {name}")
                 try:
                     vk_result = await loop.run_in_executor(
-                        None, lambda vi=v_input: omodul.verify_knowledge.verify_knowledge(vk_config, vi)
+                        None,
+                        lambda vi=v_input: omodul.verify_knowledge.verify_knowledge(vk_config, vi),
                     )
                     vk_findings = vk_result.get("findings")
-                    
+
                     if vk_findings:
                         action = vk_findings.get("action")
                         if action == "upgraded":
@@ -188,20 +202,20 @@ class EvolutionEngine:
                             report["downgraded"].append(ku_id)
                         elif action == "capped":
                             report["capped"].append(ku_id)
-                        
+
                         # Apply the change atomically
                         if action in ["upgraded", "downgraded"]:
                             await self.backend.record_state_change(
                                 ku_id=ku_id,
                                 to_grade=vk_findings["new_grade"],
                                 reason=f"empirical_verification:{v_type}",
-                                decision_trail=vk_result.get("decision_trail", [])
+                                decision_trail=vk_result.get("decision_trail", []),
                             )
                 except Exception as e:
                     logger.error(f"Empirical verification failed for {ku_id}: {e}")
             else:
-                 # Provenance exists but no actionable structural evidence
-                 report["skipped"].append(ku_id)
+                # Provenance exists but no actionable structural evidence
+                report["skipped"].append(ku_id)
 
         # =====================================================================
         # Step 3: Skill Distillation
@@ -211,14 +225,15 @@ class EvolutionEngine:
         # In a real run, we fetch recent episodes to distill into solution_strategies.
         # For this skeleton, we run it with an empty payload to test orchestration.
         try:
-             # Input expects episodes with success/failure signals
-             distill_res = await loop.run_in_executor(
-                 None, lambda: omodul.learning_distill.learning_distill(distill_config, {"episodes": []})
-             )
-             # report["distilled"] = len(distill_res.get("findings", {}).get("strategies_generated", []))
-             report["distilled"] = 0 
+            # Input expects episodes with success/failure signals
+            distill_res = await loop.run_in_executor(
+                None,
+                lambda: omodul.learning_distill.learning_distill(distill_config, {"episodes": []}),
+            )
+            # report["distilled"] = len(distill_res.get("findings", {}).get("strategies_generated", []))
+            report["distilled"] = 0
         except Exception as e:
-             logger.error(f"Distillation failed: {e}")
+            logger.error(f"Distillation failed: {e}")
 
         # =====================================================================
         # Step 4: Governance Adjudication (Human-in-the-loop preparation)
@@ -226,17 +241,16 @@ class EvolutionEngine:
         logger.info("Step 4: Governance Adjudication")
         gov_config = omodul.governance_adjudicate.GovernanceAdjudicateConfig(backend=self.backend)
         # We pass the high-risk items collected during reflux into governance
-        gov_input = {
-            "pending_decisions": report["needs_review"]
-        }
+        gov_input = {"pending_decisions": report["needs_review"]}
         try:
             gov_res = await loop.run_in_executor(
-                None, lambda: omodul.governance_adjudicate.governance_adjudicate(gov_config, gov_input)
+                None,
+                lambda: omodul.governance_adjudicate.governance_adjudicate(gov_config, gov_input),
             )
             # Governance processes them and might mark them for human review
             # We don't automatically apply high-risk changes here.
         except Exception as e:
-             logger.error(f"Governance failed: {e}")
+            logger.error(f"Governance failed: {e}")
 
         # =====================================================================
         # Step 5: Capability Gap Analysis (纯统计，无LLM，不自动补)
@@ -246,7 +260,9 @@ class EvolutionEngine:
             grade_dist = await self.backend.get_grade_distribution_async()
 
             # failure_stats: aggregate retrieval_miss by topic
-            miss_lessons = await self.backend.query_failure_lessons_async(trigger_type="retrieval_miss")
+            miss_lessons = await self.backend.query_failure_lessons_async(
+                trigger_type="retrieval_miss"
+            )
             failure_stats: dict[str, int] = {}
             for l in miss_lessons:
                 topic = l.get("subject_ref") or (l.get("evidence") or {}).get("query", "unknown")
@@ -268,11 +284,13 @@ class EvolutionEngine:
                     days_old = (now_utc - updated_at).days
                 else:
                     days_old = 7
-                stale_candidates.append({
-                    "ku_id": str(ku["ku_id"]),
-                    "days_unverified": days_old,
-                    "verified": ku.get("verified", False),
-                })
+                stale_candidates.append(
+                    {
+                        "ku_id": str(ku["ku_id"]),
+                        "days_unverified": days_old,
+                        "verified": ku.get("verified", False),
+                    }
+                )
 
             gap_report = capability_gap_analyze(
                 grade_distribution=grade_dist,

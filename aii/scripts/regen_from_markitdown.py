@@ -144,7 +144,7 @@ def main():
             failed.append((cat, name, str(e)))
             print(f"REGEN FAILED: {cat}/{name}: {e}")
 
-    print(f"\n=== summary ===")
+    print("\n=== summary ===")
     print(f"regenerated: {len(regenerated)}")
     print(f"moved (no source): {len(moved_only)}")
     print(f"failed: {len(failed)}")

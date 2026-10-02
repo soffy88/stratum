@@ -24,6 +24,12 @@ import type {
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+function at<T>(values: readonly T[], index: number): T {
+  const value = values[index % values.length];
+  if (value === undefined) throw new Error('mock data collection must not be empty');
+  return value;
+}
+
 // ============================================================
 // /query
 // ============================================================
@@ -205,7 +211,7 @@ export async function mockEvolution(): Promise<ApiResult<EvolutionResponse>> {
 // ============================================================
 
 export async function mockGovernanceAction(
-  req: GovernanceActionRequest
+  _req: GovernanceActionRequest
 ): Promise<ApiResult<GovernanceActionResponse>> {
   await delay(600);
   return {
@@ -411,7 +417,6 @@ export async function mockStatsIngestion(): Promise<ApiResult<StatsIngestionResp
 }
 
 // ── KU 列表(可筛选/分页) ──
-const GRADES: EpistemicGrade[] = ['proven','high','moderate','low','unverified','contradicted'];
 const KTYPES: KnowledgeType[] = ['theorem','definition','concept','claim','method','observation'];
 const BOOKS = [
   { id: 'sub-capital',   title: '《资本论》' },
@@ -432,7 +437,7 @@ const KU_TEXTS = [
 ];
 
 function makeKu(i: number): KuListItem {
-  const book = BOOKS[i % BOOKS.length];
+  const book = at(BOOKS, i);
   // 命门:绝大多数 unverified
   const g: EpistemicGrade = i === 0 ? 'proven'
     : i % 23 === 0 ? 'contradicted'
@@ -442,9 +447,9 @@ function makeKu(i: number): KuListItem {
     : 'unverified';
   return {
     id: `ku-${String(i).padStart(5,'0')}`,
-    natural_text: KU_TEXTS[i % KU_TEXTS.length],
+    natural_text: at(KU_TEXTS, i),
     grade: g,
-    knowledge_type: KTYPES[i % KTYPES.length],
+    knowledge_type: at(KTYPES, i),
     substrate_id: book.id,
     substrate_title: book.title,
     merge_count: i % 4 === 0 ? 1 + (i % 3) : 1,  // 部分多书共有
@@ -519,19 +524,19 @@ export async function mockSubgraph(req: SubgraphRequest): Promise<ApiResult<Subg
   for (let i = 0; i < N; i++) {
     nodes.push({
       id: i === 0 ? center : `ku-${String(1000 + i).padStart(5,'0')}`,
-      label: KU_TEXTS[i % KU_TEXTS.length].slice(0, 18),
+      label: at(KU_TEXTS, i).slice(0, 18),
       grade: grade(i),
-      knowledge_type: KTYPES[i % KTYPES.length],
+      knowledge_type: at(KTYPES, i),
       degree: i === 0 ? N - 1 : 1 + (i % 4),
     });
   }
   const RELS: RelationType[] = ['references','prerequisite_of','special_case_of','supports','contradicts','related_to'];
   for (let i = 1; i < N; i++) {
-    const rel = RELS[i % RELS.length];
+    const rel = at(RELS, i);
     edges.push({
       id: `e-${i}`,
-      source: nodes[0].id,
-      target: nodes[i].id,
+      source: at(nodes, 0).id,
+      target: at(nodes, i).id,
       relation_type: rel,
       // 命门:rule 实线 / llm 虚线
       extraction_method: i % 3 === 0 ? 'rule' : 'llm',
@@ -540,14 +545,14 @@ export async function mockSubgraph(req: SubgraphRequest): Promise<ApiResult<Subg
     // 一些二跳边
     if (i > 1 && i % 5 === 0) {
       edges.push({
-        id: `e-${i}-x`, source: nodes[i].id, target: nodes[i-1].id,
+        id: `e-${i}-x`, source: at(nodes, i).id, target: at(nodes, i - 1).id,
         relation_type: 'related_to', extraction_method: 'llm', grade: 'unverified',
       });
     }
   }
   return {
     ok: true, degraded: false,
-    data: { nodes, edges, center_id: nodes[0].id, truncated: (req.limit ?? 24) < 100 },
+    data: { nodes, edges, center_id: at(nodes, 0).id, truncated: (req.limit ?? 24) < 100 },
   };
 }
 
@@ -735,7 +740,7 @@ export async function mockKcList(): Promise<ApiResult<KcListItem[]>> {
 }
 export async function mockKcDetail(id: string): Promise<ApiResult<KcDetail>> {
   await delay(200);
-  const base = KC_DATA.find(k => k.id === id) ?? KC_DATA[0];
+  const base = KC_DATA.find(k => k.id === id) ?? at(KC_DATA, 0);
   return {
     ok:true, degraded:false,
     data: {
@@ -770,7 +775,7 @@ export async function mockBuList(): Promise<ApiResult<BuListItem[]>> {
 }
 export async function mockBuDetail(id: string): Promise<ApiResult<BuDetail>> {
   await delay(240);
-  const base = BU_DATA.find(b => b.id === id) ?? BU_DATA[0];
+  const base = BU_DATA.find(b => b.id === id) ?? at(BU_DATA, 0);
   return {
     ok:true, degraded:false,
     data: {

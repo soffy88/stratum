@@ -10,24 +10,35 @@
 
 用法: python3 scripts/apply_dedup_verdicts.py [--apply]   # 默认 dry-run
 """
-import os, json, glob, asyncio, sys
+
+import os
+import json
+import glob
+import asyncio
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
+
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 import asyncpg
+
 S = "/tmp/claude-1000/-home-soffy-projects-AII/26ea80e4-5a7a-4098-bcf7-95c0b817f892/scratchpad/"
 
 
 def _uf_clusters(pairs_same):
     parent = {}
+
     def find(x):
         parent.setdefault(x, x)
         while parent[x] != x:
-            parent[x] = parent[parent[x]]; x = parent[x]
+            parent[x] = parent[parent[x]]
+            x = parent[x]
         return x
+
     def union(a, b):
         parent[find(a)] = find(b)
+
     for a, b in pairs_same:
         union(a, b)
     cl = {}
@@ -57,8 +68,13 @@ async def main():
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
     # 取真实文本长度(权 keeper)
     ids = {x for k in same_sb for x in k}
-    lens = {r["ku_id"]: r["len"] for r in await conn.fetch(
-        "SELECT ku_id, length(coalesce(natural_text,'')) len FROM aii.ku_onto WHERE ku_id = ANY($1)", list(ids))}
+    lens = {
+        r["ku_id"]: r["len"]
+        for r in await conn.fetch(
+            "SELECT ku_id, length(coalesce(natural_text,'')) len FROM aii.ku_onto WHERE ku_id = ANY($1)",
+            list(ids),
+        )
+    }
 
     clusters = _uf_clusters(same_sb)
     drops = []  # (drop, keeper)
@@ -75,15 +91,21 @@ async def main():
         for d, k in drops[:12]:
             print(f"  merge {d[-26:]} → {k[-26:]}")
         print("\n(dry-run; --apply 落库)")
-        await conn.close(); return
+        await conn.close()
+        return
 
     # 备份受影响 KU
-    backup = [dict(r) for r in await conn.fetch(
-        "SELECT * FROM aii.ku_onto WHERE ku_id = ANY($1)", [d for d, _ in drops])]
+    backup = [
+        dict(r)
+        for r in await conn.fetch(
+            "SELECT * FROM aii.ku_onto WHERE ku_id = ANY($1)", [d for d, _ in drops]
+        )
+    ]
     for b in backup:
         b["embedding"] = None  # 备份不存大向量
         for kk, vv in list(b.items()):
-            if hasattr(vv, "isoformat"): b[kk] = vv.isoformat()
+            if hasattr(vv, "isoformat"):
+                b[kk] = vv.isoformat()
     json.dump(backup, open(S + "backup_dedup.json", "w"), ensure_ascii=False, default=str)
 
     merged = 0
@@ -96,7 +118,10 @@ async def main():
             # 软取代(非删): 留历史, 检索 valid_until IS NULL 自动排除
             await conn.execute(
                 "UPDATE aii.ku_onto SET valid_until=now(), superseded_by=$2, updated_at=now() "
-                "WHERE ku_id=$1 AND valid_until IS NULL", drop, keeper)
+                "WHERE ku_id=$1 AND valid_until IS NULL",
+                drop,
+                keeper,
+            )
             merged += 1
         # 跨书 same_as 边
         edges = 0
@@ -104,12 +129,19 @@ async def main():
             a, b = pairs[k]["a_id"], pairs[k]["b_id"]
             exists = await conn.fetchval(
                 "SELECT 1 FROM aii.edge_onto WHERE relation_type='same_as' AND "
-                "((src_id=$1 AND dst_id=$2) OR (src_id=$2 AND dst_id=$1)) LIMIT 1", a, b)
+                "((src_id=$1 AND dst_id=$2) OR (src_id=$2 AND dst_id=$1)) LIMIT 1",
+                a,
+                b,
+            )
             if not exists:
                 await conn.execute(
                     "INSERT INTO aii.edge_onto(substrate_id,src_id,dst_id,relation_type,grade,extraction_method,evidence) "
                     "VALUES($1,$2,$3,'same_as','moderate','claude_judge',$4)",
-                    pairs[k]["a_sub"], a, b, f"cross-book dup sim={pairs[k]['sim']}")
+                    pairs[k]["a_sub"],
+                    a,
+                    b,
+                    f"cross-book dup sim={pairs[k]['sim']}",
+                )
                 edges += 1
         # 矛盾入队
         await conn.execute((ROOT / "migrations" / "0005_ku_contradiction.sql").read_text())
@@ -118,7 +150,10 @@ async def main():
             await conn.execute(
                 "INSERT INTO aii.ku_contradiction(ku_a,ku_b,similarity,verdict,rationale,confidence,judged_by) "
                 "VALUES($1,$2,$3,'contradict','claude judge',$3,'claude') ON CONFLICT (ku_a,ku_b) DO NOTHING",
-                a, b, pairs[k]["sim"])
+                a,
+                b,
+                pairs[k]["sim"],
+            )
     cur = await conn.fetchval("SELECT count(*) FROM aii.ku_onto WHERE valid_until IS NULL")
     print(f"\nDONE: superseded {merged} dup KU, +{edges} same_as 边, {len(contra)} 矛盾入队")
     print(f"当前版本 KU: {cur} (备份 → backup_dedup.json, supersede 可逆)")

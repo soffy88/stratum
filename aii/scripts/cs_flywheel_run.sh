@@ -10,13 +10,20 @@
 # 可选:  ECON_IDLE_SLEEP=600(无书时sleep秒, 默认600)
 set -uo pipefail
 cd "$(dirname "$0")/.."
+# ★2026-08-27 修复 LLM 412/429: 使用本地 Veya 网关 (gpt-5.6-luna), 避开 opencode.ai 412(额度用尽) 与 NIM 429(免费层限流)
+export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://192.168.80.1:8791/v1/chat/completions}"
+export OPENCODE_MODEL="${OPENCODE_MODEL:-gpt-5.6-luna}"
+export OPENCODE_KEY_POOL="${OPENCODE_KEY_POOL:-sk-veya}"
+export AII_LLM_PRIMARY="${AII_LLM_PRIMARY:-opencode}"
+export NO_PROXY="${NO_PROXY:-localhost,127.0.0.1,192.168.80.1,::1}"
+export no_proxy="${no_proxy:-$NO_PROXY}"
 # ★单实例锁: 防止 systemd 服务 + 手动 nohup 双跑(实测双实例同 key 打 NIM → 限流风暴
 # → ReadTimeout 重试地狱 → 整批隔离, 零入库)。已持锁实例正常跑, 新实例立即退出。
 mkdir -p .locks
 exec 9>.locks/cs_flywheel.lock
 flock -n 9 || { echo "⚠ 已有实例在运行({lock}), 本次启动退出"; exit 0; }
 
-IDLE="${ECON_IDLE_SLEEP:-600}"
+IDLE="${ECON_IDLE_SLEEP:-120}"
 BOOKLIST="cs_pipeline/flywheel_cs_booklist.txt"
 
 echo "════════════════════════════════════════════════════"

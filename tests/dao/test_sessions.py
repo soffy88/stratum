@@ -1,7 +1,6 @@
 """Tests for stratum.dao.sessions — ≥8 tests per §3.7."""
 
 import pytest
-from datetime import datetime, timedelta
 from stratum.dao.sessions import SessionDAO
 
 

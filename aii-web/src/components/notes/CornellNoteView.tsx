@@ -82,7 +82,7 @@ function scoreAnswer(input: string, expected: string): { ok: boolean; score: num
   const norm = (s: string) =>
     s
       .toLowerCase()
-      .replace(/[\s\u3000.,，。;；:：!！?？"'“”‘’()（）\[\]【】\-_/\\]/g, "");
+      .replace(/[\s\u3000.,，。;；:：!！?？"'“”‘’()（）[【】\-_/\\]/g, "");
   const a = norm(input);
   const b = norm(expected);
   if (!a || !b) return { ok: false, score: 0 };
@@ -274,9 +274,9 @@ export function CornellNoteView({
     [topicId, note?.id]
   );
 
-  const cues = content?.cues ?? [];
+  const cues = useMemo(() => content?.cues ?? [], [content?.cues]);
   const modules = content?.modules ?? [];
-  const drills = content?.drills ?? [];
+  const drills = useMemo(() => content?.drills ?? [], [content?.drills]);
   const totalQ = cues.length;
   const masteredN = useMemo(
     () => cues.filter((c) => state.mastered[c.id]).length,

@@ -23,6 +23,7 @@ async def list_templates() -> list[dict[str, Any]]:
     dao = _get_dao()
     return [t.__dict__ for t in dao.list_templates()]
 
+
 async def create_note_from_template(template_id: str, user_inputs: dict[str, Any]) -> str:
     dao = _get_dao()
     template = dao.get_template(template_id=template_id)
@@ -30,9 +31,9 @@ async def create_note_from_template(template_id: str, user_inputs: dict[str, Any
         raise ValueError(f"Template {template_id} not found")
     if not _HAS_OSKILL_RENDER:
         raise ValueError(
-            f"Template rendering unavailable: 3O platform not deployed (no /opt/platform)"
+            "Template rendering unavailable: 3O platform not deployed (no /opt/platform)"
         )
-    
+
     # In real impl, fetch variable specs from template frontmatter or DB
-    variable_specs = [] 
+    variable_specs = []
     return render_template(template.content, variable_specs, user_inputs)

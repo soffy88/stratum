@@ -21,10 +21,19 @@ import time
 
 from fastapi import Body, FastAPI
 
+# Force offline mode BEFORE any HF/transformers import — model is fully cached locally
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+os.environ.setdefault("HF_HOME", "/data/models-all/hf-cache")
+
 MODEL_NAME = "BAAI/bge-m3"
 DIM = 1024
 IDLE_SEC = int(os.getenv("AII_EMBED_IDLE_SEC", "300"))  # 空闲多久卸载
 VRAM_MIN_GB = float(os.getenv("AII_EMBED_VRAM_MIN_GB", "3.5"))  # 空闲显存 ≥ 此值才上 GPU
+# CPU fallback 上 BGE-M3 的长序列/大 batch 会把机器拖入 swap。飞轮提交的文本
+# 已经在入库前截到约 2000 字符，这里再给 tokenizer 一个明确上限，避免异常调用
+# 把整章送进模型并阻塞其它飞轮。
+MAX_TOKENS = max(128, int(os.getenv("AII_EMBED_MAX_TOKENS", "2048")))
 
 
 class _Embedder:
@@ -63,7 +72,10 @@ class _Embedder:
 
         dev = force_device or self._pick_device()
         self._model = SentenceTransformer(MODEL_NAME, device=dev)
+        # 保持现有向量维度/模型不变，只限制单条请求的 tokenizer 长度。
+        self._model.max_seq_length = MAX_TOKENS
         self._device = dev
+        print(f"EMBED READY: device={dev} max_seq_length={MAX_TOKENS}", flush=True)
 
     def embed(self, texts: list[str]) -> tuple[list[list[float]], str]:
         with self._lock:
@@ -73,7 +85,9 @@ class _Embedder:
             # ★小卡(如笔记本4G的1050Ti)扛不住大batch一次性编码, 见2026-07-08实测: 一次OOM
             # 崩了整个进程, 卡了下游飞轮十几小时才被发现. batch_size给小默认值+OOM时降批重试,
             # 而不是让整个请求(乃至进程)崩掉.
-            bs = int(os.getenv("AII_EMBED_BATCH_SIZE", "16"))
+            # CPU fallback 下 16 条长文本会造成严重内存压力和 swap；小批次让
+            # 每个请求更快返回，也避免一个飞轮长期占住共享锁。
+            bs = max(1, int(os.getenv("AII_EMBED_BATCH_SIZE", "2")))
             vecs = None
             for attempt in range(3):
                 try:

@@ -25,7 +25,6 @@ def main():
     from stratum.db import get_conn
     from stratum.services.layer_generator import (
         _persist_substrate_layers,
-        _get_embedding,
     )
 
     with get_conn() as conn:
@@ -64,14 +63,20 @@ def main():
             failed += 1
 
     elapsed = time.time() - t0
-    log.info("Layers done: %d processed, %d failed in %.0fs (%.1f/sec)",
-             processed, failed, elapsed, processed / elapsed if elapsed > 0 else 0)
+    log.info(
+        "Layers done: %d processed, %d failed in %.0fs (%.1f/sec)",
+        processed,
+        failed,
+        elapsed,
+        processed / elapsed if elapsed > 0 else 0,
+    )
 
     # Backfill any missing embeddings
     log.info("Checking missing embeddings...")
     emb_count = 0
     while True:
         from stratum.services.layer_generator import backfill_embeddings
+
         n = backfill_embeddings(batch_size=200)
         if n == 0:
             break

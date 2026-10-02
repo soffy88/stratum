@@ -29,26 +29,31 @@ ADVMATH_LIMIT="${ADVMATH_LIMIT:-10}"
 export NVIDIA_NIM_API_KEY="$($PY -c "import json;print(json.load(open('.pipeline_keys.json')).get('math_en',''))" 2>/dev/null)"
 export NIM_KEY_POOL="$($PY -c "import json;d=json.load(open('.pipeline_keys.json'));ks=[d.get(k) for k in ('econ_zh','math_en','advmath_verify','econ','math_zh','advmath_2','advmath_3')];print(','.join(x for x in ks if x))" 2>/dev/null)"
 # ★模型选型(2026-07-07实测对比, 见记忆/对话记录): 默认 meta/llama-3.1-70b-instruct 讲透
-# 内容干; nvidia/llama-3.3-nemotron-super-49b-v1.5 明显更好(讲解更充分, 公式/引用一个
+# 内容干; deepseek-ai/deepseek-v4-flash-0731 明显更好(讲解更充分, 公式/引用一个
 # 不少)——只对本频道生效(NIM_MODEL是per-process env, 不影响econ_zh/misc/math_prog各自
 # 进程的默认模型选择)。
-export NIM_MODEL="${NIM_MODEL:-nvidia/llama-3.3-nemotron-super-49b-v1.5}"
+export NIM_MODEL="${NIM_MODEL:-deepseek-ai/deepseek-v4-flash-0731}"
+# ★统一模型链: opencodex(10100) gpt-5.6-luna 主, NIM fallback
+# ★2026-08-27 修复 LLM 412/429: 切到 Veya 8791(opencode 10100 僵死, 10100/v1 也连不通)
+export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://192.168.80.1:8791/v1/chat/completions}"
+export OPENCODE_MODEL="${OPENCODE_MODEL:-gpt-5.6-luna}"
 export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-4}"
-export DATABASE_URL="${DATABASE_URL:-postgresql://aii:***REMOVED***@localhost:5435/aii_kg}"
+export KU_REPAIR_SOURCE_BUDGET="${KU_REPAIR_SOURCE_BUDGET:-20}"
+export DATABASE_URL="${DATABASE_URL:-postgresql://aii:***REMOVED***@localhost:5437/aii_kg}"
 # ★2026-08-16 提速: 本机 7890 代理(opencode-go 直连被 RST; NO_PROXY 白名单保本地服务)
 #   + OPENCODE_KEY_POOL 由 _provider.py 自动读 opencode-keys.txt 全部 key(2 key 轮换)
 export http_proxy="${HTTP_PROXY:-http://127.0.0.1:7890}"
 export https_proxy="${HTTPS_PROXY:-http://127.0.0.1:7890}"
 export HTTP_PROXY="${http_proxy}"
 export HTTPS_PROXY="${https_proxy}"
-export NO_PROXY="localhost,127.0.0.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
+export NO_PROXY="localhost,127.0.0.1,192.168.80.1,::1,192.168.0.0/24,100.64.0.0/10,.local"
 export no_proxy="${NO_PROXY}"
 export CUDA_VISIBLE_DEVICES=""
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 # ★嵌入走共享 aii-embed 微服务(笔记本GPU); 不可用时走本地 BGE-M3(CPU, 慢但可用)
-if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://100.119.113.90:8102}/health" >/dev/null 2>&1; then
-  export AII_EMBED_URL="${AII_EMBED_URL:-http://100.119.113.90:8102}"
+if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://127.0.0.1:8102}/health" >/dev/null 2>&1; then
+  export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"
   echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
 else
   unset AII_EMBED_URL
@@ -91,6 +96,30 @@ $PY scripts/advmath_discover.py \
     --verbose \
     $LIMIT_ARG
 
+# ★先做轻量 MD 粘连门：GDrive 新书中有一批 OCR/表格碎片把空格抹掉，
+# 高级数学 LLM 会在这种输入上长时间规划却无法形成可审计 KU。坏源写入
+# Stratum rework 队列并从本轮书单移除，干净书优先产出；返工后的同名 MD
+# 因 substrate 不变会自动重新进入。
+ADVMATH_FILTERED_LIST="${FLYWHEEL_BOOK_LIST}.filtered.$$"
+: > "$ADVMATH_FILTERED_LIST"
+while IFS='|' read -r _md _sid _title; do
+    [ -n "$_md" ] || continue
+    if [ ! -f "$_md" ]; then
+        echo "  ⏭ 源文件暂不可读，跳过本轮: ${_title:0:80}"
+        continue
+    fi
+    if ! _gate_out=$(MD_GLUE_THRESHOLD="${ADVMATH_GLUE_THRESHOLD:-0.40}" \
+        $PY scripts/md_glue_gate.py "$_md" 2>&1); then
+        echo "  ⏭ 高级数学粘连门拦截，已送返工: ${_title:0:80}"
+        MD_GLUE_THRESHOLD="${ADVMATH_GLUE_THRESHOLD:-0.40}" \
+            $PY scripts/md_glue_gate.py "$_md" --substrate "$_sid" \
+            --title "$_title" --report >/dev/null 2>&1 || true
+        continue
+    fi
+    printf '%s|%s|%s\n' "$_md" "$_sid" "$_title" >> "$ADVMATH_FILTERED_LIST"
+done < "$FLYWHEEL_BOOK_LIST"
+mv "$ADVMATH_FILTERED_LIST" "$FLYWHEEL_BOOK_LIST"
+
 if [ ! -s "$FLYWHEEL_BOOK_LIST" ]; then
     echo "  ✅ 没有新书需要处理(全部已处理或未发现候选书)"
     echo "════════════════════════════════════════════════════"
@@ -119,6 +148,15 @@ for _k in "${WORKER_KEYS[@]}"; do
 done
 WORKER_KEYS=("${_AVAILABLE_KEYS[@]}")
 NW=${#WORKER_KEYS[@]}
+MAX_WORKERS="${ADVMATH_WORKERS:-$NW}"
+if [[ "$MAX_WORKERS" =~ ^[0-9]+$ ]] && (( MAX_WORKERS > 0 && MAX_WORKERS < NW )); then
+    WORKER_KEYS=("${WORKER_KEYS[@]:0:MAX_WORKERS}")
+    NW=${#WORKER_KEYS[@]}
+fi
+if (( NW == 0 )); then
+    echo "  ⚠ 没有可用 worker key，跳过本轮"
+    exit 0
+fi
 rm -f advmath_pipeline/booklist_worker*.txt advmath_pipeline/quarantine_worker*.json advmath_pipeline/batch_report_worker*.json
 for i in "${!WORKER_KEYS[@]}"; do : > "advmath_pipeline/booklist_worker${i}.txt"; done
 i=0
@@ -203,7 +241,7 @@ for item in quarantine.get('quarantined', []):
     reason_type = item.get('reason_type', '')
     if sid:
         state['processed'][sid] = {
-            'status': 'precheck_fail' if reason_type == 'precheck' else 'quarantine',
+            'status': 'precheck_fail' if reason_type == 'precheck' else ('retry' if reason_type == 'zero_ku' or (reason_type == 'quality_gate' and '实抽0' in item.get('reason_detail', '')) else 'quarantine'),
             'reason': item.get('reason_detail', '')[:200],
             'ts': item.get('ts', ts),
         }

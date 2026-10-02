@@ -14,6 +14,7 @@ Usage:
   python3 /app/scripts/cleanup_library.py --dry-run    # preview counts
   python3 /app/scripts/cleanup_library.py --execute    # apply all changes
 """
+
 from __future__ import annotations
 
 import argparse
@@ -38,11 +39,14 @@ ZLIB_RE = re.compile(r"\s*\(z-lib[\w\.\s,\'-]*\)\s*", re.I)
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
+
 def api_call(method: str, path: str, body: dict | None = None) -> dict:
     url = f"{API_BASE}{path}"
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(
-        url, data=data, method=method,
+        url,
+        data=data,
+        method=method,
         headers={
             "Authorization": f"Bearer {JWT}",
             "Content-Type": "application/json",
@@ -69,6 +73,7 @@ def bulk_title_update(updates: list[dict], dry_run: bool) -> dict:
 
 
 # ── data collection ───────────────────────────────────────────────────────────
+
 
 def collect_from_backup() -> dict:
     conn = duckdb.connect(BAK_DB, read_only=True)
@@ -122,6 +127,7 @@ def collect_from_backup() -> dict:
 
 # ── main ─────────────────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true", default=False)
@@ -142,13 +148,11 @@ def main():
     q_delete = data["quarantine_delete"]
     title_updates = data["title_updates"]
 
-    all_to_delete = [
-        ("bundle", sid, title) for sid, title in bundles
-    ] + [
-        ("duplicate", sid, title) for sid, title in dups
-    ] + [
-        ("quarantine_corrupt", sid, title) for sid, title in q_delete
-    ]
+    all_to_delete = (
+        [("bundle", sid, title) for sid, title in bundles]
+        + [("duplicate", sid, title) for sid, title in dups]
+        + [("quarantine_corrupt", sid, title) for sid, title in q_delete]
+    )
 
     print(f"\n{'[DRY RUN] ' if dry_run else ''}Summary:")
     print(f"  Bundle parents to delete:      {len(bundles)}")
@@ -165,7 +169,7 @@ def main():
         for u in title_updates[:10]:
             print(f"  BEFORE: {repr(u['old'][:65])}")
             print(f"  AFTER:  {repr(u['title'][:65])}")
-        print(f"  … and {len(title_updates)-10} more") if len(title_updates) > 10 else None
+        print(f"  … and {len(title_updates) - 10} more") if len(title_updates) > 10 else None
         return
 
     # — execute deletions —
@@ -189,13 +193,13 @@ def main():
     batch_size = 50
     total_updated = 0
     for i in range(0, len(title_updates), batch_size):
-        batch = title_updates[i: i + batch_size]
+        batch = title_updates[i : i + batch_size]
         try:
             result = bulk_title_update(batch, dry_run=False)
             total_updated += result.get("updated", 0)
-            print(f"  batch {i//batch_size+1}: {result.get('updated',0)} titles updated")
+            print(f"  batch {i // batch_size + 1}: {result.get('updated', 0)} titles updated")
         except RuntimeError as e:
-            print(f"  ERROR batch {i//batch_size+1}: {e}")
+            print(f"  ERROR batch {i // batch_size + 1}: {e}")
 
     print(f"\nTitle updates: {total_updated} total")
     print("\nDone.")

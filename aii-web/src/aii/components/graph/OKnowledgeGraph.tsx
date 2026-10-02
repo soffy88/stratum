@@ -106,13 +106,14 @@ function buildGraph(
   const graph = new Graph({ multi: true, type: 'directed' });
   const maxAlias = Math.max(1, ...data.nodes.map((n) => n.alias_count));
   const maxCentrality = Math.max(0.0001, ...Array.from(godNodeMap.values(), (g) => g.centrality));
+  const series = colors.series.length > 0 ? colors.series : [colors.foreground];
 
   const disciplines = Array.from(new Set(data.nodes.map((n) => n.discipline)));
   const disciplineColor = (d: string) =>
-    resolveCssColor(colors.series[disciplines.indexOf(d) % colors.series.length]);
+    resolveCssColor(series[disciplines.indexOf(d) % series.length] ?? colors.foreground);
   // 分组色板按组id在 groupIds 里的顺序取,跟页面图例保持一一对应。
   const groupColor = (gid: number) =>
-    resolveCssColor(colors.series[groupIds.indexOf(gid) % colors.series.length]);
+    resolveCssColor(series[groupIds.indexOf(gid) % series.length] ?? colors.foreground);
   const noThemeColor = resolveCssColor(NO_THEME_COLOR);
   const riskColor = resolveCssColor(RISK_COLOR);
   const godColor = resolveCssColor(GOD_NODE_COLOR);

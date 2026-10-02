@@ -35,7 +35,7 @@ from gates import extract_dims  # noqa: E402
 
 import os  # noqa: E402
 
-KG_URL = os.getenv("AII_KG_URL", "postgresql://aii:***REMOVED***@localhost:5435/aii_kg")
+KG_URL = os.getenv("AII_KG_URL", "postgresql://aii:***REMOVED***@localhost:5437/aii_kg")
 REFINED_URL = os.getenv("REFINED_URL", "postgresql://aii:***REMOVED***@localhost:5436/aii_refined")
 
 

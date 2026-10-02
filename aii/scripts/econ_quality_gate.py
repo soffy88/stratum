@@ -17,7 +17,12 @@ Usage: python econ_quality_gate.py <substrate_id> [--json output.json]
 Exit: 0=PASS(无报警), 1=ALARM(有报警), 2=运行错误
 """
 
-import asyncio, asyncpg, json, os, re, sys
+import asyncio
+import asyncpg
+import json
+import os
+import re
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -118,13 +123,60 @@ def _chapter_starts(text):
             n = int(g) if g.isdigit() else _cn2int(g)
             if n and n not in zh:
                 zh[n] = m.start()
-    bare_en = {}
-    for m in re.finditer(r"(?m)^[ \t]*(?:Chapter|CHAPTER)\s+([0-9]{1,3})\b[^\n]{0,80}$", text):
+    bare_en_cand = {}
+    for m in re.finditer(
+        r"(?m)^[ \t]*#{0,2}[ \t]*(?:Chapter|CHAPTER)\s+([0-9]{1,3})\b[^\n]{0,80}$",
+        text,
+    ):
         n = int(m.group(1))
-        bare_en.setdefault(n, m.start())
+        bare_en_cand.setdefault(n, []).append(m.start())
+    # 目录/页眉也会匹配 Chapter N。独占式“Chapter N”且相邻章节间距
+    # 足够大的连续序列才作为真实边界，和 chapter_ingest 保持一致。
+    exact = {
+        n: [
+            p
+            for p in poses
+            if re.match(
+                r"(?mi)^[ \t]*#{0,2}[ \t]*(?:Chapter|CHAPTER)\s+[0-9]{1,3}[ \t]*$",
+                text[p : text.find("\n", p) if text.find("\n", p) >= 0 else len(text)],
+            )
+        ]
+        for n, poses in bare_en_cand.items()
+    }
+    bare_en = {}
+    best = {}
+    for start_n in sorted(exact):
+        for start_pos in sorted(exact[start_n]):
+            cur = {start_n: start_pos}
+            prev = start_pos
+            n = start_n + 1
+            while n in exact:
+                nxt = next((p for p in sorted(exact[n]) if p > prev + 3000), None)
+                if nxt is None:
+                    break
+                cur[n] = nxt
+                prev = nxt
+                n += 1
+            if len(cur) > len(best):
+                best = cur
+    if len(best) >= 3:
+        bare_en = best
+    else:
+        bare_en = {n: min(poses) for n, poses in bare_en_cand.items()}
+    if len(bare_en) >= 3:
+        bare_nums = sorted(bare_en)
+        reliable = all(
+            b == a + 1 and bare_en[b] > bare_en[a] + 3000
+            for a, b in zip(bare_nums, bare_nums[1:])
+        )
+        if reliable:
+            return bare_en
     dec = _decimal_chapter_starts(text)
     bare_n = {}
-    for m in re.finditer(r"(?m)^[ \t]*(?:([一二三四五六七八九十百]+|[0-9]{1,2}))[、．.][ \t]*[^。！？!?\n]{2,60}$", text):
+    for m in re.finditer(
+        r"(?m)^[ \t]*(?:([一二三四五六七八九十百]+|[0-9]{1,2}))[、．.][ \t]*[^。！？!?\n]{2,60}$",
+        text,
+    ):
         g = m.group(1)
         n = _cn2int(g) if not g.isdigit() else int(g)
         if n:
@@ -205,11 +257,11 @@ async def run():
     # ★判断源书类型和语言
     # Type: economics vs misc(other disciplines)
     is_misc = SUB.startswith("misc_")
-    
+
     # Language: substrate_id 以 _zh 结尾或含 zh → 中文书; 否则英文书
     # 英文书不检查双语率(A仓命门是抽全不漏, 翻译是下游展示层的事)
-    is_zh_book = "_zh" in SUB or SUB.startswith("zh_") or any(
-        c in SUB for c in "经济微观宏观金融数学"
+    is_zh_book = (
+        "_zh" in SUB or SUB.startswith("zh_") or any(c in SUB for c in "经济微观宏观金融数学")
     )
     if not is_zh_book:
         # 再查 KU 的 natural_text 是否主要是中文(兜底: substrate_id 不含语言标记时)
@@ -218,10 +270,12 @@ async def run():
             SUB,
         )
         is_zh_book = zh_count > ku_total * 0.5  # 超过一半KU的natural_text是中文 → 中文书
-    
+
     # ★Apply discipline-specific thresholds
     ku_per_chapter = MISC_KU_PER_CHAPTER if is_misc else ECON_KU_PER_CHAPTER
-    TH_bilingual = (MISC_KU_PER_CHAPTER * 2) if is_misc else TH["bilingual_min"]  # Misc lower threshold
+    TH_bilingual = (
+        (MISC_KU_PER_CHAPTER * 2) if is_misc else TH["bilingual_min"]
+    )  # Misc lower threshold
     TH_rationale_warn = is_misc  # Misc: rationale failure = warning, not blocking alarm
     TH_density = 0.20 if is_misc else TH["ku_density"]  # Misc: 20% density threshold
     # Misc: 低密度章上限放宽(社科/哲学书章多、单章知识点天然少, 长尾低密度章是常态;
@@ -383,7 +437,12 @@ async def run():
 
     # ── 报警判断 ──
     if isinstance(complete_pct, int) and complete_pct < TH["complete_pct"]:
-        alarms.append(f"完整率{complete_pct}%<100%(漏知识点: {metrics.get('漏知识点章(前3)', [])})")
+        # ★2026-09-27 原来这里硬编码 "<100%", 而实际阈值是 TH["complete_pct"]=90。
+        #   文案与判定不一致, 排查时被误导成"这门要求 100%"。改为打印真实阈值。
+        alarms.append(
+            f"完整率{complete_pct}%<{TH['complete_pct']}%"
+            f"(漏知识点: {metrics.get('漏知识点章(前3)', [])})"
+        )
 
     if residual > TH["residual_max"]:
         alarms.append(f"残留字符KU={residual}>0(含##/***/未涉及等)")
@@ -417,7 +476,11 @@ async def run():
         )
 
     # 低密度章报警(misc: 长尾书低密度章是常态, 仅 warning 不拦截; econ: 固定数+30%双限)
-    low_ch_limit = int(TH_low_ch_ratio * n_chapters) if is_misc else max(TH["low_ch_alarm"], int(0.30 * n_chapters))
+    low_ch_limit = (
+        int(TH_low_ch_ratio * n_chapters)
+        if is_misc
+        else max(TH["low_ch_alarm"], int(0.30 * n_chapters))
+    )
     if len(low_density_chs) > low_ch_limit:
         ch_list = [f"Ch{c}({n}KU)" for c, n in sorted(low_density_chs)[:5]]
         msg = f"低密度章过多: {len(low_density_chs)}章<{TH['chapter_floor']}KU: {ch_list}"
@@ -432,13 +495,15 @@ async def run():
     # Misc books: rationale failure = warning (not blocking); economics: still a blocking alarm
     if ku_total > 0 and rationale_n == 0:
         if TH_rationale_warn:
-            warnings.append(f"rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)")
+            warnings.append("rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)")
         else:
             alarms.append("rationale(why)=0: 没抽到为什么/论断, 退回概念-only(A仓抽取深度不足)")
     # Single-class dominant: also relaxed for misc books
     limit = TH.get("single_class_limit", 0.95)
     if top_share > limit and ku_total > 20:
-        alarms.append(f"单类独吞{round(100 * top_share)}%>{round(limit*100)}%(只抽了一类, 没抽全六类)")
+        alarms.append(
+            f"单类独吞{round(100 * top_share)}%>{round(limit * 100)}%(只抽了一类, 没抽全六类)"
+        )
     # ★只有 explains边/有向边密度 = B仓产物(关系, 跨KU/跨书), A仓不查
 
     # ── 输出 ──

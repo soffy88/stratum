@@ -25,7 +25,7 @@ from fastapi import APIRouter, HTTPException
 router = APIRouter()
 ROOT = Path("/home/soffy/projects/stratum/aii")
 MD_BASE = Path("/home/soffy/books/MD")
-DSN = os.getenv("DATABASE_URL", "postgresql://aii:***REMOVED***@localhost:5435/aii_kg")
+DSN = os.getenv("DATABASE_URL", "postgresql://aii:***REMOVED***@localhost:5437/aii_kg")
 
 OCR_LOG = ROOT / "math_pipeline/ocr_daemon.log"
 OCR_CACHE = ROOT / "math_pipeline/ocr_cache"

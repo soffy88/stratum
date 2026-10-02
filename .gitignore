@@ -65,6 +65,9 @@ STRATUM_BATCH*_CC_INSTRUCTIONS.md
 HEVI_REVISION_REQUEST.md
 deploy/aii-secrets.conf
 
+# live session cookies (凭据, 不入库; 历史中已有旧值, 见 2dbbeb5)
+aii/quark_pipeline/quark_cookies*.txt
+
 # flywheel run artifacts (可重建的飞轮运行产物)
 aii/.pipeline_keys.json
 aii/*_pipeline/bu_*.json
@@ -88,6 +91,8 @@ aii/*_pipeline/batch_report_worker*.json
 aii/*_pipeline/worker*.log
 aii/*_pipeline/quarantine.json
 aii/*_pipeline/quarantine.json.bak
+# context_pipeline 同样是运行时状态(转换缓存/时间戳/报告), 不是源码
+aii/context_pipeline/
 aii/*_pipeline/quarantine_worker*.json
 aii/*_pipeline/recall_audit/
 aii/*_pipeline/archive_registry.sqlite
@@ -120,3 +125,22 @@ paperclip/
 *.env.save
 deploy/docs_service/officecli_config.json
 officecli-*.tgz
+
+# Category D: Cache/Log/Temp
+.books_gdrive_*.log
+.quarkclouddrive/
+.venv/
+.veya-project/
+.veya/
+aii/.logs/
+aii/gdrive_staging/
+
+# Category C: Generated Artifacts
+.final_quality/
+gold_retrieval_real_100.json
+
+# Category E: Secrets
+aii/.env.metadata
+
+# Category F: Backups
+*.bak-*

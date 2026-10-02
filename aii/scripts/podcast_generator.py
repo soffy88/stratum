@@ -10,6 +10,7 @@ B 仓主题 → LLM 双人对话脚本(NIM) → edge-tts 双音色 → ffmpeg �
 用法:
     .venv/bin/python scripts/podcast_generator.py [--theme <slug或id>] [--limit N] [--dry-run]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,9 +28,9 @@ import asyncpg
 REFINED_URL = os.getenv("REFINED_URL", "postgresql://aii:***REMOVED***@localhost:5436/aii_refined")
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = Path.home() / ".stratum" / "vault" / "07-播客"
-VOICE_A = "zh-CN-XiaoxiaoNeural"   # 讲解者(女)
-VOICE_B = "zh-CN-YunxiNeural"      # 提问者(男)
-MAX_LINES = 20                     # 每主题对话行数(≈3-5 分钟)
+VOICE_A = "zh-CN-XiaoxiaoNeural"  # 讲解者(女)
+VOICE_B = "zh-CN-YunxiNeural"  # 提问者(男)
+MAX_LINES = 20  # 每主题对话行数(≈3-5 分钟)
 
 SYS = f"""你是学习播客编剧。根据给定主题材料, 写一段双人对话式播客脚本。
 严格规则:
@@ -59,35 +60,42 @@ async def _fetch_theme(conn, theme_id: int | str) -> dict | None:
     if isinstance(theme_id, int) or str(theme_id).isdigit():
         th = await conn.fetchrow(
             "SELECT kc_id, theme_name, theme_name_en, summary, summary_zh"
-            " FROM rf.refined_theme_kc WHERE kc_id=$1 AND is_current", int(theme_id))
+            " FROM rf.refined_theme_kc WHERE kc_id=$1 AND is_current",
+            int(theme_id),
+        )
     else:
         th = await conn.fetchrow(
             "SELECT kc_id, theme_name, theme_name_en, summary, summary_zh"
             " FROM rf.refined_theme_kc WHERE theme_name_en ILIKE $1 AND is_current",
-            f"%{theme_id}%")
+            f"%{theme_id}%",
+        )
     if not th:
         return None
     # 主题 KU → 概念 → top 概念
-    members = await conn.fetch("SELECT ku_id FROM rf.refined_kc_member WHERE kc_id=$1",
-                               th["kc_id"])
+    members = await conn.fetch("SELECT ku_id FROM rf.refined_kc_member WHERE kc_id=$1", th["kc_id"])
     ku_ids = [m["ku_id"] for m in members]
     kus = await conn.fetch(
-        "SELECT ku_id, point, point_zh FROM rf.refined_ku WHERE ku_id = ANY($1::text[])",
-        ku_ids)
+        "SELECT ku_id, point, point_zh FROM rf.refined_ku WHERE ku_id = ANY($1::text[])", ku_ids
+    )
     ku_info = {r["ku_id"]: r for r in kus}
     kc = await conn.fetch(
-        "SELECT ku_id, concept_id FROM rf.refined_ku_concept WHERE ku_id = ANY($1::text[])",
-        ku_ids)
+        "SELECT ku_id, concept_id FROM rf.refined_ku_concept WHERE ku_id = ANY($1::text[])", ku_ids
+    )
     cnt: dict[int, int] = {}
     for r in kc:
         cnt[r["concept_id"]] = cnt.get(r["concept_id"], 0) + 1
     top_c = sorted(cnt.items(), key=lambda x: -x[1])[:5]
     concepts = await conn.fetch(
         "SELECT concept_id, name, name_zh FROM rf.refined_concept"
-        " WHERE concept_id = ANY($1::bigint[])", [c for c, _ in top_c])
+        " WHERE concept_id = ANY($1::bigint[])",
+        [c for c, _ in top_c],
+    )
     cnames = {c["concept_id"]: (c["name_zh"] or c["name"]) for c in concepts}
-    pts = [ku_info[k]["point_zh"] or ku_info[k]["point"]
-           for k in ku_ids[:12] if ku_info[k].get("point_zh") or ku_info[k].get("point")]
+    pts = [
+        ku_info[k]["point_zh"] or ku_info[k]["point"]
+        for k in ku_ids[:12]
+        if ku_info[k].get("point_zh") or ku_info[k].get("point")
+    ]
     return {
         "title": th["theme_name_en"] or th["theme_name"],
         "summary": th["summary_zh"] or th["summary"] or "",
@@ -99,6 +107,7 @@ async def _fetch_theme(conn, theme_id: int | str) -> dict | None:
 async def _gen_script(theme: dict) -> list[dict]:
     """NIM 生成对话脚本。"""
     import httpx
+
     key = _nim_key()
     if not key:
         raise RuntimeError("无 NIM key")
@@ -106,13 +115,14 @@ async def _gen_script(theme: dict) -> list[dict]:
         f"主题: {theme['title']}\n"
         f"概述: {theme['summary']}\n"
         f"核心概念: {'、'.join(theme['concepts'] or [])}\n"
-        f"要点:\n" + "\n".join(f"- {p}" for p in theme["points"] or []))
+        f"要点:\n" + "\n".join(f"- {p}" for p in theme["points"] or [])
+    )
     async with httpx.AsyncClient(timeout=180) as client:
         resp = await client.post(
             "https://integrate.api.nvidia.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
             json={
-                "model": os.getenv("NIM_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1.5"),
+                "model": os.getenv("NIM_MODEL", "deepseek-ai/deepseek-v4-flash-0731"),
                 "messages": [
                     {"role": "system", "content": SYS},
                     {"role": "user", "content": material[:6000]},
@@ -138,6 +148,7 @@ async def _gen_script(theme: dict) -> list[dict]:
 def _clean_tts(text: str) -> str:
     """edge-tts 容错: 清理特殊字符/控制符/emoji, 避免 NoAudioReceived。"""
     import re
+
     t = text.strip()
     # 移除 control chars (保留换行/制表)
     t = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", t)
@@ -158,11 +169,14 @@ async def _tts_line(text: str, voice: str, out: Path) -> None:
         raise ValueError(f"text too short after clean: {repr(text)}")
 
     import edge_tts
+
     comm = edge_tts.Communicate(text, voice, rate="-5%")
     await comm.save(str(out))
 
 
-async def generate(theme_id: int | str, out_dir: Path, dry: bool = False, suffix: str = "") -> str | None:
+async def generate(
+    theme_id: int | str, out_dir: Path, dry: bool = False, suffix: str = ""
+) -> str | None:
     conn = await asyncpg.connect(REFINED_URL)
     try:
         theme = await _fetch_theme(conn, theme_id)
@@ -201,9 +215,11 @@ async def generate(theme_id: int | str, out_dir: Path, dry: bool = False, suffix
         # ffmpeg concat 合并
         lst = Path(td) / "list.txt"
         lst.write_text("\n".join(f"file '{s}'" for s in segs), encoding="utf-8")
-        subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lst),
-                        "-c", "copy", str(mp3)],
-                       capture_output=True, timeout=300)
+        subprocess.run(
+            ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(mp3)],
+            capture_output=True,
+            timeout=300,
+        )
     print(f"  ✅ {mp3} ({mp3.stat().st_size // 1024}KB)")
     return str(mp3)
 
@@ -220,7 +236,8 @@ async def main() -> int:
         conn = await asyncpg.connect(REFINED_URL)
         rows = await conn.fetch(
             "SELECT kc_id, theme_name_en FROM rf.refined_theme_kc"
-            " WHERE is_current ORDER BY kc_id LIMIT 20")
+            " WHERE is_current ORDER BY kc_id LIMIT 20"
+        )
         await conn.close()
         print("可用主题(前 20):")
         for r in rows:
@@ -232,7 +249,8 @@ async def main() -> int:
     else:
         conn = await asyncpg.connect(REFINED_URL)
         rows = await conn.fetch(
-            "SELECT kc_id FROM rf.refined_theme_kc WHERE is_current ORDER BY kc_id")
+            "SELECT kc_id FROM rf.refined_theme_kc WHERE is_current ORDER BY kc_id"
+        )
         await conn.close()
         for r in rows[: args.limit]:
             try:

@@ -12,6 +12,7 @@ router = APIRouter(prefix="/api/v1", tags=["sessions"])
 
 # ── Request models ───────────────────────────────────────────────────────────
 
+
 class CreateSessionRequest(BaseModel):
     title: str | None = None
 
@@ -33,10 +34,12 @@ def _session_or_404(session_id: str, user_id: str):
 
 # ── Session CRUD ─────────────────────────────────────────────────────────────
 
+
 @router.post("/sessions")
 async def create_session(req: CreateSessionRequest, user_id: str = Depends(jwt_auth)):
     """创建 Agent 会话."""
     from stratum.services.session_manager import create_session as _create
+
     return _create(user_id, title=req.title)
 
 
@@ -48,6 +51,7 @@ async def list_sessions(
 ):
     """列出会话."""
     from stratum.services.session_manager import list_sessions as _list
+
     return {"sessions": _list(user_id, status=status, limit=limit)}
 
 
@@ -82,11 +86,12 @@ async def archive_session(session_id: str, user_id: str = Depends(jwt_auth)):
 
 # ── Messages ─────────────────────────────────────────────────────────────────
 
+
 @router.post("/sessions/{session_id}/messages")
-async def add_message(session_id: str, req: AddMessageRequest,
-                      user_id: str = Depends(jwt_auth)):
+async def add_message(session_id: str, req: AddMessageRequest, user_id: str = Depends(jwt_auth)):
     """添加消息到会话."""
     from stratum.services.session_manager import add_message as _add
+
     if req.role not in ("user", "assistant", "system", "tool"):
         raise HTTPException(400, f"Invalid role: {req.role}")
     out = _add(session_id, req.role, req.content, req.parts, user_id=user_id)
@@ -111,6 +116,7 @@ async def get_messages(
 
 # ── Commit ───────────────────────────────────────────────────────────────────
 
+
 @router.post("/sessions/{session_id}/commit")
 async def commit_session(session_id: str, user_id: str = Depends(jwt_auth)):
     """提交会话 — 触发压缩 + 记忆提取 + WM 更新."""
@@ -123,6 +129,7 @@ async def commit_session(session_id: str, user_id: str = Depends(jwt_auth)):
 
 
 # ── Context ──────────────────────────────────────────────────────────────────
+
 
 @router.get("/sessions/{session_id}/context")
 async def get_context(
@@ -139,6 +146,7 @@ async def get_context(
 
 
 # ── Working Memory ───────────────────────────────────────────────────────────
+
 
 @router.get("/sessions/{session_id}/working-memory")
 async def get_working_memory(session_id: str, user_id: str = Depends(jwt_auth)):
@@ -158,6 +166,7 @@ async def get_working_memory(session_id: str, user_id: str = Depends(jwt_auth)):
 
 # ── Memories ─────────────────────────────────────────────────────────────────
 
+
 @router.get("/memories")
 async def list_memories(
     memory_type: str | None = Query(None),
@@ -166,6 +175,7 @@ async def list_memories(
 ):
     """列出长期记忆."""
     from stratum.services.memory_extractor import list_memories as _list
+
     return {"memories": _list(user_id, memory_type=memory_type, limit=limit)}
 
 
@@ -177,6 +187,7 @@ async def search_memories(
 ):
     """语义搜索记忆."""
     from stratum.services.memory_extractor import get_relevant_memories
+
     return {"memories": get_relevant_memories(user_id, q, limit=limit)}
 
 
@@ -184,4 +195,5 @@ async def search_memories(
 async def memory_stats(user_id: str = Depends(jwt_auth)):
     """记忆统计."""
     from stratum.services.memory_extractor import get_memory_stats
+
     return get_memory_stats(user_id)

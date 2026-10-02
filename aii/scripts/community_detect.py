@@ -13,6 +13,7 @@
 用法:
     .venv/bin/python scripts/community_detect.py [--dry-run] [--min-size 3] [--max-themes 50]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,7 +26,7 @@ from pathlib import Path
 import asyncpg
 import networkx as nx
 
-AII_URL = os.getenv("AII_KG_URL", "postgresql://aii:***REMOVED***@localhost:5435/aii_kg")
+AII_URL = os.getenv("AII_KG_URL", "postgresql://aii:***REMOVED***@localhost:5437/aii_kg")
 REFINED_URL = os.getenv("REFINED_URL", "postgresql://aii:***REMOVED***@localhost:5436/aii_refined")
 OUT_DIR = Path(__file__).resolve().parents[1] / "refined_graph"
 
@@ -40,12 +41,16 @@ async def main() -> int:
     r = await asyncpg.connect(REFINED_URL)
 
     # 1. 图加载
-    concepts = await r.fetch("SELECT concept_id, name FROM rf.refined_concept WHERE name IS NOT NULL")
+    concepts = await r.fetch(
+        "SELECT concept_id, name FROM rf.refined_concept WHERE name IS NOT NULL"
+    )
     edges = await r.fetch(
         "SELECT DISTINCT src_concept, dst_concept FROM rf.refined_directed_edge"
-        " WHERE src_concept IS NOT NULL AND dst_concept IS NOT NULL")
-    ku_counts = dict(await r.fetch(
-        "SELECT concept_id, count(*) FROM rf.refined_ku_concept GROUP BY 1"))
+        " WHERE src_concept IS NOT NULL AND dst_concept IS NOT NULL"
+    )
+    ku_counts = dict(
+        await r.fetch("SELECT concept_id, count(*) FROM rf.refined_ku_concept GROUP BY 1")
+    )
     names = {c["concept_id"]: c["name"] for c in concepts}
 
     G = nx.Graph()
@@ -61,8 +66,20 @@ async def main() -> int:
     # 3. 主题落库
     created = 0
     graph_nodes, graph_links = [], []
-    palette = ["#e6194b", "#3cb44b", "#ffe119", "#4363d8", "#f58231", "#911eb4",
-               "#46f0f0", "#f032e6", "#bcf60c", "#fabebe", "#008080", "#e6beff"]
+    palette = [
+        "#e6194b",
+        "#3cb44b",
+        "#ffe119",
+        "#4363d8",
+        "#f58231",
+        "#911eb4",
+        "#46f0f0",
+        "#f032e6",
+        "#bcf60c",
+        "#fabebe",
+        "#008080",
+        "#e6beff",
+    ]
     for ci, comm in enumerate(comms[: args.max_themes]):
         cids = list(comm)
         if len(cids) < args.min_size:
@@ -74,7 +91,8 @@ async def main() -> int:
         # 社区概念挂载的 KU
         ku_ids = await r.fetch(
             "SELECT DISTINCT ku_id FROM rf.refined_ku_concept WHERE concept_id = ANY($1::bigint[])",
-            cids)
+            cids,
+        )
         member_kus = [k["ku_id"] for k in ku_ids]
 
         if not args.dry_run:
@@ -91,17 +109,25 @@ async def main() -> int:
                 await r.executemany(
                     "INSERT INTO rf.refined_kc_member (kc_id, ku_id) VALUES ($1, $2)"
                     " ON CONFLICT DO NOTHING",
-                    [(kc_id, k) for k in member_kus])
+                    [(kc_id, k) for k in member_kus],
+                )
         created += 1
-        print(f"  [{ci}] 主题: {theme_en[:50]} | {len(cids)} 概念 | {total_ku} KU | {len(member_kus)} member")
+        print(
+            f"  [{ci}] 主题: {theme_en[:50]} | {len(cids)} 概念 | {total_ku} KU | {len(member_kus)} member"
+        )
 
         # 可视化数据
         color = palette[ci % len(palette)]
         for c in cids:
-            graph_nodes.append({
-                "id": c, "name": names.get(c, f"#{c}"), "community": ci,
-                "ku_count": ku_counts.get(c, 0), "color": color,
-            })
+            graph_nodes.append(
+                {
+                    "id": c,
+                    "name": names.get(c, f"#{c}"),
+                    "community": ci,
+                    "ku_count": ku_counts.get(c, 0),
+                    "color": color,
+                }
+            )
     for s, d in edges:
         if s in names and d in names:
             graph_links.append({"source": s, "target": d})
@@ -109,8 +135,9 @@ async def main() -> int:
     # 4. graph.html + graph.json
     if not args.dry_run and graph_nodes:
         OUT_DIR.mkdir(exist_ok=True)
-        (OUT_DIR / "graph.json").write_text(json.dumps(
-            {"nodes": graph_nodes, "links": graph_links}, ensure_ascii=False))
+        (OUT_DIR / "graph.json").write_text(
+            json.dumps({"nodes": graph_nodes, "links": graph_links}, ensure_ascii=False)
+        )
         (OUT_DIR / "graph.html").write_text(_render_html(graph_nodes, graph_links))
         print(f"可视化: {OUT_DIR / 'graph.html'} ({len(graph_nodes)} 节点 / {len(graph_links)} 边)")
 

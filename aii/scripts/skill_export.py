@@ -15,11 +15,11 @@ Agent Skills 开放标准(~/.agents/skills, Copilot CLI/Amp/Claude Code/pi 通�
 用法:
     .venv/bin/python scripts/skill_export.py [--out ~/.agents/skills] [--min-ku 3] [--dry-run]
 """
+
 from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import os
 import re
 import sys
@@ -49,25 +49,23 @@ async def main() -> int:
     # 1. 全量主题
     themes = await conn.fetch(
         "SELECT kc_id, theme_name, theme_name_en, summary, summary_zh"
-        " FROM rf.refined_theme_kc WHERE is_current ORDER BY kc_id")
+        " FROM rf.refined_theme_kc WHERE is_current ORDER BY kc_id"
+    )
     # 2. 主题 → KU(经 kc_member)
-    members = await conn.fetch(
-        "SELECT kc_id, ku_id FROM rf.refined_kc_member")
+    members = await conn.fetch("SELECT kc_id, ku_id FROM rf.refined_kc_member")
     ku_of_theme: dict[int, list[str]] = {}
     for m in members:
         ku_of_theme.setdefault(m["kc_id"], []).append(m["ku_id"])
     # 3. KU → 概念 / KU 详情
-    ku_concepts = await conn.fetch(
-        "SELECT ku_id, concept_id FROM rf.refined_ku_concept")
+    ku_concepts = await conn.fetch("SELECT ku_id, concept_id FROM rf.refined_ku_concept")
     ku_concept_map: dict[str, int] = {r["ku_id"]: r["concept_id"] for r in ku_concepts}
-    kus = await conn.fetch(
-        "SELECT ku_id, point, point_zh, ku_type FROM rf.refined_ku")
+    kus = await conn.fetch("SELECT ku_id, point, point_zh, ku_type FROM rf.refined_ku")
     ku_info = {r["ku_id"]: r for r in kus}
-    concepts = await conn.fetch(
-        "SELECT concept_id, name, name_zh, aliases FROM rf.refined_concept")
+    concepts = await conn.fetch("SELECT concept_id, name, name_zh, aliases FROM rf.refined_concept")
     concept_info = {r["concept_id"]: r for r in concepts}
     edges = await conn.fetch(
-        "SELECT src_concept, dst_concept, relation_type FROM rf.refined_directed_edge")
+        "SELECT src_concept, dst_concept, relation_type FROM rf.refined_directed_edge"
+    )
     # 概念 ku_count
     ku_count_by_concept: dict[int, int] = {}
     for ku_id, cid in ku_concept_map.items():
@@ -89,15 +87,19 @@ async def main() -> int:
         theme_concepts = sorted(cid_counts.items(), key=lambda x: -x[1])
         # 主题内边(两端概念都在主题内)
         cid_set = set(cid_counts)
-        theme_edges = [e for e in edges
-                       if e["src_concept"] in cid_set and e["dst_concept"] in cid_set]
+        theme_edges = [
+            e for e in edges if e["src_concept"] in cid_set and e["dst_concept"] in cid_set
+        ]
 
-        files = _render_pack(th, kus_of, ku_info, theme_concepts, concept_info,
-                             theme_edges, ku_concept_map)
+        files = _render_pack(
+            th, kus_of, ku_info, theme_concepts, concept_info, theme_edges, ku_concept_map
+        )
         if args.dry_run:
             total = sum(len(v) for v in files.values())
-            print(f"[dry] {slug}: {len(kus_of)} KU | {len(theme_concepts)} 概念"
-                  f" | {len(theme_edges)} 边 | {total//1024}KB")
+            print(
+                f"[dry] {slug}: {len(kus_of)} KU | {len(theme_concepts)} 概念"
+                f" | {len(theme_edges)} 边 | {total // 1024}KB"
+            )
             written += 1
             continue
         pkg = out_root / slug
@@ -111,8 +113,9 @@ async def main() -> int:
     return 0
 
 
-def _render_pack(th, kus_of, ku_info, theme_concepts, concept_info,
-                 theme_edges, ku_concept_map) -> dict[str, str]:
+def _render_pack(
+    th, kus_of, ku_info, theme_concepts, concept_info, theme_edges, ku_concept_map
+) -> dict[str, str]:
     slug = slugify(th["theme_name_en"] or th["theme_name"] or "")
     en = th["theme_name_en"] or th["theme_name"] or slug
     zh = th["theme_name"] or ""
@@ -124,9 +127,11 @@ def _render_pack(th, kus_of, ku_info, theme_concepts, concept_info,
     core_lines = []
     for cid, cnt in top_concepts:
         c = concept_info.get(cid, {})
-        core_lines.append(f"- **{c.get('name') or cid}**"
-                          f"{f"（{c.get('name_zh')}）" if c.get("name_zh") else ""}"
-                          f" — {cnt} KU 挂载")
+        core_lines.append(
+            f"- **{c.get('name') or cid}**"
+            f"{f'（{c.get("name_zh")}）' if c.get('name_zh') else ''}"
+            f" — {cnt} KU 挂载"
+        )
     # 关键边
     rel_lines = []
     for e in theme_edges[:12]:
@@ -141,16 +146,16 @@ def _render_pack(th, kus_of, ku_info, theme_concepts, concept_info,
         rep_ku = next((k for k in kus_of if ku_concept_map.get(k) == cid), None)
         rep = ku_info.get(rep_ku, {}) if rep_ku else {}
         point = (rep.get("point") or rep.get("point_zh") or "")[:100]
-        sheet_lines.append(
-            f"| {c.get('name') or cid} | {point} | {rep.get('ku_type') or '-'} |")
+        sheet_lines.append(f"| {c.get('name') or cid} | {point} | {rep.get('ku_type') or '-'} |")
     # glossary
     gloss_lines = []
     for cid, cnt in theme_concepts:
         c = concept_info.get(cid, {})
         gloss_lines.append(
             f"- **{c.get('name') or cid}**"
-            f"{f"（{c.get('name_zh')}）" if c.get("name_zh") else ""}"
-            f" — {cnt} KU")
+            f"{f'（{c.get("name_zh")}）' if c.get('name_zh') else ''}"
+            f" — {cnt} KU"
+        )
     # ku_index
     ku_lines = []
     for ku_id in kus_of[:100]:
@@ -213,9 +218,13 @@ description: "{desc}"
 
 {chr(10).join(ku_lines)}
 """
-    return {"SKILL.md": skill, "glossary.md": glossary,
-            "patterns.md": patterns, "cheatsheet.md": cheatsheet,
-            "ku_index.md": ku_index}
+    return {
+        "SKILL.md": skill,
+        "glossary.md": glossary,
+        "patterns.md": patterns,
+        "cheatsheet.md": cheatsheet,
+        "ku_index.md": ku_index,
+    }
 
 
 if __name__ == "__main__":

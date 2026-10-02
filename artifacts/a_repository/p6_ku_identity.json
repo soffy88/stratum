@@ -1,0 +1,204 @@
+{
+  "task": "A_P6_KU_IDENTITY",
+  "book": "利率史（第四版）",
+  "authority": "A_REPOSITORY",
+  "identity_version": "a-p6-v0.1",
+  "run_id": "arr_d0d1473d79fc",
+  "canonical_ku_id_formula": "ku_<sha256(candidate_id|verification_id|content_hash)[:12]>",
+  "canonical_units": 11,
+  "identity_rows": 11,
+  "alias_kinds": [
+    "FREEZE_LEGACY"
+  ],
+  "declared_alias_kinds": [
+    "FREEZE_LEGACY"
+  ],
+  "resolution": {
+    "ids_seen": 22,
+    "canonical_units": 11,
+    "aliases": 11,
+    "by_resolution": {
+      "ALIAS": 11,
+      "CANONICAL": 11
+    },
+    "ambiguous": [],
+    "cross_namespace": [],
+    "orphans": [],
+    "misbound": []
+  },
+  "unregistered_units": [],
+  "gate_results": {
+    "G1_identity_uniqueness": "PASS",
+    "G1_canonical_id": "PASS",
+    "G2_historical_replay": "PASS",
+    "G2_citations_resolve": "PASS",
+    "G2_retired_id_recomputes": "PASS",
+    "G3_revision_chain": "PASS",
+    "G3_successor_walk": "PASS",
+    "G4_regression": "PASS",
+    "G4_stage_versions": "PASS",
+    "G5_authority": "PASS",
+    "G5_no_external_dependency": "PASS",
+    "G5_no_mutation": "PASS",
+    "schema": "PASS",
+    "idempotency": "PASS"
+  },
+  "A_P6_IDENTITY": "PASS",
+  "ledger": [
+    "070_a_repository_foundation.sql",
+    "071_a_evidence_quality.sql",
+    "072_a_ku_verification.sql",
+    "073_a_knowledge_unit_freeze.sql",
+    "074_a_ku_freeze_persistence.sql",
+    "075_a_ku_evolution.sql",
+    "076_a_ku_identity.sql",
+    "077_a_condition_boundary.sql",
+    "078_a_mechanism_chain.sql",
+    "079_a_relation_candidate.sql",
+    "080_a_paper_source.sql",
+    "081_a_constraint_candidate.sql",
+    "082_a_paper_evidence_composite_fk.sql"
+  ],
+  "units": {
+    "ku_10fef8f2ffa4": {
+      "canonical_ku_id": "ku_10fef8f2ffa4",
+      "candidate_id": "kc_696d452b1fb2",
+      "verification_id": "kv_53ff36b8bc3b",
+      "aliases": [
+        {
+          "alias_id": "ku_65e3673eae6c",
+          "alias_kind": "FREEZE_LEGACY"
+        }
+      ],
+      "alias_count": 1
+    },
+    "ku_15a527238f5c": {
+      "canonical_ku_id": "ku_15a527238f5c",
+      "candidate_id": "kc_46695208e7ab",
+      "verification_id": "kv_14dfcc328585",
+      "aliases": [
+        {
+          "alias_id": "ku_35059d773f8d",
+          "alias_kind": "FREEZE_LEGACY"
+        }
+      ],
+      "alias_count": 1
+    },
+    "ku_4ccc104bb7a8": {
+      "canonical_ku_id": "ku_4ccc104bb7a8",
+      "candidate_id": "kc_073e32aa0147",
+      "verification_id": "kv_caab9754ac7b",
+      "aliases": [
+        {
+          "alias_id": "ku_1f5ed939b386",
+          "alias_kind": "FREEZE_LEGACY"
+        }
+      ],
+      "alias_count": 1
+    },
+    "ku_5840cc146f9f": {
+      "canonical_ku_id": "ku_5840cc146f9f",
+      "candidate_id": "kc_8a23c5114f83",
+      "verification_id": "kv_ad159dd36146",
+      "aliases": [
+        {
+          "alias_id": "ku_740f36615879",
+          "alias_kind": "FREEZE_LEGACY"
+        }
+      ],
+      "alias_count": 1
+    },
+    "ku_59cb9040d0f0": {
+      "canonical_ku_id": "ku_59cb9040d0f0",
+      "candidate_id": "kc_378111b6120b",
+      "verification_id": "kv_a36592136f05",
+      "aliases": [
+        {
+          "alias_id": "ku_5598d00f0c90",
+          "alias_kind": "FREEZE_LEGACY"
+        }
+      ],
+      "alias_count": 1
+    },
+    "ku_5d49563b2149": {
+      "canonical_ku_id": "ku_5d49563b2149",
+      "candidate_id": "kc_2cd3503a53ce",
+      "verification_id": "kv_11c247884e32",
+      "aliases": [
+        {
+          "alias_id": "ku_a66d80954630",
+          "alias_kind": "FREEZE_LEGACY"
+        }
+      ],
+      "alias_count": 1
+    },
+    "ku_639e79172556": {
+      "canonical_ku_id": "ku_639e79172556",
+      "candidate_id": "kc_6adfa0ad6c6a",
+      "verification_id": "kv_54c4fb770aa5",
+      "aliases": [
+        {
+          "alias_id": "ku_d3f2fe6c4a16",
+          "alias_kind": "FREEZE_LEGACY"
+        }
+      ],
+      "alias_count": 1
+    },
+    "ku_6460a6062a10": {
+      "canonical_ku_id": "ku_6460a6062a10",
+      "candidate_id": "kc_c15a971eec12",
+      "verification_id": "kv_cf3ac80c887d",
+      "aliases": [
+        {
+          "alias_id": "ku_a44f563cfe25",
+          "alias_kind": "FREEZE_LEGACY"
+        }
+      ],
+      "alias_count": 1
+    },
+    "ku_8b366dd7b4d1": {
+      "canonical_ku_id": "ku_8b366dd7b4d1",
+      "candidate_id": "kc_64d594f1becd",
+      "verification_id": "kv_c70162b318db",
+      "aliases": [
+        {
+          "alias_id": "ku_e0cbaa2f8ba4",
+          "alias_kind": "FREEZE_LEGACY"
+        }
+      ],
+      "alias_count": 1
+    },
+    "ku_93a979cb6fab": {
+      "canonical_ku_id": "ku_93a979cb6fab",
+      "candidate_id": "kc_464d0499f71f",
+      "verification_id": "kv_f31e515106c5",
+      "aliases": [
+        {
+          "alias_id": "ku_786628598c94",
+          "alias_kind": "FREEZE_LEGACY"
+        }
+      ],
+      "alias_count": 1
+    },
+    "ku_fa902e0bc115": {
+      "canonical_ku_id": "ku_fa902e0bc115",
+      "candidate_id": "kc_da2b189b19b0",
+      "verification_id": "kv_3fa35db03ef5",
+      "aliases": [
+        {
+          "alias_id": "ku_413413c3af3d",
+          "alias_kind": "FREEZE_LEGACY"
+        }
+      ],
+      "alias_count": 1
+    }
+  },
+  "durable_rows": {
+    "ku_identity": 11,
+    "knowledge_unit": 11,
+    "ku_freeze_event": 12,
+    "ku_revision": 1,
+    "ku_review_event": 5,
+    "ku_condition_candidate": 6
+  }
+}

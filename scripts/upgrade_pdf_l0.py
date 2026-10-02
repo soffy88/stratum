@@ -25,6 +25,7 @@ log = logging.getLogger("upgrade_pdf_l0")
 def _extract_first_text(pdf_path: str, max_chars: int = 300) -> str | None:
     """Extract first page text from PDF, truncated to max_chars."""
     import fitz
+
     try:
         doc = fitz.open(pdf_path)
         text = ""
@@ -100,12 +101,24 @@ def main():
         if processed % 200 == 0:
             elapsed = time.time() - t0
             rate = processed / elapsed if elapsed > 0 else 0
-            log.info("[%d/%d] %.1f/sec | upgraded=%d failed=%d",
-                     processed, len(needs_upgrade), rate, upgraded, failed)
+            log.info(
+                "[%d/%d] %.1f/sec | upgraded=%d failed=%d",
+                processed,
+                len(needs_upgrade),
+                rate,
+                upgraded,
+                failed,
+            )
 
     elapsed = time.time() - t0
-    log.info("COMPLETE: %d processed, %d upgraded, %d failed in %.0fs (%.1f/sec)",
-             processed, upgraded, failed, elapsed, processed / elapsed if elapsed > 0 else 0)
+    log.info(
+        "COMPLETE: %d processed, %d upgraded, %d failed in %.0fs (%.1f/sec)",
+        processed,
+        upgraded,
+        failed,
+        elapsed,
+        processed / elapsed if elapsed > 0 else 0,
+    )
 
 
 if __name__ == "__main__":

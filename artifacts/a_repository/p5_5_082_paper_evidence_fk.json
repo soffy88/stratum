@@ -1,0 +1,112 @@
+{
+  "082_ACCEPTANCE": "PASS",
+  "authority": "A_REPOSITORY",
+  "baseline_anchor": {
+    "knowledge_unit": 11,
+    "ku_freeze_event": 12,
+    "ku_identity": 11,
+    "ku_revision": 1
+  },
+  "baseline_note": "row counts, not index counts",
+  "checks": {
+    "BU2_DEPENDENCY": 0,
+    "B_CONTAMINATION": 0,
+    "C_CONTAMINATION": 0,
+    "FK_OUTSIDE_A": 0,
+    "baseline_intact": "PASS",
+    "composite_fk_exists": "PASS",
+    "cross_catalog_refused": true,
+    "existing_data_valid": "PASS",
+    "fk_target_present": "PASS",
+    "replay_classified": "PASS",
+    "rows_mutated": 0,
+    "same_catalog_accepted": true,
+    "unknown_catalog_refused": true,
+    "unknown_paper_refused": true
+  },
+  "closes_limitation": "P5.3 §3.3 — paper declaration catalog ownership was service enforced only",
+  "contamination": {
+    "BU2_DEPENDENCY": 0,
+    "B_REFERENCE": 0,
+    "C_REFERENCE": 0,
+    "FK_OUTSIDE_A": 0,
+    "external_imports": 0
+  },
+  "delete_verb": "RESTRICT",
+  "final_report": {
+    "ALTER_SCOPE": "ADD_CONSTRAINT_ONLY",
+    "A_CONTAMINATION": "0",
+    "BASELINE": "11/12/1/11",
+    "B_CONTAMINATION": "0",
+    "COMMIT_SHA": "PENDING",
+    "C_CONTAMINATION": "0",
+    "DB_MUTATION": "staging only",
+    "FINAL_STATUS": "FROZEN",
+    "MIGRATION": "082_a_paper_evidence_composite_fk.sql",
+    "NEW_FK": "1",
+    "NEW_INDEX": "1",
+    "ROWS_MUTATED": "0",
+    "TAG": "PENDING",
+    "TASK": "STRATUM_A_P5_5_082_PAPER_EVIDENCE_COMPOSITE_FK_REPAIR"
+  },
+  "fk_target": "paper_source_candidate (id, book_source_id)",
+  "gates": {
+    "GATE_1_constraint_present": "PASS",
+    "GATE_1_index_present": "PASS",
+    "GATE_1_index_target": "PASS",
+    "GATE_1_no_new_lifecycle": "PASS",
+    "GATE_1_rows_unmutated": "PASS",
+    "GATE_1_schema": "PASS",
+    "GATE_1_two_objects": "PASS",
+    "GATE_2_baseline": "PASS",
+    "GATE_2_existing_data": "PASS",
+    "GATE_3_negative": "PASS",
+    "GATE_3_negative_detail": {
+      "cross_catalog_refused": true,
+      "same_catalog_accepted": true,
+      "unknown_catalog_refused": true,
+      "unknown_paper_refused": true
+    },
+    "GATE_4_replay": "PASS",
+    "GATE_4_replay_detail": {
+      "constraint_present": 1,
+      "duplicate_objects": 0,
+      "executed": 0,
+      "index_present": 1,
+      "reported_already_applied": 0
+    },
+    "GATE_5_authority": "PASS"
+  },
+  "ledger": [
+    "070_a_repository_foundation.sql",
+    "071_a_evidence_quality.sql",
+    "072_a_ku_verification.sql",
+    "073_a_knowledge_unit_freeze.sql",
+    "074_a_ku_freeze_persistence.sql",
+    "075_a_ku_evolution.sql",
+    "076_a_ku_identity.sql",
+    "077_a_condition_boundary.sql",
+    "078_a_mechanism_chain.sql",
+    "079_a_relation_candidate.sql",
+    "080_a_paper_source.sql",
+    "081_a_constraint_candidate.sql",
+    "082_a_paper_evidence_composite_fk.sql"
+  ],
+  "migration": "082_a_paper_evidence_composite_fk.sql",
+  "new_foreign_key": "paper_evidence_same_catalog_source_fk",
+  "new_index": "paper_source_candidate_id_book_source_uniq",
+  "notes": {
+    "ALTER_SCOPE": "ADD_CONSTRAINT_ONLY",
+    "AUTHORITY_UNCHANGED": "082 records nothing new. No freeze_event, no verification_event, no revision, no status. Only what the database tolerates has changed.",
+    "EXISTING_DATA_VALIDATED_BY": "the DDL itself: ADD CONSTRAINT for a foreign key validates existing rows unless NOT VALID, so a stored cross-catalog declaration would have aborted the migration",
+    "NEW_FK": 1,
+    "NEW_INDEX": 1,
+    "NEW_LIFECYCLE": "none",
+    "REPLAY_NOTE": "PostgreSQL has no IF NOT EXISTS for ADD CONSTRAINT and the usual workaround is a DO block, which is an anonymous function. A仓 introduces no functions, so the second execution is expected to fail with 'already exists' and that failure is the signal.",
+    "REPLAY_SIGNAL": "MIGRATION_ALREADY_APPLIED",
+    "ROWS_MUTATED": 0
+  },
+  "repair_version": "a-p5-5-v0.1",
+  "status_limitation": "database enforced",
+  "task": "STRATUM_A_P5_5_082_PAPER_EVIDENCE_COMPOSITE_FK_REPAIR"
+}

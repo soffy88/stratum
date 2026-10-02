@@ -27,7 +27,7 @@ services:
       - DATABASE_PATH=/data/stratum/meta.duckdb
       # AII merge P1.5: service-layer store moved DuckDB → aii-postgres stratum schema.
       - STRATUM_PG_HOST=172.19.0.1
-      - STRATUM_PG_PORT=5435
+      - STRATUM_PG_PORT=5437
       - STRATUM_PG_USER=aii
       - STRATUM_PG_DB=aii_kg
     healthcheck:
@@ -143,7 +143,7 @@ services:
       - STRATUM_DB_PATH=/root/.stratum/meta.duckdb.bak
       # AII merge P1.5: service-layer store moved DuckDB → aii-postgres stratum schema.
       - STRATUM_PG_HOST=172.19.0.1
-      - STRATUM_PG_PORT=5435
+      - STRATUM_PG_PORT=5437
       - STRATUM_PG_USER=aii
       - STRATUM_PG_DB=aii_kg
       # Outbound proxy = sing-box mixed inbound (host 0.0.0.0:10808), reached via docker gateway 172.19.0.1.
@@ -180,7 +180,7 @@ services:
       - STRATUM_HOME=/data/shared/stratum-home
       # P2: AII backend merged into stratum-sl — needs AII's PG DSN for asyncpg pool.
       # Password matches STRATUM_PG_PASSWORD in aii-secrets.conf.
-      - AII_DATABASE_URL=postgresql://aii:***REMOVED***@172.19.0.1:5435/aii_kg
+      - AII_DATABASE_URL=***REMOVED***
       # P2: AII provider env vars (DeepSeek/NIM/Ollama for AII's LLM routes)
       - DEEPSEEK_API_KEY=***REMOVED***
       - NVIDIA_NIM_API_KEY=***REMOVED***
@@ -218,7 +218,10 @@ services:
       - /home/soffy/shared/textbook-to-aii:/data/shared/textbook-to-aii:rw
       # User file folders for folder_watcher_service
       - /home/soffy/papers:/mnt/user/papers:ro
-      - /home/soffy/books:/mnt/user/books:ro
+      # /home/soffy/books 已被 rclone FUSE 挂载占用 (gdrive:aii-books)，Docker 无法在其上
+      # 建 bind mount，会导致本容器启动失败。改走已存在的共享卷；该路径仅用于写入 OCR
+      # 队列 (docs_service 待OCR)，且代码已有 mkdir 失败降级 /tmp/ocr_queue 的兜底。
+      - /home/soffy/shared/textbook-to-aii:/mnt/user/books:ro
       # Whisper model — faster-whisper base model (CPU int8)
       - /home/soffy/models/faster-whisper-base:/models/whisper:ro
       # PaddleOCR models — pre-downloaded ONNX models, offline inference
