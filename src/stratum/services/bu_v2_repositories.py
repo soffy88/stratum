@@ -166,6 +166,7 @@ class ChapterUnderstandingRepository:
             "qualifications_json": json.dumps(cu.qualifications),
             "dependencies_on_prior": json.dumps(cu.dependencies_on_prior),
             "promises_to_future": json.dumps(cu.promises_to_future),
+            "evidence_strengths": json.dumps(cu.evidence_strengths),
         }
         insert("chapter_understandings", row)
 

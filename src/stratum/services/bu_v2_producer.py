@@ -318,6 +318,8 @@ class ChapterUnderstandingProducer:
     ) -> tuple[ChapterUnderstanding, list[EvidenceArtifact]]:
         evidence: list[EvidenceArtifact] = []
         program: list[EvidenceProgramItem] = []
+        # §11: claim -> evidence strength. Populated as evidence is created.
+        strengths: dict[str, str] = {}
 
         for claim in _as_list(data.get("claims")):
             text = _as_str(claim.get("text") if isinstance(claim, dict) else claim)
@@ -350,6 +352,10 @@ class ChapterUnderstandingProducer:
                     is_supported=True,
                 )
             )
+            # §11: how strong is this support? A claim located by the model's own
+            # verbatim quote is DIRECT; one located only by a term anchor is
+            # weaker, and saying so is the point of recording a strength at all.
+            strengths[ev.evidence_id] = "DIRECT" if kind == "CLAIM" else "DERIVED"
 
         # Concepts anchor evidence too. A concept the chapter actually
         # discusses has a locatable first mention, and that is the evidence
@@ -364,6 +370,7 @@ class ChapterUnderstandingProducer:
             locator, snippet = found
             ev = EvidenceArtifact.make(run_id, chapter.chapter_id, "CONCEPT", locator, snippet)
             evidence.append(ev)
+            strengths[ev.evidence_id] = "DEFINITION"
 
         concepts_introduced = [
             _as_str(c.get("name")) for c in _as_list(data.get("concepts")) if _as_str(c.get("name") if isinstance(c, dict) else c)
@@ -395,6 +402,9 @@ class ChapterUnderstandingProducer:
                 supporting_ku_refs=[e.evidence_id for e in evidence],
                 mechanisms_refs=[m for m in mechanisms if m],
                 evidence_program=program,
+                # §11: carried on the understanding so the binding is checkable
+                # rather than inferred by the consumer.
+                evidence_strengths=strengths,
                 assumptions=[
                     _as_str(u) for u in _as_list(data.get("uncertainties")) if _as_str(u)
                 ],

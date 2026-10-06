@@ -1,0 +1,31 @@
+{
+  "decision": "BOOK_LIMIT",
+  "reasoning": {
+    "gate_3_result": "FAIL (9 trajectories < 10 required)",
+    "trajectory_analysis": {
+      "total_detected": 9,
+      "fully_evolved_intro_refined_applied": 1,
+      "evolving_intro_refined": 9,
+      "trajectories_with_refinement_only": 8
+    },
+    "book_content_analysis": {
+      "book": "Thomas Calculus 14th Edition",
+      "canonical_chapters": 16,
+      "assessment": "While Thomas Calculus covers many concepts, the number showing clear evidence of introduction, refinement, and application within the main canonical chapters (ch1-ch16) appears limited. The detection of 9 evolving trajectories suggests good coverage of concept introduction and refinement, but only 1 shows full application progression.",
+      "likely_factors": [
+        "Some concepts are introduced and refined but not explicitly applied in problem-solving contexts within the main chapters",
+        "Application of certain concepts may appear primarily in exercises rather than chapter narrative",
+        "Back matter chapters (worked answers, appendices) contain additional applications but were categorized as non-chapter structural units",
+        "The textbook may emphasize breadth of topic coverage over deep evolution of fewer concepts"
+      ]
+    },
+    "algorithm_assessment": "The concept evolution algorithm appears to be functioning correctly - it detected 9 trajectories with refinement, which aligns with the expected conceptual development in a calculus textbook. No evidence suggests missed trajectories that would bring the count to 10."
+  },
+  "evidence_base": [
+    "Missing trajectory audit shows reasonable grounds for rejecting additional candidate concepts",
+    "Gate 3 failure is consistent across multiple runs with same outcome",
+    "Trajectory statistics show strong evolution signals (9/9 evolving, 9 with refinement)",
+    "The single fully evolved trajectory likely represents the core concept of 'derivative' or 'integral' which sees introduction, refinement, and application"
+  ],
+  "recommendation": "Accept BOOK_LIMIT decision for Gate 3. Do not attempt to manufacture a 10th trajectory. For full P12 acceptance, either: (a) revise the acceptance criterion to be book-normalized rather than absolute count, or (b) validate with additional textbooks known to have ≥10 major evolving trajectories."
+  }

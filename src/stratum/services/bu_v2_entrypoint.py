@@ -99,6 +99,11 @@ class RunResult:
     failures: list[str] = field(default_factory=list)
     # P11 §5: the structure the run actually used.
     structure: dict[str, Any] | None = None
+    # P12 §13: chapter_id -> span kind ("chapter" | "front_matter" |
+    # "back_matter"). `structure` above is only the metadata dict, which has no
+    # per-span kinds, so without this the P12 denominator silently includes
+    # back matter and the required edge threshold rises for no reason.
+    structure_kinds: dict[str, str] = field(default_factory=dict)
     # P11 §8: quality is measured, never gating.
     quality: Any = None
     report_bundle: Any = None
@@ -107,6 +112,8 @@ class RunResult:
     # recorded here rather than read back off the wrong object.
     context_used: bool = False
     chapter_roles: list[dict[str, str]] = field(default_factory=list)
+    # P12: the reasoning graph, concept evolution, argument model and deep quality.
+    p12: Any = None
 
     @property
     def verified(self) -> bool:
@@ -284,6 +291,21 @@ class BookLoader:
         return [m.strip() for m in re.findall(r"^#{2,4}\s+(.+)$", body, re.M)][:40]
 
 
+def _p12_payload(result: RunResult) -> dict[str, Any] | None:
+    """The P12 artefacts, serialised for the trial evidence."""
+    p12 = getattr(result, "p12", None) or {}
+    dep, evo, arg, deep = p12.get("dependency"), p12.get("evolution"), p12.get("argument"), p12.get("deep_quality")
+    if not (dep and evo and arg and deep):
+        return None
+    return {
+        "dependency": dep.to_dict(),
+        "concept_evolution": evo.to_dict(),
+        "argument_graph": arg.to_dict(),
+        "deep_quality": deep.to_dict(),
+        "graph_stats": dep.graph.stats(),
+    }
+
+
 def _detection(structure_meta: dict[str, Any], result: "RunResult") -> float:
     """Chapter detection ratio, recomputed from what the run actually stored.
 
@@ -406,6 +428,8 @@ class BU2Runner:
                 )
                 if structure.chapters:
                     chapters = self._spans_from_structure(structure, text)
+                    # P12 §6 reads the text for the author's own cross-references.
+                    self._last_spans = list(chapters)
                     result_meta["structure"] = structure.to_dict()["metadata"]
                     result_meta["structure_method"] = structure.extraction_method
             except Exception as exc:
@@ -422,6 +446,10 @@ class BU2Runner:
         run_id = self.create_run(substrate_id)
         result = RunResult(run_id=run_id, book_id=substrate_id, substrate_id=substrate_id)
         result.structure = result_meta.get("structure")
+        if structure is not None:
+            result.structure_kinds = {
+                c.chapter_id: c.kind for c in (structure.chapters or [])
+            }
 
         # ── generate_chapters (§6: with context, not in isolation) ───────────
         prior: list[str] = []
@@ -502,6 +530,13 @@ class BU2Runner:
                 + ", ".join(c.name for c in report.failed)
             )
 
+        # ── P12: reasoning graph, concept evolution, argument model ─────────
+        # Runs after integration because all three read the integrated BU and
+        # the per-chapter records. §9 stores the resulting ids on the BU, so it
+        # must be built BEFORE the BU row is written: persisting first left the
+        # three graph ids unset on every persisted run.
+        result.p12 = self._build_p12(result)
+
         if self.persist:
             self._persist_bu(result)
 
@@ -552,7 +587,77 @@ class BU2Runner:
                 {"chapter_id": c.chapter_id, "role": c.primary_role} for c in result.chapters
             ],
         )
+        from stratum.services.bu_v2_quality_report import evaluate_p12_gates
+
+        p12_gates = evaluate_p12_gates(result, structure=result.structure)
+        result.report_bundle.gates.extend(p12_gates)
+        result.p12_gate_summary = {g.gate: g.to_dict()["status"] for g in p12_gates}
         return result
+
+    def _build_p12(self, result: RunResult) -> Any:
+        """§5-§8: the book reasoning graph, concept evolution and argument model.
+
+        Deliberately after integration: concept evolution reads deltas, and the
+        argument model reads the BU's own framing, so both need the integrated
+        result rather than the raw chapter list.
+        """
+        from stratum.services.bu_v2_argument_analyzer import ArgumentAnalyzer
+        from stratum.services.bu_v2_concept_evolution import ConceptEvolutionBuilder
+        from stratum.services.bu_v2_deep_quality import DeepQualityEvaluator
+        from stratum.services.bu_v2_dependency_builder import DependencyBuilder
+
+        chapter_text: dict[str, str] = {}
+        for span in getattr(self, "_last_spans", []) or []:
+            chapter_text[span.chapter_id] = span.text
+
+        dependency = DependencyBuilder().build(
+            result.chapters,
+            run_id=result.run_id,
+            book_id=result.book_id,
+            chapter_text=chapter_text or None,
+        )
+        evolution = ConceptEvolutionBuilder().build(
+            result.chapters,
+            run_id=result.run_id,
+            book_id=result.book_id,
+            deltas=result.deltas,
+            chapter_text=chapter_text or None,
+        )
+        argument = ArgumentAnalyzer().analyze(
+            result.chapters,
+            run_id=result.run_id,
+            book_id=result.book_id,
+            evidence_by_chapter=self._evidence_by_chapter(result),
+        )
+        # §13's thresholds are per numbered chapter. The structure report types
+        # each span, so front and back matter are excluded by what they are
+        # rather than by what their id happens to look like.
+        from stratum.services.bu_v2_quality_report import numbered_chapter_ids
+
+        numbered_ids = numbered_chapter_ids(result, result.structure)
+        numbered = [c for c in result.chapters if c.chapter_id in numbered_ids]
+        deep = DeepQualityEvaluator().evaluate(
+            book_id=result.book_id,
+            run_id=result.run_id,
+            graph=dependency.graph,
+            evolution=evolution,
+            argument=argument,
+            chapter_count=len(numbered),
+            pipeline_status=result.bu.status.value if result.bu else "UNKNOWN",
+        )
+        return {
+            "dependency": dependency,
+            "evolution": evolution,
+            "argument": argument,
+            "deep_quality": deep,
+        }
+
+    @staticmethod
+    def _evidence_by_chapter(result: RunResult) -> dict[str, list[str]]:
+        out: dict[str, list[str]] = {}
+        for ev in result.evidence:
+            out.setdefault(ev.chapter_id, []).append(ev.evidence_id)
+        return out
 
     @staticmethod
     def _integration_input(result: RunResult) -> IntegrationInput:
@@ -600,6 +705,163 @@ class BU2Runner:
             ChapterDeltaRepository.save(delta)
         result.persisted = True
 
+    def _persist_p12(self, result: RunResult) -> None:
+        """§9: write the three graphs and record their ids on the BU.
+
+        Written after the BU row so the graph ids can be attached to it in one
+        follow-up update. Every table is additive; nothing here rewrites a
+        chapter row or touches an A仓 or B仓 table.
+        """
+        p12 = result.p12 or {}
+        dep = p12.get("dependency")
+        evo = p12.get("evolution")
+        arg = p12.get("argument")
+        if not (dep and evo and arg):
+            return
+        from stratum.db import insert, update
+
+        graph = dep.graph
+        insert(
+            "book_reasoning_graph",
+            {
+                "id": graph.graph_id,
+                "run_id": result.run_id,
+                "book_id": result.book_id,
+                "node_count": len(graph.nodes),
+                "edge_count": len(graph.edges),
+                "unresolved_count": len(graph.unresolved),
+                "mean_confidence": graph.mean_confidence,
+            },
+        )
+        for node in graph.nodes.values():
+            insert(
+                "reasoning_node",
+                {
+                    "id": node.node_id,
+                    "graph_id": graph.graph_id,
+                    "node_type": node.node_type,
+                    "label": node.label[:400],
+                    "chapter_id": node.chapter_id or None,
+                    "source_ref": node.source_ref or None,
+                    "confidence": node.confidence,
+                    "metadata": node.metadata,
+                },
+            )
+        for edge in graph.edges:
+            insert(
+                "reasoning_edge",
+                {
+                    "id": edge.edge_id,
+                    "graph_id": graph.graph_id,
+                    "source_node_id": edge.source_node_id,
+                    "target_node_id": edge.target_node_id,
+                    "relation_type": edge.relation_type,
+                    "reason": edge.reason[:2000],
+                    "evidence_refs": edge.evidence_refs,
+                    "evidence_type": edge.evidence_type,
+                    "confidence": edge.confidence,
+                    "status": edge.status,
+                },
+            )
+        # §15: unresolved relations are persisted, not just returned.
+        for u in graph.unresolved:
+            insert(
+                "reasoning_unresolved",
+                {
+                    "id": f"un_{u.kind}_{abs(hash((u.subject, u.reason))) % 10**12}",
+                    "graph_id": graph.graph_id,
+                    "kind": u.kind,
+                    "subject": u.subject[:400],
+                    "reason": u.reason[:2000],
+                    "source": u.source,
+                    "confidence": u.confidence,
+                    "fallback": u.fallback[:400],
+                },
+            )
+
+        traj_ids: list[str] = []
+        for traj in evo.trajectories:
+            tid = f"{traj.trajectory_id}_{result.run_id}"[:200]
+            traj_ids.append(tid)
+            counts = traj.kind_counts()
+            insert(
+                "concept_trajectory",
+                {
+                    "id": tid,
+                    "run_id": result.run_id,
+                    "book_id": result.book_id,
+                    "concept_label": traj.concept[:400],
+                    "introduced_at": traj.introduced_at or None,
+                    "final_state": traj.final_state[:400] or None,
+                    "definition_count": len(traj.definitions),
+                    "change_count": counts.get("REFINEMENT", 0) + counts.get("EXPANSION", 0),
+                    "application_count": len(traj.applications),
+                    "confidence": traj.confidence,
+                },
+            )
+            for event in traj.events:
+                insert(
+                    "concept_trajectory_event",
+                    {
+                        "id": f"{tid}_ev{event.sequence}",
+                        "trajectory_id": tid,
+                        "event_type": event.event_type,
+                        "chapter_id": event.chapter_id or None,
+                        "detail": event.detail[:1000],
+                        "evidence_refs": event.evidence_refs,
+                        "confidence": event.confidence,
+                        "sequence": event.sequence,
+                    },
+                )
+
+        insert(
+            "argument_graph",
+            {
+                "id": arg.graph_id,
+                "run_id": result.run_id,
+                "book_id": result.book_id,
+                "chain_count": len(arg.chains),
+            },
+        )
+        for node in arg.nodes.values():
+            insert(
+                "argument_node",
+                {
+                    "id": node.node_id,
+                    "graph_id": arg.graph_id,
+                    "node_type": node.node_kind,
+                    "label": node.label[:1000],
+                    "chapter_id": node.chapter_id or None,
+                    "confidence": node.confidence,
+                },
+            )
+        for edge in arg.edges:
+            insert(
+                "argument_edge",
+                {
+                    "id": edge.edge_id,
+                    "graph_id": arg.graph_id,
+                    "source_node_id": edge.source_node_id,
+                    "target_node_id": edge.target_node_id,
+                    "relation_type": edge.edge_kind,
+                    "reason": edge.reason[:2000],
+                    "evidence_refs": list(edge.evidence_refs),
+                    "confidence": edge.confidence,
+                    "chain_id": edge.chain_id or None,
+                },
+            )
+
+        # §9: the three ids on the BU.
+        update(
+            "book_understandings_v2",
+            result.bu.id,
+            {
+                "reasoning_graph_id": graph.graph_id,
+                "concept_evolution_id": ",".join(traj_ids[:20]) or None,
+                "argument_graph_id": arg.graph_id,
+            },
+        )
+
     def _persist_bu(self, result: RunResult) -> None:
         from stratum.services.bu_v2_repositories import (
             BookUnderstandingRepository,
@@ -608,6 +870,8 @@ class BU2Runner:
 
         BookUnderstandingRepository.save(result.bu)
         VerificationRepository.save(self.verifier.to_artifact(result.report, result.bu))
+        if result.p12:
+            self._persist_p12(result)
         if result.bu.status == BUStatus.VERIFIED:
             db.update("book_reading_run", result.run_id, {"status": "VERIFIED"})
         else:
@@ -693,6 +957,15 @@ def main(argv: list[str] | None = None) -> int:
                     "quality": result.quality.to_dict() if result.quality else None,
                     "gates": [g.to_dict() for g in (result.report_bundle.gates if result.report_bundle else [])],
                     "legacy_fusion": legacy_fusion,
+                    "p12": _p12_payload(result),
+                    # Read from the bundle: recomputing here needed an import
+                    # that is not in main()'s scope, and it cost a 50-minute
+                    # book run before the NameError surfaced.
+                    "p12_gates": [
+                        g.to_dict()
+                        for g in (result.report_bundle.gates if result.report_bundle else [])
+                        if g.gate.startswith("p12_")
+                    ],
                 },
                 indent=2,
                 ensure_ascii=False,

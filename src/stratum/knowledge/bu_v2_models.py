@@ -268,6 +268,10 @@ class ChapterUnderstanding(BaseModel):
     qualifications: List[str] = Field(default_factory=list)
     dependencies_on_prior: List[str] = Field(default_factory=list)
     promises_to_future: List[str] = Field(default_factory=list)
+    # P12 §11: evidence_id -> strength in {DIRECT, DEFINITION, EXAMPLE,
+    # DERIVED, MODEL_INFERENCE}. Additive with a default, so every existing
+    # ChapterUnderstanding still validates.
+    evidence_strengths: Dict[str, str] = Field(default_factory=dict)
 
 class ChapterDelta(BaseModel):
     id: str
@@ -307,6 +311,13 @@ class BookUnderstandingV2(BaseModel):
     unresolved_questions: List[str] = Field(default_factory=list)
     coverage_score: float = 0.0
     verification_score: float = 0.0
+
+    # P12 §9: the ids of the reasoning artefacts persisted alongside this BU.
+    # Nullable because a BU produced before P12 has none, and that should read
+    # as "produced before P12" rather than as corruption.
+    reasoning_graph_id: Optional[str] = None
+    concept_evolution_id: Optional[str] = None
+    argument_graph_id: Optional[str] = None
 
 # ── P6: Verification ───────────────────────────────────────────────────────────
 

@@ -1,0 +1,24 @@
+{
+  "canonical_chapters": 16,
+  "trial_structural_units": 18,
+  "mapping": [
+    { "unit_id": "ch1", "kind": "CHAPTER", "canonical_chapter_id": "ch1", "reason": "Canonical chapter 1" },
+    { "unit_id": "ch2", "kind": "CHAPTER", "canonical_chapter_id": "ch2", "reason": "Canonical chapter 2" },
+    { "unit_id": "ch3", "kind": "CHAPTER", "canonical_chapter_id": "ch3", "reason": "Canonical chapter 3" },
+    { "unit_id": "ch4", "kind": "CHAPTER", "canonical_chapter_id": "ch4", "reason": "Canonical chapter 4" },
+    { "unit_id": "ch5", "kind": "CHAPTER", "canonical_chapter_id": "ch5", "reason": "Canonical chapter 5" },
+    { "unit_id": "ch6", "kind": "CHAPTER", "canonical_chapter_id": "ch6", "reason": "Canonical chapter 6" },
+    { "unit_id": "ch7", "kind": "CHAPTER", "canonical_chapter_id": "ch7", "reason": "Canonical chapter 7" },
+    { "unit_id": "ch8", "kind": "CHAPTER", "canonical_chapter_id": "ch8", "reason": "Canonical chapter 8" },
+    { "unit_id": "ch9", "kind": "CHAPTER", "canonical_chapter_id": "ch9", "reason": "Canonical chapter 9" },
+    { "unit_id": "ch10", "kind": "CHAPTER", "canonical_chapter_id": "ch10", "reason": "Canonical chapter 10" },
+    { "unit_id": "ch11", "kind": "CHAPTER", "canonical_chapter_id": "ch11", "reason": "Canonical chapter 11" },
+    { "unit_id": "ch12", "kind": "CHAPTER", "canonical_chapter_id": "ch12", "reason": "Canonical chapter 12" },
+    { "unit_id": "ch13", "kind": "CHAPTER", "canonical_chapter_id": "ch13", "reason": "Canonical chapter 13" },
+    { "unit_id": "ch14", "kind": "CHAPTER", "canonical_chapter_id": "ch14", "reason": "Canonical chapter 14" },
+    { "unit_id": "ch15", "kind": "CHAPTER", "canonical_chapter_id": "ch15", "reason": "Canonical chapter 15" },
+    { "unit_id": "ch16", "kind": "CHAPTER", "canonical_chapter_id": "ch16", "reason": "Canonical chapter 16" },
+    { "unit_id": "bm1", "kind": "NON_CHAPTER", "canonical_chapter_id": null, "reason": "Back matter: Worked Answers" },
+    { "unit_id": "bm2", "kind": "NON_CHAPTER", "canonical_chapter_id": null, "reason": "Back matter: Appendices" }
+  ]
+}

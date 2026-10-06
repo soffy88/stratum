@@ -1,0 +1,94 @@
+{
+  "_comment": "P12 §12 human-evaluation corpus. Purpose is stated in §12: avoid optimising against Thomas Calculus alone. Each entry records what a reader expects the pipeline to find, so a run can be compared against an expectation that was written before the run rather than extracted after it.",
+  "written": "2026-10-02",
+  "coverage_gap": "§12 asks for mathematics, physics, biology, humanities and textbook. The local warehouse has no biology or chemistry title with extracted text, so those two disciplines are represented by physics-adjacent and humanities titles instead. Recorded rather than papered over; see _missing_disciplines.",
+  "_missing_disciplines": ["biology", "chemistry"],
+  "books": [
+    {
+      "id": "01KWRXP646FQEPPRPHS3R617MZ",
+      "discipline": "mathematics",
+      "role": "textbook",
+      "title": "Thomas Calculus 14th ed",
+      "text_chars": 5135239,
+      "book_structure": {
+        "numbered_chapters": 16,
+        "has_back_matter": true,
+        "explicit_cross_references": 66,
+        "bilingual": true,
+        "expected_detection_ratio": 1.0
+      },
+      "concept_map_expectation": {
+        "min_concepts": 30,
+        "min_evolving": 5,
+        "notes": "derivative, integral and limit each recur across later chapters; evolution should be observable"
+      },
+      "dependency_examples": [
+        "ch3 -> ch7: 'postpone its proof until Chapter 7'",
+        "ch16 -> ch13: 'another type of vector field in Chapter 13'"
+      ],
+      "quality_expectation": {
+        "min_level": "B",
+        "min_cross_chapter_edges": 9,
+        "min_argument_chains": 5,
+        "notes": "the hardest case: bilingual, repeated titles, 45x title recurrence"
+      }
+    },
+    {
+      "id": "01KXSB3R6KN1W3PQXSQE6W46GB",
+      "discipline": "physics",
+      "role": "research_article",
+      "title": "An end-to-end quantum algorithm for weak measurements",
+      "text_chars": 177394,
+      "book_structure": {
+        "numbered_chapters": 1,
+        "has_back_matter": false,
+        "expected_detection_ratio": 1.0,
+        "notes": "single-document article; a detector tuned to textbooks should still find its sections"
+      },
+      "concept_map_expectation": {"min_concepts": 10, "min_evolving": 0,
+        "notes": "no chapter structure, so evolution is not expected to be observable"},
+      "dependency_examples": ["section cross-references rather than chapter numbers"],
+      "quality_expectation": {"min_level": "C", "min_cross_chapter_edges": 0,
+        "min_argument_chains": 3, "notes": "Q10 coherence should be low and say so"}
+    },
+    {
+      "id": "01KVJRZC71G46YGR233S36044R",
+      "discipline": "humanities",
+      "role": "monograph",
+      "title": "个人知识：迈向后批判哲学 (Polanyi)",
+      "text_chars": 458441,
+      "book_structure": {"numbered_chapters": 8, "has_back_matter": true, "expected_detection_ratio": 0.9,
+        "notes": "philosophical monograph; chapters may be thematic rather than sequential"},
+      "concept_map_expectation": {"min_concepts": 15, "min_evolving": 3,
+        "notes": "tacit knowledge should appear and then be qualified"},
+      "dependency_examples": ["thematic rather than numbered references"],
+      "quality_expectation": {"min_level": "C", "min_cross_chapter_edges": 4,
+        "min_argument_chains": 5, "notes": "argument chains should outnumber structural edges here"}
+    },
+    {
+      "id": "01KX8XEP5F6RMRQ078836JBFRT",
+      "discipline": "history_statistics",
+      "role": "monograph",
+      "title": "States and statistics in the nineteenth century",
+      "text_chars": 663767,
+      "book_structure": {"numbered_chapters": 10, "has_back_matter": true, "expected_detection_ratio": 0.9},
+      "concept_map_expectation": {"min_concepts": 15, "min_evolving": 2},
+      "dependency_examples": ["'as shown in the previous chapter' phrasing"],
+      "quality_expectation": {"min_level": "C", "min_cross_chapter_edges": 5,
+        "min_argument_chains": 4, "notes": "quantitative but humanistic register"}
+    },
+    {
+      "id": "01M09SA756DMJ5E8NT0CBMHG8Y",
+      "discipline": "applied_mathematics",
+      "role": "lecture_notes",
+      "title": "Towards discrete convex analysis over clusters",
+      "text_chars": 296780,
+      "book_structure": {"numbered_chapters": 6, "has_back_matter": false, "expected_detection_ratio": 0.85,
+        "notes": "lecture notes, likely uneven chapter lengths"},
+      "concept_map_expectation": {"min_concepts": 12, "min_evolving": 3},
+      "dependency_examples": ["'recall Proposition N' style back-references"],
+      "quality_expectation": {"min_level": "C", "min_cross_chapter_edges": 3,
+        "min_argument_chains": 3, "notes": "irregular structure is the point"}
+    }
+  ]
+}
