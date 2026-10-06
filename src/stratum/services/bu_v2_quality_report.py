@@ -38,6 +38,148 @@ class QualityGateResult:
         return {"gate": self.gate, "status": "PASS" if self.passed else "FAIL", "detail": self.detail}
 
 
+def evaluate_p12_gates(
+    result: Any,
+    *,
+    structure: dict[str, Any] | None = None,
+) -> list[QualityGateResult]:
+    """P12 §17: seven gates over the reasoning artefacts.
+
+    Each is computed from a measurement. §13's thresholds are checked here rather
+    than asserted in prose, so a run that misses one fails a gate instead of
+    being described as a pass.
+    """
+    p12 = getattr(result, "p12", None) or {}
+    dep = p12.get("dependency")
+    evo = p12.get("evolution")
+    arg = p12.get("argument")
+    deep = p12.get("deep_quality")
+    numbered_ids = numbered_chapter_ids(result, structure)
+    chapters = [c for c in result.chapters if c.chapter_id in numbered_ids]
+    n_chapters = len(chapters)
+
+    gates: list[QualityGateResult] = []
+
+    # Gate 1: a reasoning graph exists at all.
+    nodes = len(dep.graph.nodes) if dep else 0
+    edges = len(dep.graph.edges) if dep else 0
+    gates.append(
+        QualityGateResult(
+            "p12_1_reasoning_graph",
+            bool(dep) and nodes > 0,
+            f"{nodes} nodes, {edges} edges" if dep else "no reasoning graph was built",
+        )
+    )
+
+    # Gate 2: cross-chapter dependency, against §13's >= chapter_count / 2.
+    # Only asserted relations count: the sequence fallback (document order)
+    # is reported in the graph but must not clear the threshold on its own.
+    # Same rule as Q10; the gate and the dimension measure the same thing.
+    cross = dep.asserted_cross_chapter_count if dep else 0
+    fallback = (dep.cross_chapter_count - cross) if dep else 0
+    threshold = max(1, n_chapters // 2)
+    gates.append(
+        QualityGateResult(
+            "p12_2_cross_chapter_dependency",
+            cross >= threshold,
+            f"{cross} asserted cross-chapter relations"
+            + (f" (+{fallback} from document order, not counted)" if fallback else "")
+            + f", §13 requires >= {threshold} for {n_chapters} chapters",
+        )
+    )
+
+    # Gate 3: concept evolution, against §13's >= 10 evolving concepts.
+    # §13 says "introduced, refined and applied". The lenient count is
+    # introduced+refined; both are reported so the number that cleared the gate
+    # is visible rather than implied by which one was chosen.
+    evolving = evo.evolving_count if evo else 0
+    full = evo.fully_evolving_count if evo else 0
+    gates.append(
+        QualityGateResult(
+            "p12_3_concept_evolution",
+            full >= 10,
+            f"{full} concepts introduced, refined and applied "
+            f"({evolving} introduced and refined, "
+            f"{len(evo.trajectories) if evo else 0} tracked), §13 requires >= 10",
+        )
+    )
+
+    # Gate 4: argument graph, against §13's >= 5 chains.
+    chains = len(arg.chains) if arg else 0
+    gates.append(
+        QualityGateResult(
+            "p12_4_argument_graph",
+            chains >= 5,
+            f"{chains} reasoning chains ({arg.complete_chains if arg else 0} complete), "
+            "§13 requires >= 5",
+        )
+    )
+
+    # Gate 5: evidence strength is available and bound.
+    bound = sum(len(getattr(c, "evidence_strengths", {}) or {}) for c in chapters)
+    strengths = {
+        kind
+        for c in chapters
+        for kind in (getattr(c, "evidence_strengths", {}) or {}).values()
+    }
+    gates.append(
+        QualityGateResult(
+            "p12_5_evidence_strength",
+            bound > 0 and bool(strengths),
+            f"{bound} claim-evidence bindings across {len(strengths)} strength kinds",
+        )
+    )
+
+    # Gate 6: deep quality Q8-Q11 generated.
+    q = [d for d in (deep.dimensions if deep else []) if d.key in ("Q8", "Q9", "Q10", "Q11")]
+    gates.append(
+        QualityGateResult(
+            "p12_6_deep_quality",
+            len(q) == 4,
+            f"{len(q)} of 4 deep dimensions scored, overall "
+            f"{deep.overall:.2f} ({deep.deep_level})" if deep else "no deep quality report",
+        )
+    )
+
+    # Gate 7: boundaries held, measured on the produced artefacts.
+    blob = ""
+    for obj in (dep.graph if dep else None,):
+        blob += repr(obj.to_dict()) if obj else ""
+    isolated = all(b not in blob for b in ("rf.", "aii_refined", "refined_ku", "cx.learning_progress"))
+    gates.append(
+        QualityGateResult(
+            "p12_7_boundaries",
+            isolated,
+            "reasoning graph references neither the B warehouse nor learning state",
+        )
+    )
+    return gates
+
+
+def numbered_chapter_ids(result: Any, structure: dict[str, Any] | None = None) -> set[str]:
+    """The ids of chapters that are actually chapters.
+
+    §13's thresholds are stated per chapter, so the denominator has to exclude
+    front and back matter. The structure report types every span (`chapter`,
+    `front_matter`, `back_matter`), so ask it rather than guessing from the id:
+    an earlier `int(digits) <= 100` test counted an appendix as a chapter
+    whenever the loader happened to give it a low id.
+    """
+    excluded: set[str] = set()
+    structure = structure if structure is not None else getattr(result, "structure", None) or {}
+    for c in structure.get("chapters", []) or []:
+        if c.get("kind") in ("back_matter", "front_matter") and c.get("chapter_id"):
+            excluded.add(str(c["chapter_id"]))
+    # The pipeline stores only the metadata dict on result.structure, which has
+    # no per-span kinds. The kinds travel on result.structure_kinds instead;
+    # without this fallback every span counts as a chapter in a real run.
+    kinds = getattr(result, "structure_kinds", None) or {}
+    for cid, kind in kinds.items():
+        if kind in ("back_matter", "front_matter"):
+            excluded.add(str(cid))
+    return {c.chapter_id for c in result.chapters if c.chapter_id not in excluded}
+
+
 def evaluate_gates(
     quality: BUQualityReport,
     *,

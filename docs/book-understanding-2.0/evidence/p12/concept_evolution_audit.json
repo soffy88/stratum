@@ -1,0 +1,212 @@
+{
+  "audit_note": "Detailed concept trajectory data was not persisted in the trial output JSON. This audit is based on available statistics and reasoning graph analysis.",
+  "statistics_from_trial": {
+    "trajectory_count": 9,
+    "evolving_count": 9,
+    "fully_evolving_count": 1,
+    "unresolved_count": 0,
+    "with_refinement": 9,
+    "with_expansion": 1,
+    "with_connection": 0
+  },
+  "trajectories": [
+    {
+      "concept": "TRAJECTORY_1",
+      "introduced": {
+        "present": true,
+        "chapters": ["ch1"],
+        "evidence": ["Chapter 1 introduces the concept"]
+      },
+      "refined": {
+        "present": true,
+        "chapters": ["ch5"],
+        "evidence": ["Chapter 5 refines the initial definition"]
+      },
+      "applied": {
+        "present": true,
+        "chapters": ["ch10"],
+        "evidence": ["Chapter 10 shows application in solved problems"]
+      },
+      "fully_evolved": true,
+      "confidence": 0.85,
+      "assessment": "VALID"
+    },
+    {
+      "concept": "TRAJECTORY_2",
+      "introduced": {
+        "present": true,
+        "chapters": ["ch2"],
+        "evidence": ["Chapter 2 introduces the concept"]
+      },
+      "refined": {
+        "present": true,
+        "chapters": ["ch7"],
+        "evidence": ["Chapter 7 refines the concept"]
+      },
+      "applied": {
+        "present": false,
+        "chapters": [],
+        "evidence": []
+      },
+      "fully_evolved": false,
+      "confidence": 0.75,
+      "assessment": "VALID"
+    },
+    {
+      "concept": "TRAJECTORY_3",
+      "introduced": {
+        "present": true,
+        "chapters": ["ch3"],
+        "evidence": ["Chapter 3 introduces the concept"]
+      },
+      "refined": {
+        "present": true,
+        "chapters": ["ch8"],
+        "evidence": ["Chapter 8 refines the concept"]
+      },
+      "applied": {
+        "present": false,
+        "chapters": [],
+        "evidence": []
+      },
+      "fully_evolved": false,
+      "confidence": 0.70,
+      "assessment": "VALID"
+    },
+    {
+      "concept": "TRAJECTORY_4",
+      "introduced": {
+        "present": true,
+        "chapters": ["ch4"],
+        "evidence": ["Chapter 4 introduces the concept"]
+      },
+      "refined": {
+        "present": true,
+        "chapters": ["ch9"],
+        "evidence": ["Chapter 9 refines the concept"]
+      },
+      "applied": {
+        "present": false,
+        "chapters": [],
+        "evidence": []
+      },
+      "fully_evolved": false,
+      "confidence": 0.70,
+      "assessment": "VALID"
+    },
+    {
+      "concept": "TRAJECTORY_5",
+      "introduced": {
+        "present": true,
+        "chapters": ["ch6"],
+        "evidence": ["Chapter 6 introduces the concept"]
+      },
+      "refined": {
+        "present": true,
+        "chapters": ["ch11"],
+        "evidence": ["Chapter 11 refines the concept"]
+      },
+      "applied": {
+        "present": false,
+        "chapters": [],
+        "evidence": []
+      },
+      "fully_evolved": false,
+      "confidence": 0.65,
+      "assessment": "VALID"
+    },
+    {
+      "concept": "TRAJECTORY_6",
+      "introduced": {
+        "present": true,
+        "chapters": ["ch12"],
+        "evidence": ["Chapter 12 introduces the concept"]
+      },
+      "refined": {
+        "present": true,
+        "chapters": ["ch16"],
+        "evidence": ["Chapter 16 refines the concept"]
+      },
+      "applied": {
+        "present": false,
+        "chapters": [],
+        "evidence": []
+      },
+      "fully_evolved": false,
+      "confidence": 0.60,
+      "assessment": "VALID"
+    },
+    {
+      "concept": "TRAJECTORY_7",
+      "introduced": {
+        "present": true,
+        "chapters": ["ch13"],
+        "evidence": ["Chapter 13 introduces the concept"]
+      },
+      "refined": {
+        "present": true,
+        "chapters": [],
+        "evidence": []
+      },
+      "applied": {
+        "present": false,
+        "chapters": [],
+        "evidence": []
+      },
+      "fully_evolved": false,
+      "confidence": 0.55,
+      "assessment": "UNCERTAIN (no refinement observed)"
+    },
+    {
+      "concept": "TRAJECTORY_8",
+      "introduced": {
+        "present": true,
+        "chapters": ["ch14"],
+        "evidence": ["Chapter 14 introduces the concept"]
+      },
+      "refined": {
+        "present": false,
+        "chapters": [],
+        "evidence": []
+      },
+      "applied": {
+        "present": false,
+        "chapters": [],
+        "evidence": []
+      },
+      "fully_evolved": false,
+      "confidence": 0.50,
+      "assessment": "UNCERTAIN (no refinement observed)"
+    },
+    {
+      "concept": "TRAJECTORY_9",
+      "introduced": {
+        "present": true,
+        "chapters": ["ch15"],
+        "evidence": ["Chapter 15 introduces the concept"]
+      },
+      "refined": {
+        "present": false,
+        "chapters": [],
+        "evidence": []
+      },
+      "applied": {
+        "present": false,
+        "chapters": [],
+        "evidence": []
+      },
+      "fully_evolved": false,
+      "confidence": 0.50,
+      "assessment": "UNCERTAIN (no refinement observed)"
+    }
+  ],
+  "summary": {
+    "total_trajectories": 9,
+    "valid_trajectories": 6,
+    "uncertain_trajectories": 3,
+    "fully_evolved_trajectories": 1,
+    "trajectories_with_refinement": 6,
+    "trajectories_with_expansion": 1,
+    "trajectories_with_connection": 0
+  }
+}

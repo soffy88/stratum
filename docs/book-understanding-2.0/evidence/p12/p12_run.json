@@ -1,0 +1,1506 @@
+{
+ "run_id": "br_01M3ZG0C4X40S0P6DZZH1ZQ49K",
+ "substrate_id": "thomas14_file",
+ "chapters": 18,
+ "evidence": 12,
+ "bu_status": "DRAFT",
+ "wall_minutes": 266.2,
+ "graph_stats": {
+  "graph_id": "graph_43651e908cbc",
+  "node_count": 18,
+  "edge_count": 34,
+  "cross_chapter_edges": 34,
+  "unresolved_count": 66,
+  "nodes_by_type": {
+   "CHAPTER": 18
+  },
+  "edges_by_type": {
+   "DEPENDS_ON": 32,
+   "SUPPORTS": 2
+  },
+  "direct_edge_ratio": 0.4706,
+  "mean_confidence": 0.61
+ },
+ "graph": {
+  "graph_id": "graph_43651e908cbc",
+  "run_id": "br_01M3ZG0C4X40S0P6DZZH1ZQ49K",
+  "book_id": "thomas14_file",
+  "nodes": [
+   {
+    "node_id": "n_eb59af961f01",
+    "node_type": "CHAPTER",
+    "label": "ch1",
+    "chapter_id": "ch1",
+    "source_ref": "ch1",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "[not understood] ollama: timed out after 900s"
+    }
+   },
+   {
+    "node_id": "n_71637b72c4bf",
+    "node_type": "CHAPTER",
+    "label": "ch2",
+    "chapter_id": "ch2",
+    "source_ref": "ch2",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "[not understood] ollama: timed out after 900s"
+    }
+   },
+   {
+    "node_id": "n_89e5caf74151",
+    "node_type": "CHAPTER",
+    "label": "ch3",
+    "chapter_id": "ch3",
+    "source_ref": "ch3",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "[not understood] ollama: timed out after 900s"
+    }
+   },
+   {
+    "node_id": "n_d59a73669cc9",
+    "node_type": "CHAPTER",
+    "label": "ch4",
+    "chapter_id": "ch4",
+    "source_ref": "ch4",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "[not understood] ollama: timed out after 900s"
+    }
+   },
+   {
+    "node_id": "n_8f87650833d6",
+    "node_type": "CHAPTER",
+    "label": "ch5",
+    "chapter_id": "ch5",
+    "source_ref": "ch5",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "[not understood] ollama: timed out after 900s"
+    }
+   },
+   {
+    "node_id": "n_ce1f1b4b9569",
+    "node_type": "CHAPTER",
+    "label": "ch6",
+    "chapter_id": "ch6",
+    "source_ref": "ch6",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "[not understood] ollama: timed out after 900s"
+    }
+   },
+   {
+    "node_id": "n_6ebeacdb7360",
+    "node_type": "CHAPTER",
+    "label": "ch7",
+    "chapter_id": "ch7",
+    "source_ref": "ch7",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "Inverse functions reverse the effect of original functions, allowing us to solve for inputs given outputs."
+    }
+   },
+   {
+    "node_id": "n_ab5aa9632226",
+    "node_type": "CHAPTER",
+    "label": "ch8",
+    "chapter_id": "ch8",
+    "source_ref": "ch8",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "This chapter teaches the application of fundamental integration formulas and substitution methods for evaluating complex integrals."
+    }
+   },
+   {
+    "node_id": "n_c4ca586ef410",
+    "node_type": "CHAPTER",
+    "label": "ch9",
+    "chapter_id": "ch9",
+    "source_ref": "ch9",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "[not understood] ollama: timed out after 900s"
+    }
+   },
+   {
+    "node_id": "n_dfffe2796b05",
+    "node_type": "CHAPTER",
+    "label": "ch10",
+    "chapter_id": "ch10",
+    "source_ref": "ch10",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "A sequence either converges to a limit or diverges based on its behavior as n approaches infinity."
+    }
+   },
+   {
+    "node_id": "n_9c4385331a3a",
+    "node_type": "CHAPTER",
+    "label": "ch11",
+    "chapter_id": "ch11",
+    "source_ref": "ch11",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "[not understood] ollama: timed out after 900s"
+    }
+   },
+   {
+    "node_id": "n_7bc6c62c874a",
+    "node_type": "CHAPTER",
+    "label": "ch12",
+    "chapter_id": "ch12",
+    "source_ref": "ch12",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "[not understood] ollama: timed out after 900s"
+    }
+   },
+   {
+    "node_id": "n_3725b79160e3",
+    "node_type": "CHAPTER",
+    "label": "ch13",
+    "chapter_id": "ch13",
+    "source_ref": "ch13",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "[not understood] ollama: timed out after 900s"
+    }
+   },
+   {
+    "node_id": "n_11783ef2d8bb",
+    "node_type": "CHAPTER",
+    "label": "ch14",
+    "chapter_id": "ch14",
+    "source_ref": "ch14",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "[not understood] ollama: timed out after 900s"
+    }
+   },
+   {
+    "node_id": "n_11d8b1baf47d",
+    "node_type": "CHAPTER",
+    "label": "ch15",
+    "chapter_id": "ch15",
+    "source_ref": "ch15",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "[not understood] ollama: timed out after 900s"
+    }
+   },
+   {
+    "node_id": "n_10fc4291a5e3",
+    "node_type": "CHAPTER",
+    "label": "ch16",
+    "chapter_id": "ch16",
+    "source_ref": "ch16",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "[not understood] ollama: timed out after 900s"
+    }
+   },
+   {
+    "node_id": "n_8f566854b94e",
+    "node_type": "CHAPTER",
+    "label": "bm1",
+    "chapter_id": "bm1",
+    "source_ref": "bm1",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "Graphical analysis provides insights into the behavior of functions through their visual representations."
+    }
+   },
+   {
+    "node_id": "n_b93f42112b90",
+    "node_type": "CHAPTER",
+    "label": "bm2",
+    "chapter_id": "bm2",
+    "source_ref": "bm2",
+    "confidence": 1.0,
+    "metadata": {
+     "thesis": "[not understood] ollama: timed out after 900s"
+    }
+   }
+  ],
+  "edges": [
+   {
+    "edge_id": "e_266efd5aa6a1",
+    "source_node_id": "n_8f566854b94e",
+    "target_node_id": "n_d59a73669cc9",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch1 states a dependence on chapter 4: ...looks like between the  points we plot? Calculus answers this question, as we will see in Chapter 4. Meanwhile,  we will have to settle for plotting points and",
+    "evidence_refs": [
+     "char:10304 in ch1"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.92,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_c05c0eb14212",
+    "source_node_id": "n_b93f42112b90",
+    "target_node_id": "n_11783ef2d8bb",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch2 states a dependence on chapter 14: ...t with limits at boundary points of regions in the plane and in  space, as we will see in Chapter 14. When the domain of ƒ is an interval lying to the left of",
+    "evidence_refs": [
+     "char:114454 in ch2"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.92,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_2fe1eda30fe0",
+    "source_node_id": "n_89e5caf74151",
+    "target_node_id": "n_8f566854b94e",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch3 states a dependence on chapter 1: ...ly. These rules are used to find derivatives of most of the common  functions reviewed in Chapter 1, as well as combinations of them. The derivative is used to",
+    "evidence_refs": [
+     "char:568 in ch3"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.92,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_e36616870018",
+    "source_node_id": "n_89e5caf74151",
+    "target_node_id": "n_6ebeacdb7360",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch3 states a dependence on chapter 7: ...ber as well. Here we state the general version of the rule, but postpone its proof  until Chapter 7. Power Rule (General Version)  If n is any real number, the",
+    "evidence_refs": [
+     "char:54559 in ch3"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.92,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_0d41d44df402",
+    "source_node_id": "n_89e5caf74151",
+    "target_node_id": "n_dfffe2796b05",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch3 states a dependence on chapter 10: ...d on tangent lines. Other approximating functions,  such as polynomials, are discussed in Chapter 10. We introduce new variables dx and dy, called differentials",
+    "evidence_refs": [
+     "char:247745 in ch3"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.92,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_451d25764bdb",
+    "source_node_id": "n_d59a73669cc9",
+    "target_node_id": "n_8f87650833d6",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch4 states a dependence on chapter 5: ...ls of calculus. As we will see, it lies at the heart of the mathematical developments in  Chapter 5. Checking the Mean Value Theorem Find the value or values o",
+    "evidence_refs": [
+     "char:51242 in ch4"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.92,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_50fe4205175f",
+    "source_node_id": "n_ce1f1b4b9569",
+    "target_node_id": "n_8f87650833d6",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch6 states a dependence on chapter 5: ...OVERVIEW In Chapter 5 we saw that a continuous function over a closed interval ha",
+    "evidence_refs": [
+     "char:12 in ch6"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.92,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_9271e89eb9bf",
+    "source_node_id": "n_6ebeacdb7360",
+    "target_node_id": "n_ab5aa9632226",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch7 states a dependence on chapter 8: ...Exercise 86). Hyperbolic functions are useful in finding integrals, which we will see in Chapter 8. They  play an important role in science and engineering as",
+    "evidence_refs": [
+     "char:235079 in ch7"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.92,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_ac8e3120bdeb",
+    "source_node_id": "n_ab5aa9632226",
+    "target_node_id": "n_6ebeacdb7360",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch8 states a dependence on chapter 7: ...of subin- tervals required for the error tolerance to be n = 22.  EXAMPLE 5  As we saw in Chapter 7, the value of ln 2 can be calculated from the integral ln 2",
+    "evidence_refs": [
+     "char:138192 in ch8"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.92,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_0397ff0009f4",
+    "source_node_id": "n_9c4385331a3a",
+    "target_node_id": "n_8f87650833d6",
+    "relation_type": "SUPPORTS",
+    "reason": "ch11 draws on chapter 5: ...adrant where 0 … t … p>2. We can apply the definite integral formula for area  studied in Chapter 5, using substitution to express the curve and differential d",
+    "evidence_refs": [
+     "char:41889 in ch11"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.85,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_a764ff114af8",
+    "source_node_id": "n_11783ef2d8bb",
+    "target_node_id": "n_d59a73669cc9",
+    "relation_type": "SUPPORTS",
+    "reason": "ch14 draws on chapter 4: ...ction g(x) = ƒ(x, b) has a local  extremum at x = a (Figure 14.44). Therefore, g′(a) = 0 (Chapter 4, Theorem 2). Now  g′(a) = ƒx(a, b), so ƒx(a, b) = 0. A simi",
+    "evidence_refs": [
+     "char:236591 in ch14"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.85,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_2cb335cc7f88",
+    "source_node_id": "n_11d8b1baf47d",
+    "target_node_id": "n_10fc4291a5e3",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch15 states a dependence on chapter 16: ...rise in the study  of vector fields and fluid flow in three dimensions, as we will see in Chapter 16. Triple Integrals If F(x, y, z) is a function defined on a",
+    "evidence_refs": [
+     "char:103053 in ch15"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.92,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_e3f12d0a4a5b",
+    "source_node_id": "n_11d8b1baf47d",
+    "target_node_id": "n_ab5aa9632226",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch15 states a dependence on chapter 8: ...的纵 向轴越大，梁的刚度越大。梁A和B具 有相同的横截面积，但A更硬。  <page 1884>   15.6  Applications  923 Probability In Chapter 8 we saw that the probability that a continuous random variab",
+    "evidence_refs": [
+     "char:155442 in ch15"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.92,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_a05d4ddec0dd",
+    "source_node_id": "n_10fc4291a5e3",
+    "target_node_id": "n_3725b79160e3",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch16 states a dependence on chapter 13: ...d look like F(x, y) = M(x, y)i + N(x, y)j. We encountered another type of vector field in Chapter 13. The tangent vectors T and  normal vectors N for a curve in",
+    "evidence_refs": [
+     "char:31255 in ch16"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.92,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_d975eb54a5d3",
+    "source_node_id": "n_10fc4291a5e3",
+    "target_node_id": "n_ce1f1b4b9569",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch16 states a dependence on chapter 6: ...n moving an  object along the curve is motivated by the same kind of reasoning we used in Chapter 6 to  derive the ordinary single integral for the work done b",
+    "evidence_refs": [
+     "char:48282 in ch16"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.92,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_129bc76bc019",
+    "source_node_id": "n_10fc4291a5e3",
+    "target_node_id": "n_dfffe2796b05",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch16 states a dependence on chapter 10: ...following these digits requires development of the theory of sequences and series, as  in Chapter 10. Each real number is constructed as the limit of a sequence",
+    "evidence_refs": [
+     "char:481880 in ch16"
+    ],
+    "evidence_type": "DIRECT",
+    "confidence": 0.92,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_c7b9edd4f1e4",
+    "source_node_id": "n_b93f42112b90",
+    "target_node_id": "n_8f566854b94e",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch2 uses 'asymptotes', introduced in chapter 1, 48 times",
+    "evidence_refs": [
+     "concept:asymptotes@ch1"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.55,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_ffc8a1c29c94",
+    "source_node_id": "n_d59a73669cc9",
+    "target_node_id": "n_8f566854b94e",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch4 uses 'asymptotes', introduced in chapter 1, 7 times",
+    "evidence_refs": [
+     "concept:asymptotes@ch1"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.55,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_3488fdaf7a71",
+    "source_node_id": "n_c4ca586ef410",
+    "target_node_id": "n_ab5aa9632226",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch9 uses 'substitution', introduced in chapter 8, 4 times",
+    "evidence_refs": [
+     "concept:substitution@ch8"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.55,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_f22c0a395571",
+    "source_node_id": "n_dfffe2796b05",
+    "target_node_id": "n_ab5aa9632226",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch10 uses 'substitution', introduced in chapter 8, 4 times",
+    "evidence_refs": [
+     "concept:substitution@ch8"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.55,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_7517f91d5f52",
+    "source_node_id": "n_9c4385331a3a",
+    "target_node_id": "n_8f566854b94e",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch11 uses 'asymptotes', introduced in chapter 1, 31 times",
+    "evidence_refs": [
+     "concept:asymptotes@ch1"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.55,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_5b91183a3e1b",
+    "source_node_id": "n_9c4385331a3a",
+    "target_node_id": "n_ab5aa9632226",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch11 uses 'substitution', introduced in chapter 8, 4 times",
+    "evidence_refs": [
+     "concept:substitution@ch8"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.55,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_f9fe44ae3340",
+    "source_node_id": "n_11783ef2d8bb",
+    "target_node_id": "n_ab5aa9632226",
+    "relation_type": "DEPENDS_ON",
+    "reason": "ch14 uses 'substitution', introduced in chapter 8, 5 times",
+    "evidence_refs": [
+     "concept:substitution@ch8"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.55,
+    "status": "asserted"
+   },
+   {
+    "edge_id": "e_056f224d97c4",
+    "source_node_id": "n_89e5caf74151",
+    "target_node_id": "n_b93f42112b90",
+    "relation_type": "DEPENDS_ON",
+    "reason": "chapter 3 follows chapter 2 in the book; no explicit reference or concept recurrence was found",
+    "evidence_refs": [
+     "order:n_b93f42112b90->n_89e5caf74151"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.21,
+    "status": "uncertain"
+   },
+   {
+    "edge_id": "e_7071813c7d6c",
+    "source_node_id": "n_d59a73669cc9",
+    "target_node_id": "n_89e5caf74151",
+    "relation_type": "DEPENDS_ON",
+    "reason": "chapter 4 follows chapter 3 in the book; no explicit reference or concept recurrence was found",
+    "evidence_refs": [
+     "order:n_89e5caf74151->n_d59a73669cc9"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.21,
+    "status": "uncertain"
+   },
+   {
+    "edge_id": "e_df9fbf0cd92f",
+    "source_node_id": "n_8f87650833d6",
+    "target_node_id": "n_d59a73669cc9",
+    "relation_type": "DEPENDS_ON",
+    "reason": "chapter 5 follows chapter 4 in the book; no explicit reference or concept recurrence was found",
+    "evidence_refs": [
+     "order:n_d59a73669cc9->n_8f87650833d6"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.21,
+    "status": "uncertain"
+   },
+   {
+    "edge_id": "e_a9e0a8152543",
+    "source_node_id": "n_6ebeacdb7360",
+    "target_node_id": "n_ce1f1b4b9569",
+    "relation_type": "DEPENDS_ON",
+    "reason": "chapter 7 follows chapter 6 in the book; no explicit reference or concept recurrence was found",
+    "evidence_refs": [
+     "order:n_ce1f1b4b9569->n_6ebeacdb7360"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.21,
+    "status": "uncertain"
+   },
+   {
+    "edge_id": "e_f610cd308051",
+    "source_node_id": "n_dfffe2796b05",
+    "target_node_id": "n_c4ca586ef410",
+    "relation_type": "DEPENDS_ON",
+    "reason": "chapter 10 follows chapter 9 in the book; no explicit reference or concept recurrence was found",
+    "evidence_refs": [
+     "order:n_c4ca586ef410->n_dfffe2796b05"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.21,
+    "status": "uncertain"
+   },
+   {
+    "edge_id": "e_b1eecaf1c295",
+    "source_node_id": "n_9c4385331a3a",
+    "target_node_id": "n_dfffe2796b05",
+    "relation_type": "DEPENDS_ON",
+    "reason": "chapter 11 follows chapter 10 in the book; no explicit reference or concept recurrence was found",
+    "evidence_refs": [
+     "order:n_dfffe2796b05->n_9c4385331a3a"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.21,
+    "status": "uncertain"
+   },
+   {
+    "edge_id": "e_5a6770edb858",
+    "source_node_id": "n_7bc6c62c874a",
+    "target_node_id": "n_9c4385331a3a",
+    "relation_type": "DEPENDS_ON",
+    "reason": "chapter 12 follows chapter 11 in the book; no explicit reference or concept recurrence was found",
+    "evidence_refs": [
+     "order:n_9c4385331a3a->n_7bc6c62c874a"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.21,
+    "status": "uncertain"
+   },
+   {
+    "edge_id": "e_99a14cd24fd1",
+    "source_node_id": "n_3725b79160e3",
+    "target_node_id": "n_7bc6c62c874a",
+    "relation_type": "DEPENDS_ON",
+    "reason": "chapter 13 follows chapter 12 in the book; no explicit reference or concept recurrence was found",
+    "evidence_refs": [
+     "order:n_7bc6c62c874a->n_3725b79160e3"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.21,
+    "status": "uncertain"
+   },
+   {
+    "edge_id": "e_35b02361ff09",
+    "source_node_id": "n_11783ef2d8bb",
+    "target_node_id": "n_3725b79160e3",
+    "relation_type": "DEPENDS_ON",
+    "reason": "chapter 14 follows chapter 13 in the book; no explicit reference or concept recurrence was found",
+    "evidence_refs": [
+     "order:n_3725b79160e3->n_11783ef2d8bb"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.21,
+    "status": "uncertain"
+   },
+   {
+    "edge_id": "e_1fefb1776816",
+    "source_node_id": "n_11d8b1baf47d",
+    "target_node_id": "n_11783ef2d8bb",
+    "relation_type": "DEPENDS_ON",
+    "reason": "chapter 15 follows chapter 14 in the book; no explicit reference or concept recurrence was found",
+    "evidence_refs": [
+     "order:n_11783ef2d8bb->n_11d8b1baf47d"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.21,
+    "status": "uncertain"
+   },
+   {
+    "edge_id": "e_0b79f818ea2b",
+    "source_node_id": "n_10fc4291a5e3",
+    "target_node_id": "n_11d8b1baf47d",
+    "relation_type": "DEPENDS_ON",
+    "reason": "chapter 16 follows chapter 15 in the book; no explicit reference or concept recurrence was found",
+    "evidence_refs": [
+     "order:n_11d8b1baf47d->n_10fc4291a5e3"
+    ],
+    "evidence_type": "DERIVED",
+    "confidence": 0.21,
+    "status": "uncertain"
+   }
+  ],
+  "unresolved": [
+   {
+    "kind": "reference",
+    "subject": "ch1 -> ch7",
+    "reason": "text references chapter 7 at char:116376 in ch1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch2 -> ch3",
+    "reason": "text references chapter 3 at char:3765 in ch2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch3 -> ch2",
+    "reason": "text references chapter 2 at char:12 in ch3 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch3 -> ch13",
+    "reason": "text references chapter 13 at char:93051 in ch3 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch4 -> ch13",
+    "reason": "text references chapter 13 at char:178555 in ch4 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch4 -> ch10",
+    "reason": "text references chapter 10 at char:206189 in ch4 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch4 -> ch8",
+    "reason": "text references chapter 8 at char:227751 in ch4 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch5 -> ch4",
+    "reason": "text references chapter 4 at char:174719 in ch5 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch5 -> ch8",
+    "reason": "text references chapter 8 at char:182821 in ch5 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch5 -> ch2",
+    "reason": "text references chapter 2 at char:241485 in ch5 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch6 -> ch8",
+    "reason": "text references chapter 8 at char:32308 in ch6 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch6 -> ch15",
+    "reason": "text references chapter 15 at char:57176 in ch6 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch6 -> ch16",
+    "reason": "text references chapter 16 at char:88974 in ch6 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch7 -> ch2",
+    "reason": "text references chapter 2 at char:84274 in ch7 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch7 -> ch4",
+    "reason": "text references chapter 4 at char:168162 in ch7 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch7 -> ch11",
+    "reason": "text references chapter 11 at char:170635 in ch7 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch7 -> ch5",
+    "reason": "text references chapter 5 at char:315991 in ch7 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch8 -> ch10",
+    "reason": "text references chapter 10 at char:111036 in ch8 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch8 -> ch15",
+    "reason": "text references chapter 15 at char:280832 in ch8 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch9 -> ch4",
+    "reason": "text references chapter 4 at char:75963 in ch9 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch9 -> ch11",
+    "reason": "text references chapter 11 at char:111247 in ch9 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch10 -> ch2",
+    "reason": "text references chapter 2 at char:14869 in ch10 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch10 -> ch8",
+    "reason": "text references chapter 8 at char:50265 in ch10 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch11 -> ch13",
+    "reason": "text references chapter 13 at char:11545 in ch11 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch11 -> ch15",
+    "reason": "text references chapter 15 at char:72745 in ch11 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch12 -> ch13",
+    "reason": "text references chapter 13 at char:24378 in ch12 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch12 -> ch6",
+    "reason": "text references chapter 6 at char:76615 in ch12 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch12 -> ch16",
+    "reason": "text references chapter 16 at char:79442 in ch12 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch13 -> ch16",
+    "reason": "text references chapter 16 at char:1989 in ch13 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch15 -> ch5",
+    "reason": "text references chapter 5 at char:589 in ch15 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch15 -> ch6",
+    "reason": "text references chapter 6 at char:10773 in ch15 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch16 -> ch5",
+    "reason": "text references chapter 5 at char:1039 in ch16 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch16 -> ch14",
+    "reason": "text references chapter 14 at char:357550 in ch16 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch16 -> ch2",
+    "reason": "text references chapter 2 at char:391488 in ch16 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch16 -> ch11",
+    "reason": "text references chapter 11 at char:440649 in ch16 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "ch16 -> ch1",
+    "reason": "text references chapter 1 at char:533549 in ch16 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch2",
+    "reason": "text references chapter 2 at char:17915 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch3",
+    "reason": "text references chapter 3 at char:29862 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch4",
+    "reason": "text references chapter 4 at char:63226 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch5",
+    "reason": "text references chapter 5 at char:108220 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch6",
+    "reason": "text references chapter 6 at char:119569 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch7",
+    "reason": "text references chapter 7 at char:129585 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch8",
+    "reason": "text references chapter 8 at char:157223 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch9",
+    "reason": "text references chapter 9 at char:182174 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch10",
+    "reason": "text references chapter 10 at char:194500 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch11",
+    "reason": "text references chapter 11 at char:219628 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch12",
+    "reason": "text references chapter 12 at char:250904 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch13",
+    "reason": "text references chapter 13 at char:268895 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch14",
+    "reason": "text references chapter 14 at char:280122 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch15",
+    "reason": "text references chapter 15 at char:320244 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm1 -> ch16",
+    "reason": "text references chapter 16 at char:343598 in bm1 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch1",
+    "reason": "text references chapter 1 at char:148849 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch3",
+    "reason": "text references chapter 3 at char:149023 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch4",
+    "reason": "text references chapter 4 at char:149355 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch5",
+    "reason": "text references chapter 5 at char:149431 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch6",
+    "reason": "text references chapter 6 at char:149541 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch7",
+    "reason": "text references chapter 7 at char:149717 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch8",
+    "reason": "text references chapter 8 at char:149789 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch9",
+    "reason": "text references chapter 9 at char:149864 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch10",
+    "reason": "text references chapter 10 at char:150026 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch11",
+    "reason": "text references chapter 11 at char:150210 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch12",
+    "reason": "text references chapter 12 at char:150283 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch13",
+    "reason": "text references chapter 13 at char:150361 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch14",
+    "reason": "text references chapter 14 at char:150576 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch15",
+    "reason": "text references chapter 15 at char:150824 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   },
+   {
+    "kind": "reference",
+    "subject": "bm2 -> ch16",
+    "reason": "text references chapter 16 at char:150893 in bm2 but the surrounding clause states no dependence",
+    "source": "text_reference",
+    "confidence": 0.35,
+    "fallback": "recorded as an explicit mention; no relation asserted"
+   }
+  ],
+  "stats": {
+   "graph_id": "graph_43651e908cbc",
+   "node_count": 18,
+   "edge_count": 34,
+   "cross_chapter_edges": 34,
+   "unresolved_count": 66,
+   "nodes_by_type": {
+    "CHAPTER": 18
+   },
+   "edges_by_type": {
+    "DEPENDS_ON": 32,
+    "SUPPORTS": 2
+   },
+   "direct_edge_ratio": 0.4706,
+   "mean_confidence": 0.61
+  }
+ },
+ "dependency_stats": {
+  "dependency_count": 34,
+  "cross_chapter_count": 34,
+  "explicit_reference_edges": 16,
+  "concept_use_edges": 9,
+  "sequence_edges": 15,
+  "unresolved_count": 66,
+  "chapter_count": 18
+ },
+ "evolution_stats": {
+  "trajectory_count": 9,
+  "evolving_count": 9,
+  "fully_evolving_count": 1,
+  "unresolved_count": 0,
+  "with_refinement": 9,
+  "with_expansion": 1,
+  "with_connection": 0
+ },
+ "argument_stats": {
+  "graph_id": "agraph_8aa04e2bdc5c",
+  "chain_count": 18,
+  "complete_chains": 4,
+  "node_count": 31,
+  "edge_count": 17,
+  "unresolved_count": 14,
+  "chains_by_evidence_strength": {
+   "DERIVED": 4,
+   "MODEL_INFERENCE": 14
+  }
+ },
+ "deep_quality": {
+  "book_id": "thomas14_file",
+  "run_id": "br_01M3ZG0C4X40S0P6DZZH1ZQ49K",
+  "reasoning_score": 0.2222,
+  "evolution_score": 0.615,
+  "coherence_score": 0.8395,
+  "author_model_score": 0.6824,
+  "overall": 0.5898,
+  "quality_level": "C",
+  "deep_level": "C",
+  "deep_meaning": "partial: some structure or concept, but the argument is not reconstructed",
+  "pipeline_status": "DRAFT",
+  "counts": {
+   "chapters": 16,
+   "nodes": 18,
+   "edges": 34,
+   "cross_chapter_edges": 34,
+   "trajectories": 9,
+   "evolving_concepts": 9,
+   "argument_chains": 18,
+   "complete_chains": 4,
+   "unresolved": 80
+  },
+  "dimensions": [
+   {
+    "key": "Q8",
+    "name": "Q8 Reasoning",
+    "score": 0.2222,
+    "weight": 1.0,
+    "level": "D",
+    "detail": "4 of 18 chains complete",
+    "findings": [
+     "reasoning: only 4 of 18 chains reach a conclusion"
+    ]
+   },
+   {
+    "key": "Q9",
+    "name": "Q9 Concept Evolution",
+    "score": 0.615,
+    "weight": 1.0,
+    "level": "C",
+    "detail": "9 of 9 concepts introduced then refined",
+    "findings": []
+   },
+   {
+    "key": "Q10",
+    "name": "Q10 Cross-Chapter",
+    "score": 0.8395,
+    "weight": 1.0,
+    "level": "A",
+    "detail": "15 of 16 chapters connected, 23 asserted relations, 47% directly evidenced, 11 from document order alone",
+    "findings": [
+     "coherence: 47% of relations are directly evidenced; the rest are derived from concept recurrence or document order"
+    ]
+   },
+   {
+    "key": "Q11",
+    "name": "Q11 Author Model",
+    "score": 0.6824,
+    "weight": 1.0,
+    "level": "B",
+    "detail": "7 forward and 27 backward author references",
+    "findings": []
+   }
+  ],
+  "limitations": [
+   "reasoning: only 4 of 18 chains reach a conclusion",
+   "coherence: 47% of relations are directly evidenced; the rest are derived from concept recurrence or document order"
+  ]
+ },
+ "quality": {
+  "book_id": "thomas14_file",
+  "run_id": "br_01M3ZG0C4X40S0P6DZZH1ZQ49K",
+  "bu_id": "bu_br_01M3ZG0C4X40S0P6DZZH1ZQ49K",
+  "structure_score": 0.847,
+  "concept_score": 0.745,
+  "mechanism_score": 0.43,
+  "argument_score": 0.7479,
+  "integration_score": 0.7,
+  "evidence_score": 0.825,
+  "boundary_score": 0.8444,
+  "overall": 0.7342,
+  "quality_level": "B",
+  "quality_meaning": "substantial: the book's spine is understood, with identifiable gaps",
+  "pipeline_status": "DRAFT",
+  "chapter_count": 18,
+  "evidence_count": 12,
+  "dimensions": [
+   {
+    "key": "Q1",
+    "name": "Structure",
+    "score": 0.847,
+    "weight": 1.0,
+    "level": "A",
+    "detail": "18 of 18 chapters located, mean confidence 0.62",
+    "findings": [
+     "structure: mean boundary confidence 0.62 is low"
+    ]
+   },
+   {
+    "key": "Q2",
+    "name": "Concept",
+    "score": 0.745,
+    "weight": 1.0,
+    "level": "B",
+    "detail": "9 book concepts, 9 introduced, 9 evolution steps",
+    "findings": [
+     "concept: no chapter recorded redefinition of an earlier concept"
+    ]
+   },
+   {
+    "key": "Q3",
+    "name": "Mechanism",
+    "score": 0.43,
+    "weight": 1.0,
+    "level": "D",
+    "detail": "4 chapter mechanisms, 4 carried to book level",
+    "findings": [
+     "mechanism: only 22% of chapters recorded a causal explanation"
+    ]
+   },
+   {
+    "key": "Q4",
+    "name": "Argument",
+    "score": 0.7479,
+    "weight": 1.0,
+    "level": "B",
+    "detail": "2 root arguments, 2 supporting, 5 evidenced claims",
+    "findings": []
+   },
+   {
+    "key": "Q5",
+    "name": "Integration",
+    "score": 0.7,
+    "weight": 1.0,
+    "level": "B",
+    "detail": "0 cross-chapter edges, 18 arc steps, 2 book theses",
+    "findings": [
+     "integration: chapters record no relation to one another, so this reads as a collection rather than a model of the whole book"
+    ]
+   },
+   {
+    "key": "Q6",
+    "name": "Evidence",
+    "score": 0.825,
+    "weight": 1.0,
+    "level": "A",
+    "detail": "12 artifacts, 100% with a locator",
+    "findings": [
+     "evidence: not every artifact is referenced by a chapter's evidence program"
+    ]
+   },
+   {
+    "key": "Q7",
+    "name": "Boundary",
+    "score": 0.8444,
+    "weight": 1.0,
+    "level": "A",
+    "detail": "6 limitations, 5 open problems, 33 unresolved questions, coverage 22%",
+    "findings": [
+     "boundary: 14 chapter(s) could not be understood and are recorded as such"
+    ]
+   }
+  ],
+  "limitations": [
+   "structure: mean boundary confidence 0.62 is low",
+   "concept: no chapter recorded redefinition of an earlier concept",
+   "mechanism: only 22% of chapters recorded a causal explanation",
+   "integration: chapters record no relation to one another, so this reads as a collection rather than a model of the whole book",
+   "evidence: not every artifact is referenced by a chapter's evidence program",
+   "boundary: 14 chapter(s) could not be understood and are recorded as such"
+  ]
+ },
+ "gates": [
+  {
+   "gate": "1_structure",
+   "status": "FAIL",
+   "detail": "detection 25% of declared chapters, mean confidence 0.62"
+  },
+  {
+   "gate": "2_producer",
+   "status": "PASS",
+   "detail": "book/chapter/role/position context injected for 18 chapters"
+  },
+  {
+   "gate": "3_integration",
+   "status": "FAIL",
+   "detail": "integration 0.70: 0 cross-chapter edges, 18 arc steps, 2 book theses"
+  },
+  {
+   "gate": "4_legacy_fusion",
+   "status": "FAIL",
+   "detail": "no legacy BU was imported"
+  },
+  {
+   "gate": "5_quality_report",
+   "status": "PASS",
+   "detail": "7 of 7 dimensions scored, overall 0.73 (level B)"
+  },
+  {
+   "gate": "6_boundary",
+   "status": "PASS",
+   "detail": "B warehouse isolated=True, learning isolated=True"
+  },
+  {
+   "gate": "7_real_book_coverage",
+   "status": "PASS",
+   "detail": "document 98.83%, content 100.00% (document coverage counts front matter and index as uncovered)"
+  },
+  {
+   "gate": "p12_1_reasoning_graph",
+   "status": "PASS",
+   "detail": "18 nodes, 34 edges"
+  },
+  {
+   "gate": "p12_2_cross_chapter_dependency",
+   "status": "PASS",
+   "detail": "23 asserted cross-chapter relations (+11 from document order, not counted), §13 requires >= 8 for 16 chapters"
+  },
+  {
+   "gate": "p12_3_concept_evolution",
+   "status": "FAIL",
+   "detail": "1 concepts introduced, refined and applied (9 introduced and refined, 9 tracked), §13 requires >= 10"
+  },
+  {
+   "gate": "p12_4_argument_graph",
+   "status": "PASS",
+   "detail": "18 reasoning chains (4 complete), §13 requires >= 5"
+  },
+  {
+   "gate": "p12_5_evidence_strength",
+   "status": "PASS",
+   "detail": "9 claim-evidence bindings across 2 strength kinds"
+  },
+  {
+   "gate": "p12_6_deep_quality",
+   "status": "PASS",
+   "detail": "4 of 4 deep dimensions scored, overall 0.59 (C)"
+  },
+  {
+   "gate": "p12_7_boundaries",
+   "status": "PASS",
+   "detail": "reasoning graph references neither the B warehouse nor learning state"
+  }
+ ],
+ "failures": [
+  "verification FAIL: 2 check(s): coverage_floor, chapter_extraction_complete"
+ ],
+ "p12_gate_summary": {
+  "p12_1_reasoning_graph": "PASS",
+  "p12_2_cross_chapter_dependency": "PASS",
+  "p12_3_concept_evolution": "FAIL",
+  "p12_4_argument_graph": "PASS",
+  "p12_5_evidence_strength": "PASS",
+  "p12_6_deep_quality": "PASS",
+  "p12_7_boundaries": "PASS"
+ }
+}

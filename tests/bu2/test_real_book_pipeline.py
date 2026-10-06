@@ -487,11 +487,11 @@ def test_persisted_run_writes_status_with_correct_signature(fake_db, monkeypatch
 
     result = run_pipeline(StaticProvider(chapter_payload()), persist=True)
     failed = [c.name for c in result.report.failed]
-    statuses = [(t, vals.get("status")) for t, _rid, vals in fake_db.updated]
     # A single-chapter run cannot satisfy every gate; the contract being
     # asserted is that the run's status follows the verdict, in both directions.
     expected = "VERIFIED" if not failed else "FAILED"
-    assert statuses == [("book_reading_run", expected)], (statuses, failed)
+    run_statuses = [vals.get("status") for t, _rid, vals in fake_db.updated if t == "book_reading_run"]
+    assert run_statuses == [expected], (run_statuses, failed)
     assert (expected == "VERIFIED") == (result.bu.status == BUStatus.VERIFIED)
     written = {t for t, _row in fake_db.inserted}
     assert {"book_reading_run", "chapter_understandings", "chapter_deltas",
@@ -501,3 +501,44 @@ def test_persisted_run_writes_status_with_correct_signature(fake_db, monkeypatch
 def test_unknown_provider_family_is_rejected():
     with pytest.raises(ProviderUnavailable, match="unknown provider"):
         resolve_provider("definitely-not-a-provider")
+
+def test_evidence_strengths_are_persisted(provider):
+    """§11's five strengths are only useful if they survive the write.
+
+    The producer bound a strength to every claim-evidence pair and the column
+    existed, but `ChapterUnderstandingRepository.save` never wrote it, so a
+    persisted chapter came back with an empty map.
+    """
+    import json
+
+    from stratum.db import execute, insert, query
+    from stratum.services.bu_v2_repositories import ChapterUnderstandingRepository
+
+    payload = chapter_payload(claims=[{"text": "A located claim", "quote": "the integral"}])
+    cu, _, evidence = ChapterUnderstandingProducer(provider=StaticProvider(payload)).produce(
+        make_chapter(), run_id="", book_id="bk1"
+    )
+    assert cu.evidence_strengths, "fixture must produce a strength to persist"
+    run_id = "r_persist_strengths"
+    cu = cu.model_copy(update={"run_id": run_id})
+    # The FK is real, so the test needs a real run row rather than a bare id.
+    # source_id is a real FK too, so borrow a substrate that exists.
+    existing = query("SELECT id FROM stratum.substrates ORDER BY id LIMIT 1")
+    assert existing, "no substrate to borrow for the FK"
+    insert("book_reading_run", {"id": run_id, "user_id": "u_test", "source_id": existing[0]["id"], "status": "COMPLETED"})
+
+    ChapterUnderstandingRepository.save(cu)
+
+    rows = query(
+        "SELECT evidence_strengths FROM stratum.chapter_understandings WHERE id=%(id)s",
+        {"id": cu.id},
+    )
+    assert rows, "the chapter was not written"
+    stored = rows[0]["evidence_strengths"]
+    if isinstance(stored, str):
+        stored = json.loads(stored)
+    assert stored == cu.evidence_strengths, (
+        f"persisted strengths {stored} differ from the produced ones {cu.evidence_strengths}"
+    )
+    execute("DELETE FROM stratum.chapter_understandings WHERE id=%(id)s", {"id": cu.id})
+    execute("DELETE FROM stratum.book_reading_run WHERE id=%(id)s", {"id": run_id})

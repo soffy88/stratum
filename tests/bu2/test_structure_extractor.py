@@ -269,3 +269,73 @@ def test_loader_retains_the_parser_index():
     loader = BookLoader()
     assert loader.last_index == []
     assert hasattr(loader, "last_index")
+
+
+def test_concept_confidence_stays_in_range():
+    """Regression: an operator-precedence bug let confidence reach 1.6.
+
+    Only the last term of the weighted mean was divided, so a trajectory with
+    several event kinds exceeded 1.0 and violated the CHECK constraint on
+    concept_trajectory.confidence. Caught by a persisted run, not a test.
+    """
+    from stratum.knowledge.bu_v2_models import ChapterDelta, ChapterUnderstanding
+    from stratum.services.bu_v2_concept_evolution import ConceptEvolutionBuilder
+
+    def cu(i, intro=(), redef=(), deps=()):
+        return ChapterUnderstanding(
+            id=f"cu{i}", run_id="r", chapter_id=f"ch{i}", chapter_thesis="t",
+            concepts_introduced_refs=list(intro),
+            concepts_redefined_refs=list(redef),
+            dependencies_on_prior=list(deps),
+        )
+
+    chapters = [
+        cu(1, ["limit"]),
+        cu(2, ["continuity"], ["limit"], ["limit"]),
+        cu(3, ["integral"], ["limit"], ["limit", "continuity"]),
+    ]
+    deltas = [ChapterDelta(id="d3", run_id="r", chapter_id="ch3", revised_concepts_refs=["limit"])]
+    result = ConceptEvolutionBuilder().build(
+        chapters, run_id="r", book_id="b", deltas=deltas, chapter_text={}
+    )
+    assert result.trajectories
+    for traj in result.trajectories:
+        assert 0.0 <= traj.confidence <= 1.0, f"{traj.concept} confidence {traj.confidence}"
+
+
+def test_every_span_has_a_unique_chapter_id():
+    """Identity must never be empty.
+
+    Back-matter spans were created with `chapter_id=""`, so the two of them in
+    Thomas Calculus derived the same `cu_{run_id}_` id and the persisted run
+    died on a duplicate key after ~50 minutes of work. `id` is what every
+    downstream table keys on, so an empty one is a collision waiting to happen.
+    """
+    from stratum.services.bu_v2_structure_extractor import chapter_spans_from_structure
+
+    book = _book_with_back_matter()
+    structure = BookStructureExtractor().extract_from_text(book, book_id="b1")
+    ids = [c.chapter_id for c in structure.chapters]
+    assert all(ids), f"a span has no id: {ids}"
+    assert len(set(ids)) == len(ids), f"duplicate span ids: {ids}"
+
+    # The derived ChapterUnderstanding ids are what actually collided.
+    run_id = "br_TEST"
+    cu_ids = [f"cu_{run_id}_{s.chapter_id}" for s in chapter_spans_from_structure(structure, book)]
+    assert len(set(cu_ids)) == len(cu_ids), f"duplicate ChapterUnderstanding ids: {cu_ids}"
+
+
+def _book_with_back_matter() -> str:
+    """A book whose tail really resolves into two back-matter spans.
+
+    The markers have to match what `_split_back_matter` looks for, and the tail
+    must be at least `min_chapter_chars` long, or the split never happens and
+    the test passes for the wrong reason.
+    """
+    min_chars = BookStructureExtractor().min_chapter_chars
+    # Each block ends with a newline: the markers are anchored with ^ under
+    # re.M, so a section glued to the previous body is never detected.
+    chapter = "1. First\n" + "c" * (min_chars + 500) + "\n"
+    answers = "ANSWERS TO ODD-NUMBERED EXERCISES\n" + "a" * (min_chars + 500) + "\n"
+    appendix = "# APPENDIX 1\n" + "p" * (min_chars + 500) + "\n"
+    return f"OVERVIEW\n{chapter}{answers}{appendix}"

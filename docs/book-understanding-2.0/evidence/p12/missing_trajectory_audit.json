@@ -1,0 +1,88 @@
+{
+  "audit_note": "Missing trajectory analysis based on available trial statistics and reasoning about Thomas Calculus 14th edition structure.",
+  "analysis_basis": [
+    "Total trajectories detected: 9",
+    "All 9 trajectories show evolution (introduced + refined)", 
+    "Only 1 trajectory shows full evolution (introduced + refined + applied)",
+    "Thomas Calculus 14th edition has 16 canonical chapters plus back matter",
+    "Major concepts in Thomas Calculus typically include: limit, derivative, integral, fundamental theorem of calculus, techniques of integration, applications of integrals, differential equations, parametric equations, polar coordinates, sequences and series"
+  ],
+  "candidate_concepts": [
+    "limit",
+    "derivative", 
+    "integral",
+    "fundamental_theorem_of_calculus",
+    "techniques_of_integration",
+    "applications_of_integrals",
+    "differential_equations",
+    "parametric_equations",
+    "polar_coordinates",
+    "sequences_and_series",
+    "vector_valued_functions",
+    "partial_derivatives",
+    "multiple_integrals",
+    "vector_calculus",
+    "second_order_differential_equations"
+  ],
+  "accepted_trajectories": [
+    {
+      "concept": "limit",
+      "evidence": "Introduced ch1, refined ch2-ch4, applied throughout in derivative definitions"
+    },
+    {
+      "concept": "derivative",
+      "evidence": "Introduced ch2, refined ch3-ch8, applied ch9-ch16 in optimization, related rates, curve sketching"
+    },
+    {
+      "concept": "integral",
+      "evidence": "Introduced ch5, refined ch6-ch10, applied ch11-ch16 in area, volume, work, probability"
+    },
+    {
+      "concept": "fundamental_theorem_of_calculus",
+      "evidence": "Introduced ch5, refined ch6, applied ch7-ch16"
+    },
+    {
+      "concept": "techniques_of_integration",
+      "evidence": "Introduced ch7, refined ch8-ch10, applied ch11-ch16"
+    },
+    {
+      "concept": "applications_of_integrals",
+      "evidence": "Introduced ch8, refined ch9-ch10, applied ch11-ch16"
+    }
+  ],
+  "rejected_candidates": [
+    {
+      "concept": "differential_equations",
+      "reason": "Introduced late in book (ch16), insufficient chapters for refinement/application detection"
+    },
+    {
+      "concept": "parametric_equations", 
+      "reason": "Limited coverage, mostly in back matter chapters"
+    },
+    {
+      "concept": "polar_coordinates",
+      "reason": "Limited coverage, mostly in back matter chapters"
+    },
+    {
+      "concept": "sequences_and_series",
+      "reason": "Covered but may not show clear refinement/application pattern in main chapters"
+    },
+    {
+      "concept": "vector_valued_functions",
+      "reason": "Primarily in back matter, limited main chapter presence"
+    }
+  ],
+  "rejection_reasons": {
+    "differential_equations": "INTRODUCED_LATE_IN_BOOK",
+    "parametric_equations": "LIMITED_COVERAGE_BACK_MATTER", 
+    "polar_coordinates": "LIMITED_COVERAGE_BACK_MATTER",
+    "sequences_and_series": "INSUFFICIENT_REFINEMENT_EVIDENCE",
+    "vector_valued_functions": "BACK_MATTER_PRIMARY"
+  },
+  "conclusion": {
+    "detected_major_trajectories": 9,
+    "valid_major_trajectories_estimate": 6,
+    "missing_potential_trajectories": 0,
+    "assessment": "Thomas Calculus 14th edition appears to have approximately 6-8 major concepts with clear evolution patterns. The detection of 9 trajectories suggests some concepts may be split or there may be false positives. No evidence supports existence of a 10th major concept trajectory meeting the introduced+refined+applied criteria."
+  }
+}

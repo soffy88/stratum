@@ -1,0 +1,42 @@
+text chars: 5007633
+[23:43:17] chapter 1: ch1 Chapter 1
+[23:58:17]   done ch1
+[23:58:17] chapter 2: ch2 Chapter 2
+[00:13:17]   done ch2
+[00:13:17] chapter 3: ch3 Chapter 3
+[00:28:18]   done ch3
+[00:28:18] chapter 4: ch4 Chapter 4
+[00:43:18]   done ch4
+[00:43:18] chapter 5: ch5 Chapter 5
+[00:58:18]   done ch5
+[00:58:18] chapter 6: ch6 Chapter 6
+[01:13:18]   done ch6
+[01:13:18] chapter 7: ch7 2. Other functions assume each value in their range
+[01:25:27]   done ch7
+[01:25:27] chapter 8: ch8 Chapter 8
+[01:39:14]   done ch8
+[01:39:14] chapter 9: ch9 Chapter 9
+[01:54:14]   done ch9
+[01:54:14] chapter 10: ch10 Chapter 10
+[02:07:10]   done ch10
+[02:07:10] chapter 11: ch11 Chapter 11
+[02:22:10]   done ch11
+[02:22:10] chapter 12: ch12 Chapter 12
+[02:37:10]   done ch12
+[02:37:10] chapter 13: ch13 Chapter 13
+[02:52:10]   done ch13
+[02:52:10] chapter 14: ch14 Chapter 14
+[03:07:10]   done ch14
+[03:07:10] chapter 15: ch15 Chapter 15
+[03:22:10]   done ch15
+[03:22:10] chapter 16: ch16 Chapter 16
+[03:37:10]   done ch16
+[03:37:10] chapter 17: bm1 Worked Answers
+[03:49:25]   done bm1
+[03:49:25] chapter 18: bm2 Appendices
+[04:04:26]   done bm2
+chapters: 18 evidence: 12 wall: 266.2min
+wrote /tmp/p12_run.json
+cross_chapter: 34
+evolving: 9 fully: 1
+chains: 18 complete: 4

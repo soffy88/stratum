@@ -312,7 +312,11 @@ class BookStructureExtractor:
                 continue
             structure.chapters.append(
                 ChapterSpan(
-                    chapter_id="",
+                    # Back matter still needs an identity. An empty chapter_id
+                    # made two back-matter sections derive the same
+                    # ChapterUnderstanding id, and the write failed on a
+                    # duplicate key 50 minutes into a book run.
+                    chapter_id=f"bm{i + 1}",
                     title=label,
                     start_offset=start,
                     end_offset=end,
