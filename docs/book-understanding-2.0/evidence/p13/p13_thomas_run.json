@@ -1,0 +1,23 @@
+{
+  "run_id": "br_01M3YRFF5YWTXNJF56MS0EDEAC",
+  "book_id": "01KWRXP646FQEPPRPHS3R617MZ",
+  "synthesis_id": "synthesis_1d3585b76aa0",
+  "problem_definition": "Problems: What are the fundamental concepts in calculus that help us understand functions?; How do we measure rates of change and slopes of curves? | Questions: What are the fundamental concepts in calculus that help us understand functions?; How do we measure rates of change and slopes of curves? | Central thesis: Calculus provides tools to analyze and interpret the behavior of functions through graphical, limit-based, and derivative methods.",
+  "core_thesis": "Calculus provides tools to analyze and interpret the behavior of functions through graphical, limit-based, and derivative methods.",
+  "concepts": 6,
+  "arguments": 0,
+  "mechanisms": 3,
+  "evidence_coverage": 1.0,
+  "contradictions": 0,
+  "unresolved_questions": 3,
+  "limitations": 0,
+  "q12": 0.2,
+  "q13": 0.35,
+  "q14": 0.0,
+  "q15": 0.4,
+  "q16": 1.0,
+  "q17": 1.0,
+  "q18": 0.6071,
+  "overall_quality": 0.5082,
+  "quality_level": "C"
+}

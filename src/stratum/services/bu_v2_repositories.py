@@ -17,6 +17,9 @@ from stratum.knowledge.bu_v2_models import (
     Argument, AuthorMechanism, SituationModel, UnderstandingFrontier,
     EvidenceTrajectory, LearningGraph, FrontierType, FrontierStatus,
     VerificationStatus,
+    BookThesis, BookThesisModel, BookConceptSystem, BookArgument,
+    BookMechanism, BookEvidenceMap, BookAuthorModel, BookChapterRoles,
+    BookContradictions, BookSynthesis, ThesisProvenance, ThesisType,
 )
 
 
@@ -764,3 +767,255 @@ class LearningGraphRepository:
         res = query("SELECT 1 FROM learning_graphs WHERE bu_id = %(bu_id)s LIMIT 1",
                     {"bu_id": bu_id})
         return len(res) > 0
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# P13: Book-Level Synthesis Repositories
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class BookThesisRepository:
+    @staticmethod
+    def save(thesis: BookThesis) -> None:
+        if not thesis.id:
+            raise ValueError("BookThesis requires id")
+        row = {
+            "id": thesis.id,
+            "run_id": getattr(thesis, "run_id", ""),
+            "book_id": getattr(thesis, "book_id", ""),
+            "thesis_type": thesis.type.value,
+            "statement": thesis.statement,
+            "scope": thesis.scope,
+            "evidence_refs": thesis.evidence_refs,
+            "supporting_arguments": thesis.supporting_arguments,
+            "confidence": thesis.confidence,
+            "provenance": thesis.provenance.value,
+            "source_locations": thesis.source_locations,
+        }
+        insert("book_theses", row)
+
+    @staticmethod
+    def list_for_run(run_id: str) -> list[BookThesis]:
+        rows = query("SELECT * FROM book_theses WHERE run_id = %(run_id)s ORDER BY created_at",
+                     {"run_id": run_id})
+        return [BookThesis(
+            id=r["id"],
+            type=ThesisType(r["thesis_type"]),
+            statement=r["statement"],
+            scope=r.get("scope") or "",
+            evidence_refs=list(r.get("evidence_refs") or []),
+            supporting_arguments=list(r.get("supporting_arguments") or []),
+            confidence=float(r.get("confidence") or 0.0),
+            provenance=ThesisProvenance(r.get("provenance") or "MODEL_INFERRED"),
+            source_locations=list(r.get("source_locations") or []),
+        ) for r in rows]
+
+
+class BookConceptSystemRepository:
+    @staticmethod
+    def save(entry: BookConceptSystem) -> None:
+        # Not used directly; bulk save via BookSynthesisRepository
+        pass
+
+
+class BookArgumentRepository:
+    @staticmethod
+    def save(arg: BookArgument) -> None:
+        if not arg.id:
+            raise ValueError("BookArgument requires id")
+        row = {
+            "id": arg.id,
+            "run_id": getattr(arg, "run_id", ""),
+            "book_id": getattr(arg, "book_id", ""),
+            "level": arg.level,
+            "what": arg.what,
+            "why": arg.why,
+            "how": arg.how,
+            "evidence_refs": arg.evidence_refs,
+            "depends_on": arg.depends_on,
+            "conclusion": arg.conclusion,
+            "status": arg.status.value,
+            "confidence": arg.confidence,
+            "source_chapters": arg.source_chapters,
+        }
+        insert("book_arguments", row)
+
+
+class BookMechanismRepository:
+    @staticmethod
+    def save(mech: BookMechanism) -> None:
+        if not mech.id:
+            raise ValueError("BookMechanism requires id")
+        row = {
+            "id": mech.id,
+            "run_id": getattr(mech, "run_id", ""),
+            "book_id": getattr(mech, "book_id", ""),
+            "trigger": mech.trigger,
+            "precondition": mech.precondition,
+            "operation": mech.operation,
+            "intermediate_state": mech.intermediate_state,
+            "outcome": mech.outcome,
+            "evidence_refs": mech.evidence_refs,
+            "confidence": mech.confidence,
+            "provenance": mech.provenance.value,
+            "source_chapters": mech.source_chapters,
+        }
+        insert("book_mechanisms", row)
+
+
+class BookEvidenceMapRepository:
+    @staticmethod
+    def save(entry: BookEvidenceMap, run_id: str, book_id: str) -> None:
+        if not run_id or not book_id:
+            raise ValueError("BookEvidenceMap requires run_id and book_id")
+        row = {
+            "id": _stable_id("emap", run_id, book_id),
+            "run_id": run_id,
+            "book_id": book_id,
+            "evidence_coverage": entry.evidence_coverage,
+            "unsupported_claim_count": entry.unsupported_claim_count,
+            "model_inference_ratio": entry.model_inference_ratio,
+            "contradiction_count": entry.contradiction_count,
+        }
+        insert("book_evidence_map_summary", row)
+
+
+class BookAuthorModelRepository:
+    @staticmethod
+    def save(model: BookAuthorModel, run_id: str, book_id: str) -> None:
+        if not run_id or not book_id:
+            raise ValueError("BookAuthorModel requires run_id and book_id")
+        row = {
+            "run_id": run_id,
+            "book_id": book_id,
+            "worldview": model.worldview,
+            "assumptions": model.assumptions,
+            "explanatory_strategy": model.explanatory_strategy,
+            "argument_style": model.argument_style,
+            "recurring_patterns": model.recurring_patterns,
+            "evidence_preference": model.evidence_preference,
+            "limitations": model.limitations,
+            "unresolved_positions": model.unresolved_positions,
+            "provenance": model.provenance.value,
+        }
+        insert("book_author_models", row)
+
+
+class BookChapterRolesRepository:
+    @staticmethod
+    def save(assignment: BookChapterRoles, run_id: str, book_id: str) -> None:
+        for a in assignment.assignments:
+            row = {
+                "id": _stable_id("crole", run_id, a.chapter_id),
+                "run_id": run_id,
+                "book_id": book_id,
+                "chapter_id": a.chapter_id,
+                "roles": [r.value for r in a.roles],
+                "evidence": a.evidence,
+                "confidence": a.confidence,
+            }
+            insert("book_chapter_roles", row)
+
+
+class BookContradictionsRepository:
+    @staticmethod
+    def save(contra: BookContradictions, run_id: str, book_id: str) -> None:
+        for c in contra.contradictions:
+            row = {
+                "id": c.id,
+                "run_id": run_id,
+                "book_id": book_id,
+                "contradiction_type": c.type.value,
+                "element_a": c.element_a,
+                "element_b": c.element_b,
+                "element_type": c.element_type,
+                "description": c.description,
+                "classification": c.classification.value,
+                "source_chapters": c.source_chapters,
+                "confidence": c.confidence,
+            }
+            insert("book_contradictions", row)
+
+
+class BookSynthesisRepository:
+    @staticmethod
+    def save(synthesis: BookSynthesis) -> None:
+        if not synthesis.id or not synthesis.run_id or not synthesis.book_id:
+            raise ValueError("BookSynthesis requires id, run_id, book_id")
+        row = {
+            "id": synthesis.id,
+            "run_id": synthesis.run_id,
+            "book_id": synthesis.book_id,
+            "thesis": synthesis.thesis.model_dump(),
+            "problem_definition": synthesis.problem_definition,
+            "concept_system": synthesis.concept_system.model_dump(),
+            "argument_system": synthesis.argument_system.model_dump(),
+            "mechanism_system": synthesis.mechanism_system.model_dump(),
+            "evidence_map": synthesis.evidence_map.model_dump(),
+            "author_model": synthesis.author_model.model_dump(),
+            "chapter_roles": synthesis.chapter_roles.model_dump(),
+            "unresolved_questions": synthesis.unresolved_questions,
+            "contradictions": synthesis.contradictions.model_dump(),
+            "limitations": synthesis.limitations,
+            "synthesis_evidence": synthesis.synthesis_evidence,
+        }
+        insert("book_syntheses", row)
+
+    @staticmethod
+    def get_by_run(run_id: str) -> Optional[BookSynthesis]:
+        row = read("book_syntheses", run_id)
+        if not row:
+            return None
+        return BookSynthesis(**row)
+
+    @staticmethod
+    def check_exists(run_id: str) -> bool:
+        res = query("SELECT 1 FROM book_syntheses WHERE run_id = %(run_id)s LIMIT 1", {"run_id": run_id})
+        return len(res) > 0
+
+
+class BookSynthesisExpressionRepository:
+    @staticmethod
+    def save(expr: Any, run_id: str, book_id: str, synthesis_id: str) -> None:
+        if not run_id or not book_id or not synthesis_id:
+            raise ValueError("BookSynthesisExpression requires run_id, book_id, synthesis_id")
+        row = {
+            "id": _stable_id("expr", run_id),
+            "run_id": run_id,
+            "book_id": book_id,
+            "synthesis_id": synthesis_id,
+            "executive_summary": getattr(expr, "executive_summary", ""),
+            "full_explanation": getattr(expr, "full_explanation", ""),
+            "concept_map": getattr(expr, "concept_map", ""),
+            "argument_map": getattr(expr, "argument_map", ""),
+            "chapter_by_chapter": getattr(expr, "chapter_by_chapter", ""),
+            "author_position": getattr(expr, "author_position", ""),
+            "limitations": getattr(expr, "limitations", ""),
+            "unresolved_questions": getattr(expr, "unresolved_questions", ""),
+        }
+        insert("book_synthesis_expressions", row)
+
+
+class P13QualityGateRepository:
+    @staticmethod
+    def save(gate_num: int, gate_name: str, status: str, run_id: str, book_id: str,
+             score: float = None, detail: str = "", evidence: dict = None) -> None:
+        if not run_id or not book_id:
+            raise ValueError("Quality gate requires run_id and book_id")
+        row = {
+            "id": _stable_id("gate", run_id, str(gate_num)),
+            "run_id": run_id,
+            "book_id": book_id,
+            "gate_number": gate_num,
+            "gate_name": gate_name,
+            "status": status,
+            "score": score,
+            "detail": detail,
+            "evidence": evidence or {},
+        }
+        insert("bu2_p13_quality_gates", row)
+
+
+def _stable_id(prefix: str, *parts: str) -> str:
+    import hashlib
+    raw = "|".join(p for p in parts if p)
+    return f"{prefix}_{hashlib.sha256(raw.encode()).hexdigest()[:12]}"

@@ -670,3 +670,290 @@ class MetricScore(BaseModel):
     metric: str
     score: float = 0.0
     detail: str = ""
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# P13: Book-Level Synthesis Models
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class ThesisType(str, Enum):
+    CORE = "CORE"
+    SUPPORTING = "SUPPORTING"
+    PROBLEM = "PROBLEM"
+    QUESTION = "QUESTION"
+    ASSUMPTION = "ASSUMPTION"
+    CONCLUSION = "CONCLUSION"
+    LIMITATION = "LIMITATION"
+
+
+class ThesisProvenance(str, Enum):
+    AUTHOR_ASSERTED = "AUTHOR_ASSERTED"
+    MODEL_INFERRED = "MODEL_INFERRED"
+    STRUCTURALLY_DERIVED = "STRUCTURALLY_DERIVED"
+
+
+class ArgumentStatus(str, Enum):
+    SUPPORTED = "SUPPORTED"
+    PARTIALLY_SUPPORTED = "PARTIALLY_SUPPORTED"
+    MODEL_INFERRED = "MODEL_INFERRED"
+    UNRESOLVED = "UNRESOLVED"
+    CONTRADICTED = "CONTRADICTED"
+
+
+class EvidenceStrengthP13(str, Enum):
+    DIRECT = "DIRECT"
+    DEFINITION = "DEFINITION"
+    EXAMPLE = "EXAMPLE"
+    DERIVED = "DERIVED"
+    MODEL_INFERENCE = "MODEL_INFERENCE"
+
+
+class ContradictionType(str, Enum):
+    DIRECT_CONTRADICTION = "DIRECT_CONTRADICTION"
+    CONTEXTUAL_DIFFERENCE = "CONTEXTUAL_DIFFERENCE"
+    APPARENT_CONTRADICTION = "APPARENT_CONTRADICTION"
+    UNRESOLVED = "UNRESOLVED"
+
+
+class ChapterRole(str, Enum):
+    FOUNDATION = "FOUNDATION"
+    DEFINITION = "DEFINITION"
+    DEVELOPMENT = "DEVELOPMENT"
+    ARGUMENT = "ARGUMENT"
+    EVIDENCE = "EVIDENCE"
+    APPLICATION = "APPLICATION"
+    COUNTERPOINT = "COUNTERPOINT"
+    SYNTHESIS = "SYNTHESIS"
+    CONCLUSION = "CONCLUSION"
+    BRIDGE = "BRIDGE"
+
+
+class ConceptRole(str, Enum):
+    FOUNDATIONAL = "FOUNDATIONAL"
+    CORE = "CORE"
+    DERIVED = "DERIVED"
+    BRIDGING = "BRIDGING"
+    APPLICATION = "APPLICATION"
+    TERMINAL = "TERMINAL"
+
+
+class BookThesis(BaseModel):
+    """A single thesis claim with full traceability."""
+    id: str
+    type: ThesisType
+    statement: str
+    scope: str = ""
+    evidence_refs: List[str] = Field(default_factory=list)
+    supporting_arguments: List[str] = Field(default_factory=list)
+    confidence: float = 0.0
+    provenance: ThesisProvenance = ThesisProvenance.MODEL_INFERRED
+    source_locations: List[str] = Field(default_factory=list)
+
+    @field_validator("confidence")
+    @classmethod
+    def clamp_confidence(cls, v: float) -> float:
+        return max(0.0, min(1.0, round(v, 4)))
+
+
+class BookThesisModel(BaseModel):
+    """The complete thesis structure of the book."""
+    core_thesis: Optional[BookThesis] = None
+    supporting_theses: List[BookThesis] = Field(default_factory=list)
+    problem_statements: List[BookThesis] = Field(default_factory=list)
+    central_questions: List[BookThesis] = Field(default_factory=list)
+    key_assumptions: List[BookThesis] = Field(default_factory=list)
+    conclusions: List[BookThesis] = Field(default_factory=list)
+    limitations: List[BookThesis] = Field(default_factory=list)
+
+    def all_theses(self) -> List[BookThesis]:
+        out = []
+        if self.core_thesis:
+            out.append(self.core_thesis)
+        out.extend(self.supporting_theses)
+        out.extend(self.problem_statements)
+        out.extend(self.central_questions)
+        out.extend(self.key_assumptions)
+        out.extend(self.conclusions)
+        out.extend(self.limitations)
+        return out
+
+
+class ConceptSystemEntry(BaseModel):
+    """One concept in the book's concept system."""
+    concept_id: str
+    label: str
+    definition: str
+    role: ConceptRole
+    prerequisites: List[str] = Field(default_factory=list)
+    related_concepts: List[str] = Field(default_factory=list)
+    refined_by: List[str] = Field(default_factory=list)
+    applied_in: List[str] = Field(default_factory=list)
+    supports: List[str] = Field(default_factory=list)
+    chapter_refs: List[str] = Field(default_factory=list)
+    final_role: str = ""
+    confidence: float = 0.0
+
+
+class BookConceptSystem(BaseModel):
+    """The book's complete concept system with roles and dependencies."""
+    foundational: List[ConceptSystemEntry] = Field(default_factory=list)
+    core: List[ConceptSystemEntry] = Field(default_factory=list)
+    derived: List[ConceptSystemEntry] = Field(default_factory=list)
+    bridging: List[ConceptSystemEntry] = Field(default_factory=list)
+    application: List[ConceptSystemEntry] = Field(default_factory=list)
+    terminal: List[ConceptSystemEntry] = Field(default_factory=list)
+
+    def all_concepts(self) -> List[ConceptSystemEntry]:
+        out = []
+        out.extend(self.foundational)
+        out.extend(self.core)
+        out.extend(self.derived)
+        out.extend(self.bridging)
+        out.extend(self.application)
+        out.extend(self.terminal)
+        return out
+
+    def get_by_id(self, concept_id: str) -> Optional[ConceptSystemEntry]:
+        for c in self.all_concepts():
+            if c.concept_id == concept_id:
+                return c
+        return None
+
+
+class BookArgument(BaseModel):
+    """A major or sub-argument in the book's argument hierarchy."""
+    id: str
+    level: int  # 0=thesis, 1=major, 2=sub, etc.
+    what: str
+    why: str
+    how: str
+    evidence_refs: List[str] = Field(default_factory=list)
+    depends_on: List[str] = Field(default_factory=list)
+    conclusion: str = ""
+    status: ArgumentStatus = ArgumentStatus.MODEL_INFERRED
+    confidence: float = 0.0
+    source_chapters: List[str] = Field(default_factory=list)
+
+
+class BookArgumentSystem(BaseModel):
+    """The book's complete argument hierarchy."""
+    thesis_arguments: List[BookArgument] = Field(default_factory=list)
+    major_arguments: List[BookArgument] = Field(default_factory=list)
+    sub_arguments: List[BookArgument] = Field(default_factory=list)
+
+    def all_arguments(self) -> List[BookArgument]:
+        out = []
+        out.extend(self.thesis_arguments)
+        out.extend(self.major_arguments)
+        out.extend(self.sub_arguments)
+        return out
+
+
+class BookMechanism(BaseModel):
+    """A causal/explanatory mechanism identified in the book."""
+    id: str
+    trigger: str
+    precondition: str
+    operation: str
+    intermediate_state: str
+    outcome: str
+    evidence_refs: List[str] = Field(default_factory=list)
+    confidence: float = 0.0
+    provenance: ThesisProvenance = ThesisProvenance.MODEL_INFERRED
+    source_chapters: List[str] = Field(default_factory=list)
+
+
+class BookMechanismSystem(BaseModel):
+    """All mechanisms identified in the book."""
+    mechanisms: List[BookMechanism] = Field(default_factory=list)
+
+
+class EvidenceMapEntry(BaseModel):
+    """One claim-evidence-argument-chapter linkage."""
+    claim_id: str
+    claim_statement: str
+    evidence_ids: List[str] = Field(default_factory=list)
+    evidence_strengths: Dict[str, EvidenceStrengthP13] = Field(default_factory=dict)
+    argument_ids: List[str] = Field(default_factory=list)
+    chapter_ids: List[str] = Field(default_factory=list)
+    is_supported: bool = False
+    provenance: ThesisProvenance = ThesisProvenance.MODEL_INFERRED
+
+
+class BookEvidenceMap(BaseModel):
+    """Complete claim-evidence-argument-chapter map for the book."""
+    entries: List[EvidenceMapEntry] = Field(default_factory=list)
+    evidence_coverage: float = 0.0
+    unsupported_claim_count: int = 0
+    model_inference_ratio: float = 0.0
+    contradiction_count: int = 0
+
+
+class BookAuthorModel(BaseModel):
+    """Structured model of the author's intellectual stance."""
+    worldview: List[str] = Field(default_factory=list)
+    assumptions: List[str] = Field(default_factory=list)
+    explanatory_strategy: List[str] = Field(default_factory=list)
+    argument_style: List[str] = Field(default_factory=list)
+    recurring_patterns: List[str] = Field(default_factory=list)
+    evidence_preference: List[str] = Field(default_factory=list)
+    limitations: List[str] = Field(default_factory=list)
+    unresolved_positions: List[str] = Field(default_factory=list)
+    provenance: ThesisProvenance = ThesisProvenance.MODEL_INFERRED
+
+
+class ChapterRoleAssignment(BaseModel):
+    """One chapter's role(s) in the book."""
+    chapter_id: str
+    roles: List[ChapterRole] = Field(default_factory=list)
+    evidence: str = ""
+    confidence: float = 0.0
+
+
+class BookChapterRoles(BaseModel):
+    """All chapter role assignments."""
+    assignments: List[ChapterRoleAssignment] = Field(default_factory=list)
+
+    def get_roles(self, chapter_id: str) -> List[ChapterRole]:
+        for a in self.assignments:
+            if a.chapter_id == chapter_id:
+                return a.roles
+        return []
+
+
+class ContradictionEntry(BaseModel):
+    """A detected contradiction or tension."""
+    id: str
+    type: ContradictionType
+    element_a: str  # claim_id, concept_id, or argument_id
+    element_b: str
+    element_type: str  # "claim", "concept", "argument"
+    description: str
+    classification: ContradictionType
+    source_chapters: List[str] = Field(default_factory=list)
+    confidence: float = 0.0
+
+
+class BookContradictions(BaseModel):
+    """All detected contradictions in the book."""
+    contradictions: List[ContradictionEntry] = Field(default_factory=list)
+
+
+class BookSynthesis(BaseModel):
+    """The final book-level synthesis."""
+    id: str
+    run_id: str
+    book_id: str
+    thesis: BookThesisModel
+    problem_definition: str
+    concept_system: BookConceptSystem
+    argument_system: BookArgumentSystem
+    mechanism_system: BookMechanismSystem
+    evidence_map: BookEvidenceMap
+    author_model: BookAuthorModel
+    chapter_roles: BookChapterRoles
+    unresolved_questions: List[str] = Field(default_factory=list)
+    contradictions: BookContradictions
+    limitations: List[str] = Field(default_factory=list)
+    synthesis_evidence: Dict[str, List[str]] = Field(default_factory=dict)
+    created_at: str = ""
