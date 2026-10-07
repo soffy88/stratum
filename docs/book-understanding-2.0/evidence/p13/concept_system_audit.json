@@ -1,0 +1,41 @@
+{
+  "foundational": [],
+  "core": [],
+  "derived": [
+    {
+      "label": "Function",
+      "role": "DERIVED",
+      "confidence": 0.55
+    },
+    {
+      "label": "Graph of a Function",
+      "role": "DERIVED",
+      "confidence": 0.55
+    },
+    {
+      "label": "average rate of change",
+      "role": "DERIVED",
+      "confidence": 0.55
+    },
+    {
+      "label": "tangent line",
+      "role": "DERIVED",
+      "confidence": 0.55
+    }
+  ],
+  "bridging": [],
+  "application": [],
+  "terminal": [
+    {
+      "label": "Difference Quotient",
+      "role": "TERMINAL",
+      "confidence": 0.55
+    },
+    {
+      "label": "Derivative",
+      "role": "TERMINAL",
+      "confidence": 0.55
+    }
+  ],
+  "total": 6
+}

@@ -306,3 +306,261 @@ class DeepQualityEvaluator:
 def _num(chapter_id: str) -> int:
     d = "".join(c for c in (chapter_id or "") if c.isdigit())
     return int(d) if d else 0
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# P13 Quality Evaluators (Q12-Q18)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from stratum.knowledge.bu_v2_models import (
+    BookSynthesis,
+    ContradictionType,
+    EvidenceStrengthP13,
+    ThesisProvenance,
+)
+from stratum.services.bu_v2_quality_evaluator import QualityDimension, QualityLevel, level_for
+
+
+@dataclass
+class P13QualityReport:
+    """P13 Q12-Q18 quality report."""
+    book_id: str
+    run_id: str = ""
+    thesis_grounding: float = 0.0
+    concept_system_coherence: float = 0.0
+    argument_completeness: float = 0.0
+    mechanism_grounding: float = 0.0
+    evidence_coverage: float = 0.0
+    contradiction_integrity: float = 0.0
+    synthesis_traceability: float = 0.0
+    overall: float = 0.0
+    quality_level: QualityLevel = "D"
+    dimensions: list[QualityDimension] = field(default_factory=list)
+    limitations: list[str] = field(default_factory=list)
+
+
+class P13QualityEvaluator:
+    """P13: Q12-Q18 quality evaluation from BookSynthesis."""
+
+    def evaluate(
+        self,
+        *,
+        book_id: str,
+        run_id: str,
+        synthesis: BookSynthesis | None,
+        pipeline_status: str = "UNKNOWN",
+    ) -> P13QualityReport:
+        rep = P13QualityReport(book_id=book_id, run_id=run_id)
+
+        if synthesis is None:
+            rep.dimensions = [
+                QualityDimension("Q12", "Q12 Thesis Grounding", 0.0, detail="No synthesis produced"),
+                QualityDimension("Q13", "Q13 Concept-System Coherence", 0.0, detail="No synthesis produced"),
+                QualityDimension("Q14", "Q14 Argument Completeness", 0.0, detail="No synthesis produced"),
+                QualityDimension("Q15", "Q15 Mechanism Grounding", 0.0, detail="No synthesis produced"),
+                QualityDimension("Q16", "Q16 Evidence Coverage", 0.0, detail="No synthesis produced"),
+                QualityDimension("Q17", "Q17 Contradiction Integrity", 0.0, detail="No synthesis produced"),
+                QualityDimension("Q18", "Q18 Synthesis Traceability", 0.0, detail="No synthesis produced"),
+            ]
+            for d in rep.dimensions:
+                d.findings.append(f"{d.key}: no synthesis artefact available")
+            rep.overall = 0.0
+            rep.quality_level = "D"
+            return rep
+
+        rep.dimensions = [
+            self._q12_thesis_grounding(synthesis),
+            self._q13_concept_coherence(synthesis),
+            self._q14_argument_completeness(synthesis),
+            self._q15_mechanism_grounding(synthesis),
+            self._q16_evidence_coverage(synthesis),
+            self._q17_contradiction_integrity(synthesis),
+            self._q18_synthesis_traceability(synthesis),
+        ]
+        by_key = {d.key: d for d in rep.dimensions}
+        rep.thesis_grounding = by_key["Q12"].score
+        rep.concept_system_coherence = by_key["Q13"].score
+        rep.argument_completeness = by_key["Q14"].score
+        rep.mechanism_grounding = by_key["Q15"].score
+        rep.evidence_coverage = by_key["Q16"].score
+        rep.contradiction_integrity = by_key["Q17"].score
+        rep.synthesis_traceability = by_key["Q18"].score
+        rep.overall = round(sum(d.score for d in rep.dimensions) / len(rep.dimensions), 4)
+        rep.quality_level = level_for(rep.overall)
+        rep.limitations = [f for d in rep.dimensions for f in d.findings if f]
+        return rep
+
+    # Q12: Thesis Grounding
+    def _q12_thesis_grounding(self, synthesis: BookSynthesis) -> QualityDimension:
+        d = QualityDimension("Q12", "Q12 Thesis Grounding", 0.0)
+        thesis = synthesis.thesis
+
+        if not thesis.core_thesis:
+            d.score = 0.0
+            d.detail = "No core thesis extracted"
+            d.findings.append("thesis: no core thesis identified")
+            return d
+
+        core = thesis.core_thesis
+        supporting = thesis.supporting_theses
+
+        # Traceability: core thesis must have evidence and source locations
+        has_evidence = len(core.evidence_refs) > 0
+        has_locations = len(core.source_locations) > 0
+        provenance_bonus = 1.0 if core.provenance == ThesisProvenance.AUTHOR_ASSERTED else (0.5 if core.provenance == ThesisProvenance.STRUCTURALLY_DERIVED else 0.0)
+
+        evidence_score = 1.0 if has_evidence else 0.0
+        location_score = 1.0 if has_locations else 0.0
+        support_score = min(1.0, len(supporting) / 3.0)
+
+        d.score = round(0.4 * evidence_score + 0.3 * location_score + 0.2 * support_score + 0.1 * provenance_bonus, 4)
+        d.detail = f"Core thesis: {'grounded' if has_evidence else 'no evidence'}, {len(supporting)} supporting, provenance={core.provenance.value}"
+        if not has_evidence:
+            d.findings.append("thesis: core thesis lacks evidence references")
+        if not has_locations:
+            d.findings.append("thesis: core thesis lacks source locations")
+        if core.provenance == ThesisProvenance.MODEL_INFERRED:
+            d.findings.append("thesis: core thesis is model-inferred, not author-asserted")
+        return d
+
+    # Q13: Concept-System Coherence
+    def _q13_concept_coherence(self, synthesis: BookSynthesis) -> QualityDimension:
+        d = QualityDimension("Q13", "Q13 Concept-System Coherence", 0.0)
+        cs = synthesis.concept_system
+        all_concepts = cs.all_concepts()
+
+        if not all_concepts:
+            d.score = 0.0
+            d.detail = "No concepts in system"
+            d.findings.append("concepts: concept system is empty")
+            return d
+
+        # Coherence checks
+        has_foundational = len(cs.foundational) > 0
+        has_core = len(cs.core) > 0
+        has_dependencies = sum(1 for c in all_concepts if c.prerequisites) > 0
+        has_applications = sum(1 for c in all_concepts if c.applied_in) > 0
+        traceable = sum(1 for c in all_concepts if c.chapter_refs) / len(all_concepts)
+
+        d.score = round(0.25 * has_foundational + 0.25 * has_core + 0.2 * has_dependencies + 0.15 * has_applications + 0.15 * traceable, 4)
+        d.detail = f"{len(all_concepts)} concepts: {len(cs.foundational)} foundational, {len(cs.core)} core, {len(cs.derived)} derived, {len(cs.bridging)} bridging, {len(cs.application)} application"
+        if not has_foundational:
+            d.findings.append("concepts: no foundational concepts identified")
+        if not has_core:
+            d.findings.append("concepts: no core concepts identified")
+        if traceable < 0.8:
+            d.findings.append(f"concepts: only {traceable:.0%} traceable to chapters")
+        return d
+
+    # Q14: Argument Completeness
+    def _q14_argument_completeness(self, synthesis: BookSynthesis) -> QualityDimension:
+        d = QualityDimension("Q14", "Q14 Argument Completeness", 0.0)
+        args = synthesis.argument_system
+
+        thesis_args = len(args.thesis_arguments)
+        major_args = len(args.major_arguments)
+        sub_args = len(args.sub_arguments)
+        total_args = thesis_args + major_args + sub_args
+
+        if total_args < 5:
+            d.score = round(total_args / 5.0 * 0.6, 4)
+            d.detail = f"Only {total_args} argument chains (need ≥5)"
+            d.findings.append(f"arguments: only {total_args} chains, below threshold of 5")
+            return d
+
+        complete_chains = sum(1 for a in args.thesis_arguments if a.status.value == "SUPPORTED")
+        complete_chains += sum(1 for a in args.major_arguments if a.status.value == "SUPPORTED")
+        evidenced = sum(1 for a in args.all_arguments() if a.evidence_refs)
+        with_conclusion = sum(1 for a in args.all_arguments() if a.conclusion)
+
+        d.score = round(0.4 * (complete_chains / total_args) + 0.3 * (evidenced / total_args) + 0.3 * (with_conclusion / total_args), 4)
+        d.detail = f"{total_args} chains ({thesis_args} thesis, {major_args} major, {sub_args} sub), {complete_chains} supported, {evidenced} evidenced, {with_conclusion} concluded"
+        if complete_chains < total_args * 0.5:
+            d.findings.append(f"arguments: only {complete_chains}/{total_args} chains fully supported")
+        return d
+
+    # Q15: Mechanism Grounding
+    def _q15_mechanism_grounding(self, synthesis: BookSynthesis) -> QualityDimension:
+        d = QualityDimension("Q15", "Q15 Mechanism Grounding", 0.0)
+        mechs = synthesis.mechanism_system.mechanisms
+
+        if not mechs:
+            d.score = 0.0
+            d.detail = "No mechanisms extracted"
+            d.findings.append("mechanisms: no mechanisms identified in the book")
+            return d
+
+        grounded = sum(1 for m in mechs if m.evidence_refs)
+        author_asserted = sum(1 for m in mechs if m.provenance == ThesisProvenance.AUTHOR_ASSERTED)
+        with_trigger = sum(1 for m in mechs if m.trigger)
+        with_outcome = sum(1 for m in mechs if m.outcome)
+
+        n = len(mechs)
+        d.score = round(0.3 * (grounded / n) + 0.3 * (author_asserted / n) + 0.2 * (with_trigger / n) + 0.2 * (with_outcome / n), 4)
+        d.detail = f"{n} mechanisms: {grounded} grounded, {author_asserted} author-asserted"
+        if grounded < n * 0.5:
+            d.findings.append(f"mechanisms: only {grounded}/{n} have evidence references")
+        if n < 3:
+            d.findings.append(f"mechanisms: only {n} mechanisms (gate requires ≥3 or BOOK_LIMIT)")
+        return d
+
+    # Q16: Evidence Coverage
+    def _q16_evidence_coverage(self, synthesis: BookSynthesis) -> QualityDimension:
+        d = QualityDimension("Q16", "Q16 Evidence Coverage", 0.0)
+        em = synthesis.evidence_map
+
+        d.score = round(em.evidence_coverage, 4)
+        d.detail = f"Coverage: {em.evidence_coverage:.0%}, {em.unsupported_claim_count} unsupported claims, model inference: {em.model_inference_ratio:.0%}"
+        if em.evidence_coverage < 1.0:
+            d.findings.append(f"evidence: {em.unsupported_claim_count} claims lack evidence support")
+        if em.unsupported_claim_count > 0:
+            d.findings.append(f"evidence: unsupported claim count > 0 (gate requires 0)")
+        if em.model_inference_ratio > 0.5:
+            d.findings.append(f"evidence: model inference ratio {em.model_inference_ratio:.0%} is high")
+        return d
+
+    # Q17: Contradiction Integrity
+    def _q17_contradiction_integrity(self, synthesis: BookSynthesis) -> QualityDimension:
+        d = QualityDimension("Q17", "Q17 Contradiction Integrity", 0.0)
+        contras = synthesis.contradictions.contradictions
+
+        if not contras:
+            d.score = 1.0
+            d.detail = "No contradictions detected"
+            return d
+
+        classified = sum(1 for c in contras if c.classification != ContradictionType.UNRESOLVED)
+        direct = sum(1 for c in contras if c.type == ContradictionType.DIRECT_CONTRADICTION)
+        contextual = sum(1 for c in contras if c.type == ContradictionType.CONTEXTUAL_DIFFERENCE)
+
+        d.score = round(classified / len(contras), 4)
+        d.detail = f"{len(contras)} contradictions: {direct} direct, {contextual} contextual, {classified} classified"
+        if classified < len(contras):
+            d.findings.append(f"contradictions: {len(contras) - classified} unclassified")
+        return d
+
+    # Q18: Synthesis Traceability
+    def _q18_synthesis_traceability(self, synthesis: BookSynthesis) -> QualityDimension:
+        d = QualityDimension("Q18", "Q18 Synthesis Traceability", 0.0)
+
+        # Check that synthesis evidence maps exist for all components
+        se = synthesis.synthesis_evidence
+        required_keys = ["thesis", "concepts", "arguments", "mechanisms", "evidence", "chapter_roles", "contradictions"]
+        present = sum(1 for k in required_keys if k in se and se[k])
+
+        # Check that components have traceability
+        thesis_traceable = len(synthesis.thesis.core_thesis.source_locations) > 0 if synthesis.thesis.core_thesis else False
+        concept_traceable = sum(1 for c in synthesis.concept_system.all_concepts() if c.chapter_refs) > 0
+        arg_traceable = sum(1 for a in synthesis.argument_system.all_arguments() if a.source_chapters) > 0
+        mech_traceable = sum(1 for m in synthesis.mechanism_system.mechanisms if m.source_chapters) > 0
+
+        traceable_components = sum([thesis_traceable, concept_traceable, arg_traceable, mech_traceable])
+
+        d.score = round(0.5 * (present / len(required_keys)) + 0.5 * (traceable_components / 4.0), 4)
+        d.detail = f"Evidence map keys: {present}/{len(required_keys)}, traceable components: {traceable_components}/4"
+        if present < len(required_keys):
+            missing = [k for k in required_keys if k not in se or not se[k]]
+            d.findings.append(f"traceability: missing synthesis evidence for {missing}")
+        if traceable_components < 4:
+            d.findings.append(f"traceability: {4 - traceable_components} component types lack chapter traceability")
+        return d
