@@ -1,4 +1,4 @@
-from stratum.services.bu_v2_producer import _fuzzy_find, _significant_terms
+from stratum.services.bu_v2_producer import _fuzzy_find, _language_rule, _significant_terms
 
 
 def test_fuzzy_find_ignores_ocr_spaces():
@@ -11,3 +11,8 @@ def test_fuzzy_find_ignores_ocr_spaces():
 def test_significant_terms_include_chinese_runs():
     terms = _significant_terms("函数的极限是微积分的基础")
     assert "极限" in terms or "函数" in terms
+
+
+def test_language_rule_only_for_chinese_text():
+    assert "Chinese" in _language_rule("第一章 函数与极限。设数集 D，则称映射 f 为函数。")
+    assert _language_rule("Chapter 1. Functions and limits of a real variable.") == ""

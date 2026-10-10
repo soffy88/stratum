@@ -79,6 +79,7 @@ class BU2P14Runner:
     def create_run(self, collection_id: str) -> str:
         """Create a new P14 run."""
         from stratum.common import generate_ulid
+
         run_id = f"cb_{generate_ulid()}"
         if self.persist:
             # Would persist to DB here
@@ -100,7 +101,7 @@ class BU2P14Runner:
             P14RunResult with the complete CrossBookUnderstanding
         """
         start_time = time.perf_counter()
-        stats = {"stages": {}}
+        stats: dict[str, Any] = {"stages": {}}
         failures = []
 
         run_id = self.create_run(collection.collection_id)
@@ -248,7 +249,9 @@ def main(argv: list[str] | None = None) -> int:
         prog="bu2-p14", description="Run P14 cross-book intelligence on a collection"
     )
     parser.add_argument("collection", nargs="?", help="JSON file with collection definition")
-    parser.add_argument("--books", nargs="+", default=None, help="substrate ids, instead of a JSON file")
+    parser.add_argument(
+        "--books", nargs="+", default=None, help="substrate ids, instead of a JSON file"
+    )
     parser.add_argument("--name", default="", help="collection name when using --books")
     parser.add_argument("--user-id", default="", help="owner for the persisted collection")
     parser.add_argument("--persist", action="store_true", help="write to database")
@@ -275,31 +278,41 @@ def main(argv: list[str] | None = None) -> int:
     if args.persist and not user_id:
         from stratum.db import query
 
-        rows = query(
-            "SELECT user_id FROM stratum.substrates WHERE id = %(b)s LIMIT 1",
-            {"b": collection.book_ids[0]},
-        ) if collection.book_ids else []
+        rows = (
+            query(
+                "SELECT user_id FROM stratum.substrates WHERE id = %(b)s LIMIT 1",
+                {"b": collection.book_ids[0]},
+            )
+            if collection.book_ids
+            else []
+        )
         user_id = rows[0]["user_id"] if rows else ""
 
     runner = BU2P14Runner(persist=args.persist, user_id=user_id)
     result = runner.execute(collection)
 
     if args.json:
-        print(json.dumps({
-            "run_id": result.run_id,
-            "collection_id": result.collection.collection_id,
-            "books_processed": result.stats.get("books_processed", 0),
-            "concept_relations": result.stats.get("concept_relations", 0),
-            "thesis_relations": result.stats.get("thesis_relations", 0),
-            "argument_relations": result.stats.get("argument_relations", 0),
-            "mechanism_relations": result.stats.get("mechanism_relations", 0),
-            "evidence_relations": result.stats.get("evidence_relations", 0),
-            "contradictions": result.stats.get("contradictions", 0),
-            "knowledge_gaps": result.stats.get("knowledge_gaps", 0),
-            "failures": result.failures,
-            "persisted": result.persisted,
-            "stats": result.stats,
-        }, indent=2, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "collection_id": result.collection.collection_id,
+                    "books_processed": result.stats.get("books_processed", 0),
+                    "concept_relations": result.stats.get("concept_relations", 0),
+                    "thesis_relations": result.stats.get("thesis_relations", 0),
+                    "argument_relations": result.stats.get("argument_relations", 0),
+                    "mechanism_relations": result.stats.get("mechanism_relations", 0),
+                    "evidence_relations": result.stats.get("evidence_relations", 0),
+                    "contradictions": result.stats.get("contradictions", 0),
+                    "knowledge_gaps": result.stats.get("knowledge_gaps", 0),
+                    "failures": result.failures,
+                    "persisted": result.persisted,
+                    "stats": result.stats,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
     else:
         if result.expression:
             print(result.expression.render())

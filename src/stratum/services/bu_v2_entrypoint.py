@@ -20,7 +20,6 @@ not where it is.
 from __future__ import annotations
 
 import json
-import os
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -36,14 +35,12 @@ from stratum.services.bu_v2_expression import BookExpression, BUExpressionGenera
 from stratum.services.bu_v2_producer import (
     Chapter,
     ChapterContext,
-    ChapterRole,
     ChapterUnderstandingProducer,
     EvidenceArtifact,
     classify_role,
 )
 from stratum.services.bu_v2_provider import (
     ModelProvider,
-    ProviderError,
     ProviderUnavailable,
     resolve_provider,
 )
@@ -139,8 +136,6 @@ class BookLoader:
         heading list is the more reliable source of chapter titles and pages.
         Falls back to markdown headings when it is absent.
         """
-
-    def load(self, substrate_id: str) -> tuple[str, str, list[Chapter]]:
         substrate = db.read("substrates", substrate_id)
         if not substrate:
             raise BU2RunError(f"substrate {substrate_id} not found")
@@ -244,7 +239,9 @@ class BookLoader:
         # Signal 1: a level-1 heading. Deeper levels belong to a neighbour whose
         # title contains this one, so prefer the shallowest match.
         best: tuple[int, int] | None = None
-        for m in re.finditer(r"^(#{1,3})\s*" + re.escape(str(num)) + r"\.?\s+" + re.escape(probe), text, re.M):
+        for m in re.finditer(
+            r"^(#{1,3})\s*" + re.escape(str(num)) + r"\.?\s+" + re.escape(probe), text, re.M
+        ):
             level = len(m.group(1))
             if level == 1:
                 return m.start()
@@ -255,7 +252,9 @@ class BookLoader:
 
         # Signal 2: a bare "N Title" line, then OVERVIEW shortly after.
         overview = re.compile(r"^\s*OVERVIEW\b", re.M)
-        for m in re.finditer(r"^\s*" + re.escape(str(num)) + r"\.?\s+" + re.escape(probe), text, re.M):
+        for m in re.finditer(
+            r"^\s*" + re.escape(str(num)) + r"\.?\s+" + re.escape(probe), text, re.M
+        ):
             tail = text[m.end() : m.end() + 400]
             if overview.search(tail):
                 return m.start()
@@ -294,7 +293,12 @@ class BookLoader:
 def _p12_payload(result: RunResult) -> dict[str, Any] | None:
     """The P12 artefacts, serialised for the trial evidence."""
     p12 = getattr(result, "p12", None) or {}
-    dep, evo, arg, deep = p12.get("dependency"), p12.get("evolution"), p12.get("argument"), p12.get("deep_quality")
+    dep, evo, arg, deep = (
+        p12.get("dependency"),
+        p12.get("evolution"),
+        p12.get("argument"),
+        p12.get("deep_quality"),
+    )
     if not (dep and evo and arg and deep):
         return None
     return {
@@ -415,6 +419,7 @@ class BU2Runner:
         title, text, chapters = self.loader.load(substrate_id)
         structure = None
         result_meta: dict[str, Any] = {}
+        pre_failures: list[str] = []
         if self.use_structure_extractor and text:
             # §5: the extractor owns structure. The loader's heuristics are a
             # fallback for texts the extractor cannot handle.
@@ -433,7 +438,7 @@ class BU2Runner:
                     result_meta["structure"] = structure.to_dict()["metadata"]
                     result_meta["structure_method"] = structure.extraction_method
             except Exception as exc:
-                result.failures.append(f"structure extraction fell back to loader: {exc}")
+                pre_failures.append(f"structure extraction fell back to loader: {exc}")
         if not chapters:
             raise BU2RunError(
                 f"{substrate_id} ({title}) yielded no chapterable structure; "
@@ -445,11 +450,10 @@ class BU2Runner:
 
         run_id = self.create_run(substrate_id)
         result = RunResult(run_id=run_id, book_id=substrate_id, substrate_id=substrate_id)
+        result.failures.extend(pre_failures)
         result.structure = result_meta.get("structure")
         if structure is not None:
-            result.structure_kinds = {
-                c.chapter_id: c.kind for c in (structure.chapters or [])
-            }
+            result.structure_kinds = {c.chapter_id: c.kind for c in (structure.chapters or [])}
 
         # ── generate_chapters (§6: with context, not in isolation) ───────────
         prior: list[str] = []
@@ -916,7 +920,9 @@ def main(argv: list[str] | None = None) -> int:
         prog="bu2", description="Produce a BookUnderstandingV2 from a substrate"
     )
     parser.add_argument("substrate_id", help="stratum.substrates.id of the book")
-    parser.add_argument("--provider", default=None, help="ollama|deepseek|nim|anthropic|gemini|openai")
+    parser.add_argument(
+        "--provider", default=None, help="ollama|deepseek|nim|anthropic|gemini|openai"
+    )
     parser.add_argument("--model", default=None)
     parser.add_argument("--chapters", type=int, default=None, help="limit chapters processed")
     parser.add_argument("--persist", action="store_true", help="write to the database")
@@ -931,7 +937,9 @@ def main(argv: list[str] | None = None) -> int:
 
     kw: dict[str, Any] = {"persist": args.persist, "chapter_limit": args.chapters}
     if args.provider:
-        kw["provider"] = resolve_provider(args.provider, **({"model": args.model} if args.model else {}))
+        kw["provider"] = resolve_provider(
+            args.provider, **({"model": args.model} if args.model else {})
+        )
     elif args.model:
         kw["provider"] = resolve_provider(None, model=args.model)
 
@@ -957,7 +965,6 @@ def main(argv: list[str] | None = None) -> int:
         from stratum.services.bu_v2_quality_report import evaluate_gates
 
         # Re-evaluate gate 4 now that the legacy fusion has actually run.
-        by = {d.key: d for d in result.quality.dimensions}
         result.report_bundle.gates = evaluate_gates(
             result.quality,
             structure=result.structure,
@@ -984,7 +991,10 @@ def main(argv: list[str] | None = None) -> int:
                     "persisted": result.persisted,
                     "structure": result.structure,
                     "quality": result.quality.to_dict() if result.quality else None,
-                    "gates": [g.to_dict() for g in (result.report_bundle.gates if result.report_bundle else [])],
+                    "gates": [
+                        g.to_dict()
+                        for g in (result.report_bundle.gates if result.report_bundle else [])
+                    ],
                     "legacy_fusion": legacy_fusion,
                     "p12": _p12_payload(result),
                     # Read from the bundle: recomputing here needed an import
@@ -1006,10 +1016,14 @@ def main(argv: list[str] | None = None) -> int:
         elif result.expression:
             print(result.expression.render())
         if result.report:
-            print(f"\nverification: {result.report.outcome.value} "
-                  f"({len(result.report.checks)} checks, {len(result.report.failed)} failed)")
-        print(f"run_id={result.run_id} chapters={len(result.chapters)} "
-              f"evidence={len(result.evidence)} persisted={result.persisted}")
+            print(
+                f"\nverification: {result.report.outcome.value} "
+                f"({len(result.report.checks)} checks, {len(result.report.failed)} failed)"
+            )
+        print(
+            f"run_id={result.run_id} chapters={len(result.chapters)} "
+            f"evidence={len(result.evidence)} persisted={result.persisted}"
+        )
         for f in result.failures:
             print(f"  ! {f}")
     return 0 if (result.bu and result.bu.status == BUStatus.VERIFIED) else 1

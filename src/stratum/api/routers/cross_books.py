@@ -10,17 +10,16 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from stratum.common import jwt_auth, now_utc, now_utc_dt, generate_ulid
+from stratum.common import jwt_auth, now_utc_dt, generate_ulid
 from stratum.db import query, read
 from stratum.services.bu_v2_crossbook_entrypoint import BU2P14Runner
 from stratum.services.bu_v2_crossbook_query import BU2CrossBookQuery
-from stratum.services.bu_v2_crossbook_collection import BU2CrossBookCollectionManager, CrossBookCollection
-from stratum.services.bu_v2_crossbook_synthesis import BU2CrossBookSynthesisBuilder
 
 router = APIRouter(prefix="/api/v1/cross-books", tags=["cross-books"])
 
 
 # ── Models ──
+
 
 class CollectionItem(BaseModel):
     collection_id: str
@@ -134,6 +133,7 @@ class QueryResponse(BaseModel):
 
 # ── Helper: load understanding ──
 
+
 def _understanding_row(collection_id: str):
     """crossbook_understandings row exposed under the model's field names."""
     from stratum.services.bu_v2_p14_loader import understanding_row_view
@@ -145,9 +145,9 @@ def _understanding_row(collection_id: str):
 
 # ── Helper: load collection ──
 
+
 async def _load_collection(collection_id: str, user_id: str):
     """Load collection and verify access."""
-    manager = BU2CrossBookCollectionManager()
     collection = read("crossbook_collections", collection_id)
     if not collection:
         raise HTTPException(404, "Collection not found")
@@ -166,6 +166,7 @@ async def _load_collection(collection_id: str, user_id: str):
 
 # ── Routes ──
 
+
 @router.get("", response_model=list[CollectionItem])
 async def list_collections(user_id: str = Depends(jwt_auth)):
     """List cross-book collections for the current user."""
@@ -180,19 +181,20 @@ async def list_collections(user_id: str = Depends(jwt_auth)):
     )
     return [
         CollectionItem(
-            collection_id=r[0], name=r[1], description=r[2],
-            book_ids=r[3] or [], created_at=str(r[4])
+            collection_id=r[0],
+            name=r[1],
+            description=r[2],
+            book_ids=r[3] or [],
+            created_at=str(r[4]),
         )
         for r in rows
     ]
 
 
 @router.post("", response_model=CollectionItem, status_code=201)
-async def create_collection(
-    body: dict, user_id: str = Depends(jwt_auth)
-):
+async def create_collection(body: dict, user_id: str = Depends(jwt_auth)):
     """Create a new cross-book collection."""
-    from stratum.common import generate_ulid, now_utc
+
     name = body.get("name")
     description = body.get("description", "")
     book_ids = body.get("book_ids", [])
@@ -216,19 +218,26 @@ async def create_collection(
         (id, user_id, name, description, book_ids, created_at, updated_at)
         VALUES (%(id)s, %(uid)s, %(name)s, %(desc)s, %(bids)s, %(now)s, %(now)s)
         """,
-        {"id": collection_id, "uid": user_id, "name": name, "desc": description,
-         "bids": book_ids, "now": now},
+        {
+            "id": collection_id,
+            "uid": user_id,
+            "name": name,
+            "desc": description,
+            "bids": book_ids,
+            "now": now,
+        },
     )
     return CollectionItem(
-        collection_id=collection_id, name=name, description=description,
-        book_ids=book_ids, created_at=str(now)
+        collection_id=collection_id,
+        name=name,
+        description=description,
+        book_ids=book_ids,
+        created_at=str(now),
     )
 
 
 @router.get("/{collection_id}", response_model=CrossBookOverview)
-async def get_crossbook_overview(
-    collection_id: str, user_id: str = Depends(jwt_auth)
-):
+async def get_crossbook_overview(collection_id: str, user_id: str = Depends(jwt_auth)):
     """Get cross-book understanding overview."""
     collection = await _load_collection(collection_id, user_id)
 
@@ -252,9 +261,7 @@ async def get_crossbook_overview(
 
 
 @router.post("/{collection_id}/run")
-async def run_p14(
-    collection_id: str, user_id: str = Depends(jwt_auth)
-):
+async def run_p14(collection_id: str, user_id: str = Depends(jwt_auth)):
     """Execute P14 cross-book intelligence pipeline."""
     collection_dict = await _load_collection(collection_id, user_id)
     # Convert datetime to string for Pydantic validation
@@ -288,7 +295,7 @@ async def get_concept_relations(
     user_id: str = Depends(jwt_auth),
 ):
     """Get concept relations across books."""
-    collection = await _load_collection(collection_id, user_id)
+    await _load_collection(collection_id, user_id)
     understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
@@ -297,16 +304,18 @@ async def get_concept_relations(
     for r in understanding.get("concept_relations", []):
         if relation and r.get("relation") != relation:
             continue
-        items.append(ConceptRelationItem(
-            relation_id=r.get("relation_id", ""),
-            source_book_id=r.get("source_book_id", ""),
-            target_book_id=r.get("target_book_id", ""),
-            source_concept_id=r.get("source_concept_id", ""),
-            target_concept_id=r.get("target_concept_id", ""),
-            relation=r.get("relation", ""),
-            confidence=float(r.get("confidence", 0)),
-            evidence=r.get("evidence", []),
-        ))
+        items.append(
+            ConceptRelationItem(
+                relation_id=r.get("relation_id", ""),
+                source_book_id=r.get("source_book_id", ""),
+                target_book_id=r.get("target_book_id", ""),
+                source_concept_id=r.get("source_concept_id", ""),
+                target_concept_id=r.get("target_concept_id", ""),
+                relation=r.get("relation", ""),
+                confidence=float(r.get("confidence", 0)),
+                evidence=r.get("evidence", []),
+            )
+        )
     return items
 
 
@@ -317,7 +326,7 @@ async def get_thesis_relations(
     user_id: str = Depends(jwt_auth),
 ):
     """Get thesis relations across books."""
-    collection = await _load_collection(collection_id, user_id)
+    await _load_collection(collection_id, user_id)
     understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
@@ -326,16 +335,18 @@ async def get_thesis_relations(
     for r in understanding.get("thesis_relations", []):
         if relation and r.get("relation") != relation:
             continue
-        items.append(ThesisRelationItem(
-            relation_id=r.get("relation_id", ""),
-            source_book_id=r.get("source_book_id", ""),
-            target_book_id=r.get("target_book_id", ""),
-            source_thesis=r.get("source_thesis", ""),
-            target_thesis=r.get("target_thesis", ""),
-            relation=r.get("relation", ""),
-            confidence=float(r.get("confidence", 0)),
-            evidence=r.get("evidence", []),
-        ))
+        items.append(
+            ThesisRelationItem(
+                relation_id=r.get("relation_id", ""),
+                source_book_id=r.get("source_book_id", ""),
+                target_book_id=r.get("target_book_id", ""),
+                source_thesis=r.get("source_thesis", ""),
+                target_thesis=r.get("target_thesis", ""),
+                relation=r.get("relation", ""),
+                confidence=float(r.get("confidence", 0)),
+                evidence=r.get("evidence", []),
+            )
+        )
     return items
 
 
@@ -346,7 +357,7 @@ async def get_argument_relations(
     user_id: str = Depends(jwt_auth),
 ):
     """Get argument relations across books."""
-    collection = await _load_collection(collection_id, user_id)
+    await _load_collection(collection_id, user_id)
     understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
@@ -355,16 +366,18 @@ async def get_argument_relations(
     for r in understanding.get("argument_relations", []):
         if relation and r.get("relation") != relation:
             continue
-        items.append(ArgumentRelationItem(
-            relation_id=r.get("relation_id", ""),
-            source_book_id=r.get("source_book_id", ""),
-            target_book_id=r.get("target_book_id", ""),
-            source_argument=r.get("source_argument", ""),
-            target_argument=r.get("target_argument", ""),
-            relation=r.get("relation", ""),
-            confidence=float(r.get("confidence", 0)),
-            evidence=r.get("evidence", []),
-        ))
+        items.append(
+            ArgumentRelationItem(
+                relation_id=r.get("relation_id", ""),
+                source_book_id=r.get("source_book_id", ""),
+                target_book_id=r.get("target_book_id", ""),
+                source_argument=r.get("source_argument", ""),
+                target_argument=r.get("target_argument", ""),
+                relation=r.get("relation", ""),
+                confidence=float(r.get("confidence", 0)),
+                evidence=r.get("evidence", []),
+            )
+        )
     return items
 
 
@@ -375,7 +388,7 @@ async def get_contradictions(
     user_id: str = Depends(jwt_auth),
 ):
     """Get contradictions across books."""
-    collection = await _load_collection(collection_id, user_id)
+    await _load_collection(collection_id, user_id)
     understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
@@ -384,17 +397,19 @@ async def get_contradictions(
     for c in understanding.get("contradictions", []):
         if type and c.get("type") != type:
             continue
-        items.append(ContradictionItem(
-            contradiction_id=c.get("contradiction_id", ""),
-            book_a_id=c.get("book_a_id", ""),
-            book_b_id=c.get("book_b_id", ""),
-            type=c.get("type", ""),
-            element_a=c.get("element_a", ""),
-            element_b=c.get("element_b", ""),
-            description=c.get("description", ""),
-            confidence=float(c.get("confidence", 0)),
-            evidence=c.get("evidence", []),
-        ))
+        items.append(
+            ContradictionItem(
+                contradiction_id=c.get("contradiction_id", ""),
+                book_a_id=c.get("book_a_id", ""),
+                book_b_id=c.get("book_b_id", ""),
+                type=c.get("type", ""),
+                element_a=c.get("element_a", ""),
+                element_b=c.get("element_b", ""),
+                description=c.get("description", ""),
+                confidence=float(c.get("confidence", 0)),
+                evidence=c.get("evidence", []),
+            )
+        )
     return items
 
 
@@ -405,7 +420,7 @@ async def get_knowledge_gaps(
     user_id: str = Depends(jwt_auth),
 ):
     """Get knowledge gaps across books."""
-    collection = await _load_collection(collection_id, user_id)
+    await _load_collection(collection_id, user_id)
     understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
@@ -414,23 +429,23 @@ async def get_knowledge_gaps(
     for g in understanding.get("knowledge_gaps", []):
         if type and g.get("type") != type:
             continue
-        items.append(KnowledgeGapItem(
-            gap_id=g.get("gap_id", ""),
-            type=g.get("type", ""),
-            description=g.get("description", ""),
-            affected_books=g.get("affected_books", []),
-            related_concepts=g.get("related_concepts", []),
-            confidence=float(g.get("confidence", 0)),
-        ))
+        items.append(
+            KnowledgeGapItem(
+                gap_id=g.get("gap_id", ""),
+                type=g.get("type", ""),
+                description=g.get("description", ""),
+                affected_books=g.get("affected_books", []),
+                related_concepts=g.get("related_concepts", []),
+                confidence=float(g.get("confidence", 0)),
+            )
+        )
     return items
 
 
 @router.get("/{collection_id}/synthesis")
-async def get_synthesis(
-    collection_id: str, user_id: str = Depends(jwt_auth)
-):
+async def get_synthesis(collection_id: str, user_id: str = Depends(jwt_auth)):
     """Get full cross-book synthesis."""
-    collection = await _load_collection(collection_id, user_id)
+    await _load_collection(collection_id, user_id)
     understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
@@ -439,11 +454,9 @@ async def get_synthesis(
 
 
 @router.get("/{collection_id}/expression", response_model=ExpressionResponse)
-async def get_expression(
-    collection_id: str, user_id: str = Depends(jwt_auth)
-):
+async def get_expression(collection_id: str, user_id: str = Depends(jwt_auth)):
     """Get human-readable cross-book expression."""
-    collection = await _load_collection(collection_id, user_id)
+    await _load_collection(collection_id, user_id)
     understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
@@ -472,47 +485,44 @@ async def get_expression(
 
 
 @router.get("/{collection_id}/pairwise", response_model=list[PairwiseComparison])
-async def get_pairwise(
-    collection_id: str, user_id: str = Depends(jwt_auth)
-):
+async def get_pairwise(collection_id: str, user_id: str = Depends(jwt_auth)):
     """Get pairwise book comparisons."""
-    collection = await _load_collection(collection_id, user_id)
+    await _load_collection(collection_id, user_id)
     understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
 
     items = []
     for comp in understanding.get("comparisons", []):
-        items.append(PairwiseComparison(
-            book_a_id=comp.get("book_a_id", ""),
-            book_b_id=comp.get("book_b_id", ""),
-            concept_relations=[
-                ConceptRelationItem(**r) for r in comp.get("concept_relations", [])
-            ],
-            thesis_relations=[
-                ThesisRelationItem(**r) for r in comp.get("thesis_relations", [])
-            ],
-            argument_relations=[
-                ArgumentRelationItem(**r) for r in comp.get("argument_relations", [])
-            ],
-            contradictions=[
-                ContradictionItem(**c) for c in comp.get("contradictions", [])
-            ],
-        ))
+        items.append(
+            PairwiseComparison(
+                book_a_id=comp.get("book_a_id", ""),
+                book_b_id=comp.get("book_b_id", ""),
+                concept_relations=[
+                    ConceptRelationItem(**r) for r in comp.get("concept_relations", [])
+                ],
+                thesis_relations=[
+                    ThesisRelationItem(**r) for r in comp.get("thesis_relations", [])
+                ],
+                argument_relations=[
+                    ArgumentRelationItem(**r) for r in comp.get("argument_relations", [])
+                ],
+                contradictions=[ContradictionItem(**c) for c in comp.get("contradictions", [])],
+            )
+        )
     return items
 
 
 @router.post("/{collection_id}/query", response_model=QueryResponse)
-async def query_crossbook(
-    collection_id: str, body: QueryRequest, user_id: str = Depends(jwt_auth)
-):
+async def query_crossbook(collection_id: str, body: QueryRequest, user_id: str = Depends(jwt_auth)):
     """Execute cross-book query."""
-    collection = await _load_collection(collection_id, user_id)
+    await _load_collection(collection_id, user_id)
     understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
 
     from stratum.knowledge.bu_v2_models import CrossBookUnderstanding
+
     cb_understanding = CrossBookUnderstanding(**understanding)
     query_builder = BU2CrossBookQuery(cb_understanding)
 
