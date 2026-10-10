@@ -302,9 +302,13 @@ class ChapterUnderstandingProducer:
             f"Extract the structure. Respond with exactly this JSON shape:\n{_schema_hint()}"
         )
 
+        # Chinese answers cost roughly twice the tokens of English ones; at
+        # 1600 they were cut off mid-JSON and every chapter was asked again.
+        max_tokens = 2800 if _language_rule(chapter.text[:4000]) else 1600
+
         def _ask() -> dict:
             resp = self.provider.complete(
-                prompt, system=_SYSTEM, json_mode=True, max_tokens=1600, temperature=0.0
+                prompt, system=_SYSTEM, json_mode=True, max_tokens=max_tokens, temperature=0.0
             )
             try:
                 data = resp.json()
