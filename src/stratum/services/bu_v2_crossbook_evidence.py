@@ -7,11 +7,10 @@ Maintains evidence independence - never pretends Book B confirms Book A.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from stratum.knowledge.bu_v2_models import (
-    BookEvidenceMap,
     BookSynthesis,
     CrossBookEvidence,
     CrossBookEvidenceRelation,
@@ -28,6 +27,7 @@ def _stable_id(prefix: str, *parts: str) -> str:
 
 def _normalize_text(text: str) -> str:
     import re
+
     text = text.lower().strip()
     text = re.sub(r"[^\w\s]", " ", text)
     text = re.sub(r"\s+", " ", text)
@@ -73,17 +73,19 @@ class BU2CrossBookEvidenceComparator:
 
             book_evidence = []
             for entry in synth.evidence_map.entries:
-                book_evidence.append({
-                    "evidence_id": entry.claim_id,  # Using claim_id as proxy
-                    "claim_id": entry.claim_id,
-                    "claim_statement": entry.claim_statement,
-                    "evidence_ids": entry.evidence_ids,
-                    "evidence_strengths": entry.evidence_strengths,
-                    "argument_ids": entry.argument_ids,
-                    "chapter_ids": entry.chapter_ids,
-                    "is_supported": entry.is_supported,
-                    "provenance": entry.provenance,
-                })
+                book_evidence.append(
+                    {
+                        "evidence_id": entry.claim_id,  # Using claim_id as proxy
+                        "claim_id": entry.claim_id,
+                        "claim_statement": entry.claim_statement,
+                        "evidence_ids": entry.evidence_ids,
+                        "evidence_strengths": entry.evidence_strengths,
+                        "argument_ids": entry.argument_ids,
+                        "chapter_ids": entry.chapter_ids,
+                        "is_supported": entry.is_supported,
+                        "provenance": entry.provenance,
+                    }
+                )
             all_evidence[bu.book_id] = book_evidence
 
         return all_evidence
@@ -91,7 +93,9 @@ class BU2CrossBookEvidenceComparator:
     def _compute_evidence_similarity(self, e1: dict, e2: dict) -> dict[str, float]:
         """Compute similarity metrics between two evidence entries."""
         return {
-            "claim": _jaccard_similarity(e1.get("claim_statement", ""), e2.get("claim_statement", "")),
+            "claim": _jaccard_similarity(
+                e1.get("claim_statement", ""), e2.get("claim_statement", "")
+            ),
             "evidence_overlap": _jaccard_similarity(
                 " ".join(e1.get("evidence_ids", [])), " ".join(e2.get("evidence_ids", []))
             ),
@@ -153,7 +157,9 @@ class BU2CrossBookEvidenceComparator:
         for book_id, entries in all_evidence.items():
             for entry in entries:
                 # Use first evidence_id as primary
-                primary_ev_id = entry.get("evidence_ids", [""])[0] if entry.get("evidence_ids") else ""
+                primary_ev_id = (
+                    entry.get("evidence_ids", [""])[0] if entry.get("evidence_ids") else ""
+                )
 
                 cb = CrossBookEvidence(
                     evidence_id=_stable_id("cbe", book_id, entry["claim_id"]),
@@ -201,11 +207,13 @@ class BU2CrossBookEvidenceComparator:
                         confidence = round(avg_sim, 3)
 
                         relation = CrossBookEvidenceRelation(
-                            relation_id=_stable_id("ebr", book_a_id, e1["claim_id"], book_b_id, e2["claim_id"]),
+                            relation_id=_stable_id(
+                                "ebr", book_a_id, e1["claim_id"], book_b_id, e2["claim_id"]
+                            ),
                             source_evidence=CrossBookEvidence(
                                 evidence_id=_stable_id("cbe", book_a_id, e1["claim_id"]),
                                 book_id=book_a_id,
-                                evidence_ref=e1.get("evidence_ids", [""])[0],
+                                evidence_ref=(e1.get("evidence_ids") or [""])[0],
                                 claim_id=e1["claim_id"],
                                 locator=f"chapters:{','.join(e1.get('chapter_ids', [])[:3])}",
                                 strength=EvidenceStrengthP13.MODEL_INFERENCE,
@@ -213,7 +221,7 @@ class BU2CrossBookEvidenceComparator:
                             target_evidence=CrossBookEvidence(
                                 evidence_id=_stable_id("cbe", book_b_id, e2["claim_id"]),
                                 book_id=book_b_id,
-                                evidence_ref=e2.get("evidence_ids", [""])[0],
+                                evidence_ref=(e2.get("evidence_ids") or [""])[0],
                                 claim_id=e2["claim_id"],
                                 locator=f"chapters:{','.join(e2.get('chapter_ids', [])[:3])}",
                                 strength=EvidenceStrengthP13.MODEL_INFERENCE,
@@ -251,7 +259,10 @@ class BU2CrossBookEvidenceComparator:
         for ce in crossbook_evidence:
             traceability[ce.evidence_id] = [ce.book_id]
         for rel in relations:
-            traceability[rel.relation_id] = [rel.source_evidence.book_id, rel.target_evidence.book_id]
+            traceability[rel.relation_id] = [
+                rel.source_evidence.book_id,
+                rel.target_evidence.book_id,
+            ]
 
         return EvidenceComparisonResult(
             crossbook_evidence=crossbook_evidence,
