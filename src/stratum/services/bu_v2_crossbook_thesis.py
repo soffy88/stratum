@@ -53,6 +53,10 @@ class ThesisComparisonResult:
     traceability: dict[str, list[str]] = field(default_factory=dict)
 
 
+# Minimum statement overlap before a type/indicator rule may call it EXTENDS.
+_EXTENDS_TOPIC_FLOOR = 0.1
+
+
 class BU2CrossBookThesisComparator:
     """Compares theses across independently understood books."""
 
@@ -167,6 +171,11 @@ class BU2CrossBookThesisComparator:
 
     def _is_extends(self, t1: "BookThesis", t2: "BookThesis", sim: dict[str, float]) -> bool:
         """Detect EXTENDS: general -> specific, problem -> solution, claim -> evidence."""
+        # The type and indicator rules below say nothing about topic: without a
+        # floor every PROBLEM thesis "extended" every CORE thesis of the other
+        # book, and any statement containing "theorem" extended everything.
+        if sim["statement"] < _EXTENDS_TOPIC_FLOOR:
+            return False
         # Problem -> Solution (type-based, doesn't require high text similarity)
         if t1.type == "PROBLEM" and t2.type in ("CORE", "SUPPORTING"):
             return True

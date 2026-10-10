@@ -298,11 +298,11 @@ def understanding_row_view(row: dict | None) -> dict | None:
 _CJK_CHARS = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]")
 
 
-def is_cjk_synthesis(synth: BookSynthesis, sample: int = 4000) -> bool:
-    text = json.dumps(synth.model_dump(mode="json"), ensure_ascii=False)[: sample * 4]
-    cjk = len(_CJK_CHARS.findall(text))
-    letters = len(re.findall(r"[A-Za-z]", text))
-    return cjk > 50 and cjk >= letters * 0.2
+def is_cjk_synthesis(synth: BookSynthesis) -> bool:
+    """True when most of the synthesis prose is Chinese (ids and keys ignored)."""
+    found: dict[str, None] = {}
+    _collect_cjk(synth.model_dump(mode="json"), found)
+    return len(found) >= 5
 
 
 def _collect_cjk(value: Any, out: dict[str, None]) -> None:
