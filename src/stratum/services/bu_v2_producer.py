@@ -22,8 +22,9 @@ that would take down a whole book run over one chapter.
 
 from __future__ import annotations
 
+import os
+
 import hashlib
-import json
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -36,6 +37,9 @@ from stratum.knowledge.bu_v2_models import (
 from stratum.services.bu_v2_provider import (
     ModelProvider,
     ProviderError,
+    ProviderUnavailable,
+    _is_transient,
+    call_with_retry,
     resolve_provider,
 )
 
@@ -58,7 +62,9 @@ class EvidenceArtifact:
     content_hash: str
 
     @staticmethod
-    def make(run_id: str, chapter_id: str, kind: str, locator: str, quote: str) -> "EvidenceArtifact":
+    def make(
+        run_id: str, chapter_id: str, kind: str, locator: str, quote: str
+    ) -> "EvidenceArtifact":
         h = hashlib.sha256(f"{chapter_id}|{locator}|{quote}".encode()).hexdigest()[:16]
         return EvidenceArtifact(
             evidence_id=f"ev_{h}",
@@ -91,13 +97,23 @@ class ChapterRole(str):
 # concept_building, and it is an application chapter. The first match wins, so
 # the more specific intent comes first.
 ROLE_HINTS = {
-    "application": [r"\bapplications?\b", r"\busing\b", r"\btechniques?\b",
-                    r"\bprojections?\b", r"\bgeometry of\b"],
+    "application": [
+        r"\bapplications?\b",
+        r"\busing\b",
+        r"\btechniques?\b",
+        r"\bprojections?\b",
+        r"\bgeometry of\b",
+    ],
     "summary": [r"\bsummary\b", r"\breview\b", r"\bconclusion\b", r"\brevisit\b"],
     "foundation": [r"\blimits?\b", r"\bdefinitions?\b", r"\baxioms?\b", r"\bfoundations?\b"],
     "introduction": [r"\bintroduction\b", r"\bpreface\b", r"\bwhy we (?:study|need)\b"],
-    "concept_building": [r"\bderivatives?\b", r"\bintegrals?\b", r"\bvectors?\b",
-                         r"\bseries\b", r"\bequations?\b"],
+    "concept_building": [
+        r"\bderivatives?\b",
+        r"\bintegrals?\b",
+        r"\bvectors?\b",
+        r"\bseries\b",
+        r"\bequations?\b",
+    ],
 }
 
 
@@ -176,6 +192,10 @@ class Chapter:
             if len(frag) >= 12:
                 i = self.text.find(frag)
         if i == -1:
+            # CJK OCR text carries stray spaces and line breaks between
+            # characters, so retry ignoring whitespace inside the needle.
+            i = _fuzzy_find(self.text, needle[:40])
+        if i == -1:
             return None
         return (self.locator(i), self.text[i : i + window].strip())
 
@@ -188,10 +208,20 @@ class Chapter:
         the span genuinely discusses that concept, which is what §11 asks for,
         and the term is the model's or the chapter's, never invented text.
         """
-        if not term or len(term) < 3:
+        term = (term or "").strip()
+        if _CJK_RE.search(term):
+            # Chinese has no word boundaries and its terms are often two
+            # characters (极限, 导数), so match the characters directly.
+            if len(term) < 2:
+                return None
+            i = _fuzzy_find(self.text, term)
+            if i == -1:
+                return None
+            return (self.locator(i), self.text[i : i + window].strip())
+        if len(term) < 3:
             return None
         # Word-boundary match so "range" does not land inside "arrange".
-        pattern = re.compile(r"\b" + re.escape(term.strip()) + r"\b", re.I)
+        pattern = re.compile(r"\b" + re.escape(term) + r"\b", re.I)
         m = pattern.search(self.text)
         if not m:
             return None
@@ -232,7 +262,7 @@ def _schema_hint() -> str:
         '"terminology":[{"term":"<word>","meaning":"<definition as the chapter gives it>"}]}'
         '\n\nExample for a chapter on derivatives: chapter_thesis = "A derivative '
         'measures instantaneous rate of change". Never copy the placeholder text '
-        'above as a value.'
+        "above as a value."
     )
 
 
@@ -268,15 +298,38 @@ class ChapterUnderstandingProducer:
             f"CHAPTER: {chapter.title}\n"
             f"CHARACTERS: {chapter.char_count}\n\n"
             f"CHAPTER TEXT:\n{chapter.text[: self.max_chars]}\n\n"
+            f"{_language_rule(chapter.text[: self.max_chars])}"
             f"Extract the structure. Respond with exactly this JSON shape:\n{_schema_hint()}"
         )
-        try:
+
+        # Chinese answers cost roughly twice the tokens of English ones; at
+        # 1600 they were cut off mid-JSON and every chapter was asked again.
+        max_tokens = 2800 if _language_rule(chapter.text[:4000]) else 1600
+
+        def _ask() -> dict:
             resp = self.provider.complete(
-                prompt, system=_SYSTEM, json_mode=True, max_tokens=1600, temperature=0.0
+                prompt, system=_SYSTEM, json_mode=True, max_tokens=max_tokens, temperature=0.0
             )
-            data = resp.json()
+            try:
+                data = resp.json()
+            except ValueError as exc:
+                raise ProviderError(str(exc)) from exc
+            # Some models wrap the object in a one-element list; unwrap it.
+            if isinstance(data, list) and data and all(isinstance(x, dict) for x in data):
+                data = data[0]
             if not isinstance(data, dict):
                 raise ProviderError(f"expected a JSON object, got {type(data).__name__}")
+            return data
+
+        # A rotating gateway routes each call to a different upstream, so a
+        # malformed answer or an exhausted gateway retry budget is worth asking
+        # again. Provider-level transient retries happen inside complete().
+        try:
+            data = call_with_retry(
+                _ask,
+                attempts=int(os.environ.get("BU2_CHAPTER_ATTEMPTS", "3")),
+                retry_if=lambda exc: not isinstance(exc, ProviderUnavailable) or _is_transient(exc),
+            )
         except (ProviderError, ValueError) as exc:
             data = {}
             failure = str(exc)
@@ -373,7 +426,9 @@ class ChapterUnderstandingProducer:
             strengths[ev.evidence_id] = "DEFINITION"
 
         concepts_introduced = [
-            _as_str(c.get("name")) for c in _as_list(data.get("concepts")) if _as_str(c.get("name") if isinstance(c, dict) else c)
+            _as_str(c.get("name"))
+            for c in _as_list(data.get("concepts"))
+            if _as_str(c.get("name") if isinstance(c, dict) else c)
         ]
         mechanisms = [
             _as_str(m.get("cause") or m.get("process"))
@@ -405,9 +460,7 @@ class ChapterUnderstandingProducer:
                 # §11: carried on the understanding so the binding is checkable
                 # rather than inferred by the consumer.
                 evidence_strengths=strengths,
-                assumptions=[
-                    _as_str(u) for u in _as_list(data.get("uncertainties")) if _as_str(u)
-                ],
+                assumptions=[_as_str(u) for u in _as_list(data.get("uncertainties")) if _as_str(u)],
                 qualifications=[
                     _as_str(u) for u in _as_list(data.get("uncertainties")) if _as_str(u)
                 ],
@@ -428,7 +481,9 @@ class ChapterUnderstandingProducer:
         derived property rather than a concatenation.
         """
         concepts = [
-            _as_str(c.get("name")) for c in _as_list(data.get("concepts")) if _as_str(c.get("name") if isinstance(c, dict) else c)
+            _as_str(c.get("name"))
+            for c in _as_list(data.get("concepts"))
+            if _as_str(c.get("name") if isinstance(c, dict) else c)
         ]
         claims = [
             _as_str(c.get("text"))
@@ -448,9 +503,7 @@ class ChapterUnderstandingProducer:
             ]
             if prior_ids
             else [],
-            opens_questions=[
-                _as_str(u) for u in _as_list(data.get("uncertainties")) if _as_str(u)
-            ],
+            opens_questions=[_as_str(u) for u in _as_list(data.get("uncertainties")) if _as_str(u)],
             resolves_questions=[],
         )
 
@@ -488,7 +541,11 @@ def classify_role(chapter: "Chapter") -> str:
         return chapter.role
     # A chapter that introduces nothing new but depends on earlier ones is a
     # transition: it carries the book forward rather than adding to it.
-    if chapter.context and chapter.context.previous_concepts and not _mentions_new_concepts(chapter):
+    if (
+        chapter.context
+        and chapter.context.previous_concepts
+        and not _mentions_new_concepts(chapter)
+    ):
         chapter.role = ChapterRole.TRANSITION
         return chapter.role
     chapter.role = ChapterRole.CONCEPT_BUILDING
@@ -539,11 +596,86 @@ def _as_str(v: Any) -> str:
 
 
 _STOPWORDS = {
-    "the", "a", "an", "is", "are", "was", "were", "be", "been", "of", "to", "in",
-    "on", "at", "by", "for", "with", "that", "this", "these", "those", "and", "or",
-    "it", "its", "as", "from", "if", "then", "than", "which", "when", "can", "will",
-    "any", "all", "each", "not", "but", "so", "we", "you", "they", "he", "she",
+    "the",
+    "a",
+    "an",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "of",
+    "to",
+    "in",
+    "on",
+    "at",
+    "by",
+    "for",
+    "with",
+    "that",
+    "this",
+    "these",
+    "those",
+    "and",
+    "or",
+    "it",
+    "its",
+    "as",
+    "from",
+    "if",
+    "then",
+    "than",
+    "which",
+    "when",
+    "can",
+    "will",
+    "any",
+    "all",
+    "each",
+    "not",
+    "but",
+    "so",
+    "we",
+    "you",
+    "they",
+    "he",
+    "she",
 }
+
+
+def _language_rule(text: str) -> str:
+    """Tell the model to answer in the chapter's own language.
+
+    Evidence is located by matching concept names and quotes against the
+    source text. A model that answers a Chinese chapter in English produces
+    names and quotes that occur nowhere in it, so nothing verifies.
+    """
+    sample = text[:4000]
+    cjk = len(_CJK_RE.findall(sample))
+    letters = len(re.findall(r"[A-Za-z]", sample))
+    if cjk and cjk >= letters * 0.5:
+        return (
+            "LANGUAGE: the chapter is written in Chinese. Write every value in "
+            "Chinese. Concept names and terms must be the exact Chinese words "
+            "the text uses (e.g. 极限, 导数), and every quote must be copied "
+            "character for character from the Chinese text above. Do not "
+            "translate.\n\n"
+        )
+    return ""
+
+
+_CJK_RE = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]")
+
+
+def _fuzzy_find(text: str, needle: str) -> int:
+    """Find ``needle`` in ``text`` ignoring whitespace; -1 when absent."""
+    chars = [c for c in (needle or "") if not c.isspace()]
+    if len(chars) < 2:
+        return -1
+    pattern = r"\s*".join(re.escape(c) for c in chars)
+    m = re.search(pattern, text or "")
+    return m.start() if m else -1
 
 
 def _significant_terms(text: str, limit: int = 6) -> list[str]:
@@ -554,6 +686,11 @@ def _significant_terms(text: str, limit: int = 6) -> list[str]:
     nothing.
     """
     words = re.findall(r"[A-Za-z][A-Za-z\-]{3,}", text or "")
+    # Chinese claims: take CJK runs split on common particles as candidates.
+    for run in re.findall(r"[\u3400-\u9fff]{2,}", text or ""):
+        for part in re.split(r"[的是在和与及或为了对把被由中上下等]", run):
+            if 2 <= len(part) <= 8:
+                words.append(part)
     seen: list[str] = []
     for w in words:
         lw = w.lower()

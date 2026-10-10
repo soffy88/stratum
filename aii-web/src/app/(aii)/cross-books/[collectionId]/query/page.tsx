@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { use, useState } from 'react';
 import { OEmptyState, OLoadingState, OErrorState } from '@helios/blocks';
 import * as api from '@/aii/lib/api-client';
 import Link from 'next/link';
@@ -32,10 +32,11 @@ const QUERY_TYPES = [
   { value: 'synthesis', label: '综合报告', icon: '📊' },
 ];
 
-export default function CrossBookQueryPage({ params }: { params: { collectionId: string } }) {
-  const [queryType, setQueryType] = useState<'concepts'>('concepts');
+export default function CrossBookQueryPage({ params: paramsPromise }: { params: Promise<{ collectionId: string }> }) {
+  const params = use(paramsPromise);
+  const [queryType, setQueryType] = useState<string>('concepts');
   const [filter, setFilter] = useState<Record<string, string>>({});
-  const [state, run] = useState<{ loading: boolean; data?: CrossBookQueryResponse; error?: string }>({
+  const [state, setState] = useState<{ loading: boolean; data?: CrossBookQueryResponse; error?: string }>({
     loading: false,
   });
 
@@ -158,11 +159,11 @@ export default function CrossBookQueryPage({ params }: { params: { collectionId:
                 <div className="mt-3 text-sm text-[color:var(--text-secondary)] font-mono">
                   <pre className="whitespace-pre-wrap">{JSON.stringify(item, null, 2)}</pre>
                 </div>
-                {state.data.traceability && Object.keys(state.data.traceability).length > 0 && (
+                {state.data?.traceability && Object.keys(state.data.traceability).length > 0 && (
                   <details className="mt-3">
                     <summary className="text-xs text-[color:var(--text-tertiary)] cursor-pointer">追溯链</summary>
                     <pre className="mt-2 whitespace-pre-wrap text-xs text-[color:var(--text-tertiary)] font-mono">
-                      {JSON.stringify(state.data.traceability, null, 2)}
+                      {JSON.stringify(state.data?.traceability, null, 2)}
                     </pre>
                   </details>
                 )}

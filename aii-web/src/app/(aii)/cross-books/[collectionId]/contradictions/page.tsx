@@ -3,7 +3,7 @@
  */
 'use client';
 
-import { useEffect } from 'react';
+import { use, useEffect } from 'react';
 import { OEmptyState, OLoadingState, OErrorState } from '@helios/blocks';
 import { useApi } from '@/aii/hooks/useApi';
 import * as api from '@/aii/lib/api-client';
@@ -38,7 +38,8 @@ const TYPE_COLORS: Record<string, string> = {
   UNKNOWN: '#6b7280',
 };
 
-export default function CrossBookContradictionsPage({ params }: { params: { collectionId: string } }) {
+export default function CrossBookContradictionsPage({ params: paramsPromise }: { params: Promise<{ collectionId: string }> }) {
+  const params = use(paramsPromise);
   const [state, run] = useApi((id: string) => api.getContradictions(id));
 
   useEffect(() => {

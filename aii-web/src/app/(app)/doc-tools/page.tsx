@@ -5,9 +5,9 @@ import { toast } from 'sonner';
 
 type DocumentAnalysisResult = {
   pdf_type?: string;
-  confidence?: number;
+  confidence?: number | string;
   page_count?: number;
-  chapters?: number;
+  chapters?: number | string;
   pages_needing_ocr?: number[];
   category?: string;
 };
@@ -76,16 +76,6 @@ export default function DocToolsPage() {
   }, [genType, genTopic, genPrompt]);
 
   // ── 分析 ──
-  type AnalyzeResult = {
-    pdf_type?: string;
-    confidence?: number | string;
-    page_count?: number;
-    chapters?: number | string;
-    pages_needing_ocr?: number[];
-    category?: string;
-  };
-  const [anFile, setAnFile] = useState<File | null>(null);
-  const [anResult, setAnResult] = useState<AnalyzeResult | null>(null);
 
   // ── KU 证据审查 ──
   const [kuSub, setKuSub] = useState('');

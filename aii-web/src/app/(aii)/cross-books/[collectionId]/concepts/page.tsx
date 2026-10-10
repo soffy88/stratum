@@ -3,7 +3,7 @@
  */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { OEmptyState, OLoadingState, OErrorState } from '@helios/blocks';
 import { useApi } from '@/aii/hooks/useApi';
 import * as api from '@/aii/lib/api-client';
@@ -31,7 +31,8 @@ const RELATION_ICONS: Record<string, string> = {
   UNKNOWN: '⚪',
 };
 
-export default function CrossBookConceptsPage({ params }: { params: { collectionId: string } }) {
+export default function CrossBookConceptsPage({ params: paramsPromise }: { params: Promise<{ collectionId: string }> }) {
+  const params = use(paramsPromise);
   const [relationFilter, setRelationFilter] = useState<string>('all');
   const [state, run] = useApi((id: string) => api.getConceptRelations(id, relationFilter === 'all' ? undefined : relationFilter));
 

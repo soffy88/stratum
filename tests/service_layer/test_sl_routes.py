@@ -19,9 +19,8 @@ from __future__ import annotations
 
 import io
 import os
-import sys
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import duckdb
 import pytest
@@ -194,42 +193,65 @@ def test_inbox_submit_returns_upload_id_and_status(client, tmp_path):
 
 
 def test_search_idor_post_filter(client):
-    def _fake_result(rid, uid):
-        r = MagicMock()
-        r.id = rid
-        r.user_id = uid
-        r.type = "substrate"
-        r.title = f"doc-{rid}"
-        r.score = 0.9
-        r.highlight = ""
-        r.citation = None
-        return r
+    """/search must never hand a caller another user's substrate.
 
-    fake_output = MagicMock()
-    fake_output.results = [
-        _fake_result("R1", "user-alice"),  # caller → keep
-        _fake_result("R2", "user-eve"),  # other user → filter out
-        _fake_result("R3", None),  # no user_id → pass-through
-    ]
-    fake_output.citations = []
-    fake_output.search_time_ms = 5
-    fake_output.scope_hit_counts = {}
+    The route is a shell over KnowledgeView (the single retrieval plane), which
+    resolves every hit's owner from ``substrates`` and fails closed when a hit is
+    foreign or unowned. Drive the real route + KnowledgeView with a retrieval
+    engine that leaks a foreign hit and check it never reaches the caller.
+    """
+    from stratum.services.knowledge_view import KnowledgeViewInvariantError
+    from stratum.services.retrieval_engine import RetrievalResponse, RetrievalResult
+    from stratum.utils.user_id_hash import hash_user_id
 
-    # search_utils imports oprim/oskill at module level (absent on dev hosts);
-    # the route's function-local import resolves against this stub.
-    search_utils_stub = MagicMock()
-    with (
-        patch("stratum.api.routers.search._HAS_SEARCH", True),
-        patch("stratum.api.routers.search.cross_layer_search", return_value=fake_output),
-        patch.dict(sys.modules, {"stratum.api.search_utils": search_utils_stub}),
-    ):
-        r = client.post("/api/v1/search", json={"query": "test"}, headers=_auth("user-alice"))
+    owners = {
+        "R1": "user-alice",  # caller (raw JWT subject)
+        "R3": hash_user_id("user-alice"),  # caller (hashed id, as substrates store it)
+        "R2": "user-eve",  # another user
+    }
 
+    def _hit(rid: str) -> RetrievalResult:
+        return RetrievalResult(
+            uri=f"stratum://substrate/{rid}",
+            node_type="substrate",
+            ref_id=rid,
+            layer="L0",
+            content=f"content of {rid}",
+            score=0.9,
+        )
+
+    def _engine(*hits: str):
+        def _retrieve(**kwargs):
+            assert kwargs["user_id"] == "user-alice", "retrieval must be scoped to the caller"
+            return RetrievalResponse(
+                query=kwargs["query"], results=[_hit(h) for h in hits], trajectory=[], total_ms=1
+            )
+
+        return _retrieve
+
+    def _owner_lookup(sql, params=None, *args, **kwargs):
+        ids = (params or {}).get("ids", [])
+        return [{"id": i, "title": f"doc-{i}", "user_id": owners[i]} for i in ids if i in owners]
+
+    def _search(*hits: str):
+        with (
+            patch("stratum.services.retrieval_engine.retrieve", _engine(*hits)),
+            patch("stratum.db.query", _owner_lookup),
+        ):
+            return client.post(
+                "/api/v1/search", json={"query": "test"}, headers=_auth("user-alice")
+            )
+
+    # Only the caller's own substrates (raw or hashed owner id) → all returned.
+    r = _search("R1", "R3")
     assert r.status_code == 200
     ids = [item["id"] for item in r.json()["results"]]
-    assert "R2" not in ids
-    assert "R1" in ids
-    assert "R3" in ids
+    assert ids == ["R1", "R3"]
+
+    # A foreign hit in the candidate set → the request fails closed; R2's
+    # content is never serialised to the caller.
+    with pytest.raises(KnowledgeViewInvariantError, match="foreign"):
+        _search("R1", "R2")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
