@@ -38,7 +38,9 @@ def _jaccard_similarity(a: str, b: str) -> float:
     set_a = set(_normalize_text(a).split())
     set_b = set(_normalize_text(b).split())
     if not set_a and not set_b:
-        return 1.0
+        # Two empty fields share nothing; scoring them 1.0 manufactured
+        # matches between unrelated items whose optional fields were blank.
+        return 0.0
     if not set_a or not set_b:
         return 0.0
     return len(set_a & set_b) / len(set_a | set_b)

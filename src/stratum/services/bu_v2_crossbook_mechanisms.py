@@ -6,12 +6,11 @@ Compares mechanisms across independently understood books with full traceability
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from stratum.knowledge.bu_v2_models import (
     BookMechanism,
-    BookMechanismSystem,
     BookSynthesis,
     CrossBookMechanism,
     CrossBookMechanismRelation,
@@ -27,6 +26,7 @@ def _stable_id(prefix: str, *parts: str) -> str:
 
 def _normalize_text(text: str) -> str:
     import re
+
     text = text.lower().strip()
     text = re.sub(r"[^\w\s]", " ", text)
     text = re.sub(r"\s+", " ", text)
@@ -37,7 +37,9 @@ def _jaccard_similarity(a: str, b: str) -> float:
     set_a = set(_normalize_text(a).split())
     set_b = set(_normalize_text(b).split())
     if not set_a and not set_b:
-        return 1.0
+        # Two empty fields share nothing; scoring them 1.0 manufactured
+        # matches between unrelated items whose optional fields were blank.
+        return 0.0
     if not set_a or not set_b:
         return 0.0
     return len(set_a & set_b) / len(set_a | set_b)
@@ -58,7 +60,9 @@ class BU2CrossBookMechanismComparator:
     def __init__(self, provider=None):
         self.provider = provider
 
-    def _extract_mechanisms(self, books: list[tuple[Any, BookSynthesis]]) -> dict[str, list[BookMechanism]]:
+    def _extract_mechanisms(
+        self, books: list[tuple[Any, BookSynthesis]]
+    ) -> dict[str, list[BookMechanism]]:
         """Extract all mechanisms from all books."""
         all_mechs: dict[str, list[BookMechanism]] = {}
 
@@ -69,7 +73,9 @@ class BU2CrossBookMechanismComparator:
 
         return all_mechs
 
-    def _compute_mechanism_similarity(self, m1: BookMechanism, m2: BookMechanism) -> dict[str, float]:
+    def _compute_mechanism_similarity(
+        self, m1: BookMechanism, m2: BookMechanism
+    ) -> dict[str, float]:
         """Compute similarity metrics between two mechanisms."""
         return {
             "trigger": _jaccard_similarity(m1.trigger, m2.trigger),
@@ -229,7 +235,10 @@ class BU2CrossBookMechanismComparator:
         for cm in crossbook_mechs:
             traceability[cm.mechanism_id] = [cm.book_id]
         for rel in relations:
-            traceability[rel.relation_id] = [rel.source_mechanism.book_id, rel.target_mechanism.book_id]
+            traceability[rel.relation_id] = [
+                rel.source_mechanism.book_id,
+                rel.target_mechanism.book_id,
+            ]
 
         return MechanismComparisonResult(
             crossbook_mechanisms=crossbook_mechs,

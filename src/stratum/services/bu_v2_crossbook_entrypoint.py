@@ -6,6 +6,7 @@ Orchestrates the complete cross-book intelligence pipeline.
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -56,8 +57,10 @@ class BU2P14Runner:
         persist: bool = False,
         user_id: str = "",
         use_db: bool | None = None,
+        provider: Any = None,
     ):
         self.persist = persist
+        self.provider = provider
         self.user_id = user_id
         # Without an injected reader the runner loads from the database
         # (BU2 + P13 synthesis per book); tests inject books directly.
@@ -75,6 +78,22 @@ class BU2P14Runner:
         self.synthesis_builder = BU2CrossBookSynthesisBuilder()
         self.query_builder = BU2CrossBookQueryBuilder
         self.expr_generator = BU2CrossBookExpressionGenerator()
+
+    def _pivot(self, books):
+        """Translate CJK books to English when the collection mixes languages."""
+        from stratum.services.bu_v2_p14_loader import is_cjk_synthesis, pivot_books
+
+        flags = [is_cjk_synthesis(s) for _, s in books]
+        if all(flags) or not any(flags):
+            return books, []
+        try:
+            from stratum.services.bu_v2_provider import resolve_provider
+
+            provider = self.provider or resolve_provider()
+        except Exception as exc:  # noqa: BLE001 - compare untranslated, say so
+            return books, [f"cross-language pivot skipped: {exc}"]
+        cache_dir = os.environ.get("BU2_P14_CACHE_DIR") or os.path.expanduser("~/.stratum/p14")
+        return pivot_books(books, provider, cache_dir=cache_dir)
 
     def create_run(self, collection_id: str) -> str:
         """Create a new P14 run."""
@@ -123,6 +142,9 @@ class BU2P14Runner:
                     books.append((bu, synth))
                 else:
                     failures.append(note)
+            if len(books) >= 2 and os.environ.get("BU2_P14_PIVOT", "en") == "en":
+                books, pivot_notes = self._pivot(books)
+                self.notes.extend(pivot_notes)
             stats["load_notes"] = list(self.notes)
         elif books is None:
             books = []
@@ -254,6 +276,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--name", default="", help="collection name when using --books")
     parser.add_argument("--user-id", default="", help="owner for the persisted collection")
+    parser.add_argument(
+        "--provider", default=None, help="model provider for the cross-language pivot"
+    )
+    parser.add_argument("--model", default=None)
     parser.add_argument("--persist", action="store_true", help="write to database")
     parser.add_argument("--json", action="store_true", help="emit JSON instead of text")
     args = parser.parse_args(argv)
@@ -288,7 +314,12 @@ def main(argv: list[str] | None = None) -> int:
         )
         user_id = rows[0]["user_id"] if rows else ""
 
-    runner = BU2P14Runner(persist=args.persist, user_id=user_id)
+    provider = None
+    if args.provider or args.model:
+        from stratum.services.bu_v2_provider import resolve_provider
+
+        provider = resolve_provider(args.provider, model=args.model)
+    runner = BU2P14Runner(persist=args.persist, user_id=user_id, provider=provider)
     result = runner.execute(collection)
 
     if args.json:

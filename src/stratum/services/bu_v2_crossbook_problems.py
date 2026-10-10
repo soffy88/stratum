@@ -6,17 +6,14 @@ Identifies and aligns problems/questions across independently understood books.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from stratum.knowledge.bu_v2_models import (
     BookSynthesis,
-    BookThesis,
-    ThesisType,
     CrossBookProblem,
     CrossBookProblemRelation,
     CrossBookProblemRelationType,
-    ThesisProvenance,
 )
 
 
@@ -27,6 +24,7 @@ def _stable_id(prefix: str, *parts: str) -> str:
 
 def _normalize_text(text: str) -> str:
     import re
+
     text = text.lower().strip()
     text = re.sub(r"[^\w\s]", " ", text)
     text = re.sub(r"\s+", " ", text)
@@ -37,7 +35,9 @@ def _jaccard_similarity(a: str, b: str) -> float:
     set_a = set(_normalize_text(a).split())
     set_b = set(_normalize_text(b).split())
     if not set_a and not set_b:
-        return 1.0
+        # Two empty fields share nothing; scoring them 1.0 manufactured
+        # matches between unrelated items whose optional fields were blank.
+        return 0.0
     if not set_a or not set_b:
         return 0.0
     return len(set_a & set_b) / len(set_a | set_b)
@@ -69,21 +69,25 @@ class BU2CrossBookProblemAligner:
             problems = []
             # Extract problem statements and central questions
             for t in synth.thesis.problem_statements:
-                problems.append({
-                    "problem_id": t.id,
-                    "statement": t.statement,
-                    "type": "PROBLEM",
-                    "confidence": t.confidence,
-                    "provenance": t.provenance,
-                })
+                problems.append(
+                    {
+                        "problem_id": t.id,
+                        "statement": t.statement,
+                        "type": "PROBLEM",
+                        "confidence": t.confidence,
+                        "provenance": t.provenance,
+                    }
+                )
             for t in synth.thesis.central_questions:
-                problems.append({
-                    "problem_id": t.id,
-                    "statement": t.statement,
-                    "type": "QUESTION",
-                    "confidence": t.confidence,
-                    "provenance": t.provenance,
-                })
+                problems.append(
+                    {
+                        "problem_id": t.id,
+                        "statement": t.statement,
+                        "type": "QUESTION",
+                        "confidence": t.confidence,
+                        "provenance": t.provenance,
+                    }
+                )
             all_problems[bu.book_id] = problems
 
         return all_problems
@@ -163,7 +167,9 @@ class BU2CrossBookProblemAligner:
                         confidence = round(sim, 3)
 
                         relation = CrossBookProblemRelation(
-                            relation_id=_stable_id("pbr", book_a_id, p1["problem_id"], book_b_id, p2["problem_id"]),
+                            relation_id=_stable_id(
+                                "pbr", book_a_id, p1["problem_id"], book_b_id, p2["problem_id"]
+                            ),
                             source_problem=CrossBookProblem(
                                 problem_id=_stable_id("cbp", book_a_id, p1["problem_id"]),
                                 book_id=book_a_id,

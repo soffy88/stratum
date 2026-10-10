@@ -8,13 +8,11 @@ from __future__ import annotations
 
 import hashlib
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from stratum.knowledge.bu_v2_models import (
-    ArgumentStatus,
     BookArgument,
-    BookArgumentSystem,
     BookSynthesis,
     CrossBookArgument,
     CrossBookArgumentRelation,
@@ -37,34 +35,33 @@ def _normalize_text(text: str) -> str:
     return text
 
 
-def _jaccard_similarity(a: str, b: str) -> float:
-    set_a = set(_normalize_text(a).split())
-    set_b = set(_normalize_text(b).split())
-    if not set_a and not set_b:
-        return 1.0
-    if not set_a or not set_b:
-        return 0.0
-    return len(set_a & set_b) / len(set_a | set_b)
-
-
 def _is_argument_extends(a1: "BookArgument", a2: "BookArgument") -> bool:
     """Detect EXTENDS: general argument -> specific argument."""
     # General -> Specific patterns
-    general_indicators = {"analyze", "analyzes", "study", "examine", "investigate"}
-    specific_indicators = {"instantaneous", "measure", "compute", "calculate", "derive", "limit", "quotient", "sum", "integral"}
-    
+    specific_indicators = {
+        "instantaneous",
+        "measure",
+        "compute",
+        "calculate",
+        "derive",
+        "limit",
+        "quotient",
+        "sum",
+        "integral",
+    }
+
     a1_what = _normalize_text(a1.what)
     a2_what = _normalize_text(a2.what)
     a1_words = set(a1_what.split())
     a2_words = set(a2_what.split())
-    
+
     a1_has_general = bool(a1_words & {"analyze", "analyzes", "study", "examine", "investigate"})
     a2_has_specific = bool(a2_words & specific_indicators)
-    
+
     # Check if a1 is more general (has general terms, fewer specific terms)
     a1_general_count = len(a1_words & {"analyze", "analyzes", "study", "examine", "investigate"})
     a2_specific_count = len(a2_words & specific_indicators)
-    
+
     if a1_has_general and a2_has_specific and a1_general_count >= a2_specific_count:
         return True
     return False
@@ -73,21 +70,45 @@ def _is_argument_extends(a1: "BookArgument", a2: "BookArgument") -> bool:
 def _is_argument_generalizes(a1: "BookArgument", a2: "BookArgument") -> bool:
     """Detect GENERALIZES: specific argument -> general argument."""
     # Specific -> General patterns
-    general_indicators = {"analyze", "analyzes", "study", "examine", "investigate"}
-    specific_indicators = {"instantaneous", "measure", "compute", "calculate", "derive", "limit", "quotient", "sum", "integral"}
-    
+
     a1_what = _normalize_text(a1.what)
     a2_what = _normalize_text(a2.what)
     a1_words = set(a1_what.split())
     a2_words = set(a2_what.split())
-    
-    a1_has_specific = bool(a1_words & {"instantaneous", "measure", "compute", "calculate", "derive", "limit", "quotient", "sum", "integral"})
+
+    a1_has_specific = bool(
+        a1_words
+        & {
+            "instantaneous",
+            "measure",
+            "compute",
+            "calculate",
+            "derive",
+            "limit",
+            "quotient",
+            "sum",
+            "integral",
+        }
+    )
     a2_has_general = bool(a2_words & {"analyze", "analyzes", "study", "examine", "investigate"})
-    
+
     # a1 is specific, a2 is general
-    a1_specific_count = len(a1_words & {"instantaneous", "measure", "compute", "calculate", "derive", "limit", "quotient", "sum", "integral"})
+    a1_specific_count = len(
+        a1_words
+        & {
+            "instantaneous",
+            "measure",
+            "compute",
+            "calculate",
+            "derive",
+            "limit",
+            "quotient",
+            "sum",
+            "integral",
+        }
+    )
     a2_general_count = len(a2_words & {"analyze", "analyzes", "study", "examine", "investigate"})
-    
+
     if a1_has_specific and a2_has_general and a1_specific_count >= a2_general_count:
         return True
     return False
@@ -97,10 +118,14 @@ def _jaccard_similarity(a: str, b: str) -> float:
     set_a = set(_normalize_text(a).split())
     set_b = set(_normalize_text(b).split())
     if not set_a and not set_b:
-        return 1.0
+        # Two empty fields share nothing; scoring them 1.0 manufactured
+        # matches between unrelated items whose optional fields were blank.
+        return 0.0
     if not set_a or not set_b:
         return 0.0
     return len(set_a & set_b) / len(set_a | set_b)
+
+
 @dataclass
 class ArgumentComparisonResult:
     """Result of argument comparison across books."""
@@ -117,7 +142,9 @@ class BU2CrossBookArgumentComparator:
     def __init__(self, provider=None):
         self.provider = provider
 
-    def _extract_arguments(self, books: list[tuple[Any, BookSynthesis]]) -> dict[str, list[BookArgument]]:
+    def _extract_arguments(
+        self, books: list[tuple[Any, BookSynthesis]]
+    ) -> dict[str, list[BookArgument]]:
         """Extract all arguments from all books with source context."""
         all_args: dict[str, list[BookArgument]] = {}
 
@@ -152,7 +179,7 @@ class BU2CrossBookArgumentComparator:
         """Determine the relation type between two arguments."""
 
         what_sim = similarity["what"]
-        why_sim = similarity["why"]
+        similarity["why"]
         level_match = similarity["level_match"]
 
         # Stage 1: Semantic direction detection (highest priority)
@@ -184,18 +211,22 @@ class BU2CrossBookArgumentComparator:
         """Detect theory-to-application or other transfers."""
 
         # Theory (book A) -> Application (book B)
-        if (a1.level <= 1 and a2.level >= 2 and
-            similarity["what"] > 0.4 and similarity["conclusion"] > 0.4):
+        if (
+            a1.level <= 1
+            and a2.level >= 2
+            and similarity["what"] > 0.4
+            and similarity["conclusion"] > 0.4
+        ):
             return CrossBookArgumentTransferType.THEORY_TO_APPLICATION
 
         # Foundation -> Extension
-        if (a1.level == 0 and a2.level >= 1 and
-            similarity["what"] > 0.5):
+        if a1.level == 0 and a2.level >= 1 and similarity["what"] > 0.5:
             return CrossBookArgumentTransferType.FOUNDATION_TO_EXTENSION
 
         # Concept -> Mechanism
-        if ("concept" in a1.what.lower() or "define" in a1.why.lower()) and \
-           ("mechanism" in a2.what.lower() or "process" in a2.how.lower()):
+        if ("concept" in a1.what.lower() or "define" in a1.why.lower()) and (
+            "mechanism" in a2.what.lower() or "process" in a2.how.lower()
+        ):
             return CrossBookArgumentTransferType.CONCEPT_TO_MECHANISM
 
         return None
@@ -255,7 +286,9 @@ class BU2CrossBookArgumentComparator:
                                 f"level_a={a1.level}, level_b={a2.level}",
                             ]
 
-                            avg_sim = sum(v for k, v in similarity.items() if k != "level_match") / 5
+                            avg_sim = (
+                                sum(v for k, v in similarity.items() if k != "level_match") / 5
+                            )
                             confidence = round(avg_sim, 3)
 
                             relation = CrossBookArgumentRelation(
@@ -342,7 +375,10 @@ class BU2CrossBookArgumentComparator:
         for ca in crossbook_args:
             traceability[ca.argument_id] = [ca.book_id]
         for rel in relations:
-            traceability[rel.relation_id] = [rel.source_argument.book_id, rel.target_argument.book_id]
+            traceability[rel.relation_id] = [
+                rel.source_argument.book_id,
+                rel.target_argument.book_id,
+            ]
         for xfer in transfers:
             traceability[xfer.transfer_id] = [xfer.source_book_id, xfer.target_book_id]
 
