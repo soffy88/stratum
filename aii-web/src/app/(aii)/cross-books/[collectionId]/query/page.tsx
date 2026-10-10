@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { use, useState } from 'react';
 import { OEmptyState, OLoadingState, OErrorState } from '@helios/blocks';
 import * as api from '@/aii/lib/api-client';
 import Link from 'next/link';
@@ -32,7 +32,8 @@ const QUERY_TYPES = [
   { value: 'synthesis', label: '综合报告', icon: '📊' },
 ];
 
-export default function CrossBookQueryPage({ params }: { params: { collectionId: string } }) {
+export default function CrossBookQueryPage({ params: paramsPromise }: { params: Promise<{ collectionId: string }> }) {
+  const params = use(paramsPromise);
   const [queryType, setQueryType] = useState<'concepts'>('concepts');
   const [filter, setFilter] = useState<Record<string, string>>({});
   const [state, run] = useState<{ loading: boolean; data?: CrossBookQueryResponse; error?: string }>({

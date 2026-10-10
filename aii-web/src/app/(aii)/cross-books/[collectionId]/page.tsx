@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { OEmptyState, OLoadingState, OErrorState } from '@helios/blocks';
 import { useApi } from '@/aii/hooks/useApi';
 import * as api from '@/aii/lib/api-client';
@@ -63,7 +63,8 @@ function SectionCard({
   );
 }
 
-export default function CrossBookPage({ params }: { params: { collectionId: string } }) {
+export default function CrossBookPage({ params: paramsPromise }: { params: Promise<{ collectionId: string }> }) {
+  const params = use(paramsPromise);
   const [state, run] = useApi((id: string) => api.getCrossBookOverview(id));
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState<{ status: string; understanding_id?: string } | null>(null);

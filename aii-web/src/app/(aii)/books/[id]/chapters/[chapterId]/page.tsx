@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { OEmptyState, OLoadingState, OErrorState } from '@helios/blocks';
 import { useApi } from '@/aii/hooks/useApi';
 import * as api from '@/aii/lib/api-client';
@@ -31,7 +31,8 @@ interface BuContext {
   book_title: string;
 }
 
-function ChapterDetailPage({ params }: { params: { id: string; chapterId: string } }) {
+function ChapterDetailPage({ params: paramsPromise }: { params: Promise<{ id: string; chapterId: string }> }) {
+  const params = use(paramsPromise);
   const [buContext, setBuContext] = useState<BuContext | null>(null);
   const [state, run] = useApi((id: string) => api.getChapterDetail(id, params.chapterId));
 
