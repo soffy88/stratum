@@ -54,8 +54,15 @@ class BU2P14Runner:
         *,
         db_read_func=None,
         persist: bool = False,
+        user_id: str = "",
+        use_db: bool | None = None,
     ):
         self.persist = persist
+        self.user_id = user_id
+        # Without an injected reader the runner loads from the database
+        # (BU2 + P13 synthesis per book); tests inject books directly.
+        self.use_db = (db_read_func is None) if use_db is None else use_db
+        self.notes: list[str] = []
         self.collection_manager = BU2CrossBookCollectionManager(db_read_func=db_read_func)
         self.concept_aligner = BU2CrossBookConceptAligner()
         self.thesis_comparator = BU2CrossBookThesisComparator()
@@ -99,7 +106,24 @@ class BU2P14Runner:
         run_id = self.create_run(collection.collection_id)
 
         # Load books if not provided
-        if books is None:
+        if books is None and self.use_db and not self.collection_manager.db_read:
+            from stratum.services.bu_v2_p14_loader import load_book_pair
+
+            books = []
+            if len(set(collection.book_ids)) < len(collection.book_ids):
+                failures.append("Collection lists the same book more than once")
+            for book_id in dict.fromkeys(collection.book_ids):
+                try:
+                    bu, synth, note = load_book_pair(book_id, persist=self.persist)
+                except Exception as exc:  # surface, never hide, DB/model errors
+                    bu, synth, note = None, None, f"Book {book_id}: load failed: {exc}"
+                self.notes.append(note)
+                if bu and synth:
+                    books.append((bu, synth))
+                else:
+                    failures.append(note)
+            stats["load_notes"] = list(self.notes)
+        elif books is None:
             books = []
             for book_id in collection.book_ids:
                 bu = self.collection_manager._get_book_understanding(book_id)
@@ -196,12 +220,21 @@ class BU2P14Runner:
         stats["contradictions"] = len(contradiction_result.contradictions)
         stats["knowledge_gaps"] = len(gap_result.knowledge_gaps)
 
+        persisted = False
+        if self.persist:
+            from stratum.services.bu_v2_p14_loader import save_collection, save_understanding
+
+            if self.user_id:
+                save_collection(collection, self.user_id)
+            save_understanding(understanding)
+            persisted = True
+
         return P14RunResult(
             run_id=run_id,
             collection=collection,
             understanding=understanding,
             expression=expression,
-            persisted=False,
+            persisted=persisted,
             failures=failures,
             stats=stats,
         )
@@ -214,17 +247,41 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="bu2-p14", description="Run P14 cross-book intelligence on a collection"
     )
-    parser.add_argument("collection", help="JSON file with collection definition")
+    parser.add_argument("collection", nargs="?", help="JSON file with collection definition")
+    parser.add_argument("--books", nargs="+", default=None, help="substrate ids, instead of a JSON file")
+    parser.add_argument("--name", default="", help="collection name when using --books")
+    parser.add_argument("--user-id", default="", help="owner for the persisted collection")
     parser.add_argument("--persist", action="store_true", help="write to database")
     parser.add_argument("--json", action="store_true", help="emit JSON instead of text")
     args = parser.parse_args(argv)
 
-    with open(args.collection) as f:
-        collection_data = json.load(f)
+    if args.books:
+        collection_data = {
+            "name": args.name or "P14 " + " + ".join(args.books),
+            "description": "CLI collection",
+            "book_ids": args.books,
+        }
+    elif args.collection:
+        with open(args.collection) as f:
+            collection_data = json.load(f)
+    else:
+        parser.error("give a collection JSON file or --books")
 
-    collection = CrossBookCollection(**collection_data)
+    from stratum.services.bu_v2_p14_loader import collection_from_row
 
-    runner = BU2P14Runner(persist=args.persist)
+    collection = collection_from_row(collection_data)
+
+    user_id = args.user_id
+    if args.persist and not user_id:
+        from stratum.db import query
+
+        rows = query(
+            "SELECT user_id FROM stratum.substrates WHERE id = %(b)s LIMIT 1",
+            {"b": collection.book_ids[0]},
+        ) if collection.book_ids else []
+        user_id = rows[0]["user_id"] if rows else ""
+
+    runner = BU2P14Runner(persist=args.persist, user_id=user_id)
     result = runner.execute(collection)
 
     if args.json:
