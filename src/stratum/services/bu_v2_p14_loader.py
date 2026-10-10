@@ -45,7 +45,7 @@ def _query() -> QueryFn:
     return query
 
 
-_BU_JSON = {
+_BU_JSON: dict[str, tuple[str, Any]] = {
     "governing_questions_json": ("governing_questions", []),
     "central_theses_json": ("central_theses", []),
     "sub_theses_json": ("sub_theses", []),
@@ -57,7 +57,7 @@ _BU_JSON = {
     "resolved_questions_json": ("resolved_questions", []),
     "unresolved_questions_json": ("unresolved_questions", []),
 }
-_BU_PLAIN_JSON = {"chapter_dependency_graph": {}, "discourse_arc": {}}
+_BU_PLAIN_JSON: dict[str, Any] = {"chapter_dependency_graph": {}, "discourse_arc": {}}
 
 
 def bu_from_row(row: dict) -> BookUnderstandingV2:
@@ -100,8 +100,14 @@ def chapter_from_row(row: dict) -> ChapterUnderstanding:
 
 
 _SYNTH_JSON = (
-    "thesis", "concept_system", "argument_system", "mechanism_system",
-    "evidence_map", "author_model", "chapter_roles", "contradictions",
+    "thesis",
+    "concept_system",
+    "argument_system",
+    "mechanism_system",
+    "evidence_map",
+    "author_model",
+    "chapter_roles",
+    "contradictions",
     "synthesis_evidence",
 )
 
@@ -203,17 +209,29 @@ def collection_from_row(row: dict) -> CrossBookCollection:
 
 
 _CBU_LISTS = (
-    "shared_problems", "concept_system", "concept_relations", "thesis_system",
-    "thesis_relations", "argument_system", "argument_relations", "mechanism_system",
-    "mechanism_relations", "evidence_system", "evidence_relations", "contradictions",
-    "comparisons", "knowledge_gaps",
+    "shared_problems",
+    "concept_system",
+    "concept_relations",
+    "thesis_system",
+    "thesis_relations",
+    "argument_system",
+    "argument_relations",
+    "mechanism_system",
+    "mechanism_relations",
+    "evidence_system",
+    "evidence_relations",
+    "contradictions",
+    "comparisons",
+    "knowledge_gaps",
 )
 
 
-def save_understanding(cbu: CrossBookUnderstanding, *, execute=None) -> None:
+def save_understanding(cbu: CrossBookUnderstanding, *, execute: Any = None) -> None:
     """Upsert the cross-book understanding, one row per collection."""
     if execute is None:
-        from stratum.db import execute
+        from stratum.db import execute as _execute
+
+        execute = _execute
     dump = cbu.model_dump(mode="json")
     row: dict[str, Any] = {
         "collection_id": cbu.collection.collection_id,
@@ -234,16 +252,24 @@ def save_understanding(cbu: CrossBookUnderstanding, *, execute=None) -> None:
     execute(sql, row)
 
 
-def save_collection(collection: CrossBookCollection, user_id: str, *, execute=None) -> None:
+def save_collection(collection: CrossBookCollection, user_id: str, *, execute: Any = None) -> None:
     if execute is None:
-        from stratum.db import execute
+        from stratum.db import execute as _execute
+
+        execute = _execute
     execute(
         "INSERT INTO crossbook_collections (id, user_id, name, description, book_ids, version, created_at, updated_at) "
         "VALUES (%(id)s, %(u)s, %(n)s, %(d)s, %(b)s, %(v)s, now(), now()) "
         "ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, "
         "book_ids = EXCLUDED.book_ids, updated_at = now()",
-        {"id": collection.collection_id, "u": user_id, "n": collection.name,
-         "d": collection.description, "b": collection.book_ids, "v": collection.version},
+        {
+            "id": collection.collection_id,
+            "u": user_id,
+            "n": collection.name,
+            "d": collection.description,
+            "b": collection.book_ids,
+            "v": collection.version,
+        },
     )
 
 

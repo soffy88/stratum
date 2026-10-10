@@ -63,8 +63,14 @@ def _is_transient(exc: Exception) -> bool:
     return isinstance(exc, ProviderError) and "unexpected envelope" in str(exc)
 
 
-def call_with_retry(fn, *, attempts: int | None = None, base: float | None = None,
-                    retry_if=_is_transient, sleep=time.sleep):
+def call_with_retry(
+    fn,
+    *,
+    attempts: int | None = None,
+    base: float | None = None,
+    retry_if=_is_transient,
+    sleep=time.sleep,
+):
     """Run ``fn`` and retry transient provider failures with jittered backoff."""
     default_attempts, default_base = _retry_budget()
     attempts = attempts or default_attempts
@@ -79,7 +85,7 @@ def call_with_retry(fn, *, attempts: int | None = None, base: float | None = Non
                 raise
             delay = getattr(exc, "retry_after", None)
             if delay is None:
-                delay = base * (2 ** i)
+                delay = base * (2**i)
             sleep(min(60.0, delay) * (0.75 + random.random() * 0.5))
     raise last  # pragma: no cover
 
@@ -135,8 +141,7 @@ class ModelProvider(Protocol):
         json_mode: bool = False,
         max_tokens: int = 1024,
         temperature: float = 0.0,
-    ) -> ModelResponse:
-        ...
+    ) -> ModelResponse: ...
 
 
 class _HTTPProvider:
@@ -199,6 +204,7 @@ class _HTTPProvider:
         }
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
+
         def _once() -> tuple[dict, str]:
             data = self._post(self._url(), payload, self._headers(json_mode))
             try:
@@ -458,9 +464,7 @@ def resolve_provider(kind: str | None = None, **kw) -> ModelProvider:
     """
     name = (kind or os.environ.get("BU2_MODEL_PROVIDER") or "ollama").strip().lower()
     if name not in _REGISTRY:
-        raise ProviderUnavailable(
-            f"unknown provider {name!r}; known: {sorted(_REGISTRY)}"
-        )
+        raise ProviderUnavailable(f"unknown provider {name!r}; known: {sorted(_REGISTRY)}")
     return _REGISTRY[name](**kw)
 
 
