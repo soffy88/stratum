@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/data/soffy/projects/stratum/src/stratum/services/bu_v2_entrypoint.py", line 675, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/data/soffy/projects/stratum/src/stratum/services/bu_v2_entrypoint.py", line 634, in main
+    context_used=any(c.context is not None for c in result.chapters),
+                 ^^^
+  File "/data/soffy/projects/stratum/src/stratum/services/bu_v2_entrypoint.py", line 634, in <genexpr>
+    context_used=any(c.context is not None for c in result.chapters),
+                     ^^^^^^^^^
+  File "/home/soffy/.local/lib/python3.14/site-packages/pydantic/main.py", line 1042, in __getattr__
+    raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+AttributeError: 'ChapterUnderstanding' object has no attribute 'context'

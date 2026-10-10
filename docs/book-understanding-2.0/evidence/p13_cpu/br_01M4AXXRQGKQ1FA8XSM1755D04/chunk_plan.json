@@ -1,0 +1,1659 @@
+{
+  "ch1": {
+    "chapter_id": "ch1",
+    "total_chars": 796574,
+    "estimated_calls": 166,
+    "chunks": [
+      {
+        "chunk_id": "ch1_ck1",
+        "chapter_id": "ch1",
+        "start_offset": 0,
+        "end_offset": 12000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 1,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 0
+      },
+      {
+        "chunk_id": "ch1_ck2",
+        "chapter_id": "ch1",
+        "start_offset": 11800,
+        "end_offset": 16800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 2,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck3",
+        "chapter_id": "ch1",
+        "start_offset": 16600,
+        "end_offset": 21600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 3,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck4",
+        "chapter_id": "ch1",
+        "start_offset": 21400,
+        "end_offset": 26400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 4,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck5",
+        "chapter_id": "ch1",
+        "start_offset": 26200,
+        "end_offset": 31200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 5,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck6",
+        "chapter_id": "ch1",
+        "start_offset": 31000,
+        "end_offset": 36000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 6,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck7",
+        "chapter_id": "ch1",
+        "start_offset": 35800,
+        "end_offset": 40800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 7,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck8",
+        "chapter_id": "ch1",
+        "start_offset": 40600,
+        "end_offset": 45600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 8,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck9",
+        "chapter_id": "ch1",
+        "start_offset": 45400,
+        "end_offset": 50400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 9,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck10",
+        "chapter_id": "ch1",
+        "start_offset": 50200,
+        "end_offset": 55200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 10,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck11",
+        "chapter_id": "ch1",
+        "start_offset": 55000,
+        "end_offset": 60000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 11,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck12",
+        "chapter_id": "ch1",
+        "start_offset": 59800,
+        "end_offset": 64800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 12,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck13",
+        "chapter_id": "ch1",
+        "start_offset": 64600,
+        "end_offset": 69600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 13,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck14",
+        "chapter_id": "ch1",
+        "start_offset": 69400,
+        "end_offset": 74400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 14,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck15",
+        "chapter_id": "ch1",
+        "start_offset": 74200,
+        "end_offset": 79200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 15,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck16",
+        "chapter_id": "ch1",
+        "start_offset": 79000,
+        "end_offset": 84000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 16,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck17",
+        "chapter_id": "ch1",
+        "start_offset": 83800,
+        "end_offset": 88800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 17,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck18",
+        "chapter_id": "ch1",
+        "start_offset": 88600,
+        "end_offset": 93600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 18,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck19",
+        "chapter_id": "ch1",
+        "start_offset": 93400,
+        "end_offset": 98400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 19,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck20",
+        "chapter_id": "ch1",
+        "start_offset": 98200,
+        "end_offset": 103200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 20,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck21",
+        "chapter_id": "ch1",
+        "start_offset": 103000,
+        "end_offset": 108000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 21,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck22",
+        "chapter_id": "ch1",
+        "start_offset": 107800,
+        "end_offset": 112800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 22,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck23",
+        "chapter_id": "ch1",
+        "start_offset": 112600,
+        "end_offset": 117600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 23,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck24",
+        "chapter_id": "ch1",
+        "start_offset": 117400,
+        "end_offset": 122400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 24,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck25",
+        "chapter_id": "ch1",
+        "start_offset": 122200,
+        "end_offset": 127200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 25,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck26",
+        "chapter_id": "ch1",
+        "start_offset": 127000,
+        "end_offset": 132000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 26,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck27",
+        "chapter_id": "ch1",
+        "start_offset": 131800,
+        "end_offset": 136800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 27,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck28",
+        "chapter_id": "ch1",
+        "start_offset": 136600,
+        "end_offset": 141600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 28,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck29",
+        "chapter_id": "ch1",
+        "start_offset": 141400,
+        "end_offset": 146400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 29,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck30",
+        "chapter_id": "ch1",
+        "start_offset": 146200,
+        "end_offset": 151200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 30,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck31",
+        "chapter_id": "ch1",
+        "start_offset": 151000,
+        "end_offset": 156000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 31,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck32",
+        "chapter_id": "ch1",
+        "start_offset": 155800,
+        "end_offset": 160800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 32,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck33",
+        "chapter_id": "ch1",
+        "start_offset": 160600,
+        "end_offset": 165600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 33,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck34",
+        "chapter_id": "ch1",
+        "start_offset": 165400,
+        "end_offset": 170400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 34,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck35",
+        "chapter_id": "ch1",
+        "start_offset": 170200,
+        "end_offset": 175200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 35,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck36",
+        "chapter_id": "ch1",
+        "start_offset": 175000,
+        "end_offset": 180000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 36,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck37",
+        "chapter_id": "ch1",
+        "start_offset": 179800,
+        "end_offset": 184800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 37,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck38",
+        "chapter_id": "ch1",
+        "start_offset": 184600,
+        "end_offset": 189600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 38,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck39",
+        "chapter_id": "ch1",
+        "start_offset": 189400,
+        "end_offset": 194400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 39,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck40",
+        "chapter_id": "ch1",
+        "start_offset": 194200,
+        "end_offset": 199200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 40,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck41",
+        "chapter_id": "ch1",
+        "start_offset": 199000,
+        "end_offset": 204000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 41,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck42",
+        "chapter_id": "ch1",
+        "start_offset": 203800,
+        "end_offset": 208800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 42,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck43",
+        "chapter_id": "ch1",
+        "start_offset": 208600,
+        "end_offset": 213600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 43,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck44",
+        "chapter_id": "ch1",
+        "start_offset": 213400,
+        "end_offset": 218400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 44,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck45",
+        "chapter_id": "ch1",
+        "start_offset": 218200,
+        "end_offset": 223200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 45,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck46",
+        "chapter_id": "ch1",
+        "start_offset": 223000,
+        "end_offset": 228000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 46,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck47",
+        "chapter_id": "ch1",
+        "start_offset": 227800,
+        "end_offset": 232800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 47,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck48",
+        "chapter_id": "ch1",
+        "start_offset": 232600,
+        "end_offset": 237600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 48,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck49",
+        "chapter_id": "ch1",
+        "start_offset": 237400,
+        "end_offset": 242400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 49,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck50",
+        "chapter_id": "ch1",
+        "start_offset": 242200,
+        "end_offset": 247200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 50,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck51",
+        "chapter_id": "ch1",
+        "start_offset": 247000,
+        "end_offset": 252000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 51,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck52",
+        "chapter_id": "ch1",
+        "start_offset": 251800,
+        "end_offset": 256800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 52,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck53",
+        "chapter_id": "ch1",
+        "start_offset": 256600,
+        "end_offset": 261600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 53,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck54",
+        "chapter_id": "ch1",
+        "start_offset": 261400,
+        "end_offset": 266400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 54,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck55",
+        "chapter_id": "ch1",
+        "start_offset": 266200,
+        "end_offset": 271200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 55,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck56",
+        "chapter_id": "ch1",
+        "start_offset": 271000,
+        "end_offset": 276000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 56,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck57",
+        "chapter_id": "ch1",
+        "start_offset": 275800,
+        "end_offset": 280800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 57,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck58",
+        "chapter_id": "ch1",
+        "start_offset": 280600,
+        "end_offset": 285600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 58,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck59",
+        "chapter_id": "ch1",
+        "start_offset": 285400,
+        "end_offset": 290400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 59,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck60",
+        "chapter_id": "ch1",
+        "start_offset": 290200,
+        "end_offset": 295200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 60,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck61",
+        "chapter_id": "ch1",
+        "start_offset": 295000,
+        "end_offset": 300000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 61,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck62",
+        "chapter_id": "ch1",
+        "start_offset": 299800,
+        "end_offset": 304800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 62,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck63",
+        "chapter_id": "ch1",
+        "start_offset": 304600,
+        "end_offset": 309600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 63,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck64",
+        "chapter_id": "ch1",
+        "start_offset": 309400,
+        "end_offset": 314400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 64,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck65",
+        "chapter_id": "ch1",
+        "start_offset": 314200,
+        "end_offset": 319200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 65,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck66",
+        "chapter_id": "ch1",
+        "start_offset": 319000,
+        "end_offset": 324000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 66,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck67",
+        "chapter_id": "ch1",
+        "start_offset": 323800,
+        "end_offset": 328800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 67,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck68",
+        "chapter_id": "ch1",
+        "start_offset": 328600,
+        "end_offset": 333600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 68,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck69",
+        "chapter_id": "ch1",
+        "start_offset": 333400,
+        "end_offset": 338400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 69,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck70",
+        "chapter_id": "ch1",
+        "start_offset": 338200,
+        "end_offset": 343200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 70,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck71",
+        "chapter_id": "ch1",
+        "start_offset": 343000,
+        "end_offset": 348000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 71,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck72",
+        "chapter_id": "ch1",
+        "start_offset": 347800,
+        "end_offset": 352800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 72,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck73",
+        "chapter_id": "ch1",
+        "start_offset": 352600,
+        "end_offset": 357600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 73,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck74",
+        "chapter_id": "ch1",
+        "start_offset": 357400,
+        "end_offset": 362400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 74,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck75",
+        "chapter_id": "ch1",
+        "start_offset": 362200,
+        "end_offset": 367200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 75,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck76",
+        "chapter_id": "ch1",
+        "start_offset": 367000,
+        "end_offset": 372000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 76,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck77",
+        "chapter_id": "ch1",
+        "start_offset": 371800,
+        "end_offset": 376800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 77,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck78",
+        "chapter_id": "ch1",
+        "start_offset": 376600,
+        "end_offset": 381600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 78,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck79",
+        "chapter_id": "ch1",
+        "start_offset": 381400,
+        "end_offset": 386400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 79,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck80",
+        "chapter_id": "ch1",
+        "start_offset": 386200,
+        "end_offset": 391200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 80,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck81",
+        "chapter_id": "ch1",
+        "start_offset": 391000,
+        "end_offset": 396000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 81,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck82",
+        "chapter_id": "ch1",
+        "start_offset": 395800,
+        "end_offset": 400800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 82,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck83",
+        "chapter_id": "ch1",
+        "start_offset": 400600,
+        "end_offset": 405600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 83,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck84",
+        "chapter_id": "ch1",
+        "start_offset": 405400,
+        "end_offset": 410400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 84,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck85",
+        "chapter_id": "ch1",
+        "start_offset": 410200,
+        "end_offset": 415200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 85,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck86",
+        "chapter_id": "ch1",
+        "start_offset": 415000,
+        "end_offset": 420000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 86,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck87",
+        "chapter_id": "ch1",
+        "start_offset": 419800,
+        "end_offset": 424800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 87,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck88",
+        "chapter_id": "ch1",
+        "start_offset": 424600,
+        "end_offset": 429600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 88,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck89",
+        "chapter_id": "ch1",
+        "start_offset": 429400,
+        "end_offset": 434400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 89,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck90",
+        "chapter_id": "ch1",
+        "start_offset": 434200,
+        "end_offset": 439200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 90,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck91",
+        "chapter_id": "ch1",
+        "start_offset": 439000,
+        "end_offset": 444000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 91,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck92",
+        "chapter_id": "ch1",
+        "start_offset": 443800,
+        "end_offset": 448800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 92,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck93",
+        "chapter_id": "ch1",
+        "start_offset": 448600,
+        "end_offset": 453600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 93,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck94",
+        "chapter_id": "ch1",
+        "start_offset": 453400,
+        "end_offset": 458400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 94,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck95",
+        "chapter_id": "ch1",
+        "start_offset": 458200,
+        "end_offset": 463200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 95,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck96",
+        "chapter_id": "ch1",
+        "start_offset": 463000,
+        "end_offset": 468000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 96,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck97",
+        "chapter_id": "ch1",
+        "start_offset": 467800,
+        "end_offset": 472800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 97,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck98",
+        "chapter_id": "ch1",
+        "start_offset": 472600,
+        "end_offset": 477600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 98,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck99",
+        "chapter_id": "ch1",
+        "start_offset": 477400,
+        "end_offset": 482400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 99,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck100",
+        "chapter_id": "ch1",
+        "start_offset": 482200,
+        "end_offset": 487200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 100,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck101",
+        "chapter_id": "ch1",
+        "start_offset": 487000,
+        "end_offset": 492000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 101,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck102",
+        "chapter_id": "ch1",
+        "start_offset": 491800,
+        "end_offset": 496800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 102,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck103",
+        "chapter_id": "ch1",
+        "start_offset": 496600,
+        "end_offset": 501600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 103,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck104",
+        "chapter_id": "ch1",
+        "start_offset": 501400,
+        "end_offset": 506400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 104,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck105",
+        "chapter_id": "ch1",
+        "start_offset": 506200,
+        "end_offset": 511200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 105,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck106",
+        "chapter_id": "ch1",
+        "start_offset": 511000,
+        "end_offset": 516000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 106,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck107",
+        "chapter_id": "ch1",
+        "start_offset": 515800,
+        "end_offset": 520800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 107,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck108",
+        "chapter_id": "ch1",
+        "start_offset": 520600,
+        "end_offset": 525600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 108,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck109",
+        "chapter_id": "ch1",
+        "start_offset": 525400,
+        "end_offset": 530400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 109,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck110",
+        "chapter_id": "ch1",
+        "start_offset": 530200,
+        "end_offset": 535200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 110,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck111",
+        "chapter_id": "ch1",
+        "start_offset": 535000,
+        "end_offset": 540000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 111,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck112",
+        "chapter_id": "ch1",
+        "start_offset": 539800,
+        "end_offset": 544800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 112,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck113",
+        "chapter_id": "ch1",
+        "start_offset": 544600,
+        "end_offset": 549600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 113,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck114",
+        "chapter_id": "ch1",
+        "start_offset": 549400,
+        "end_offset": 554400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 114,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck115",
+        "chapter_id": "ch1",
+        "start_offset": 554200,
+        "end_offset": 559200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 115,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck116",
+        "chapter_id": "ch1",
+        "start_offset": 559000,
+        "end_offset": 564000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 116,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck117",
+        "chapter_id": "ch1",
+        "start_offset": 563800,
+        "end_offset": 568800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 117,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck118",
+        "chapter_id": "ch1",
+        "start_offset": 568600,
+        "end_offset": 573600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 118,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck119",
+        "chapter_id": "ch1",
+        "start_offset": 573400,
+        "end_offset": 578400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 119,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck120",
+        "chapter_id": "ch1",
+        "start_offset": 578200,
+        "end_offset": 583200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 120,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck121",
+        "chapter_id": "ch1",
+        "start_offset": 583000,
+        "end_offset": 588000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 121,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck122",
+        "chapter_id": "ch1",
+        "start_offset": 587800,
+        "end_offset": 592800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 122,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck123",
+        "chapter_id": "ch1",
+        "start_offset": 592600,
+        "end_offset": 597600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 123,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck124",
+        "chapter_id": "ch1",
+        "start_offset": 597400,
+        "end_offset": 602400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 124,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck125",
+        "chapter_id": "ch1",
+        "start_offset": 602200,
+        "end_offset": 607200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 125,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck126",
+        "chapter_id": "ch1",
+        "start_offset": 607000,
+        "end_offset": 612000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 126,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck127",
+        "chapter_id": "ch1",
+        "start_offset": 611800,
+        "end_offset": 616800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 127,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck128",
+        "chapter_id": "ch1",
+        "start_offset": 616600,
+        "end_offset": 621600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 128,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck129",
+        "chapter_id": "ch1",
+        "start_offset": 621400,
+        "end_offset": 626400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 129,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck130",
+        "chapter_id": "ch1",
+        "start_offset": 626200,
+        "end_offset": 631200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 130,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck131",
+        "chapter_id": "ch1",
+        "start_offset": 631000,
+        "end_offset": 636000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 131,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck132",
+        "chapter_id": "ch1",
+        "start_offset": 635800,
+        "end_offset": 640800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 132,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck133",
+        "chapter_id": "ch1",
+        "start_offset": 640600,
+        "end_offset": 645600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 133,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck134",
+        "chapter_id": "ch1",
+        "start_offset": 645400,
+        "end_offset": 650400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 134,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck135",
+        "chapter_id": "ch1",
+        "start_offset": 650200,
+        "end_offset": 655200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 135,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck136",
+        "chapter_id": "ch1",
+        "start_offset": 655000,
+        "end_offset": 660000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 136,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck137",
+        "chapter_id": "ch1",
+        "start_offset": 659800,
+        "end_offset": 664800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 137,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck138",
+        "chapter_id": "ch1",
+        "start_offset": 664600,
+        "end_offset": 669600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 138,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck139",
+        "chapter_id": "ch1",
+        "start_offset": 669400,
+        "end_offset": 674400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 139,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck140",
+        "chapter_id": "ch1",
+        "start_offset": 674200,
+        "end_offset": 679200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 140,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck141",
+        "chapter_id": "ch1",
+        "start_offset": 679000,
+        "end_offset": 684000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 141,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck142",
+        "chapter_id": "ch1",
+        "start_offset": 683800,
+        "end_offset": 688800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 142,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck143",
+        "chapter_id": "ch1",
+        "start_offset": 688600,
+        "end_offset": 693600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 143,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck144",
+        "chapter_id": "ch1",
+        "start_offset": 693400,
+        "end_offset": 698400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 144,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck145",
+        "chapter_id": "ch1",
+        "start_offset": 698200,
+        "end_offset": 703200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 145,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck146",
+        "chapter_id": "ch1",
+        "start_offset": 703000,
+        "end_offset": 708000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 146,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck147",
+        "chapter_id": "ch1",
+        "start_offset": 707800,
+        "end_offset": 712800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 147,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck148",
+        "chapter_id": "ch1",
+        "start_offset": 712600,
+        "end_offset": 717600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 148,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck149",
+        "chapter_id": "ch1",
+        "start_offset": 717400,
+        "end_offset": 722400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 149,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck150",
+        "chapter_id": "ch1",
+        "start_offset": 722200,
+        "end_offset": 727200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 150,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck151",
+        "chapter_id": "ch1",
+        "start_offset": 727000,
+        "end_offset": 732000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 151,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck152",
+        "chapter_id": "ch1",
+        "start_offset": 731800,
+        "end_offset": 736800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 152,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck153",
+        "chapter_id": "ch1",
+        "start_offset": 736600,
+        "end_offset": 741600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 153,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck154",
+        "chapter_id": "ch1",
+        "start_offset": 741400,
+        "end_offset": 746400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 154,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck155",
+        "chapter_id": "ch1",
+        "start_offset": 746200,
+        "end_offset": 751200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 155,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck156",
+        "chapter_id": "ch1",
+        "start_offset": 751000,
+        "end_offset": 756000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 156,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck157",
+        "chapter_id": "ch1",
+        "start_offset": 755800,
+        "end_offset": 760800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 157,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck158",
+        "chapter_id": "ch1",
+        "start_offset": 760600,
+        "end_offset": 765600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 158,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck159",
+        "chapter_id": "ch1",
+        "start_offset": 765400,
+        "end_offset": 770400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 159,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck160",
+        "chapter_id": "ch1",
+        "start_offset": 770200,
+        "end_offset": 775200,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 160,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck161",
+        "chapter_id": "ch1",
+        "start_offset": 775000,
+        "end_offset": 780000,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 161,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck162",
+        "chapter_id": "ch1",
+        "start_offset": 779800,
+        "end_offset": 784800,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 162,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck163",
+        "chapter_id": "ch1",
+        "start_offset": 784600,
+        "end_offset": 789600,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 163,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck164",
+        "chapter_id": "ch1",
+        "start_offset": 789400,
+        "end_offset": 794400,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 164,
+        "split_reason": "SECTION_BOUNDARY",
+        "overlap_chars": 200
+      },
+      {
+        "chunk_id": "ch1_ck165",
+        "chapter_id": "ch1",
+        "start_offset": 794200,
+        "end_offset": 796574,
+        "section_context": "Chapter 1: 1. Functions",
+        "sequence": 165,
+        "split_reason": "END_OF_CHAPTER",
+        "overlap_chars": 200
+      }
+    ]
+  }
+}

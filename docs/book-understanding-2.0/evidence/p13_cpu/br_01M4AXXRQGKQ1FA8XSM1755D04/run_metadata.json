@@ -1,0 +1,21 @@
+{
+  "run_id": "br_01M4AXXRQGKQ1FA8XSM1755D04",
+  "substrate_id": "01KWRXP646FQEPPRPHS3R617MZ",
+  "book_title": "\u6258\u9a6c\u65af\u5fae\u79ef\u5206\u7b2c\u5341\u56db\u7248Thomas Calculus\u82f1\u6587\u4e2d\u6587\u53cc\u8bedAI\u7ffb\u8bd1 (Joel R. Hass, Christopher D. Heil etc.) (z-library.sk, 1lib.sk, z-lib.sk)",
+  "total_chapters": 1,
+  "chapter_ids": [
+    "ch1"
+  ],
+  "config": {
+    "max_chunk_calls": 5,
+    "max_synthesis_calls": 1,
+    "max_retry": 1,
+    "simple_call_timeout": 300,
+    "chunk_timeout": 300,
+    "chapter_synthesis_timeout": 300,
+    "book_synthesis_timeout": 600,
+    "concurrency": 1,
+    "persist_checkpoints": true
+  },
+  "started_at": 1791368291.0642767
+}

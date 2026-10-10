@@ -1,0 +1,35 @@
+{
+  "run_id": "cb_01M4BBTCXSRGRD8YK10X7A763Z",
+  "collection_id": "coll_ca87da9dc575",
+  "books_processed": 2,
+  "concept_relations": 0,
+  "thesis_relations": 0,
+  "argument_relations": 0,
+  "mechanism_relations": 0,
+  "evidence_relations": 0,
+  "contradictions": 0,
+  "knowledge_gaps": 6,
+  "failures": [],
+  "stats": {
+    "stages": {
+      "concept_alignment": 0.0007098800269886851,
+      "thesis_comparison": 0.0005982080474495888,
+      "argument_comparison": 3.936502616852522e-05,
+      "mechanism_comparison": 0.00017591798678040504,
+      "evidence_comparison": 0.0001450929557904601,
+      "contradiction_detection": 0.0006544000352732837,
+      "problem_alignment": 0.00010745698818936944,
+      "gap_detection": 8.562597213312984e-05,
+      "synthesis": 0.00010019500041380525
+    },
+    "total_wall_clock": 0.17061053699580953,
+    "books_processed": 2,
+    "concept_relations": 0,
+    "thesis_relations": 0,
+    "argument_relations": 0,
+    "mechanism_relations": 0,
+    "evidence_relations": 0,
+    "contradictions": 0,
+    "knowledge_gaps": 6
+  }
+}

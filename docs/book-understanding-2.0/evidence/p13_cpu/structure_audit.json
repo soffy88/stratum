@@ -1,0 +1,32 @@
+{
+  "book_id": "01KWRXP646FQEPPRPHS3R617MZ",
+  "book_title": "Thomas Calculus 14th Edition",
+  "extraction_method": "overview_anchor",
+  "expected_chapters": 16,
+  "detected_chapters": 16,
+  "detection_ratio": 1.0,
+  "chapters": [
+    {"chapter_id": "ch1", "title": "1. Functions", "chars": 170452, "level": "L2_TYPOGRAPHY", "confidence": 0.8},
+    {"chapter_id": "ch2", "title": "2. Limits and Continuity", "chars": 277325, "level": "L2_TYPOGRAPHY", "confidence": 0.8},
+    {"chapter_id": "ch3", "title": "3. Derivatives", "chars": 348816, "level": "L2_TYPOGRAPHY", "confidence": 0.8},
+    {"chapter_id": "ch4", "title": "4. Applications of Derivatives", "chars": 325262, "level": "L1_EXPLICIT", "confidence": 0.98},
+    {"chapter_id": "ch5", "title": "5. Integrals", "chars": 241230, "level": "L2_TYPOGRAPHY", "confidence": 0.8},
+    {"chapter_id": "ch6", "title": "6. Applications of Definite Integrals", "chars": 255379, "level": "L1_EXPLICIT", "confidence": 0.98},
+    {"chapter_id": "ch7", "title": "7. Transcendental Functions", "chars": 302878, "level": "L1_EXPLICIT", "confidence": 0.98},
+    {"chapter_id": "ch8", "title": "8. Techniques of Integration", "chars": 247382, "level": "L1_EXPLICIT", "confidence": 0.98},
+    {"chapter_id": "ch9", "title": "9. First-Order Differential Equations", "chars": 160167, "level": "L1_EXPLICIT", "confidence": 0.98},
+    {"chapter_id": "ch10", "title": "10. Infinite Sequences and Series", "chars": 303596, "level": "L1_EXPLICIT", "confidence": 0.98},
+    {"chapter_id": "ch11", "title": "11. Parametric Equations and Polar Coordinates", "chars": 232568, "level": "L1_EXPLICIT", "confidence": 0.98},
+    {"chapter_id": "ch12", "title": "12. Vectors and the Geometry of Space", "chars": 229706, "level": "L1_EXPLICIT", "confidence": 0.98},
+    {"chapter_id": "ch13", "title": "13. Vector-Valued Functions and Motion in Space", "chars": 181734, "level": "L1_EXPLICIT", "confidence": 0.98},
+    {"chapter_id": "ch14", "title": "14. Partial Derivatives", "chars": 424284, "level": "L2_TYPOGRAPHY", "confidence": 0.8},
+    {"chapter_id": "ch15", "title": "15. Multiple Integrals", "chars": 297423, "level": "L2_TYPOGRAPHY", "confidence": 0.8},
+    {"chapter_id": "ch16", "title": "16. Integrals and Vector Fields", "chars": 566796, "level": "L1_EXPLICIT", "confidence": 0.98}
+  ],
+  "back_matter": [
+    {"chapter_id": "bm1", "title": "Worked Answers", "chars": 364510, "level": "L1_EXPLICIT", "confidence": 0.85},
+    {"chapter_id": "bm2", "title": "Appendices", "chars": 7099, "level": "L1_EXPLICIT", "confidence": 0.85}
+  ],
+  "fixed_chapters": ["ch2", "ch3", "ch5", "ch14", "ch15"],
+  "fix_method": "Structure extractor uses OVERVIEW anchors + parser index titles instead of markdown heading detection"
+}

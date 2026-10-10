@@ -1,0 +1,62 @@
+{
+  "hardware": {
+    "cpu": "Intel/AMD (CPU-only, no GPU)",
+    "ram_gb": 32,
+    "gpu": "unavailable"
+  },
+  "models_tested": [
+    {
+      "model": "qwen2.5:0.5b",
+      "params": "494M",
+      "quantization": "Q4_K_M",
+      "simple_prompt_sec": 11.0,
+      "short_prompt_sec": 71.7,
+      "1k_chars_sec": 29.2,
+      "5k_chars_sec": 34.1,
+      "12k_chars_sec": 108.1,
+      "30k_chars_sec": "timeout",
+      "json_validity_rate": 1.0,
+      "evidence_grounding_rate": 0.0,
+      "extraction_quality": "poor",
+      "viable": true
+    },
+    {
+      "model": "qwen2.5:7b",
+      "params": "7.6B",
+      "quantization": "Q4_K_M",
+      "simple_prompt_sec": ">100",
+      "1k_chars_sec": ">300",
+      "viable": false
+    },
+    {
+      "model": "qwen2.5vl:3b",
+      "params": "3.8B",
+      "quantization": "Q4_K_M",
+      "simple_prompt_sec": ">160",
+      "viable": false
+    }
+  ],
+  "selected_model": "qwen2.5:0.5b",
+  "selection_reason": "Only model completing within practical time on CPU-only hardware",
+  "projected_book_runtime": {
+    "book": "Thomas Calculus 14th Edition",
+    "chapters": 16,
+    "avg_chapter_chars": 300000,
+    "chunks_per_chapter": 25,
+    "calls_per_chapter": 26,
+    "total_calls": 416,
+    "avg_call_latency_sec": 60,
+    "estimated_wall_clock_hours": 6.9,
+    "secondary_book_hours": 10
+  },
+  "quality_impact": {
+    "gate_1_thesis": "AT_RISK - low extraction quality",
+    "gate_2_concept_system": "AT_RISK - low extraction quality",
+    "gate_3_argument_system": "LIKELY_FAIL - requires claim/evidence extraction",
+    "gate_4_mechanism": "LIKELY_PASS - mechanisms from P12",
+    "gate_5_evidence": "AT_RISK - low extraction quality",
+    "gate_6_contradiction": "LIKELY_PASS - deterministic detection",
+    "gate_7_synthesis": "PASS - structural",
+    "gate_8_boundary": "PASS - verified by tests"
+  }
+}
