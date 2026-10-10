@@ -11,8 +11,8 @@ Uses two independent thresholds:
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from dataclasses import dataclass
+from typing import Any
 
 from stratum.knowledge.bu_v2_models import (
     BookSynthesis,
@@ -33,6 +33,7 @@ def _stable_id(prefix: str, *parts: str) -> str:
 
 def _normalize_text(text: str) -> str:
     import re
+
     text = text.lower().strip()
     text = re.sub(r"[^\w\s]", " ", text)
     text = re.sub(r"\s+", " ", text)
@@ -43,7 +44,9 @@ def _jaccard_similarity(a: str, b: str) -> float:
     set_a = set(_normalize_text(a).split())
     set_b = set(_normalize_text(b).split())
     if not set_a and not set_b:
-        return 1.0
+        # Two empty fields share nothing; scoring them 1.0 manufactured
+        # matches between unrelated items whose optional fields were blank.
+        return 0.0
     if not set_a or not set_b:
         return 0.0
     return len(set_a & set_b) / len(set_a | set_b)
@@ -99,7 +102,7 @@ class ThesisRelationClassifier:
         """
 
         stmt_sim = similarity["statement"]
-        type_match = similarity["type_match"]
+        similarity["type_match"]
 
         # Stage 1: Candidate retrieval (high recall)
         if stmt_sim < self.thresholds.candidate_threshold:
@@ -135,7 +138,9 @@ class ThesisRelationClassifier:
 
     # ── Helper methods for relation detection ──
 
-    def _is_extends(self, t1: "CrossBookThesis", t2: "CrossBookThesis", sim: dict[str, float]) -> bool:
+    def _is_extends(
+        self, t1: "CrossBookThesis", t2: "CrossBookThesis", sim: dict[str, float]
+    ) -> bool:
         """Detect EXTENDS: general -> specific, problem -> solution, claim -> evidence."""
         # Problem -> Solution (type-based, doesn't require high text similarity)
         if t1.type == "PROBLEM" and t2.type in ("CORE", "SUPPORTING"):
@@ -152,10 +157,23 @@ class ThesisRelationClassifier:
 
     def _is_claim_evidence(self, t1: "CrossBookThesis", t2: "CrossBookThesis") -> bool:
         """Check if t1 is a claim and t2 is supporting evidence."""
-        t1_text = _normalize_text(t1.statement)
+        _normalize_text(t1.statement)
         t2_text = _normalize_text(t2.statement)
-        evidence_indicators = {"defined as", "defined by", "formula", "limit of", "limit of the", "formula for", "because", "since", "given that", "proof", "definition", "theorem"}
-        t2_words = set(t2_text.split())
+        evidence_indicators = {
+            "defined as",
+            "defined by",
+            "formula",
+            "limit of",
+            "limit of the",
+            "formula for",
+            "because",
+            "since",
+            "given that",
+            "proof",
+            "definition",
+            "theorem",
+        }
+        set(t2_text.split())
         if any(ind in t2_text for ind in evidence_indicators):
             return True
         return False
@@ -165,8 +183,8 @@ class ThesisRelationClassifier:
         t1_text = _normalize_text(t1.statement)
         t2_text = _normalize_text(t2.statement)
         # t2 has more specific terms, t1 is more general
-        t1_words = set(t1_text.split())
-        t2_words = set(t2_text.split())
+        set(t1_text.split())
+        set(t2_text.split())
         if len(t2_text.split()) > len(t1_text.split()) * 1.2:
             # t2 is more detailed
             # Check if t2 contains t1's key concepts
@@ -175,7 +193,9 @@ class ThesisRelationClassifier:
                 return True
         return False
 
-    def _is_qualifies(self, t1: "CrossBookThesis", t2: "CrossBookThesis", sim: dict[str, float]) -> bool:
+    def _is_qualifies(
+        self, t1: "CrossBookThesis", t2: "CrossBookThesis", sim: dict[str, float]
+    ) -> bool:
         """Check for QUALIFIES relation."""
         stmt_sim = sim["statement"]
         if stmt_sim < 0.3:
@@ -186,7 +206,21 @@ class ThesisRelationClassifier:
         t1_words = set(t1_text.split())
         t2_words = set(t2_text.split())
         # t2 is t1 with qualification (t2 has extra constraint words)
-        qualifier_words = {"when", "if", "except", "provided", "unless", "except", "only", "where", "condition", "constraint", "provided that", "assuming", "given"}
+        qualifier_words = {
+            "when",
+            "if",
+            "except",
+            "provided",
+            "unless",
+            "except",
+            "only",
+            "where",
+            "condition",
+            "constraint",
+            "provided that",
+            "assuming",
+            "given",
+        }
         extra_qualifiers = t2_words - t1_words
         if extra_qualifiers & qualifier_words:
             return True
@@ -203,9 +237,11 @@ class ThesisRelationClassifier:
                 return True
         return False
 
-    def _is_supports(self, t1: "CrossBookThesis", t2: "CrossBookThesis", sim: dict[str, float]) -> bool:
+    def _is_supports(
+        self, t1: "CrossBookThesis", t2: "CrossBookThesis", sim: dict[str, float]
+    ) -> bool:
         """Check for SUPPORTS relation."""
-        type_match = sim["type_match"]
+        sim["type_match"]
         # Same type, high similarity
         if sim["type_match"] and sim["statement"] > 0.7:
             return True
@@ -217,7 +253,9 @@ class ThesisRelationClassifier:
             return True
         return False
 
-    def _is_contradiction(self, t1: "CrossBookThesis", t2: "CrossBookThesis", sim: dict[str, float]) -> bool:
+    def _is_contradiction(
+        self, t1: "CrossBookThesis", t2: "CrossBookThesis", sim: dict[str, float]
+    ) -> bool:
         """Detect contradiction between two theses."""
         negation_words = {"not", "no", "never", "cannot", "does not", "is not", "are not"}
         t1_words = set(_normalize_text(t1.statement).split())
@@ -302,10 +340,16 @@ class ArgumentRelationClassifier:
 
         return None
 
-    def _is_challenge(self, a1: CrossBookArgument, a2: CrossBookArgument, conclusion_sim: float) -> bool:
+    def _is_challenge(
+        self, a1: CrossBookArgument, a2: CrossBookArgument, conclusion_sim: float
+    ) -> bool:
         """Detect challenge between two arguments."""
         # Check for opposing adjectives first (most reliable signal)
-        opposing_pairs = [("efficient", "inefficient"), ("effective", "ineffectful"), ("success", "failure")]
+        opposing_pairs = [
+            ("efficient", "inefficient"),
+            ("effective", "ineffectful"),
+            ("success", "failure"),
+        ]
         a1_text = _normalize_text(a1.what)
         a2_text = _normalize_text(a2.what)
         for p1, p2 in opposing_pairs:
@@ -326,60 +370,108 @@ class ArgumentRelationClassifier:
     def _is_extends(self, a1: CrossBookArgument, a2: CrossBookArgument) -> bool:
         """Detect extends relation (general → specific)."""
         # Semantic direction: general concept -> specific technical term
-        general_concepts = {"calculus", "analysis", "change", "accumulation", "rate", "total", "function", "limit", "derivative", "integral"}
-        specific_technical = {"derivative", "integral", "instantaneous", "accumulation", "measure", "instantaneous rate", "accumulated sum", "tangent", "area", "antiderivative", "differential", "definite integral"}
-        
+        general_concepts = {
+            "calculus",
+            "analysis",
+            "change",
+            "accumulation",
+            "rate",
+            "total",
+            "function",
+            "limit",
+            "derivative",
+            "integral",
+        }
+        specific_technical = {
+            "derivative",
+            "integral",
+            "instantaneous",
+            "accumulation",
+            "measure",
+            "instantaneous rate",
+            "accumulated sum",
+            "tangent",
+            "area",
+            "antiderivative",
+            "differential",
+            "definite integral",
+        }
+
         a1_text = _normalize_text(a1.what)
         a2_text = _normalize_text(a2.what)
-        
+
         a1_words = set(a1_text.split())
         a2_words = set(a2_text.split())
-        
+
         a1_has_general = bool(a1_words & general_concepts)
         a2_has_specific = bool(a2_words & specific_technical)
-        
+
         # Must be clearly general concept → specific technical term
         # Exclude cases where a2 also has general concepts (not purely specific)
         a2_has_general = bool(a2_words & general_concepts)
-        
+
         if a1_has_general and a2_has_specific and not a2_has_general:
             return True
-        
+
         # Also check based on length/detail - general statements tend to be shorter/more abstract
         # If a1 is shorter/more abstract and a2 is more detailed with overlapping terms
         if len(a1_text.split()) <= len(a2_text.split()) * 0.8:
             overlap = a1_words & a2_words
             if len(overlap) >= 2 and a1_has_general:
                 return True
-        
+
         return False
 
     def _is_generalizes(self, a1: CrossBookArgument, a2: CrossBookArgument) -> bool:
         """Detect generalizes relation (specific → general)."""
-        general_concepts = {"calculus", "analysis", "change", "accumulation", "rate", "total", "function", "limit", "derivative", "integral"}
-        specific_technical = {"derivative", "integral", "instantaneous", "accumulation", "measure", "instantaneous rate", "accumulated sum", "tangent", "area", "antiderivative", "differential", "definite integral"}
-        
+        general_concepts = {
+            "calculus",
+            "analysis",
+            "change",
+            "accumulation",
+            "rate",
+            "total",
+            "function",
+            "limit",
+            "derivative",
+            "integral",
+        }
+        specific_technical = {
+            "derivative",
+            "integral",
+            "instantaneous",
+            "accumulation",
+            "measure",
+            "instantaneous rate",
+            "accumulated sum",
+            "tangent",
+            "area",
+            "antiderivative",
+            "differential",
+            "definite integral",
+        }
+
         a1_text = _normalize_text(a1.what)
         a2_text = _normalize_text(a2.what)
-        
+
         a1_words = set(a1_text.split())
         a2_words = set(a2_text.split())
-        
+
         a1_has_specific = bool(a1_words & specific_technical)
         a2_has_general = bool(a2_words & general_concepts)
-        
+
         # Must be clearly specific technical term → general concept
         a1_has_general = bool(a1_words & general_concepts)
-        
+
         if a1_has_specific and a2_has_general and not a1_has_general:
             return True
-        
+
         # Also check based on length/detail - specific statements tend to be longer/more detailed
         if len(a2_text.split()) <= len(a1_text.split()) * 0.8:
             overlap = a1_words & a2_words
             if len(overlap) >= 2 and a2_has_general:
                 return True
-        
+
         return False
 
     def _is_complementary(self, a1: CrossBookArgument, a2: CrossBookArgument) -> bool:
@@ -421,15 +513,17 @@ class LayeredThesisAligner:
                 continue
             theses = []
             for t in synth.thesis.all_theses():
-                theses.append(CrossBookThesis(
-                    thesis_id=_stable_id("cbt", bu.book_id, t.id),
-                    book_id=bu.book_id,
-                    thesis_ref=t.id,
-                    statement=t.statement,
-                    type=t.type,
-                    confidence=t.confidence,
-                    provenance=t.provenance,
-                ))
+                theses.append(
+                    CrossBookThesis(
+                        thesis_id=_stable_id("cbt", bu.book_id, t.id),
+                        book_id=bu.book_id,
+                        thesis_ref=t.id,
+                        statement=t.statement,
+                        type=t.type,
+                        confidence=t.confidence,
+                        provenance=t.provenance,
+                    )
+                )
             all_theses[bu.book_id] = theses
 
         # Align all pairs
@@ -452,30 +546,36 @@ class LayeredThesisAligner:
 
                         # Stage 2: Candidate retrieval
                         if similarity["statement"] < self.thresholds.candidate_threshold:
-                            rejected.append({
-                                "source": t1.thesis_id,
-                                "target": t2.thesis_id,
-                                "reason": "below_candidate_threshold",
-                                "similarity": similarity,
-                            })
+                            rejected.append(
+                                {
+                                    "source": t1.thesis_id,
+                                    "target": t2.thesis_id,
+                                    "reason": "below_candidate_threshold",
+                                    "similarity": similarity,
+                                }
+                            )
                             continue
 
-                        candidates.append({
-                            "source": t1.thesis_id,
-                            "target": t2.thesis_id,
-                            "similarity": similarity,
-                        })
+                        candidates.append(
+                            {
+                                "source": t1.thesis_id,
+                                "target": t2.thesis_id,
+                                "similarity": similarity,
+                            }
+                        )
 
                         # Stage 3: Relation-specific classification
                         relation_type = self.classifier.classify(t1, t2, similarity)
 
                         if relation_type is None:
-                            rejected.append({
-                                "source": t1.thesis_id,
-                                "target": t2.thesis_id,
-                                "reason": "no_relation_detected",
-                                "similarity": similarity,
-                            })
+                            rejected.append(
+                                {
+                                    "source": t1.thesis_id,
+                                    "target": t2.thesis_id,
+                                    "reason": "no_relation_detected",
+                                    "similarity": similarity,
+                                }
+                            )
                             continue
 
                         # Stage 4: Evidence validation
@@ -483,7 +583,9 @@ class LayeredThesisAligner:
 
                         # Stage 5: Create relation
                         relation = CrossBookThesisRelation(
-                            relation_id=_stable_id("tbr", book_a_id, t1.thesis_id, book_b_id, t2.thesis_id),
+                            relation_id=_stable_id(
+                                "tbr", book_a_id, t1.thesis_id, book_b_id, t2.thesis_id
+                            ),
                             source_thesis=t1,
                             target_thesis=t2,
                             relation=relation_type,
@@ -508,7 +610,9 @@ class LayeredThesisAligner:
             "provenance_match": 1.0 if t1.provenance == t2.provenance else 0.0,
         }
 
-    def _build_evidence(self, t1: CrossBookThesis, t2: CrossBookThesis, similarity: dict[str, float]) -> list[str]:
+    def _build_evidence(
+        self, t1: CrossBookThesis, t2: CrossBookThesis, similarity: dict[str, float]
+    ) -> list[str]:
         """Build evidence list for a thesis relation."""
         return [
             f"statement_similarity={similarity['statement']:.2f}",
@@ -537,19 +641,21 @@ class LayeredArgumentAligner:
                 continue
             args = []
             for arg in synth.argument_system.all_arguments():
-                args.append(CrossBookArgument(
-                    argument_id=_stable_id("cba", bu.book_id, arg.id),
-                    book_id=bu.book_id,
-                    argument_ref=arg.id,
-                    level=arg.level,
-                    what=arg.what,
-                    why=arg.why,
-                    how=arg.how,
-                    conclusion=arg.conclusion,
-                    evidence_refs=arg.evidence_refs,
-                    status=arg.status,
-                    confidence=arg.confidence,
-                ))
+                args.append(
+                    CrossBookArgument(
+                        argument_id=_stable_id("cba", bu.book_id, arg.id),
+                        book_id=bu.book_id,
+                        argument_ref=arg.id,
+                        level=arg.level,
+                        what=arg.what,
+                        why=arg.why,
+                        how=arg.how,
+                        conclusion=arg.conclusion,
+                        evidence_refs=arg.evidence_refs,
+                        status=arg.status,
+                        confidence=arg.confidence,
+                    )
+                )
             all_args[bu.book_id] = args
 
         # Align all pairs
@@ -572,30 +678,36 @@ class LayeredArgumentAligner:
 
                         # Stage 2: Candidate retrieval
                         if similarity["what"] < self.thresholds.candidate_threshold:
-                            rejected.append({
-                                "source": a1.argument_id,
-                                "target": a2.argument_id,
-                                "reason": "below_candidate_threshold",
-                                "similarity": similarity,
-                            })
+                            rejected.append(
+                                {
+                                    "source": a1.argument_id,
+                                    "target": a2.argument_id,
+                                    "reason": "below_candidate_threshold",
+                                    "similarity": similarity,
+                                }
+                            )
                             continue
 
-                        candidates.append({
-                            "source": a1.argument_id,
-                            "target": a2.argument_id,
-                            "similarity": similarity,
-                        })
+                        candidates.append(
+                            {
+                                "source": a1.argument_id,
+                                "target": a2.argument_id,
+                                "similarity": similarity,
+                            }
+                        )
 
                         # Stage 3: Relation-specific classification
                         relation_type = self.classifier.classify(a1, a2, similarity)
 
                         if relation_type is None:
-                            rejected.append({
-                                "source": a1.argument_id,
-                                "target": a2.argument_id,
-                                "reason": "no_relation_detected",
-                                "similarity": similarity,
-                            })
+                            rejected.append(
+                                {
+                                    "source": a1.argument_id,
+                                    "target": a2.argument_id,
+                                    "reason": "no_relation_detected",
+                                    "similarity": similarity,
+                                }
+                            )
                             continue
 
                         # Stage 4: Evidence validation
@@ -603,7 +715,9 @@ class LayeredArgumentAligner:
 
                         # Stage 5: Create relation
                         relation = CrossBookArgumentRelation(
-                            relation_id=_stable_id("abr", book_a_id, a1.argument_id, book_b_id, a2.argument_id),
+                            relation_id=_stable_id(
+                                "abr", book_a_id, a1.argument_id, book_b_id, a2.argument_id
+                            ),
                             source_argument=a1,
                             target_argument=a2,
                             relation=relation_type,
@@ -633,7 +747,9 @@ class LayeredArgumentAligner:
             ),
         }
 
-    def _build_evidence(self, a1: CrossBookArgument, a2: CrossBookArgument, similarity: dict[str, float]) -> list[str]:
+    def _build_evidence(
+        self, a1: CrossBookArgument, a2: CrossBookArgument, similarity: dict[str, float]
+    ) -> list[str]:
         """Build evidence list for an argument relation."""
         return [
             f"what_similarity={similarity['what']:.2f}",

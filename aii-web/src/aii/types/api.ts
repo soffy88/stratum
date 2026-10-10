@@ -592,6 +592,8 @@ export interface BuStructureSection {
   children?: BuStructureSection[];
 }
 export interface BuDetail extends BuListItem {
+  /** BU2 run id, returned by GET /api/bu/{id}. */
+  run_id?: string;
   main_claims: MainClaim[];
   argument_structure: ArgumentNode[];
   structure: BuStructureSection[];

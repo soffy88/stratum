@@ -6,6 +6,7 @@ Orchestrates the complete cross-book intelligence pipeline.
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -54,8 +55,17 @@ class BU2P14Runner:
         *,
         db_read_func=None,
         persist: bool = False,
+        user_id: str = "",
+        use_db: bool | None = None,
+        provider: Any = None,
     ):
         self.persist = persist
+        self.provider = provider
+        self.user_id = user_id
+        # Without an injected reader the runner loads from the database
+        # (BU2 + P13 synthesis per book); tests inject books directly.
+        self.use_db = (db_read_func is None) if use_db is None else use_db
+        self.notes: list[str] = []
         self.collection_manager = BU2CrossBookCollectionManager(db_read_func=db_read_func)
         self.concept_aligner = BU2CrossBookConceptAligner()
         self.thesis_comparator = BU2CrossBookThesisComparator()
@@ -69,9 +79,26 @@ class BU2P14Runner:
         self.query_builder = BU2CrossBookQueryBuilder
         self.expr_generator = BU2CrossBookExpressionGenerator()
 
+    def _pivot(self, books):
+        """Translate CJK books to English when the collection mixes languages."""
+        from stratum.services.bu_v2_p14_loader import is_cjk_synthesis, pivot_books
+
+        flags = [is_cjk_synthesis(s) for _, s in books]
+        if all(flags) or not any(flags):
+            return books, []
+        try:
+            from stratum.services.bu_v2_provider import resolve_provider
+
+            provider = self.provider or resolve_provider()
+        except Exception as exc:  # noqa: BLE001 - compare untranslated, say so
+            return books, [f"cross-language pivot skipped: {exc}"]
+        cache_dir = os.environ.get("BU2_P14_CACHE_DIR") or os.path.expanduser("~/.stratum/p14")
+        return pivot_books(books, provider, cache_dir=cache_dir)
+
     def create_run(self, collection_id: str) -> str:
         """Create a new P14 run."""
         from stratum.common import generate_ulid
+
         run_id = f"cb_{generate_ulid()}"
         if self.persist:
             # Would persist to DB here
@@ -93,13 +120,33 @@ class BU2P14Runner:
             P14RunResult with the complete CrossBookUnderstanding
         """
         start_time = time.perf_counter()
-        stats = {"stages": {}}
+        stats: dict[str, Any] = {"stages": {}}
         failures = []
 
         run_id = self.create_run(collection.collection_id)
 
         # Load books if not provided
-        if books is None:
+        if books is None and self.use_db and not self.collection_manager.db_read:
+            from stratum.services.bu_v2_p14_loader import load_book_pair
+
+            books = []
+            if len(set(collection.book_ids)) < len(collection.book_ids):
+                failures.append("Collection lists the same book more than once")
+            for book_id in dict.fromkeys(collection.book_ids):
+                try:
+                    bu, synth, note = load_book_pair(book_id, persist=self.persist)
+                except Exception as exc:  # surface, never hide, DB/model errors
+                    bu, synth, note = None, None, f"Book {book_id}: load failed: {exc}"
+                self.notes.append(note)
+                if bu and synth:
+                    books.append((bu, synth))
+                else:
+                    failures.append(note)
+            if len(books) >= 2 and os.environ.get("BU2_P14_PIVOT", "en") == "en":
+                books, pivot_notes = self._pivot(books)
+                self.notes.extend(pivot_notes)
+            stats["load_notes"] = list(self.notes)
+        elif books is None:
             books = []
             for book_id in collection.book_ids:
                 bu = self.collection_manager._get_book_understanding(book_id)
@@ -196,12 +243,21 @@ class BU2P14Runner:
         stats["contradictions"] = len(contradiction_result.contradictions)
         stats["knowledge_gaps"] = len(gap_result.knowledge_gaps)
 
+        persisted = False
+        if self.persist:
+            from stratum.services.bu_v2_p14_loader import save_collection, save_understanding
+
+            if self.user_id:
+                save_collection(collection, self.user_id)
+            save_understanding(understanding)
+            persisted = True
+
         return P14RunResult(
             run_id=run_id,
             collection=collection,
             understanding=understanding,
             expression=expression,
-            persisted=False,
+            persisted=persisted,
             failures=failures,
             stats=stats,
         )
@@ -214,35 +270,80 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="bu2-p14", description="Run P14 cross-book intelligence on a collection"
     )
-    parser.add_argument("collection", help="JSON file with collection definition")
+    parser.add_argument("collection", nargs="?", help="JSON file with collection definition")
+    parser.add_argument(
+        "--books", nargs="+", default=None, help="substrate ids, instead of a JSON file"
+    )
+    parser.add_argument("--name", default="", help="collection name when using --books")
+    parser.add_argument("--user-id", default="", help="owner for the persisted collection")
+    parser.add_argument(
+        "--provider", default=None, help="model provider for the cross-language pivot"
+    )
+    parser.add_argument("--model", default=None)
     parser.add_argument("--persist", action="store_true", help="write to database")
     parser.add_argument("--json", action="store_true", help="emit JSON instead of text")
     args = parser.parse_args(argv)
 
-    with open(args.collection) as f:
-        collection_data = json.load(f)
+    if args.books:
+        collection_data = {
+            "name": args.name or "P14 " + " + ".join(args.books),
+            "description": "CLI collection",
+            "book_ids": args.books,
+        }
+    elif args.collection:
+        with open(args.collection) as f:
+            collection_data = json.load(f)
+    else:
+        parser.error("give a collection JSON file or --books")
 
-    collection = CrossBookCollection(**collection_data)
+    from stratum.services.bu_v2_p14_loader import collection_from_row
 
-    runner = BU2P14Runner(persist=args.persist)
+    collection = collection_from_row(collection_data)
+
+    user_id = args.user_id
+    if args.persist and not user_id:
+        from stratum.db import query
+
+        rows = (
+            query(
+                "SELECT user_id FROM stratum.substrates WHERE id = %(b)s LIMIT 1",
+                {"b": collection.book_ids[0]},
+            )
+            if collection.book_ids
+            else []
+        )
+        user_id = rows[0]["user_id"] if rows else ""
+
+    provider = None
+    if args.provider or args.model:
+        from stratum.services.bu_v2_provider import resolve_provider
+
+        provider = resolve_provider(args.provider, model=args.model)
+    runner = BU2P14Runner(persist=args.persist, user_id=user_id, provider=provider)
     result = runner.execute(collection)
 
     if args.json:
-        print(json.dumps({
-            "run_id": result.run_id,
-            "collection_id": result.collection.collection_id,
-            "books_processed": result.stats.get("books_processed", 0),
-            "concept_relations": result.stats.get("concept_relations", 0),
-            "thesis_relations": result.stats.get("thesis_relations", 0),
-            "argument_relations": result.stats.get("argument_relations", 0),
-            "mechanism_relations": result.stats.get("mechanism_relations", 0),
-            "evidence_relations": result.stats.get("evidence_relations", 0),
-            "contradictions": result.stats.get("contradictions", 0),
-            "knowledge_gaps": result.stats.get("knowledge_gaps", 0),
-            "failures": result.failures,
-            "persisted": result.persisted,
-            "stats": result.stats,
-        }, indent=2, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "run_id": result.run_id,
+                    "collection_id": result.collection.collection_id,
+                    "books_processed": result.stats.get("books_processed", 0),
+                    "concept_relations": result.stats.get("concept_relations", 0),
+                    "thesis_relations": result.stats.get("thesis_relations", 0),
+                    "argument_relations": result.stats.get("argument_relations", 0),
+                    "mechanism_relations": result.stats.get("mechanism_relations", 0),
+                    "evidence_relations": result.stats.get("evidence_relations", 0),
+                    "contradictions": result.stats.get("contradictions", 0),
+                    "knowledge_gaps": result.stats.get("knowledge_gaps", 0),
+                    "failures": result.failures,
+                    "persisted": result.persisted,
+                    "stats": result.stats,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
     else:
         if result.expression:
             print(result.expression.render())

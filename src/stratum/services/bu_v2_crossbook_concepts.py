@@ -7,11 +7,10 @@ Does not assume same-name = same-concept.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
 from typing import Any
+from dataclasses import dataclass
 
 from stratum.knowledge.bu_v2_models import (
-    BookConceptSystem,
     BookSynthesis,
     BookUnderstandingV2,
     ConceptSystemEntry,
@@ -31,6 +30,7 @@ def _stable_id(prefix: str, *parts: str) -> str:
 def _normalize_text(text: str) -> str:
     """Normalize text for comparison."""
     import re
+
     text = text.lower().strip()
     text = re.sub(r"[^\w\s]", " ", text)
     text = re.sub(r"\s+", " ", text)
@@ -42,7 +42,9 @@ def _jaccard_similarity(a: str, b: str) -> float:
     set_a = set(_normalize_text(a).split())
     set_b = set(_normalize_text(b).split())
     if not set_a and not set_b:
-        return 1.0
+        # Two empty fields share nothing; scoring them 1.0 manufactured
+        # matches between unrelated items whose optional fields were blank.
+        return 0.0
     if not set_a or not set_b:
         return 0.0
     intersection = set_a & set_b
@@ -71,7 +73,9 @@ class BU2CrossBookConceptAligner:
         self.provider = provider
         self._concept_cache: dict[str, list[ConceptSystemEntry]] = {}
 
-    def _extract_all_concepts(self, books: list[tuple[BookUnderstandingV2, BookSynthesis]]) -> dict[str, list[ConceptSystemEntry]]:
+    def _extract_all_concepts(
+        self, books: list[tuple[BookUnderstandingV2, BookSynthesis]]
+    ) -> dict[str, list[ConceptSystemEntry]]:
         """Extract all concepts from all books with their source context."""
         all_concepts: dict[str, list[ConceptSystemEntry]] = {}
 
@@ -80,7 +84,14 @@ class BU2CrossBookConceptAligner:
                 continue
 
             book_concepts: list[ConceptSystemEntry] = []
-            for role_attr in ["foundational", "core", "derived", "bridging", "application", "terminal"]:
+            for role_attr in [
+                "foundational",
+                "core",
+                "derived",
+                "bridging",
+                "application",
+                "terminal",
+            ]:
                 concepts = getattr(synth.concept_system, role_attr, [])
                 for concept in concepts:
                     concept_copy = concept.model_copy()
@@ -107,9 +118,7 @@ class BU2CrossBookConceptAligner:
             "related": _jaccard_similarity(
                 " ".join(c1.related_concepts), " ".join(c2.related_concepts)
             ),
-            "applied_in": _jaccard_similarity(
-                " ".join(c1.applied_in), " ".join(c2.applied_in)
-            ),
+            "applied_in": _jaccard_similarity(" ".join(c1.applied_in), " ".join(c2.applied_in)),
         }
 
     def _determine_relation(
@@ -134,8 +143,9 @@ class BU2CrossBookConceptAligner:
             return CrossBookConceptRelationType.RELATED_CONCEPT
 
         # Check for subsumption/specialization
-        if (similarity["definition"] > 0.5 and
-            (len(c1.prerequisites) < len(c2.prerequisites) or len(c1.applied_in) < len(c2.applied_in))):
+        if similarity["definition"] > 0.5 and (
+            len(c1.prerequisites) < len(c2.prerequisites) or len(c1.applied_in) < len(c2.applied_in)
+        ):
             return CrossBookConceptRelationType.SUBSUMES
 
         if avg_sim > 0.4:
@@ -176,7 +186,9 @@ class BU2CrossBookConceptAligner:
                 confidence = round(avg_sim, 3)
 
                 relation = CrossBookConceptRelation(
-                    relation_id=_stable_id("cbr", book_a_id, c1.concept_id, book_b_id, c2.concept_id),
+                    relation_id=_stable_id(
+                        "cbr", book_a_id, c1.concept_id, book_b_id, c2.concept_id
+                    ),
                     source_book_id=book_a_id,
                     source_concept_id=c1.concept_id,
                     target_book_id=book_b_id,
@@ -197,7 +209,7 @@ class BU2CrossBookConceptAligner:
         relations: list[CrossBookConceptRelation],
     ) -> list[CrossBookConcept]:
         """Build unified cross-book concepts from aligned concepts."""
-        unified = {}
+        unified: dict[str, dict[str, Any]] = {}
         concept_to_unified = {}
 
         # Group by SAME_CONCEPT relations
@@ -213,10 +225,26 @@ class BU2CrossBookConceptAligner:
                         "confidence_sum": 0.0,
                     }
                 unified[key]["books"].extend([rel.source_book_id, rel.target_book_id])
-                unified[key]["definitions"].extend([
-                    next((c.definition for c in all_concepts.get(rel.source_book_id, []) if c.concept_id == rel.source_concept_id), ""),
-                    next((c.definition for c in all_concepts.get(rel.target_book_id, []) if c.concept_id == rel.target_concept_id), ""),
-                ])
+                unified[key]["definitions"].extend(
+                    [
+                        next(
+                            (
+                                c.definition
+                                for c in all_concepts.get(rel.source_book_id, [])
+                                if c.concept_id == rel.source_concept_id
+                            ),
+                            "",
+                        ),
+                        next(
+                            (
+                                c.definition
+                                for c in all_concepts.get(rel.target_book_id, [])
+                                if c.concept_id == rel.target_concept_id
+                            ),
+                            "",
+                        ),
+                    ]
+                )
                 unified[key]["confidence_sum"] += rel.confidence
                 concept_to_unified[rel.source_concept_id] = key
                 concept_to_unified[rel.target_concept_id] = key
@@ -273,19 +301,23 @@ class BU2CrossBookConceptAligner:
                 book_id = src.get("book_id", "")
                 concept_id = src.get("concept_ref", "")
                 if book_id and concept_id:
-                    sequence.append({
-                        "book_id": book_id,
-                        "concept_id": concept_id,
-                        "evolution_type": "INTRODUCES",  # Would need ordering logic
-                    })
+                    sequence.append(
+                        {
+                            "book_id": book_id,
+                            "concept_id": concept_id,
+                            "evolution_type": "INTRODUCES",  # Would need ordering logic
+                        }
+                    )
 
             if len(sequence) >= 2:
-                evolutions.append(CrossBookConceptEvolution(
-                    chain_id=_stable_id("evo", uc.concept_id),
-                    sequence=sequence,
-                    evolution_types=["INTRODUCES", "REFINES"],  # Simplified
-                    provenance=ThesisProvenance.MODEL_INFERRED,
-                ))
+                evolutions.append(
+                    CrossBookConceptEvolution(
+                        chain_id=_stable_id("evo", uc.concept_id),
+                        sequence=sequence,
+                        evolution_types=["INTRODUCES", "REFINES"],  # Simplified
+                        provenance=ThesisProvenance.MODEL_INFERRED,
+                    )
+                )
 
         return evolutions
 

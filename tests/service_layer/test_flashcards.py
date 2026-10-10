@@ -74,7 +74,10 @@ def test_good_populates_fsrs_state():
     st, due = schedule_review(ReviewState(), "good", _NOW)
     assert st.repetitions == 1
     assert st.fsrs_step is not None
-    assert st.stability == pytest.approx(3.173)
+    # First-review "good" stability is FSRS's default w[2]: 3.173 under FSRS-5
+    # (py-fsrs 5.x), 2.3065 under FSRS-6 (py-fsrs 6.x, pinned in pyproject and
+    # what the production images run).
+    assert st.stability == pytest.approx(2.3065)
     assert st.difficulty is not None
     assert due > _NOW
 
