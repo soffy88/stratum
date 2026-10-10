@@ -152,6 +152,7 @@ except ImportError:
 
 try:
     from stratum.services.graph_builder_service import build_graph_from_substrate as _build_graph
+
     _HAS_GRAPH = True
 except ImportError:
     _HAS_GRAPH = False
@@ -168,6 +169,51 @@ async def _save_upload(file: UploadFile, dest_dir: Path) -> tuple[Path, str]:
             fp.write(chunk)
             h.update(chunk)
     return dest, h.hexdigest()
+
+
+def _convert_docx_if_needed(file_path: Path) -> Path:
+    """omodul.process_inbox_substrate's parser dispatch has no DOCX branch — it
+    falls through to file_parser_plaintext, which reads the raw zip/XML bytes
+    as text (silent garbage, not an error). That dispatch lives in the shared
+    omodul package (used by several other projects on this host), so rather
+    than patch it there, DOCX is converted to markdown here, at the stratum
+    boundary, before the file ever reaches process_inbox_substrate — which
+    already handles .md correctly via file_parser_markdown.
+    Non-.docx files pass through untouched."""
+    if file_path.suffix.lower() != ".docx":
+        return file_path
+    try:
+        import docx
+    except ImportError:
+        # python-docx not installed in this image — leave as-is (will still
+        # silently mis-parse via the plaintext fallback, same as before this
+        # fix) rather than hard-failing every upload.
+        return file_path
+
+    document = docx.Document(str(file_path))
+    lines: list[str] = []
+    for para in document.paragraphs:
+        text = para.text.strip()
+        if not text:
+            continue
+        style = (para.style.name or "").lower() if para.style else ""
+        if style.startswith("heading 1"):
+            lines.append(f"# {text}")
+        elif style.startswith("heading 2"):
+            lines.append(f"## {text}")
+        elif style.startswith("heading 3"):
+            lines.append(f"### {text}")
+        else:
+            lines.append(text)
+    for table in document.tables:
+        for row in table.rows:
+            cells = [c.text.strip() for c in row.cells]
+            if any(cells):
+                lines.append("| " + " | ".join(cells) + " |")
+
+    md_path = file_path.with_suffix(".md")
+    md_path.write_text("\n\n".join(lines), encoding="utf-8")
+    return md_path
 
 
 @router.post("/submit")
@@ -202,6 +248,8 @@ async def inbox_submit(
             "status": "queued",
             "message": "omodul inbox pipeline not yet available; file saved to inbox dir",
         }
+
+    file_path = await asyncio.to_thread(_convert_docx_if_needed, file_path)
 
     config = InboxConfig(
         file_path=str(file_path),
@@ -265,7 +313,9 @@ async def inbox_submit(
                 if not _sid:
                     continue
                 run_quality_gate(_sid)
-                export_one(_sid)
+                # export_one 内部用 asyncio.run(); 此处身处 async 请求处理器的事件循环,
+                # 必须丢到线程 (否则 RuntimeError: asyncio.run() cannot be called from a running event loop)
+                await asyncio.to_thread(export_one, _sid)
         if substrate_id and _HAS_GRAPH:
             background_tasks.add_task(
                 _build_graph,
@@ -447,7 +497,9 @@ async def inbox_webclip(
                 if not _sid:
                     continue
                 run_quality_gate(_sid)
-                export_one(_sid)
+                # export_one 内部用 asyncio.run(); 此处身处 async 请求处理器的事件循环,
+                # 必须丢到线程 (否则 RuntimeError: asyncio.run() cannot be called from a running event loop)
+                await asyncio.to_thread(export_one, _sid)
         if substrate_id and _HAS_GRAPH:
             background_tasks.add_task(
                 _build_graph,

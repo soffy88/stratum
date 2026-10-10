@@ -78,7 +78,7 @@ handler 接收 `url: str` + `html: str = None`（Form 参数）。流程：
 
 **三处错误**:
 1. 端点错: `/api/v1/ingest` → 应是 `/api/v1/inbox/web-clip`
-2. 端口错: `localhost:8000` → 应是 `localhost:9305`（或 `stratum.uex.hk`）
+2. 端口错: `localhost:8000` → 应是 `localhost:9305`（或 `stratum.kanpan.co`）
 3. 无 auth: 缺 `Authorization: Bearer <token>` header
 
 ### omodul.knowledge.browser_extension 真实状态

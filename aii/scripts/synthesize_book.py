@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 sys.path.insert(0, str(ROOT / "scripts"))
 import asyncpg
+import opencc
 from chapter_ingest import slice_chapter, SM, chapter_numbers
 from chapter_synthesize import _plan, _synth, _CTX, _find_pos
 from clean_ku import clean, is_empty_shell, is_junk
@@ -17,6 +18,23 @@ from aii.api._provider import register_providers
 from aii.service.planning_completeness import check_completeness
 from oprim import vector_encode
 from obase import ProviderRegistry
+
+_T2S = opencc.OpenCC("t2s")
+
+
+def _book_lang(text: str) -> str:
+    """判断源书语言: 'en'(英文/非中文占多) / 'zh'(中文, 简繁不拘, 存前统一转简体).
+    ★中文原书不需要"英文原文"这回事——_synth 是0LLM程序抠原文, 对中文书抠出来的
+    就是中文, 不是翻译. 旧逻辑用 en_or_zh fallback 把中文塞进 natural_text(本该放
+    独立英文内容的字段), 前端无条件标"英文原文"产生误导. 按源语言分支: 中文书只
+    存一份原文(繁体先转简体, 简体不转不翻译); 英文书维持现状(英文原文+中文翻译)."""
+    samp = text[:50000]
+    zh = len(re.findall(r"[一-鿿]", samp))
+    en = len(re.findall(r"[A-Za-z]", samp))
+    return "zh" if zh > en else "en"
+
+
+BOOK_LANG = _book_lang(SM.read_text(encoding="utf-8", errors="replace"))
 
 SUB = os.getenv("SUBSTRATE", "microecon_en_full_v2")
 SC = Path(
@@ -86,10 +104,17 @@ async def persist(conn, n, kus):
     for i, (p, body) in enumerate(kus):
         name = p["name"]
         typ = p.get("type", "conceptual")
-        en_raw, zh_raw = _split_bilingual(body)
+        if BOOK_LANG == "zh":
+            # ★中文原书: body 本就是原文中文(_synth 0LLM程序抠), 不按行拆英/中(那样会把
+            # 原文错分成"没有可翻译内容→en空"); 整段当中文清洗, 不产出虚假的"英文原文".
+            en_raw, zh_raw = "", body
+        else:
+            en_raw, zh_raw = _split_bilingual(body)
         # ★清洗呈现: 去脚手架/markdown/(未涉及); 来源标注剥到 provenance.citations(命门不丢)
         en, en_cites = clean(en_raw)
         zh, zh_cites = clean(zh_raw)
+        if BOOK_LANG == "zh" and zh:
+            zh = _T2S.convert(zh)  # 繁体→简体(机械转换, 简体输入原样不变)
         # 全空壳(书没讲)→ 不入库; 中文<10字也丢弃(对齐质量门空壳判定: 有英文无中文也算空壳)
         # ★LLM 拒答/脚手架泄漏/空 facet 壳(内容窗口空→LLM回道歉)也丢弃, 防垃圾入库
         if (
@@ -101,6 +126,13 @@ async def persist(conn, n, kus):
         kt = _TYPE_MAP.get(typ, "conceptual")
         is_pos = kt == "positional"
         stance = (p.get("stance_holder") or None) if is_pos else None
+        # ★LLM 偶尔标 positional 却不给 stance_holder → 撞 ck_ku_onto_positional_holder
+        # 硬约束, 整章 persist 中途炸掉(前面已插的KU真提交, 后面全丢, 还得重跑一次LLM).
+        # 降级成 conceptual 而不是让DB拒绝: KU内容本身抽出来了, 只是够不上positional的
+        # 元数据要求, 不该因为这个丢整章.
+        if is_pos and not stance:
+            kt = "conceptual"
+            is_pos = False
         opposing = (p.get("opposing") or p.get("opposing_stance") or None) if is_pos else None
         ku_id = f"{SUB}::ch{n}_ku{i}"
         emb = (
@@ -115,6 +147,7 @@ async def persist(conn, n, kus):
             "type": typ,
             "explains": p.get("explains"),  # ★溯源记真实六类 + explains指向
             "citations": sorted(set(en_cites + zh_cites)),
+            "source_lang": BOOK_LANG,  # ★zh=中文原书(natural_text非独立英文, 前端应显示"原文"不折叠)
         }
         # ★is_positional 是生成列(=knowledge_type='positional'), 不可显式插入; 只写 stance_holder/opposing_stance
         await conn.execute(

@@ -1,16 +1,17 @@
 import os, re, glob, sys, shutil, subprocess
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
+from book_identity import norm_stem  # noqa: E402
+
 SRC = "/home/soffy/shared/stratum-to-aii"
 DST = "/home/soffy/books/MD"
 DO = "--do" in sys.argv  # 默认 dry-run
 
 
-def _norm(s):  # 归一标题查重(同 econ/math_convert)
-    s = re.sub(r"\(z-lib[^)]*\)|\(z-library[^)]*\)|\([^)]*1lib[^)]*\)", "", s, flags=re.I)
-    s = re.sub(r"\.(pdf|epub|md)$", "", s, flags=re.I)
-    s = re.sub(r"[\s_\-（）()【】\[\]·,，.。、:：;；]+", "", s)
-    return s.lower()
+def _norm(s):  # 归一标题查重 — 统一走 book_identity.norm_stem(它比旧版多剥 _01KWXXXX
+    # ULID 后缀, 正是 md_export 制造重复的根源, 如"微积分的力量"跨文件夹重复案例)。
+    return norm_stem(s)
 
 
 def _done_norms():
@@ -173,10 +174,50 @@ def classify(path):
     zh = len(re.findall(r"[一-鿿]", samp))
     en = len(re.findall(r"[A-Za-z]", samp))
     headings = len(re.findall(r"(?m)^#{1,4}\s", text))
-    chaps = len(re.findall(r"(?m)^#\s+Chapter\s+\d|^第[一二三四五六七八九十百\d]+章", text))
+    chaps = len(re.findall(r"(?m)^#{1,3}\s+\**Chapter\s+\d|^第[一二三四五六七八九十百\d]+章", text))
+    # ★2026-07-06: 有些教材章节标题本身没有"Chapter N"/"第N章"字样(如Mathematics for Machine
+    # Learning: 章节直接叫"Introduction and Motivation", 靠小节编号"1.1/2.1"体现结构), 上面
+    # 那条正则永远抓不到, 判"无章节"→ 错分去其它(即便编号定理densely, 也进不了数学). 补一条:
+    # 统计标题行里出现过的"N.M"小节编号, 不同的整数大节号N≥3个, 也算有章节结构。
+    # ★但学术论文的"1. Introduction/2. Related Work"也是这个格式(实测撞过3篇论文被误判成
+    # 教材)——用 frontmatter 的 doc_type 精确排除, 只对 doc_type!=paper 生效。
+    decimal_ch = (
+        0
+        if "doc_type: paper" in text[:500]
+        else len(set(int(m) for m in re.findall(r"(?m)^#{1,6}\s+\**(\d{1,2})\.\d+\b", text)))
+    )
     # ── 品质门 ──
     if _GARBAGE.match(name) or len(name) < 4:
         return ("低质", "垃圾/碎片名", None)
+    # ★2026-07-09 实测: _PAPER 文件名正则(WP/AER/JEL/(年份)/et al)只认旧式经济学工作论文
+    # 命名, 抓不到 aii_feedback_service 自动订阅拉回来的 arxiv 论文(文件名是"标题截断+ULID后
+    # 缀", 不带那些引用体式标记)——查真实数据: 84个单篇论文靠这条漏网, 全部错分进"其它"(章节
+    # 教材专用文件夹), misc discover 的 chapters<3 门槛又把它们永久静默跳过, querier无记录、
+    # KU永远0。frontmatter 的 doc_type 是权威信号(md_export_service.py 按 medium 精确打上去
+    # 的), 不靠文件名猜, 放在文件名正则前面先查, 覆盖面更广。
+    # ★例外(2026-07-11, 给 math-prog 找英文粮): 长篇+定理编号密集的"论文"其实是讲义/
+    # lecture notes(arXiv math 上大量存在, 几十上百页、Theorem N.M 满篇)——正是 math-prog
+    # B范式(程序抠编号陈述+证明, 0-LLM, 不需要章节结构)的对口粮。短论文(<300KB 或定理<40)
+    # 照旧进低质。计数用全文而非 samp, 长文档定理分布在后半部。
+    if "doc_type: paper" in text[:500]:
+        _thm_full = len(
+            re.findall(r"\b(theorem|definition|lemma|corollary)\s+\d", text.lower())
+        ) + len(re.findall(r"(定理|定义|引理|推论)\s*[\d一二三四五六七八九十]", text))
+        if n >= 300000 and _thm_full >= 40:
+            _is_zh_note = len(re.findall(r"[一-鿿]", samp)) > 1000
+            return (
+                "中文数学" if _is_zh_note else "英文数学",
+                f"讲义型(定理{_thm_full} {n // 1024}KB, doc_type=paper但B范式可抽)",
+                _out,
+            )
+        # ★普通论文(非讲义型)不再判"低质"扔掉——论文≠教材,不需要凑章节/定理密度,
+        # 走 generate_bu.py 的论文分支(BU两层理解 + paper_v3_gate.py skill抽取,
+        # 见 docs/PAPER_BU_SCHEMA.md)。只挡明显不合格的(OCR乱码/摘要级残片)。
+        if fffd / max(n, 1) > 0.008:
+            return ("低质", f"OCR乱码({100 * fffd // n}%)", None)
+        if n < 15000:
+            return ("低质", f"论文太短({n // 1024}KB, 疑似摘要/残片)", None)
+        return ("论文", f"{n // 1024}KB", _out)
     if _PAPER.search(name):
         return ("低质", "学术论文(非教材)", None)
     if n < 60000:
@@ -198,18 +239,29 @@ def classify(path):
     is_zh = zh > 1000  # 有大量中文即判中文书(中文数学教材公式里英文多, 不能用 zh>en)
     dens_e = econ / (n / 1000)
     dens_m = math / (n / 1000)
-    has_ch = chaps >= 3
-    # 经济学教材: econ密度高 + 有章节
-    if dens_e >= 2.0 and dens_e >= dens_m and has_ch:
-        return ("经济学", f"econ{dens_e:.1f} 章{chaps}", _out)
-    # 数学教材: math密度高 + 带编号定理多(非科普) + 有章节
-    if dens_m >= 1.5 and dens_m > dens_e and thm_num >= 10 and has_ch:
+    has_ch = chaps >= 3 or decimal_ch >= 3
+    # 经济学教材: econ密度高 + 有章节。★阈值分语言: 2.0/千字符按中文校准(中文2字词每千
+    # 字符命中数天然高), 英文教材结构性只有~0.8-1.0(实测 Principles of Finance 0.8/
+    # Microeconomics 0.9), 统一2.0会把全部英文经济教材错放"其它", econ飞轮(discover本就
+    # 全语言, econ_en_前缀都留好了)永远吃不到英文书。
+    econ_floor = 2.0 if is_zh else 0.7
+    if dens_e >= econ_floor and dens_e >= dens_m and has_ch:
+        return ("经济学", f"econ{dens_e:.1f} 章{max(chaps, decimal_ch)}", _out)
+    # 数学教材: math密度高 或 编号定理绝对数量很多(应用型数学书, 如ML数学, 正文夹叙夹议
+    # 稀释了关键词密度, 但编号定理照样densely) + 有章节。同 math_convert.py 的 math_textbook()
+    # 已用的 thm>=30 or dens>=1.2 口径(2026-07-06 实测: Mathematics for Machine Learning
+    # 106个编号定理但dens_m仅0.7, 原先纯AND逻辑判不进数学).
+    if (dens_m >= 1.5 or thm_num >= 30) and thm_num >= 10 and dens_m > dens_e and has_ch:
         return (
             "中文数学" if is_zh else "英文数学",
-            f"math{dens_m:.1f} 编号定理{thm_num} 章{chaps} {'中' if is_zh else '英'}",
+            f"math{dens_m:.1f} 编号定理{thm_num} 章{max(chaps, decimal_ch)} {'中' if is_zh else '英'}",
             _out,
         )
-    return ("其它", f"e{dens_e:.1f}/m{dens_m:.1f} 章{chaps} 编号定理{thm_num}", _out)
+    return (
+        "其它",
+        f"e{dens_e:.1f}/m{dens_m:.1f} 章{max(chaps, decimal_ch)} 编号定理{thm_num}",
+        _out,
+    )
 
 
 cats = {}
@@ -217,7 +269,7 @@ for f in sorted(glob.glob(f"{SRC}/*.md")):
     cat, reason, cleaned = classify(f)
     cats.setdefault(cat, []).append((Path(f).name, reason, cleaned))
 
-for cat in ["经济学", "中文数学", "英文数学", "其它", "低质", "SKIP"]:
+for cat in ["经济学", "中文数学", "英文数学", "论文", "其它", "低质", "SKIP"]:
     items = cats.get(cat, [])
     print(f"\n=== {cat} ({len(items)}) ===")
     for name, reason, _ in items[:60]:
@@ -229,7 +281,7 @@ if DO:
     for cat, items in cats.items():
         if cat in ("低质", "SKIP"):
             continue
-        tgt = DST if cat == "其它" else f"{DST}/{cat}"
+        tgt = f"{DST}/{cat}"
         os.makedirs(tgt, exist_ok=True)
         for name, _, cleaned in items:
             src = f"{SRC}/{name}"
@@ -241,6 +293,10 @@ if DO:
                 os.remove(src)
                 moved += 1
             else:
-                shutil.move(src, dst)
+                # ★copy+remove 而非 move: stratum 容器导出的 MD 属主是 root, 同盘 move=rename
+                # 保留 root 属主, 下游要回写文件的步骤(如 math_route_or_skip 盖 frontmatter 戳)
+                # 会 PermissionError; copy 出来的新文件归本用户。删 src 只需目录写权限(soffy有)。
+                shutil.copy2(src, dst)
+                os.remove(src)
                 moved += 1
     print(f"✓ 移动 {moved} 个, 跳过(已存在/已入库){skipped} 个. 低质留在 {SRC}")

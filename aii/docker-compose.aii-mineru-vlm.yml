@@ -1,0 +1,49 @@
+# MinerU VLM — MINERU-AII-INTEGRATION-SPEC-001 Track B.
+# 独立 compose project(隔离方式同 qmd/aii-refined 那套): 独立 project name,
+# 不共享 aii/aii-refined 的 network/volume。
+#
+# network_mode: host(不是端口发布)——照抄 ocr-vllm 现有跑法(`docker inspect
+# ocr-vllm` 确认过用的是 --network host, 不是 -p 映射), 也是 qmd 那次踩过坑
+# 才确认下来的可靠模式(docker 发布端口的 NAT 链路对某些 HTTP server 会有静默
+# 断连问题, host network 直接绕开这层)。
+#
+# GPU 互斥(spec §2.1 R3): 这个服务和 ocr-vllm 不能同时热载(9.65GB 卡装不下
+# 两个都要~7-8GB的模型)。互斥逻辑不在这个 compose 文件里做——compose 只管"这个
+# 服务怎么起", 互斥是调用方的责任, 见 aii/scripts/math_ocr_convert.py 里
+# ensure_mineru_container()/ensure_container() 两边对称加的"起我之前先停对方"。
+name: aii-mineru-vlm
+services:
+  aii-mineru-vlm:
+    build:
+      context: .
+      dockerfile: Dockerfile.mineru-vlm
+    image: aii-mineru-vlm:latest
+    container_name: mineru-vlm
+    # unless-stopped(不是 no)——照抄 ocr-vllm 现有策略。配合互斥逻辑用显式
+    # `docker stop` 切换通道: unless-stopped 尊重显式 stop(不会被重启策略拉起来),
+    # 只在崩溃/daemon重启时兜底自愈, 和 ensure_container() 的 release 语义一致。
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      # 实测踩坑(2026-07-09, 同 qmd Track A 那次一样的坑): 没配代理时容器直连
+      # huggingface.co 拉模型直接超时卡死(`'timed out' thrown while requesting
+      # HEAD https://huggingface.co/...`, 不是CUDA问题, GPU相关的warning只是良性
+      # 降级提示)。ocr-vllm 没这个问题是因为它用的是预先下载好、挂载进容器的
+      # HF缓存 + HF_HUB_OFFLINE=1(见其 docker run 参数), 完全不碰网络——MinerU VLM
+      # 这个模型还没缓存过, 走代理下载, 同时挂共享缓存卷让下载结果持久化,
+      # 之后重启就快了(但这次先不设 HF_HUB_OFFLINE=1, 避免缓存不完整时直接失败)。
+      - HTTP_PROXY=http://127.0.0.1:10808
+      - HTTPS_PROXY=http://127.0.0.1:10808
+      - http_proxy=http://127.0.0.1:10808
+      - https_proxy=http://127.0.0.1:10808
+      - NO_PROXY=localhost,127.0.0.1,::1
+      - no_proxy=localhost,127.0.0.1,::1
+    volumes:
+      - /home/soffy/.cache/huggingface:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

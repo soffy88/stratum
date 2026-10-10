@@ -10,17 +10,17 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from omodul import (
+from omodul.daily_digest_workflow import (
     DailyDigestConfig,
     DailyDigestInput,
-    InboxConfig,
-    InboxInput,
+    daily_digest_workflow,
+)
+from omodul.weekly_review_workflow import (
     WeeklyReviewConfig,
     WeeklyReviewInput,
-    daily_digest_workflow,
-    process_inbox_substrate,
     weekly_review_workflow,
 )
+from omodul.process_inbox_substrate import InboxConfig, InboxInput, process_inbox_substrate
 
 BUILTIN_JOBS: list[dict[str, Any]] = [
     {

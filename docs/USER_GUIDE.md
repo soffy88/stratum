@@ -6,7 +6,7 @@
 
 ## Step 1: 注册账号
 
-1. 打开 https://stratum.uex.hk/register
+1. 打开 https://stratum.kanpan.co/register
 2. 填写用户名、邮箱、密码（密码 ≥ 8 位）
 3. 登录成功 → 进入 Stratum 主界面
 

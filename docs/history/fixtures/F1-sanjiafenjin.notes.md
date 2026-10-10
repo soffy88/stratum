@@ -1,0 +1,22 @@
+# Notes · `F1-sanjiafenjin.json`
+
+> 从 JSON 本体迁出的注释（下划线键）。JSON 本体现零下划线键、committed bytes 原样过 validate（无隐形预处理）。本文件仅供人读，非契约。
+
+### / · _meta
+```json
+{
+  "fixture": "F1 · 三家分晋",
+  "spec": "AII-HISTORY-KU-SPEC-001 §10 W-H0 ①",
+  "purpose": "isomorphism（同事异述）常态样本 + parent_event 组合结构。供生产端 G1b 对拍（本 fixture 装配为 §8 契约样例 sample.sanjiafenjin.json）。",
+  "mechanisms_exercised": [
+    "parent_event 组合（过程 ⊃ 晋阳之战 + 命侯）",
+    "同事异述：一 event 挂多 account（晋阳之战 之于 通鉴/史记/战国策）",
+    "策士言辞 genre 降权（战国策）",
+    "命侯 date 精确"
+  ],
+  "identity_verdicts_see": "fixtures/JUDGMENTS.md#F1",
+  "locator_note": "语料层未入库，para_ulid 一律 null 并在 note 记待补；书/篇级已定（冲突判据充分）。",
+  "created": "2026-07-21",
+  "author": "CC (手工，禁抽取器)"
+}
+```
