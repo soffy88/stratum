@@ -3,7 +3,7 @@
  */
 'use client';
 
-import { useEffect } from 'react';
+import { use, useEffect } from 'react';
 import { OEmptyState, OLoadingState, OErrorState } from '@helios/blocks';
 import { useApi } from '@/aii/hooks/useApi';
 import * as api from '@/aii/lib/api-client';
@@ -21,7 +21,8 @@ interface Synthesis {
   higher_order_synthesis: string;
 }
 
-export default function CrossBookSynthesisPage({ params }: { params: { collectionId: string } }) {
+export default function CrossBookSynthesisPage({ params: paramsPromise }: { params: Promise<{ collectionId: string }> }) {
+  const params = use(paramsPromise);
   const [state, run] = useApi((id: string) => api.getCrossBookSynthesis(id));
 
   useEffect(() => {
