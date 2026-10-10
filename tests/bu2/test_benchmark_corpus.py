@@ -63,14 +63,19 @@ def test_every_book_id_is_a_real_substrate_or_declared():
     pytest.importorskip("psycopg2")
     from stratum.services.bu_v2_entrypoint import db
 
+    books = load_corpus()["books"]
     missing = []
-    for b in load_corpus()["books"]:
+    for b in books:
         try:
-            rows = db.query(
-                "SELECT 1 FROM substrates WHERE id=%(id)s LIMIT 1", {"id": b["id"]}
-            )
+            rows = db.query("SELECT 1 FROM substrates WHERE id=%(id)s LIMIT 1", {"id": b["id"]})
         except Exception:
-            break  # no database; the id shape is still checked by the other tests
+            pytest.skip("no database; the id shape is still checked by the other tests")
         if not rows:
             missing.append(b["id"])
+    if len(missing) == len(books):
+        # Not one corpus book is present: this database is not the library the
+        # corpus was drawn from (e.g. CI's freshly migrated schema, which other
+        # tests only populate with fixtures). A deleted book shows up as a
+        # *partial* miss against the real library, which still fails below.
+        pytest.skip("database does not hold the benchmark library; ids checked only against it")
     assert not missing, f"corpus references substrates that do not exist: {missing}"

@@ -24,13 +24,11 @@ import pytest
 from stratum.knowledge.bu_v2_models import (
     BookUnderstandingV2,
     BUStatus,
-    ChapterDelta,
     ChapterUnderstanding,
     VerificationOutcome,
 )
 from stratum.services.bu_v2_book_integrator import BookIntegrator, IntegrationInput
 from stratum.services.bu_v2_entrypoint import (
-    BU2RunError,
     BU2Runner,
     BookLoader,
     RunResult,
@@ -280,7 +278,14 @@ def test_book_integration_is_not_summary_concatenation():
 def test_integration_requires_chapters():
     with pytest.raises(ValueError, match="at least one chapter"):
         BookIntegrator(provider=StaticProvider({})).integrate(
-            IntegrationInput(run_id="r", book_id="b", substrate_id="s", chapters=[], deltas=[], evidence_by_chapter={})
+            IntegrationInput(
+                run_id="r",
+                book_id="b",
+                substrate_id="s",
+                chapters=[],
+                deltas=[],
+                evidence_by_chapter={},
+            )
         )
 
 
@@ -290,7 +295,9 @@ def test_integration_requires_chapters():
 def test_verification_blocks_unverified_understanding():
     """§12 forbids GENERATED -> VERIFIED."""
     v = BUVerifier()
-    weak = BookUnderstandingV2(id="bu1", run_id="r1", book_id="b1", substrate_id="s1", coverage_score=0.1)
+    weak = BookUnderstandingV2(
+        id="bu1", run_id="r1", book_id="b1", substrate_id="s1", coverage_score=0.1
+    )
     report = v.verify(weak, chapter_count=10, evidence_count=0, failed_chapters=7)
 
     assert report.outcome == VerificationOutcome.FAIL
@@ -317,7 +324,14 @@ def test_failed_chapter_extraction_is_recorded_as_negative_knowledge():
     chapters = make_chapters(2)
     chapters[1].primary_role = "UNDERSTANDING_FAILED"
     bu = BookIntegrator(provider=StaticProvider({"genre": "g"})).integrate(
-        IntegrationInput(run_id="r", book_id="b", substrate_id="s", chapters=chapters, deltas=[], evidence_by_chapter={})
+        IntegrationInput(
+            run_id="r",
+            book_id="b",
+            substrate_id="s",
+            chapters=chapters,
+            deltas=[],
+            evidence_by_chapter={},
+        )
     )
     assert any("ch2" in c for c in bu.negative_knowledge.unresolved_conflicts)
     assert bu.coverage_score == 0.5
@@ -339,7 +353,14 @@ def test_expression_has_all_six_sections():
             }
         )
     ).integrate(
-        IntegrationInput(run_id="r", book_id="b", substrate_id="s", chapters=chapters, deltas=[], evidence_by_chapter={})
+        IntegrationInput(
+            run_id="r",
+            book_id="b",
+            substrate_id="s",
+            chapters=chapters,
+            deltas=[],
+            evidence_by_chapter={},
+        )
     )
     exp = BUExpressionGenerator().generate(bu)
 
@@ -348,7 +369,13 @@ def test_expression_has_all_six_sections():
     assert exp.core_mechanisms, "§13.3 requires core mechanisms"
     assert exp.logical_architecture
     assert exp.contribution
-    for section in (exp.essence, exp.world_model, exp.logical_architecture, exp.boundary, exp.contribution):
+    for section in (
+        exp.essence,
+        exp.world_model,
+        exp.logical_architecture,
+        exp.boundary,
+        exp.contribution,
+    ):
         assert isinstance(section, str)
     assert "BOOK ESSENCE" in exp.render()
     assert "CONTRIBUTION" in exp.render()
@@ -367,7 +394,14 @@ def test_expression_is_deterministic():
     """Same BU in, same expression out — so a re-run can be compared."""
     chapters = make_chapters(3)
     bu = BookIntegrator(provider=StaticProvider({"genre": "g", "central_theses": ["t"]})).integrate(
-        IntegrationInput(run_id="r", book_id="b", substrate_id="s", chapters=chapters, deltas=[], evidence_by_chapter={})
+        IntegrationInput(
+            run_id="r",
+            book_id="b",
+            substrate_id="s",
+            chapters=chapters,
+            deltas=[],
+            evidence_by_chapter={},
+        )
     )
     gen = BUExpressionGenerator()
     assert gen.generate(bu).to_dict() == gen.generate(bu).to_dict()
@@ -426,11 +460,11 @@ def test_same_input_produces_same_output():
     # understanding content rather than the identity.
     def shape(r: RunResult):
         return (
-            [(c.chapter_id, c.chapter_thesis, tuple(c.concepts_introduced_refs)) for c in r.chapters],
             [
-                (e.chapter_id, e.kind, e.locator, e.content_hash)
-                for e in r.evidence
+                (c.chapter_id, c.chapter_thesis, tuple(c.concepts_introduced_refs))
+                for c in r.chapters
             ],
+            [(e.chapter_id, e.kind, e.locator, e.content_hash) for e in r.evidence],
             r.bu.governing_questions,
             r.bu.central_theses,
             r.report.outcome.value if r.report else None,
@@ -490,17 +524,24 @@ def test_persisted_run_writes_status_with_correct_signature(fake_db, monkeypatch
     # A single-chapter run cannot satisfy every gate; the contract being
     # asserted is that the run's status follows the verdict, in both directions.
     expected = "VERIFIED" if not failed else "FAILED"
-    run_statuses = [vals.get("status") for t, _rid, vals in fake_db.updated if t == "book_reading_run"]
+    run_statuses = [
+        vals.get("status") for t, _rid, vals in fake_db.updated if t == "book_reading_run"
+    ]
     assert run_statuses == [expected], (run_statuses, failed)
     assert (expected == "VERIFIED") == (result.bu.status == BUStatus.VERIFIED)
     written = {t for t, _row in fake_db.inserted}
-    assert {"book_reading_run", "chapter_understandings", "chapter_deltas",
-            "book_understandings_v2"} <= written, written
+    assert {
+        "book_reading_run",
+        "chapter_understandings",
+        "chapter_deltas",
+        "book_understandings_v2",
+    } <= written, written
 
 
 def test_unknown_provider_family_is_rejected():
     with pytest.raises(ProviderUnavailable, match="unknown provider"):
         resolve_provider("definitely-not-a-provider")
+
 
 def test_evidence_strengths_are_persisted(provider):
     """§11's five strengths are only useful if they survive the write.
@@ -520,25 +561,36 @@ def test_evidence_strengths_are_persisted(provider):
     )
     assert cu.evidence_strengths, "fixture must produce a strength to persist"
     run_id = "r_persist_strengths"
+    substrate_id = "sub_test_persist_strengths"
     cu = cu.model_copy(update={"run_id": run_id})
-    # The FK is real, so the test needs a real run row rather than a bare id.
-    # source_id is a real FK too, so borrow a substrate that exists.
-    existing = query("SELECT id FROM stratum.substrates ORDER BY id LIMIT 1")
-    assert existing, "no substrate to borrow for the FK"
-    insert("book_reading_run", {"id": run_id, "user_id": "u_test", "source_id": existing[0]["id"], "status": "COMPLETED"})
-
-    ChapterUnderstandingRepository.save(cu)
-
-    rows = query(
-        "SELECT evidence_strengths FROM stratum.chapter_understandings WHERE id=%(id)s",
-        {"id": cu.id},
+    # The FKs are real, so the test needs a real run row and a real substrate
+    # rather than bare ids. It owns both rows instead of borrowing a library
+    # book, so it also runs against a freshly migrated (empty) database.
+    execute(
+        "INSERT INTO stratum.substrates (id, user_id, title) "
+        "VALUES (%(id)s, 'u_test', 'evidence-strengths fixture') ON CONFLICT (id) DO NOTHING",
+        {"id": substrate_id},
     )
-    assert rows, "the chapter was not written"
-    stored = rows[0]["evidence_strengths"]
-    if isinstance(stored, str):
-        stored = json.loads(stored)
-    assert stored == cu.evidence_strengths, (
-        f"persisted strengths {stored} differ from the produced ones {cu.evidence_strengths}"
-    )
-    execute("DELETE FROM stratum.chapter_understandings WHERE id=%(id)s", {"id": cu.id})
-    execute("DELETE FROM stratum.book_reading_run WHERE id=%(id)s", {"id": run_id})
+    try:
+        insert(
+            "book_reading_run",
+            {"id": run_id, "user_id": "u_test", "source_id": substrate_id, "status": "COMPLETED"},
+        )
+
+        ChapterUnderstandingRepository.save(cu)
+
+        rows = query(
+            "SELECT evidence_strengths FROM stratum.chapter_understandings WHERE id=%(id)s",
+            {"id": cu.id},
+        )
+        assert rows, "the chapter was not written"
+        stored = rows[0]["evidence_strengths"]
+        if isinstance(stored, str):
+            stored = json.loads(stored)
+        assert stored == cu.evidence_strengths, (
+            f"persisted strengths {stored} differ from the produced ones {cu.evidence_strengths}"
+        )
+    finally:
+        execute("DELETE FROM stratum.chapter_understandings WHERE id=%(id)s", {"id": cu.id})
+        execute("DELETE FROM stratum.book_reading_run WHERE id=%(id)s", {"id": run_id})
+        execute("DELETE FROM stratum.substrates WHERE id=%(id)s", {"id": substrate_id})
