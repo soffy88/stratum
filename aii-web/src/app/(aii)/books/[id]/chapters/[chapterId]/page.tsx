@@ -40,7 +40,7 @@ function ChapterDetailPage({ params: paramsPromise }: { params: Promise<{ id: st
     // Load BU context first
     api.getBuDetail(params.id).then(res => {
       if (res.ok && res.data) {
-        setBuContext({ run_id: res.data.run_id, book_title: res.data.book_title });
+        setBuContext({ run_id: res.data.run_id ?? params.id, book_title: res.data.book_title });
       }
     });
     void run(params.id);
