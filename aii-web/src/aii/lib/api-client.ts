@@ -272,3 +272,204 @@ export async function getBuDetail(id: string): Promise<ApiResult<BuDetail>> {
   if (USE_MOCK) return mock.mockBuDetail(id);
   return request<BuDetail>(`/api/bu/${encodeURIComponent(id)}`, { method: 'GET' });
 }
+
+// ── BU2 Chapter Detail ──
+export interface ChapterDetail {
+  chapter_id: string;
+  title: string;
+  role: string;
+  summary: string;
+  concepts: Array<{ ku_id: string; label: string; grade: string; definition: string }>;
+  claims: Array<{ id: string; text: string; grade: string; evidence_ids: string[] }>;
+  evidence: Array<{ id: string; quote: string; grade: string; locator: string }>;
+  mechanisms: Array<{ id: string; description: string; grade: string }>;
+  questions: string[];
+  conclusions: string[];
+  quality_score: number;
+  provenance: Record<string, string[]>;
+  created_at: string;
+}
+
+export async function getChapterDetail(runId: string, chapterId: string): Promise<ApiResult<ChapterDetail>> {
+  return request<ChapterDetail>(`/api/v1/bu/${encodeURIComponent(runId)}/chapters/${encodeURIComponent(chapterId)}`, { method: 'GET' });
+}
+
+// ── BU2 Synthesis ──
+export interface BuSynthesis {
+  thesis: any;
+  concept_system: any;
+  argument_system: any;
+  mechanism_system: any;
+  evidence_map: any;
+  author_model: any;
+  chapter_roles: any;
+  contradictions: any;
+  unresolved_questions: string[];
+}
+
+export async function getBuSynthesis(runId: string): Promise<ApiResult<BuSynthesis>> {
+  return request<BuSynthesis>(`/api/v1/bu/${encodeURIComponent(runId)}/synthesis`, { method: 'GET' });
+}
+
+// ── Cross-Book (P14) ──
+export interface CrossBookCollection {
+  collection_id: string;
+  name: string;
+  description: string;
+  book_ids: string[];
+  created_at: string;
+}
+
+export interface CrossBookOverview {
+  collection_id: string;
+  name: string;
+  books: Array<{ book_id: string; title: string }>;
+  concept_relations: number;
+  thesis_relations: number;
+  argument_relations: number;
+  mechanism_relations: number;
+  evidence_relations: number;
+  contradictions: number;
+  knowledge_gaps: number;
+}
+
+export interface ConceptRelationItem {
+  relation_id: string;
+  source_book_id: string;
+  target_book_id: string;
+  source_concept_id: string;
+  target_concept_id: string;
+  relation: string;
+  confidence: number;
+  evidence: string[];
+}
+
+export interface ThesisRelationItem {
+  relation_id: string;
+  source_book_id: string;
+  target_book_id: string;
+  source_thesis: string;
+  target_thesis: string;
+  relation: string;
+  confidence: number;
+  evidence: string[];
+}
+
+export interface ArgumentRelationItem {
+  relation_id: string;
+  source_book_id: string;
+  target_book_id: string;
+  source_argument: string;
+  target_argument: string;
+  relation: string;
+  confidence: number;
+  evidence: string[];
+}
+
+export interface ContradictionItem {
+  contradiction_id: string;
+  book_a_id: string;
+  book_b_id: string;
+  type: string;
+  element_a: string;
+  element_b: string;
+  description: string;
+  confidence: number;
+  evidence: string[];
+}
+
+export interface KnowledgeGapItem {
+  gap_id: string;
+  type: string;
+  description: string;
+  affected_books: string[];
+  related_concepts: string[];
+  confidence: number;
+}
+
+export interface PairwiseComparison {
+  book_a_id: string;
+  book_b_id: string;
+  concept_relations: ConceptRelationItem[];
+  thesis_relations: ThesisRelationItem[];
+  argument_relations: ArgumentRelationItem[];
+  contradictions: ContradictionItem[];
+}
+
+export interface ExpressionResponse {
+  collection_id: string;
+  collection_name: string;
+  book_count: number;
+  concept_summary: string;
+  thesis_summary: string;
+  argument_summary: string;
+  contradiction_summary: string;
+  gap_summary: string;
+  synthesis: string;
+  pairwise_comparisons: string;
+  quality: string;
+}
+
+export interface CrossBookQueryRequest {
+  query_type: string;
+  filter?: Record<string, unknown>;
+}
+
+export interface CrossBookQueryResponse {
+  items: unknown[];
+  total: number;
+  query: string;
+  traceability: Record<string, string[]>;
+}
+
+export async function getCrossBookCollections(): Promise<ApiResult<CrossBookCollection[]>> {
+  return request<CrossBookCollection[]>('/api/v1/cross-books', { method: 'GET' });
+}
+
+export async function createCrossBookCollection(body: { name: string; description: string; book_ids: string[] }): Promise<ApiResult<CrossBookCollection>> {
+  return request<CrossBookCollection>('/api/v1/cross-books', { method: 'POST', body });
+}
+
+export async function getCrossBookOverview(collectionId: string): Promise<ApiResult<CrossBookOverview>> {
+  return request<CrossBookOverview>(`/api/v1/cross-books/${encodeURIComponent(collectionId)}`, { method: 'GET' });
+}
+
+export async function runP14(collectionId: string): Promise<ApiResult<{ status: string; understanding_id?: string; stats?: any; failures?: string[] }>> {
+  return request(`/api/v1/cross-books/${encodeURIComponent(collectionId)}/run`, { method: 'POST' });
+}
+
+export async function getConceptRelations(collectionId: string, relation?: string): Promise<ApiResult<ConceptRelationItem[]>> {
+  return request<ConceptRelationItem[]>(`/api/v1/cross-books/${encodeURIComponent(collectionId)}/concepts${relation ? `?relation=${relation}` : ''}`, { method: 'GET' });
+}
+
+export async function getThesisRelations(collectionId: string, relation?: string): Promise<ApiResult<ThesisRelationItem[]>> {
+  return request<ThesisRelationItem[]>(`/api/v1/cross-books/${encodeURIComponent(collectionId)}/theses${relation ? `?relation=${relation}` : ''}`, { method: 'GET' });
+}
+
+export async function getArgumentRelations(collectionId: string, relation?: string): Promise<ApiResult<ArgumentRelationItem[]>> {
+  return request<ArgumentRelationItem[]>(`/api/v1/cross-books/${encodeURIComponent(collectionId)}/arguments${relation ? `?relation=${relation}` : ''}`, { method: 'GET' });
+}
+
+export async function getContradictions(collectionId: string, type?: string): Promise<ApiResult<ContradictionItem[]>> {
+  return request<ContradictionItem[]>(`/api/v1/cross-books/${encodeURIComponent(collectionId)}/contradictions${type ? `?type=${type}` : ''}`, { method: 'GET' });
+}
+
+export async function getKnowledgeGaps(collectionId: string, type?: string): Promise<ApiResult<KnowledgeGapItem[]>> {
+  return request<KnowledgeGapItem[]>(`/api/v1/cross-books/${encodeURIComponent(collectionId)}/gaps${type ? `?type=${type}` : ''}`, { method: 'GET' });
+}
+
+export async function getCrossBookSynthesis(collectionId: string): Promise<ApiResult<any>> {
+  return request(`/api/v1/cross-books/${encodeURIComponent(collectionId)}/synthesis`, { method: 'GET' });
+}
+
+export async function getCrossBookExpression(collectionId: string): Promise<ApiResult<ExpressionResponse>> {
+  return request<ExpressionResponse>(`/api/v1/cross-books/${encodeURIComponent(collectionId)}/expression`, { method: 'GET' });
+}
+
+export async function getPairwiseComparisons(collectionId: string): Promise<ApiResult<PairwiseComparison[]>> {
+  return request<PairwiseComparison[]>(`/api/v1/cross-books/${encodeURIComponent(collectionId)}/pairwise`, { method: 'GET' });
+}
+
+export async function queryCrossBook(collectionId: string, body: CrossBookQueryRequest): Promise<ApiResult<CrossBookQueryResponse>> {
+  return request<CrossBookQueryResponse>(`/api/v1/cross-books/${encodeURIComponent(collectionId)}/query`, { method: 'POST', body });
+}
