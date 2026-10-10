@@ -24,9 +24,9 @@ summaries — the structure is computed, not generated.
 
 from __future__ import annotations
 
-import hashlib
 from collections import defaultdict
 from dataclasses import dataclass
+import os
 from typing import Any
 
 from stratum.knowledge.bu_v2_models import (
@@ -45,6 +45,9 @@ from stratum.knowledge.bu_v2_models import (
 from stratum.services.bu_v2_provider import (
     ModelProvider,
     ProviderError,
+    ProviderUnavailable,
+    _is_transient,
+    call_with_retry,
     resolve_provider,
 )
 
@@ -77,8 +80,8 @@ _SCHEMA = (
     '"sub_theses":["<a supporting claim>"],'
     '"book_mental_model":"<3-5 sentences on how the author explains the subject '
     'and how the parts fit together, NOT a list of chapters>"}\n\n'
-    'Fill every value from the per-chapter theses above. Do not copy these '
-    'placeholder phrases as values.'
+    "Fill every value from the per-chapter theses above. Do not copy these "
+    "placeholder phrases as values."
 )
 
 
@@ -131,16 +134,44 @@ class BookIntegrator:
             f"  [{c.chapter_id}] {c.chapter_thesis[:150]}"
             for c in sorted(data.chapters, key=lambda x: _chapter_number(x.chapter_id))[:60]
         )
+        from stratum.services.bu_v2_producer import _language_rule
+
+        rule = _language_rule(digest)
         prompt = (
             f"BOOK with {len(data.chapters)} chapters.\n\n"
             f"PER-CHAPTER THESES:\n{digest}\n\n"
+            f"{rule}"
             f"Respond with exactly this JSON shape:\n{_SCHEMA}"
         )
+        # Chinese framing needs about twice the tokens; at 900 it was cut off
+        # mid-JSON and the book lost its governing questions and theses.
+        max_tokens = 1800 if rule else 900
+
+        def _ask() -> dict[str, Any]:
+            try:
+                out = self.provider.complete(
+                    prompt,
+                    system=_SYSTEM,
+                    json_mode=True,
+                    max_tokens=max_tokens,
+                    temperature=0.0,
+                ).json()
+            except ValueError as exc:
+                raise ProviderError(str(exc)) from exc
+            if isinstance(out, list) and out and isinstance(out[0], dict):
+                out = out[0]
+            if not isinstance(out, dict) or not (
+                out.get("governing_questions") or out.get("central_theses")
+            ):
+                raise ProviderError("integration proposal missing questions and theses")
+            return out
+
         try:
-            out = self.provider.complete(
-                prompt, system=_SYSTEM, json_mode=True, max_tokens=900, temperature=0.0
-            ).json()
-            return out if isinstance(out, dict) else {}
+            return call_with_retry(
+                _ask,
+                attempts=int(os.environ.get("BU2_CHAPTER_ATTEMPTS", "3")),
+                retry_if=lambda exc: not isinstance(exc, ProviderUnavailable) or _is_transient(exc),
+            )
         except (ProviderError, ValueError):
             # A book that cannot be framed by the model still integrates: every
             # structural field below is derived and unaffected.
@@ -230,10 +261,7 @@ class BookIntegrator:
 
         def pick(pred) -> str | None:
             limit = _chapter_number(dep_chapter)
-            hits = [
-                cid for n, cid in candidates
-                if _chapter_number(cid) < limit and pred(n)
-            ]
+            hits = [cid for n, cid in candidates if _chapter_number(cid) < limit and pred(n)]
             if not hits:
                 return None
             return min(hits, key=_chapter_number)
@@ -271,7 +299,10 @@ class BookIntegrator:
             steps.append(
                 {
                     "step_type": step_type,
-                    "description": c.chapter_thesis or c.chapter_goal or c.chapter_question or c.chapter_id,
+                    "description": c.chapter_thesis
+                    or c.chapter_goal
+                    or c.chapter_question
+                    or c.chapter_id,
                     "chapter_ref": c.chapter_id,
                 }
             )
