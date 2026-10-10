@@ -877,6 +877,35 @@ class BU2Runner:
         else:
             db.update("book_reading_run", result.run_id, {"status": "FAILED"})
         result.persisted = True
+        if result.bu.status == BUStatus.VERIFIED:
+            self._persist_p13(result)
+
+    def _persist_p13(self, result: RunResult) -> None:
+        """P13: build and store the BookSynthesis for a VERIFIED run.
+
+        P14 pairs every book's latest VERIFIED BU with the synthesis of that
+        same run, so it is written here while the P12 graphs are in memory.
+        A synthesis failure does not undo the verified BU; it is reported.
+        """
+        import sys
+
+        from stratum.services.bu_v2_book_synthesis import BookSynthesisBuilder
+        from stratum.services.bu_v2_repositories import BookSynthesisRepository
+
+        p12 = result.p12 or {}
+        dep = p12.get("dependency")
+        try:
+            synth = BookSynthesisBuilder().build(
+                result.bu,
+                result.chapters,
+                evolution=p12.get("evolution"),
+                argument_analysis=p12.get("argument"),
+                graph=getattr(dep, "graph", None),
+                structure=result.structure,
+            )
+            BookSynthesisRepository.save(synth)
+        except Exception as exc:  # noqa: BLE001 - reported, BU stays verified
+            print(f"[bu2] P13 synthesis not persisted for {result.run_id}: {exc}", file=sys.stderr)
 
 
 def main(argv: list[str] | None = None) -> int:

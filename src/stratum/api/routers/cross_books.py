@@ -132,6 +132,17 @@ class QueryResponse(BaseModel):
     traceability: dict
 
 
+# ── Helper: load understanding ──
+
+def _understanding_row(collection_id: str):
+    """crossbook_understandings row exposed under the model's field names."""
+    from stratum.services.bu_v2_p14_loader import understanding_row_view
+
+    return understanding_row_view(
+        read("crossbook_understandings", collection_id, id_column="collection_id")
+    )
+
+
 # ── Helper: load collection ──
 
 async def _load_collection(collection_id: str, user_id: str):
@@ -222,7 +233,7 @@ async def get_crossbook_overview(
     collection = await _load_collection(collection_id, user_id)
 
     # Load understanding
-    understanding = read("crossbook_understandings", collection_id, id_column="collection_id")
+    understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Cross-book understanding not found. Run P14 first.")
 
@@ -249,9 +260,11 @@ async def run_p14(
     # Convert datetime to string for Pydantic validation
     if isinstance(collection_dict.get("created_at"), datetime):
         collection_dict["created_at"] = collection_dict["created_at"].isoformat()
-    collection = CrossBookCollection(**collection_dict)
+    from stratum.services.bu_v2_p14_loader import collection_from_row
 
-    runner = BU2P14Runner()
+    collection = collection_from_row(collection_dict)
+
+    runner = BU2P14Runner(persist=True, user_id=user_id)
     result = runner.execute(collection)
 
     if not result.understanding:
@@ -276,7 +289,7 @@ async def get_concept_relations(
 ):
     """Get concept relations across books."""
     collection = await _load_collection(collection_id, user_id)
-    understanding = read("crossbook_understandings", collection_id, id_column="collection_id")
+    understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
 
@@ -305,7 +318,7 @@ async def get_thesis_relations(
 ):
     """Get thesis relations across books."""
     collection = await _load_collection(collection_id, user_id)
-    understanding = read("crossbook_understandings", collection_id, id_column="collection_id")
+    understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
 
@@ -334,7 +347,7 @@ async def get_argument_relations(
 ):
     """Get argument relations across books."""
     collection = await _load_collection(collection_id, user_id)
-    understanding = read("crossbook_understandings", collection_id, id_column="collection_id")
+    understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
 
@@ -363,7 +376,7 @@ async def get_contradictions(
 ):
     """Get contradictions across books."""
     collection = await _load_collection(collection_id, user_id)
-    understanding = read("crossbook_understandings", collection_id, id_column="collection_id")
+    understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
 
@@ -393,7 +406,7 @@ async def get_knowledge_gaps(
 ):
     """Get knowledge gaps across books."""
     collection = await _load_collection(collection_id, user_id)
-    understanding = read("crossbook_understandings", collection_id, id_column="collection_id")
+    understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
 
@@ -418,7 +431,7 @@ async def get_synthesis(
 ):
     """Get full cross-book synthesis."""
     collection = await _load_collection(collection_id, user_id)
-    understanding = read("crossbook_understandings", collection_id, id_column="collection_id")
+    understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
 
@@ -431,7 +444,7 @@ async def get_expression(
 ):
     """Get human-readable cross-book expression."""
     collection = await _load_collection(collection_id, user_id)
-    understanding = read("crossbook_understandings", collection_id, id_column="collection_id")
+    understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
 
@@ -464,7 +477,7 @@ async def get_pairwise(
 ):
     """Get pairwise book comparisons."""
     collection = await _load_collection(collection_id, user_id)
-    understanding = read("crossbook_understandings", collection_id, id_column="collection_id")
+    understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
 
@@ -495,7 +508,7 @@ async def query_crossbook(
 ):
     """Execute cross-book query."""
     collection = await _load_collection(collection_id, user_id)
-    understanding = read("crossbook_understandings", collection_id, id_column="collection_id")
+    understanding = _understanding_row(collection_id)
     if not understanding:
         raise HTTPException(404, "Run P14 first")
 
