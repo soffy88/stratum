@@ -7,6 +7,7 @@ import { use, useEffect } from 'react';
 import { OEmptyState, OLoadingState, OErrorState } from '@helios/blocks';
 import { useApi } from '@/aii/hooks/useApi';
 import * as api from '@/aii/lib/api-client';
+import { GradeDot } from '@/aii/components/GradeMarkers';
 import Link from 'next/link';
 
 interface Synthesis {
