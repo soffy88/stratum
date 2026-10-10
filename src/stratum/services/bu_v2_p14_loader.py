@@ -11,6 +11,7 @@ chapter ids would not match the BU it would be paired with.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Callable
 
 from stratum.knowledge.bu_v2_models import (
@@ -284,3 +285,142 @@ def understanding_row_view(row: dict | None) -> dict | None:
     view["quality"] = _jload(row.get("quality_json"), {})
     view["traceability"] = _jload(row.get("traceability_json"), {})
     return view
+
+
+# ── cross-language pivot ────────────────────────────────────────────────────
+#
+# Every P14 comparator is lexical (token Jaccard). A Chinese and an English
+# textbook on the same subject therefore share no tokens and align on nothing.
+# When a collection mixes languages, the CJK books' synthesis text is
+# translated to English (the pivot) before comparison. Ids are untouched, so
+# every relation still traces back to the original book, chapter and claim.
+
+_CJK_CHARS = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]")
+
+
+def is_cjk_synthesis(synth: BookSynthesis, sample: int = 4000) -> bool:
+    text = json.dumps(synth.model_dump(mode="json"), ensure_ascii=False)[: sample * 4]
+    cjk = len(_CJK_CHARS.findall(text))
+    letters = len(re.findall(r"[A-Za-z]", text))
+    return cjk > 50 and cjk >= letters * 0.2
+
+
+def _collect_cjk(value: Any, out: dict[str, None]) -> None:
+    if isinstance(value, str):
+        if _CJK_CHARS.search(value) and len(value) <= 2000:
+            out.setdefault(value, None)
+    elif isinstance(value, dict):
+        for v in value.values():
+            _collect_cjk(v, out)
+    elif isinstance(value, list):
+        for v in value:
+            _collect_cjk(v, out)
+
+
+def _replace(value: Any, table: dict[str, str]) -> Any:
+    if isinstance(value, str):
+        return table.get(value, value)
+    if isinstance(value, dict):
+        return {k: _replace(v, table) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_replace(v, table) for v in value]
+    return value
+
+
+_TRANSLATE_SYSTEM = (
+    "You translate mathematics and science textbook phrases from Chinese to "
+    "English. Answer ONLY with a JSON object mapping each input key to its "
+    "English translation. Use standard English textbook terminology "
+    "(极限 -> limit, 导数 -> derivative, 定积分 -> definite integral). Keep "
+    "formulas and symbols unchanged."
+)
+
+
+def translate_synthesis(
+    synth: BookSynthesis,
+    provider: Any,
+    *,
+    cache_path: str | None = None,
+    batch: int = 40,
+) -> tuple[BookSynthesis, int]:
+    """Return a copy of ``synth`` with CJK text translated to English.
+
+    Translations are cached on disk so a re-run does not pay for them again.
+    A batch the model cannot translate keeps its original text.
+    """
+    import os
+
+    dump = synth.model_dump(mode="json")
+    pending: dict[str, None] = {}
+    _collect_cjk(dump, pending)
+    cache: dict[str, str] = {}
+    if cache_path and os.path.exists(cache_path):
+        try:
+            with open(cache_path, encoding="utf-8") as f:
+                cache = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            cache = {}
+    todo = [s for s in pending if s not in cache]
+    for i in range(0, len(todo), batch):
+        chunk = todo[i : i + batch]
+        keyed = {str(n): s for n, s in enumerate(chunk)}
+        prompt = "Translate every value. Return the same keys.\n" + json.dumps(
+            keyed, ensure_ascii=False
+        )
+        try:
+            from stratum.services.bu_v2_provider import call_with_retry
+
+            def _ask() -> dict:
+                out = provider.complete(
+                    prompt,
+                    system=_TRANSLATE_SYSTEM,
+                    json_mode=True,
+                    max_tokens=4000,
+                    temperature=0.0,
+                ).json()
+                if not isinstance(out, dict):
+                    from stratum.services.bu_v2_provider import ProviderError
+
+                    raise ProviderError("translation was not a JSON object")
+                return out
+
+            out = call_with_retry(_ask, attempts=3)
+        except Exception:  # noqa: BLE001 - keep originals for this batch
+            continue
+        for k, src in keyed.items():
+            tr = out.get(k)
+            if isinstance(tr, str) and tr.strip() and not _CJK_CHARS.search(tr):
+                cache[src] = tr.strip()
+    if cache_path:
+        try:
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(cache, f, ensure_ascii=False)
+        except OSError:
+            pass
+    table = {s: cache[s] for s in pending if s in cache}
+    translated = BookSynthesis(**_replace(dump, table))
+    return translated, len(table)
+
+
+def pivot_books(
+    books: list[tuple[BookUnderstandingV2, BookSynthesis]],
+    provider: Any,
+    *,
+    cache_dir: str | None = None,
+) -> tuple[list[tuple[BookUnderstandingV2, BookSynthesis]], list[str]]:
+    """Translate CJK books to English when the collection mixes languages."""
+    flags = [is_cjk_synthesis(s) for _, s in books]
+    notes: list[str] = []
+    if all(flags) or not any(flags):
+        return books, notes
+    out = []
+    for (bu, synth), cjk in zip(books, flags, strict=True):
+        if not cjk:
+            out.append((bu, synth))
+            continue
+        cache = f"{cache_dir}/p14_pivot_{synth.run_id}.json" if cache_dir else None
+        translated, n = translate_synthesis(synth, provider, cache_path=cache)
+        notes.append(f"Book {bu.book_id}: {n} phrases translated to English for comparison")
+        out.append((bu, translated))
+    return out, notes

@@ -13,8 +13,6 @@ from typing import Any
 from stratum.knowledge.bu_v2_models import (
     BookSynthesis,
     BookThesis,
-    BookThesisModel,
-    ThesisType,
     CrossBookThesis,
     CrossBookThesisRelation,
     CrossBookThesisRelationType,
@@ -38,7 +36,9 @@ def _jaccard_similarity(a: str, b: str) -> float:
     set_a = set(_normalize_text(a).split())
     set_b = set(_normalize_text(b).split())
     if not set_a and not set_b:
-        return 1.0
+        # Two empty fields share nothing; scoring them 1.0 manufactured
+        # matches between unrelated items whose optional fields were blank.
+        return 0.0
     if not set_a or not set_b:
         return 0.0
     return len(set_a & set_b) / len(set_a | set_b)
@@ -58,28 +58,6 @@ class BU2CrossBookThesisComparator:
 
     def __init__(self, provider=None):
         self.provider = provider
-
-    def _extract_theses(self, books: list[tuple[Any, "BookSynthesis"]]) -> dict[str, list["BookThesis"]]:
-        """Extract all theses from all books with source context."""
-        all_theses: dict[str, list["BookThesis"]] = {}
-
-        for bu, synth in books:
-            if not synth or not synth.thesis:
-                continue
-
-            theses = synth.thesis.all_theses()
-            all_theses[bu.book_id] = theses
-
-        return all_theses
-
-    def _compute_thesis_similarity(self, t1: "BookThesis", t2: "BookThesis") -> dict[str, float]:
-        """Compute similarity metrics between two theses."""
-        return {
-            "statement": _jaccard_similarity(t1.statement, t2.statement),
-            "type_match": 1.0 if t1.type == t2.type else 0.0,
-            "scope_match": 1.0 if t1.scope == t2.scope else 0.0,
-            "provenance_match": 1.0 if t1.provenance == t2.provenance else 0.0,
-        }
 
     def _determine_thesis_relation(
         self,
@@ -156,7 +134,21 @@ class BU2CrossBookThesisComparator:
         t1_words = set(t1_text.split())
         t2_words = set(t2_text.split())
         # t2 is t1 with qualification (t2 has extra constraint words)
-        qualifier_words = {"when", "if", "except", "provided", "unless", "except", "only", "where", "condition", "constraint", "provided that", "assuming", "given"}
+        qualifier_words = {
+            "when",
+            "if",
+            "except",
+            "provided",
+            "unless",
+            "except",
+            "only",
+            "where",
+            "condition",
+            "constraint",
+            "provided that",
+            "assuming",
+            "given",
+        }
         extra_qualifiers = t2_words - t1_words
         if extra_qualifiers & qualifier_words:
             return True
@@ -188,10 +180,23 @@ class BU2CrossBookThesisComparator:
 
     def _is_claim_evidence(self, t1: "BookThesis", t2: "BookThesis") -> bool:
         """Check if t1 is a claim and t2 is supporting evidence."""
-        t1_text = _normalize_text(t1.statement)
+        _normalize_text(t1.statement)
         t2_text = _normalize_text(t2.statement)
-        evidence_indicators = {"defined as", "defined by", "formula", "limit of", "limit of the", "formula for", "because", "since", "given that", "proof", "definition", "theorem"}
-        t2_words = set(t2_text.split())
+        evidence_indicators = {
+            "defined as",
+            "defined by",
+            "formula",
+            "limit of",
+            "limit of the",
+            "formula for",
+            "because",
+            "since",
+            "given that",
+            "proof",
+            "definition",
+            "theorem",
+        }
+        set(t2_text.split())
         if any(ind in t2_text for ind in evidence_indicators):
             return True
         return False
@@ -217,15 +222,23 @@ class BU2CrossBookThesisComparator:
         t1_text = _normalize_text(t1.statement)
         t2_text = _normalize_text(t2.statement)
         # t1 is specific instance, t2 is general pattern
-        t1_words = set(t1_text.split())
-        t2_words = set(t2_text.split())
+        set(t1_text.split())
+        set(t2_text.split())
         if len(t1_text.split()) > len(t2_text.split()) and len(t2_text.split()) > 3:
             # t1 is more specific, t2 is more general
             overlap = set(t1_text.split()) & set(t2_text.split())
             if len(overlap) >= 2:
                 return True
         # Check for generalization keywords
-        gen_keywords = {"generalizes", "generalize", "pattern", "rule", "principle", "rule of", "for all"}
+        gen_keywords = {
+            "generalizes",
+            "generalize",
+            "pattern",
+            "rule",
+            "principle",
+            "rule of",
+            "for all",
+        }
         if any(kw in _normalize_text(t2.statement) for kw in gen_keywords):
             return True
         return False
@@ -260,7 +273,9 @@ class BU2CrossBookThesisComparator:
             "provenance_match": 1.0 if t1.provenance == t2.provenance else 0.0,
         }
 
-    def _extract_theses(self, books: list[tuple[Any, "BookSynthesis"]]) -> dict[str, list["BookThesis"]]:
+    def _extract_theses(
+        self, books: list[tuple[Any, "BookSynthesis"]]
+    ) -> dict[str, list["BookThesis"]]:
         """Extract all theses from all books with source context."""
         all_theses: dict[str, list["BookThesis"]] = {}
 

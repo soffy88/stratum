@@ -6,11 +6,10 @@ Detects contradictions across independently understood books with full traceabil
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from stratum.knowledge.bu_v2_models import (
-    BookContradictions,
     BookSynthesis,
     CrossBookContradiction,
     CrossBookContradictionType,
@@ -25,6 +24,7 @@ def _stable_id(prefix: str, *parts: str) -> str:
 
 def _normalize_text(text: str) -> str:
     import re
+
     text = text.lower().strip()
     text = re.sub(r"[^\w\s]", " ", text)
     text = re.sub(r"\s+", " ", text)
@@ -35,7 +35,9 @@ def _jaccard_similarity(a: str, b: str) -> float:
     set_a = set(_normalize_text(a).split())
     set_b = set(_normalize_text(b).split())
     if not set_a and not set_b:
-        return 1.0
+        # Two empty fields share nothing; scoring them 1.0 manufactured
+        # matches between unrelated items whose optional fields were blank.
+        return 0.0
     if not set_a or not set_b:
         return 0.0
     return len(set_a & set_b) / len(set_a | set_b)
@@ -68,15 +70,17 @@ class BU2CrossBookContradictionDetector:
 
             claims = []
             for entry in synth.evidence_map.entries:
-                claims.append({
-                    "claim_id": entry.claim_id,
-                    "statement": entry.claim_statement,
-                    "evidence_ids": entry.evidence_ids,
-                    "is_supported": entry.is_supported,
-                    "provenance": entry.provenance,
-                    "chapter_ids": entry.chapter_ids,
-                    "argument_ids": entry.argument_ids,
-                })
+                claims.append(
+                    {
+                        "claim_id": entry.claim_id,
+                        "statement": entry.claim_statement,
+                        "evidence_ids": entry.evidence_ids,
+                        "is_supported": entry.is_supported,
+                        "provenance": entry.provenance,
+                        "chapter_ids": entry.chapter_ids,
+                        "argument_ids": entry.argument_ids,
+                    }
+                )
             all_claims[bu.book_id] = claims
 
         return all_claims
@@ -90,15 +94,24 @@ class BU2CrossBookContradictionDetector:
                 continue
 
             concepts = []
-            for role_attr in ["foundational", "core", "derived", "bridging", "application", "terminal"]:
+            for role_attr in [
+                "foundational",
+                "core",
+                "derived",
+                "bridging",
+                "application",
+                "terminal",
+            ]:
                 for c in getattr(synth.concept_system, role_attr, []):
-                    concepts.append({
-                        "concept_id": c.concept_id,
-                        "label": c.label,
-                        "definition": c.definition,
-                        "role": c.final_role,
-                        "chapter_refs": c.chapter_refs,
-                    })
+                    concepts.append(
+                        {
+                            "concept_id": c.concept_id,
+                            "label": c.label,
+                            "definition": c.definition,
+                            "role": c.final_role,
+                            "chapter_refs": c.chapter_refs,
+                        }
+                    )
             all_concepts[bu.book_id] = concepts
 
         return all_concepts
@@ -113,14 +126,16 @@ class BU2CrossBookContradictionDetector:
 
             args = []
             for arg in synth.argument_system.all_arguments():
-                args.append({
-                    "argument_id": arg.id,
-                    "level": arg.level,
-                    "what": arg.what,
-                    "why": arg.why,
-                    "conclusion": arg.conclusion,
-                    "status": arg.status,
-                })
+                args.append(
+                    {
+                        "argument_id": arg.id,
+                        "level": arg.level,
+                        "what": arg.what,
+                        "why": arg.why,
+                        "conclusion": arg.conclusion,
+                        "status": arg.status,
+                    }
+                )
             all_args[bu.book_id] = args
 
         return all_args
@@ -135,13 +150,15 @@ class BU2CrossBookContradictionDetector:
 
             theses = []
             for t in synth.thesis.all_theses():
-                theses.append({
-                    "thesis_id": t.id,
-                    "type": t.type,
-                    "statement": t.statement,
-                    "confidence": t.confidence,
-                    "provenance": t.provenance,
-                })
+                theses.append(
+                    {
+                        "thesis_id": t.id,
+                        "type": t.type,
+                        "statement": t.statement,
+                        "confidence": t.confidence,
+                        "provenance": t.provenance,
+                    }
+                )
             all_theses[bu.book_id] = theses
 
         return all_theses
@@ -168,7 +185,9 @@ class BU2CrossBookContradictionDetector:
                         # High similarity, opposing support status -> contradiction
                         if sim > 0.6 and c1["is_supported"] != c2["is_supported"]:
                             contra = CrossBookContradiction(
-                                contradiction_id=_stable_id("cc", book_a_id, c1["claim_id"], book_b_id, c2["claim_id"]),
+                                contradiction_id=_stable_id(
+                                    "cc", book_a_id, c1["claim_id"], book_b_id, c2["claim_id"]
+                                ),
                                 type=CrossBookContradictionType.DIRECT_CONTRADICTION,
                                 book_a_id=book_a_id,
                                 element_a=c1["claim_id"],
@@ -189,7 +208,9 @@ class BU2CrossBookContradictionDetector:
                             ev_b = set(c2.get("evidence_ids", []))
                             if not (ev_a & ev_b):
                                 contra = CrossBookContradiction(
-                                    contradiction_id=_stable_id("cc", book_a_id, c1["claim_id"], book_b_id, c2["claim_id"]),
+                                    contradiction_id=_stable_id(
+                                        "cc", book_a_id, c1["claim_id"], book_b_id, c2["claim_id"]
+                                    ),
                                     type=CrossBookContradictionType.EMPIRICAL_CONFLICT,
                                     book_a_id=book_a_id,
                                     element_a=c1["claim_id"],
@@ -228,7 +249,9 @@ class BU2CrossBookContradictionDetector:
                         # Same term, different definition -> definitional conflict
                         if sim > 0.8 and def_sim < 0.4:
                             contra = CrossBookContradiction(
-                                contradiction_id=_stable_id("cc", book_a_id, c1["concept_id"], book_b_id, c2["concept_id"]),
+                                contradiction_id=_stable_id(
+                                    "cc", book_a_id, c1["concept_id"], book_b_id, c2["concept_id"]
+                                ),
                                 type=CrossBookContradictionType.DEFINITIONAL_CONFLICT,
                                 book_a_id=book_a_id,
                                 element_a=c1["concept_id"],
@@ -267,7 +290,9 @@ class BU2CrossBookContradictionDetector:
                         # Similar argument, contradictory conclusions
                         if sim > 0.5 and conclusion_sim < 0.3:
                             contra = CrossBookContradiction(
-                                contradiction_id=_stable_id("cc", book_a_id, a1["argument_id"], book_b_id, a2["argument_id"]),
+                                contradiction_id=_stable_id(
+                                    "cc", book_a_id, a1["argument_id"], book_b_id, a2["argument_id"]
+                                ),
                                 type=CrossBookContradictionType.THEORETICAL_CONFLICT,
                                 book_a_id=book_a_id,
                                 element_a=a1["argument_id"],
@@ -305,7 +330,9 @@ class BU2CrossBookContradictionDetector:
                         # Core theses contradicting
                         if sim > 0.5 and t1["type"] == "CORE" and t2["type"] == "CORE":
                             contra = CrossBookContradiction(
-                                contradiction_id=_stable_id("cc", book_a_id, t1["thesis_id"], book_b_id, t2["thesis_id"]),
+                                contradiction_id=_stable_id(
+                                    "cc", book_a_id, t1["thesis_id"], book_b_id, t2["thesis_id"]
+                                ),
                                 type=CrossBookContradictionType.THEORETICAL_CONFLICT,
                                 book_a_id=book_a_id,
                                 element_a=t1["thesis_id"],
