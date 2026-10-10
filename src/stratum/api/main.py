@@ -292,6 +292,10 @@ from stratum.api.routers import knowledge
 
 app.include_router(knowledge.router)
 
+from stratum.api.routers import personal_model
+
+app.include_router(personal_model.router)
+
 from stratum.api.routers import sync
 
 app.include_router(sync.router)
