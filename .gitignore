@@ -146,3 +146,10 @@ aii/.env.metadata
 
 # Category F: Backups
 *.bak-*
+
+# scratch (2026-10-10 audit)
+aii/fix_*.py
+aii/quark_pipeline/*.bak.*
+e2e_*.json
+e2e_*.txt
+*.backup
