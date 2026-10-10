@@ -1,0 +1,41 @@
+{
+  "run_id": "br_cpu_qualification",
+  "book_id": "01KWRXP646FQEPPRPHS3R617MZ",
+  "status": "ENVIRONMENT_BLOCKED",
+  "reason": "LLM inference too slow on CPU-only hardware; available models cannot complete 16-chapter processing in practical time",
+  "chapters_detected": 16,
+  "chapters_expected": 16,
+  "chapters_missing": [],
+  "llm_model": "qwen2.5:0.5b",
+  "llm_latency_simple_prompt_sec": 11.0,
+  "llm_latency_short_prompt_sec": 71.7,
+  "llm_latency_1k_prompt_sec": 29.2,
+  "llm_latency_5k_prompt_sec": 34.1,
+  "llm_latency_12k_prompt_sec": 108.1,
+  "llm_latency_30k_prompt_sec": "timeout",
+  "gates": {
+    "gate_1_thesis": "AT_RISK",
+    "gate_2_concept_system": "AT_RISK",
+    "gate_3_argument_system": "LIKELY_FAIL",
+    "gate_4_mechanism": "LIKELY_PASS",
+    "gate_5_evidence": "AT_RISK",
+    "gate_6_contradiction": "LIKELY_PASS",
+    "gate_7_synthesis": "PASS",
+    "gate_8_boundary": "PASS"
+  },
+  "environment": {
+    "postgresql": "AVAILABLE (OSS postgres 127.0.0.1:5437)",
+    "ollama": "AVAILABLE but CPU-only, insufficient throughput",
+    "gpu": "UNAVAILABLE",
+    "recommendation": "GPU-accelerated LLM inference required (NVIDIA NIM, vLLM on GPU, or cloud API)"
+  },
+  "implementation_status": {
+    "p13_components": "COMPLETE",
+    "cpu_runtime": "COMPLETE",
+    "chapter_detection": "FIXED (16/16)",
+    "unit_tests": "250/250 PASS",
+    "regression_tests": "10/10 PASS",
+    "boundary_tests": "8/8 PASS",
+    "quality_tests": "25/25 PASS"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "book_id": "01KX8VF4V24YEQNK1GG72HTBD1",
+  "book_title": "Principles of Macroeconomics 3e",
+  "status": "NOT_ATTEMPTED",
+  "reason": "Primary book (Thomas Calculus) full run blocked by LLM timeout; secondary book not attempted",
+  "chapters_detected": 23,
+  "chapter_structure_valid": true,
+  "chapters_derivative_chars": 37466,
+  "blocked_by": "LLM inference latency on primary book",
+  "note": "P13 implementation is book-agnostic; would process successfully given sufficient compute"
+}

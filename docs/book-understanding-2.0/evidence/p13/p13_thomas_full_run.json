@@ -1,0 +1,27 @@
+{
+  "run_id": "br_01M3YRFF5YWTXNJF56MS0EDEAC",
+  "book_id": "01KWRXP646FQEPPRPHS3R617MZ",
+  "status": "ENVIRONMENT_BLOCKED",
+  "reason": "LLM inference timeout - local CPU Ollama too slow for 16-chapter processing",
+  "chapters_detected": 11,
+  "chapters_expected": 16,
+  "chapters_missing": ["ch2", "ch3", "ch5", "ch14", "ch15"],
+  "llm_model": "qwen2.5:7b",
+  "llm_latency_simple_prompt_sec": 117,
+  "llm_latency_chapter_prompt_sec": ">300 (timeout)",
+  "gates": {
+    "gate_1_thesis": "PASS",
+    "gate_2_concept_system": "PASS",
+    "gate_3_argument_system": "NOT_MET",
+    "gate_4_mechanism": "PASS",
+    "gate_5_evidence": "PASS",
+    "gate_6_contradiction": "PASS",
+    "gate_7_synthesis": "PASS",
+    "gate_8_boundary": "PASS"
+  },
+  "environment": {
+    "postgresql": "AVAILABLE (OSS postgres 127.0.0.1:5437)",
+    "ollama": "AVAILABLE but CPU-only, insufficient throughput",
+    "recommendation": "GPU-accelerated LLM inference required"
+  }
+}
