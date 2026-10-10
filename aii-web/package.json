@@ -15,8 +15,8 @@
     "build-storybook": "storybook build -o storybook-static"
   },
   "dependencies": {
-    "@helios/blocks": "file:./vendor/helios-blocks-3.0.0.tgz",
-    "@helios/oui": "file:./vendor/helios-oui-2.0.0.tgz",
+    "@helios/blocks": "file:./vendor/helios-blocks-4.12.0.tgz",
+    "@helios/oui": "file:./vendor/helios-oui-2.5.1.tgz",
     "@hookform/resolvers": "^5.0.1",
     "@react-pdf-viewer/core": "3.12.0",
     "@react-pdf-viewer/default-layout": "3.12.0",
