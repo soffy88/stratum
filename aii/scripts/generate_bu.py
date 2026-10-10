@@ -162,18 +162,16 @@ async def _build_learning_layer() -> dict:
             },
         }
     ku_lines = _ku_lines(ku_meta)
-    SYS = (
-        "你把一本书的已抽知识单元(KU)组织成「书级学习层」: 3~7 条能力转变路径 + 8~12 张深卡。"
-        "这是给人学习用的, 不是给 AI 复述用的。\n"
+    _RULES = (
         "★★数据红线(与 KU 管线同一把尺): 内容只能来自给定 KU 的 title/text, 严禁编造清单之外的任何主张; "
         "不要写 quote(原文由代码注入, 你只选 ku_ids); evidence 不用你填(代码按 KU grade 计算)。\n"
         "★★★长度红线(确定性质量门会精确校验, 不足整卡丢弃——宁可写长不要写短): "
         "context≥50字; arguments 3~5条且合计≥100字; source_digest 2~3段且合计≥220字(每段至少写 80 字); "
         "boundary≥40字; practice 必须含动作词(写/列出/找出/举/挑/选/改/算/评/设计/判断/给出/检查/对比/回答)。\n"
-        "路径字段: id(如 p1), no(01…), name(★能力转变命名——学完能做什么, 不是原书章节名), "
-        "promise(一句话承诺), card_ids[卡id]。3~7 条路径; 每卡恰好属于一条路径; 路径覆盖全部卡。\n"
+    )
+    _CARD_FIELDS = (
         "深卡字段:\n"
-        "  id: 1..K 整数(唯一); name: 概念名(优先合并 KU 标题); path: 所属路径 id;\n"
+        "  id: 唯一编号(c1/c2…); name: 概念名(优先合并 KU 标题); path: 所属路径 id;\n"
         "  ku_ids: [支撑KU的ku_id, 1~4条, 只从清单选];\n"
         "  desc: 一句话定义; context: 原文在回应什么问题(≥50字);\n"
         "  arguments: 3~5 条论证链(每条一句实在话, 合计≥100字);\n"
@@ -181,7 +179,6 @@ async def _build_learning_layer() -> dict:
         "  boundary: 误用边界/成立条件(≥40字);\n"
         "  connections: [其他卡id];\n"
         "  practice: 一道能写出具体答案的练习(挂钩学习者真实场景, 含动作词)。\n"
-        '★输出扁平 JSON: {"learning_paths":[…], "deep_cards":[…]}。'
     )
     from aii.api._provider import register_providers
     from obase import ProviderRegistry
@@ -189,19 +186,105 @@ async def _build_learning_layer() -> dict:
     register_providers()
     llm = ProviderRegistry.get().llm("default")
     body = f"Book: {SUB}\n\nKU 清单(内容唯一依据):\n{ku_lines}"
-    raw = None
-    for attempt in range(3):
+
+    # ★2026-10-04 学习层也拆批: 原来一次要3~7 条路径 + 8~12 张深卡(每卡 10 个字段且
+    #   有硬长度下限), 输出量远超网关 ~16k 的总输出上限 → finish=length、content 空,
+    #   而这里原来【不带 max_tokens】, 3 次重试全废就"写空层继续"(BU 学习层永远空的)。
+    #   改为: 先要路径(小), 再按 4 张卡一批要深卡。evidence 仍由代码按 ku_ids 注入。
+    _LC_MT = int(os.getenv("AII_BU_LAYER_MAX_TOKENS", "8000"))
+    _CARDS_PER_CALL = max(1, int(os.getenv("AII_BU_CARDS_PER_CALL", "2")))
+    _N_CARDS = max(1, int(os.getenv("AII_BU_N_CARDS", "8")))
+
+    def _lc_call(sys_p: str, label: str, attempts: int = 4) -> dict:
+        import time as _tt
+
+        last = ""
+        for att in range(attempts):
+            _t0 = _tt.time()
+            try:
+                raw = llm.call_sync(sys_p + "\n\n" + body, _LC_MT) or ""
+            except Exception as _e:
+                last = f"{type(_e).__name__}: {str(_e)[:110]}"
+                raw = ""
+            if raw.strip():
+                m = re.search(r"\{.*\}", raw, re.DOTALL)
+                if m:
+                    try:
+                        out = json.loads(m.group(0))
+                        if isinstance(out, dict):
+                            return out
+                    except json.JSONDecodeError as _je:
+                        last = f"JSONDecodeError: {str(_je)[:110]}"
+                else:
+                    last = "响应里没有 JSON 对象"
+            else:
+                last = last or "空响应"
+            print(f"    · [学习层/{label}] 第{att + 1}/{attempts} 次失败({_tt.time() - _t0:.0f}s): {last[:60]}", flush=True)
+            if att < attempts - 1:
+                time.sleep(4 * (att + 1))
+        raise RuntimeError(f"[学习层/{label}] 生成失败: {last}")
+
+    cards: list = []
+    card_failures: list = []
+
+    # ① 路径
+    _paths_sys = (
+        "你把一本书的已抽知识单元(KU)组织成「能力转变路径」: 3~7 条。这是给人学习用的。\n"
+        + _RULES
+        + "路径字段: id(如 p1), no(01…), name(★能力转变命名——学完能做什么, 不是原书章节名), "
+        "promise(一句话承诺)。3~7 条。\n"
+        '★输出扁平 JSON 且只含 learning_paths: {"learning_paths":[{"id":"p1","no":"01","name":"…","promise":"…"}]}'
+    )
+    # 同深卡: 路径失败也不该拖掉已生成好的七项。学习层缺失由 bu_quality 如实记为
+    # insufficient_data, 而不是把整本书的七项一起赔进去。
+    try:
+        _p = _lc_call(_paths_sys, "learning_paths")
+        paths = _p.get("learning_paths") or []
+        if not isinstance(paths, list):
+            paths = []
+    except Exception as _pe:
+        paths = []
+        card_failures.append(f"learning_paths: {str(_pe)[:90]}")
+        print(f"  ⚠ 学习层路径放弃: {str(_pe)[:90]}", flush=True)
+    if not paths:
+        paths = []
+    else:
+        print(f"  ✓ 学习层路径 {len(paths)} 条", flush=True)
+
+    # ② 深卡分批
+    for _start in range(0, _N_CARDS, _CARDS_PER_CALL):
+        _want = list(range(_start + 1, min(_start + _CARDS_PER_CALL, _N_CARDS) + 1))
+        _cards_sys = (
+            "你把一本书的已抽知识单元(KU)组织成「深卡」。这是给人学习用的, 不是给 AI 复述用的。\n"
+            + _RULES
+            + _CARD_FIELDS
+            + f"★本次只写第 {len(_want)} 张: id 用 {'/'.join('c' + str(i) for i in _want)}。\n"
+            + f"可用路径 id(每张卡必须归其中一条): {[p.get('id') for p in paths if isinstance(p, dict)]}\n"
+            + '★输出扁平 JSON 且只含 deep_cards: {"deep_cards":[{…},{…}]}'
+        )
+        # ★2026-10-04 单个深卡批失败不再拖垮整本书: 深卡是学习层的补充内容, 而七项
+        #   在这一步之前已经生成好了。此前一批失败就 raise, 结果把已经算出来的七项
+        #   一起扔掉(实测: 七项 3/3 + 路径 7 条 + 深卡 1 张全部就绪, 却因 deep_cards3-4
+        #   4 次失败而整本不入库, persist_bu 只能按空壳拒收)。改成失败就记下来、继续下一批,
+        #   最终由 bu_quality.insufficient_data 如实反映"层不全"。
         try:
-            raw = json.loads(llm.call_sync(SYS + "\n\n" + body))
-            break
-        except json.JSONDecodeError as e:
-            if attempt == 2:
-                # ★2026-09-27 同 paper 卡: 学习层是补充内容(深卡), 失败降级而非弃书。
-                print(f"  ⚠ 学习层生成失败({e}), 写空层继续", flush=True)
-                break
-            print(f"  学习层 JSON 解析失败(重试 {attempt + 1}/2): {e}", flush=True)
-    if not isinstance(raw, dict):
-        raw = {}
+            _c = _lc_call(_cards_sys, f"deep_cards{_want[0]}-{_want[-1]}")
+        except Exception as _ce:
+            card_failures.append(f"deep_cards{_want[0]}-{_want[-1]}: {str(_ce)[:90]}")
+            print(f"  ⚠ 深卡批 {_want[0]}-{_want[-1]} 放弃(继续下一批): {str(_ce)[:90]}", flush=True)
+            continue
+        _got = _c.get("deep_cards") or []
+        if isinstance(_got, dict):
+            _got = [v for v in _got.values() if isinstance(v, dict)]
+        if not isinstance(_got, list):
+            _got = []
+        cards.extend(x for x in _got if isinstance(x, dict))
+        print(f"  ✓ 深卡批 {_want[0]}-{_want[-1]} → +{len(_got)} 张(累计 {len(cards)})", flush=True)
+
+    for _p_ in paths:
+        if isinstance(_p_, dict) and not _p_.get("card_ids"):
+            _p_["card_ids"] = [cd.get("id") for cd in cards if cd.get("path") == _p_.get("id")]
+    raw = {"learning_paths": paths, "deep_cards": cards, "_card_failures": card_failures}
     j = {}
     for k, v in raw.items():
         if k in ("1", "skill", "「1」", "「skill」", "人读", "agent") and isinstance(v, dict):
@@ -366,11 +449,38 @@ async def _fetch_ku_meta():
     return ku_meta, [str(k["community_label"]) for k in kc_rows], [str(h["name"]) for h in hubs]
 
 
-def _ku_lines(ku_meta: dict) -> str:
+def _ku_lines(ku_meta: dict, max_chars: int = 0) -> str:
+    """把 KU 渲染成提示词里的证据清单。
+
+    ★2026-10-04 自适应预算: 原先每条固定 title[:60]+text[:420]+逐字[:60] ≈ 550 字, 大书
+    (实测 474 条 KU)拼出 37701 字提示词 → 推理模型思考量随输入线性膨胀, 网关又把
+    max_tokens 夹在 ~16k(实测 reasoning_effort=none/low 全被忽略, reasoning 恒 13~15k),
+    结果 finish_reason=length、content 为空, BU 全废。这里按 KU 条数摊薄正文长度,
+    把总量压到 AII_BU_KU_CHARS 以内; ku_id/grade/title 全量保留(证据挂接与门校验靠
+    ku_id, 不能丢), 只缩正文与逐字提示。
+    """
+    if not max_chars:
+        max_chars = int(os.getenv("AII_BU_KU_CHARS", "7000"))
+    # 每行固定开销 ~90 字 × 条数 会主导总量(474 条时即使正文缩到 88 字仍要 9 万字),
+    # 所以再限制"展示条数": 按证据等级挑最好的 N 条。ku_meta_f 本身不裁剪, 门校验
+    # 仍对着全量 ku_id 集合, 不会出现"引用了没展示的 KU 就判非法"。
+    max_lines = int(os.getenv("AII_BU_KU_MAX_LINES", "40"))
+    items = list(ku_meta.items())
+    if max_lines > 0 and len(items) > max_lines:
+        rank = {"verified": 0, "corroborated": 1, "primary": 2, "unverified": 3, "pending": 4}
+        items.sort(key=lambda kv: (rank.get(str(kv[1].get("grade", "")), 5), str(kv[0])))
+        dropped = len(items) - max_lines
+        items = items[:max_lines]
+        print(f"  · KU 证据清单展示 {max_lines}/{len(ku_meta)} 条(按等级取前), 省略 {dropped} 条", flush=True)
+    n = len(items) or 1
+    # 每行固定开销: "- ku_id=" + id + " | grade=" + grade + " | title=" + 分隔符 ≈ 90 字
+    per = max(120, max_chars // n - 90)
+    t_cap = max(60, int(per * 0.74))
+    v_cap = max(24, int(per * 0.18))
     return "\n".join(
         f"- ku_id={kid} | grade={m['grade']} | title={m['title'][:60]} | "
-        f"text={m['text'][:420]} | 逐字提示={m['verbatim'][0]['text'][:60] if m['verbatim'] else '(无)'}"
-        for kid, m in ku_meta.items()
+        f"text={m['text'][:t_cap]} | 逐字提示={m['verbatim'][0]['text'][:v_cap] if m['verbatim'] else '(无)'}"
+        for kid, m in items
     )
 
 
@@ -452,21 +562,32 @@ async def go():
         return
     topics = "\n".join("- " + t for t in kc_labels)
     hubtxt = ", ".join(hub_names)
-    SYS = (
-        "你把一本书的已抽知识单元(KU)组织成「书级理解七项」——每项不是口号, 而是**带依据、可核验的判断**。\n"
+    # ★2026-10-04 拆批生成: 原先一次让模型吐完七项+main_claims+argument_structure, 输出
+    #   8~15k token。而现役模型(gpt-5.6-luna/space-bunny-free/veya-nim/glm-5.3)全是推理
+    #   模型, 预算先被 reasoning_content 吃掉 —— 实测 space-bunny-free 在真实 37701 字
+    #   提示词上 reasoning 烧到 15313 字后 finish_reason=length、content=None, 于是 BU 静默
+    #   变空壳(10/11 个新 BU 是 insufficient_data)。拆成每批 2~3 项, 输出降到 2~4k token,
+    #   现有模型就能吐完; 各批共用同一份 body(数据红线不变, 不牺牲可核验性)。
+    FACET_DESC = {
+        "soul": "一句话灵魂——这本书最核心的判断(具体, 不要「本书研究了X」式套话)。",
+        "positioning": "背景定位——它在什么传统/问题脉络里, 补了什么缺口。",
+        "question": "根本问题——驱动全书的那一个问题。",
+        "skeleton": "知识骨架——支柱必须是给定枢纽概念名(至少引用2个), 说明它们怎么撐起全书; ku_ids 选支撑 KU。",
+        "thinking": "思维方式——结构实际展示的推理习惯; ★无直接证据就写「从结构推断, 未见直接论述」, 禁止脑补。",
+        "for_whom": "适合谁能干什么——基于 KU 实际覆盖的内容判断。",
+        "boundary": "诚实边界——结构里没有/不讲什么, 不延伸。",
+    }
+    FACET_BATCHES = [
+        ("soul", "positioning", "question"),
+        ("skeleton", "thinking"),
+        ("for_whom", "boundary"),
+    ]
+    _SYS_HEAD = (
+        "你把一本书的已抽知识单元(KU)组织成「书级理解」——每项不是口号, 而是**带依据、可核验的判断**。\n"
         "★★数据红线: 判断只能来自给定 KC 主题/枢纽概念/KU 文本, 严禁编造清单之外的任何主张; "
         "不要写 quote(原文由代码注入), 你只选 ku_ids 或引用枢纽概念名。\n"
-        '七项(每项输出对象 {"text":…,"basis":…,"ku_ids":[…]}, 简体中文):\n'
-        "  soul: 一句话灵魂——这本书最核心的判断(具体, 不要「本书研究了X」式套话)。\n"
-        "  positioning: 背景定位——它在什么传统/问题脉络里, 补了什么缺口。\n"
-        "  question: 根本问题——驱动全书的那一个问题。\n"
-        "  skeleton: 知识骨架——支柱必须是给定枢纽概念名(至少引用2个), 说明它们怎么撐起全书; ku_ids 选支撑 KU。\n"
-        "  thinking: 思维方式——结构实际展示的推理习惯; ★无直接证据就写「从结构推断, 未见直接论述」, 禁止脑补。\n"
-        "  for_whom: 适合谁能干什么——基于 KU 实际覆盖的内容判断。\n"
-        "  boundary: 诚实边界——结构里没有/不讲什么, 不延伸。\n"
-        "basis: 2~4句, 写清「这个判断依据哪些 KC/枢纽/KU 的什么内容」(每项必填)。\n"
-        '★输出扁平 JSON: {"soul":{…},"positioning":{…},…,"boundary":{…}} —— 每项都是含 text/basis/ku_ids 的对象。'
     )
+    _SYS_TAIL = "basis: 2~4句, 写清「这个判断依据哪些 KC/枢纽/KU 的什么内容」(每项必填)。\n"
     body = (
         f"Book: {booktitle}\n\n"
         f"主题KC(知识结构):\n{topics}\n\n"
@@ -474,11 +595,12 @@ async def go():
         f"KU 样本(内容唯一依据):\n{_ku_lines(ku_meta_f)}"
     )
 
+    claims_sys = ""
     if claims_src:
-        SYS += (
-            " Also output 2 more fields grounded ONLY in the given 立场KU列表 below (each already tagged "
-            "with a real ku_id) — do NOT invent claims beyond this list, do NOT include a grade field "
-            "(grade is filled in by code afterward, not by you): "
+        claims_sys = (
+            "You organize a book's POSITIONAL knowledge units into claims — do NOT invent claims "
+            "beyond this list, do NOT include a grade field (filled by code afterward). "
+            "Output ONLY flat JSON with these 2 fields: "
             '{"main_claims":[{"ku_id":"(copy from list)","claim":"(compress natural_text into ONE faithful '
             'sentence, no exaggeration)","stance":"(copy given stance_holder verbatim)",'
             '"stance_marker":"(copy given opposing_stance verbatim, or empty)"}],'
@@ -501,38 +623,81 @@ async def go():
     register_providers()
     llm = ProviderRegistry.get().llm("default")
 
-    # ★2026-09-27: call_sync 偶发返回空串(限流/上游空 content), 原先直接
-    # json.loads("") 抛 JSONDecodeError → advmath_pipeline.sh 判 exit 2 → 整本隔离。
-    # 实测后果: 153 本被隔离的书里 129 本的 KU 其实已落库, 只丢 BU —— 前 4 步
-    # ([1/6]合成/[3/6]概念/[4/6]KC)的成果被最后一步的空响应一笔勾销, 且重试参数
-    # 不变必然再失败, 书在冷却→重跑→同点失败的循环里出不来。
-    # 现在: 空/非法响应重试若干次; 仍失败则写出可解析的最小骨架并继续,
-    # 让 KU/BU 链其余步骤照常完成, 不再因为一个可选字段毁掉整本书。
-    j = None
-    last_err = ""
-    for _bu_attempt in range(4):
-        try:
-            raw = llm.call_sync(SYS + "\n\n" + body) or ""
-        except Exception as _e:  # 网络/限流等
-            last_err = f"{type(_e).__name__}: {str(_e)[:120]}"
-            raw = ""
-        if raw.strip():
-            m = re.search(r"\{.*\}", raw, re.DOTALL)
-            if m:
-                try:
-                    j = json.loads(m.group(0))
-                    break
-                except json.JSONDecodeError as _je:
-                    last_err = f"JSONDecodeError: {str(_je)[:120]}"
+    # ★2026-10-04 七项分批的输出预算: 实测同一提示词下 6000 的 finish=stop 率 4/5,
+    #   32000 只有 ~1/4 —— 网关把总输出夹在 ~16k, 推理长度随机 5.3k~15.2k, 给大预算
+    #   反而让模型放心长想然后撞上限、content 空。6000 把 2~3 项的 JSON 装得下。
+    _CHUNK_MT = int(os.getenv("AII_BU_CHUNK_MAX_TOKENS", "6000"))
+
+    def _call_json(sys_p: str, body_p: str, label: str) -> dict:
+        """单批 JSON 调用: 空/非法响应重试若干次; 仍失败就抛错(不再写空壳)。
+
+        ★2026-10-04 尝试数 6→4: 兜底链现在有独立超时(AII_LLM_FB_TIMEOUT=120s)与次数(2),
+        单次尝试最坏 ~1+2*120+2*120 ≈ 8min 已收紧, 再叠 6 次就是半小时 —— 实测第二批
+        29 分钟无输出。4 次 × 单批 ~80% 成功率 → 单批 99.9%, 三个七项批全过 ~99.7%。
+        每次尝试打耗时, 卡住能立刻看出来。
+        """
+        import time as _tt
+
+        last = ""
+        for att in range(4):
+            _t0 = _tt.time()
+            try:
+                raw = llm.call_sync(sys_p + "\n\n" + body_p, _CHUNK_MT) or ""
+            except Exception as _e:  # 网络/限流等
+                last = f"{type(_e).__name__}: {str(_e)[:120]}"
+                raw = ""
+            if raw.strip():
+                m = re.search(r"\{.*\}", raw, re.DOTALL)
+                if m:
+                    try:
+                        out = json.loads(m.group(0))
+                        if isinstance(out, dict):
+                            return out
+                        last = f"顶层不是对象({type(out).__name__})"
+                    except json.JSONDecodeError as _je:
+                        last = f"JSONDecodeError: {str(_je)[:120]}"
+                else:
+                    last = "响应里没有 JSON 对象"
             else:
-                last_err = "响应里没有 JSON 对象"
-        else:
-            last_err = last_err or "空响应"
-        if _bu_attempt < 3:
-            time.sleep(4 * (_bu_attempt + 1))
-    if j is None:
-        print(f"  ⚠ BU 生成失败({last_err}), 写最小骨架继续(不影响已入库的 KU)", flush=True)
-        j = {}
+                last = last or "空响应"
+            print(
+                f"    · [{label}] 第{att + 1}/4 次失败({_tt.time() - _t0:.0f}s): {last[:70]}",
+                flush=True,
+            )
+            if att < 3:
+                time.sleep(4 * (att + 1))
+        # ★2026-10-04 不再"写最小骨架继续": KU 在本步之前已落库, 这里抛错只丢 BU,
+        #   上层把该书记为 pipeline_fail 择日重跑; 写空壳只会让库里多一行查不出来的
+        #   假理解(实测 22 行, 已清)。persist_bu.py 另有入库闸兜底。
+        raise RuntimeError(f"[{label}] BU 分批生成失败: {last}")
+
+    j: dict = {}
+    for batch in FACET_BATCHES:
+        keys = [k for k in batch]
+        _sys = (
+            _SYS_HEAD
+            + "★本次只输出以下 "
+            + str(len(keys))
+            + " 项, 每项输出对象 {\"text\":…,\"basis\":…,\"ku_ids\":[…]}, 简体中文:\n"
+            + "".join(f"  {k}: {FACET_DESC[k]}\n" for k in keys)
+            + _SYS_TAIL
+            + "★输出扁平 JSON 且只含这些 key: {"
+            + ",".join(f'"{k}":{{…}}' for k in keys)
+            + "}"
+        )
+        part = _call_json(_sys, body, "七项/" + "+".join(keys))
+        j.update({k: part[k] for k in keys if k in part})
+        print(f"  ✓ 七项分批 [{'+'.join(keys)}] 完成", flush=True)
+
+    if claims_src:
+        part = _call_json(claims_sys, body, "main_claims/argument_structure")
+        j["main_claims"] = part.get("main_claims") or []
+        j["argument_structure"] = part.get("argument_structure") or []
+        print(
+            f"  ✓ 立场批 [main_claims/argument_structure] 完成 "
+            f"({len(j['main_claims'])} claims / {len(j['argument_structure'])} args)",
+            flush=True,
+        )
 
     if claims_src:
         grade_by_id = {r["ku_id"]: r["grade"] for r in claims_src}

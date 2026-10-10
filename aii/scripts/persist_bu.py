@@ -165,6 +165,19 @@ async def go():
                     print(f"  ⚠ BU 英文翻译失败({_je}), 仅存中文继续", flush=True)
                     break
                 time.sleep(4 * (_t_attempt + 1))
+    # ★2026-10-03 空壳BU 硬失败闸: LLM 链断时(veya-free 池空 / 网关 200 包装 429 /
+    #   CPA cooldown) generate_bu 会写一个 j={} 的最小骨架, 七项全空。这里在【任何 DB 写
+    #   之前】拒绝落库并抛错, 让上层把该书记为 pipeline_fail 重试, 而不是往库里堆一行
+    #   永远查不出来的空壳(实测 2026-09-29 起 29/31 个 BU 是 insufficient_data, 10-03
+    #   当天 8/9)。闸放在 DELETE 之前, 保证已入库的好 BU 不会被一次失败的重新生成删掉。
+    _fg = bu.get("facets_grounded")
+    _fg_n = len(_fg) if isinstance(_fg, (dict, list)) else 0
+    if not _fg_n and not any(zh[k] for k in ["soul", "positioning", "question", "skeleton"]):
+        raise RuntimeError(
+            f"BU 空壳拒绝入库({SUB}): 七项 facets 全空且无正文 —— "
+            f"LLM 链不可用, 拒绝写入不可用内容。bu_quality={bu.get('bu_quality')}"
+        )
+
     c = await asyncpg.connect(os.getenv("DATABASE_URL"))
     await c.execute("ALTER TABLE aii.bu_onto ADD COLUMN IF NOT EXISTS facets_zh jsonb")
     await c.execute("ALTER TABLE aii.bu_onto ADD COLUMN IF NOT EXISTS facets_en jsonb")

@@ -156,10 +156,10 @@ if [ "$GDRIVE_MOUNT_ACTIVE" -eq 1 ]; then
   KEEP_SRC=1 CONVERT_SRC=/home/soffy/books/Economic CONVERT_DST="$STAGE_ROOT/经济学" \
     $PY econ_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  gdrive econ_convert 新转: /' &
   wait
-  timeout --kill-after=30s 600 env KEEP_SRC=1 CONVERT_SRC=/home/soffy/books/其它 CONVERT_DST="$STAGE_ROOT/其它" CONVERT_TAG=其它 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  gdrive misc_convert 新转: /' || true
-  timeout --kill-after=30s 600 env KEEP_SRC=1 CONVERT_SRC=/home/soffy/books/教辅 CONVERT_DST="$STAGE_ROOT/教辅" CONVERT_TAG=教辅 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  gdrive edu_convert 新转: /' || true
-  timeout --kill-after=30s 600 env KEEP_SRC=1 CONVERT_SRC=/home/soffy/books/计算机 CONVERT_DST="$STAGE_ROOT/计算机" CONVERT_TAG=计算机 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  gdrive cs_convert 新转: /' || true
-  timeout --kill-after=30s 600 env KEEP_SRC=1 CONVERT_SRC=/home/soffy/books/论文 CONVERT_DST="$STAGE_ROOT/论文" CONVERT_TAG=论文 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  gdrive paper_convert 新转: /' || true
+  timeout --kill-after=30s 3600 env DOCS_TIMEOUT=300 KEEP_SRC=1 CONVERT_SRC=/home/soffy/books/其它 CONVERT_DST="$STAGE_ROOT/其它" CONVERT_TAG=其它 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  gdrive misc_convert 新转: /' || true
+  timeout --kill-after=30s 3600 env DOCS_TIMEOUT=300 KEEP_SRC=1 CONVERT_SRC=/home/soffy/books/教辅 CONVERT_DST="$STAGE_ROOT/教辅" CONVERT_TAG=教辅 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  gdrive edu_convert 新转: /' || true
+  timeout --kill-after=30s 3600 env DOCS_TIMEOUT=300 KEEP_SRC=1 CONVERT_SRC=/home/soffy/books/计算机 CONVERT_DST="$STAGE_ROOT/计算机" CONVERT_TAG=计算机 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  gdrive cs_convert 新转: /' || true
+  timeout --kill-after=30s 3600 env DOCS_TIMEOUT=300 KEEP_SRC=1 CONVERT_SRC=/home/soffy/books/论文 CONVERT_DST="$STAGE_ROOT/论文" CONVERT_TAG=论文 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  gdrive paper_convert 新转: /' || true
 else
   $PY math_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  math_convert 新转: /' &
   $PY econ_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  econ_convert 新转: /' &

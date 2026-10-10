@@ -19,9 +19,13 @@ from pathlib import Path
 
 DOCS_URL = os.getenv("DOCS_URL", "http://127.0.0.1:8300")
 # ★2026-08-27 提速: 容器慢/挂时立即 fallback(原 900s 等太久了, 串行 convert 卡死飞轮).
-# 默认 10s: 正常 PDF 容器 <5s 处理完, 10s 给 2x 缓冲; 慢就立刻退本地 pdf_inspector/markitdown.
-# (单本容器慢飞轮会整体卡死; 本地 pdf_inspector 1-3s/本, 比容器慢 1-3 倍但稳.)
-TIMEOUT = int(os.getenv("DOCS_TIMEOUT", "10"))
+# ★2026-10-06 放宽 10→300s: 实测容器本身健康(1.2MB PDF 3.7s 成功), 瓶颈是大 PDF 的
+#   上传+转换——338MB 需 253s、175MB 需 >300s, 旧的 10s 上限把它们全判超时, 而本地兜底
+#   pdf_inspector 未安装 → 一本都转不出。
+#   注意这是「上限」不是固定等待: 能转完的书(如 1.2MB 那本 3.7s)立即返回, 不受影响,
+#   所以抬高阈值只放行大书, 不拖慢小书。
+#   调回小值: DOCS_TIMEOUT=10
+TIMEOUT = int(os.getenv("DOCS_TIMEOUT", "300"))
 
 
 def _multipart(path: str, extra: dict | None = None) -> tuple[bytes, str]:

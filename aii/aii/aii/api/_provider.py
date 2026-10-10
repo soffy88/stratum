@@ -166,6 +166,23 @@ def _make_deepseek_caller(
         except Exception:  # noqa: BLE001
             return ""
 
+    def _content_of(r) -> str:
+        """只取 message.content(正式答案)。刻意【不】回退 reasoning_content——
+        那是思考过程, 不是答案: 推理模型预算被吃光时 content=None 而 reasoning 有
+        15k 字思考, 当成答案会让上层 json.loads 报 "Expecting value: char 0"。"""
+        try:
+            msg = r.json()["choices"][0]["message"]
+        except Exception:  # noqa: BLE001
+            return ""
+        c = msg.get("content")
+        return c if isinstance(c, str) else ""
+
+    def _finish_of(r) -> str:
+        try:
+            return str(r.json()["choices"][0].get("finish_reason"))
+        except Exception:  # noqa: BLE001
+            return "?"
+
     def _post_with_retry(payload: dict, max_retries: int = 5):
         # ★429限流是瞬时的(尤其NIM key被econ_zh/misc/BU等多个进程共用, _throttle()只在
         # 单进程内生效, 挡不住跨进程撞车), 之前遇到429直接抛异常、整本书(哪怕[1/5]已经
@@ -196,6 +213,13 @@ def _make_deepseek_caller(
                 return [tuple(x) for x in fallback]  # type: ignore[misc]
             return [tuple(fallback)]  # type: ignore[arg-type]
 
+        # ★2026-10-04 兜底级专用超时/次数: 兜底上游(NIM 63~90s、CPA)本来就慢, 再叠上
+        #   client 级 600s 超时, 一次兜底能空转十几分钟 —— 实测 BU 分批第二步在
+        #   _post_with_retry × _fallback 的嵌套里29 分钟不出新日志(同一个 response id
+        #   反复出现), 单本书 BU 收敛不了。兜底给独立且短得多的预算, 失败快、可观测。
+        _fb_timeout = float(os.getenv("AII_LLM_FB_TIMEOUT", "120"))
+        _fb_attempts = max(1, int(os.getenv("AII_LLM_FB_ATTEMPTS", "2")))
+
         def _fallback(payload: dict):
             specs = _fb_specs()
             if not specs:
@@ -209,19 +233,20 @@ def _make_deepseek_caller(
             for fb_url, fb_key, fb_model in specs:
                 print(f"  ⚠ 主 LLM 重试耗尽 → fallback({fb_model})", flush=True)
                 last2 = None
-                for _attempt2 in range(3):
+                for _attempt2 in range(_fb_attempts):
                     try:
                         _resp2 = _client_for(fb_url).post(
                             fb_url,
                             headers=_headers_for(fb_url, fb_key),
                             json={**payload, "model": fb_model},
+                            timeout=_fb_timeout,
                         )
-                        if _resp2.status_code >= 500 and _attempt2 < 2:
+                        if _resp2.status_code >= 500 and _attempt2 < _fb_attempts - 1:
                             _t2.sleep(5 * (_attempt2 + 1))
                             continue
                         if _resp2.status_code >= 400:
                             last2 = _resp2.status_code
-                            if _attempt2 >= 2:
+                            if _attempt2 >= _fb_attempts - 1:
                                 break
                             _t2.sleep(5 * (_attempt2 + 1))
                             continue
@@ -235,35 +260,52 @@ def _make_deepseek_caller(
                                 flush=True,
                             )
                             break
+                        # ★2026-10-03 同口径: 兜底级空 content 也不算成功, 继续下一级。
+                        if not _content_of(_resp2).strip():
+                            last2 = "空 content"
+                            print(
+                                f"  ⚠ fallback({fb_model}) 返回空 content → 试下一级",
+                                flush=True,
+                            )
+                            break
                         return _resp2
                     except Exception as _e2:
                         last2 = _e2
-                        if _attempt2 >= 2:
+                        if _attempt2 >= _fb_attempts - 1:
                             break
                         _t2.sleep(5 * (_attempt2 + 1))
                 print(f"  ⚠ fallback({fb_model}) 也失败({str(last2)[:80]})", flush=True)
             raise RuntimeError(f"全部 {len(specs)} 级 fallback 均失败: {str(last2)[:80]}")
 
-        for attempt in range(max_retries):
+        # ★2026-10-04 主路单次超时/重试次数改为 env 可调: 推理模型在长提示词上一次要跑
+        #   几十秒到几分钟, client 级 600s 兜底太宽, 一次卡死就把整批拖成几十分钟。
+        #   BU 分批场景实测主路 35~75s 就该回, 给 180s 足够。
+        _req_timeout = float(os.getenv("AII_LLM_TIMEOUT", "180"))
+        _max_retries = max(1, int(os.getenv("AII_LLM_MAX_RETRIES", str(max_retries))))
+        _empty_budget = max(0, int(os.getenv("AII_LLM_EMPTY_RETRY", "2")))
+        _empty_left = [_empty_budget]
+
+        for attempt in range(_max_retries):
             key = next(_key_iter)  # 轮换 key(池>1 时每次尝试用不同 key, 撞 504/429 换槽位)
             try:
                 resp = _client_for(base_url).post(
                     base_url,
                     headers=_headers_for(base_url, key),
                     json=payload,
+                    timeout=_req_timeout,
                 )
             except _httpx.HTTPError as e:
                 # 网络瞬时错误: 服务器断连/连接重置/超时 → 退避重试, 耗尽→fallback
-                if attempt < max_retries - 1:
+                if attempt < _max_retries - 1:
                     wait = min(10 * (attempt + 1), 45)
                     print(
-                        f"  ⚠ LLM网络错误({type(e).__name__}) 重试 {attempt + 1}/{max_retries - 1} 等待{wait}s...",
+                        f"  ⚠ LLM网络错误({type(e).__name__}) 重试 {attempt + 1}/{_max_retries - 1} 等待{wait}s...",
                         flush=True,
                     )
                     _t.sleep(wait)
                     continue
                 return _fallback(payload)
-            if resp.status_code == 429 and attempt < max_retries - 1:
+            if resp.status_code == 429 and attempt < _max_retries - 1:
                 wait = float(resp.headers.get("retry-after", 0)) or min(15 * (attempt + 1), 60)
                 _t.sleep(wait)
                 continue
@@ -271,10 +313,10 @@ def _make_deepseek_caller(
             # ★2026-09-27 退避从 min(15*(n+1),60)=15/30/45/60s 压到 5/10/15/20s:
             #   advmath 日志实测 53850 次 502 + 53808 次重试, 单轮空转 2.5~3 分钟才 fallback,
             #   并发 2 时 worker 绝大多数时间在 sleep。502 是上游瞬时抖动, 等 60s 没有意义。
-            if resp.status_code >= 500 and attempt < max_retries - 1:
+            if resp.status_code >= 500 and attempt < _max_retries - 1:
                 wait = min(5 * (attempt + 1), 20)
                 print(
-                    f"  ⚠ LLM服务端错误({resp.status_code}) 重试 {attempt + 1}/{max_retries - 1} 等待{wait}s...",
+                    f"  ⚠ LLM服务端错误({resp.status_code}) 重试 {attempt + 1}/{_max_retries - 1} 等待{wait}s...",
                     flush=True,
                 )
                 _t.sleep(wait)
@@ -301,6 +343,31 @@ def _make_deepseek_caller(
                     flush=True,
                 )
                 return _fallback(payload)
+            # ★2026-10-03 空内容也是失败: 网关/推理模型在上游挤不进来、或预算被
+            #   reasoning_content 吃光(finish_reason=length)时, 会回 200 但
+            #   message.content 为空/None。之前这里直接 return resp →
+            #   _extract_content 回退到 reasoning_content(思考过程), 调用方
+            #   json.loads(思考) 抛 "Expecting value: line 1 column 1 (char 0)",
+            #   generate_bu 记成 "学习层 JSON 解析失败" 并写空层, BU 静默变空壳
+            #   (实测 10/11 个新 BU 是 insufficient_data)。空 content 当失败处理。
+            #   注意只认 content: reasoning_content 是思考过程, 不是答案。
+            if not _content_of(resp).strip():
+                print(
+                    f"  ⚠ 网关以 200 返回空 content(finish={_finish_of(resp)}) → fallback: "
+                    f"{_body[:100]}",
+                    flush=True,
+                )
+                # ★2026-10-04 先重试主路再兜底: finish=length 是"这个模型这次想太久",
+                #   不是"这个上游挂了"—— 实测同提示词重试成功率约 80%。而一旦直接兜底,
+                #   NIM(120s×2 读超时) + CPA(120s×2 全 429) 要空转 300~480s 几乎必然
+                #   失败, BU 一步因此要 100 分钟(实测 05:10→06:14 才跑完一次尝试链),
+                #   超过 ECON_PIPELINE_TIMEOUT=5400 被 SIGTERM。重试主路 ~40~70s 就换到
+                #   一次成功, 便宜得多。
+                _empty_left[0] -= 1
+                if _empty_left[0] > 0 and attempt < _max_retries - 1:
+                    _t.sleep(3)
+                    continue
+                return _fallback(payload)
             return resp
         # 循环耗尽(理论上不可达, 防御) → fallback
         return _fallback(payload)
@@ -313,7 +380,7 @@ def _make_deepseek_caller(
             {
                 "base_url": base_url,
                 "model": model,
-                "attempts": max_retries,
+                "attempts": _max_retries,
                 "last_status": getattr(last_err, "code", None) if "last_err" in dir() else None,
             },
         )
@@ -332,16 +399,24 @@ def _make_deepseek_caller(
         resp = _post_with_retry(payload)
         return _extract_content(resp)
 
-    def _call_sync_json(prompt: str) -> str:
-        """Synchronous DeepSeek call for extraction (JSON mode → eliminates markdown fence retries)."""
+    def _call_sync_json(prompt: str, max_tokens: int = 0) -> str:
+        """Synchronous DeepSeek call for extraction (JSON mode → eliminates markdown fence retries).
+
+        max_tokens>0 时按调用点给定的预算走(见 generate_bu 的七项分批: 给 6000 而不是
+        全局大值 —— 实测同一提示词下 6000 的 finish=stop 率 4/5, 32000 只有 ~1/4:
+        网关把【总输出】夹在 ~16k, 推理长度随机 5.3k~15.2k, 给大预算反而让模型放心长想
+        然后撞上限 content 空; 小预算把它逼着说结论)。
+        """
         _throttle()
-        resp = _post_with_retry(
-            {
-                "model": model,
-                "messages": [{"role": "user", "content": prompt}],
-                "response_format": {"type": "json_object"},
-            }
-        )
+        _json_mt = int(max_tokens) or int(os.getenv("AII_LLM_JSON_MAX_TOKENS", "32000"))
+        _payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "response_format": {"type": "json_object"},
+        }
+        if _json_mt > 0:
+            _payload["max_tokens"] = _json_mt
+        resp = _post_with_retry(_payload)
         return _extract_content(resp)
 
     async def _call_async(messages=None, *, system: str = "", max_tokens: int = 4096, **_):
@@ -523,11 +598,15 @@ def register_providers():
         cpa_model = os.getenv("CPA_MODEL", "claude-sonnet-4-6")
         cpa_spec = [(cpa_base, cpa_key, cpa_model)] if cpa_key else []
 
+        # ★2026-10-03 NIM 也走key 池: .pipeline_keys.json 有 8 个 nvapi 槽位, 单 key
+        #   免费层限流后整条链就断。_make_deepseek_caller 内部按 key_pool_env 逗号分隔轮换,
+        #   且限流间隔按 60/(rpm×池大小) 摊薄(rpm=30 × 8 key → 0.25s/次)。
         nim_caller = _make_deepseek_caller(
             nim_key,
             model=nim_model,
             base_url="https://integrate.api.nvidia.com/v1/chat/completions",
             rpm=nim_rpm,
+            key_pool_env="NIM_KEY_POOL",
             fallback=([(oc_base, oc_key, oc_model)] if oc_key else None) + cpa_spec,
         )
         ProviderRegistry.register("llm", "nim", nim_caller)

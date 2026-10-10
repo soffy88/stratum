@@ -32,7 +32,10 @@ _dirty = 0
 _loaded_at = 0.0
 # ★2026-09-21 门禁改 distinct 章节计数(v2): 旧缓存的"无章节结构"结论是窄正则误杀,
 #   必须失效重判, 否则新门禁永不生效。
-_GATE_VERSION = 2
+# ★2026-10-04 门禁改正则(v3): chapters() 的中文章节分支原带强制 #+ 前缀, 而 analyze()
+#   跑在 PDF 原文上('#' 是 md 标记, 转换后才存在) → 中文书一律误判"无章节结构"。
+#   同属窄正则误杀, 同样必须整体失效重判。
+_GATE_VERSION = 3
 
 
 def _load():
@@ -79,7 +82,15 @@ def put(path, result):
     p = str(path)
     db = _load()
     old = db.get(p)
-    if old and (old.get("mtime"), old.get("size")) == key and old.get("cat") == result[0]:
+    if (
+        old
+        and (old.get("mtime"), old.get("size")) == key
+        and old.get("cat") == result[0]
+        # ★2026-10-04 修复: 原条件漏判 ver —— bump 门禁版本后, 分类结论未变的条目不会覆写,
+        #   ver 永远停在旧值, get() 因 ver 不匹配永不命中 → 每轮都全量重扫(实测 1100 本
+        #   跑 5 小时以上)。ver 不同即视为有变化, 必须覆写以完成门禁升级。
+        and old.get("ver") == _GATE_VERSION
+    ):
         return  # 没变化, 不写
     db[p] = {"mtime": key[0], "size": key[1], "cat": result[0], "npg": result[2], "ver": _GATE_VERSION}
     _dirty += 1
