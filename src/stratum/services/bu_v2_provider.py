@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import json
 import os
+import random
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
@@ -31,6 +33,55 @@ class ProviderError(RuntimeError):
 
 class ProviderUnavailable(ProviderError):
     """No provider is configured, or the configured one cannot be reached."""
+
+
+# Status codes a rotating gateway (freellmapi, OpenRouter) returns when one
+# upstream is throttled or down. A retry lands on a different upstream, so these
+# are retried with backoff instead of failing the chapter.
+_TRANSIENT_HTTP = {408, 409, 425, 429, 500, 502, 503, 504, 520, 522, 524}
+
+
+def _retry_budget() -> tuple[int, float]:
+    try:
+        attempts = max(1, int(os.environ.get("BU2_PROVIDER_ATTEMPTS", "5")))
+    except ValueError:
+        attempts = 5
+    try:
+        base = max(0.0, float(os.environ.get("BU2_PROVIDER_BACKOFF_S", "2")))
+    except ValueError:
+        base = 2.0
+    return attempts, base
+
+
+def _is_transient(exc: Exception) -> bool:
+    if isinstance(exc, ProviderUnavailable):
+        # Entitlement failures are permanent; network blips are not.
+        return "no inference entitlement" not in str(exc) and "no API key" not in str(exc)
+    code = getattr(exc, "http_status", None)
+    if code is not None:
+        return code in _TRANSIENT_HTTP
+    return isinstance(exc, ProviderError) and "unexpected envelope" in str(exc)
+
+
+def call_with_retry(fn, *, attempts: int | None = None, base: float | None = None,
+                    retry_if=_is_transient, sleep=time.sleep):
+    """Run ``fn`` and retry transient provider failures with jittered backoff."""
+    default_attempts, default_base = _retry_budget()
+    attempts = attempts or default_attempts
+    base = default_base if base is None else base
+    last: Exception | None = None
+    for i in range(attempts):
+        try:
+            return fn()
+        except ProviderError as exc:
+            last = exc
+            if i == attempts - 1 or not retry_if(exc):
+                raise
+            delay = getattr(exc, "retry_after", None)
+            if delay is None:
+                delay = base * (2 ** i)
+            sleep(min(60.0, delay) * (0.75 + random.random() * 0.5))
+    raise last  # pragma: no cover
 
 
 @dataclass(frozen=True)
@@ -115,7 +166,14 @@ class _HTTPProvider:
                 raise ProviderUnavailable(
                     f"{self.name}: key has no inference entitlement ({detail})"
                 ) from exc
-            raise ProviderError(f"{self.name}: HTTP {exc.code}: {detail}") from exc
+            err = ProviderError(f"{self.name}: HTTP {exc.code}: {detail}")
+            err.http_status = exc.code
+            ra = exc.headers.get("Retry-After") if exc.headers else None
+            try:
+                err.retry_after = float(ra) if ra else None
+            except ValueError:
+                err.retry_after = None
+            raise err from exc
         except urllib.error.URLError as exc:
             raise ProviderUnavailable(f"{self.name}: {exc.reason}") from exc
         except TimeoutError as exc:
@@ -141,11 +199,15 @@ class _HTTPProvider:
         }
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
-        data = self._post(self._url(), payload, self._headers(json_mode))
-        try:
-            text = self._extract(data)
-        except (KeyError, IndexError, TypeError) as exc:
-            raise ProviderError(f"{self.name}: unexpected envelope: {str(data)[:200]}") from exc
+        def _once() -> tuple[dict, str]:
+            data = self._post(self._url(), payload, self._headers(json_mode))
+            try:
+                text = self._extract(data)
+            except (KeyError, IndexError, TypeError) as exc:
+                raise ProviderError(f"{self.name}: unexpected envelope: {str(data)[:200]}") from exc
+            return data, text
+
+        data, text = call_with_retry(_once)
         usage = data.get("usage") or {}
         return ModelResponse(
             text=text,

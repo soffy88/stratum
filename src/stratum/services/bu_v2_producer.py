@@ -22,6 +22,8 @@ that would take down a whole book run over one chapter.
 
 from __future__ import annotations
 
+import os
+
 import hashlib
 import json
 import re
@@ -36,6 +38,9 @@ from stratum.knowledge.bu_v2_models import (
 from stratum.services.bu_v2_provider import (
     ModelProvider,
     ProviderError,
+    ProviderUnavailable,
+    _is_transient,
+    call_with_retry,
     resolve_provider,
 )
 
@@ -176,6 +181,10 @@ class Chapter:
             if len(frag) >= 12:
                 i = self.text.find(frag)
         if i == -1:
+            # CJK OCR text carries stray spaces and line breaks between
+            # characters, so retry ignoring whitespace inside the needle.
+            i = _fuzzy_find(self.text, needle[:40])
+        if i == -1:
             return None
         return (self.locator(i), self.text[i : i + window].strip())
 
@@ -188,10 +197,20 @@ class Chapter:
         the span genuinely discusses that concept, which is what §11 asks for,
         and the term is the model's or the chapter's, never invented text.
         """
-        if not term or len(term) < 3:
+        term = (term or "").strip()
+        if _CJK_RE.search(term):
+            # Chinese has no word boundaries and its terms are often two
+            # characters (极限, 导数), so match the characters directly.
+            if len(term) < 2:
+                return None
+            i = _fuzzy_find(self.text, term)
+            if i == -1:
+                return None
+            return (self.locator(i), self.text[i : i + window].strip())
+        if len(term) < 3:
             return None
         # Word-boundary match so "range" does not land inside "arrange".
-        pattern = re.compile(r"\b" + re.escape(term.strip()) + r"\b", re.I)
+        pattern = re.compile(r"\b" + re.escape(term) + r"\b", re.I)
         m = pattern.search(self.text)
         if not m:
             return None
@@ -270,13 +289,31 @@ class ChapterUnderstandingProducer:
             f"CHAPTER TEXT:\n{chapter.text[: self.max_chars]}\n\n"
             f"Extract the structure. Respond with exactly this JSON shape:\n{_schema_hint()}"
         )
-        try:
+        def _ask() -> dict:
             resp = self.provider.complete(
                 prompt, system=_SYSTEM, json_mode=True, max_tokens=1600, temperature=0.0
             )
-            data = resp.json()
+            try:
+                data = resp.json()
+            except ValueError as exc:
+                raise ProviderError(str(exc)) from exc
+            # Some models wrap the object in a one-element list; unwrap it.
+            if isinstance(data, list) and data and all(isinstance(x, dict) for x in data):
+                data = data[0]
             if not isinstance(data, dict):
                 raise ProviderError(f"expected a JSON object, got {type(data).__name__}")
+            return data
+
+        # A rotating gateway routes each call to a different upstream, so a
+        # malformed answer or an exhausted gateway retry budget is worth asking
+        # again. Provider-level transient retries happen inside complete().
+        try:
+            data = call_with_retry(
+                _ask,
+                attempts=int(os.environ.get("BU2_CHAPTER_ATTEMPTS", "3")),
+                retry_if=lambda exc: not isinstance(exc, ProviderUnavailable)
+                or _is_transient(exc),
+            )
         except (ProviderError, ValueError) as exc:
             data = {}
             failure = str(exc)
@@ -546,6 +583,19 @@ _STOPWORDS = {
 }
 
 
+_CJK_RE = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]")
+
+
+def _fuzzy_find(text: str, needle: str) -> int:
+    """Find ``needle`` in ``text`` ignoring whitespace; -1 when absent."""
+    chars = [c for c in (needle or "") if not c.isspace()]
+    if len(chars) < 2:
+        return -1
+    pattern = r"\s*".join(re.escape(c) for c in chars)
+    m = re.search(pattern, text or "")
+    return m.start() if m else -1
+
+
 def _significant_terms(text: str, limit: int = 6) -> list[str]:
     """Longest capitalised or multi-syllable-looking words in a claim.
 
@@ -554,6 +604,11 @@ def _significant_terms(text: str, limit: int = 6) -> list[str]:
     nothing.
     """
     words = re.findall(r"[A-Za-z][A-Za-z\-]{3,}", text or "")
+    # Chinese claims: take CJK runs split on common particles as candidates.
+    for run in re.findall(r"[\u3400-\u9fff]{2,}", text or ""):
+        for part in re.split(r"[的是在和与及或为了对把被由中上下等]", run):
+            if 2 <= len(part) <= 8:
+                words.append(part)
     seen: list[str] = []
     for w in words:
         lw = w.lower()
