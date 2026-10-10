@@ -217,8 +217,9 @@ class DeepSeekProvider(OpenAICompatibleProvider):
 
 
 class NIMProvider(OpenAICompatibleProvider):
+    timeout = 600
     name = "nvidia-nim"
-    default_model = "meta/llama-3.1-70b-instruct"
+    default_model = "meta/llama-3.2-90b-vision-instruct"
 
     def __init__(self, **kw):
         kw.setdefault("base_url", "https://integrate.api.nvidia.com/v1")
@@ -285,7 +286,7 @@ class OllamaProvider(_HTTPProvider):
     """Local daemon. Speaks its own dialect, not the OpenAI one."""
 
     name = "ollama"
-    default_model = "qwen2.5:7b"
+    default_model = "llama3.2:1b"
 
     def __init__(
         self,

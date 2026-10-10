@@ -1,8 +1,14 @@
 """Book Understanding 2.0 - Core Domain Models (P1-P9)."""
 
+import hashlib
 from typing import Any, List, Optional, Dict
 from enum import Enum
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+def _stable_id(prefix: str, *parts: str) -> str:
+    raw = "|".join(p for p in parts if p)
+    return f"{prefix}_{hashlib.sha256(raw.encode()).hexdigest()[:12]}"
 
 # ── Enums ─────────────────────────────────────────────────────────────────────
 
@@ -957,3 +963,427 @@ class BookSynthesis(BaseModel):
     limitations: List[str] = Field(default_factory=list)
     synthesis_evidence: Dict[str, List[str]] = Field(default_factory=dict)
     created_at: str = ""
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# P14: Cross-Book Intelligence Models
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class CrossBookConceptRelationType(str, Enum):
+    """Types of relations between concepts across books."""
+    SAME_CONCEPT = "SAME_CONCEPT"
+    RELATED_CONCEPT = "RELATED_CONCEPT"
+    SUBSUMES = "SUBSUMES"
+    SPECIALIZES = "SPECIALIZES"
+    ANALOGOUS = "ANALOGOUS"
+    DISTINCT = "DISTINCT"
+    SAME_TERM_DIFFERENT_MEANING = "SAME_TERM_DIFFERENT_MEANING"
+    UNKNOWN = "UNKNOWN"
+
+
+class CrossBookThesisRelationType(str, Enum):
+    """Types of relations between theses across books."""
+    SUPPORTS = "SUPPORTS"
+    EXTENDS = "EXTENDS"
+    QUALIFIES = "QUALIFIES"
+    CONTRADICTS = "CONTRADICTS"
+    COMPLEMENTS = "COMPLEMENTS"
+    ALTERNATIVE = "ALTERNATIVE"
+    ORTHOGONAL = "ORTHOGONAL"
+    RELATED = "RELATED"
+    UNKNOWN = "UNKNOWN"
+
+
+class CrossBookClaimRelationType(str, Enum):
+    """Types of relations between claims across books."""
+    SAME_CLAIM = "SAME_CLAIM"
+    RELATED_CLAIM = "RELATED_CLAIM"
+    CONTRADICTORY_CLAIM = "CONTRADICTORY_CLAIM"
+    SCOPE_SPECIFIC = "SCOPE_SPECIFIC"
+    UNKNOWN = "UNKNOWN"
+
+
+class CrossBookArgumentRelationType(str, Enum):
+    """Types of relations between arguments across books."""
+    SUPPORTS = "SUPPORTS"
+    CHALLENGES = "CHALLENGES"
+    EXTENDS = "EXTENDS"
+    REFINES = "REFINES"
+    CONTRADICTS = "CONTRADICTS"
+    GENERALIZES = "GENERALIZES"
+    SPECIALIZES = "SPECIALIZES"
+    APPLIES = "APPLIES"
+    COMPLEMENTS = "COMPLEMENTS"
+    COMPLEMENTARY = "COMPLEMENTARY"
+    ALTERNATIVE = "ALTERNATIVE"
+    INDEPENDENT = "INDEPENDENT"
+    UNKNOWN = "UNKNOWN"
+
+
+class CrossBookMechanismRelationType(str, Enum):
+    """Types of relations between mechanisms across books."""
+    SAME = "SAME"
+    VARIANT = "VARIANT"
+    COMPLEMENTARY = "COMPLEMENTARY"
+    COMPETING = "COMPETING"
+    INCOMPATIBLE = "INCOMPATIBLE"
+    UNKNOWN = "UNKNOWN"
+
+
+class CrossBookEvidenceRelationType(str, Enum):
+    """Types of relations between evidence across books."""
+    CONVERGENT = "CONVERGENT"
+    DIVERGENT = "DIVERGENT"
+    INDEPENDENT = "INDEPENDENT"
+    CONFLICTING = "CONFLICTING"
+    INSUFFICIENT = "INSUFFICIENT"
+    UNKNOWN = "UNKNOWN"
+
+
+class CrossBookContradictionType(str, Enum):
+    """Types of cross-book contradictions."""
+    DIRECT_CONTRADICTION = "DIRECT_CONTRADICTION"
+    DEFINITIONAL_CONFLICT = "DEFINITIONAL_CONFLICT"
+    SCOPE_CONFLICT = "SCOPE_CONFLICT"
+    ASSUMPTION_CONFLICT = "ASSUMPTION_CONFLICT"
+    EMPIRICAL_CONFLICT = "EMPIRICAL_CONFLICT"
+    THEORETICAL_CONFLICT = "THEORETICAL_CONFLICT"
+    APPARENT_CONTRADICTION = "APPARENT_CONTRADICTION"
+    UNRESOLVED = "UNRESOLVED"
+
+
+class CrossBookProblemRelationType(str, Enum):
+    """Types of relations between problems across books."""
+    SAME_PROBLEM = "SAME_PROBLEM"
+    SUBPROBLEM = "SUBPROBLEM"
+    SUPERPROBLEM = "SUPERPROBLEM"
+    RELATED_PROBLEM = "RELATED_PROBLEM"
+    ORTHOGONAL = "ORTHOGONAL"
+    UNKNOWN = "UNKNOWN"
+
+
+class CrossBookArgumentTransferType(str, Enum):
+    """Types of argument transfer across books."""
+    THEORY_TO_APPLICATION = "THEORY_TO_APPLICATION"
+    FOUNDATION_TO_EXTENSION = "FOUNDATION_TO_EXTENSION"
+    CONCEPT_TO_MECHANISM = "CONCEPT_TO_MECHANISM"
+    THESIS_TO_CRITIQUE = "THESIS_TO_CRITIQUE"
+    UNKNOWN = "UNKNOWN"
+
+
+class KnowledgeGapType(str, Enum):
+    """Types of knowledge gaps detected across books."""
+    UNANSWERED = "UNANSWERED"
+    WEAKLY_SUPPORTED = "WEAKLY_SUPPORTED"
+    CONFLICTING = "CONFLICTING"
+    MISSING_BRIDGE = "MISSING_BRIDGE"
+    MISSING_EVIDENCE = "MISSING_EVIDENCE"
+    SCOPE_GAP = "SCOPE_GAP"
+    BOOK_SET_LIMIT = "BOOK_SET_LIMIT"
+
+
+class AuthorRelationType(str, Enum):
+    """Types of author stance relations."""
+    SHARED_ASSUMPTION = "SHARED_ASSUMPTION"
+    DIFFERENT_ASSUMPTION = "DIFFERENT_ASSUMPTION"
+    COMPETING_FRAMEWORK = "COMPETING_FRAMEWORK"
+    COMPLEMENTARY_FRAMEWORK = "COMPLEMENTARY_FRAMEWORK"
+    UNKNOWN = "UNKNOWN"
+
+
+class CrossBookCollection(BaseModel):
+    """A named collection of independently understood books for cross-book analysis."""
+    collection_id: str = ""
+    name: str
+    description: str
+    book_ids: List[str] = Field(default_factory=list)
+    created_at: str = ""
+    version: int = 1
+
+    @model_validator(mode="before")
+    @classmethod
+    def _generate_collection_id(cls, data):
+        if isinstance(data, dict) and not data.get("collection_id"):
+            book_ids = data.get("book_ids", [])
+            name = data.get("name", "")
+            data["collection_id"] = _stable_id("coll", *sorted(book_ids), name)
+        return data
+
+    @model_validator(mode="after")
+    def _validate_book_count(self):
+        if len(self.book_ids) < 2:
+            raise ValueError("Collection requires at least 2 books")
+        return self
+
+
+class CrossBookConcept(BaseModel):
+    """A concept identified across multiple books with alignment metadata."""
+    concept_id: str
+    label: str
+    definition: str
+    source_books: List[Dict[str, Any]] = Field(default_factory=list)  # book_id, concept_ref, role
+    alignment_confidence: float = 0.0
+    provenance: ThesisProvenance = ThesisProvenance.MODEL_INFERRED
+
+
+class CrossBookConceptRelation(BaseModel):
+    """A relation between two concepts from different books."""
+    relation_id: str
+    source_book_id: str
+    source_concept_id: str
+    target_book_id: str
+    target_concept_id: str
+    relation: CrossBookConceptRelationType
+    reason: str
+    evidence: List[str] = Field(default_factory=list)  # evidence_refs from both books
+    confidence: float = 0.0
+    provenance: ThesisProvenance = ThesisProvenance.MODEL_INFERRED
+
+
+class CrossBookConceptEvolution(BaseModel):
+    """Cross-book concept evolution chain."""
+    chain_id: str
+    sequence: List[Dict[str, Any]] = Field(default_factory=list)  # book_id, concept_id, evolution_type
+    evolution_types: List[str] = Field(default_factory=list)  # INTRODUCES, REFINES, EXTENDS, etc.
+    provenance: ThesisProvenance = ThesisProvenance.MODEL_INFERRED
+
+
+class CrossBookThesis(BaseModel):
+    """A thesis from a book in cross-book context."""
+    thesis_id: str
+    book_id: str
+    thesis_ref: str  # ref to BookThesis.id in that book's synthesis
+    statement: str
+    type: str  # CORE, SUPPORTING, etc.
+    confidence: float
+    provenance: ThesisProvenance
+
+
+class CrossBookThesisRelation(BaseModel):
+    """A relation between theses from different books."""
+    relation_id: str
+    source_thesis: CrossBookThesis
+    target_thesis: CrossBookThesis
+    relation: CrossBookThesisRelationType
+    reason: str
+    evidence: List[str] = Field(default_factory=list)
+    confidence: float = 0.0
+    provenance: ThesisProvenance = ThesisProvenance.MODEL_INFERRED
+
+
+class CrossBookClaim(BaseModel):
+    """A claim from a book in cross-book context."""
+    claim_id: str
+    book_id: str
+    claim_ref: str  # ref to EvidenceMapEntry.claim_id
+    statement: str
+    confidence: float
+    is_supported: bool
+
+
+class CrossBookClaimRelation(BaseModel):
+    """A relation between claims from different books."""
+    relation_id: str
+    source_claim: CrossBookClaim
+    target_claim: CrossBookClaim
+    relation: CrossBookClaimRelationType
+    reason: str
+    evidence: List[str] = Field(default_factory=list)
+    confidence: float = 0.0
+    provenance: ThesisProvenance = ThesisProvenance.MODEL_INFERRED
+
+
+class CrossBookArgument(BaseModel):
+    """An argument from a book in cross-book context."""
+    argument_id: str
+    book_id: str
+    argument_ref: str  # ref to BookArgument.id
+    level: int
+    what: str
+    why: str
+    how: str
+    conclusion: str
+    evidence_refs: List[str] = Field(default_factory=list)
+    status: ArgumentStatus
+    confidence: float
+
+
+class CrossBookArgumentRelation(BaseModel):
+    """A relation between arguments from different books."""
+    relation_id: str
+    source_argument: CrossBookArgument
+    target_argument: CrossBookArgument
+    relation: CrossBookArgumentRelationType
+    reason: str
+    evidence: List[str] = Field(default_factory=list)
+    confidence: float = 0.0
+    provenance: ThesisProvenance = ThesisProvenance.MODEL_INFERRED
+
+
+class CrossBookArgumentTransfer(BaseModel):
+    """A transfer of argument structure from one book to another."""
+    transfer_id: str
+    source_book_id: str
+    source_argument_id: str
+    target_book_id: str
+    target_argument_id: str
+    transfer_type: CrossBookArgumentTransferType
+    reason: str
+    confidence: float = 0.0
+
+
+class CrossBookMechanism(BaseModel):
+    """A mechanism from a book in cross-book context."""
+    mechanism_id: str
+    book_id: str
+    mechanism_ref: str  # ref to BookMechanism.id
+    trigger: str
+    precondition: str
+    operation: str
+    outcome: str
+    confidence: float
+
+
+class CrossBookMechanismRelation(BaseModel):
+    """A relation between mechanisms from different books."""
+    relation_id: str
+    source_mechanism: CrossBookMechanism
+    target_mechanism: CrossBookMechanism
+    relation: CrossBookMechanismRelationType
+    reason: str
+    evidence: List[str] = Field(default_factory=list)
+    confidence: float = 0.0
+    provenance: ThesisProvenance = ThesisProvenance.MODEL_INFERRED
+
+
+class CrossBookEvidence(BaseModel):
+    """Evidence from a book in cross-book context."""
+    evidence_id: str
+    book_id: str
+    evidence_ref: str  # ref to original evidence
+    claim_id: str
+    locator: str
+    strength: EvidenceStrengthP13
+
+
+class CrossBookEvidenceRelation(BaseModel):
+    """A relation between evidence from different books."""
+    relation_id: str
+    source_evidence: CrossBookEvidence
+    target_evidence: CrossBookEvidence
+    relation: CrossBookEvidenceRelationType
+    reason: str
+    confidence: float = 0.0
+    provenance: ThesisProvenance = ThesisProvenance.MODEL_INFERRED
+
+
+class CrossBookContradiction(BaseModel):
+    """A contradiction detected across books."""
+    contradiction_id: str
+    type: CrossBookContradictionType
+    book_a_id: str
+    element_a: str
+    book_b_id: str
+    element_b: str
+    element_type: str  # "claim", "concept", "argument", "thesis"
+    description: str
+    classification: CrossBookContradictionType
+    confidence: float = 0.0
+    provenance: ThesisProvenance = ThesisProvenance.MODEL_INFERRED
+
+
+class CrossBookProblem(BaseModel):
+    """A problem identified in a book in cross-book context."""
+    problem_id: str
+    book_id: str
+    problem_ref: str  # ref to BookThesis (type PROBLEM) or ProblemStatement
+    statement: str
+    scope: str
+    domain: str
+
+
+class CrossBookProblemRelation(BaseModel):
+    """A relation between problems from different books."""
+    relation_id: str
+    source_problem: CrossBookProblem
+    target_problem: CrossBookProblem
+    relation: CrossBookProblemRelationType
+    reason: str
+    confidence: float = 0.0
+
+
+class CrossBookAuthorRelation(BaseModel):
+    """A relation between author models from different books."""
+    relation_id: str
+    book_a_id: str
+    book_b_id: str
+    relation: AuthorRelationType
+    dimension: str  # assumptions, worldview, strategy, style, evidence, limitations
+    reason: str
+    confidence: float = 0.0
+
+
+class CrossBookKnowledgeGap(BaseModel):
+    """A knowledge gap detected across the book collection."""
+    gap_id: str
+    type: KnowledgeGapType
+    description: str
+    affected_books: List[str] = Field(default_factory=list)
+    missing_elements: List[str] = Field(default_factory=list)
+    reason: str
+    confidence: float = 0.0
+
+
+class CrossBookComparison(BaseModel):
+    """Complete comparison between two books."""
+    comparison_id: str
+    book_a_id: str
+    book_b_id: str
+    concept_relations: List[CrossBookConceptRelation] = Field(default_factory=list)
+    thesis_relations: List[CrossBookThesisRelation] = Field(default_factory=list)
+    argument_relations: List[CrossBookArgumentRelation] = Field(default_factory=list)
+    mechanism_relations: List[CrossBookMechanismRelation] = Field(default_factory=list)
+    evidence_relations: List[CrossBookEvidenceRelation] = Field(default_factory=list)
+    contradictions: List[CrossBookContradiction] = Field(default_factory=list)
+    problem_relations: List[CrossBookProblemRelation] = Field(default_factory=list)
+    author_relations: List[CrossBookAuthorRelation] = Field(default_factory=list)
+
+
+class CrossBookSynthesis(BaseModel):
+    """The final cross-book synthesis."""
+    synthesis_id: str
+    collection_id: str
+    common_ground: List[str] = Field(default_factory=list)
+    major_differences: List[str] = Field(default_factory=list)
+    concept_evolution: List[CrossBookConceptEvolution] = Field(default_factory=list)
+    supporting_theories: List[str] = Field(default_factory=list)
+    competing_theories: List[str] = Field(default_factory=list)
+    evidence_convergence: List[str] = Field(default_factory=list)
+    evidence_divergence: List[str] = Field(default_factory=list)
+    unresolved_conflicts: List[CrossBookContradiction] = Field(default_factory=list)
+    knowledge_gaps: List[CrossBookKnowledgeGap] = Field(default_factory=list)
+    higher_order_synthesis: str = ""
+    traceability: Dict[str, List[str]] = Field(default_factory=dict)
+    created_at: str = ""
+
+
+class CrossBookUnderstanding(BaseModel):
+    """The top-level cross-book understanding object."""
+    understanding_id: str
+    collection: CrossBookCollection
+    shared_problems: List[CrossBookProblem] = Field(default_factory=list)
+    concept_system: List[CrossBookConcept] = Field(default_factory=list)
+    concept_relations: List[CrossBookConceptRelation] = Field(default_factory=list)
+    thesis_system: List[CrossBookThesis] = Field(default_factory=list)
+    thesis_relations: List[CrossBookThesisRelation] = Field(default_factory=list)
+    argument_system: List[CrossBookArgument] = Field(default_factory=list)
+    argument_relations: List[CrossBookArgumentRelation] = Field(default_factory=list)
+    mechanism_system: List[CrossBookMechanism] = Field(default_factory=list)
+    mechanism_relations: List[CrossBookMechanismRelation] = Field(default_factory=list)
+    evidence_system: List[CrossBookEvidence] = Field(default_factory=list)
+    evidence_relations: List[CrossBookEvidenceRelation] = Field(default_factory=list)
+    contradictions: List[CrossBookContradiction] = Field(default_factory=list)
+    comparisons: List[CrossBookComparison] = Field(default_factory=list)
+    knowledge_gaps: List[CrossBookKnowledgeGap] = Field(default_factory=list)
+    synthesis: CrossBookSynthesis
+    quality: Dict[str, Any] = Field(default_factory=dict)  # Q19-Q26 scores

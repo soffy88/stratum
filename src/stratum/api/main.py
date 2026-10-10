@@ -248,6 +248,14 @@ from stratum.api.routers import graph as _graph
 
 app.include_router(_graph.router)
 
+from stratum.api.routers import bu
+
+app.include_router(bu.router)
+
+from stratum.api.routers import cross_books
+
+app.include_router(cross_books.router)
+
 from stratum.api.routers import agents
 
 app.include_router(agents.router)
