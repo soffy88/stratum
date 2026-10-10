@@ -157,8 +157,8 @@ services:
       - https_proxy=http://172.19.0.1:10808
       # ★100.119.113.90(tailscale笔记本, aii-embed宿主)必须在NO_PROXY里: httpx尊重代理env,
       #   不排除的话 embed 请求会被路由进 sing-box 代理而不可达。
-      - NO_PROXY=localhost,127.0.0.1,::1,172.19.0.1,100.119.113.90,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend
-      - no_proxy=localhost,127.0.0.1,::1,172.19.0.1,100.119.113.90,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend
+      - NO_PROXY=localhost,127.0.0.1,::1,172.19.0.1,100.119.113.90,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend,api.nvidia.com,integrate.api.nvidia.com
+      - no_proxy=localhost,127.0.0.1,::1,172.19.0.1,100.119.113.90,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend,api.nvidia.com,integrate.api.nvidia.com
       # PaddleOCR: skip network model-source check, use pre-downloaded models from volume
       - PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
       # ★2026-07-10: 原 qwen3_local→aegis ollama 网关已死(每条入库404×3, 向量从未写入,
@@ -186,8 +186,10 @@ services:
       - NVIDIA_NIM_API_KEY=${NVIDIA_NIM_API_KEY:-}
       - OLLAMA_BASE_URL=http://172.19.0.1:11434
       # 本地兜底: agents 默认走 ollama qwen3-8b (DASHSCOPE/NIM 键缺失/失效时链路不断)
-      - STRATUM_LLM_PROVIDER=ollama
-      - STRATUM_LLM_MODEL=qwen3-8b
+      - STRATUM_LLM_PROVIDER=nim
+      - BU2_MODEL_PROVIDER=nim
+      - STRATUM_LLM_MODEL=meta/llama-3.2-90b-vision-instruct
+      - BU2_MODEL=meta/llama-3.2-90b-vision-instruct
       # Flywheel disabled in merged backend (handled by standalone systemd services)
       - FLYWHEEL_ENABLED=0
     volumes:

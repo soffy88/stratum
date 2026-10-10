@@ -1,5 +1,5 @@
-"""★宿主 extract 微服务(:8301) — LangExtract grounded extraction(直连 opencode)。
-容器内 NIM 代理不稳; 宿主 127.0.0.1:10101(opencode gpt-5.5) 已验证通。
+"""★宿主 extract 微服务(:8301) — LangExtract grounded extraction(直连 NVIDIA NIM)。
+首选 NIM(nvidia/llama-3.3-nemotron-super-49b-v1.5)，回退 opencode gpt-5.5(127.0.0.1:10101)。
 """
 import json
 import os
@@ -11,12 +11,37 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # docs_service
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.responses import HTMLResponse
 
-os.environ.setdefault("LX_API_BASE", "http://127.0.0.1:10101/v1")
-os.environ.setdefault("LX_API_KEY", "")
-os.environ.setdefault("LX_MODEL", "gpt-5.5")
+# ★首选 NVIDIA NIM (通过 .pipeline_keys.json 的 econ key)
+# 回退 opencode gpt-5.5 (127.0.0.1:10101/v1) —— 需有效 token
+# 优先级: 1) NIM (更稳定、无需本地 token) 2) opencode (需有效 token)
+NIM_BASE = "https://integrate.api.nvidia.com/v1"
+NIM_MODEL = "meta/llama-3.2-11b-vision-instruct"
+OPENCODE_BASE = "http://127.0.0.1:10101/v1"
+OPENCODE_MODEL = "gpt-5.5"
 
-if not os.environ.get("LX_API_KEY"):
-    raise RuntimeError("LX_API_KEY not set — refusing to start (see aii-extract.service EnvironmentFile)")
+# 读取 NIM key (从 .pipeline_keys.json 的 econ)
+def _nim_key() -> str:
+    try:
+        import json
+        from pathlib import Path
+        d = json.loads((Path(__file__).resolve().parents[2] / "aii" / ".pipeline_keys.json").read_text())
+        return d.get("econ") or ""
+    except Exception:
+        return ""
+
+# 优先用 NIM；无 key 才回退 opencode
+nim_key = _nim_key()
+if nim_key:
+    os.environ.setdefault("LX_API_BASE", "https://integrate.api.nvidia.com/v1")
+    os.environ.setdefault("LX_API_KEY", nim_key)
+    os.environ.setdefault("LX_MODEL", "nvidia/llama-3.3-nemotron-super-49b-v1.5")
+else:
+    # 回退 opencode (需有效 token)
+    os.environ.setdefault("LX_API_BASE", "http://127.0.0.1:10101/v1")
+    os.environ.setdefault("LX_API_KEY", "")
+    os.environ.setdefault("LX_MODEL", "gpt-5.5")
+    if not os.environ.get("LX_API_KEY"):
+        raise RuntimeError("LX_API_KEY not set — refusing to start (see aii-extract.service EnvironmentFile)")
 
 from grounded_extract import extract_html, grounded_extract  # noqa: E402
 
@@ -26,6 +51,29 @@ app = FastAPI(title="grounded-extract", version="0.1.0")
 @app.get("/health")
 def health():
     return {"ok": True, "service": "grounded-extract"}
+
+
+# 默认 KU 抽取示例(中英双语通用)
+DEFAULT_KU_EXAMPLES = [
+    {
+        "text": "第一章 引言\n机器学习是一种让计算机从数据中学习的方法。\n第二章 监督学习\n监督学习使用标记数据训练模型。",
+        "extractions": [
+            {"extraction_class": "章节", "extraction_text": "第一章 引言"},
+            {"extraction_class": "知识点", "extraction_text": "机器学习是一种让计算机从数据中学习的方法"},
+            {"extraction_class": "章节", "extraction_text": "第二章 监督学习"},
+            {"extraction_class": "知识点", "extraction_text": "监督学习使用标记数据训练模型"}
+        ]
+    },
+    {
+        "text": "Chapter 1 Introduction\nMachine learning enables computers to learn from data.\nChapter 2 Supervised Learning\nSupervised learning uses labeled data to train models.",
+        "extractions": [
+            {"extraction_class": "Chapter", "extraction_text": "Chapter 1 Introduction"},
+            {"extraction_class": "Knowledge Point", "extraction_text": "Machine learning enables computers to learn from data"},
+            {"extraction_class": "Chapter", "extraction_text": "Chapter 2 Supervised Learning"},
+            {"extraction_class": "Knowledge Point", "extraction_text": "Supervised learning uses labeled data to train models"}
+        ]
+    }
+]
 
 
 @app.post("/extract")
@@ -38,6 +86,8 @@ async def extract(file: UploadFile = File(...), prompt: str = Form(...),
     try:
         text = Path(fd.name).read_text(encoding="utf-8", errors="replace")
         examples = json.loads(examples_json) if examples_json else []
+        if not examples:
+            examples = DEFAULT_KU_EXAMPLES
         r = grounded_extract(text, prompt, examples)
         if html == "1":
             r["html"] = extract_html(text, r)

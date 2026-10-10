@@ -210,6 +210,19 @@ def _write(stem, text, force=False):
     return True
 
 
+
+def _rm_src(path) -> None:
+    """★2026-08-10 转换成功删源文件省空间(磁盘94%)。KEEP_SRC=1 时保留。"""
+    import os as _os
+    if _os.getenv("KEEP_SRC") == "1":
+        return
+    try:
+        _os.remove(path)
+        print(f"  🗑 已删源文件: {Path(path).name[:50]}")
+    except OSError as e:
+        print(f"  ⚠ 删源失败 {Path(path).name[:40]}: {e}")
+
+
 if DO:
     os.makedirs(DST, exist_ok=True)  # ★2026-08-10 教辅/计算机等新 DST 目录可能不存在, 先建
     print("\n=== 转换「可转」+ 入 其它 文件夹 ===")
@@ -270,13 +283,3 @@ if DO:
     print("✓ 完成. 需OCR/无章节 的未处理(见上).")
 
 
-def _rm_src(path) -> None:
-    """★2026-08-10 转换成功删源文件省空间(磁盘94%)。KEEP_SRC=1 时保留。"""
-    import os as _os
-    if _os.getenv("KEEP_SRC") == "1":
-        return
-    try:
-        _os.remove(path)
-        print(f"  🗑 已删源文件: {Path(path).name[:50]}")
-    except OSError as e:
-        print(f"  ⚠ 删源失败 {Path(path).name[:40]}: {e}")

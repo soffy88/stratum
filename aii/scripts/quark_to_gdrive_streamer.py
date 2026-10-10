@@ -32,6 +32,10 @@ LOG_FILE = PIPE / "quark_transfer_2_4.log"
 BBC_TARGETS = PIPE / "bbc_targets.json"
 EDU_TARGETS = PIPE / "edu_targets.json"
 BILI_TARGETS = PIPE / "bilibili_targets.json"
+# K12 教育类目标（由 quark_k12_selector.py 生成，含 remote_path）
+K12_TARGETS = PIPE / "k12_targets.json"
+# 通过 QUARK_TARGETS 指定本次要迁移的清单（文件名，不含路径）
+TARGET_SET = os.environ.get("QUARK_TARGETS", "").strip()
 
 # ── 并发/性能调优 ──────────────────────────────────────────────
 # 单文件内多分片并发数。实测（535MB 样本，夸克侧）：6→4.06MB/s, 10→7.79MB/s,
@@ -124,11 +128,19 @@ def get_download_url(fid: str) -> str | None:
         items = res.get("data", [])
         if items and items[0].get("download_url"):
             return items[0]["download_url"]
+        # 200 但无 download_url：接口本身正常，只是该 fid 无效。
+        # 只有明确的 404/410 才认定文件消失，避免会话异常被误报成文件丢失。
+        code = res.get("code")
+        msg = (res.get("message") or "")
+        if code in (404, 410) or msg.lower().startswith(("not found", "notfound")):
+            raise SourceGone(f"fid={fid} code={code}")
+        log(f"  \u26a0 无download_url (fid={fid[:12]}, code={code}, msg={msg[:40]})")
+    except SourceGone:
+        raise
     except Exception as e:
-        if getattr(e, "code", None) == 404:
-            # 源文件已被删除且无重试价值，立即上抛让调用方跳过
+        if getattr(e, "code", None) in (404, 410):
             raise SourceGone(f"fid={fid}") from e
-        log(f"  ⚠ 获取下载链接失败 (fid={fid}): {e}")
+        log(f"  \u26a0 获取下载链接失败 (fid={fid}): {e}")
     return None
 
 
@@ -144,6 +156,15 @@ def delete_quark_file(fid: str) -> bool:
 
 
 def get_quark_used_tb() -> float | None:
+    """优先用官方 member 接口查占用（use_capacity）。
+    旧 quark-drive CLI 已被上游加 Agent 环境检测，稳定返回 code -104。"""
+    try:
+        res = _req(f"{API}/1/clouddrive/member?pr=ucpro&fr=pc&uc_param_str=", "GET")
+        used = (res.get("data") or {}).get("use_capacity")
+        if res.get("code") == 0 and isinstance(used, (int, float)):
+            return used / (1024**4)
+    except Exception:
+        pass
     try:
         cmd = ["/home/soffy/.local/bin/quark-drive", "get-user-info"]
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
@@ -154,7 +175,6 @@ def get_quark_used_tb() -> float | None:
     except Exception:
         pass
     return None
-
 
 def stream_to_gdrive(
     fid: str,
@@ -342,6 +362,17 @@ def main():
 
     # 1. 加载目标列表
     all_targets = []
+    # QUARK_TARGETS=k12_targets.json 时只跑指定清单，避免混入 B站清单
+    if TARGET_SET:
+        tp = PIPE / TARGET_SET
+        if tp.exists():
+            sel = json.loads(tp.read_text(encoding="utf-8"))
+            all_targets.extend(sel)
+            log(f"  ✓ 指定清单 {TARGET_SET}: {len(sel)} 个文件")
+        else:
+            log(f"  ❌ 指定清单不存在: {tp}")
+            sys.exit(1)
+
     if False and BBC_TARGETS.exists():
         bbc_list = json.loads(BBC_TARGETS.read_text(encoding="utf-8"))
         all_targets.extend(bbc_list)
@@ -352,7 +383,7 @@ def main():
         all_targets.extend(edu_list)
         log(f"  ✓ 成功载入 教辅与外语 目标: {len(edu_list)} 个文件")
 
-    if BILI_TARGETS.exists():
+    if not TARGET_SET and BILI_TARGETS.exists():
         bili_list = json.loads(BILI_TARGETS.read_text(encoding="utf-8"))
         # If it's a raw catalog without remote_path, just use what we can
         all_targets.extend(bili_list)
@@ -389,7 +420,9 @@ def main():
     log(f"  • 待释放总空间: {pending_bytes / (1024**3):.2f} GB ({pending_bytes / (1024**4):.2f} TB)")
 
     # 按文件由大到小排序流式推送，尽快将网盘总占用打入 6T 以下安全线！
-    pending_files.sort(key=lambda x: x.get("size", 0), reverse=True)
+    # SKIP_SIZE_SORT=1 时保留清单原有顺序（用于「先跑指定批次」场景）
+    if os.environ.get("SKIP_SIZE_SORT", "").strip() != "1":
+        pending_files.sort(key=lambda x: x.get("size", 0), reverse=True)
 
     if args.limit > 0:
         pending_files = pending_files[:args.limit]
@@ -413,7 +446,6 @@ def main():
         if file_path:
             return f"gdrive-kimia:{file_path}"
         return f"gdrive-kimia:B站付费课程/{item.get('file_name', '')}"
-
     def process_one(item: dict) -> str:
         """处理单个文件，返回 'success' / 'skip' / 'fail'。仅由工作线程调用。"""
         nonlocal success_count, fail_count, skip_count, bytes_in_session
