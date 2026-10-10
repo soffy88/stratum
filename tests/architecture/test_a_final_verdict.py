@@ -21,6 +21,15 @@ from pathlib import Path
 
 import pytest
 
+
+#: Chain-level verdict tests whose premise is "every other gate passes". The
+#: P5_5_PAPER_EVIDENCE_FK layer's live gates read the A staging database through
+#: `docker exec aii-postgres` (see paper_evidence_fk_runner); without it they
+#: report FAIL and the chain verdict is FAIL whatever the mutation under test.
+#: The ledger and catalog evidence is supplied by the fixture below; a seeded
+#: staging database cannot be, so these run under `-m production_runtime`.
+_LIVE_A_STAGING = pytest.mark.production_runtime
+
 _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT / "src"))
 sys.path.insert(0, str(_ROOT / "scripts"))
@@ -36,7 +45,8 @@ from stratum.knowledge.a_repository.verdict import (  # noqa: E402
 
 def _load_aggregator():
     spec = importlib.util.spec_from_file_location(
-        "a_final_verdict", _ROOT / "scripts" / "a_final_verdict.py")
+        "a_final_verdict", _ROOT / "scripts" / "a_final_verdict.py"
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -67,20 +77,16 @@ def collected(tmp_path_factory):
     inherited either from the environment made this file pass under
     `pytest tests/architecture` and fail under `pytest tests/`.
     """
-    from stratum.knowledge.a_repository.ku_evolution_runner import \
-        REQUIRED_CHAIN as P5_CHAIN
-    from stratum.knowledge.a_repository.ku_identity_runner import \
-        REQUIRED_CHAIN as P6_CHAIN
+    from stratum.knowledge.a_repository.ku_evolution_runner import REQUIRED_CHAIN as P5_CHAIN
+    from stratum.knowledge.a_repository.ku_identity_runner import REQUIRED_CHAIN as P6_CHAIN
 
     root = tmp_path_factory.mktemp("evidence")
     catalog = root / "tables.txt"
     catalog.write_text(_A_CATALOG + "\n", encoding="utf-8")
     ledger = root / "ledger.txt"
-    ledger.write_text("\n".join(sorted(set(P5_CHAIN) | set(P6_CHAIN))) + "\n",
-                      encoding="utf-8")
+    ledger.write_text("\n".join(sorted(set(P5_CHAIN) | set(P6_CHAIN))) + "\n", encoding="utf-8")
 
-    previous = {key: os.environ.get(key) for key in
-                ("A_P7_DB_TABLES", "A_P5_LEDGER_FILE")}
+    previous = {key: os.environ.get(key) for key in ("A_P7_DB_TABLES", "A_P5_LEDGER_FILE")}
     os.environ["A_P7_DB_TABLES"] = str(catalog)
     os.environ["A_P5_LEDGER_FILE"] = str(ledger)
     try:
@@ -102,10 +108,11 @@ def test_every_layer_reports_and_every_layer_is_counted(collected):
         assert row["reported"] > 0, f"{row['layer']} reported no gates"
         assert row["reported"] == row["counted"], (
             f"{row['layer']} reported {row['reported']} gates but only "
-            f"{row['counted']} reached the merge")
+            f"{row['counted']} reached the merge"
+        )
         assert not row["non_string"], (
-            f"{row['layer']} still publishes measurements inside `gates`: "
-            f"{row['non_string']}")
+            f"{row['layer']} still publishes measurements inside `gates`: {row['non_string']}"
+        )
 
 
 def test_each_layers_own_verdict_agrees_with_its_gates(collected):
@@ -116,11 +123,11 @@ def test_each_layers_own_verdict_agrees_with_its_gates(collected):
         assert row["verdict_key"], f"{row['layer']} exposes no verdict key"
 
 
+@_LIVE_A_STAGING
 def test_the_chain_verdict_is_derived_not_declared(collected):
     merged, _ = collected
     evidence = verdict_inputs(merged)
-    assert not evidence["gates_not_executed"], (
-        f"unevidenced: {evidence['gates_not_executed']}")
+    assert not evidence["gates_not_executed"], f"unevidenced: {evidence['gates_not_executed']}"
     assert evidence["verdict"] == VERDICT_PASS
     assert evidence["gates_not_executed"] == []
     assert evidence["gates_failed"] == []
@@ -128,8 +135,8 @@ def test_the_chain_verdict_is_derived_not_declared(collected):
     # The count is the sum of what the layers reported, not a remembered total.
     assert evidence["gate_count"] == len(merged)
     assert evidence["gate_count"] == sum(
-        len([k for k in merged if k.startswith(f"{layer}:")])
-        for layer in AFV.LAYERS)
+        len([k for k in merged if k.startswith(f"{layer}:")]) for layer in AFV.LAYERS
+    )
 
 
 def test_the_aggregator_holds_no_list_of_gate_names():
@@ -141,6 +148,7 @@ def test_the_aggregator_holds_no_list_of_gate_names():
 
 # ── the chain verdict has to be able to fail ─────────────────────────────────
 
+
 def test_one_failing_gate_fails_the_chain(collected):
     merged, _ = collected
     broken = dict(merged)
@@ -148,6 +156,7 @@ def test_one_failing_gate_fails_the_chain(collected):
     assert verdict(broken) == VERDICT_FAIL
 
 
+@_LIVE_A_STAGING
 def test_a_non_string_gate_blocks_rather_than_passes(collected):
     """A measurement left inside `gates` must not be coerced into a pass.
 
@@ -161,6 +170,7 @@ def test_a_non_string_gate_blocks_rather_than_passes(collected):
     assert verdict(broken) == VERDICT_BLOCKED
 
 
+@_LIVE_A_STAGING
 def test_an_unexecuted_gate_blocks(collected):
     merged, _ = collected
     broken = dict(merged)
@@ -168,6 +178,7 @@ def test_an_unexecuted_gate_blocks(collected):
     assert verdict(broken) == VERDICT_BLOCKED
 
 
+@_LIVE_A_STAGING
 def test_a_layer_that_cannot_run_blocks_the_chain(monkeypatch, collected):
     """A layer that fails to execute must block, not be skipped.
 
@@ -176,9 +187,13 @@ def test_a_layer_that_cannot_run_blocks_the_chain(monkeypatch, collected):
     """
     merged, _ = collected
     real = AFV.run_layer
-    monkeypatch.setattr(AFV, "run_layer",
-                        lambda layer, module: ({}, "ImportError")
-                        if layer == "P7_PROJECTION" else real(layer, module))
+    monkeypatch.setattr(
+        AFV,
+        "run_layer",
+        lambda layer, module: (
+            ({}, "ImportError") if layer == "P7_PROJECTION" else real(layer, module)
+        ),
+    )
     broken, report = AFV.collect()
     row = next(r for r in report if r["layer"] == "P7_PROJECTION")
     assert row.get("error")
@@ -188,16 +203,18 @@ def test_a_layer_that_cannot_run_blocks_the_chain(monkeypatch, collected):
 def test_no_layer_is_silently_absent(collected):
     merged, report = collected
     for layer in AFV.LAYERS:
-        assert any(k.startswith(f"{layer}:") for k in merged), \
+        assert any(k.startswith(f"{layer}:") for k in merged), (
             f"{layer} contributed no gate to the chain verdict"
+        )
 
 
 def test_the_chain_covers_all_nine_layers(collected):
     merged, _ = collected
     prefixes = {k.split(":", 1)[0] for k in merged}
-    assert prefixes == set(AFV.LAYERS), (
-        f"expected {sorted(AFV.LAYERS)}, got {sorted(prefixes)}")
+    assert prefixes == set(AFV.LAYERS), f"expected {sorted(AFV.LAYERS)}, got {sorted(prefixes)}"
 
+
+@_LIVE_A_STAGING
 def test_the_aggregator_does_not_coerce_a_measurement_into_a_pass(monkeypatch):
     """Regression, mutation-checked.
 
@@ -207,13 +224,18 @@ def test_the_aggregator_does_not_coerce_a_measurement_into_a_pass(monkeypatch):
     `verdict()` on a hand-built mapping and so never reaches the merge.
     """
     real = AFV.run_layer
-    monkeypatch.setattr(AFV, "run_layer",
-                        lambda layer, module: (
-                            {"GATE_ok": "PASS", "GATE_measured": 100.0}, "k")
-                        if layer == "P5_1_MECHANISM" else real(layer, module))
+    monkeypatch.setattr(
+        AFV,
+        "run_layer",
+        lambda layer, module: (
+            ({"GATE_ok": "PASS", "GATE_measured": 100.0}, "k")
+            if layer == "P5_1_MECHANISM"
+            else real(layer, module)
+        ),
+    )
     merged, report = AFV.collect()
     row = next(r for r in report if r["layer"] == "P5_1_MECHANISM")
-    assert row["non_string"] == ["GATE_measured"], \
-        "the aggregator did not notice a non-string gate"
-    assert verdict(merged) == VERDICT_BLOCKED, \
+    assert row["non_string"] == ["GATE_measured"], "the aggregator did not notice a non-string gate"
+    assert verdict(merged) == VERDICT_BLOCKED, (
         "a measurement inside `gates` was coerced into a pass"
+    )

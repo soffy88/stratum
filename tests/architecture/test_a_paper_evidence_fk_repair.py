@@ -21,6 +21,16 @@ from pathlib import Path
 import pytest
 
 
+#: Tests that read the live A staging database. Every DB gate in
+#: paper_evidence_fk_runner shells out to `docker exec aii-postgres psql -d
+#: stratum_a_p3_staging` and checks frozen row counts (1/4, 11/12/1/11), i.e.
+#: pre-seeded production-like data. The PR regression job has no such container,
+#: so there these gates can only report FAIL (or, for the negative probes,
+#: "refused" vacuously, because a psql that never ran also "fails"). They run
+#: under `-m production_runtime`, next to the other qualification tests.
+_LIVE_A_STAGING = pytest.mark.production_runtime
+
+
 ROOT = Path(__file__).parents[2]
 MIGRATIONS = ROOT / "src" / "stratum" / "db" / "pg_migrations"
 MIGRATION = MIGRATIONS / "082_a_paper_evidence_composite_fk.sql"
@@ -58,6 +68,8 @@ from stratum.knowledge.a_repository.paper_evidence_fk_runner import (  # noqa: E
 
 # ── 1. composite FK exists ───────────────────────────────────────────────────
 
+
+@_LIVE_A_STAGING
 def test_composite_fk_exists():
     """STEP 2 is present, is a foreign key, and uses RESTRICT."""
     assert schema_gate() == "PASS"
@@ -66,11 +78,11 @@ def test_composite_fk_exists():
     assert "ALTER TABLE stratum.paper_evidence" in clean
     assert f"ADD CONSTRAINT {EXPECTED_CONSTRAINT}" in clean
     assert "FOREIGN KEY (paper_id, catalog_source_id)" in clean
-    assert "REFERENCES stratum.paper_source_candidate (id, book_source_id)" \
-        in clean
+    assert "REFERENCES stratum.paper_source_candidate (id, book_source_id)" in clean
     assert "ON DELETE RESTRICT" in clean
 
 
+@_LIVE_A_STAGING
 def test_the_fk_target_index_exists():
     """STEP 1 is present, and covers exactly (id, book_source_id)."""
     assert index_present_gate() == "PASS"
@@ -94,6 +106,8 @@ def test_the_index_precedes_the_constraint():
 
 # ── 2. same catalog accepted ─────────────────────────────────────────────────
 
+
+@_LIVE_A_STAGING
 def test_same_catalog_accepted():
     """The honest case must still be accepted, or the constraint is wrong.
 
@@ -106,6 +120,8 @@ def test_same_catalog_accepted():
 
 # ── 3. cross catalog rejected ────────────────────────────────────────────────
 
+
+@_LIVE_A_STAGING
 def test_cross_catalog_rejected():
     """The hole 080 left open, now closed by the database.
 
@@ -117,11 +133,13 @@ def test_cross_catalog_rejected():
     assert checks["cross_catalog_refused"] is True
 
 
+@_LIVE_A_STAGING
 def test_unknown_paper_rejected():
     checks = negative_db_gate()
     assert checks["unknown_paper_refused"] is True
 
 
+@_LIVE_A_STAGING
 def test_unknown_catalog_rejected():
     checks = negative_db_gate()
     assert checks["unknown_catalog_refused"] is True
@@ -129,13 +147,19 @@ def test_unknown_catalog_rejected():
 
 def test_negative_detail_names_every_case():
     checks = negative_db_gate()
-    for name in ("cross_catalog_refused", "unknown_paper_refused",
-                 "unknown_catalog_refused", "same_catalog_accepted"):
+    for name in (
+        "cross_catalog_refused",
+        "unknown_paper_refused",
+        "unknown_catalog_refused",
+        "same_catalog_accepted",
+    ):
         assert name in checks
 
 
 # ── 4. unknown catalog rejected (covered above) and existing data intact ─────
 
+
+@_LIVE_A_STAGING
 def test_existing_data_satisfies_the_new_fk():
     """Every stored declaration satisfies the tie.
 
@@ -148,6 +172,7 @@ def test_existing_data_satisfies_the_new_fk():
     assert row_mutation_gate() == "PASS"
 
 
+@_LIVE_A_STAGING
 def test_baseline_anchor_is_row_counts():
     """11/12/1/11 — and rows, not indexes.
 
@@ -157,14 +182,17 @@ def test_baseline_anchor_is_row_counts():
     """
     assert baseline_gate() == "PASS"
     assert BASELINE_ANCHOR["knowledge_unit"] == 11
-    anchor = "/".join(str(BASELINE_ANCHOR[key]) for key in
-                      ("knowledge_unit", "ku_freeze_event", "ku_revision",
-                       "ku_identity"))
+    anchor = "/".join(
+        str(BASELINE_ANCHOR[key])
+        for key in ("knowledge_unit", "ku_freeze_event", "ku_revision", "ku_identity")
+    )
     assert anchor == "11/12/1/11"
 
 
 # ── 5. delete restricted ─────────────────────────────────────────────────────
 
+
+@_LIVE_A_STAGING
 def test_delete_restricted():
     """A candidate may not take its declarations with it."""
     clean = _clean()
@@ -177,6 +205,8 @@ def test_delete_restricted():
 
 # ── 6. migration replay stable ───────────────────────────────────────────────
 
+
+@_LIVE_A_STAGING
 def test_migration_replay_stable():
     """A second execution creates no duplicate object.
 
@@ -201,8 +231,11 @@ def test_replay_does_not_execute_ddl_by_default():
     still said 081. That is a validation step mutating what it validates.
     """
     import os
-    assert os.environ.get("A_P5_5_EXECUTE_REPLAY") is None or \
-        os.environ.get("A_P5_5_EXECUTE_REPLAY") == "1"
+
+    assert (
+        os.environ.get("A_P5_5_EXECUTE_REPLAY") is None
+        or os.environ.get("A_P5_5_EXECUTE_REPLAY") == "1"
+    )
     replay = replay_gate()
     if os.environ.get("A_P5_5_EXECUTE_REPLAY") != "1":
         assert replay["executed"] == 0
@@ -210,6 +243,8 @@ def test_replay_does_not_execute_ddl_by_default():
 
 # ── 7. authority scan ────────────────────────────────────────────────────────
 
+
+@_LIVE_A_STAGING
 def test_authority_scan():
     """The new foreign key points at an A table, and only one."""
     assert authority_gate() == "PASS"
@@ -219,8 +254,7 @@ def test_authority_scan():
     assert counts["C_REFERENCE"] == 0
     assert counts["BU2_DEPENDENCY"] == 0
     clean = _clean().lower()
-    for foreign in ("bu_onto", "chapter_bu", "aii_refined", "refined_ku",
-                    "learning_objective"):
+    for foreign in ("bu_onto", "chapter_bu", "aii_refined", "refined_ku", "learning_objective"):
         assert f"references stratum.{foreign}" not in clean
 
 
@@ -246,11 +280,13 @@ def test_the_source_file_carries_no_forbidden_authority_name():
     forbidden = "knowledge" + "_claims"
     package = ROOT / "src" / "stratum" / "knowledge" / "a_repository"
     for path in package.glob("*.py"):
-        assert forbidden not in path.read_text(encoding="utf-8"), \
+        assert forbidden not in path.read_text(encoding="utf-8"), (
             f"{path.name} references the B仓 table, in code or in prose"
+        )
 
 
 # ── migration discipline ─────────────────────────────────────────────────────
+
 
 def test_only_two_statements():
     """One index, one ADD CONSTRAINT, nothing else."""
@@ -270,17 +306,16 @@ def test_no_destructive_statement():
     "DELETE " matches the ON DELETE RESTRICT the spec requires, so the naive
     version of this check forbids the exact clause 082 must write.
     """
-    import re as _re
     for statement in _statements():
         normalised = " ".join(statement.upper().split())
         for verb in ("DROP", "RENAME", "UPDATE", "DELETE", "INSERT", "TRUNCATE"):
-            assert not normalised.startswith(verb), \
-                f"{verb} appears as a statement in 082"
+            assert not normalised.startswith(verb), f"{verb} appears as a statement in 082"
         for forbidden in ("ALTER COLUMN", "NOT VALID"):
             assert forbidden not in normalised
     clean = _clean()
-    assert "NOT VALID" not in clean, \
+    assert "NOT VALID" not in clean, (
         "NOT VALID would skip validating existing rows, which is GATE_2"
+    )
 
 
 def test_no_table_is_created_or_altered_beyond_paper_evidence():
@@ -292,15 +327,13 @@ def test_no_table_is_created_or_altered_beyond_paper_evidence():
 def test_082_touches_no_frozen_migration():
     """080 and 081 are byte-identical to what was frozen."""
     frozen = {
-        "080_a_paper_source.sql":
-            "6215e46078709bc8fc8548ccaa7de218024ba7e44dc917f16ed69f4d6312bfd5",
-        "081_a_constraint_candidate.sql":
-            "0e9ebc2ddc443412fe9c0203ab3a7150fd7b02d0034c9368e126483283069f4e",
+        "080_a_paper_source.sql": "6215e46078709bc8fc8548ccaa7de218024ba7e44dc917f16ed69f4d6312bfd5",
+        "081_a_constraint_candidate.sql": "0e9ebc2ddc443412fe9c0203ab3a7150fd7b02d0034c9368e126483283069f4e",
     }
     import hashlib
+
     for name, expected in frozen.items():
-        digest = hashlib.sha256(
-            (MIGRATIONS / name).read_bytes()).hexdigest()
+        digest = hashlib.sha256((MIGRATIONS / name).read_bytes()).hexdigest()
         assert digest == expected, f"{name} changed"
 
 
@@ -311,8 +344,7 @@ def test_no_new_lifecycle():
     """
     assert no_new_lifecycle_gate() == "PASS"
     clean = _clean().upper()
-    for forbidden in ("FREEZE_EVENT", "VERIFICATION_EVENT", "KU_REVISION",
-                      "INSERT INTO"):
+    for forbidden in ("FREEZE_EVENT", "VERIFICATION_EVENT", "KU_REVISION", "INSERT INTO"):
         assert forbidden not in clean
 
 
@@ -327,6 +359,8 @@ def test_earlier_migrations_are_untouched():
 
 # ── gates and artifact ───────────────────────────────────────────────────────
 
+
+@_LIVE_A_STAGING
 def test_all_gates_pass():
     gates = gate_results()
     for name, value in gates.items():
@@ -335,6 +369,7 @@ def test_all_gates_pass():
         assert value == "PASS", f"{name}={value}"
 
 
+@_LIVE_A_STAGING
 def test_acceptance_block():
     block = acceptance()
     checks = block["checks"]
@@ -355,16 +390,28 @@ def test_acceptance_block():
     assert checks["BU2_DEPENDENCY"] == 0
 
 
+@_LIVE_A_STAGING
 def test_final_report_block():
     """The spec's COMMIT GATE keys, present and honest."""
     block = final_report()
-    for key in ("TASK", "MIGRATION", "DB_MUTATION", "ROWS_MUTATED", "NEW_INDEX",
-                "NEW_FK", "ALTER_SCOPE", "BASELINE", "A_CONTAMINATION",
-                "B_CONTAMINATION", "C_CONTAMINATION", "FINAL_STATUS",
-                "COMMIT_SHA", "TAG"):
+    for key in (
+        "TASK",
+        "MIGRATION",
+        "DB_MUTATION",
+        "ROWS_MUTATED",
+        "NEW_INDEX",
+        "NEW_FK",
+        "ALTER_SCOPE",
+        "BASELINE",
+        "A_CONTAMINATION",
+        "B_CONTAMINATION",
+        "C_CONTAMINATION",
+        "FINAL_STATUS",
+        "COMMIT_SHA",
+        "TAG",
+    ):
         assert key in block, key
-    assert block["TASK"] == ("STRATUM_A_P5_5_082_"
-                             "PAPER_EVIDENCE_COMPOSITE_FK_REPAIR")
+    assert block["TASK"] == ("STRATUM_A_P5_5_082_PAPER_EVIDENCE_COMPOSITE_FK_REPAIR")
     assert block["MIGRATION"] == REQUIRED_MIGRATION
     assert block["DB_MUTATION"] == "staging only"
     assert block["ROWS_MUTATED"] == "0"
@@ -392,7 +439,17 @@ def test_committed_artifact_matches_a_fresh_run():
     assert ARTIFACT.exists(), "run paper_evidence_fk_runner to emit it"
     committed = json.loads(ARTIFACT.read_text(encoding="utf-8"))
     fresh = report()
-    for key in ("task", "authority", "repair_version", "migration",
-                "new_index", "new_foreign_key", "fk_target", "delete_verb",
-                "baseline_anchor", "closes_limitation", "status_limitation"):
+    for key in (
+        "task",
+        "authority",
+        "repair_version",
+        "migration",
+        "new_index",
+        "new_foreign_key",
+        "fk_target",
+        "delete_verb",
+        "baseline_anchor",
+        "closes_limitation",
+        "status_limitation",
+    ):
         assert committed[key] == fresh[key], key
