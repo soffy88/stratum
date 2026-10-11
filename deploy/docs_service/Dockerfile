@@ -1,6 +1,6 @@
 # stratum-docs — PDF/EPUB → MD/DOCX 转换微服务
 # 引擎: oprim parse_pdf(pdf_inspector/opendataloader, 最新集成, 无 docling)
-#       fallback markitdown; fitz + python-docx(全页图 DOCX)
+#       pdf-inspector 主力 → opendataloader-pdf(JRE) 质量兜底 → markitdown; fitz + python-docx(全页图 DOCX)
 # 平台包 3O 经 compose 挂载 /opt/platform(宿主 /home/soffy/deploy/3O, 避免重复打镜像)
 FROM python:3.14-slim
 
@@ -8,7 +8,7 @@ WORKDIR /srv
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 libglib2.0-0 libgomp1 \
-    fonts-noto-cjk fontconfig nodejs npm \
+    fonts-noto-cjk fontconfig nodejs npm openjdk-21-jre-headless \
     && npm install -g officecli --registry https://registry.npmmirror.com \
     && rm -rf /var/lib/apt/lists/*
 

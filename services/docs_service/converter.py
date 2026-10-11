@@ -70,20 +70,114 @@ def analyze(path: str) -> dict:
     return out
 
 
+_MATH_CH = set("=<>±∑∫∂√≤≥∈∀∃→⊂⊆∪∩×÷^_{}")
+_ODL_TIMEOUT = int(os.getenv("ODL_TIMEOUT_SEC", "900"))
+
+
+def _page_count(path: str) -> int:
+    try:
+        return fitz.open(path).page_count
+    except Exception:
+        return 0
+
+
+def _pi_quality_issue(md: str, npg: int) -> str | None:
+    """pdf_inspector 结果质量门禁; 返回问题原因(→ 换 ODL), None = 合格。
+
+    依据 2026-10-11 18 本数字书对照测试:
+      - short: 结果 <500 字(只吐 TOC / 整本空, 如代数几何百科)
+      - replacement_chars: U+FFFD 乱码 >0.1% 且 >20 个(如 Python ML 8835 个)
+      - fake_headings: 短文档(≤60 页, 论文)公式被当成标题 >30%
+        长书不用此条: 长书上 ODL 切章反而更差。
+    """
+    if len(md) < 500:
+        return "short"
+    bad = md.count("\ufffd")
+    if bad > 20 and bad > len(md) * 0.001:
+        return "replacement_chars"
+    if 0 < npg <= 60:
+        heads = re.findall(r"(?m)^#{1,6} (.*)$", md)
+        fake = sum(1 for h in heads if sum(c in _MATH_CH for c in h) >= 2 or len(h) > 120)
+        if len(heads) >= 10 and fake / len(heads) > 0.3:
+            return "fake_headings"
+    return None
+
+
+_RUN_HEAD = re.compile(r"^#{1,6}\s+(.*)$")
+
+
+def _drop_running_heads(md: str, npg: int) -> str:
+    """ODL 会把运行页眉判成标题(如 '#### 36 2. BUILDING BLOCKS'): 去掉页码后重复出现的标题行删除。"""
+    def norm(h: str) -> str:
+        return re.sub(r"\s+", " ", re.sub(r"^\d{1,4}\s+|\s+\d{1,4}$", "", h.strip())).strip()
+
+    lines = md.split("\n")
+    cnt = Counter(norm(m.group(1)) for ln in lines if (m := _RUN_HEAD.match(ln.strip())))
+    thresh = max(3, int(npg * 0.05))
+    rep = {k for k, c in cnt.items() if k and c > thresh}
+    out = []
+    for ln in lines:
+        m = _RUN_HEAD.match(ln.strip())
+        if m and norm(m.group(1)) in rep:
+            continue
+        out.append(ln)
+    return "\n".join(out)
+
+
+def _odl_markdown(path: str, npg: int) -> str | None:
+    """opendataloader-pdf fast 模式(Java, 无 OCR/hybrid)。不可用/超时/失败 → None。"""
+    import shutil
+    import subprocess
+    import tempfile
+    from pathlib import Path
+
+    exe = shutil.which("opendataloader-pdf")
+    if not exe or not shutil.which("java"):
+        return None
+    with tempfile.TemporaryDirectory(prefix="odl_") as td:
+        try:
+            subprocess.run(
+                [exe, path, "-o", td, "-f", "markdown", "--image-output", "off"],
+                check=True, timeout=_ODL_TIMEOUT,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            return None
+        mds = list(Path(td).rglob("*.md"))
+        if not mds:
+            return None
+        md = mds[0].read_text(encoding="utf-8", errors="replace")
+    md = _drop_running_heads(md, npg)
+    return md if len(md) >= 500 else None
+
+
 def convert_to_md(path: str) -> str:
-    """PDF/EPUB → MD。★2026-08-11 升级: 主引擎换 firecrawl/pdf-inspector(Rust,
-    benchmark 全第一: 表格0.814/阅读顺序0.915/0.47s), 取代此前静默 fallback 的 markitdown。"""
+    """PDF/EPUB → MD。
+
+    PDF 引擎顺序(2026-10-11):
+      1. pdf-inspector(Rust, 主力; 切章/表格最好)
+      2. 质量门禁不过 → opendataloader-pdf fast(Java, 治空输出/乱码/论文公式假标题)
+      3. oprim parse_pdf(pymupdf4llm; ODL_HYBRID=1 时 opendataloader hybrid)
+      4. markitdown 兜底
+    扫描件 OCR 不在此处(走 Unlimited-OCR 链路), 本函数不做 OCR。
+    """
     if str(path).lower().endswith(".pdf"):
+        npg = _page_count(path)
+        pi_md = None
         try:
             import pdf_inspector
-            r = pdf_inspector.process_pdf(path)
-            if r.markdown:
-                # ★2026-08-22 修复: pdf_inspector 对某些复杂 PDF 只返回 TOC(256 字), 质量门禁:
-                #   长书(>10页)且结果<500字 → 跳过, 用 fallback 重试。
-                if len(r.markdown) >= 500:
-                    return _clean_md(r.markdown, path)
+            pi_md = pdf_inspector.process_pdf(path).markdown or ""
         except Exception:
-            pass
+            pi_md = None
+        issue = "error" if pi_md is None else _pi_quality_issue(pi_md, npg)
+        if issue is None:
+            return _clean_md(pi_md, path)
+        odl_md = _odl_markdown(path, npg)
+        if odl_md is not None:
+            return _clean_md(odl_md, path)
+        # ODL 不可用且 pi 只是质量欠佳(非空): 仍用 pi, 不退回更差的 markitdown
+        if pi_md and len(pi_md) >= 500:
+            return _clean_md(pi_md, path)
     # fallback: oprim parse_pdf → markitdown(同旧逻辑)
     text = None
     try:
