@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 
@@ -321,3 +322,210 @@ def test_placeholder_labels_copied_from_the_schema_are_dropped():
         }
     )
     assert s["side"] == {"body": "先懂概念再算题"}
+
+
+# ── distinct titles and exact page count ─────────────────────────────────────
+
+
+def _assert_distinct_titles(deck):
+    from stratum.services.ppt_export.deck_builder import is_template_title, titles_similar
+
+    titles = [
+        s["title"]
+        for s in deck["slides"]
+        if s["type"] in CONTENT_TYPES and s.get("title") and "（续" not in s["title"]
+    ]
+    for t in titles:
+        assert not is_template_title(t), t
+        assert "是本章的基石" not in t and "书中明确给出这些结论" not in t, t
+    for i, a in enumerate(titles):
+        for b in titles[i + 1 :]:
+            assert not titles_similar(a, b), (a, b)
+    return titles
+
+
+def test_title_similarity_catches_near_duplicates():
+    from stratum.services.ppt_export.deck_builder import is_template_title, titles_similar
+
+    assert titles_similar("导数是函数变化率的精确描述", "导数是函数变化速率的瞬时度量")
+    assert titles_similar("导数是变化率的极限。", "**导数是变化率的极限**")
+    assert not titles_similar("导数是增量之比的极限", "可导与连续别混为一谈")
+    assert not titles_similar("函数是映射的一种", "函数是变量之间的依赖关系")
+    assert is_template_title("映射、函数、极限是本章的基石")
+    assert is_template_title("书中明确给出这些结论")
+
+
+def test_fallback_titles_are_specific_conclusions_and_distinct():
+    from stratum.services.ppt_export.deck_builder import fallback_slides
+
+    book = tiny_book()
+    slides = fallback_slides(book.chapters[0], 8, "zh", book.concept_defs)
+    assert len(slides) >= 4
+    titles = [s["title"] for s in slides]
+    assert len({t for t in titles}) == len(titles)
+    assert all("是本章的基石" not in t and "书中明确" not in t for t in titles)
+    # titles are taken from the chapter's own understanding
+    assert any(t in book.chapters[0].thesis or t in book.chapters[0].claims[0] for t in titles)
+    # an avoid list is honoured
+    again = fallback_slides(book.chapters[0], 8, "zh", book.concept_defs, avoid=titles)
+    assert not set(s["title"] for s in again) & set(titles)
+
+
+def test_model_that_never_answers_yields_distinct_untemplated_titles():
+    deck, report = build_deck(tiny_book(), DeckOptions(pages=9), FakeProvider(always_english=True))
+    assert len(deck["slides"]) == 9
+    assert report.fallback_slides > 0
+    _assert_distinct_titles(deck)
+
+
+def test_near_duplicate_model_titles_are_rewritten():
+    from stratum.services.bu_v2_provider import ModelResponse
+
+    dupes = ["导数是函数变化率的精确描述", "导数是函数变化速率的瞬时度量"]
+
+    class Dupes(FakeProvider):
+        def __init__(self):
+            super().__init__()
+            self.polish_prompts: list[str] = []
+
+        def complete(self, prompt, **kw):
+            if "像话题名" in prompt:
+                self.polish_prompts.append(prompt)
+                # a useless polish answer: still a near-duplicate
+                return ModelResponse(
+                    json.dumps({"titles": [{"n": 3, "title": "导数是函数变化率的精确描述"}]}),
+                    "fake",
+                    "fake",
+                )
+            resp = super().complete(prompt, **kw)
+            data = json.loads(resp.text)
+            for i, sl in enumerate(data.get("slides", [])):
+                sl["title"] = dupes[i % 2]
+            return ModelResponse(json.dumps(data, ensure_ascii=False), "fake", "fake")
+
+    provider = Dupes()
+    deck, report = build_deck(tiny_book(), DeckOptions(pages=8), provider)
+    assert len(deck["slides"]) == 8
+    assert provider.polish_prompts and "太相近" in provider.polish_prompts[0]
+    titles = _assert_distinct_titles(deck)
+    assert report.titles_deduped > 0
+    assert all(4 <= clen(t) <= 20 for t in titles)
+
+
+def test_polish_fixes_duplicates_when_the_model_answers_well():
+    from stratum.services.bu_v2_provider import ModelResponse
+
+    class Fix(FakeProvider):
+        def complete(self, prompt, **kw):
+            if "像话题名" in prompt:
+                ns = [int(n) for n in re.findall(r'"n": (\d+)', prompt)]
+                good = [
+                    "求导先求增量再取极限",
+                    "可导一定连续反之不然",
+                    "微分是增量的线性主部",
+                    "单侧导数决定可导性",
+                    "极限刻画无限接近过程",
+                    "连续函数图像没有断点",
+                ]
+                return ModelResponse(
+                    json.dumps(
+                        {"titles": [{"n": n, "title": good[i]} for i, n in enumerate(ns)]},
+                        ensure_ascii=False,
+                    ),
+                    "fake",
+                    "fake",
+                )
+            resp = super().complete(prompt, **kw)
+            data = json.loads(resp.text)
+            for sl in data.get("slides", []):
+                sl["title"] = "导数是函数变化率的精确描述"
+            return ModelResponse(json.dumps(data, ensure_ascii=False), "fake", "fake")
+
+    deck, report = build_deck(tiny_book(), DeckOptions(pages=7), Fix())
+    assert report.titles_polished >= 1
+    _assert_distinct_titles(deck)
+
+
+def test_exact_page_count_when_a_chapter_cannot_be_grounded():
+    from stratum.services.bu_v2_provider import ProviderError
+
+    class FailsCh2(FakeProvider):
+        def complete(self, prompt, **kw):
+            if "导数与微分”这一章" in prompt:
+                self.calls.append({"prompt": prompt, "system": ""})
+                raise ProviderError("HTTP 502 upstream")
+            return super().complete(prompt, **kw)
+
+    for pages in (10, 12, 14):
+        deck, report = build_deck(tiny_book(), DeckOptions(pages=pages), FailsCh2())
+        assert len(deck["slides"]) == pages, report.warnings
+        assert not any("requested" in w or "still missing" in w for w in report.warnings)
+        for s in deck["slides"]:
+            assert is_language(slide_text(s), "zh"), s
+        _assert_distinct_titles(deck)
+
+
+def test_exact_page_count_in_chapter_scope_by_splitting():
+    from stratum.services.bu_v2_provider import ProviderError
+
+    class Fails(FakeProvider):
+        def complete(self, prompt, **kw):
+            if "这一章写" in prompt:
+                raise ProviderError("HTTP 502 upstream")
+            return super().complete(prompt, **kw)
+
+    deck, report = build_deck(tiny_book(), DeckOptions(pages=9, chapter_id="ch2"), Fails())
+    assert len(deck["slides"]) == 9, report.warnings
+    _assert_distinct_titles(deck)
+
+
+def test_slides_without_notes_are_kept_with_synthesised_notes():
+    from stratum.services.bu_v2_provider import ModelResponse
+
+    class NoNotes(FakeProvider):
+        def complete(self, prompt, **kw):
+            resp = super().complete(prompt, **kw)
+            data = json.loads(resp.text)
+            for sl in data.get("slides", []) if isinstance(data, dict) else []:
+                sl.pop("notes", None)
+            return ModelResponse(json.dumps(data, ensure_ascii=False), "fake", "fake")
+
+    deck, report = build_deck(tiny_book(), DeckOptions(pages=8), NoNotes())
+    assert len(deck["slides"]) == 8
+    assert report.fallback_slides == 0
+    assert all(s.get("notes") for s in deck["slides"] if s["type"] in CONTENT_TYPES)
+
+
+def test_question_slides_from_the_model_are_kept():
+    from stratum.services.bu_v2_provider import ModelResponse
+
+    class Asks(FakeProvider):
+        def complete(self, prompt, **kw):
+            resp = super().complete(prompt, **kw)
+            data = json.loads(resp.text)
+            if isinstance(data, dict) and data.get("slides"):
+                data["slides"][0] = {
+                    "type": "question",
+                    "question": "为什么导数要用极限来定义？",
+                    "body": "想一想增量之比",
+                    "notes": "同学们先想一想，为什么导数一定要借助极限来定义，平均变化率哪里不够用？",
+                }
+            return ModelResponse(json.dumps(data, ensure_ascii=False), "fake", "fake")
+
+    deck, _ = build_deck(tiny_book(), DeckOptions(pages=8), Asks())
+    assert len(deck["slides"]) == 8
+    assert any(s["type"] == "question" for s in deck["slides"])
+
+
+def test_definition_with_its_own_subject_is_not_glued_onto_a_concept():
+    from stratum.services.ppt_export.deck_builder import def_title, fallback_slides
+
+    assert def_title("单侧导数", "导数是函数变化率的精确描述。", "zh") == ""
+    assert def_title("导数", "导数是增量之比的极限", "zh") == "导数是增量之比的极限"
+    assert def_title("导数", "函数增量与自变量增量之比的极限", "zh") == (
+        "导数是函数增量与自变量增量之比的极限"
+    )
+    book = tiny_book()
+    book.concept_defs["单侧导数"] = "导数是函数变化率的精确描述"
+    titles = [s["title"] for s in fallback_slides(book.chapters[1], 6, "zh", book.concept_defs)]
+    assert all("单侧导数是导数" not in t for t in titles)
