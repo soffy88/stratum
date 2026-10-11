@@ -542,12 +542,23 @@ async def _plan(llm, text, n):
                     }
                 ],
                 system=PLAN_SYS,
-                max_tokens=1200,
+                # ★2026-10-11 1200 写死 → env PLAN_MAX_TOKENS(默认仍 1200, 不改现役行为)。
+                #   推理模型(freellmapi auto:veya-fllm 路由到的 nemotron 等)会先在 content 里
+                #   写一段推理散文再给 JSON, 1200 处被截断 → 一个 '{' 都没有 → 整章
+                #   "规划未返回知识点"(实测 misc_zh_89fad961de ch2: 4390 字纯推理, 0 点)。
+                #   与 chapter_synthesize_llm_v1 同一个 env, 飞轮 drop-in 设 8000。
+                max_tokens=int(os.getenv("PLAN_MAX_TOKENS", "1200")),
             )
             t = "".join(
                 b.get("text", "") for b in r.get("content", []) if b.get("type") == "text"
             )
-            return _parse_points(t)
+            pts = _parse_points(t)
+            if not pts and t.strip():
+                print(
+                    f"  ⚠ ch{n} 规划返回无法解析(len={len(t)}): {t[:160]!r}",
+                    flush=True,
+                )
+            return pts
 
     planned = await asyncio.gather(*(plan_one(ck) for ck in chunks))
     pts = [p for chunk_points in planned for p in chunk_points]
