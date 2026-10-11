@@ -29,5 +29,6 @@ EbookLib>=0.18
 beautifulsoup4>=4.12
 # anydoc (firecrawl, Rust, 毫秒级 Office→MD)
 firecrawl-anydoc>=0.1
-pdf-inspector>=0.2.7
+pdf-inspector==1.14.1  # 锁版本: 2026-10-11 对照测试基于 1.14.1
+opendataloader-pdf==2.5.12  # 数字 PDF 质量兜底(fast 模式, 需 JRE)
 langextract[openai]
