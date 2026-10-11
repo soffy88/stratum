@@ -3,6 +3,7 @@
 与 aii/*_convert.py 同引擎(主: oprim parse_pdf; fallback: markitdown; 清洗同款),
 迁移后转换结果与主机脚本完全一致。无 docling。
 """
+
 from __future__ import annotations
 
 import os
@@ -16,10 +17,13 @@ _MD_HEADER = re.compile(r"^(Chapter\s+\d+|第[一二三四五六七八九十百\
 
 def chapters(text: str) -> int:
     """章节数(与 aii convert 同口径, 含前导空格/教辅结构/arXiv '1. Introduction')。"""
-    return len(re.findall(
-        r"(?m)^\s*#\s+Chapter\s+\d|^\s*第[一二三四五六七八九十百千0-9]+(章|单元|讲|课|节|部分|回|篇)"
-        r"|^\s*Chapter\s+\d|^\d{1,2}\.\s+[A-Z][A-Za-z]{2,}",
-        text))
+    return len(
+        re.findall(
+            r"(?m)^\s*#\s+Chapter\s+\d|^\s*第[一二三四五六七八九十百千0-9]+(章|单元|讲|课|节|部分|回|篇)"
+            r"|^\s*Chapter\s+\d|^\d{1,2}\.\s+[A-Z][A-Za-z]{2,}",
+            text,
+        )
+    )
 
 
 def analyze(path: str) -> dict:
@@ -29,13 +33,16 @@ def analyze(path: str) -> dict:
     # 1. pdf-inspector 分类(优先)
     try:
         import pdf_inspector
+
         c = pdf_inspector.classify_pdf(path)
-        out.update({
-            "pdf_type": c.pdf_type,
-            "confidence": round(c.confidence, 3),
-            "page_count": c.page_count,
-            "pages_needing_ocr": list(c.pages_needing_ocr or []),
-        })
+        out.update(
+            {
+                "pdf_type": c.pdf_type,
+                "confidence": round(c.confidence, 3),
+                "page_count": c.page_count,
+                "pages_needing_ocr": list(c.pages_needing_ocr or []),
+            }
+        )
     except Exception:
         pass
     # 2. 兼容原信号(fitz 文字层/章节/乱码)
@@ -108,6 +115,7 @@ _RUN_HEAD = re.compile(r"^#{1,6}\s+(.*)$")
 
 def _drop_running_heads(md: str, npg: int) -> str:
     """ODL 会把运行页眉判成标题(如 '#### 36 2. BUILDING BLOCKS'): 去掉页码后重复出现的标题行删除。"""
+
     def norm(h: str) -> str:
         return re.sub(r"\s+", " ", re.sub(r"^\d{1,4}\s+|\s+\d{1,4}$", "", h.strip())).strip()
 
@@ -138,8 +146,10 @@ def _odl_markdown(path: str, npg: int) -> str | None:
         try:
             subprocess.run(
                 [exe, path, "-o", td, "-f", "markdown", "--image-output", "off"],
-                check=True, timeout=_ODL_TIMEOUT,
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                check=True,
+                timeout=_ODL_TIMEOUT,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
         except Exception:
             return None
@@ -166,6 +176,7 @@ def convert_to_md(path: str) -> str:
         pi_md = None
         try:
             import pdf_inspector
+
             pi_md = pdf_inspector.process_pdf(path).markdown or ""
         except Exception:
             pi_md = None
@@ -182,6 +193,7 @@ def convert_to_md(path: str) -> str:
     text = None
     try:
         from oprim.parser.parse_pdf import parse_pdf
+
         if os.getenv("ODL_HYBRID") == "1":
             pc = parse_pdf(path, provider="opendataloader", hint={"hybrid": True})
         else:
@@ -191,6 +203,7 @@ def convert_to_md(path: str) -> str:
         pass
     if text is None:
         from markitdown import MarkItDown
+
         text = MarkItDown().convert(path).text_content
     return _clean_md(text, path)
 
@@ -217,12 +230,25 @@ def _clean_md(text: str, path: str) -> str:
     return "\n".join(out)
 
 
-OFFICE_EXT = (".docx", ".pptx", ".xlsx", ".odt", ".odp", ".ods", ".rtf", ".csv", ".doc", ".ppt", ".xls")
+OFFICE_EXT = (
+    ".docx",
+    ".pptx",
+    ".xlsx",
+    ".odt",
+    ".odp",
+    ".ods",
+    ".rtf",
+    ".csv",
+    ".doc",
+    ".ppt",
+    ".xls",
+)
 
 
 def convert_office_to_md(path: str) -> str:
     """Office 文档(DOCX/PPTX/XLSX/ODT/RTF/CSV…) → Markdown — anydoc(firecrawl, Rust, 毫秒级)。"""
     import anydoc
+
     return anydoc.to_markdown(path)
 
 
@@ -240,12 +266,14 @@ def convert_to_docx(path: str, out_path: str, dpi: int = 200) -> dict:
     sec.top_margin = sec.bottom_margin = Inches(0.4)
 
     import tempfile
+
     tmpdir = tempfile.mkdtemp(prefix="docs_")
     for i, page in enumerate(d):
         pix = page.get_pixmap(dpi=dpi)
-        img = f"{tmpdir}/p{i+1:03d}.jpg"
+        img = f"{tmpdir}/p{i + 1:03d}.jpg"
         pix.save(img)
         from PIL import Image
+
         Image.open(img).convert("RGB").save(img, "JPEG", quality=85)
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
