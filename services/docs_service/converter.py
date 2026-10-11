@@ -215,12 +215,12 @@ def _clean_md(text: str, path: str) -> str:
     except Exception:
         npg = 0
     lines = text.split("\n")
-    cnt = Counter(l.strip() for l in lines if l.strip())
+    cnt = Counter(ln.strip() for ln in lines if ln.strip())
     thresh = max(3, int(npg * 0.12))
-    headers = {l for l, c in cnt.items() if c > thresh and len(l) < 80}
+    headers = {ln for ln, c in cnt.items() if c > thresh and len(ln) < 80}
     out = []
-    for l in lines:
-        s = l.strip()
+    for ln in lines:
+        s = ln.strip()
         if not s or s in headers or re.fullmatch(r"\d{1,4}", s):
             continue
         if _MD_HEADER.match(s):
