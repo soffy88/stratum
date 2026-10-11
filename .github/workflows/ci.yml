@@ -119,6 +119,8 @@ jobs:
           PGPASSWORD="$STRATUM_PG_PASSWORD" psql -h "$STRATUM_PG_HOST" -p "$STRATUM_PG_PORT" -U "$STRATUM_PG_USER" -d "$STRATUM_PG_DB" -v ON_ERROR_STOP=1 -f src/stratum/db/pg_schema/001_stratum_base.sql
           PGPASSWORD="$STRATUM_PG_PASSWORD" psql -h "$STRATUM_PG_HOST" -p "$STRATUM_PG_PORT" -U "$STRATUM_PG_USER" -d "$STRATUM_PG_DB" -v ON_ERROR_STOP=1 -f src/stratum/db/pg_schema/002_substrate_chunk.sql
           uv run python -m stratum.db.run_pg_migrations upgrade
+      - name: CJK font for the PPT export end-to-end test
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends fonts-noto-cjk
       - run: uv run pytest tests -q --tb=short --timeout=600 -m 'not production_runtime and not external_provider'
 
   production-qualification:

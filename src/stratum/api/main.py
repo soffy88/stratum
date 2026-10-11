@@ -403,6 +403,10 @@ from stratum.api.routers import decision as _decision
 app.include_router(flashcards.router)
 app.include_router(_decision.router)
 
+from stratum.api.routers import ppt_export
+
+app.include_router(ppt_export.router)
+
 # ── P2: AII routes (mounted under /api/aii/*) ────────────────────────────────
 from stratum.api.routers.aii_mount import mount_aii_routes
 

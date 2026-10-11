@@ -24,3 +24,6 @@ substrate/**/original/*.djvu filter=lfs diff=lfs merge=lfs -text
 *.yml text eol=lf
 *.json text eol=lf
 *.py text eol=lf
+# Vendored third-party runtime assets must ship as regular blobs (CI and the
+# image build do not fetch LFS objects).
+vendor/**/*.png -filter -diff -merge -text
