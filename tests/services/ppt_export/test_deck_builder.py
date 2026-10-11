@@ -494,3 +494,38 @@ def test_slides_without_notes_are_kept_with_synthesised_notes():
     assert len(deck["slides"]) == 8
     assert report.fallback_slides == 0
     assert all(s.get("notes") for s in deck["slides"] if s["type"] in CONTENT_TYPES)
+
+
+def test_question_slides_from_the_model_are_kept():
+    from stratum.services.bu_v2_provider import ModelResponse
+
+    class Asks(FakeProvider):
+        def complete(self, prompt, **kw):
+            resp = super().complete(prompt, **kw)
+            data = json.loads(resp.text)
+            if isinstance(data, dict) and data.get("slides"):
+                data["slides"][0] = {
+                    "type": "question",
+                    "question": "为什么导数要用极限来定义？",
+                    "body": "想一想增量之比",
+                    "notes": "同学们先想一想，为什么导数一定要借助极限来定义，平均变化率哪里不够用？",
+                }
+            return ModelResponse(json.dumps(data, ensure_ascii=False), "fake", "fake")
+
+    deck, _ = build_deck(tiny_book(), DeckOptions(pages=8), Asks())
+    assert len(deck["slides"]) == 8
+    assert any(s["type"] == "question" for s in deck["slides"])
+
+
+def test_definition_with_its_own_subject_is_not_glued_onto_a_concept():
+    from stratum.services.ppt_export.deck_builder import def_title, fallback_slides
+
+    assert def_title("单侧导数", "导数是函数变化率的精确描述。", "zh") == ""
+    assert def_title("导数", "导数是增量之比的极限", "zh") == "导数是增量之比的极限"
+    assert def_title("导数", "函数增量与自变量增量之比的极限", "zh") == (
+        "导数是函数增量与自变量增量之比的极限"
+    )
+    book = tiny_book()
+    book.concept_defs["单侧导数"] = "导数是函数变化率的精确描述"
+    titles = [s["title"] for s in fallback_slides(book.chapters[1], 6, "zh", book.concept_defs)]
+    assert all("单侧导数是导数" not in t for t in titles)
