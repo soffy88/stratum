@@ -549,9 +549,7 @@ async def _plan(llm, text, n):
                 #   与 chapter_synthesize_llm_v1 同一个 env, 飞轮 drop-in 设 8000。
                 max_tokens=int(os.getenv("PLAN_MAX_TOKENS", "1200")),
             )
-            t = "".join(
-                b.get("text", "") for b in r.get("content", []) if b.get("type") == "text"
-            )
+            t = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
             pts = _parse_points(t)
             if not pts and t.strip():
                 print(
