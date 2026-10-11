@@ -9,6 +9,7 @@ import { OEmptyState, OLoadingState, OErrorState } from '@helios/blocks';
 import { useApi } from '@/aii/hooks/useApi';
 import * as api from '@/aii/lib/api-client';
 import { GradeDot, gradeTextClass } from '@/aii/components/GradeMarkers';
+import { PptExportDialog } from '@/components/ppt/PptExportDialog';
 
 interface ChapterDetail {
   chapter_id: string;
@@ -34,6 +35,7 @@ interface BuContext {
 function ChapterDetailPage({ params: paramsPromise }: { params: Promise<{ id: string; chapterId: string }> }) {
   const params = use(paramsPromise);
   const [buContext, setBuContext] = useState<BuContext | null>(null);
+  const [pptOpen, setPptOpen] = useState(false);
   const [state, run] = useApi((id: string) => api.getChapterDetail(id, params.chapterId));
 
   useEffect(() => {
@@ -60,11 +62,27 @@ function ChapterDetailPage({ params: paramsPromise }: { params: Promise<{ id: st
           <span>/</span>
           <span className="text-[color:var(--foreground)] font-medium">章节: {params.chapterId}</span>
         </nav>
-        <h1 className="text-xl font-semibold">{d?.title || `章节 ${params.chapterId}`}</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-xl font-semibold">{d?.title || `章节 ${params.chapterId}`}</h1>
+          <button
+            onClick={() => setPptOpen(true)}
+            className="shrink-0 text-sm px-3 py-1.5 rounded-md border border-[color:var(--border)] hover:border-[color:var(--accent,#2563eb)]/60 transition-colors"
+          >
+            生成 PPT
+          </button>
+        </div>
         <p className="text-sm text-[color:var(--text-secondary)]">
           角色: <strong>{d?.role || '未知'}</strong> · 质量分: <strong>{d?.quality_score?.toFixed(2) || '0'}</strong>
         </p>
       </header>
+
+      <PptExportDialog
+        open={pptOpen}
+        onClose={() => setPptOpen(false)}
+        runId={buContext?.run_id ?? params.id}
+        chapterId={params.chapterId}
+        bookTitle={buContext?.book_title}
+      />
 
       {state.loading && <OLoadingState rows={6} />}
       {state.error && <OErrorState error={state.error} onRetry={() => void run(params.id)} />}

@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         libmagic-dev \
         ffmpeg \
+        fonts-noto-cjk \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y --no-install-recommends \
         nodejs \
@@ -85,6 +86,7 @@ RUN pip install --no-cache-dir \
         shapely \
         pyclipper \
         python-docx \
+        "python-pptx>=1.0" \
         leidenalg \
         python-igraph
 
@@ -123,6 +125,11 @@ RUN pip install --no-cache-dir --no-deps -e /opt/platform/oservi
 
 # ── Application source ────────────────────────────────────────────────────────
 COPY stratum/src/ /app/src/
+
+# luobo-ppt (MIT, vendored; see vendor/luobo_ppt/UPSTREAM.md) drives book -> PPT
+# export. fonts-noto-cjk above is what its layout measuring and previews use.
+COPY stratum/vendor/luobo_ppt/ /app/vendor/luobo_ppt/
+ENV LUOBO_PPT_HOME=/app/vendor/luobo_ppt
 
 # P2: /opt/aii on PYTHONPATH for AII route merge (bind-mounted at runtime)
 ENV PYTHONPATH=/app/src:/opt/aii

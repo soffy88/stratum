@@ -29,6 +29,9 @@ dependencies = [
     "PyJWT",
     "apscheduler",
     "fsrs>=6.3,<7",
+    "python-pptx>=1.0",
+    "pillow>=10",
+    "lxml>=5",
 ]
 
 [project.optional-dependencies]
@@ -76,6 +79,9 @@ markers = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# Third-party code vendored byte-identical to upstream (see vendor/luobo_ppt/UPSTREAM.md).
+extend-exclude = ["vendor"]
+force-exclude = true
 
 [tool.mypy]
 strict = true
