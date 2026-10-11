@@ -20,6 +20,7 @@ import { getDerivatives, deleteDocument, reprocessDocument } from '@/lib/documen
 import { CardSkeleton } from '@/components/LoadingSkeleton';
 import { ConceptsPanel } from '@/components/reader/ConceptsPanel';
 import { NotesPanel } from '@/components/reader/NotesPanel';
+import { PptExportDialog } from '@/components/ppt/PptExportDialog';
 
 const DocumentViewer = dynamic(() => import('@/components/DocumentViewer'), {
   ssr: false,
@@ -48,6 +49,7 @@ export default function DocumentDetailPage() {
   const [selectedConcept, setSelectedConcept] = useState<SelectedConcept | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [pptOpen, setPptOpen] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -189,6 +191,12 @@ export default function DocumentDetailPage() {
           </div>
           <div className="flex gap-2 pt-4 border-t border-[var(--color-border)]">
             <button
+              onClick={() => setPptOpen(true)}
+              className="px-3 py-1.5 text-sm rounded-lg border border-[var(--color-border)] text-[var(--color-foreground)] hover:bg-[var(--color-muted)]"
+            >
+              生成 PPT
+            </button>
+            <button
               onClick={async () => {
                 setProcessing(true);
                 const res = await reprocessDocument(id);
@@ -232,6 +240,8 @@ export default function DocumentDetailPage() {
           </div>
         </div>
       )}
+
+      <PptExportDialog open={pptOpen} onClose={() => setPptOpen(false)} substrateId={id} bookTitle={doc.title} />
 
       {tab === 'markdown' && (() => {
         const md = derivatives.find(d => d.kind === 'markdown');
