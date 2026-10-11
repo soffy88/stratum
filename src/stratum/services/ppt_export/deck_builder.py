@@ -584,6 +584,28 @@ def _as_title(text: str, lang: str) -> str:
     return t
 
 
+_OWN_SUBJECT_ZH = re.compile(r"^[^，。；,]{1,10}?(是|指|称为|表示|叫做)")
+_OWN_SUBJECT_EN = re.compile(r"^\s*(the|a|an)?\s*[\w\- ]{1,30}?\s+(is|are|means)\s", re.I)
+
+
+def def_title(concept: str, definition: str, lang: str) -> str:
+    """Title a concept as "X 是 <definition>", unless the definition has its own subject.
+
+    A stored definition that is already a sentence about something else
+    ("导数是函数变化率的精确描述" under "单侧导数") must not be glued onto the
+    concept name.
+    """
+    d = (definition or "").strip().rstrip("。.")
+    if not d or not is_language(d, lang):
+        return ""
+    if d.startswith(concept):
+        return d
+    own = _OWN_SUBJECT_ZH if lang == "zh" else _OWN_SUBJECT_EN
+    if own.match(d):
+        return ""
+    return f"{concept}是{d}" if lang == "zh" else f"{concept} is {d}"
+
+
 def title_candidates(
     chapter: ChapterMaterial, lang: str, defs: dict[str, str] | None = None
 ) -> list[str]:
@@ -593,9 +615,7 @@ def title_candidates(
     raw += _clauses(chapter.thesis)
     raw += chapter.claims
     for c in chapter.concepts:
-        d = (defs or {}).get(c, "").strip().rstrip("。.")
-        if d and is_language(d, lang):
-            raw.append(d if d.startswith(c) else (f"{c}是{d}" if lang == "zh" else f"{c} is {d}"))
+        raw.append(def_title(c, (defs or {}).get(c, ""), lang))
     raw += chapter.qualifications
     out: list[str] = []
     for r in raw:
@@ -660,10 +680,7 @@ def fallback_slides(
             out.append(slide)
 
     def concept_def(c: str) -> str:
-        d = defs.get(c, "").strip().rstrip("。.")
-        if not d or not is_language(d, lang):
-            return ""
-        return d if d.startswith(c) else (f"{c}是{d}" if zh else f"{c} is {d}")
+        return def_title(c, defs.get(c, ""), lang)
 
     usable_concepts = [c for c in chapter.concepts if is_language(c, lang)]
     for i in range(0, len(usable_concepts), 4):
@@ -1075,7 +1092,7 @@ def _write_batch(
             chapter,
             sub,
             audience=opts.audience,
-            used_titles=used_titles + [k["title"] for k in kept],
+            used_titles=used_titles + [k["title"] for k in kept if k.get("title")],
             feedback=feedback,
         )
         report.model_calls += 1
@@ -1101,10 +1118,10 @@ def _write_batch(
         slides = [x for x in normalized if x]
         n_lang = n_notes = 0
         for sl in slides:
-            taken = [k["title"] for k in kept + reserve]
+            taken = [k.get("title") or k.get("question", "") for k in kept + reserve]
             if not is_language(slide_text(sl), lang):
                 n_lang += 1
-            elif any(titles_similar(sl["title"], t) for t in taken):
+            elif any(titles_similar(sl.get("title") or sl.get("question", ""), t) for t in taken):
                 continue
             elif opts.notes and len(sl.get("notes", "")) < 30:
                 n_notes += 1
