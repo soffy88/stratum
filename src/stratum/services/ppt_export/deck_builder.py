@@ -24,6 +24,7 @@ import re
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from difflib import SequenceMatcher
 from typing import Any
 
 from stratum.services.bu_v2_provider import ModelProvider, ProviderError
@@ -71,6 +72,8 @@ class DeckReport:
     language_retries: int = 0
     fallback_slides: int = 0
     titles_polished: int = 0
+    titles_deduped: int = 0
+    slides_topped_up: int = 0
     warnings: list[str] = field(default_factory=list)
 
 
@@ -493,13 +496,18 @@ def normalize_slide(raw: Any) -> dict[str, Any] | None:
     take = _opt(_s(raw.get("takeaway")), 30)
     if take and typ in ("process", "explain"):
         slide["takeaway"] = take
-    notes = _s(raw.get("notes"))
+    notes = ""
+    for key in _NOTES_KEYS:
+        notes = _s(raw.get(key))
+        if notes:
+            break
     if notes:
         slide["notes"] = notes[:NOTES_MAX]
     return slide
 
 
 _FORMULA_KEYS = {"formula"}
+_NOTES_KEYS = ("notes", "speaker_notes", "speakerNotes", "script", "note_script", "口播稿", "备注")
 
 
 def slide_text(slide: dict[str, Any], *, include_notes: bool = True) -> str:
@@ -524,59 +532,252 @@ def slide_text(slide: dict[str, Any], *, include_notes: bool = True) -> str:
     return " ".join(parts)
 
 
+# ── titles: specific, conclusion-style, distinct ────────────────────────────
+
+# Fallback/template titles the deck must not repeat (they read as boilerplate).
+_TEMPLATE_TITLE = re.compile(
+    r"(是本章的基石|书中明确给出这些结论|these concepts carry the chapter|"
+    r"the text states these results)",
+    re.I,
+)
+_TITLE_NOISE = re.compile(r"[\s\*，。；：、,.;:！？!?“”\"'（）()《》—\-·]")
+SIMILAR = 0.6
+_CONT = re.compile(r"\s*(（续[二三四五]?）|\(cont\.\S*\))$")
+
+
+def norm_title(title: str) -> str:
+    return _TITLE_NOISE.sub("", (title or "").lower())
+
+
+def titles_similar(a: str, b: str) -> bool:
+    """Same or near-same claim ("导数是函数变化率的精确描述" ~ "导数是函数变化速率的瞬时度量")."""
+    na, nb = norm_title(a), norm_title(b)
+    if not na or not nb:
+        return False
+    if na == nb:
+        return True
+    short, long_ = sorted((na, nb), key=len)
+    if len(short) >= 5 and short in long_:
+        return True
+    return SequenceMatcher(None, na, nb).ratio() >= SIMILAR
+
+
+def is_template_title(title: str) -> bool:
+    return bool(_TEMPLATE_TITLE.search(title or ""))
+
+
+def _clauses(text: str) -> list[str]:
+    return [c.strip() for c in re.split(r"[，。；;！？!?\n]|, |\. ", text or "") if c.strip()]
+
+
+def _as_title(text: str, lang: str) -> str:
+    """A sentence or clause usable as a slide title, or ``""``."""
+    t = (text or "").strip().rstrip("。.；;，,")
+    if not t or not is_language(t, lang):
+        return ""
+    lo = 6 if lang == "zh" else 4
+    if clen(t) > TITLE_CAP:
+        first = _clauses(t)[0] if _clauses(t) else ""
+        t = first if lo <= clen(first) <= TITLE_CAP else ""
+    if not t or clen(t) < lo or looks_like_topic(t, lang) or is_template_title(t):
+        return ""
+    return t
+
+
+def title_candidates(
+    chapter: ChapterMaterial, lang: str, defs: dict[str, str] | None = None
+) -> list[str]:
+    """Conclusion-style titles stated by the chapter's own understanding."""
+    raw: list[str] = []
+    raw.append(chapter.thesis)
+    raw += _clauses(chapter.thesis)
+    raw += chapter.claims
+    for c in chapter.concepts:
+        d = (defs or {}).get(c, "").strip().rstrip("。.")
+        if d and is_language(d, lang):
+            raw.append(d if d.startswith(c) else (f"{c}是{d}" if lang == "zh" else f"{c} is {d}"))
+    raw += chapter.qualifications
+    out: list[str] = []
+    for r in raw:
+        t = _as_title(r, lang)
+        if t and not any(titles_similar(t, o) for o in out):
+            out.append(t)
+    return out
+
+
+def _pick_title(cands: list[str], taken: list[str], default: str = "") -> str:
+    for c in cands:
+        if not any(titles_similar(c, t) for t in taken):
+            taken.append(c)
+            return c
+    if default and not any(titles_similar(default, t) for t in taken):
+        taken.append(default)
+        return default
+    return ""
+
+
 # ── fallbacks (material only, never invented) ────────────────────────────────
 
 
+def _sig(slide: dict[str, Any]) -> str:
+    """What a slide says on screen, title aside: two slides with one sig are one slide."""
+    body = {k: v for k, v in slide.items() if k not in ("title", "notes", "n")}
+    return norm_title(slide_text(body, include_notes=False))
+
+
 def fallback_slides(
-    chapter: ChapterMaterial, count: int, lang: str, defs: dict[str, str] | None = None
+    chapter: ChapterMaterial,
+    count: int,
+    lang: str,
+    defs: dict[str, str] | None = None,
+    avoid: list[str] | None = None,
+    skip: set[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Slides assembled directly from stored understanding when the model fails."""
+    """Slides assembled directly from stored understanding when the model fails.
+
+    Every slide gets its own conclusion-style title taken from the chapter's
+    thesis, claims or definitions; a title close to one in ``avoid`` (or to an
+    earlier fallback) is never reused, a slide whose content signature is in
+    ``skip`` is not produced again, and no boilerplate template is emitted.
+    """
     zh = lang == "zh"
+    defs = defs or {}
+    taken = list(avoid or [])
+    skip = skip or set()
+    cands = title_candidates(chapter, lang, defs)
+    label = _chapter_label(chapter, lang)
+    thesis = chapter.thesis if is_language(chapter.thesis, lang) else ""
     out: list[dict[str, Any]] = []
-    usable_concepts = [c for c in chapter.concepts if is_language(c, lang)][:4]
-    if len(usable_concepts) >= 2:
-        out.append(
+
+    def add(slide: dict[str, Any], prefer: list[str], default: str, exclude: list[str]) -> None:
+        if _sig(slide) in skip or not is_language(slide_text(slide), lang):
+            return
+        pool = [t for t in (_as_title(x, lang) for x in prefer) if t] + cands
+        pool = [t for t in pool if not any(titles_similar(t, e) for e in exclude)]
+        t = _pick_title(pool, taken, trim(default, TITLE_CAP) if default else "")
+        if t:
+            slide["title"] = t
+            out.append(slide)
+
+    def concept_def(c: str) -> str:
+        d = defs.get(c, "").strip().rstrip("。.")
+        if not d or not is_language(d, lang):
+            return ""
+        return d if d.startswith(c) else (f"{c}是{d}" if zh else f"{c} is {d}")
+
+    usable_concepts = [c for c in chapter.concepts if is_language(c, lang)]
+    for i in range(0, len(usable_concepts), 4):
+        group = usable_concepts[i : i + 4]
+        if len(group) < 2:
+            break
+        add(
             {
                 "type": "grid",
-                "title": (
-                    trim(f"{'、'.join(usable_concepts[:3])}是本章的基石", TITLE_CAP)
-                    if zh
-                    else "These concepts carry the chapter"
-                ),
-                "items": [_concept_item(c, (defs or {}).get(c, ""), lang) for c in usable_concepts],
+                "items": [_concept_item(c, defs.get(c, ""), lang) for c in group],
                 "notes": (
-                    f"这一章引入了{'、'.join(usable_concepts)}这几个核心概念。"
-                    + (chapter.thesis if is_language(chapter.thesis, lang) else "")
-                )
+                    f"这一部分引入了{'、'.join(group)}这几个核心概念。{thesis}"
+                    if zh
+                    else f"This part introduces {', '.join(group)}. {thesis}"
+                ),
+            },
+            [concept_def(c) for c in group],
+            (
+                f"读懂这部分要先抓住{group[0]}和{group[1]}"
                 if zh
-                else f"This chapter introduces {', '.join(usable_concepts)}. {chapter.thesis}",
-            }
+                else f"{group[0]} and {group[1]} come first"
+            ),
+            [],
         )
-    if chapter.thesis and is_language(chapter.thesis, lang):
-        out.append(
+    if thesis:
+        headline = trim(_clauses(thesis)[0] if _clauses(thesis) else thesis, 16)
+        add(
             {
                 "type": "statement",
-                "title": trim(chapter.display_title(), TITLE_CAP),
-                "headline": trim(chapter.thesis, 16),
+                "headline": headline,
                 "body": trim(chapter.goal if is_language(chapter.goal, lang) else "", 44)
-                or trim(chapter.thesis, 44),
-                "notes": chapter.thesis + (chapter.goal if is_language(chapter.goal, lang) else ""),
-            }
+                or trim(thesis, 44),
+                "notes": thesis + (chapter.goal if is_language(chapter.goal, lang) else ""),
+            },
+            _clauses(thesis)[1:],
+            f"{label}的主线可以用一句话说清" if zh else f"One idea runs through {label}",
+            [headline, thesis],
         )
     claims = [c for c in chapter.claims if is_language(c, lang)]
     for i in range(0, len(claims), 4):
         group = claims[i : i + 4]
         if len(group) < 2:
             break
-        out.append(
+        lead = [_as_title(c, lang) for c in group]
+        add(
             {
                 "type": "grid",
-                "title": "书中明确给出这些结论" if zh else "The text states these results",
                 "items": [{"text": trim(c, 28)} for c in group],
-                "notes": ("书里明确给出的结论有：" if zh else "The text states: ")
+                "notes": ("这一页的几条结论都来自书中：" if zh else "The text states: ")
                 + "；".join(group),
-            }
+            },
+            _clauses(thesis) + [c for c in claims if c not in group],
+            next((t for t in lead if t), "")
+            or (f"{label}给出{len(group)}条可直接用的结论" if zh else f"{label} states these"),
+            [],
         )
+    quals = [q for q in chapter.qualifications if is_language(q, lang)][:3]
+    if quals:
+        add(
+            {
+                "type": "warnings",
+                "items": [{"text": trim(q, 32)} for q in quals],
+                "notes": ("使用这些结论时要注意：" if zh else "Keep these limits in mind: ")
+                + "；".join(quals),
+            },
+            quals,
+            f"用好{label}的结论要先看适用条件" if zh else f"Check the conditions of {label}",
+            [],
+        )
+    secs = [x for x in chapter.subsections if is_language(x, lang)][:5]
+    if len(secs) >= 3:
+        items = []
+        for x in secs:
+            name = re.sub(r"^\s*第\s*\S+?\s*节\s*", "", x).strip() or x
+            snip = chapter.section_snippets.get(x, "")
+            items.append(
+                {"title": trim(name, 8), "text": trim(snip, 30) if snip else trim(name, 30)}
+            )
+        add(
+            {
+                "type": "process",
+                "items": items,
+                "notes": (
+                    f"这一章按{'、'.join(secs)}的顺序展开，前一节是后一节的基础。{thesis}"
+                    if zh
+                    else f"The chapter moves through {', '.join(secs)}. {thesis}"
+                ),
+            },
+            [],
+            f"{label}沿{len(secs)}个小节层层推进"
+            if zh
+            else f"{label} builds up in {len(secs)} steps",
+            [],
+        )
+    excerpt = [c for c in _clauses(chapter.excerpt) if is_language(c, lang) and 6 <= clen(c) <= 40][
+        :4
+    ]
+    if len(excerpt) >= 2:
+        add(
+            {
+                "type": "grid",
+                "items": [{"text": trim(c, 28)} for c in excerpt],
+                "notes": ("书里是这样展开的：" if zh else "The text puts it this way: ")
+                + "；".join(excerpt),
+            },
+            excerpt,
+            f"{label}从这几个问题讲起" if zh else f"Where {label} starts",
+            [],
+        )
+    for sl in out:  # title first, for readability of the JSON
+        sl_title = sl.pop("title")
+        items_ = dict(sl)
+        sl.clear()
+        sl.update({"type": items_.pop("type"), "title": sl_title, **items_})
     return out[:count]
 
 
@@ -622,7 +823,7 @@ def looks_like_topic(title: str, lang: str) -> bool:
     return low.startswith(_TOPIC_START_EN) or len(low.split()) <= 3
 
 
-def polish_prompt(material: BookMaterial, slides: list[dict[str, Any]]) -> str:
+def _title_rows(slides: list[dict[str, Any]]) -> str:
     rows = []
     for sl in slides:
         points = [p for p in slide_text(sl, include_notes=False).split(" ") if p][:12]
@@ -634,25 +835,73 @@ def polish_prompt(material: BookMaterial, slides: list[dict[str, Any]]) -> str:
                 "notes": (sl.get("notes") or "")[:160],
             }
         )
-    blob = json.dumps(rows, ensure_ascii=False, indent=1)
+    return json.dumps(rows, ensure_ascii=False, indent=1)
+
+
+def polish_prompt(
+    material: BookMaterial, slides: list[dict[str, Any]], keep: list[str] | None = None
+) -> str:
+    blob = _title_rows(slides)
+    others = "\n".join(f"- {t}" for t in keep or []) or "-"
     if material.language == "zh":
         return "\n".join(
             [
-                f"下面是《{material.title}》讲解 PPT 中几页的标题，它们像话题名，不像结论。",
-                "请把每个标题改写成一句能单独成立的结论（6 到 18 个字），只依据该页的要点和备注，"
-                "不新增事实。例：“导数的定义”→“导数是增量之比的极限”。全部用简体中文。",
+                f"下面是《{material.title}》讲解 PPT 中几页的标题，它们像话题名、套话，"
+                "或者和其他页的标题重复、太相近。",
+                "请把每个标题改写成一句能单独成立、具体到该页内容的结论（6 到 18 个字），"
+                "只依据该页的要点和备注，不新增事实；不要写“是本章的基石”“书中明确给出这些结论”这类套话。"
+                "例：“导数的定义”→“导数是增量之比的极限”。全部用简体中文。",
                 blob,
+                "【其他页已用的标题，新标题不能与它们相同或相近，彼此也不能相近】",
+                others,
                 '输出：{"titles": [{"n": 页码, "title": "新标题"}]}',
             ]
         )
     return "\n".join(
         [
-            f'These slide titles from a lecture deck on "{material.title}" read like topic labels.',
-            "Rewrite each as a standalone claim of 4-12 words, using only that slide's points and "
-            "notes; add no new facts.",
+            f'These slide titles from a lecture deck on "{material.title}" read like topic labels '
+            "or boilerplate, or repeat other titles.",
+            "Rewrite each as a standalone, slide-specific claim of 4-12 words, using only that "
+            "slide's points and notes; add no new facts.",
             blob,
+            "[Titles used on other slides - the new ones must differ from these and each other]",
+            others,
             'Output: {"titles": [{"n": slide number, "title": "new title"}]}',
         ]
+    )
+
+
+def _titled(slides: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [sl for sl in slides if sl.get("type") in CONTENT_TYPES and sl.get("type") != "question"]
+
+
+def title_problems(slides: list[dict[str, Any]], lang: str) -> list[dict[str, Any]]:
+    """Content slides whose title is a topic label, boilerplate, or a near-repeat."""
+    seen: list[str] = []
+    bad: list[dict[str, Any]] = []
+    for sl in _titled(slides):
+        t = sl.get("title", "")
+        if _CONT.search(t):  # an explicit continuation of the slide before
+            continue
+        if (
+            looks_like_topic(t, lang)
+            or is_template_title(t)
+            or any(titles_similar(t, o) for o in seen)
+        ):
+            bad.append(sl)
+        else:
+            seen.append(t)
+    return bad
+
+
+def _good_title(new: str, lang: str, others: list[str]) -> bool:
+    return bool(
+        new
+        and 4 <= clen(new) <= TITLE_CAP
+        and is_language(new, lang)
+        and not looks_like_topic(new, lang)
+        and not is_template_title(new)
+        and not any(titles_similar(new, o) for o in others)
     )
 
 
@@ -662,21 +911,17 @@ def _polish_titles(
     slides: list[dict[str, Any]],
     report: DeckReport,
 ) -> int:
-    """One call that turns topic-label titles into conclusions. Returns count fixed."""
+    """One call that rewrites topic-label, boilerplate and near-duplicate titles."""
     lang = material.language
-    targets = [
-        sl
-        for sl in slides
-        if sl.get("type") in CONTENT_TYPES
-        and sl.get("type") != "question"
-        and looks_like_topic(sl.get("title", ""), lang)
-    ]
+    targets = title_problems(slides, lang)
     if not targets:
         return 0
+    target_ids = {id(sl) for sl in targets}
+    keep = [sl["title"] for sl in _titled(slides) if id(sl) not in target_ids]
     report.model_calls += 1
     try:
         data = provider.complete(
-            polish_prompt(material, targets),
+            polish_prompt(material, targets, keep),
             system=_system(lang),
             json_mode=True,
             max_tokens=200 * len(targets) + 400,
@@ -696,15 +941,68 @@ def _polish_titles(
         except (TypeError, ValueError):
             continue
         new = trim(_s(it.get("title")), TITLE_CAP)
-        if (
-            sl
-            and new
-            and 4 <= clen(new) <= TITLE_CAP
-            and is_language(new, lang)
-            and not looks_like_topic(new, lang)
-        ):
+        if not sl:
+            continue
+        others = [o["title"] for o in _titled(slides) if o is not sl]
+        if _good_title(new, lang, others):
             sl["title"] = new
             fixed += 1
+    return fixed
+
+
+def _content_titles(slide: dict[str, Any], lang: str) -> list[str]:
+    """Claims already on the slide that could stand as its title."""
+    raw: list[str] = [
+        _s(slide.get("takeaway")),
+        _s(slide.get("headline")) + ("，" if lang == "zh" else ", ") + _s(slide.get("body"))
+        if slide.get("headline")
+        else "",
+        _s(slide.get("headline")),
+        _s(slide.get("body")),
+    ]
+    for b in slide.get("blocks") or []:
+        raw += [_s(b.get("text")), _s(b.get("rule"))]
+    for it in slide.get("items") or []:
+        if isinstance(it, dict):
+            raw.append(_s(it.get("text")))
+            if it.get("title") and it.get("text") and lang == "zh":
+                raw.append(f"{_s(it['title'])}：{_s(it['text'])}")
+    for side in ("left", "right"):
+        if isinstance(slide.get(side), dict):
+            raw += [_s(x) for x in slide[side].get("items", [])]
+    raw += _clauses(slide.get("notes") or "")[:6]
+    return [t for t in (_as_title(r, lang) for r in raw) if t]
+
+
+def dedupe_titles(
+    slides: list[dict[str, Any]],
+    material: BookMaterial,
+    chapter_of: dict[int, ChapterMaterial],
+) -> int:
+    """Deterministic last pass: no boilerplate, no near-duplicate titles left."""
+    lang = material.language
+    fixed = 0
+    for _ in range(3):
+        bad = title_problems(slides, lang)
+        if not bad:
+            break
+        for sl in bad:
+            others = [o["title"] for o in _titled(slides) if o is not sl]
+            ch = chapter_of.get(id(sl))
+            cands = _content_titles(sl, lang) + (
+                title_candidates(ch, lang, material.concept_defs) if ch else []
+            )
+            new = next((c for c in cands if _good_title(c, lang, others)), "")
+            if not new:
+                base = trim(_CONT.sub("", sl["title"]), TITLE_CAP - 4)
+                for k in ("", "二", "三", "四", "五"):
+                    cand = f"{base}（续{k}）" if lang == "zh" else f"{base} (cont.{k})"
+                    if not any(norm_title(cand) == norm_title(o) for o in others):
+                        new = cand
+                        break
+            if new and new != sl["title"]:
+                sl["title"] = new
+                fixed += 1
     return fixed
 
 
@@ -716,7 +1014,12 @@ def _parse_slides(text_json: Any) -> list[Any]:
         for key in ("slides", "pages", "items"):
             if isinstance(text_json.get(key), list):
                 return list(text_json[key])
-        return [text_json] if text_json.get("type") else []
+        if text_json.get("type"):
+            return [text_json]
+        for value in text_json.values():
+            if isinstance(value, list) and value and all(isinstance(v, dict) for v in value):
+                return list(value)
+        return []
     return list(text_json) if isinstance(text_json, list) else []
 
 
@@ -763,6 +1066,7 @@ def _write_batch(
     tag = f"{chapter.chapter_id}#{slot.batch}"
     feedback = ""
     kept: list[dict[str, Any]] = []
+    reserve: list[dict[str, Any]] = []
     for attempt in range(_ATTEMPTS):
         need = slot.count - len(kept)
         sub = Slot(slot.kind, slot.chapter_id, slot.batch, need, slot.focus)
@@ -797,11 +1101,15 @@ def _write_batch(
         slides = [x for x in normalized if x]
         n_lang = n_notes = 0
         for sl in slides:
+            taken = [k["title"] for k in kept + reserve]
             if not is_language(slide_text(sl), lang):
                 n_lang += 1
+            elif any(titles_similar(sl["title"], t) for t in taken):
+                continue
             elif opts.notes and len(sl.get("notes", "")) < 30:
                 n_notes += 1
-            elif sl["title"] not in {k["title"] for k in kept}:
+                reserve.append(sl)  # grounded content, only the script is missing
+            else:
                 kept.append(sl)
         if n_lang:
             report.language_retries += 1
@@ -813,16 +1121,15 @@ def _write_batch(
             f"notes={n_notes} invalid={n_invalid}"
         )
     missing = slot.count - len(kept)
-    if missing > 0:
-        fill = [
-            s
-            for s in fallback_slides(chapter, missing + 2, lang, material.concept_defs)
-            if s["title"] not in used_titles
-        ]
-        report.fallback_slides += min(missing, len(fill))
-        kept = kept + fill[:missing]
-        if len(kept) < slot.count:
-            report.warnings.append(f"{tag}: only {len(kept)} of {slot.count} slides grounded")
+    if missing > 0 and reserve:
+        # A model slide without a script is still grounded: give it notes from
+        # its own content and the chapter rather than discarding it.
+        for sl in reserve[:missing]:
+            sl["notes"] = _spoken(sl, lang == "zh") + (
+                chapter.thesis if is_language(chapter.thesis, lang) else ""
+            )
+            kept.append(sl)
+        missing = slot.count - len(kept)
     return kept[: slot.count]
 
 
@@ -898,6 +1205,166 @@ def _glyph(material: BookMaterial) -> str:
     return "A"
 
 
+def _split_slide(slide: dict[str, Any], lang: str, taken: list[str]) -> dict[str, Any] | None:
+    """Split a dense item slide in two, in place; return the second half or ``None``."""
+    typ = slide.get("type")
+    items = slide.get("items")
+    if typ not in ("grid", "definitions", "process", "warnings") or not isinstance(items, list):
+        return None
+    lo = CAPS[typ]["items"][0]
+    if len(items) < 2 * lo or len(items) < 2:
+        return None
+    cut = -(-len(items) // 2)
+    first, second = items[:cut], items[cut:]
+    if len(first) < lo or len(second) < lo:
+        return None
+    half: dict[str, Any] = {k: v for k, v in slide.items() if k not in ("items", "n")}
+    half["items"] = second
+    half.pop("takeaway", None)
+    half.pop("quote_lines", None)
+    half["title"] = ""
+    cands = _content_titles({"type": typ, "items": second}, lang)
+    new = next((c for c in cands if _good_title(c, lang, taken + [slide["title"]])), "")
+    half["title"] = new or (
+        f"{trim(slide['title'], TITLE_CAP - 4)}（续）"
+        if lang == "zh"
+        else f"{slide['title']} (cont.)"
+    )
+    if slide.get("notes"):
+        half["notes"] = _spoken(half, lang == "zh")
+    slide["items"] = first
+    return half
+
+
+def _top_up(
+    material: BookMaterial,
+    content_slots: list[Slot],
+    by_slot: dict[int, list[dict[str, Any]]],
+    chapter_of: dict[int, ChapterMaterial],
+    report: DeckReport,
+    *,
+    scoped: bool,
+) -> None:
+    """Fill content slots that came back short so the requested count is met exactly.
+
+    In order: stored material of the other chapters (nearest chapter first,
+    placed with its own chapter), then splitting a dense slide in two, then the
+    book's own theses and the chapter's guiding question.
+    """
+    lang = material.language
+    zh = lang == "zh"
+    chapters = material.usable_chapters()
+    order = {c.chapter_id: i for i, c in enumerate(chapters)}
+    last_slot = {sl.chapter_id: sl for sl in content_slots}
+
+    def titles() -> list[str]:
+        return [x["title"] for r in by_slot.values() for x in r if x.get("title")]
+
+    def sigs() -> set[str]:
+        return {_sig(x) for r in by_slot.values() for x in r}
+
+    def deficit() -> int:
+        return sum(sl.count for sl in content_slots) - sum(
+            len(by_slot[id(sl)]) for sl in content_slots
+        )
+
+    if deficit() <= 0:
+        return
+    for slot in content_slots:
+        short = slot.count - len(by_slot[id(slot)])
+        if short <= 0:
+            continue
+        home = order.get(slot.chapter_id or "", 0)
+        before = short
+        own = material.chapter(slot.chapter_id or "")
+        # 0. this chapter's stored understanding; 1. then the other chapters'
+        # (for a single-chapter deck those come last, after splitting)
+        nearest = sorted(
+            (c for c in chapters if c.chapter_id != slot.chapter_id),
+            key=lambda c: (abs(order[c.chapter_id] - home), order[c.chapter_id]),
+        )
+
+        def fill(pool: list[ChapterMaterial], short: int) -> int:
+            for ch in pool:
+                if short <= 0:
+                    break
+                for extra in fallback_slides(
+                    ch, short, lang, material.concept_defs, avoid=titles(), skip=sigs()
+                ):
+                    target = slot if ch is own else last_slot.get(ch.chapter_id, slot)
+                    by_slot[id(target)].append(extra)
+                    chapter_of[id(extra)] = ch
+                    short -= 1
+                    report.fallback_slides += 1
+            return short
+
+        short = fill(([own] if own else []) + ([] if scoped else nearest), short)
+        if short < before:
+            report.warnings.append(
+                f"{slot.chapter_id}#{slot.batch}: {before - short} slides filled from stored "
+                "understanding"
+            )
+        # 2. split a dense slide, preferring this chapter's own
+        while short > 0:
+            pools = [slot] + [s for s in content_slots if s is not slot]
+            done = False
+            for host in pools:
+                lst = by_slot[id(host)]
+                for i, sl in enumerate(lst):
+                    half = _split_slide(sl, lang, titles())
+                    if half:
+                        lst.insert(i + 1, half)
+                        if id(sl) in chapter_of:
+                            chapter_of[id(half)] = chapter_of[id(sl)]
+                        short -= 1
+                        done = True
+                        break
+                if done:
+                    break
+            if not done:
+                break
+        # 3. the book's theses / the chapter's question
+        ch = material.chapter(slot.chapter_id or "")
+        extras: list[dict[str, Any]] = []
+        for thesis in material.central_theses:
+            t = _as_title(thesis, lang)
+            if t and not any(titles_similar(t, x) for x in titles()):
+                extras.append(
+                    {
+                        "type": "statement",
+                        "title": t,
+                        "headline": trim(_clauses(thesis)[0], 16),
+                        "body": trim(thesis, 44),
+                        "notes": (
+                            f"放回全书来看：{thesis}" if zh else f"Across the book: {thesis}"
+                        ),
+                    }
+                )
+        if ch and is_language(ch.question, lang):
+            extras.append(
+                {
+                    "type": "question",
+                    "question": trim(ch.question, CAPS["question"]["question"]),
+                    **({"body": trim(ch.goal, 40)} if is_language(ch.goal, lang) else {}),
+                    "notes": (
+                        f"先停下来想一想：{ch.question}{ch.thesis if is_language(ch.thesis, lang) else ''}"
+                        if zh
+                        else f"Pause on this: {ch.question}"
+                    ),
+                }
+            )
+        for extra in extras[: max(0, short)]:
+            by_slot[id(slot)].append(extra)
+            if ch:
+                chapter_of[id(extra)] = ch
+            short -= 1
+        if scoped and short > 0:
+            short = fill(nearest, short)
+        report.slides_topped_up += before - short
+    if deficit() > 0:
+        report.warnings.append(f"top-up: {deficit()} slides still missing")
+
+
 def build_deck(
     material: BookMaterial,
     opts: DeckOptions,
@@ -938,7 +1405,14 @@ def build_deck(
         frame = frame_future.result()
     tick()
 
-    by_slot = {id(s): r for s, r in zip(content_slots, results)}
+    by_slot = {id(s): list(r) for s, r in zip(content_slots, results)}
+    chapter_of: dict[int, ChapterMaterial] = {}
+    for s_, r_ in zip(content_slots, results):
+        ch_ = material.chapter(s_.chapter_id or "")
+        for x in r_:
+            if ch_ is not None:
+                chapter_of[id(x)] = ch_
+    _top_up(material, content_slots, by_slot, chapter_of, report, scoped=chapter is not None)
     closing = frame.get("closing") if isinstance(frame.get("closing"), dict) else {}
     book_short = _short_title(material.title)
 
@@ -1020,6 +1494,7 @@ def build_deck(
     for i, s in enumerate(slides, 1):
         s["n"] = i
     report.titles_polished = _polish_titles(provider, material, slides, report)
+    report.titles_deduped = dedupe_titles(slides, material, chapter_of)
 
     content_count = sum(1 for s in slides if s["type"] in CONTENT_TYPES)
     if content_count == 0:
