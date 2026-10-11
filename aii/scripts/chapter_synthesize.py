@@ -19,10 +19,10 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 sys.path.insert(0, str(ROOT / "scripts"))
-from chapter_ingest import slice_chapter, SM
-from aii.api._provider import register_providers
-from aii.service.planning_completeness import check_completeness
-from obase import ProviderRegistry
+from chapter_ingest import slice_chapter, SM  # noqa: E402
+from aii.api._provider import register_providers  # noqa: E402
+from aii.service.planning_completeness import check_completeness  # noqa: E402
+from obase import ProviderRegistry  # noqa: E402
 
 # _plan 仍用全章分块喂(规划不截断, 不影响 token).
 _CTX = 130000
