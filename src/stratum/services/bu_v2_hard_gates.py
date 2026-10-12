@@ -429,7 +429,7 @@ class HardGateEvaluator:
         # anchored passage state or directly entail the claim?
         from stratum.services.bu_v2_claim_verifier import STRICT_PROMPT, parse_verdict
 
-        prompt = STRICT_PROMPT.format(quote=claim["quote"][:600], claim=claim["text"][:600])
+        prompt = STRICT_PROMPT.format(quote=claim["quote"][:900], claim=claim["text"][:600])
         verdict = parse_verdict(self.judge(prompt))
         if verdict is None:
             verdict = parse_verdict(self.judge(prompt))
@@ -662,7 +662,7 @@ def _sample_claims(
             ev = ev_by_id.get(ep.evidence_refs[0])
             if ev is None or not (getattr(ev, "quote", "") or "").strip():
                 continue
-            pairs.append({"text": ep.claim_ref, "quote": ev.quote[:400]})
+            pairs.append({"text": ep.claim_ref, "quote": ev.quote[:900]})
     if len(pairs) <= k:
         return pairs
     return rng.sample(pairs, k)

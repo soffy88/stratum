@@ -216,7 +216,7 @@ class EvidenceArtifact:
             chapter_id=chapter_id,
             kind=kind,
             locator=locator,
-            quote=quote[:400],
+            quote=quote[:900],
             content_hash=h,
         )
 
@@ -320,7 +320,7 @@ class Chapter:
     def char_count(self) -> int:
         return len(self.text)
 
-    def slice_for(self, needle: str, window: int = 400) -> tuple[str, str] | None:
+    def slice_for(self, needle: str, window: int = 700) -> tuple[str, str] | None:
         """Locate ``needle`` in this chapter, returning (locator, quote).
 
         This is the mechanism behind §11's traceability requirement. When it
@@ -373,7 +373,7 @@ class Chapter:
         return (self.locator(i), self.text[i : i + window].strip())
 
     def best_passage(
-        self, claim: str, window: int = 480, min_overlap: float = 0.35
+        self, claim: str, window: int = 700, min_overlap: float = 0.35
     ) -> tuple[str, str] | None:
         """The passage of this chapter that best supports ``claim``.
 
@@ -389,7 +389,7 @@ class Chapter:
         return found[0] if found else None
 
     def best_passages(
-        self, claim: str, *, k: int = 3, window: int = 480, min_overlap: float = 0.35
+        self, claim: str, *, k: int = 3, window: int = 700, min_overlap: float = 0.35
     ) -> list[tuple[str, str]]:
         """The ``k`` best non-overlapping supporting windows, best first."""
         q = _claim_tokens(claim)
@@ -1129,11 +1129,16 @@ def _claim_tokens(text: str) -> set[str]:
 
 
 def _fuzzy_find(text: str, needle: str) -> int:
-    """Find ``needle`` in ``text`` ignoring whitespace; -1 when absent."""
-    chars = [c for c in (needle or "") if not c.isspace()]
+    """Find ``needle`` in ``text`` ignoring whitespace and markdown emphasis.
+
+    OCR'd textbooks carry ``_x_`` / ``**15.**`` markup and stray line breaks
+    the model drops when it quotes, so both are skipped on either side.
+    -1 when absent.
+    """
+    chars = [c for c in (needle or "") if not c.isspace() and c not in "*_"]
     if len(chars) < 2:
         return -1
-    pattern = r"\s*".join(re.escape(c) for c in chars)
+    pattern = r"[\s*_]*".join(re.escape(c) for c in chars)
     m = re.search(pattern, text or "")
     return m.start() if m else -1
 

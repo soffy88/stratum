@@ -108,7 +108,7 @@ class ClaimVerifier:
                 jobs.append((cu, ep, ev))
 
         def _ask(quote: str, claim: str) -> bool | None:
-            prompt = STRICT_PROMPT.format(quote=quote[:600], claim=claim[:600])
+            prompt = STRICT_PROMPT.format(quote=quote[:900], claim=claim[:600])
             verdict = parse_verdict(self.judge(prompt))  # type: ignore[misc]
             if verdict is None:  # one retry: a rotating gateway may return empty
                 verdict = parse_verdict(self.judge(prompt))  # type: ignore[misc]
