@@ -523,7 +523,10 @@ def test_persisted_run_writes_status_with_correct_signature(fake_db, monkeypatch
     failed = [c.name for c in result.report.failed]
     # A single-chapter run cannot satisfy every gate; the contract being
     # asserted is that the run's status follows the verdict, in both directions.
-    expected = "VERIFIED" if not failed else "FAILED"
+    # Since the hard gates are evaluated before the BU is written, a run
+    # that fails any of them is stored as FAILED too.
+    gates_ok = result.hard_gates is None or result.hard_gates.all_passed
+    expected = "VERIFIED" if (not failed and gates_ok) else "FAILED"
     run_statuses = [
         vals.get("status") for t, _rid, vals in fake_db.updated if t == "book_reading_run"
     ]

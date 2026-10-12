@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from stratum.knowledge.bu_v2_models import (
+    Argument,
     ChapterDelta,
     ChapterUnderstanding,
     EvidenceProgramItem,
@@ -127,17 +128,57 @@ def _heal_json(text: str | None) -> Any:
         return None
 
 
+def _locate_ku_anchor(chapter: "Chapter", quote: str, name: str) -> tuple[str, str] | None:
+    """Locate a frozen KU in a chapter, tolerating OCR markup and paraphrase.
+
+    The frozen quote carries markdown emphasis (``**function**``, ``_x_``) that
+    the chapter body may not, and the KU's own char offsets are from the freeze's
+    parse, not this chapter's. So the search tries, in order: the raw quote, the
+    markup-stripped quote, the concept name, and finally a distinctive-token
+    anchor built from the name. Returns None rather than inventing a location.
+    """
+    import re as _re
+
+    if quote:
+        found = chapter.slice_for(quote)
+        if found:
+            return found
+        clean = _re.sub(r"[*_`]", "", quote).strip()
+        if clean and clean != quote:
+            found = chapter.slice_for(clean)
+            if found:
+                return found
+    if name:
+        found = chapter.locate_term(name)
+        if found:
+            return found
+        # A multi-word label like "average rate of change" or an OCR fragment
+        # like "limit of": anchor on the longest distinctive token(s) that the
+        # chapter actually contains.
+        tokens = [t for t in _re.findall(r"[A-Za-z]{5,}|[一-鿿]{2,}", name)]
+        tokens.sort(key=len, reverse=True)
+        for tok in tokens[:3]:
+            found = chapter.locate_term(tok)
+            if found:
+                return found
+    return None
+
+
 def _item_in(item: Any, items: list[Any], key: str) -> bool:
     """Case-insensitive membership test for a merged list entry."""
     if isinstance(item, dict):
-        probe = _as_str(item.get("name") or item.get("text") or item.get("term")).lower()
+        probe = _as_str(
+            item.get("name") or item.get("text") or item.get("term") or item.get("claim")
+        ).lower()
     else:
         probe = _as_str(item).lower()
     if not probe:
         return False
     for other in items:
         if isinstance(other, dict):
-            other_s = _as_str(other.get("name") or other.get("text") or other.get("term")).lower()
+            other_s = _as_str(
+                other.get("name") or other.get("text") or other.get("term") or other.get("claim")
+            ).lower()
         else:
             other_s = _as_str(other).lower()
         if other_s == probe:
@@ -161,6 +202,8 @@ class EvidenceArtifact:
     locator: str
     quote: str
     content_hash: str
+    # Set by the claim verifier: True/False once judged, None when not judged.
+    verified: bool | None = None
 
     @staticmethod
     def make(
@@ -173,7 +216,7 @@ class EvidenceArtifact:
             chapter_id=chapter_id,
             kind=kind,
             locator=locator,
-            quote=quote[:400],
+            quote=quote[:900],
             content_hash=h,
         )
 
@@ -277,7 +320,7 @@ class Chapter:
     def char_count(self) -> int:
         return len(self.text)
 
-    def slice_for(self, needle: str, window: int = 400) -> tuple[str, str] | None:
+    def slice_for(self, needle: str, window: int = 700) -> tuple[str, str] | None:
         """Locate ``needle`` in this chapter, returning (locator, quote).
 
         This is the mechanism behind §11's traceability requirement. When it
@@ -329,6 +372,51 @@ class Chapter:
         i = m.start()
         return (self.locator(i), self.text[i : i + window].strip())
 
+    def best_passage(
+        self, claim: str, window: int = 700, min_overlap: float = 0.35
+    ) -> tuple[str, str] | None:
+        """The passage of this chapter that best supports ``claim``.
+
+        A model paraphrases, so its claim is rarely a substring of the text, and
+        anchoring on the first mention of one term (``locate_term``) usually
+        lands on a passage that merely names the concept — the accuracy judge
+        then rightly answers NO. This scores every sentence-aligned window by
+        how much of the claim's vocabulary it carries (words for Latin text,
+        character bigrams for CJK) and returns the best one, or None when no
+        window carries at least ``min_overlap`` of the claim.
+        """
+        found = self.best_passages(claim, k=1, window=window, min_overlap=min_overlap)
+        return found[0] if found else None
+
+    def best_passages(
+        self, claim: str, *, k: int = 3, window: int = 700, min_overlap: float = 0.35
+    ) -> list[tuple[str, str]]:
+        """The ``k`` best non-overlapping supporting windows, best first."""
+        q = _claim_tokens(claim)
+        if len(q) < 3 or not self.text:
+            return []
+        starts = [0] + [m.end() for m in _SENT_END_RE.finditer(self.text)]
+        scored: list[tuple[float, int]] = []
+        step = max(1, len(starts) // 4000)  # cap work on very long chapters
+        for i in starts[::step]:
+            seg = self.text[i : i + window]
+            if len(seg.strip()) < 40:
+                continue
+            toks = _claim_tokens(seg)
+            if not toks:
+                continue
+            score = len(q & toks) / len(q)
+            if score >= min_overlap:
+                scored.append((score, i))
+        scored.sort(key=lambda t: (-t[0], t[1]))
+        picked: list[int] = []
+        for _score, i in scored:
+            if all(abs(i - j) >= window // 2 for j in picked):
+                picked.append(i)
+            if len(picked) >= k:
+                break
+        return [(self.locator(i), self.text[i : i + window].strip()) for i in picked]
+
     def locator(self, offset: int) -> str:
         absolute = self.start + offset
         page = "unknown"
@@ -340,7 +428,9 @@ class Chapter:
 
 _SYSTEM = """You extract book structure from a textbook chapter.
 You answer ONLY with a single JSON object. No prose, no markdown fence.
-Every list must contain short strings. If you do not know something, use an empty list."""
+Every list must contain short strings. If you do not know something, use an empty list.
+A claim must be something the given text itself states; never add facts from your own
+knowledge. Give every claim the verbatim sentence that states it; omit a claim you cannot quote."""
 
 
 def _schema_hint() -> str:
@@ -354,10 +444,15 @@ def _schema_hint() -> str:
         '"chapter_thesis":"<the single most important idea in THIS chapter>",'
         '"summary":"<3-5 sentences on what this chapter covers>",'
         '"concepts":[{"name":"<term>","definition":"<one sentence>"}],'
-        '"claims":[{"text":"<an assertion THIS chapter makes>",'
-        '"quote":"<a phrase copied EXACTLY from the text above>"}],'
+        '"claims":[{"text":"<an assertion the text above itself states, not background knowledge>",'
+        '"quote":"<the sentence that states it, copied EXACTLY from the text above, at most 200 characters>"}],'
         '"mechanisms":[{"cause":"<what produces the effect>","process":"<the steps or relation>",'
         '"conditions":"<when it holds>"}],'
+        '"arguments":[{"claim":"<a result the text argues or proves, e.g. a theorem or rule>",'
+        '"premises":["<hypotheses or facts it starts from>"],'
+        '"steps":["<the key reasoning steps of the proof or derivation, in order>"],'
+        '"conclusion":"<what follows, or how the result is then used>",'
+        '"quote":"<a phrase copied EXACTLY from the text where the argument is made>"}],'
         '"dependencies":["<prior concept this chapter needs>"],'
         '"uncertainties":["<what the chapter leaves open or only approximately states>"],'
         '"terminology":[{"term":"<word>","meaning":"<definition as the chapter gives it>"}]}'
@@ -375,10 +470,16 @@ class ChapterUnderstandingProducer:
         provider: ModelProvider | None = None,
         *,
         max_chars: int = 12000,
-        max_chunk_chars: int = 9000,
+        max_chunk_chars: int | None = None,
         chunk_overlap: int = 300,
     ):
         self.provider = provider or resolve_provider()
+        # A strong hosted model with a large context window can read far more per
+        # call, so the chunk size is env-overridable: BU2_CHUNK_CHARS. The
+        # default keeps the small-model behaviour. Larger chunks mean fewer calls
+        # and no loss of coverage, since the whole chapter is still read.
+        if max_chunk_chars is None:
+            max_chunk_chars = int(os.environ.get("BU2_CHUNK_CHARS", "9000"))
         # `max_chars` is the legacy single-shot cap. Long chapters are now read
         # in bounded chunks (see `_chapter_chunks`) and the per-chunk results are
         # merged, so the output of a 40k-character chapter is no longer silently
@@ -576,6 +677,7 @@ class ChapterUnderstandingProducer:
             "concepts",
             "claims",
             "mechanisms",
+            "arguments",
             "dependencies",
             "uncertainties",
             "terminology",
@@ -613,6 +715,12 @@ class ChapterUnderstandingProducer:
             found = chapter.slice_for(quote) or chapter.slice_for(text)
             kind = "CLAIM"
             if not found:
+                # The passage that carries the claim's own vocabulary is far
+                # better support than the first mention of one of its terms.
+                found = chapter.best_passage(text)
+                if found:
+                    kind = "CLAIM_PASSAGE"
+            if not found:
                 for term in _significant_terms(text):
                     found = chapter.locate_term(term)
                     if found:
@@ -625,9 +733,13 @@ class ChapterUnderstandingProducer:
             locator, snippet = found
             ev = EvidenceArtifact.make(run_id, chapter.chapter_id, kind, locator, snippet)
             evidence.append(ev)
+            # The full claim text is kept (capped generously) so the accuracy
+            # judge and the expression layer see the whole assertion, not a
+            # mid-sentence fragment that cannot be verified. 120 chars truncated
+            # roughly a third of Thomas's claims and pushed the judge to NO.
             program.append(
                 EvidenceProgramItem(
-                    claim_ref=text[:120],
+                    claim_ref=text[:600],
                     evidence_refs=[ev.evidence_id],
                     is_supported=True,
                 )
@@ -681,14 +793,9 @@ class ChapterUnderstandingProducer:
                     quote = _as_str(it.get("quote"))
                     locator = ""
                     snippet = ""
-                    if quote:
-                        found = chapter.slice_for(quote)
-                        if found:
-                            locator, snippet = found
-                    if not locator:
-                        found = chapter.locate_term(name)
-                        if found:
-                            locator, snippet = found
+                    found = _locate_ku_anchor(chapter, quote, name)
+                    if found:
+                        locator, snippet = found
                     if not locator:
                         # The KU is not in this chapter's text; skip rather than
                         # fabricate coverage.
@@ -714,6 +821,50 @@ class ChapterUnderstandingProducer:
                         statement = _as_str(it.get("statement") or it.get("quote"))
                         if statement:
                             concept_defs[matched] = statement[:300]
+
+        # ── reconstructed arguments (design §8 / Argument model) ───────────────
+        # Each must carry a claim, at least one reasoning step and a conclusion,
+        # and be locatable in the chapter text; anything else is dropped rather
+        # than stored as an argument the book did not make.
+        chapter_arguments: list[Argument] = []
+        for i, a in enumerate(_as_list(data.get("arguments"))):
+            if not isinstance(a, dict):
+                continue
+            claim_t = _as_str(a.get("claim"))
+            steps = [_as_str(x) for x in _as_list(a.get("steps")) if _as_str(x)]
+            concl = _as_str(a.get("conclusion"))
+            if not claim_t or not steps or not concl:
+                continue
+            quote = _as_str(a.get("quote"))
+            found = (
+                chapter.slice_for(quote)
+                or chapter.slice_for(claim_t)
+                or chapter.best_passage(claim_t + " " + " ".join(steps[:2]))
+            )
+            if not found:
+                continue
+            locator, snippet = found
+            ev = EvidenceArtifact.make(run_id, chapter.chapter_id, "ARGUMENT", locator, snippet)
+            evidence.append(ev)
+            strengths[ev.evidence_id] = "DIRECT" if chapter.slice_for(quote) else "DERIVED"
+            ku_refs = [
+                _as_str(it.get("ku_id"))
+                for it in self.ku_anchor
+                if _as_str(it.get("ku_id"))
+                and _as_str(it.get("name") or it.get("title"))
+                and _as_str(it.get("name") or it.get("title")).lower() in claim_t.lower()
+            ]
+            chapter_arguments.append(
+                Argument(
+                    id=f"arg_{run_id}_{chapter.chapter_id}_{i}",
+                    question=claim_t[:600],
+                    premises=[_as_str(x) for x in _as_list(a.get("premises")) if _as_str(x)][:8],
+                    inference_steps=steps[:12],
+                    conclusion=[concl[:600]],
+                    ku_refs=ku_refs[:6],
+                    evidence_refs=[ev.evidence_id],
+                )
+            )
 
         mechanisms = [
             _as_str(m.get("cause") or m.get("process"))
@@ -744,6 +895,8 @@ class ChapterUnderstandingProducer:
                 major_ku_refs=major_ku_ids or [c for c in concept_names if c],
                 supporting_ku_refs=[e.evidence_id for e in evidence],
                 mechanisms_refs=[m for m in mechanisms if m],
+                arguments_refs=[a.id for a in chapter_arguments],
+                chapter_arguments=chapter_arguments,
                 evidence_program=program,
                 # §11: carried on the understanding so the binding is checkable
                 # rather than inferred by the consumer.
@@ -958,13 +1111,34 @@ def _language_rule(text: str) -> str:
 
 _CJK_RE = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]")
 
+_SENT_END_RE = re.compile(r"(?<=[.!?。！？；;])\s+|\n\s*\n")
+_STOP = frozenset(
+    "the a an of to in is are be and or for that this with as by on at it its from we "
+    "can which then if when any each all has have not but so such these those their "
+    "there was were been will may also than into our one two".split()
+)
+
+
+def _claim_tokens(text: str) -> set[str]:
+    """Content tokens: lowercase words (no stopwords) plus CJK character bigrams."""
+    text = (text or "").lower()
+    words = {w for w in re.findall(r"[a-z][a-z0-9'\-]{2,}", text) if w not in _STOP}
+    cjk = "".join(_CJK_RE.findall(text))
+    bigrams = {cjk[i : i + 2] for i in range(len(cjk) - 1)}
+    return words | bigrams
+
 
 def _fuzzy_find(text: str, needle: str) -> int:
-    """Find ``needle`` in ``text`` ignoring whitespace; -1 when absent."""
-    chars = [c for c in (needle or "") if not c.isspace()]
+    """Find ``needle`` in ``text`` ignoring whitespace and markdown emphasis.
+
+    OCR'd textbooks carry ``_x_`` / ``**15.**`` markup and stray line breaks
+    the model drops when it quotes, so both are skipped on either side.
+    -1 when absent.
+    """
+    chars = [c for c in (needle or "") if not c.isspace() and c not in "*_"]
     if len(chars) < 2:
         return -1
-    pattern = r"\s*".join(re.escape(c) for c in chars)
+    pattern = r"[\s*_]*".join(re.escape(c) for c in chars)
     m = re.search(pattern, text or "")
     return m.start() if m else -1
 

@@ -38,7 +38,11 @@ class CheckResult:
     detail: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        return {"check": self.name, "status": "pass" if self.passed else "fail", "detail": self.detail}
+        return {
+            "check": self.name,
+            "status": "pass" if self.passed else "fail",
+            "detail": self.detail,
+        }
 
 
 @dataclass
@@ -96,34 +100,47 @@ class BUVerifier:
 
         # 1. Provenance. A BU with no book or run cannot be cited back.
         rep.checks.append(
-            CheckResult("provenance_present", bool(bu.book_id and bu.run_id and bu.substrate_id),
-                        f"book_id={bool(bu.book_id)} run_id={bool(bu.run_id)} substrate={bool(bu.substrate_id)}")
+            CheckResult(
+                "provenance_present",
+                bool(bu.book_id and bu.run_id and bu.substrate_id),
+                f"book_id={bool(bu.book_id)} run_id={bool(bu.run_id)} substrate={bool(bu.substrate_id)}",
+            )
         )
 
         # 2. Coverage. A book "understood" at 20% is not understood.
         min_cov = 0.5
         rep.checks.append(
-            CheckResult("coverage_floor", bu.coverage_score >= min_cov,
-                        f"coverage={bu.coverage_score:.2f} floor={min_cov}")
+            CheckResult(
+                "coverage_floor",
+                bu.coverage_score >= min_cov,
+                f"coverage={bu.coverage_score:.2f} floor={min_cov}",
+            )
         )
 
         # 3. Framing exists. Essence is derived from these, so without them §13
         #    cannot be answered at all.
         rep.checks.append(
-            CheckResult("has_governing_questions", len(bu.governing_questions) > 0,
-                        f"count={len(bu.governing_questions)}")
+            CheckResult(
+                "has_governing_questions",
+                len(bu.governing_questions) > 0,
+                f"count={len(bu.governing_questions)}",
+            )
         )
         rep.checks.append(
-            CheckResult("has_central_theses", len(bu.central_theses) > 0,
-                        f"count={len(bu.central_theses)}")
+            CheckResult(
+                "has_central_theses", len(bu.central_theses) > 0, f"count={len(bu.central_theses)}"
+            )
         )
 
         # 4. Evidence. §11 requires claims to be traceable; zero evidence for a
         #    non-trivial book means nothing is traceable.
         if chapter_count > 0:
             rep.checks.append(
-                CheckResult("evidence_present", evidence_count > 0,
-                            f"evidence={evidence_count} chapters={chapter_count}")
+                CheckResult(
+                    "evidence_present",
+                    evidence_count > 0,
+                    f"evidence={evidence_count} chapters={chapter_count}",
+                )
             )
 
         # 5. Structural derivation. §10.4 forbids a concatenation; a book with
@@ -132,21 +149,30 @@ class BUVerifier:
         structure = len(edges) + len(bu.concept_evolution or [])
         if chapter_count > 2:
             rep.checks.append(
-                CheckResult("structure_derived", structure > 0,
-                            f"edges={len(edges)} evolution_steps={len(bu.concept_evolution)}")
+                CheckResult(
+                    "structure_derived",
+                    structure > 0,
+                    f"edges={len(edges)} evolution_steps={len(bu.concept_evolution)}",
+                )
             )
 
         # 6. Chapter production actually succeeded.
         if chapter_count:
             rep.checks.append(
-                CheckResult("chapter_extraction_complete", failed_chapters == 0,
-                            f"failed={failed_chapters}/{chapter_count}")
+                CheckResult(
+                    "chapter_extraction_complete",
+                    failed_chapters == 0,
+                    f"failed={failed_chapters}/{chapter_count}",
+                )
             )
 
         # 7. The BU must not claim verification it was not given.
         rep.checks.append(
-            CheckResult("not_self_verified", bu.verification_score == 0.0,
-                        f"verification_score={bu.verification_score}")
+            CheckResult(
+                "not_self_verified",
+                bu.verification_score == 0.0,
+                f"verification_score={bu.verification_score}",
+            )
         )
         return rep
 

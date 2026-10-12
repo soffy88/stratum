@@ -85,7 +85,7 @@ class ContradictionDetector:
             if len(instances) < 2:
                 continue
             for i, (ch1, c1) in enumerate(instances):
-                for ch2, c2 in instances[i+1:]:
+                for ch2, c2 in instances[i + 1 :]:
                     if self._are_contradictory(c1, c2):
                         contra = ContradictionEntry(
                             id=_stable_id("contra", "claim", bu.book_id, ch1, ch2),
@@ -121,7 +121,7 @@ class ContradictionDetector:
             if len(instances) < 2:
                 continue
             for i, (ch1, def1) in enumerate(instances):
-                for ch2, def2 in instances[i+1:]:
+                for ch2, def2 in instances[i + 1 :]:
                     if def1 and def2 and self._definitions_conflict(def1, def2):
                         contra = ContradictionEntry(
                             id=_stable_id("contra", "concept", bu.book_id, cid, ch1, ch2),
@@ -173,7 +173,17 @@ class ContradictionDetector:
         c1 = claim1.lower()
         c2 = claim2.lower()
 
-        negations = ["not", "never", "cannot", "impossible", "false", "incorrect", "wrong", "denies", "rejects"]
+        negations = [
+            "not",
+            "never",
+            "cannot",
+            "impossible",
+            "false",
+            "incorrect",
+            "wrong",
+            "denies",
+            "rejects",
+        ]
         has_neg1 = any(n in c1 for n in negations)
         has_neg2 = any(n in c2 for n in negations)
 

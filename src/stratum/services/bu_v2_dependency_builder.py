@@ -84,9 +84,7 @@ class DependencyBuildResult:
 
     @property
     def cross_chapter_count(self) -> int:
-        return len(
-            [e for e in self.graph.edges if self._is_cross_chapter(e)]
-        )
+        return len([e for e in self.graph.edges if self._is_cross_chapter(e)])
 
     @property
     def asserted_cross_chapter_count(self) -> int:
@@ -98,8 +96,7 @@ class DependencyBuildResult:
         Q10's density; kept here so the gate and the dimension cannot disagree.
         """
         return len(
-            [e for e in self.graph.edges
-             if self._is_cross_chapter(e) and e.status == "asserted"]
+            [e for e in self.graph.edges if self._is_cross_chapter(e) and e.status == "asserted"]
         )
 
     def _is_cross_chapter(self, edge: ReasoningEdge) -> bool:
@@ -221,18 +218,20 @@ class DependencyBuilder:
                 seen.add(tgt_num)
                 before = text[max(0, m.start() - _REF_WINDOW_BEFORE) : m.start()]
                 after = text[m.end() : m.end() + _REF_WINDOW_AFTER]
-                quote = (
-                    text[max(0, m.start() - 90) : m.end() + 60].strip().replace("\n", " ")
-                )
+                quote = text[max(0, m.start() - 90) : m.end() + 60].strip().replace("\n", " ")
                 locator = f"char:{m.start()} in {chapter_id}"
 
-                dependency = bool(_DEPENDENCY_CONTEXT.search(before) or _DEPENDENCY_CONTEXT.search(after))
+                dependency = bool(
+                    _DEPENDENCY_CONTEXT.search(before) or _DEPENDENCY_CONTEXT.search(after)
+                )
                 support = bool(_SUPPORT_CONTEXT.search(before) or _SUPPORT_CONTEXT.search(after))
 
                 if dependency:
                     edge = self._edge(
                         result,
-                        src, by_number[tgt_num], "DEPENDS_ON",
+                        src,
+                        by_number[tgt_num],
+                        "DEPENDS_ON",
                         reason=f"{chapter_id} states a dependence on chapter {tgt_num}: ...{quote[:160]}",
                         evidence=[locator],
                         evidence_type="DIRECT",
@@ -242,7 +241,9 @@ class DependencyBuilder:
                 elif support:
                     edge = self._edge(
                         result,
-                        src, by_number[tgt_num], "SUPPORTS",
+                        src,
+                        by_number[tgt_num],
+                        "SUPPORTS",
                         reason=f"{chapter_id} draws on chapter {tgt_num}: ...{quote[:160]}",
                         evidence=[locator],
                         evidence_type="DIRECT",
@@ -318,7 +319,9 @@ class DependencyBuilder:
                 per_target[owner] = per_target.get(owner, 0) + 1
                 edge = self._edge(
                     result,
-                    src, by_number[owner], "DEPENDS_ON",
+                    src,
+                    by_number[owner],
+                    "DEPENDS_ON",
                     reason=(
                         f"{cu.chapter_id} uses '{term}', introduced in chapter {owner}, "
                         f"{occurrences} times"
@@ -343,7 +346,9 @@ class DependencyBuilder:
         for (num_a, node_a), (num_b, node_b) in zip(ordered, ordered[1:]):
             edge = self._edge(
                 result,
-                node_b, node_a, "DEPENDS_ON",
+                node_b,
+                node_a,
+                "DEPENDS_ON",
                 reason=(
                     f"chapter {num_b} follows chapter {num_a} in the book; no explicit "
                     "reference or concept recurrence was found"
