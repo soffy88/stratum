@@ -271,7 +271,16 @@ class OpenAICompatibleProvider(_HTTPProvider):
         }
 
     def _extract(self, data: dict) -> str:
-        return data["choices"][0]["message"]["content"]
+        msg = data["choices"][0]["message"]
+        # Reasoning models (deepseek-v4.1-flash, nemotron-3-super, qwen3-thinking)
+        # emit the answer in `reasoning_content` and leave `content` null when the
+        # token budget is spent on the chain of thought — especially under
+        # json_mode, where the payload lands there verbatim. Fall back to it so a
+        # correct answer is not discarded for being in the other field.
+        text = msg.get("content")
+        if text is None or (isinstance(text, str) and not text.strip()):
+            text = msg.get("reasoning_content")
+        return text
 
 
 class DeepSeekProvider(OpenAICompatibleProvider):
