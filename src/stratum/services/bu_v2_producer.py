@@ -667,9 +667,13 @@ class ChapterUnderstandingProducer:
             locator, snippet = found
             ev = EvidenceArtifact.make(run_id, chapter.chapter_id, kind, locator, snippet)
             evidence.append(ev)
+            # The full claim text is kept (capped generously) so the accuracy
+            # judge and the expression layer see the whole assertion, not a
+            # mid-sentence fragment that cannot be verified. 120 chars truncated
+            # roughly a third of Thomas's claims and pushed the judge to NO.
             program.append(
                 EvidenceProgramItem(
-                    claim_ref=text[:120],
+                    claim_ref=text[:600],
                     evidence_refs=[ev.evidence_id],
                     is_supported=True,
                 )
