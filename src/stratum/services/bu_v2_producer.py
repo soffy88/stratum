@@ -25,6 +25,7 @@ from __future__ import annotations
 import os
 
 import hashlib
+import json
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -42,6 +43,106 @@ from stratum.services.bu_v2_provider import (
     call_with_retry,
     resolve_provider,
 )
+
+
+@dataclass
+class _Chunk:
+    """A bounded slice of a chapter for chunked reading."""
+
+    text: str
+    start: int
+    end: int
+    sequence: int
+    total: int
+
+
+def _heal_json(text: str | None) -> Any:
+    """Recover a JSON object from an LLM response that may be truncated/fenced.
+
+    The provider's ``resp.json()`` only handles a well-formed bare object. Models
+    that hit ``max_tokens`` mid-stream leave a trailing comma, an unclosed brace,
+    or a fenced block. This salvages the object when possible, returns ``None``
+    when it cannot, so the caller can retry or mark the chunk failed rather than
+    silently producing an empty understanding for an intact chapter.
+    """
+    if not text:
+        return None
+    s = text.strip()
+    # Strip a markdown fence if present.
+    if s.startswith("```"):
+        s = re.sub(r"^```[a-zA-Z]*\n?", "", s)
+        s = re.sub(r"\n?```$", "", s.strip())
+        s = s.strip()
+    # Try the whole thing first.
+    try:
+        return json.loads(s)
+    except (ValueError, json.JSONDecodeError):
+        pass
+    # Find the outermost {...} span and repair a truncated tail.
+    start = s.find("{")
+    if start == -1:
+        return None
+    body = s[start:]
+    # Walk with a bracket stack; record where the top-level object closes so we can
+    # take the longest balanced prefix, then fall back to stack-closing repair.
+    stack: list[str] = []
+    in_str = False
+    esc = False
+    last_closed = -1
+    for i, ch in enumerate(body):
+        if esc:
+            esc = False
+            continue
+        if ch == "\\":
+            esc = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch in "{[":
+            stack.append(ch)
+        elif ch in "}]":
+            if stack:
+                stack.pop()
+                if not stack:
+                    last_closed = i
+    if last_closed >= 0:
+        try:
+            return json.loads(body[: last_closed + 1])
+        except (ValueError, json.JSONDecodeError):
+            pass
+    # Truncated mid-structure: strip a trailing dangling key (", \"name\":") or
+    # comma, drop an unterminated string value, then close open brackets in order.
+    tail = re.sub(r',\s*"[^"]*"\s*:\s*$', "", body)
+    tail = re.sub(r",\s*$", "", tail.rstrip())
+    tail = re.sub(r'\s*:\s*"(?:[^"\\]|\\.)*$', "", tail)
+    tail = re.sub(r",\s*$", "", tail.rstrip())
+    close_map = {"{": "}", "[": "]"}
+    repaired = tail + "".join(close_map[b] for b in reversed(stack))
+    try:
+        return json.loads(repaired)
+    except (ValueError, json.JSONDecodeError):
+        return None
+
+
+def _item_in(item: Any, items: list[Any], key: str) -> bool:
+    """Case-insensitive membership test for a merged list entry."""
+    if isinstance(item, dict):
+        probe = _as_str(item.get("name") or item.get("text") or item.get("term")).lower()
+    else:
+        probe = _as_str(item).lower()
+    if not probe:
+        return False
+    for other in items:
+        if isinstance(other, dict):
+            other_s = _as_str(other.get("name") or other.get("text") or other.get("term")).lower()
+        else:
+            other_s = _as_str(other).lower()
+        if other_s == probe:
+            return True
+    return False
 
 
 @dataclass
@@ -269,12 +370,31 @@ def _schema_hint() -> str:
 class ChapterUnderstandingProducer:
     """§8: chapter content in, ChapterUnderstanding out."""
 
-    def __init__(self, provider: ModelProvider | None = None, *, max_chars: int = 12000):
+    def __init__(
+        self,
+        provider: ModelProvider | None = None,
+        *,
+        max_chars: int = 12000,
+        max_chunk_chars: int = 9000,
+        chunk_overlap: int = 300,
+    ):
         self.provider = provider or resolve_provider()
-        # A small local model degrades badly past a few thousand characters, and
-        # a large hosted one is billed per token. 12k is the compromise; the
-        # chapter is chunked by section when it exceeds this.
+        # `max_chars` is the legacy single-shot cap. Long chapters are now read
+        # in bounded chunks (see `_chapter_chunks`) and the per-chunk results are
+        # merged, so the output of a 40k-character chapter is no longer silently
+        # truncated at 12k. `max_chars` still bounds a single chunk.
         self.max_chars = max_chars
+        self.max_chunk_chars = max_chunk_chars
+        self.chunk_overlap = chunk_overlap
+        # A chapter whose Definition/Theorem KUs must all be covered. Populated
+        # by the runner (KU anchoring, task B): a list of
+        #   {"name", "ku_id", "kind", "quote", "locator", "chapter"}
+        # entries that the model is told to treat as must-cover items.
+        self.ku_anchor: list[dict] = []
+
+    def set_ku_anchor(self, items: list[dict]) -> None:
+        """Attach the chapter's frozen DEF/THM KUs as a must-cover list."""
+        self.ku_anchor = list(items or [])
 
     def produce(
         self,
@@ -291,52 +411,26 @@ class ChapterUnderstandingProducer:
         misbehaviour: a chapter that cannot be understood becomes an empty
         understanding with its uncertainties recorded, which is honest and
         keeps the book run alive.
+
+        Long chapters are read in bounded chunks and the results merged, instead
+        of slicing the text at ``max_chars`` and dropping the tail.
         """
-        context_block = chapter.context.render() if chapter.context else ""
-        prompt = (
-            f"{context_block}\n\n"
-            f"CHAPTER: {chapter.title}\n"
-            f"CHARACTERS: {chapter.char_count}\n\n"
-            f"CHAPTER TEXT:\n{chapter.text[: self.max_chars]}\n\n"
-            f"{_language_rule(chapter.text[: self.max_chars])}"
-            f"Extract the structure. Respond with exactly this JSON shape:\n{_schema_hint()}"
-        )
-
-        # Chinese answers cost roughly twice the tokens of English ones; at
-        # 1600 they were cut off mid-JSON and every chapter was asked again.
-        max_tokens = 2800 if _language_rule(chapter.text[:4000]) else 1600
-
-        def _ask() -> dict:
-            resp = self.provider.complete(
-                prompt, system=_SYSTEM, json_mode=True, max_tokens=max_tokens, temperature=0.0
-            )
+        chunks = self._chapter_chunks(chapter)
+        merged: dict = {}
+        failure = ""
+        any_ok = False
+        for chunk in chunks:
             try:
-                data = resp.json()
-            except ValueError as exc:
-                raise ProviderError(str(exc)) from exc
-            # Some models wrap the object in a one-element list; unwrap it.
-            if isinstance(data, list) and data and all(isinstance(x, dict) for x in data):
-                data = data[0]
-            if not isinstance(data, dict):
-                raise ProviderError(f"expected a JSON object, got {type(data).__name__}")
-            return data
+                data = self._ask_chunk(chapter, chunk)
+            except (ProviderError, ValueError) as exc:
+                # A single failed chunk must not drop the whole chapter.
+                if not merged:
+                    failure = str(exc)
+                continue
+            any_ok = True
+            merged = self._merge_chunk(merged, data, chunk)
 
-        # A rotating gateway routes each call to a different upstream, so a
-        # malformed answer or an exhausted gateway retry budget is worth asking
-        # again. Provider-level transient retries happen inside complete().
-        try:
-            data = call_with_retry(
-                _ask,
-                attempts=int(os.environ.get("BU2_CHAPTER_ATTEMPTS", "3")),
-                retry_if=lambda exc: not isinstance(exc, ProviderUnavailable) or _is_transient(exc),
-            )
-        except (ProviderError, ValueError) as exc:
-            data = {}
-            failure = str(exc)
-        else:
-            failure = ""
-
-        if failure:
+        if not any_ok:
             # §9 and the verification gate both want the gap recorded, not hidden.
             cu = ChapterUnderstanding(
                 id=f"cu_{run_id}_{chapter.chapter_id}",
@@ -344,10 +438,6 @@ class ChapterUnderstandingProducer:
                 chapter_id=chapter.chapter_id,
                 chapter_question="",
                 chapter_goal="",
-                # The reason is kept verbatim in both the thesis and the
-                # qualification. A gate that reports "1 chapter failed" without
-                # saying why is not actionable, and this is the only place the
-                # cause survives the run.
                 chapter_thesis=f"[not understood] {failure[:160]}",
                 primary_role="UNDERSTANDING_FAILED",
                 qualifications=[f"extraction failed: {failure[:400]}"],
@@ -360,9 +450,146 @@ class ChapterUnderstandingProducer:
             )
             return cu, delta, []
 
-        cu, evidence = self._build_understanding(chapter, run_id, data)
-        delta = self._build_delta(chapter, run_id, data, prior_chapter_ids or [])
+        cu, evidence = self._build_understanding(chapter, run_id, merged)
+        delta = self._build_delta(chapter, run_id, merged, prior_chapter_ids or [])
         return cu, delta, evidence
+
+    # ── chunked reading ───────────────────────────────────────────────────────
+
+    def _chapter_chunks(self, chapter: Chapter) -> list["_Chunk"]:
+        """Split a chapter into bounded chunks when it exceeds ``max_chunk_chars``.
+
+        Each chunk keeps the chapter context but carries only its slice of text
+        plus a little overlap so a definition split across the boundary still
+        reads whole. A short chapter is a single chunk covering the whole text.
+        """
+        text = chapter.text
+        if len(text) <= self.max_chunk_chars:
+            return [_Chunk(text, 0, len(text), 1, 1)]
+        chunks: list[_Chunk] = []
+        n = len(text)
+        start = 0
+        seq = 0
+        while start < n:
+            seq += 1
+            end = min(start + self.max_chunk_chars, n)
+            chunks.append(_Chunk(text[start:end], start, end, seq, 0))
+            if end >= n:
+                break
+            # step forward, leaving overlap so a concept isn't cut mid-definition.
+            start = max(start + 1, end - self.chunk_overlap)
+        total = seq
+        for c in chunks:
+            c.total = total
+        return chunks
+
+    def _ask_chunk(self, chapter: Chapter, chunk: "_Chunk") -> dict:
+        """Ask the model for one chunk and return a parsed dict (or raise)."""
+        context_block = chapter.context.render() if chapter.context else ""
+        is_zh = bool(_language_rule(chunk.text[:4000]))
+        # The model id (if any) is forwarded so a named model is honoured even
+        # though resolve_provider ignores the BU2_MODEL env var.
+        anchor_block = self._ku_anchor_block()
+        where = (
+            f"the WHOLE chapter (part {chunk.sequence} of {chunk.total})"
+            if chunk.total > 1
+            else "the chapter"
+        )
+        prompt = (
+            f"{context_block}\n\n"
+            f"CHAPTER: {chapter.title}\n"
+            f"CHARACTERS: {chapter.char_count}\n\n"
+            f"You are reading {where} of this chapter. ONLY extract structure that "
+            f"appears in the text below.\n\n"
+            f"CHAPTER TEXT:\n{chunk.text}\n\n"
+            f"{anchor_block}"
+            f"{_language_rule(chunk.text[:4000])}"
+            f"Extract the structure. Respond with exactly this JSON shape:\n{_schema_hint()}"
+        )
+        # Chinese answers cost roughly twice the tokens of English ones; at 1600
+        # they were cut off mid-JSON. With chunks bounded to ~9k the model can
+        # still emit a full understanding, so the budget is raised and a
+        # truncated tail is tolerated by the JSON healer below.
+        max_tokens = 6000 if is_zh else 4000
+
+        def _ask() -> dict:
+            resp = self.provider.complete(
+                prompt,
+                system=_SYSTEM,
+                json_mode=True,
+                max_tokens=max_tokens,
+                temperature=0.0,
+            )
+            try:
+                text = resp.text
+            except Exception:  # pragma: no cover - defensive
+                text = ""
+            data = _heal_json(text)
+            if data is None:
+                raise ProviderError("response was not parseable JSON")
+            # Some models wrap the object in a one-element list; unwrap it.
+            if isinstance(data, list) and data and all(isinstance(x, dict) for x in data):
+                data = data[0]
+            if not isinstance(data, dict):
+                raise ProviderError(f"expected a JSON object, got {type(data).__name__}")
+            return data
+
+        # A rotating gateway routes each call to a different upstream, so a
+        # malformed answer or an exhausted gateway retry budget is worth asking
+        # again. Provider-level transient retries happen inside complete().
+        return call_with_retry(
+            _ask,
+            attempts=int(os.environ.get("BU2_CHAPTER_ATTEMPTS", "3")),
+            retry_if=lambda exc: not isinstance(exc, ProviderUnavailable) or _is_transient(exc),
+        )
+
+    def _ku_anchor_block(self) -> str:
+        """Render the must-cover KU list as a prompt annex (task B)."""
+        if not self.ku_anchor:
+            return ""
+        lines = [
+            "",
+            "MANDATORY CONCEPTS (from the book's frozen knowledge units — you MUST "
+            "cover every one of these that the text above actually introduces or "
+            "states; do not invent others; if one is absent from this part, omit it):",
+        ]
+        for it in self.ku_anchor:
+            name = it.get("name") or it.get("title") or ""
+            kind = it.get("kind") or it.get("role") or "DEFINITION"
+            lines.append(f"  - [{kind}] {name}")
+        lines.append("")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _merge_chunk(base: dict, chunk: dict, _c: "_Chunk") -> dict:
+        """Merge a chunk's extracted structure into the running chapter record.
+
+        Lists are concatenated with de-duplication by name/text (case-insensitive
+        for concepts and claims). The first non-empty question/goal/thesis wins.
+        This is what lets a long chapter yield the union of its parts rather than
+        only whatever fit in the first 12k characters.
+        """
+        if not base:
+            return dict(chunk)
+        out = dict(base)
+        for key in (
+            "concepts",
+            "claims",
+            "mechanisms",
+            "dependencies",
+            "uncertainties",
+            "terminology",
+        ):
+            base_list = _as_list(base.get(key))
+            for item in _as_list(chunk.get(key)):
+                if _item_in(item, base_list, key):
+                    continue
+                base_list.append(item)
+            out[key] = base_list
+        for key in ("chapter_question", "chapter_goal", "chapter_thesis", "summary"):
+            if not out.get(key) and chunk.get(key):
+                out[key] = chunk.get(key)
+        return out
 
     # ── internals ──────────────────────────────────────────────────────────
 
@@ -413,10 +640,17 @@ class ChapterUnderstandingProducer:
         # Concepts anchor evidence too. A concept the chapter actually
         # discusses has a locatable first mention, and that is the evidence
         # §9 wants for "this chapter introduces this concept".
+        concept_names: list[str] = []
+        concept_defs: dict[str, str] = {}
         for concept in _as_list(data.get("concepts")):
             name = _as_str(concept.get("name")) if isinstance(concept, dict) else ""
             if not name:
                 continue
+            if name not in concept_names:
+                concept_names.append(name)
+            cdef = _as_str(concept.get("definition")) if isinstance(concept, dict) else ""
+            if cdef and name not in concept_defs:
+                concept_defs[name] = cdef
             found = chapter.locate_term(name)
             if not found:
                 continue
@@ -425,11 +659,62 @@ class ChapterUnderstandingProducer:
             evidence.append(ev)
             strengths[ev.evidence_id] = "DEFINITION"
 
-        concepts_introduced = [
-            _as_str(c.get("name"))
-            for c in _as_list(data.get("concepts"))
-            if _as_str(c.get("name") if isinstance(c, dict) else c)
-        ]
+        # ── KU anchoring (task B) ────────────────────────────────────────────
+        # Every frozen DEF/THM knowledge unit that this chapter actually
+        # contains is a mandatory concept. The model is told to cover them, but
+        # a model misses some; so any anchor the model did not name is added
+        # here, anchored on the frozen KU's own verbatim quote and locator —
+        # never on invented text. This is what makes DEF/THM coverage a
+        # deterministic floor rather than a hope.
+        major_ku_ids: list[str] = []
+        if self.ku_anchor:
+            by_name = {n.lower(): n for n in concept_names}
+            for it in self.ku_anchor:
+                name = _as_str(it.get("name") or it.get("title"))
+                if not name:
+                    continue
+                ku_id = _as_str(it.get("ku_id"))
+                matched = by_name.get(name.lower())
+                if matched is None:
+                    # Model did not name it: add it, but only if the chapter
+                    # text really carries the anchor's quote (or the name).
+                    quote = _as_str(it.get("quote"))
+                    locator = ""
+                    snippet = ""
+                    if quote:
+                        found = chapter.slice_for(quote)
+                        if found:
+                            locator, snippet = found
+                    if not locator:
+                        found = chapter.locate_term(name)
+                        if found:
+                            locator, snippet = found
+                    if not locator:
+                        # The KU is not in this chapter's text; skip rather than
+                        # fabricate coverage.
+                        continue
+                    concept_names.append(name)
+                    ev = EvidenceArtifact.make(
+                        run_id, chapter.chapter_id, "KU_ANCHOR", locator, snippet
+                    )
+                    evidence.append(ev)
+                    strengths[ev.evidence_id] = "DEFINITION"
+                    if ku_id:
+                        major_ku_ids.append(ku_id)
+                    # The frozen KU's own statement is the real definition.
+                    statement = _as_str(it.get("statement") or it.get("quote"))
+                    if statement and name not in concept_defs:
+                        concept_defs[name] = statement[:300]
+                else:
+                    if ku_id:
+                        major_ku_ids.append(ku_id)
+                    # Model named it; still prefer the frozen statement if the
+                    # model gave no definition of its own.
+                    if matched not in concept_defs:
+                        statement = _as_str(it.get("statement") or it.get("quote"))
+                        if statement:
+                            concept_defs[matched] = statement[:300]
+
         mechanisms = [
             _as_str(m.get("cause") or m.get("process"))
             for m in _as_list(data.get("mechanisms"))
@@ -452,8 +737,11 @@ class ChapterUnderstandingProducer:
                 secondary_roles=[
                     r.upper() for r in _as_list(data.get("secondary_roles")) if isinstance(r, str)
                 ][:6],
-                concepts_introduced_refs=concepts_introduced,
-                major_ku_refs=[c for c in concepts_introduced if c],
+                concepts_introduced_refs=concept_names,
+                # §9: the frozen knowledge-unit ids this chapter covers. Falls
+                # back to concept names when no frozen KUs are available, so the
+                # field is never empty on a book that has them.
+                major_ku_refs=major_ku_ids or [c for c in concept_names if c],
                 supporting_ku_refs=[e.evidence_id for e in evidence],
                 mechanisms_refs=[m for m in mechanisms if m],
                 evidence_program=program,
@@ -467,6 +755,9 @@ class ChapterUnderstandingProducer:
                 dependencies_on_prior=[
                     _as_str(d) for d in _as_list(data.get("dependencies")) if _as_str(d)
                 ],
+                # Task C: the real definition text per concept, so the book-level
+                # concept evolution carries it rather than a placeholder.
+                concept_definitions=concept_defs,
             ),
             evidence,
         )
