@@ -111,6 +111,12 @@ class RunResult:
     chapter_roles: list[dict[str, str]] = field(default_factory=list)
     # P12: the reasoning graph, concept evolution, argument model and deep quality.
     p12: Any = None
+    # Task B: the frozen KU index used to anchor this run's concept extraction.
+    ku_index: Any = None
+    # Task D: the hard quality gates and the six-dimension score.
+    hard_gates: Any = None
+    # Task E: the dependency-ordered learning guide.
+    learning_guide: Any = None
 
     @property
     def verified(self) -> bool:
@@ -356,8 +362,14 @@ class BU2Runner:
         persist: bool = False,
         chapter_limit: int | None = None,
         use_structure_extractor: bool = True,
+        use_ku_anchor: bool = True,
+        use_accuracy_judge: bool = True,
     ):
         self.use_structure_extractor = use_structure_extractor
+        self.use_ku_anchor = use_ku_anchor
+        # The accuracy dimension calls the provider as a judge over a claim
+        # sample. On for a real run; off in unit tests to keep them offline.
+        self.use_accuracy_judge = use_accuracy_judge
         self.provider = provider or resolve_provider()
         self.loader = loader or BookLoader()
         self.producer = ChapterUnderstandingProducer(provider=self.provider)
@@ -373,6 +385,11 @@ class BU2Runner:
         self.extractor = BookStructureExtractor(provider=self.provider)
         self._spans_from_structure = chapter_spans_from_structure
         self.verifier = BUVerifier()
+        # Task C: when the model cannot frame the book, derive a book-specific
+        # framing from the chapters rather than leaving it empty. This is real
+        # content but weaker than a model reading, so it is flagged as derived and
+        # the quality model reports it as a gap rather than counting it as full.
+        self.integrator.allow_derived_framing = True
         self.expr = BUExpressionGenerator()
         # Persisting is opt-in. §15 runs against production, and a trial should
         # not write 16 chapter rows into a live table because someone forgot a
@@ -455,6 +472,23 @@ class BU2Runner:
         if structure is not None:
             result.structure_kinds = {c.chapter_id: c.kind for c in (structure.chapters or [])}
 
+        # ── KU anchoring (task B) ────────────────────────────────────────────
+        # The A-warehouse book_freeze produced frozen DEF/THM knowledge units
+        # for this book. Feed each chapter its own KUs as a must-cover list so
+        # the deterministic skeleton anchors the LLM's concept extraction. A
+        # book with no frozen KUs degrades to the previous behaviour.
+        ku_index = None
+        if self.use_ku_anchor:
+            try:
+                from stratum.services.bu_v2_ku_anchor import FrozenKUReader
+
+                ku_index = FrozenKUReader().index_for_chapters(
+                    substrate_id, [(c.chapter_id, c.title) for c in chapters]
+                )
+                result.ku_index = ku_index
+            except Exception as exc:  # a KU read failure must not end the book
+                result.failures.append(f"ku anchoring unavailable: {exc}")
+
         # ── generate_chapters (§6: with context, not in isolation) ───────────
         prior: list[str] = []
         total = len(chapters)
@@ -474,6 +508,9 @@ class BU2Runner:
             )
             chapter.role = classify_role(chapter)
             recent_titles.append(chapter.title)
+            # §B: hand the producer this chapter's frozen KUs as a must-cover list.
+            if ku_index is not None:
+                self.producer.set_ku_anchor(ku_index.anchors_for(chapter.chapter_id))
             try:
                 cu, delta, evidence = self.producer.produce(
                     chapter, run_id=run_id, book_id=substrate_id, prior_chapter_ids=prior
@@ -533,6 +570,13 @@ class BU2Runner:
                 f"verification FAIL: {len(report.failed)} check(s): "
                 + ", ".join(c.name for c in report.failed)
             )
+        # Task C: a derived framing is a degradation, not a silent success — the
+        # model did not read the book's framing, the chapters were used instead.
+        # Recorded so the run reports it rather than hiding it.
+        if getattr(bu, "framing_derived", False):
+            result.failures.append(
+                "book framing was derived from the chapters; the model did not read it"
+            )
 
         # ── P12: reasoning graph, concept evolution, argument model ─────────
         # Runs after integration because all three read the integrated BU and
@@ -540,6 +584,20 @@ class BU2Runner:
         # must be built BEFORE the BU row is written: persisting first left the
         # three graph ids unset on every persisted run.
         result.p12 = self._build_p12(result)
+
+        # ── Task E: dependency-ordered learning guide ──────────────────────
+        # Built here so the expression can carry it and the query API can read
+        # it back. It is a rendering of the graph, never persisted.
+        from stratum.services.bu_v2_learning_guide import LearningGuideBuilder
+
+        dep = (result.p12 or {}).get("dependency")
+        result.learning_guide = LearningGuideBuilder().build(
+            run_id=result.run_id,
+            book_id=result.book_id,
+            graph=getattr(dep, "graph", None),
+            chapters=result.chapters,
+            ku_index=getattr(result, "ku_index", None),
+        )
 
         if self.persist:
             self._persist_bu(result)
@@ -563,7 +621,9 @@ class BU2Runner:
             report.quality_level = result.quality.quality_level
 
         # ── generate_expression (§12 carries quality as confidence) ────────
-        result.expression = self.expr.generate(bu, quality=result.quality)
+        result.expression = self.expr.generate(
+            bu, quality=result.quality, guide=result.learning_guide
+        )
 
         detection = content_cov = None
         if structure is not None:
@@ -596,7 +656,36 @@ class BU2Runner:
         p12_gates = evaluate_p12_gates(result, structure=result.structure)
         result.report_bundle.gates.extend(p12_gates)
         result.p12_gate_summary = {g.gate: g.to_dict()["status"] for g in p12_gates}
+
+        # ── Task D: hard gates + 6-dimension score ─────────────────────────
+        # These are the gates the audit asked for: empty chapters, placeholder
+        # text, dangling evidence, DEF/THM KU coverage, zero-argument chapters
+        # and evidence without a quote each FAIL a run rather than passing
+        # silently. Accuracy is scored by an LLM judge when a provider is
+        # available, else from evidence strength.
+        from stratum.services.bu_v2_hard_gates import HardGateEvaluator
+
+        judge = self._make_judge() if self.use_accuracy_judge else None
+        result.hard_gates = HardGateEvaluator(judge=judge).evaluate(
+            result, structure=result.structure
+        )
+        result.report_bundle.hard_gates = result.hard_gates
         return result
+
+    def _make_judge(self):
+        """A one-line LLM judge callable for the accuracy dimension, or None."""
+        provider = self.provider
+        if provider is None:
+            return None
+
+        def _judge(prompt: str) -> str:
+            try:
+                resp = provider.complete(prompt, max_tokens=4, temperature=0.0)
+                return getattr(resp, "text", "") or ""
+            except Exception:
+                return ""
+
+        return _judge
 
     def _build_p12(self, result: RunResult) -> Any:
         """§5-§8: the book reasoning graph, concept evolution and argument model.
@@ -618,6 +707,19 @@ class BU2Runner:
             result.chapters,
             run_id=result.run_id,
             book_id=result.book_id,
+            chapter_text=chapter_text or None,
+        )
+        # Task C: add CONCEPT/THEOREM/CLAIM nodes and the reasoned edges between
+        # them, so the graph is a model of the book's knowledge and not only its
+        # chapter spine.
+        from stratum.services.bu_v2_graph_enricher import ReasoningGraphEnricher
+
+        enricher = ReasoningGraphEnricher()
+        enrichment = enricher.enrich(
+            dependency.graph,
+            result.chapters,
+            run_id=result.run_id,
+            ku_index=getattr(result, "ku_index", None),
             chapter_text=chapter_text or None,
         )
         evolution = ConceptEvolutionBuilder().build(
@@ -654,6 +756,7 @@ class BU2Runner:
             "evolution": evolution,
             "argument": argument,
             "deep_quality": deep,
+            "enrichment": enrichment,
         }
 
     @staticmethod
@@ -665,6 +768,13 @@ class BU2Runner:
 
     @staticmethod
     def _integration_input(result: RunResult) -> IntegrationInput:
+        # Task C: gather the real definition text for every concept any chapter
+        # defined, so book-level concept evolution carries it.
+        defs: dict[str, str] = {}
+        for cu in result.chapters:
+            for name, definition in (getattr(cu, "concept_definitions", {}) or {}).items():
+                if name and definition and name not in defs:
+                    defs[name] = definition
         return IntegrationInput(
             run_id=result.run_id,
             book_id=result.book_id,
@@ -673,6 +783,8 @@ class BU2Runner:
             deltas=result.deltas,
             evidence_by_chapter={},
             genre="",
+            chapter_kinds=dict(result.structure_kinds or {}),
+            concept_definitions=defs,
         )
 
     @staticmethod
@@ -883,6 +995,22 @@ class BU2Runner:
         result.persisted = True
         if result.bu.status == BUStatus.VERIFIED:
             self._persist_p13(result)
+        # Task D: the hard gates are stored for every run, not only a verified
+        # one — a failed run's gates are exactly what a reader needs to see.
+        self._persist_hard_gates(result)
+
+    def _persist_hard_gates(self, result: RunResult) -> None:
+        """Write the hard gates + six-dimension score (task D)."""
+        import sys
+
+        if getattr(result, "hard_gates", None) is None:
+            return
+        try:
+            from stratum.services.bu_v2_hard_gates import persist_gates
+
+            persist_gates(result.hard_gates, book_id=result.book_id)
+        except Exception as exc:  # noqa: BLE001 - reported, run stays as it was
+            print(f"[bu2] hard gates not persisted for {result.run_id}: {exc}", file=sys.stderr)
 
     def _persist_p13(self, result: RunResult) -> None:
         """P13: build and store the BookSynthesis for a VERIFIED run.
@@ -1005,6 +1133,14 @@ def main(argv: list[str] | None = None) -> int:
                         for g in (result.report_bundle.gates if result.report_bundle else [])
                         if g.gate.startswith("p12_")
                     ],
+                    "hard_gates": (
+                        result.hard_gates.to_dict() if result.hard_gates is not None else None
+                    ),
+                    "learning_guide": (
+                        result.learning_guide.to_dict()
+                        if result.learning_guide is not None
+                        else None
+                    ),
                 },
                 indent=2,
                 ensure_ascii=False,

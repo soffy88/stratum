@@ -38,17 +38,20 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 NodeType = Literal[
-    "CHAPTER", "CONCEPT", "CLAIM", "MECHANISM", "QUESTION", "EXAMPLE", "CONCLUSION"
+    "CHAPTER", "CONCEPT", "CLAIM", "THEOREM", "MECHANISM", "QUESTION", "EXAMPLE", "CONCLUSION"
 ]
 EdgeType = Literal[
-    "DEPENDS_ON", "EXTENDS", "REFINES", "CONTRADICTS",
-    "APPLIES_TO", "EXPLAINS", "SUPPORTS",
+    "DEPENDS_ON",
+    "EXTENDS",
+    "REFINES",
+    "CONTRADICTS",
+    "APPLIES_TO",
+    "EXPLAINS",
+    "SUPPORTS",
 ]
 # §11: how strong the support is. MODEL_INFERENCE is explicit rather than
 # implied, so a reader can always tell an inferred relation from a quoted one.
-EvidenceStrength = Literal[
-    "DIRECT", "DEFINITION", "EXAMPLE", "DERIVED", "MODEL_INFERENCE"
-]
+EvidenceStrength = Literal["DIRECT", "DEFINITION", "EXAMPLE", "DERIVED", "MODEL_INFERENCE"]
 
 EVIDENCE_STRENGTH_RANK: dict[str, int] = {
     "DIRECT": 4,
@@ -61,7 +64,7 @@ EVIDENCE_STRENGTH_RANK: dict[str, int] = {
 # §5.2 vocabularies, kept in one place so the model, the validator and the
 # database CHECK cannot drift apart.
 NODE_TYPES: frozenset[str] = frozenset(
-    {"CHAPTER", "CONCEPT", "CLAIM", "MECHANISM", "QUESTION", "EXAMPLE", "CONCLUSION"}
+    {"CHAPTER", "CONCEPT", "CLAIM", "THEOREM", "MECHANISM", "QUESTION", "EXAMPLE", "CONCLUSION"}
 )
 EDGE_TYPES: frozenset[str] = frozenset(
     {"DEPENDS_ON", "EXTENDS", "REFINES", "CONTRADICTS", "APPLIES_TO", "EXPLAINS", "SUPPORTS"}
@@ -123,9 +126,7 @@ class ReasoningEdge:
             # Refusing here means the failure surfaces at construction, where the
             # message can name the relation, rather than as a NOT NULL error at
             # insert time.
-            raise ValueError(
-                f"edge {self.edge_id}: §6 requires a reason for {self.relation_type}"
-            )
+            raise ValueError(f"edge {self.edge_id}: §6 requires a reason for {self.relation_type}")
         if self.evidence_type not in EVIDENCE_STRENGTH_RANK:
             raise ValueError(
                 f"unknown evidence_type {self.evidence_type!r}; "
@@ -328,6 +329,66 @@ def node_id(prefix: str, *parts: str) -> str:
     the same book, or a graph cannot be compared with its predecessor."""
     raw = "|".join(p for p in parts if p)
     return f"{prefix}_{hashlib.sha256(raw.encode()).hexdigest()[:12]}"
+
+
+def load_graph(graph_id: str) -> "BookReasoningGraph | None":
+    """Rebuild a persisted reasoning graph from the database (task E).
+
+    Reads ``book_reasoning_graph`` + ``reasoning_node`` + ``reasoning_edge`` and
+    reconstructs the in-memory graph. Returns ``None`` when the graph is absent,
+    so a caller degrades to the chapter-based learning-guide fallback rather than
+    failing.
+    """
+    from stratum.db import query
+
+    rows = query(
+        "SELECT * FROM book_reasoning_graph WHERE id = %(g)s",
+        {"g": graph_id},
+        limit=1,
+    )
+    if not rows:
+        return None
+    head = rows[0]
+    graph = BookReasoningGraph(
+        graph_id=graph_id,
+        run_id=head.get("run_id") or "",
+        book_id=head.get("book_id") or "",
+    )
+    for n in query(
+        "SELECT * FROM reasoning_node WHERE graph_id = %(g)s", {"g": graph_id}, limit=100000
+    ):
+        try:
+            graph.nodes[n["id"]] = ReasoningNode(
+                node_id=n["id"],
+                node_type=n["node_type"],
+                label=n.get("label") or "",
+                chapter_id=n.get("chapter_id") or "",
+                source_ref=n.get("source_ref") or "",
+                confidence=float(n.get("confidence") or 0.0),
+                metadata=n.get("metadata") or {},
+            )
+        except ValueError:
+            continue
+    for e in query(
+        "SELECT * FROM reasoning_edge WHERE graph_id = %(g)s", {"g": graph_id}, limit=100000
+    ):
+        try:
+            graph.edges.append(
+                ReasoningEdge(
+                    edge_id=e["id"],
+                    source_node_id=e["source_node_id"],
+                    target_node_id=e["target_node_id"],
+                    relation_type=e["relation_type"],
+                    reason=e.get("reason") or "",
+                    evidence_refs=list(e.get("evidence_refs") or []),
+                    evidence_type=e.get("evidence_type") or "MODEL_INFERENCE",
+                    confidence=float(e.get("confidence") or 0.0),
+                    status=e.get("status") or "asserted",
+                )
+            )
+        except ValueError:
+            continue
+    return graph
 
 
 def _clamp(v: float) -> float:

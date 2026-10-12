@@ -35,7 +35,11 @@ class QualityGateResult:
     detail: str
 
     def to_dict(self) -> dict[str, Any]:
-        return {"gate": self.gate, "status": "PASS" if self.passed else "FAIL", "detail": self.detail}
+        return {
+            "gate": self.gate,
+            "status": "PASS" if self.passed else "FAIL",
+            "detail": self.detail,
+        }
 
 
 def evaluate_p12_gates(
@@ -118,9 +122,7 @@ def evaluate_p12_gates(
     # Gate 5: evidence strength is available and bound.
     bound = sum(len(getattr(c, "evidence_strengths", {}) or {}) for c in chapters)
     strengths = {
-        kind
-        for c in chapters
-        for kind in (getattr(c, "evidence_strengths", {}) or {}).values()
+        kind for c in chapters for kind in (getattr(c, "evidence_strengths", {}) or {}).values()
     }
     gates.append(
         QualityGateResult(
@@ -136,8 +138,9 @@ def evaluate_p12_gates(
         QualityGateResult(
             "p12_6_deep_quality",
             len(q) == 4,
-            f"{len(q)} of 4 deep dimensions scored, overall "
-            f"{deep.overall:.2f} ({deep.deep_level})" if deep else "no deep quality report",
+            f"{len(q)} of 4 deep dimensions scored, overall {deep.overall:.2f} ({deep.deep_level})"
+            if deep
+            else "no deep quality report",
         )
     )
 
@@ -145,7 +148,9 @@ def evaluate_p12_gates(
     blob = ""
     for obj in (dep.graph if dep else None,):
         blob += repr(obj.to_dict()) if obj else ""
-    isolated = all(b not in blob for b in ("rf.", "aii_refined", "refined_ku", "cx.learning_progress"))
+    isolated = all(
+        b not in blob for b in ("rf.", "aii_refined", "refined_ku", "cx.learning_progress")
+    )
     gates.append(
         QualityGateResult(
             "p12_7_boundaries",
@@ -211,8 +216,7 @@ def evaluate_gates(
             QualityGateResult(
                 "1_structure",
                 ok,
-                f"detection {detection_ratio:.0%} of declared chapters, "
-                f"mean confidence {conf:.2f}",
+                f"detection {detection_ratio:.0%} of declared chapters, mean confidence {conf:.2f}",
             )
         )
 
@@ -294,6 +298,28 @@ def render_gates(gates: list[QualityGateResult]) -> str:
     return "\n".join(lines)
 
 
+def render_hard_gates(report: Any) -> list[str]:
+    """Task D: the hard gates and the six-dimension score, as report lines."""
+    lines = ["", "P13 HARD QUALITY GATES (task D)", "-" * 70]
+    for g in report.gates:
+        status = "PASS" if g.passed else "FAIL"
+        lines.append(f"  [{status:>4}] {g.gate:<30} {g.detail[:34]}")
+    lines += [
+        "-" * 70,
+        f"  {sum(1 for g in report.gates if g.passed)} of {len(report.gates)} hard gates passed",
+        "",
+        "SIX-DIMENSION SCORE (0-10)",
+        "-" * 70,
+    ]
+    for d in report.dimensions:
+        lines.append(f"  {d.name:<26}{d.score:>6.2f}  {d.detail[:40]}")
+    lines += [
+        "-" * 70,
+        f"  {'OVERALL':<26}{report.overall:>6.2f}",
+    ]
+    return lines
+
+
 @dataclass
 class BU2QualityReportBundle:
     """§4's report artifact: quality plus gates plus the run that produced them."""
@@ -306,6 +332,8 @@ class BU2QualityReportBundle:
     pipeline_status: str = "UNKNOWN"
     legacy_fusion: dict[str, Any] | None = None
     chapter_roles: list[dict[str, str]] = field(default_factory=list)
+    # Task D: the hard gates and six-dimension score, when a run produced them.
+    hard_gates: Any = None
 
     @property
     def all_gates_pass(self) -> bool:
@@ -322,6 +350,7 @@ class BU2QualityReportBundle:
             "all_gates_pass": self.all_gates_pass,
             "legacy_fusion": self.legacy_fusion,
             "chapter_roles": self.chapter_roles,
+            "hard_gates": self.hard_gates.to_dict() if self.hard_gates is not None else None,
         }
 
     def render(self) -> str:
@@ -334,6 +363,8 @@ class BU2QualityReportBundle:
             "  These are independent. A PASS pipeline with a low quality level",
             "  means the book was processed correctly and understood shallowly.",
         ]
+        if self.hard_gates is not None:
+            parts += render_hard_gates(self.hard_gates)
         if self.legacy_fusion:
             parts += [
                 "",

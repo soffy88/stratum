@@ -9,16 +9,9 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from stratum.knowledge.bu_v2_models import (
-    BookArgument,
     BookAuthorModel,
-    BookChapterRoles,
-    BookConceptSystem,
-    BookContradictions,
-    BookEvidenceMap,
-    BookMechanismSystem,
     BookSynthesis,
     BookThesisModel,
-    ContradictionEntry,
 )
 from stratum.db import read, query
 
@@ -59,7 +52,7 @@ class BU2Query:
         synth = self._get_synthesis()
         if not synth:
             return []
-        concepts = []
+        concepts: list[Any] = []
         if role:
             role_attr = role.lower()
             if hasattr(synth.concept_system, role_attr):
@@ -104,7 +97,6 @@ class BU2Query:
         synth = self._get_synthesis()
         if not synth:
             return None
-        roles = synth.chapter_roles.get_roles(chapter_id)
         for assignment in synth.chapter_roles.assignments:
             if assignment.chapter_id == chapter_id:
                 return assignment.model_dump()
@@ -122,11 +114,43 @@ class BU2Query:
         synth = self._get_synthesis()
         if not synth:
             return []
-        return s.unresolved_questions
+        return synth.unresolved_questions
 
     def get_book_synthesis(self) -> Optional[BookSynthesis]:
         """Get the complete book synthesis."""
         return self._get_synthesis()
+
+    def get_learning_guide(self) -> list[dict]:
+        """Task E: the dependency-ordered learning path for this run.
+
+        Derived from the persisted reasoning graph and the run's chapters, so it
+        is recomputed on demand rather than stored — the BU stays the authority.
+        """
+        from stratum.services.bu_v2_learning_guide import LearningGuideBuilder
+        from stratum.services.bu_v2_repositories import (
+            ChapterUnderstandingRepository,
+        )
+
+        bu = self._get_bu()
+        if not bu:
+            return []
+        chapters = ChapterUnderstandingRepository.load_for_run(self.run_id)
+        graph = None
+        graph_id = bu.get("reasoning_graph_id")
+        if graph_id:
+            try:
+                from stratum.services.bu_v2_reasoning_graph import load_graph
+
+                graph = load_graph(graph_id)
+            except Exception:
+                graph = None
+        guide = LearningGuideBuilder().build(
+            run_id=self.run_id,
+            book_id=bu.get("book_id") or bu.get("substrate_id") or "",
+            graph=graph,
+            chapters=chapters,
+        )
+        return [s.to_dict() for s in guide.steps]
 
     def get_author_model(self) -> Optional[BookAuthorModel]:
         """Get the author model."""
@@ -147,10 +171,7 @@ class BU2Query:
         synth = self._get_synthesis()
         if not synth:
             return []
-        return [
-            e.model_dump() for e in synth.evidence_map.entries
-            if not e.is_supported
-        ]
+        return [e.model_dump() for e in synth.evidence_map.entries if not e.is_supported]
 
     def get_model_inference_claims(self) -> list[dict]:
         """Get claims primarily supported by model inference."""
