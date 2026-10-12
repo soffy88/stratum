@@ -182,7 +182,6 @@ class BookStructure:
                 # denominator forward is what makes the ratio interpretable
                 # after the structure has been serialised.
                 "expected_chapters": self.expected_chapters,
-                "chapter_detection_ratio": self.chapter_detection_ratio,
                 "confidence_mean": self.confidence_mean,
                 "coverage_ratio": self.coverage_ratio,
                 "content_coverage_ratio": self.content_coverage_ratio,
@@ -246,7 +245,9 @@ class BookStructureExtractor:
             structure.chapters = self._from_headings(text, index)
 
         self._resolve_boundaries(structure, text)
-        structure.chapters = [c for c in structure.chapters if c.char_count >= self.min_chapter_chars]
+        structure.chapters = [
+            c for c in structure.chapters if c.char_count >= self.min_chapter_chars
+        ]
         self._renumber(structure)
         self._split_back_matter(structure, text)
 
@@ -440,7 +441,9 @@ class BookStructureExtractor:
             body = m.group(2).strip()
             nm = _H1_NUM_TITLE.match(f"# {body}") if level == 1 else None
             if nm:
-                marks.append((m.start(), f"{nm.group(1)}. {nm.group(2).strip()}", "L1_EXPLICIT", 0.95))
+                marks.append(
+                    (m.start(), f"{nm.group(1)}. {nm.group(2).strip()}", "L1_EXPLICIT", 0.95)
+                )
             elif level == 1 and body:
                 marks.append((m.start(), body, "L2_TYPOGRAPHY", 0.70))
         if not marks:
@@ -472,7 +475,7 @@ class BookStructureExtractor:
         With one proposal per anchor this is mostly a guard, but it also strips
         any span that a later, weaker rule tried to re-cut.
         """
-        best: dict[int, ChapterSpan] = {}
+        best: dict[str, ChapterSpan] = {}
         for span in structure.chapters:
             prior = best.get(span.chapter_id)
             if prior is None or span.confidence > prior.confidence:
@@ -589,6 +592,10 @@ def chapter_spans_from_structure(structure: BookStructure, text: str) -> list:
                 start=span.start_offset,
                 end=span.end_offset,
                 subsections=span.subsections,
+                # §5.4: the span's kind travels with the Chapter so downstream
+                # stages can tell a chapter from worked answers/an appendix. It
+                # was dropped here, which is how "bm1" reached the discourse arc.
+                kind=span.kind,
             )
         )
     return out

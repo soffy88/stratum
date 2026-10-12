@@ -25,9 +25,12 @@ verification gate exists to prevent.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from stratum.knowledge.bu_v2_models import BookUnderstandingV2
+
+if TYPE_CHECKING:
+    from stratum.services.bu_v2_quality_evaluator import BUQualityReport
 
 
 @dataclass
@@ -49,6 +52,8 @@ class BookExpression:
     # P11 §12: quality context, phrased as understanding confidence. Never a
     # truth score, and never computed from this module.
     quality_context: list[str] = field(default_factory=list)
+    # Task E: a dependency-ordered learning path (chapter -> concept).
+    learning_path: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -84,6 +89,9 @@ class BookExpression:
         if self.quality_context:
             lines += ["", "UNDERSTANDING CONFIDENCE (this is about coverage, not truth)", ""]
             lines += [f"  {line}" for line in self.quality_context]
+        if self.learning_path:
+            lines += ["", "LEARNING PATH (dependency-ordered)", ""]
+            lines += [f"  {line}" for line in self.learning_path]
         if self.ungrounded_sections:
             lines += [
                 "",
@@ -101,7 +109,10 @@ class BUExpressionGenerator:
     """
 
     def generate(
-        self, bu: BookUnderstandingV2, quality: "BUQualityReport | None" = None
+        self,
+        bu: BookUnderstandingV2,
+        quality: "BUQualityReport | None" = None,
+        guide: "Any | None" = None,
     ) -> BookExpression:
         exp = BookExpression(
             book_id=bu.book_id,
@@ -121,7 +132,9 @@ class BUExpressionGenerator:
             exp.ungrounded_sections.append("essence: the book records no governing question")
 
         # §13.2 world model — the author's framing, as recorded at integration.
-        world = bu.concept_system.get("mental_model") if isinstance(bu.concept_system, dict) else None
+        world = (
+            bu.concept_system.get("mental_model") if isinstance(bu.concept_system, dict) else None
+        )
         if world:
             exp.world_model = str(world)
             exp.grounded_section_count += 1
@@ -133,13 +146,17 @@ class BUExpressionGenerator:
             )
             exp.grounded_section_count += 1
         else:
-            exp.ungrounded_sections.append("world model: neither a mental model nor theses were recorded")
+            exp.ungrounded_sections.append(
+                "world model: neither a mental model nor theses were recorded"
+            )
 
         # §13.3 core mechanisms. The BU does not carry a mechanism list of its
         # own — mechanisms are recorded per chapter — so they are collected from
         # the chapter understandings at integration time. When that collection
         # is empty the section says so rather than substituting a summary.
-        mechanisms = bu.concept_system.get("mechanisms", []) if isinstance(bu.concept_system, dict) else []
+        mechanisms = (
+            bu.concept_system.get("mechanisms", []) if isinstance(bu.concept_system, dict) else []
+        )
         exp.core_mechanisms = _dedupe([m for m in mechanisms if isinstance(m, str)])[:12]
         if exp.core_mechanisms:
             exp.grounded_section_count += 1
@@ -185,7 +202,9 @@ class BUExpressionGenerator:
             exp.ungrounded_sections.append("boundary: the book records no limitations")
 
         # §13.6 contribution — only what the book itself can support.
-        novel = [s for s in (bu.concept_evolution or []) if getattr(s, "evolution_type", "") == "REFINE"]
+        novel = [
+            s for s in (bu.concept_evolution or []) if getattr(s, "evolution_type", "") == "REFINE"
+        ]
         if novel:
             exp.contribution = (
                 f"Within the book, {len(novel)} concept(s) are refined after first "
@@ -209,6 +228,16 @@ class BUExpressionGenerator:
             from stratum.services.bu_v2_quality_evaluator import quality_context_lines
 
             exp.quality_context = quality_context_lines(quality)
+
+        # Task E: a dependency-ordered learning path. This is what turns the
+        # understanding from a description into something a reader can study in
+        # order. Each line is "concept (after: prereqs)" grouped by chapter.
+        if guide is not None:
+            path = guide.to_dict().get("by_chapter", {})
+            for chapter_id in sorted(path, key=lambda c: _num(c)):
+                concepts = path[chapter_id]
+                if concepts:
+                    exp.learning_path.append(f"[{chapter_id}] " + "; ".join(concepts))
         return exp
 
 

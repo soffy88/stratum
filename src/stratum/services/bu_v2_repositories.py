@@ -9,17 +9,40 @@ Rules:
 
 from typing import Optional, List, Any
 import json
-from stratum.db import execute, insert, query, update, read
+from stratum.db import insert, query, update, read
 from stratum.knowledge.bu_v2_models import (
-    BookUnderstandingV2, ChapterUnderstanding, ChapterDelta,
-    UnderstandingGap, LearningObject, RetrievalItem, PipelineRunState,
-    VisualSemanticUnit, VerificationArtifact, GapStatus, VerificationOutcome,
-    Argument, AuthorMechanism, SituationModel, UnderstandingFrontier,
-    EvidenceTrajectory, LearningGraph, FrontierType, FrontierStatus,
+    BookUnderstandingV2,
+    ChapterUnderstanding,
+    ChapterDelta,
+    EvidenceProgramItem,
+    UnderstandingGap,
+    LearningObject,
+    RetrievalItem,
+    PipelineRunState,
+    VisualSemanticUnit,
+    VerificationArtifact,
+    GapStatus,
+    VerificationOutcome,
+    Argument,
+    AuthorMechanism,
+    SituationModel,
+    UnderstandingFrontier,
+    EvidenceTrajectory,
+    LearningGraph,
+    FrontierType,
+    FrontierStatus,
     VerificationStatus,
-    BookThesis, BookThesisModel, BookConceptSystem, BookArgument,
-    BookMechanism, BookEvidenceMap, BookAuthorModel, BookChapterRoles,
-    BookContradictions, BookSynthesis, ThesisProvenance, ThesisType,
+    BookThesis,
+    BookConceptSystem,
+    BookArgument,
+    BookMechanism,
+    BookEvidenceMap,
+    BookAuthorModel,
+    BookChapterRoles,
+    BookContradictions,
+    BookSynthesis,
+    ThesisProvenance,
+    ThesisType,
 )
 
 
@@ -48,7 +71,9 @@ class PipelineRunRepository:
         return read("book_reading_run", run_id)
 
     @staticmethod
-    def update_status(run_id: str, new_status: PipelineRunState, failure_reason: Optional[str] = None):
+    def update_status(
+        run_id: str, new_status: PipelineRunState, failure_reason: Optional[str] = None
+    ):
         changes = {"status": new_status.value, "updated_at": "now()"}
         if failure_reason:
             changes["failure_reason"] = failure_reason
@@ -57,7 +82,9 @@ class PipelineRunRepository:
     @staticmethod
     def check_reading_ledger_exists(run_id: str) -> bool:
         # P0 gate: full-source accounting ledger rows persisted for this run.
-        res = query("SELECT 1 FROM reading_ledger WHERE run_id = %(run_id)s LIMIT 1", {"run_id": run_id})
+        res = query(
+            "SELECT 1 FROM reading_ledger WHERE run_id = %(run_id)s LIMIT 1", {"run_id": run_id}
+        )
         return len(res) > 0
 
     # P1 gate: inspection is durable only when at least one ledger item has
@@ -140,7 +167,10 @@ class VisualSemanticUnitRepository:
 
     @staticmethod
     def check_exists(run_id: str) -> bool:
-        res = query("SELECT 1 FROM visual_semantic_unit WHERE run_id = %(run_id)s LIMIT 1", {"run_id": run_id})
+        res = query(
+            "SELECT 1 FROM visual_semantic_unit WHERE run_id = %(run_id)s LIMIT 1",
+            {"run_id": run_id},
+        )
         return len(res) > 0
 
 
@@ -170,13 +200,63 @@ class ChapterUnderstandingRepository:
             "dependencies_on_prior": json.dumps(cu.dependencies_on_prior),
             "promises_to_future": json.dumps(cu.promises_to_future),
             "evidence_strengths": json.dumps(cu.evidence_strengths),
+            # Task C: real concept definitions (additive column, migration 085).
+            "concept_definitions": json.dumps(getattr(cu, "concept_definitions", {}) or {}),
         }
         insert("chapter_understandings", row)
 
     @staticmethod
     def check_exists(run_id: str) -> bool:
-        res = query("SELECT 1 FROM chapter_understandings WHERE run_id = %(run_id)s LIMIT 1", {"run_id": run_id})
+        res = query(
+            "SELECT 1 FROM chapter_understandings WHERE run_id = %(run_id)s LIMIT 1",
+            {"run_id": run_id},
+        )
         return len(res) > 0
+
+    @staticmethod
+    def load_for_run(run_id: str) -> List[ChapterUnderstanding]:
+        """Read a run's chapter understandings back as models (task E).
+
+        Used by the query API to rebuild the learning guide from a persisted
+        run. Returns an empty list when the run has no chapters.
+        """
+        rows = query(
+            "SELECT * FROM chapter_understandings WHERE run_id = %(run_id)s",
+            {"run_id": run_id},
+            limit=1000,
+        )
+        out: List[ChapterUnderstanding] = []
+        for r in rows:
+            out.append(
+                ChapterUnderstanding(
+                    id=r["id"],
+                    run_id=r["run_id"],
+                    chapter_id=r["chapter_id"],
+                    chapter_question=r.get("chapter_question") or "",
+                    chapter_goal=r.get("chapter_goal") or "",
+                    chapter_thesis=r.get("chapter_thesis") or "",
+                    primary_role=r.get("primary_role") or "",
+                    secondary_roles=_jload(r.get("secondary_roles_json"), []),
+                    concepts_introduced_refs=list(r.get("concepts_introduced_refs") or []),
+                    concepts_redefined_refs=list(r.get("concepts_redefined_refs") or []),
+                    major_ku_refs=list(r.get("major_ku_refs") or []),
+                    supporting_ku_refs=list(r.get("supporting_ku_refs") or []),
+                    arguments_refs=list(r.get("arguments_refs") or []),
+                    mechanisms_refs=list(r.get("mechanisms_refs") or []),
+                    evidence_program=[
+                        EvidenceProgramItem(**ep)
+                        for ep in _jload(r.get("evidence_program_json"), [])
+                        if isinstance(ep, dict)
+                    ],
+                    assumptions=_jload(r.get("assumptions_json"), []),
+                    qualifications=_jload(r.get("qualifications_json"), []),
+                    dependencies_on_prior=_jload(r.get("dependencies_on_prior"), []),
+                    promises_to_future=_jload(r.get("promises_to_future"), []),
+                    evidence_strengths=_jload(r.get("evidence_strengths"), {}),
+                    concept_definitions=_jload(r.get("concept_definitions"), {}),
+                )
+            )
+        return out
 
 
 class ChapterDeltaRepository:
@@ -197,13 +277,15 @@ class ChapterDeltaRepository:
             "contradicts_prior_refs": cd.contradicts_prior_refs,
             "revises_prior_refs": cd.revises_prior_refs,
             "resolves_questions_json": json.dumps(cd.resolves_questions),
-            "opens_questions_json": json.dumps(cd.opens_questions)
+            "opens_questions_json": json.dumps(cd.opens_questions),
         }
         insert("chapter_deltas", row)
 
     @staticmethod
     def check_exists(run_id: str) -> bool:
-        res = query("SELECT 1 FROM chapter_deltas WHERE run_id = %(run_id)s LIMIT 1", {"run_id": run_id})
+        res = query(
+            "SELECT 1 FROM chapter_deltas WHERE run_id = %(run_id)s LIMIT 1", {"run_id": run_id}
+        )
         return len(res) > 0
 
 
@@ -238,7 +320,7 @@ class BookUnderstandingRepository:
             "resolved_questions_json": json.dumps(bu.resolved_questions),
             "unresolved_questions_json": json.dumps(bu.unresolved_questions),
             "coverage_score": bu.coverage_score,
-            "verification_score": bu.verification_score
+            "verification_score": bu.verification_score,
         }
         insert("book_understandings_v2", row)
 
@@ -254,7 +336,10 @@ class BookUnderstandingRepository:
 
     @staticmethod
     def check_exists(run_id: str) -> bool:
-        res = query("SELECT 1 FROM book_understandings_v2 WHERE run_id = %(run_id)s LIMIT 1", {"run_id": run_id})
+        res = query(
+            "SELECT 1 FROM book_understandings_v2 WHERE run_id = %(run_id)s LIMIT 1",
+            {"run_id": run_id},
+        )
         return len(res) > 0
 
 
@@ -266,29 +351,37 @@ class GapTransitionError(ValueError):
 # Legacy TARGETED_REREAD_DISPATCHED / RECONCILED / WONTFIX values stay accepted
 # for already-persisted rows but are not the forward path for new gaps.
 VALID_GAP_TRANSITIONS = {
-    GapStatus.OPEN: frozenset({
-        GapStatus.TARGETED_REREAD_REQUIRED,
-        GapStatus.TARGETED_REREAD_DISPATCHED,
-        GapStatus.REJECTED,
-        GapStatus.WONTFIX,
-    }),
-    GapStatus.TARGETED_REREAD_REQUIRED: frozenset({
-        GapStatus.REREAD_IN_PROGRESS,
-        GapStatus.REJECTED,
-        GapStatus.WONTFIX,
-    }),
-    GapStatus.REREAD_IN_PROGRESS: frozenset({
-        GapStatus.RESOLVED,
-        GapStatus.TARGETED_REREAD_REQUIRED,
-        GapStatus.REJECTED,
-        GapStatus.WONTFIX,
-    }),
-    GapStatus.TARGETED_REREAD_DISPATCHED: frozenset({
-        GapStatus.REREAD_IN_PROGRESS,
-        GapStatus.RESOLVED,
-        GapStatus.REJECTED,
-        GapStatus.WONTFIX,
-    }),
+    GapStatus.OPEN: frozenset(
+        {
+            GapStatus.TARGETED_REREAD_REQUIRED,
+            GapStatus.TARGETED_REREAD_DISPATCHED,
+            GapStatus.REJECTED,
+            GapStatus.WONTFIX,
+        }
+    ),
+    GapStatus.TARGETED_REREAD_REQUIRED: frozenset(
+        {
+            GapStatus.REREAD_IN_PROGRESS,
+            GapStatus.REJECTED,
+            GapStatus.WONTFIX,
+        }
+    ),
+    GapStatus.REREAD_IN_PROGRESS: frozenset(
+        {
+            GapStatus.RESOLVED,
+            GapStatus.TARGETED_REREAD_REQUIRED,
+            GapStatus.REJECTED,
+            GapStatus.WONTFIX,
+        }
+    ),
+    GapStatus.TARGETED_REREAD_DISPATCHED: frozenset(
+        {
+            GapStatus.REREAD_IN_PROGRESS,
+            GapStatus.RESOLVED,
+            GapStatus.REJECTED,
+            GapStatus.WONTFIX,
+        }
+    ),
     GapStatus.RESOLVED: frozenset(),
     GapStatus.REJECTED: frozenset(),
     GapStatus.WONTFIX: frozenset(),
@@ -318,7 +411,7 @@ class UnderstandingGapRepository:
             "question": gap.question,
             "evidence_targets_json": json.dumps(gap.evidence_targets),
             "required_action": gap.required_action,
-            "status": gap.status.value
+            "status": gap.status.value,
         }
         insert("understanding_gaps", row)
 
@@ -328,6 +421,7 @@ class UnderstandingGapRepository:
         if not row:
             return None
         from stratum.knowledge.bu_v2_models import GapType, Severity
+
         return UnderstandingGap(
             id=row["id"],
             run_id=row["run_id"],
@@ -348,19 +442,21 @@ class UnderstandingGapRepository:
         if gap is None:
             raise GapTransitionError(f"Gap {gap_id} not found.")
         if gap.run_id != run_id:
-            raise GapTransitionError(
-                f"Gap {gap_id} belongs to run {gap.run_id}, not {run_id}."
-            )
+            raise GapTransitionError(f"Gap {gap_id} belongs to run {gap.run_id}, not {run_id}.")
         allowed = VALID_GAP_TRANSITIONS.get(gap.status, frozenset())
         if to_status not in allowed:
             raise GapTransitionError(
                 f"Illegal gap transition: {gap.status.value} -> {to_status.value}. "
                 f"Allowed: {sorted(s.value for s in allowed) or ['<terminal, none>']}."
             )
-        update("understanding_gaps", gap_id, {
-            "status": to_status.value,
-            "updated_at": "now()",
-        })
+        update(
+            "understanding_gaps",
+            gap_id,
+            {
+                "status": to_status.value,
+                "updated_at": "now()",
+            },
+        )
         gap.status = to_status
         return gap
 
@@ -369,7 +465,7 @@ class UnderstandingGapRepository:
         res = query(
             "SELECT count(*) as c FROM understanding_gaps WHERE run_id = %(run_id)s "
             "AND status IN ('OPEN', 'TARGETED_REREAD_REQUIRED', 'REREAD_IN_PROGRESS', 'TARGETED_REREAD_DISPATCHED')",
-            {"run_id": run_id}
+            {"run_id": run_id},
         )
         return res[0]["c"] if res else 0
 
@@ -394,7 +490,7 @@ class VerificationRepository:
             "status": va.status.value,
             "checked_artifacts_json": json.dumps(va.checked_artifacts),
             "unresolved_gap_count": va.unresolved_gap_count,
-            "verification_timestamp": va.verification_timestamp
+            "verification_timestamp": va.verification_timestamp,
         }
         insert("verification_artifacts", row)
 
@@ -420,7 +516,10 @@ class VerificationRepository:
 
     @staticmethod
     def check_exists(run_id: str) -> bool:
-        res = query("SELECT 1 FROM verification_artifacts WHERE run_id = %(run_id)s LIMIT 1", {"run_id": run_id})
+        res = query(
+            "SELECT 1 FROM verification_artifacts WHERE run_id = %(run_id)s LIMIT 1",
+            {"run_id": run_id},
+        )
         return len(res) > 0
 
 
@@ -447,18 +546,22 @@ class LearningObjectRepository:
             "prerequisites_refs": lo.prerequisites_refs,
             "mastery_requirements_json": json.dumps(lo.mastery_requirements),
             "assessment_modes_json": json.dumps(lo.assessment_modes),
-            "source_refs": lo.source_refs
+            "source_refs": lo.source_refs,
         }
         insert("learning_objects", row)
 
     @staticmethod
     def check_exists_for_bu(bu_id: str) -> bool:
-        res = query("SELECT 1 FROM learning_objects WHERE bu_id = %(bu_id)s LIMIT 1", {"bu_id": bu_id})
+        res = query(
+            "SELECT 1 FROM learning_objects WHERE bu_id = %(bu_id)s LIMIT 1", {"bu_id": bu_id}
+        )
         return len(res) > 0
 
     @staticmethod
     def list_for_bu(bu_id: str) -> List[dict]:
-        return query("SELECT * FROM learning_objects WHERE bu_id = %(bu_id)s ORDER BY id", {"bu_id": bu_id})
+        return query(
+            "SELECT * FROM learning_objects WHERE bu_id = %(bu_id)s ORDER BY id", {"bu_id": bu_id}
+        )
 
 
 class RetrievalItemRepository:
@@ -468,7 +571,7 @@ class RetrievalItemRepository:
             "id": ri.id,
             "learning_object_id": ri.learning_object_id,
             "interaction_type": ri.interaction_type.value,
-            "payload_json": json.dumps(ri.payload.model_dump())
+            "payload_json": json.dumps(ri.payload.model_dump()),
         }
         insert("retrieval_items", row)
 
@@ -491,6 +594,7 @@ class RetrievalItemRepository:
 # ── P3: Explanation Structure repositories (tables 054 / 053) ─────────────────
 # Tables already exist; these classes close the MODEL <-> REPOSITORY <-> SQL
 # loop with explicit mappings (no blind model_dump inserts, no silent errors).
+
 
 class ArgumentRepository:
     @staticmethod
@@ -534,14 +638,14 @@ class ArgumentRepository:
 
     @staticmethod
     def list_for_run(run_id: str) -> List[Argument]:
-        rows = query("SELECT * FROM arguments WHERE run_id = %(run_id)s ORDER BY id",
-                     {"run_id": run_id})
+        rows = query(
+            "SELECT * FROM arguments WHERE run_id = %(run_id)s ORDER BY id", {"run_id": run_id}
+        )
         return [a for a in (ArgumentRepository.get(r["id"]) for r in rows) if a is not None]
 
     @staticmethod
     def check_exists(run_id: str) -> bool:
-        res = query("SELECT 1 FROM arguments WHERE run_id = %(run_id)s LIMIT 1",
-                    {"run_id": run_id})
+        res = query("SELECT 1 FROM arguments WHERE run_id = %(run_id)s LIMIT 1", {"run_id": run_id})
         return len(res) > 0
 
 
@@ -591,14 +695,17 @@ class MechanismRepository:
 
     @staticmethod
     def list_for_run(run_id: str) -> List[AuthorMechanism]:
-        rows = query("SELECT * FROM author_mechanisms WHERE run_id = %(run_id)s ORDER BY id",
-                     {"run_id": run_id})
+        rows = query(
+            "SELECT * FROM author_mechanisms WHERE run_id = %(run_id)s ORDER BY id",
+            {"run_id": run_id},
+        )
         return [m for m in (MechanismRepository.get(r["id"]) for r in rows) if m is not None]
 
     @staticmethod
     def check_exists(run_id: str) -> bool:
-        res = query("SELECT 1 FROM author_mechanisms WHERE run_id = %(run_id)s LIMIT 1",
-                    {"run_id": run_id})
+        res = query(
+            "SELECT 1 FROM author_mechanisms WHERE run_id = %(run_id)s LIMIT 1", {"run_id": run_id}
+        )
         return len(res) > 0
 
 
@@ -642,8 +749,10 @@ class SituationModelRepository:
 
     @staticmethod
     def list_for_run(run_id: str) -> List[SituationModel]:
-        rows = query("SELECT * FROM situation_models WHERE run_id = %(run_id)s ORDER BY id",
-                     {"run_id": run_id})
+        rows = query(
+            "SELECT * FROM situation_models WHERE run_id = %(run_id)s ORDER BY id",
+            {"run_id": run_id},
+        )
         return [s for s in (SituationModelRepository.get(r["id"]) for r in rows) if s is not None]
 
 
@@ -681,7 +790,8 @@ class FrontierRepository:
         rows = query(
             "SELECT * FROM understanding_frontiers WHERE run_id = %(run_id)s "
             "AND status = 'OPEN' ORDER BY id",
-            {"run_id": run_id})
+            {"run_id": run_id},
+        )
         return [f for f in (FrontierRepository.get(r["id"]) for r in rows) if f is not None]
 
 
@@ -720,8 +830,10 @@ class TrajectoryRepository:
 
     @staticmethod
     def list_for_claim(claim_id: str) -> List[EvidenceTrajectory]:
-        rows = query("SELECT * FROM evidence_trajectory WHERE claim_id = %(cid)s ORDER BY id",
-                     {"cid": claim_id})
+        rows = query(
+            "SELECT * FROM evidence_trajectory WHERE claim_id = %(cid)s ORDER BY id",
+            {"cid": claim_id},
+        )
         return [t for t in (TrajectoryRepository.get(r["id"]) for r in rows) if t is not None]
 
     @staticmethod
@@ -732,7 +844,8 @@ class TrajectoryRepository:
             "SELECT t.* FROM evidence_trajectory t "
             "JOIN knowledge_claims k ON k.id = t.claim_id "
             "WHERE k.extraction_run_id = %(run_id)s ORDER BY t.id",
-            {"run_id": run_id})
+            {"run_id": run_id},
+        )
         return [t for t in (TrajectoryRepository.get(r["id"]) for r in rows) if t is not None]
 
 
@@ -751,6 +864,7 @@ class LearningGraphRepository:
     @staticmethod
     def get(graph_id: str) -> Optional[LearningGraph]:
         from stratum.knowledge.bu_v2_models import LearningGraphNode, LearningGraphEdge
+
         row = read("learning_graphs", graph_id)
         if not row:
             return None
@@ -764,14 +878,16 @@ class LearningGraphRepository:
 
     @staticmethod
     def check_exists_for_bu(bu_id: str) -> bool:
-        res = query("SELECT 1 FROM learning_graphs WHERE bu_id = %(bu_id)s LIMIT 1",
-                    {"bu_id": bu_id})
+        res = query(
+            "SELECT 1 FROM learning_graphs WHERE bu_id = %(bu_id)s LIMIT 1", {"bu_id": bu_id}
+        )
         return len(res) > 0
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # P13: Book-Level Synthesis Repositories
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class BookThesisRepository:
     @staticmethod
@@ -795,19 +911,24 @@ class BookThesisRepository:
 
     @staticmethod
     def list_for_run(run_id: str) -> list[BookThesis]:
-        rows = query("SELECT * FROM book_theses WHERE run_id = %(run_id)s ORDER BY created_at",
-                     {"run_id": run_id})
-        return [BookThesis(
-            id=r["id"],
-            type=ThesisType(r["thesis_type"]),
-            statement=r["statement"],
-            scope=r.get("scope") or "",
-            evidence_refs=list(r.get("evidence_refs") or []),
-            supporting_arguments=list(r.get("supporting_arguments") or []),
-            confidence=float(r.get("confidence") or 0.0),
-            provenance=ThesisProvenance(r.get("provenance") or "MODEL_INFERRED"),
-            source_locations=list(r.get("source_locations") or []),
-        ) for r in rows]
+        rows = query(
+            "SELECT * FROM book_theses WHERE run_id = %(run_id)s ORDER BY created_at",
+            {"run_id": run_id},
+        )
+        return [
+            BookThesis(
+                id=r["id"],
+                type=ThesisType(r["thesis_type"]),
+                statement=r["statement"],
+                scope=r.get("scope") or "",
+                evidence_refs=list(r.get("evidence_refs") or []),
+                supporting_arguments=list(r.get("supporting_arguments") or []),
+                confidence=float(r.get("confidence") or 0.0),
+                provenance=ThesisProvenance(r.get("provenance") or "MODEL_INFERRED"),
+                source_locations=list(r.get("source_locations") or []),
+            )
+            for r in rows
+        ]
 
 
 class BookConceptSystemRepository:
@@ -969,7 +1090,9 @@ class BookSynthesisRepository:
 
     @staticmethod
     def check_exists(run_id: str) -> bool:
-        res = query("SELECT 1 FROM book_syntheses WHERE run_id = %(run_id)s LIMIT 1", {"run_id": run_id})
+        res = query(
+            "SELECT 1 FROM book_syntheses WHERE run_id = %(run_id)s LIMIT 1", {"run_id": run_id}
+        )
         return len(res) > 0
 
 
@@ -997,8 +1120,16 @@ class BookSynthesisExpressionRepository:
 
 class P13QualityGateRepository:
     @staticmethod
-    def save(gate_num: int, gate_name: str, status: str, run_id: str, book_id: str,
-             score: float = None, detail: str = "", evidence: dict = None) -> None:
+    def save(
+        gate_num: int,
+        gate_name: str,
+        status: str,
+        run_id: str,
+        book_id: str,
+        score: float = None,
+        detail: str = "",
+        evidence: dict = None,
+    ) -> None:
         if not run_id or not book_id:
             raise ValueError("Quality gate requires run_id and book_id")
         row = {
@@ -1017,5 +1148,6 @@ class P13QualityGateRepository:
 
 def _stable_id(prefix: str, *parts: str) -> str:
     import hashlib
+
     raw = "|".join(p for p in parts if p)
     return f"{prefix}_{hashlib.sha256(raw.encode()).hexdigest()[:12]}"
