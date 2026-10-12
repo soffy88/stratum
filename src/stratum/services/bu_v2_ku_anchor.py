@@ -189,12 +189,15 @@ class FrozenKUReader:
             return index
 
         # Map: chapter number -> chapter_id (from "ch3"), and title -> chapter_id.
+        # Only a numbered ``chN`` id contributes to num_to_id. A back-matter id
+        # like "bm1" also contains a digit, and taking it as number 1 made the
+        # answer appendix claim chapter 1's frozen KUs.
         num_to_id: dict[int, str] = {}
         title_to_id: dict[str, str] = {}
         for cid, title in chapters:
-            n = _leading_int(cid)
-            if n:
-                num_to_id[n] = cid
+            m = re.fullmatch(r"ch(\d+)", cid or "")
+            if m:
+                num_to_id[int(m.group(1))] = cid
             if title:
                 title_to_id[_norm(title)] = cid
 

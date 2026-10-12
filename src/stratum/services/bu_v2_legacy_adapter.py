@@ -163,9 +163,7 @@ class BU2LegacyAdapter:
         # Schema-explicit: the service layer's search_path is stratum,public,
         # and aii.bu_onto is neither. Naming the schema also documents that
         # this is a read of a foreign table, not of BU2's own storage.
-        rows = db.query(
-            "SELECT * FROM aii.bu_onto WHERE bu_id=%(id)s LIMIT 1", {"id": legacy_id}
-        )
+        rows = db.query("SELECT * FROM aii.bu_onto WHERE bu_id=%(id)s LIMIT 1", {"id": legacy_id})
         if not rows:
             raise LookupError(f"legacy BU {legacy_id} not found in aii.bu_onto")
         return normalise(rows[0])
@@ -187,9 +185,7 @@ class BU2LegacyAdapter:
         result.limitations_mapped = len(legacy.limitations)
 
         # Every legacy field that has no BU2 home, named.
-        result.unmapped_fields = [
-            f"{name}: {why}" for name, why in _KNOWN_UNMAPPABLE.items()
-        ]
+        result.unmapped_fields = [f"{name}: {why}" for name, why in _KNOWN_UNMAPPABLE.items()]
 
         # Degradations the mapping itself introduces, recorded on the BU so a
         # reader of the BU knows it was assembled from a legacy source.
@@ -212,7 +208,9 @@ class BU2LegacyAdapter:
                 "they cannot satisfy BU2 traceability and are recorded as unverified"
             )
         if not legacy.arguments:
-            degradations.append("legacy BU recorded no argument structure; BU2 argument layer is empty")
+            degradations.append(
+                "legacy BU recorded no argument structure; BU2 argument layer is empty"
+            )
         if legacy.synthesis_marker:
             degradations.append(f"legacy synthesis marker: {legacy.synthesis_marker}")
         result.degradations = degradations
@@ -252,9 +250,7 @@ class BU2LegacyAdapter:
                 limitations=legacy.limitations[:50],
                 # Legacy boundaries are the one piece of negative knowledge
                 # legacy had that BU2 models directly, so they carry across.
-                open_problems=[
-                    a.boundary for a in legacy.arguments if a.boundary
-                ][:50],
+                open_problems=[a.boundary for a in legacy.arguments if a.boundary][:50],
                 unresolved_conflicts=[],
             ),
             resolved_questions=[],
@@ -332,5 +328,7 @@ def _json_list(v: Any) -> list[Any]:
             parsed = json.loads(v)
         except json.JSONDecodeError:
             return []
-        return parsed if isinstance(parsed, list) else ([parsed] if isinstance(parsed, dict) else [])
+        return (
+            parsed if isinstance(parsed, list) else ([parsed] if isinstance(parsed, dict) else [])
+        )
     return []

@@ -52,7 +52,9 @@ class ArgumentNode:
 
     def __post_init__(self) -> None:
         if self.node_kind not in NODE_KINDS:
-            raise ValueError(f"unknown argument node {self.node_kind!r}; §8 allows {sorted(NODE_KINDS)}")
+            raise ValueError(
+                f"unknown argument node {self.node_kind!r}; §8 allows {sorted(NODE_KINDS)}"
+            )
         self.confidence = max(0.0, min(1.0, round(float(self.confidence), 4)))
 
     def to_dict(self) -> dict[str, Any]:
@@ -81,7 +83,9 @@ class ArgumentEdge:
 
     def __post_init__(self) -> None:
         if self.edge_kind not in EDGE_KINDS:
-            raise ValueError(f"unknown argument edge {self.edge_kind!r}; §8 allows {sorted(EDGE_KINDS)}")
+            raise ValueError(
+                f"unknown argument edge {self.edge_kind!r}; §8 allows {sorted(EDGE_KINDS)}"
+            )
         if not (self.reason or "").strip():
             raise ValueError("§6 reasoning discipline: every argument edge needs a reason")
         self.confidence = max(0.0, min(1.0, round(float(self.confidence), 4)))
@@ -173,9 +177,7 @@ class ArgumentAnalyzer:
         evidence_by_chapter: dict[str, list[str]] | None = None,
     ) -> ArgumentAnalysis:
         evidence_by_chapter = evidence_by_chapter or {}
-        analysis = ArgumentAnalysis(
-            graph_id=node_id("agraph", run_id, book_id, "argument")
-        )
+        analysis = ArgumentAnalysis(graph_id=node_id("agraph", run_id, book_id, "argument"))
 
         for cu in sorted(chapters, key=lambda c: _num(c.chapter_id)):
             claim_label = (cu.chapter_thesis or cu.chapter_question or "").strip()
@@ -300,7 +302,9 @@ class ArgumentAnalyzer:
                         edge_kind="DERIVES",
                         reason=f"stated qualification in {cu.chapter_id}",
                         chain_id=chain_id,
-                        evidence_refs=list(chain.evidence[0].evidence_refs) if chain.evidence else [],
+                        evidence_refs=list(chain.evidence[0].evidence_refs)
+                        if chain.evidence
+                        else [],
                         confidence=0.55,
                     )
                 )
@@ -312,7 +316,9 @@ class ArgumentAnalyzer:
                         edge_kind="SUMMARIZES",
                         reason="the chapter's stated limit qualifies its own claim",
                         chain_id=chain_id,
-                        evidence_refs=list(chain.evidence[0].evidence_refs) if chain.evidence else [],
+                        evidence_refs=list(chain.evidence[0].evidence_refs)
+                        if chain.evidence
+                        else [],
                         confidence=0.5,
                     )
                 )
@@ -332,7 +338,11 @@ class ArgumentAnalyzer:
                         subject=chain_id,
                         reason=(
                             "no evidenced conclusion: "
-                            + ("no evidence program" if not chain.evidence else "no stated qualification")
+                            + (
+                                "no evidence program"
+                                if not chain.evidence
+                                else "no stated qualification"
+                            )
                         ),
                         source="argument_analyzer",
                         confidence=chain.claim.confidence,
@@ -340,8 +350,126 @@ class ArgumentAnalyzer:
                     )
                 )
 
+        # Reconstructed arguments: each one the chapter itself makes (a result,
+        # the steps that establish it, what follows) becomes its own chain, so
+        # a chapter's argument structure is more than its thesis.
+        for cu in chapters:
+            for arg in getattr(cu, "chapter_arguments", []) or []:
+                _chain_from_argument(analysis, cu, arg, run_id)
+
         analysis.chains.sort(key=lambda c: (-int(c.complete), -c.claim.confidence))
         return analysis
+
+
+def _chain_from_argument(analysis: ArgumentAnalysis, cu: Any, arg: Any, run_id: str) -> None:
+    chain_id = node_id("chain", run_id, cu.chapter_id, arg.id)
+    strengths = getattr(cu, "evidence_strengths", {}) or {}
+    refs = list(arg.evidence_refs)
+    strength = strengths.get(refs[0], "DERIVED") if refs else "MODEL_INFERENCE"
+    claim = ArgumentNode(
+        node_id=node_id("an", chain_id, "claim"),
+        node_kind="CLAIM",
+        label=arg.question,
+        chapter_id=cu.chapter_id,
+        confidence=0.8 if strength == "DIRECT" else 0.7,
+        evidence_refs=refs,
+    )
+    analysis.nodes[claim.node_id] = claim
+    chain = ArgumentChain(chain_id=chain_id, chapter_id=cu.chapter_id, claim=claim)
+    premises = list(arg.premises) or [arg.question]
+    for i, prem in enumerate(premises[:4]):
+        ev = ArgumentNode(
+            node_id=node_id("an", chain_id, "ev", str(i)),
+            node_kind="EVIDENCE",
+            label=prem,
+            chapter_id=cu.chapter_id,
+            confidence=0.7,
+            evidence_refs=refs,
+        )
+        analysis.nodes[ev.node_id] = ev
+        chain.evidence.append(ev)
+    prev = chain.evidence[0] if chain.evidence else claim
+    for i, step in enumerate(arg.inference_steps[:8]):
+        rn = ArgumentNode(
+            node_id=node_id("an", chain_id, "rs", str(i)),
+            node_kind="REASONING",
+            label=step,
+            chapter_id=cu.chapter_id,
+            confidence=0.7,
+            evidence_refs=refs,
+        )
+        analysis.nodes[rn.node_id] = rn
+        chain.reasoning.append(rn)
+        analysis.edges.append(
+            ArgumentEdge(
+                edge_id=node_id("ae", chain_id, "drv", str(i)),
+                source_node_id=prev.node_id,
+                target_node_id=rn.node_id,
+                edge_kind="DERIVES",
+                reason=f"step {i + 1} of the argument the text makes in {cu.chapter_id}",
+                chain_id=chain_id,
+                evidence_type=strength,
+                evidence_refs=refs,
+                confidence=0.7,
+            )
+        )
+        prev = rn
+    for i, ev in enumerate(chain.evidence[1:], start=1):
+        analysis.edges.append(
+            ArgumentEdge(
+                edge_id=node_id("ae", chain_id, "sup", str(i)),
+                source_node_id=ev.node_id,
+                target_node_id=claim.node_id,
+                edge_kind="SUPPORTS",
+                reason="stated premise of the argument",
+                chain_id=chain_id,
+                evidence_type=strength,
+                evidence_refs=refs,
+                confidence=0.7,
+            )
+        )
+    concl_label = (arg.conclusion or [""])[0]
+    if concl_label and chain.reasoning:
+        conc = ArgumentNode(
+            node_id=node_id("an", chain_id, "concl"),
+            node_kind="CONCLUSION",
+            label=concl_label,
+            chapter_id=cu.chapter_id,
+            confidence=0.7,
+            evidence_refs=refs,
+        )
+        analysis.nodes[conc.node_id] = conc
+        chain.conclusion = conc
+        analysis.edges.append(
+            ArgumentEdge(
+                edge_id=node_id("ae", chain_id, "conc"),
+                source_node_id=chain.reasoning[-1].node_id,
+                target_node_id=conc.node_id,
+                edge_kind="DERIVES",
+                reason="the argument's stated conclusion",
+                chain_id=chain_id,
+                evidence_type=strength,
+                evidence_refs=refs,
+                confidence=0.7,
+            )
+        )
+        analysis.edges.append(
+            ArgumentEdge(
+                edge_id=node_id("ae", chain_id, "summ"),
+                source_node_id=conc.node_id,
+                target_node_id=claim.node_id,
+                edge_kind="SUMMARIZES",
+                reason="the conclusion is what the claimed result delivers",
+                chain_id=chain_id,
+                evidence_type=strength,
+                evidence_refs=refs,
+                confidence=0.65,
+            )
+        )
+    chain.edges = [e for e in analysis.edges if e.chain_id == chain_id]
+    chain.evidence_strength = strength
+    chain.complete = bool(chain.evidence) and chain.conclusion is not None
+    analysis.chains.append(chain)
 
 
 def _num(chapter_id: str) -> int:

@@ -315,6 +315,11 @@ class ChapterUnderstanding(BaseModel):
     # with a default so the concept-evolution layer can carry a real definition
     # instead of the placeholder "introduced or redefined in chX".
     concept_definitions: Dict[str, str] = Field(default_factory=dict)
+    # The chapter's own reconstructed arguments (theorem -> proof -> use).
+    # ``arguments_refs`` holds their ids; the objects ride along so the runner
+    # can persist them to ``arguments`` and the argument analyzer can turn each
+    # into a chain. Not a column of chapter_understandings.
+    chapter_arguments: List[Argument] = Field(default_factory=list)
 
 
 class ChapterDelta(BaseModel):

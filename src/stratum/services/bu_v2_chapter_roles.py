@@ -82,7 +82,10 @@ class ChapterRoleAnalyzer:
         has_mechanisms = len(cu.mechanisms_refs) > 0
         has_arguments = len(cu.arguments_refs) > 0
         has_evidence = len(cu.evidence_program) > 0
-        has_applications = any("application" in dep.lower() or "example" in dep.lower() for dep in cu.dependencies_on_prior)
+        has_applications = any(
+            "application" in dep.lower() or "example" in dep.lower()
+            for dep in cu.dependencies_on_prior
+        )
         has_counterpoint = len(cu.qualifications) > 0 or len(cu.assumptions) > 1
         is_synthesis = position >= 0.85
 
@@ -116,16 +119,20 @@ class ChapterRoleAnalyzer:
                 unique_roles.append(r)
         return unique_roles
 
-    def _build_evidence(self, cu: ChapterUnderstanding, roles: list[ChapterRole], index: int, total: int) -> str:
+    def _build_evidence(
+        self, cu: ChapterUnderstanding, roles: list[ChapterRole], index: int, total: int
+    ) -> str:
         parts = []
         pos_desc = "early" if index < total * 0.3 else ("middle" if index < total * 0.7 else "late")
-        parts.append(f"position: {pos_desc} ({index+1}/{total})")
+        parts.append(f"position: {pos_desc} ({index + 1}/{total})")
         if ChapterRole.FOUNDATION in roles:
             parts.append(f"introduces {len(cu.concepts_introduced_refs)} concepts")
         if ChapterRole.DEFINITION in roles:
             parts.append(f"defines core concepts: {', '.join(cu.concepts_introduced_refs[:3])}")
         if ChapterRole.ARGUMENT in roles:
-            parts.append(f"presents {len(cu.arguments_refs)} arguments with {len(cu.mechanisms_refs)} mechanisms")
+            parts.append(
+                f"presents {len(cu.arguments_refs)} arguments with {len(cu.mechanisms_refs)} mechanisms"
+            )
         if ChapterRole.EVIDENCE in roles:
             parts.append(f"provides {len(cu.evidence_program)} evidence items")
         if ChapterRole.APPLICATION in roles:
@@ -140,7 +147,9 @@ class ChapterRoleAnalyzer:
             parts.append(f"connects to: {', '.join(cu.dependencies_on_prior[:3])}")
         return "; ".join(parts)
 
-    def _compute_confidence(self, cu: ChapterUnderstanding, roles: list[ChapterRole], index: int, total: int) -> float:
+    def _compute_confidence(
+        self, cu: ChapterUnderstanding, roles: list[ChapterRole], index: int, total: int
+    ) -> float:
         base = 0.5
         signals = 0
         if index < total * 0.2 and ChapterRole.FOUNDATION in roles:

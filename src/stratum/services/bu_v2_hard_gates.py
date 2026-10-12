@@ -21,6 +21,8 @@ computed from a measurement and each able to FAIL a run:
                                with at least a claim and evidence
   H6  evidence carries a quote every evidence artifact carries a real quote and
                                a locator
+  H7  claims supported         ≥85% of judged claims are supported by the
+                               passage they are anchored to
 
 and a 6-dimension score (0–10) over: accuracy, coverage, depth, traceability,
 cross-chapter synthesis and expression. Accuracy is scored by an LLM judge over
@@ -61,7 +63,15 @@ MIN_CHAPTER_THESIS_CHARS = 8
 KU_COVERAGE_FLOOR = 0.90
 
 # Claim sample size for the LLM accuracy judge.
-ACCURACY_SAMPLE = 20
+ACCURACY_SAMPLE = 30
+
+# Share of judged claims that must be supported by their anchored passage.
+CLAIM_SUPPORT_FLOOR = 0.85
+
+# Depth targets per numbered chapter: reconstructed argument chains and
+# mechanisms. One thesis chain per chapter is not an argument structure.
+ARGUMENTS_PER_CHAPTER = 5
+MECHANISMS_PER_CHAPTER = 3
 
 
 @dataclass
@@ -171,6 +181,7 @@ class HardGateEvaluator:
             self._h4_ku_coverage(chapters, ku_index),
             self._h5_no_zero_argument_chapter(chapters, argument),
             self._h6_evidence_has_quote(evidence),
+            self._h7_claims_supported(getattr(result, "claim_verification", None)),
         ]
         rep.dimensions = self._dimensions(
             result, bu, chapters, evidence, argument, evolution, ku_index
@@ -326,6 +337,26 @@ class HardGateEvaluator:
             missing,
         )
 
+    @staticmethod
+    def _h7_claims_supported(cv: Any) -> HardGate:
+        """At least 85% of judged claims are supported by their anchored passage.
+
+        Unsupported claims are already marked and excluded from presentation;
+        this gate fails a run whose reading over-reaches broadly, which a
+        per-claim filter alone would hide.
+        """
+        if cv is None or not getattr(cv, "checked", 0):
+            return HardGate("H7_claims_supported", True, "claim verification not run")
+        judged = cv.supported + cv.rejected
+        ratio = cv.supported / judged if judged else 0.0
+        return HardGate(
+            "H7_claims_supported",
+            judged > 0 and ratio >= CLAIM_SUPPORT_FLOOR,
+            f"{cv.supported}/{judged} judged claims supported ({ratio:.0%}, floor "
+            f"{CLAIM_SUPPORT_FLOOR:.0%}); {cv.undecided} undecided",
+            [f"{e['chapter']}: {e['claim'][:120]}" for e in cv.rejected_examples[:10]],
+        )
+
     # ── six dimensions ───────────────────────────────────────────────────────
 
     def _dimensions(
@@ -363,11 +394,18 @@ class HardGateEvaluator:
             if graded:
                 good = sum(1 for v in graded if v)
                 score = 10.0 * good / len(graded)
+                cv = getattr(result, "claim_verification", None)
+                note = ""
+                if cv is not None and getattr(cv, "checked", 0):
+                    note = (
+                        f"; publication filter kept {cv.supported}/{cv.checked} claims"
+                        f" ({cv.rejected} marked unsupported)"
+                    )
                 return DimensionScore(
                     "accuracy",
                     "Accuracy",
                     score,
-                    f"{good}/{len(graded)} sampled claims verified against source text",
+                    f"{good}/{len(graded)} sampled supported claims hold against the source{note}",
                     f"LLM judge over {len(graded)} of {len(claims)} sampled claims",
                 )
         # Fallback: DIRECT evidence ratio (no judge available).
@@ -386,18 +424,16 @@ class HardGateEvaluator:
         )
 
     def _judge_one(self, claim: dict[str, str]) -> bool | None:
-        prompt = (
-            "You check whether a claim is supported by the quoted source text.\n"
-            f"CLAIM: {claim['text']}\n"
-            f"SOURCE QUOTE: {claim['quote']}\n"
-            "Answer with exactly YES or NO: is the claim a fair reading of the quote?\n"
-        )
-        out = (self.judge(prompt) or "").strip().upper()
-        if out.startswith("YES"):
-            return True
-        if out.startswith("NO"):
-            return False
-        return None
+        # The same strict question the claim verifier asks, put by the accuracy
+        # judge (ideally a different model) over a fresh random sample: does the
+        # anchored passage state or directly entail the claim?
+        from stratum.services.bu_v2_claim_verifier import STRICT_PROMPT, parse_verdict
+
+        prompt = STRICT_PROMPT.format(quote=claim["quote"][:900], claim=claim["text"][:600])
+        verdict = parse_verdict(self.judge(prompt))
+        if verdict is None:
+            verdict = parse_verdict(self.judge(prompt))
+        return verdict
 
     @staticmethod
     def _dim_coverage(bu: Any, chapters: list[Any], ku_index: Any) -> DimensionScore:
@@ -440,9 +476,9 @@ class HardGateEvaluator:
         mechanisms = sum(len(c.mechanisms_refs) for c in chapters)
         n = max(1, len(chapters))
         # Depth needs arguments, evolution and mechanisms — not just concepts.
-        arg_score = min(1.0, complete / n)
-        evo_score = min(1.0, evolving / 10.0)
-        mech_score = min(1.0, mechanisms / (3.0 * n))
+        arg_score = min(1.0, complete / (ARGUMENTS_PER_CHAPTER * n))
+        evo_score = min(1.0, evolving / max(10.0, 2.0 * n))
+        mech_score = min(1.0, mechanisms / (MECHANISMS_PER_CHAPTER * n))
         score = 10.0 * (0.45 * arg_score + 0.3 * evo_score + 0.25 * mech_score)
         return DimensionScore(
             "depth",
@@ -536,13 +572,21 @@ class HardGateEvaluator:
 def _covered_ku_count(chapter: Any, ku_index: Any) -> int:
     """How many of the chapter's DEF/THM KUs the understanding covers.
 
-    A KU is covered when its concept label appears in the chapter's concept list
-    (case-insensitive, either direction) or its ku_id is in ``major_ku_refs``.
+    A KU is covered when any of these hold:
+      * its ku_id is in the chapter's ``major_ku_refs`` (the producer adds it
+        when it anchored the KU), or
+      * its concept label matches a concept the chapter introduced
+        (case-insensitive, either direction), or
+      * the label and a concept share a distinctive term (≥5 chars, not a
+        stopword), which is the honest test for an OCR-fragmented frozen label
+        like "limit of" or "derivative of ƒ at" whose exact string never
+        appears but whose concept the chapter clearly covers.
     """
     anchors = ku_index.concept_anchors_for(chapter.chapter_id)
     if not anchors:
         return 0
-    names = {_norm(n) for n in chapter.concepts_introduced_refs if n}
+    names = [_norm(n) for n in chapter.concepts_introduced_refs if n]
+    name_tokens = [set(_tokens(n)) for n in chapter.concepts_introduced_refs if n]
     ku_ids = set(getattr(chapter, "major_ku_refs", []) or [])
     covered = 0
     for a in anchors:
@@ -555,7 +599,54 @@ def _covered_ku_count(chapter: Any, ku_index: Any) -> int:
             continue
         if any(name == n or name in n or n in name for n in names if len(n) >= 3):
             covered += 1
+            continue
+        label_tokens = set(_tokens(a.get("name") or ""))
+        if label_tokens and any(label_tokens & toks for toks in name_tokens):
+            covered += 1
     return covered
+
+
+_STOP = {
+    "the",
+    "a",
+    "an",
+    "of",
+    "to",
+    "in",
+    "on",
+    "at",
+    "by",
+    "for",
+    "and",
+    "or",
+    "is",
+    "are",
+    "be",
+    "with",
+    "that",
+    "this",
+    "as",
+    "from",
+    "if",
+    "then",
+    "its",
+    "it",
+    "we",
+    "when",
+    "can",
+    "will",
+    "all",
+    "each",
+    "not",
+    "but",
+}
+
+
+def _tokens(s: str) -> list[str]:
+    """Distinctive lowercase words in a label, for fuzzy KU coverage matching."""
+    import re as _re
+
+    return [w for w in _re.findall(r"[a-z]{5,}|[一-鿿]{2,}", (s or "").lower()) if w not in _STOP]
 
 
 def _sample_claims(
@@ -566,12 +657,12 @@ def _sample_claims(
     pairs: list[dict[str, str]] = []
     for c in chapters:
         for ep in c.evidence_program:
-            if not ep.evidence_refs:
+            if not ep.evidence_refs or not ep.is_supported:
                 continue
             ev = ev_by_id.get(ep.evidence_refs[0])
             if ev is None or not (getattr(ev, "quote", "") or "").strip():
                 continue
-            pairs.append({"text": ep.claim_ref, "quote": ev.quote[:400]})
+            pairs.append({"text": ep.claim_ref, "quote": ev.quote[:900]})
     if len(pairs) <= k:
         return pairs
     return rng.sample(pairs, k)
@@ -584,12 +675,12 @@ def _norm(s: str) -> str:
 def persist_gates(report: HardGateReport, *, book_id: str = "") -> int:
     """Write the gates to ``stratum.bu2_p13_quality_gates``. Returns rows written.
 
-    One row per hard gate (numbers 1–6) plus one row for the six-dimension score
-    (number 7). The table's ``gate_number`` is CHECK-constrained to 1–8 and its
+    One row per hard gate (numbers 1–7) plus one row for the six-dimension score
+    (number 8). The table's ``gate_number`` is CHECK-constrained to 1–8 and its
     ``status`` to PASS/FAIL/BOOK_LIMIT, so the dimension scores are carried in
-    the row's ``evidence`` JSON rather than as their own numbered rows. The table
-    is read by the report, never by the BU status path, so a gate failure cannot
-    silently become a publication decision here.
+    the row's ``evidence`` JSON rather than as their own numbered rows. The
+    runner evaluates the gates before writing the BU and downgrades a run that
+    fails any of them from VERIFIED to DRAFT.
     """
     from stratum.db import insert
 
@@ -614,7 +705,7 @@ def persist_gates(report: HardGateReport, *, book_id: str = "") -> int:
         "id": f"p13_{report.run_id}_dims",
         "run_id": report.run_id,
         "book_id": book_id or report.book_id,
-        "gate_number": 7,
+        "gate_number": len(report.gates) + 1,
         "gate_name": "six_dimension_score",
         "status": "PASS" if report.overall >= 9.0 else "FAIL",
         "score": float(report.overall),
