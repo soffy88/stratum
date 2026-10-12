@@ -44,9 +44,8 @@ class BU2CrossBookQuery:
     ) -> QueryResult:
         """Get comparison between two specific books."""
         for comp in self.understanding.comparisons:
-            if (comp.book_a_id == book_a_id and comp.book_b_id == book_b_id) or (
-                comp.book_a_id == book_b_id and comp.book_b_id == book_a_id
-            ):
+            if (comp.book_a_id == book_a_id and comp.book_b_id == book_b_id) or \
+               (comp.book_a_id == book_b_id and comp.book_b_id == book_a_id):
                 return QueryResult(
                     items=[comp],
                     total=1,
@@ -161,24 +160,19 @@ class BU2CrossBookQuery:
             items=[self.understanding.synthesis] if self.understanding.synthesis else [],
             total=1 if self.understanding.synthesis else 0,
             query="crossbook_synthesis",
-            traceability=self.understanding.synthesis.traceability
-            if self.understanding.synthesis
-            else {},
+            traceability=self.understanding.synthesis.traceability if self.understanding.synthesis else {},
         )
 
     def _collect_traceability(self, items: list[Any]) -> dict[str, list[str]]:
         """Collect traceability from a list of items."""
         traceability = {}
         for item in items:
-            if hasattr(item, "relation_id"):
-                traceability[item.relation_id] = getattr(item, "traceability", [])
-            elif hasattr(item, "gap_id"):
-                traceability[item.gap_id] = getattr(item, "affected_books", [])
-            elif hasattr(item, "contradiction_id"):
-                traceability[item.contradiction_id] = [
-                    getattr(item, "book_a_id", ""),
-                    getattr(item, "book_b_id", ""),
-                ]
+            if hasattr(item, 'relation_id'):
+                traceability[item.relation_id] = getattr(item, 'traceability', [])
+            elif hasattr(item, 'gap_id'):
+                traceability[item.gap_id] = getattr(item, 'affected_books', [])
+            elif hasattr(item, 'contradiction_id'):
+                traceability[item.contradiction_id] = [getattr(item, 'book_a_id', ''), getattr(item, 'book_b_id', '')]
         return traceability
 
 

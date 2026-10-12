@@ -6,15 +6,9 @@ from typing import Optional, Dict
 from pydantic import ValidationError
 
 from stratum.knowledge.bu_v2_models import (
-    PipelineRunState,
-    BUStatus,
-    VerificationOutcome,
-    LearningObject,
-    RetrievalItem,
-    LearningImportance,
-    Difficulty,
-    InteractionType,
-    InteractionPayload,
+    PipelineRunState, BUStatus, VerificationOutcome,
+    LearningObject, RetrievalItem, LearningImportance, Difficulty,
+    InteractionType, InteractionPayload,
 )
 from stratum.services.bu_v2_repositories import (
     PipelineRunRepository,
@@ -40,9 +34,8 @@ VALID_TRANSITIONS: Dict[PipelineRunState, PipelineRunState] = {
     PipelineRunState.CHAPTER_MODELLED: PipelineRunState.BOOK_INTEGRATED,
     PipelineRunState.BOOK_INTEGRATED: PipelineRunState.VERIFICATION_PENDING,
     PipelineRunState.VERIFICATION_PENDING: PipelineRunState.VERIFIED,
-    PipelineRunState.VERIFIED: PipelineRunState.COMPRESSION_TESTED,
+    PipelineRunState.VERIFIED: PipelineRunState.COMPRESSION_TESTED
 }
-
 
 class PipelineTransitionError(Exception):
     """Validation rejection: wrong state, missing artifact, failed gate.
@@ -50,9 +43,7 @@ class PipelineTransitionError(Exception):
     A PipelineTransitionError NEVER marks the run FAILED; the persisted
     state is left unchanged so resume/repair stays possible.
     """
-
     pass
-
 
 class BU2PipelineStateMachine:
     """Strict Orchestrator enforcing the 7-pass Book Understanding 2.0 Pipeline contract."""
@@ -60,9 +51,7 @@ class BU2PipelineStateMachine:
     def __init__(self, run_id: str):
         self.run_id = run_id
 
-    def _assert_and_transition(
-        self, expected_current: PipelineRunState, target_next: PipelineRunState
-    ):
+    def _assert_and_transition(self, expected_current: PipelineRunState, target_next: PipelineRunState):
         """Validate current state, then commit the transition.
 
         Validation failures raise PipelineTransitionError with state unchanged.
@@ -77,36 +66,26 @@ class BU2PipelineStateMachine:
             raise PipelineTransitionError(f"Run {self.run_id} not found.")
 
         if current_state == PipelineRunState.FAILED:
-            raise PipelineTransitionError(
-                f"Run {self.run_id} is in FAILED state. Cannot transition."
-            )
+            raise PipelineTransitionError(f"Run {self.run_id} is in FAILED state. Cannot transition.")
 
         if current_state != expected_current:
-            raise PipelineTransitionError(
-                f"Invalid transition: {current_state.value} -> {target_next.value}"
-            )
+            raise PipelineTransitionError(f"Invalid transition: {current_state.value} -> {target_next.value}")
 
         # Execute transition logic
         try:
             PipelineRunRepository.update_status(self.run_id, target_next)
         except Exception as e:
-            self._fail_pipeline(
-                f"Persist transition {expected_current.value} -> {target_next.value} failed: {e}"
-            )
+            self._fail_pipeline(f"Persist transition {expected_current.value} -> {target_next.value} failed: {e}")
             raise
 
     def _fail_pipeline(self, reason: str):
         log.error(f"Pipeline {self.run_id} FAILED: {reason}")
         try:
-            PipelineRunRepository.update_status(
-                self.run_id, PipelineRunState.FAILED, failure_reason=reason
-            )
+            PipelineRunRepository.update_status(self.run_id, PipelineRunState.FAILED, failure_reason=reason)
         except Exception as e:
             log.error(f"Pipeline {self.run_id}: could not persist FAILED state: {e}")
 
-    def _guarded_pass(
-        self, gate, expected_current: PipelineRunState, target_next: PipelineRunState
-    ):
+    def _guarded_pass(self, gate, expected_current: PipelineRunState, target_next: PipelineRunState):
         """WORK(order via gate) -> VALIDATE -> TRANSITION.
 
         gate() performs persisted-artifact validation and raises
@@ -133,27 +112,19 @@ class BU2PipelineStateMachine:
     def _gate_pass_0(self):
         # Artifact Gate: MUST have persisted VSU and ReadingLedger for this run.
         if not VisualSemanticUnitRepository.check_exists(self.run_id):
-            raise PipelineTransitionError(
-                "Cannot transition to PERCEIVED: Missing VisualSemanticUnit artifacts."
-            )
+            raise PipelineTransitionError("Cannot transition to PERCEIVED: Missing VisualSemanticUnit artifacts.")
         if not PipelineRunRepository.check_reading_ledger_exists(self.run_id):
-            raise PipelineTransitionError(
-                "Cannot transition to PERCEIVED: Missing ReadingLedger artifacts."
-            )
+            raise PipelineTransitionError("Cannot transition to PERCEIVED: Missing ReadingLedger artifacts.")
 
     def _gate_pass_1(self):
         # P1 INSPECT gate: at least one ledger item durably inspected.
         if not PipelineRunRepository.check_inspection_exists(self.run_id):
-            raise PipelineTransitionError(
-                "Cannot transition to INSPECTED: Missing persisted inspection artifacts."
-            )
+            raise PipelineTransitionError("Cannot transition to INSPECTED: Missing persisted inspection artifacts.")
 
     def _gate_pass_2(self):
         # P2 DEEP_READ gate: explanation-structure output persisted for this run.
         if not PipelineRunRepository.check_deep_read_exists(self.run_id):
-            raise PipelineTransitionError(
-                "Cannot transition to DEEP_READ_COMPLETE: Missing persisted deep-read artifacts."
-            )
+            raise PipelineTransitionError("Cannot transition to DEEP_READ_COMPLETE: Missing persisted deep-read artifacts.")
 
     def _gate_pass_3(self):
         # Artifact Gate: ChapterUnderstanding + ChapterDelta persisted.
@@ -180,29 +151,19 @@ class BU2PipelineStateMachine:
 
     def execute_pass_1(self):
         """PASS 1 INSPECT"""
-        self._guarded_pass(
-            self._gate_pass_1, PipelineRunState.PERCEIVED, PipelineRunState.INSPECTED
-        )
+        self._guarded_pass(self._gate_pass_1, PipelineRunState.PERCEIVED, PipelineRunState.INSPECTED)
 
     def execute_pass_2(self):
         """PASS 2 DEEP_READ"""
-        self._guarded_pass(
-            self._gate_pass_2, PipelineRunState.INSPECTED, PipelineRunState.DEEP_READ_COMPLETE
-        )
+        self._guarded_pass(self._gate_pass_2, PipelineRunState.INSPECTED, PipelineRunState.DEEP_READ_COMPLETE)
 
     def execute_pass_3(self):
         """PASS 3 CHAPTER_MODEL"""
-        self._guarded_pass(
-            self._gate_pass_3,
-            PipelineRunState.DEEP_READ_COMPLETE,
-            PipelineRunState.CHAPTER_MODELLED,
-        )
+        self._guarded_pass(self._gate_pass_3, PipelineRunState.DEEP_READ_COMPLETE, PipelineRunState.CHAPTER_MODELLED)
 
     def execute_pass_4(self):
         """PASS 4 BOOK_INTEGRATE"""
-        self._guarded_pass(
-            self._gate_pass_4, PipelineRunState.CHAPTER_MODELLED, PipelineRunState.BOOK_INTEGRATED
-        )
+        self._guarded_pass(self._gate_pass_4, PipelineRunState.CHAPTER_MODELLED, PipelineRunState.BOOK_INTEGRATED)
 
     # ── P5 verification hard gate ──────────────────────────────────────────
 
@@ -279,9 +240,7 @@ class BU2PipelineStateMachine:
             raise
         if current == PipelineRunState.BOOK_INTEGRATED:
             try:
-                PipelineRunRepository.update_status(
-                    self.run_id, PipelineRunState.VERIFICATION_PENDING
-                )
+                PipelineRunRepository.update_status(self.run_id, PipelineRunState.VERIFICATION_PENDING)
             except Exception as e:
                 self._fail_pipeline(f"Enter VERIFICATION_PENDING failed: {e}")
                 raise
@@ -293,9 +252,7 @@ class BU2PipelineStateMachine:
         bu, va, blocking = self._load_verification_context()
         self._require_verified(bu, va, blocking)
         # Commit VERIFIED.
-        self._guarded_pass(
-            lambda: None, PipelineRunState.VERIFICATION_PENDING, PipelineRunState.VERIFIED
-        )
+        self._guarded_pass(lambda: None, PipelineRunState.VERIFICATION_PENDING, PipelineRunState.VERIFIED)
 
     # ── P6 learning projection + terminal gate ─────────────────────────────
 
@@ -331,37 +288,33 @@ class BU2PipelineStateMachine:
         try:
             for lo_id, goal, importance, difficulty in plans:
                 if read("learning_objects", lo_id) is None:
-                    LearningObjectRepository.save(
-                        LearningObject(
-                            id=lo_id,
-                            bu_id=bu_id,
-                            run_id=run_id,
-                            book_id=book_id,
-                            learning_goal=goal,
-                            knowledge_type="conceptual",
-                            importance=importance,
-                            difficulty=difficulty,
-                            target_refs=[],
-                            prerequisites_refs=[],
-                            mastery_requirements=[goal],
-                            assessment_modes=["EXPLAIN_WHY"],
-                            source_refs=[bu_id],
-                        )
-                    )
+                    LearningObjectRepository.save(LearningObject(
+                        id=lo_id,
+                        bu_id=bu_id,
+                        run_id=run_id,
+                        book_id=book_id,
+                        learning_goal=goal,
+                        knowledge_type="conceptual",
+                        importance=importance,
+                        difficulty=difficulty,
+                        target_refs=[],
+                        prerequisites_refs=[],
+                        mastery_requirements=[goal],
+                        assessment_modes=["EXPLAIN_WHY"],
+                        source_refs=[bu_id],
+                    ))
                 ri_id = f"{lo_id}::ri::recall"
                 if read("retrieval_items", ri_id) is None:
-                    RetrievalItemRepository.save(
-                        RetrievalItem(
-                            id=ri_id,
-                            learning_object_id=lo_id,
-                            interaction_type=InteractionType.FREE_RECALL,
-                            payload=InteractionPayload(
-                                question=f"Recall: {goal}",
-                                options=[],
-                                expected_answer="",
-                            ),
-                        )
-                    )
+                    RetrievalItemRepository.save(RetrievalItem(
+                        id=ri_id,
+                        learning_object_id=lo_id,
+                        interaction_type=InteractionType.FREE_RECALL,
+                        payload=InteractionPayload(
+                            question=f"Recall: {goal}",
+                            options=[],
+                            expected_answer="",
+                        ),
+                    ))
         except PipelineTransitionError:
             raise
         except Exception as e:
@@ -381,9 +334,7 @@ class BU2PipelineStateMachine:
             raise PipelineTransitionError(
                 f"Cannot transition to COMPRESSION_TESTED: learning projection missing for BU {bu['id']}."
             )
-        self._guarded_pass(
-            lambda: None, PipelineRunState.VERIFIED, PipelineRunState.COMPRESSION_TESTED
-        )
+        self._guarded_pass(lambda: None, PipelineRunState.VERIFIED, PipelineRunState.COMPRESSION_TESTED)
 
     def resume(self):
         """Resume pipeline from last durable checkpoint idempotently."""

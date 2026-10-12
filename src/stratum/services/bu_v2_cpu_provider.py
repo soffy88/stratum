@@ -88,7 +88,7 @@ class CPUModelProvider(ModelProvider):
         if len(prompt) + len(system) > max_prompt_chars:
             # Truncate from the middle, keeping system and end of prompt
             keep_system = system
-            keep_prompt = prompt[-(max_prompt_chars - len(keep_system) - 100) :]
+            keep_prompt = prompt[-(max_prompt_chars - len(keep_system) - 100):]
             prompt = keep_prompt
 
         start_time = time.perf_counter()
@@ -138,11 +138,7 @@ class CPUModelProvider(ModelProvider):
 
         # Evidence grounding: check if response contains locator-like patterns
         evidence_grounding = 0.0
-        if (
-            "char:" in response.text
-            or "page" in response.text
-            or "locator" in response.text.lower()
-        ):
+        if "char:" in response.text or "page" in response.text or "locator" in response.text.lower():
             evidence_grounding = 1.0
         elif response.raw.get("usage", {}).get("completion_tokens", 0) > 0:
             evidence_grounding = 0.5

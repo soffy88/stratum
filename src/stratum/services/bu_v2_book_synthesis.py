@@ -73,9 +73,7 @@ class BookSynthesisBuilder:
         concept_analysis = self.concept_builder.build(bu, chapters, evolution, graph)
         concept_system = concept_analysis.system
 
-        argument_analysis_result = self.argument_builder.build(
-            bu, chapters, thesis_model, argument_analysis, graph
-        )
+        argument_analysis_result = self.argument_builder.build(bu, chapters, thesis_model, argument_analysis, graph)
         argument_system = argument_analysis_result.system
 
         mechanism_analysis = self.mechanism_analyzer.analyze(bu, chapters, graph)
@@ -92,9 +90,7 @@ class BookSynthesisBuilder:
         )
         contradictions = contradiction_analysis.contradictions
 
-        author_model = self._build_author_model(
-            bu, chapters, thesis_model, concept_system, argument_system, contradictions
-        )
+        author_model = self._build_author_model(bu, chapters, thesis_model, concept_system, argument_system, contradictions)
 
         unresolved_questions = list(getattr(bu, "unresolved_questions", []) or [])
         nk = getattr(bu, "negative_knowledge", None)
@@ -186,9 +182,7 @@ class BookSynthesisBuilder:
         if evidence_map:
             coverage = evidence_map.get("evidence_coverage", 0)
             if coverage > 0.7:
-                evidence_preference.append(
-                    "Strong preference for direct evidence and worked examples"
-                )
+                evidence_preference.append("Strong preference for direct evidence and worked examples")
             elif coverage > 0.4:
                 evidence_preference.append("Moderate evidence traceability with some gaps")
             else:
@@ -198,9 +192,7 @@ class BookSynthesisBuilder:
             if contra.type.value == "DIRECT_CONTRADICTION":
                 limitations.append(f"Contains direct contradiction: {contra.description}")
             elif contra.type.value == "CONTEXTUAL_DIFFERENCE":
-                unresolved_positions.append(
-                    f"Contextual difference in {contra.element_type}: {contra.description}"
-                )
+                unresolved_positions.append(f"Contextual difference in {contra.element_type}: {contra.description}")
 
         return BookAuthorModel(
             worldview=worldview,

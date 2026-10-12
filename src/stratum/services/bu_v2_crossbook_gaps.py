@@ -50,16 +50,14 @@ class BU2CrossBookGapDetector:
 
             theses = []
             for t in synth.thesis.all_theses():
-                theses.append(
-                    {
-                        "thesis_id": t.id,
-                        "type": t.type,
-                        "statement": t.statement,
-                        "confidence": t.confidence,
-                        "evidence_refs": t.evidence_refs,
-                        "supporting_arguments": t.supporting_arguments,
-                    }
-                )
+                theses.append({
+                    "thesis_id": t.id,
+                    "type": t.type,
+                    "statement": t.statement,
+                    "confidence": t.confidence,
+                    "evidence_refs": t.evidence_refs,
+                    "supporting_arguments": t.supporting_arguments,
+                })
             all_theses[bu.book_id] = theses
 
         return all_theses
@@ -91,17 +89,15 @@ class BU2CrossBookGapDetector:
 
             mechs = []
             for m in synth.mechanism_system.mechanisms:
-                mechs.append(
-                    {
-                        "mechanism_id": m.id,
-                        "trigger": m.trigger,
-                        "precondition": m.precondition,
-                        "operation": m.operation,
-                        "outcome": m.outcome,
-                        "confidence": m.confidence,
-                        "source_chapters": m.source_chapters,
-                    }
-                )
+                mechs.append({
+                    "mechanism_id": m.id,
+                    "trigger": m.trigger,
+                    "precondition": m.precondition,
+                    "operation": m.operation,
+                    "outcome": m.outcome,
+                    "confidence": m.confidence,
+                    "source_chapters": m.source_chapters,
+                })
             all_mechs[bu.book_id] = mechs
 
         return all_mechs
@@ -116,15 +112,13 @@ class BU2CrossBookGapDetector:
 
             args = []
             for arg in synth.argument_system.all_arguments():
-                args.append(
-                    {
-                        "argument_id": arg.id,
-                        "level": arg.level,
-                        "what": arg.what,
-                        "conclusion": arg.conclusion,
-                        "evidence_refs": arg.evidence_refs,
-                    }
-                )
+                args.append({
+                    "argument_id": arg.id,
+                    "level": arg.level,
+                    "what": arg.what,
+                    "conclusion": arg.conclusion,
+                    "evidence_refs": arg.evidence_refs,
+                })
             all_args[bu.book_id] = args
 
         return all_args
@@ -141,15 +135,13 @@ class BU2CrossBookGapDetector:
         for book_id, theses in all_theses.items():
             for t in theses:
                 if t["type"] in ("QUESTION", "PROBLEM"):
-                    all_questions.append(
-                        {
-                            "book_id": book_id,
-                            "thesis_id": t["thesis_id"],
-                            "statement": t["statement"],
-                            "evidence_refs": t["evidence_refs"],
-                            "supporting_arguments": t["supporting_arguments"],
-                        }
-                    )
+                    all_questions.append({
+                        "book_id": book_id,
+                        "thesis_id": t["thesis_id"],
+                        "statement": t["statement"],
+                        "evidence_refs": t["evidence_refs"],
+                        "supporting_arguments": t["supporting_arguments"],
+                    })
 
         # Questions with no evidence and no supporting arguments -> unanswered
         for q in all_questions:

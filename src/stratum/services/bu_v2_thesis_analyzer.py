@@ -75,10 +75,7 @@ class ThesisAnalyzer:
         return ThesisAnalysis(model=model, traceability=traceability)
 
     def _extract_core_thesis(
-        self,
-        bu: BookUnderstandingV2,
-        chapters: list[ChapterUnderstanding],
-        graph: BookReasoningGraph | None,
+        self, bu: BookUnderstandingV2, chapters: list[ChapterUnderstanding], graph: BookReasoningGraph | None
     ) -> BookThesis | None:
         theses = getattr(bu, "central_theses", []) or []
         if not theses:
@@ -104,10 +101,7 @@ class ThesisAnalyzer:
         )
 
     def _extract_supporting_theses(
-        self,
-        bu: BookUnderstandingV2,
-        chapters: list[ChapterUnderstanding],
-        graph: BookReasoningGraph | None,
+        self, bu: BookUnderstandingV2, chapters: list[ChapterUnderstanding], graph: BookReasoningGraph | None
     ) -> list[BookThesis]:
         sub_theses = getattr(bu, "sub_theses", []) or []
         out = []
@@ -117,19 +111,17 @@ class ThesisAnalyzer:
             locations = self._find_source_locations(stmt, chapters)
             provenance = self._determine_provenance(stmt, chapters, evidence_refs)
 
-            out.append(
-                BookThesis(
-                    id=_stable_id("thesis", "support", bu.book_id, str(i)),
-                    type=ThesisType.SUPPORTING,
-                    statement=stmt,
-                    scope="book",
-                    evidence_refs=evidence_refs,
-                    supporting_arguments=supporting_args,
-                    confidence=0.6 if evidence_refs else 0.3,
-                    provenance=provenance,
-                    source_locations=locations,
-                )
-            )
+            out.append(BookThesis(
+                id=_stable_id("thesis", "support", bu.book_id, str(i)),
+                type=ThesisType.SUPPORTING,
+                statement=stmt,
+                scope="book",
+                evidence_refs=evidence_refs,
+                supporting_arguments=supporting_args,
+                confidence=0.6 if evidence_refs else 0.3,
+                provenance=provenance,
+                source_locations=locations,
+            ))
         return out
 
     def _extract_problems(
@@ -139,19 +131,17 @@ class ThesisAnalyzer:
         out = []
         for i, q in enumerate(questions):
             locations = self._find_source_locations(q, chapters)
-            out.append(
-                BookThesis(
-                    id=_stable_id("thesis", "problem", bu.book_id, str(i)),
-                    type=ThesisType.PROBLEM,
-                    statement=q,
-                    scope="book",
-                    evidence_refs=[],
-                    supporting_arguments=[],
-                    confidence=0.5,
-                    provenance=ThesisProvenance.AUTHOR_ASSERTED,
-                    source_locations=locations,
-                )
-            )
+            out.append(BookThesis(
+                id=_stable_id("thesis", "problem", bu.book_id, str(i)),
+                type=ThesisType.PROBLEM,
+                statement=q,
+                scope="book",
+                evidence_refs=[],
+                supporting_arguments=[],
+                confidence=0.5,
+                provenance=ThesisProvenance.AUTHOR_ASSERTED,
+                source_locations=locations,
+            ))
         return out
 
     def _extract_questions(
@@ -161,19 +151,17 @@ class ThesisAnalyzer:
         out = []
         for i, q in enumerate(questions):
             locations = self._find_source_locations(q, chapters)
-            out.append(
-                BookThesis(
-                    id=_stable_id("thesis", "question", bu.book_id, str(i)),
-                    type=ThesisType.QUESTION,
-                    statement=q,
-                    scope="book",
-                    evidence_refs=[],
-                    supporting_arguments=[],
-                    confidence=0.5,
-                    provenance=ThesisProvenance.AUTHOR_ASSERTED,
-                    source_locations=locations,
-                )
-            )
+            out.append(BookThesis(
+                id=_stable_id("thesis", "question", bu.book_id, str(i)),
+                type=ThesisType.QUESTION,
+                statement=q,
+                scope="book",
+                evidence_refs=[],
+                supporting_arguments=[],
+                confidence=0.5,
+                provenance=ThesisProvenance.AUTHOR_ASSERTED,
+                source_locations=locations,
+            ))
         return out
 
     def _extract_assumptions(
@@ -185,19 +173,17 @@ class ThesisAnalyzer:
         out = []
         for i, a in enumerate(all_assumptions[:10]):
             locations = self._find_source_locations(a, chapters)
-            out.append(
-                BookThesis(
-                    id=_stable_id("thesis", "assumption", bu.book_id, str(i)),
-                    type=ThesisType.ASSUMPTION,
-                    statement=a,
-                    scope="book",
-                    evidence_refs=[],
-                    supporting_arguments=[],
-                    confidence=0.4,
-                    provenance=ThesisProvenance.AUTHOR_ASSERTED,
-                    source_locations=locations,
-                )
-            )
+            out.append(BookThesis(
+                id=_stable_id("thesis", "assumption", bu.book_id, str(i)),
+                type=ThesisType.ASSUMPTION,
+                statement=a,
+                scope="book",
+                evidence_refs=[],
+                supporting_arguments=[],
+                confidence=0.4,
+                provenance=ThesisProvenance.AUTHOR_ASSERTED,
+                source_locations=locations,
+            ))
         return out
 
     def _extract_conclusions(
@@ -207,19 +193,17 @@ class ThesisAnalyzer:
         for cu in chapters:
             for qual in cu.qualifications:
                 locations = self._find_source_locations(qual, chapters)
-                out.append(
-                    BookThesis(
-                        id=_stable_id("thesis", "conclusion", bu.book_id, cu.chapter_id),
-                        type=ThesisType.CONCLUSION,
-                        statement=qual,
-                        scope=cu.chapter_id,
-                        evidence_refs=[],
-                        supporting_arguments=[],
-                        confidence=0.5,
-                        provenance=ThesisProvenance.AUTHOR_ASSERTED,
-                        source_locations=locations,
-                    )
-                )
+                out.append(BookThesis(
+                    id=_stable_id("thesis", "conclusion", bu.book_id, cu.chapter_id),
+                    type=ThesisType.CONCLUSION,
+                    statement=qual,
+                    scope=cu.chapter_id,
+                    evidence_refs=[],
+                    supporting_arguments=[],
+                    confidence=0.5,
+                    provenance=ThesisProvenance.AUTHOR_ASSERTED,
+                    source_locations=locations,
+                ))
         return out[:10]
 
     def _extract_limitations(
@@ -230,19 +214,17 @@ class ThesisAnalyzer:
         out = []
         for i, lim in enumerate(limitations):
             locations = self._find_source_locations(lim, chapters)
-            out.append(
-                BookThesis(
-                    id=_stable_id("thesis", "limitation", bu.book_id, str(i)),
-                    type=ThesisType.LIMITATION,
-                    statement=lim,
-                    scope="book",
-                    evidence_refs=[],
-                    supporting_arguments=[],
-                    confidence=0.6,
-                    provenance=ThesisProvenance.AUTHOR_ASSERTED,
-                    source_locations=locations,
-                )
-            )
+            out.append(BookThesis(
+                id=_stable_id("thesis", "limitation", bu.book_id, str(i)),
+                type=ThesisType.LIMITATION,
+                statement=lim,
+                scope="book",
+                evidence_refs=[],
+                supporting_arguments=[],
+                confidence=0.6,
+                provenance=ThesisProvenance.AUTHOR_ASSERTED,
+                source_locations=locations,
+            ))
         return out
 
     def _find_evidence_for_thesis(
@@ -260,7 +242,9 @@ class ThesisAnalyzer:
                     evidence.extend([e for e in node.metadata.get("evidence_refs", [])])
         return list(dict.fromkeys(evidence))[:20]
 
-    def _find_supporting_args(self, thesis: str, graph: BookReasoningGraph | None) -> list[str]:
+    def _find_supporting_args(
+        self, thesis: str, graph: BookReasoningGraph | None
+    ) -> list[str]:
         if not graph:
             return []
         supporting = []
@@ -272,7 +256,9 @@ class ThesisAnalyzer:
                     supporting.append(edge.edge_id)
         return supporting[:10]
 
-    def _find_source_locations(self, text: str, chapters: list[ChapterUnderstanding]) -> list[str]:
+    def _find_source_locations(
+        self, text: str, chapters: list[ChapterUnderstanding]
+    ) -> list[str]:
         locations = []
         text_lower = text.lower()[:100]
         for cu in chapters:
