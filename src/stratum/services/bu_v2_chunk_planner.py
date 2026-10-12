@@ -169,9 +169,7 @@ class BU2ChunkPlanner:
         self.hard_max = hard_max_chars
         self.overlap = overlap_chars
 
-    def plan_chapter(
-        self, chapter_id: str, chapter_text: str, section_context: str = ""
-    ) -> ChunkPlan:
+    def plan_chapter(self, chapter_id: str, chapter_text: str, section_context: str = "") -> ChunkPlan:
         """Plan chunks for one chapter.
 
         Args:

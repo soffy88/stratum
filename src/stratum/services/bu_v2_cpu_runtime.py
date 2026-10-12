@@ -152,18 +152,15 @@ class BU2CPURunner:
         self.store.save_chunk_plan(run_id, plans)
 
         # Save run metadata
-        self.store.save_run_metadata(
-            run_id,
-            {
-                "run_id": run_id,
-                "substrate_id": substrate_id,
-                "book_title": title,
-                "total_chapters": len(chapters),
-                "chapter_ids": [c.chapter_id for c in chapters],
-                "config": self.config.__dict__,
-                "started_at": time.time(),
-            },
-        )
+        self.store.save_run_metadata(run_id, {
+            "run_id": run_id,
+            "substrate_id": substrate_id,
+            "book_title": title,
+            "total_chapters": len(chapters),
+            "chapter_ids": [c.chapter_id for c in chapters],
+            "config": self.config.__dict__,
+            "started_at": time.time(),
+        })
 
         # Process each chapter
         result = RunResult(
@@ -189,14 +186,7 @@ class BU2CPURunner:
                     chunk.chapter_id,
                     chunk.chunk_id,
                     "chunk_understanding",
-                    make_chunk_input_hash(
-                        run_id,
-                        chunk.chapter_id,
-                        chunk.chunk_id,
-                        "chunk_understanding",
-                        chunk.text,
-                        "",
-                    ),
+                    make_chunk_input_hash(run_id, chunk.chapter_id, chunk.chunk_id, "chunk_understanding", chunk.text, "")
                 ):
                     continue
 
@@ -248,9 +238,7 @@ class BU2CPURunner:
                 )
 
             chapter_results.append(synthesis)
-            result.chapters.append(
-                synthesis.chapter_understanding
-            ) if synthesis.chapter_understanding else None
+            result.chapters.append(synthesis.chapter_understanding) if synthesis.chapter_understanding else None
             if synthesis.delta:
                 result.deltas.append(synthesis.delta)
             result.evidence.extend(synthesis.evidence)
@@ -264,9 +252,7 @@ class BU2CPURunner:
             stats.max_chapter_time = max(stats.max_chapter_time, chapter_time)
 
         # Build book understanding
-        chapter_understandings = [
-            r.chapter_understanding for r in chapter_results if r.chapter_understanding
-        ]
+        chapter_understandings = [r.chapter_understanding for r in chapter_results if r.chapter_understanding]
         if not chapter_understandings:
             raise BU2RunError("no chapter produced an understanding")
 
@@ -296,9 +282,7 @@ class BU2CPURunner:
             result.failures.append(f"verification FAIL: {len(report.failed)} check(s)")
 
         # Run P13 components
-        p13_results = self.aggregator.run_p13_components(
-            bu, chapter_understandings, run_id, substrate_id
-        )
+        p13_results = self.aggregator.run_p13_components(bu, chapter_understandings, run_id, substrate_id)
 
         # Store P12 results on result
         result.p12 = {
@@ -353,7 +337,8 @@ class BU2CPURunner:
                 context_used=True,
             ),
             chapter_roles=[
-                {"chapter_id": c.chapter_id, "role": c.primary_role} for c in result.chapters
+                {"chapter_id": c.chapter_id, "role": c.primary_role}
+                for c in result.chapters
             ],
         )
 
@@ -366,19 +351,16 @@ class BU2CPURunner:
         result.cpu_stats = stats
 
         # Save final metadata
-        self.store.save_run_metadata(
-            run_id,
-            {
-                "run_id": run_id,
-                "completed_at": time.time(),
-                "total_wall_clock": stats.total_wall_clock,
-                "total_model_calls": stats.total_model_calls,
-                "chapters_completed": stats.chapters_completed,
-                "chapters_failed": stats.chapters_failed,
-                "bu_status": bu.status.value if bu else None,
-                "verification": report.outcome.value if report else "NONE",
-            },
-        )
+        self.store.save_run_metadata(run_id, {
+            "run_id": run_id,
+            "completed_at": time.time(),
+            "total_wall_clock": stats.total_wall_clock,
+            "total_model_calls": stats.total_model_calls,
+            "chapters_completed": stats.chapters_completed,
+            "chapters_failed": stats.chapters_failed,
+            "bu_status": bu.status.value if bu else None,
+            "verification": report.outcome.value if report else "NONE",
+        })
 
         return result
 
@@ -402,7 +384,7 @@ def create_cpu_runner(
     if provider is None:
         # Use CPU provider wrapper
         base_provider = resolve_provider()
-        if hasattr(base_provider, "profile"):
+        if hasattr(base_provider, 'profile'):
             provider = base_provider
         else:
             profile = CPUProviderProfile(

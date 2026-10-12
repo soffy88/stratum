@@ -33,7 +33,9 @@ from stratum.services.bu_v2_reasoning_graph import UnresolvedRelation, node_id
 
 EventType = Literal["INTRODUCTION", "REFINEMENT", "EXPANSION", "CONNECTION"]
 
-EVENT_TYPES: frozenset[str] = frozenset({"INTRODUCTION", "REFINEMENT", "EXPANSION", "CONNECTION"})
+EVENT_TYPES: frozenset[str] = frozenset(
+    {"INTRODUCTION", "REFINEMENT", "EXPANSION", "CONNECTION"}
+)
 
 # Words that signal a definition being restated rather than merely mentioned.
 _DEFINITION_CUE = re.compile(
@@ -117,8 +119,9 @@ class ConceptTrajectory:
         "Applied" means the concept did work somewhere else — an expansion or a
         connection to other concepts — rather than merely being restated.
         """
-        return {"INTRODUCTION", "REFINEMENT"} <= self.event_kinds and bool(
-            self.event_kinds & {"EXPANSION", "CONNECTION"}
+        return (
+            {"INTRODUCTION", "REFINEMENT"} <= self.event_kinds
+            and bool(self.event_kinds & {"EXPANSION", "CONNECTION"})
         )
 
     def kind_counts(self) -> dict[str, int]:
@@ -162,9 +165,15 @@ class EvolutionResult:
             "evolving_count": self.evolving_count,
             "fully_evolving_count": self.fully_evolving_count,
             "unresolved_count": len(self.unresolved),
-            "with_refinement": sum(1 for t in self.trajectories if "REFINEMENT" in t.kind_counts()),
-            "with_expansion": sum(1 for t in self.trajectories if "EXPANSION" in t.kind_counts()),
-            "with_connection": sum(1 for t in self.trajectories if "CONNECTION" in t.kind_counts()),
+            "with_refinement": sum(
+                1 for t in self.trajectories if "REFINEMENT" in t.kind_counts()
+            ),
+            "with_expansion": sum(
+                1 for t in self.trajectories if "EXPANSION" in t.kind_counts()
+            ),
+            "with_connection": sum(
+                1 for t in self.trajectories if "CONNECTION" in t.kind_counts()
+            ),
         }
 
     def to_dict(self) -> dict[str, Any]:
@@ -346,9 +355,7 @@ class ConceptEvolutionBuilder:
         for traj in seen.values():
             ordered_events = sorted(traj.events, key=lambda e: (e.sequence, _num(e.chapter_id)))
             traj.events = ordered_events
-            traj.changes = [
-                e for e in ordered_events if e.event_type in ("REFINEMENT", "EXPANSION")
-            ]
+            traj.changes = [e for e in ordered_events if e.event_type in ("REFINEMENT", "EXPANSION")]
             traj.final_state = ordered_events[-1].detail if ordered_events else ""
             counts = traj.kind_counts()
             total = len(ordered_events)
@@ -365,7 +372,9 @@ class ConceptEvolutionBuilder:
             traj.confidence = round(min(1.0, max(0.0, strength / max(1, total))), 4)
             traj.unresolved = list(result.unresolved)
 
-        result.trajectories = sorted(seen.values(), key=lambda t: (-t.confidence, t.concept))
+        result.trajectories = sorted(
+            seen.values(), key=lambda t: (-t.confidence, t.concept)
+        )
         return result
 
 

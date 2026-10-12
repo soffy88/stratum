@@ -87,21 +87,19 @@ class ArgumentSystemBuilder:
             source_chapters = [chain.chapter_id] if chain.chapter_id else []
             status = self._determine_status(chain, evidence_refs)
 
-            out.append(
-                BookArgument(
-                    id=_stable_id("arg", "thesis", chain.chain_id),
-                    level=0,
-                    what=chain.claim.label,
-                    why=self._build_why(chain),
-                    how=self._build_how(chain),
-                    evidence_refs=evidence_refs,
-                    depends_on=[],
-                    conclusion=chain.conclusion.label if chain.conclusion else "",
-                    status=status,
-                    confidence=chain.claim.confidence,
-                    source_chapters=source_chapters,
-                )
-            )
+            out.append(BookArgument(
+                id=_stable_id("arg", "thesis", chain.chain_id),
+                level=0,
+                what=chain.claim.label,
+                why=self._build_why(chain),
+                how=self._build_how(chain),
+                evidence_refs=evidence_refs,
+                depends_on=[],
+                conclusion=chain.conclusion.label if chain.conclusion else "",
+                status=status,
+                confidence=chain.claim.confidence,
+                source_chapters=source_chapters,
+            ))
         return out
 
     def _build_major_arguments(
@@ -125,21 +123,19 @@ class ArgumentSystemBuilder:
             depends_on = [a.id for a in out[-2:]] if out else []
             status = self._determine_status(chain, evidence_refs)
 
-            out.append(
-                BookArgument(
-                    id=_stable_id("arg", "major", bu.book_id, str(i)),
-                    level=1,
-                    what=chain.claim.label,
-                    why=self._build_why(chain),
-                    how=self._build_how(chain),
-                    evidence_refs=evidence_refs,
-                    depends_on=depends_on,
-                    conclusion=chain.conclusion.label if chain.conclusion else "",
-                    status=status,
-                    confidence=chain.claim.confidence * 0.9,
-                    source_chapters=source_chapters,
-                )
-            )
+            out.append(BookArgument(
+                id=_stable_id("arg", "major", bu.book_id, str(i)),
+                level=1,
+                what=chain.claim.label,
+                why=self._build_why(chain),
+                how=self._build_how(chain),
+                evidence_refs=evidence_refs,
+                depends_on=depends_on,
+                conclusion=chain.conclusion.label if chain.conclusion else "",
+                status=status,
+                confidence=chain.claim.confidence * 0.9,
+                source_chapters=source_chapters,
+            ))
         return out
 
     def _build_sub_arguments(
@@ -165,21 +161,19 @@ class ArgumentSystemBuilder:
                 depends_on = [out[-1].id]
             status = self._determine_status(chain, evidence_refs)
 
-            out.append(
-                BookArgument(
-                    id=_stable_id("arg", "sub", bu.book_id, str(i)),
-                    level=2,
-                    what=chain.claim.label,
-                    why=self._build_why(chain),
-                    how=self._build_how(chain),
-                    evidence_refs=evidence_refs,
-                    depends_on=depends_on,
-                    conclusion=chain.conclusion.label if chain.conclusion else "",
-                    status=status,
-                    confidence=chain.claim.confidence * 0.8,
-                    source_chapters=source_chapters,
-                )
-            )
+            out.append(BookArgument(
+                id=_stable_id("arg", "sub", bu.book_id, str(i)),
+                level=2,
+                what=chain.claim.label,
+                why=self._build_why(chain),
+                how=self._build_how(chain),
+                evidence_refs=evidence_refs,
+                depends_on=depends_on,
+                conclusion=chain.conclusion.label if chain.conclusion else "",
+                status=status,
+                confidence=chain.claim.confidence * 0.8,
+                source_chapters=source_chapters,
+            ))
         return out
 
     def _build_why(self, chain: Any) -> str:
