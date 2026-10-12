@@ -127,6 +127,42 @@ def _heal_json(text: str | None) -> Any:
         return None
 
 
+def _locate_ku_anchor(chapter: "Chapter", quote: str, name: str) -> tuple[str, str] | None:
+    """Locate a frozen KU in a chapter, tolerating OCR markup and paraphrase.
+
+    The frozen quote carries markdown emphasis (``**function**``, ``_x_``) that
+    the chapter body may not, and the KU's own char offsets are from the freeze's
+    parse, not this chapter's. So the search tries, in order: the raw quote, the
+    markup-stripped quote, the concept name, and finally a distinctive-token
+    anchor built from the name. Returns None rather than inventing a location.
+    """
+    import re as _re
+
+    if quote:
+        found = chapter.slice_for(quote)
+        if found:
+            return found
+        clean = _re.sub(r"[*_`]", "", quote).strip()
+        if clean and clean != quote:
+            found = chapter.slice_for(clean)
+            if found:
+                return found
+    if name:
+        found = chapter.locate_term(name)
+        if found:
+            return found
+        # A multi-word label like "average rate of change" or an OCR fragment
+        # like "limit of": anchor on the longest distinctive token(s) that the
+        # chapter actually contains.
+        tokens = [t for t in _re.findall(r"[A-Za-z]{5,}|[一-鿿]{2,}", name)]
+        tokens.sort(key=len, reverse=True)
+        for tok in tokens[:3]:
+            found = chapter.locate_term(tok)
+            if found:
+                return found
+    return None
+
+
 def _item_in(item: Any, items: list[Any], key: str) -> bool:
     """Case-insensitive membership test for a merged list entry."""
     if isinstance(item, dict):
@@ -375,10 +411,16 @@ class ChapterUnderstandingProducer:
         provider: ModelProvider | None = None,
         *,
         max_chars: int = 12000,
-        max_chunk_chars: int = 9000,
+        max_chunk_chars: int | None = None,
         chunk_overlap: int = 300,
     ):
         self.provider = provider or resolve_provider()
+        # A strong hosted model with a large context window can read far more per
+        # call, so the chunk size is env-overridable: BU2_CHUNK_CHARS. The
+        # default keeps the small-model behaviour. Larger chunks mean fewer calls
+        # and no loss of coverage, since the whole chapter is still read.
+        if max_chunk_chars is None:
+            max_chunk_chars = int(os.environ.get("BU2_CHUNK_CHARS", "9000"))
         # `max_chars` is the legacy single-shot cap. Long chapters are now read
         # in bounded chunks (see `_chapter_chunks`) and the per-chunk results are
         # merged, so the output of a 40k-character chapter is no longer silently
@@ -681,14 +723,9 @@ class ChapterUnderstandingProducer:
                     quote = _as_str(it.get("quote"))
                     locator = ""
                     snippet = ""
-                    if quote:
-                        found = chapter.slice_for(quote)
-                        if found:
-                            locator, snippet = found
-                    if not locator:
-                        found = chapter.locate_term(name)
-                        if found:
-                            locator, snippet = found
+                    found = _locate_ku_anchor(chapter, quote, name)
+                    if found:
+                        locator, snippet = found
                     if not locator:
                         # The KU is not in this chapter's text; skip rather than
                         # fabricate coverage.

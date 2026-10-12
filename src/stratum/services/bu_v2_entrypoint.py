@@ -20,6 +20,7 @@ not where it is.
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -511,6 +512,16 @@ class BU2Runner:
             # §B: hand the producer this chapter's frozen KUs as a must-cover list.
             if ku_index is not None:
                 self.producer.set_ku_anchor(ku_index.anchors_for(chapter.chapter_id))
+            if os.environ.get("BU2_PROGRESS"):
+                import sys as _sys
+
+                nch = len(self.producer._chapter_chunks(chapter))
+                print(
+                    f"[bu2] {chapter.chapter_id} ({chapter.char_count}c, {nch} chunk(s), "
+                    f"{len(self.producer.ku_anchor)} ku-anchors)",
+                    file=_sys.stderr,
+                    flush=True,
+                )
             try:
                 cu, delta, evidence = self.producer.produce(
                     chapter, run_id=run_id, book_id=substrate_id, prior_chapter_ids=prior
