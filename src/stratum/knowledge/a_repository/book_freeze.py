@@ -22,6 +22,7 @@ never merge or delete occurrences; they are dedup hints for the B warehouse.
 CLI::
 
     python -m stratum.knowledge.a_repository.book_freeze <substrate_id> [--persist] [--json]
+    python -m stratum.knowledge.a_repository.book_freeze --all-pending [--persist] [--limit N]
 """
 
 from __future__ import annotations
@@ -84,6 +85,7 @@ _MARKERS: tuple[tuple[str, str, re.Pattern[str]], ...] = (
     (DEFINITION, "DEFINITION", re.compile(_LEAD + r"(DEFINITION)\b()" + _DASH_NAME, re.M)),
     (EXAMPLE, "EXAMPLE", re.compile(_LEAD + r"(EXAMPLE)\s+(\d+)\b", re.M)),
     (EXERCISE, "Exercises", re.compile(_LEAD + r"(Exercises)\s+(\d+\.\d+)\b", re.M)),
+    (EXERCISE, "EXERCISES", re.compile(_LEAD + r"(EXERCISES)\b[ \t]*(\d+\.\d+)?[ \t]*$", re.M)),
     (SUMMARY, "Summary", re.compile(_LEAD + r"(Chapter Summary|Summary)\s*\**\s*$", re.M)),
 )
 
@@ -327,11 +329,14 @@ def derive_hints(kus: list[ExtractedKU]) -> list[Hint]:
             if target is not None and k.start - kus[target].start <= MAX_APPLY_DISTANCE:
                 add(APPLIES, i, target, 0.75)
 
-    first_by_name: dict[tuple[str, str], int] = {}
+    # Same role, same name AND same number: a bilingual edition or a recap
+    # repeating one statement. Same name with a different number is usually a
+    # different result (Limit Comparison Test for integrals vs. for series).
+    first_by_name: dict[tuple[str, str, str], int] = {}
     for i, k in enumerate(kus):
         if k.role not in (THEOREM, DEFINITION) or len(_norm(k.name)) < 2:
             continue
-        key = (k.role, _norm(k.name).lower())
+        key = (k.role, _norm(k.name).lower(), k.number)
         if key in first_by_name:
             add(RESTATES, i, first_by_name[key], 0.8)
         else:
@@ -538,6 +543,17 @@ def persist(rows: Rows, conn: Any) -> dict[str, int]:
                     cols = list(row)
                     extra = ", frozen_at" if table == "knowledge_unit" else ""
                     vals = ", ".join(f"%({c})s" for c in cols) + (", now()" if extra else "")
+                    if table == "ku_occurrence":
+                        # One occurrence per unit and role: a later extractor
+                        # that only moves a block's end must not add a twin.
+                        cur.execute(
+                            f"INSERT INTO stratum.ku_occurrence ({', '.join(cols)}) "
+                            f"SELECT {vals} WHERE NOT EXISTS (SELECT 1 FROM stratum.ku_occurrence "
+                            "WHERE unit_id=%(unit_id)s AND role=%(role)s) ON CONFLICT DO NOTHING",
+                            row,
+                        )
+                        n += cur.rowcount
+                        continue
                     cur.execute(
                         f"INSERT INTO stratum.{table} ({', '.join(cols)}{extra}) VALUES ({vals}) ON CONFLICT DO NOTHING",
                         row,
@@ -571,13 +587,60 @@ def _connect() -> Any:
     return psycopg2.connect(**_dsn_kwargs())
 
 
+PENDING_SQL = """
+SELECT DISTINCT u.substrate_id
+FROM stratum.book_understandings_v2 u
+WHERE NOT EXISTS (
+    SELECT 1 FROM stratum.source_version sv
+    WHERE sv.book_source_id = u.substrate_id AND sv.version = %s
+)
+ORDER BY u.substrate_id
+LIMIT %s
+"""
+
+
+def pending_substrates(conn: Any, limit: int) -> list[str]:
+    """Books BU2 has understood but the A warehouse has not frozen yet."""
+    with conn.cursor() as cur:
+        cur.execute(PENDING_SQL, (FREEZE_VERSION, limit))
+        return [r[0] for r in cur.fetchall()]
+
+
+def run_pending(limit: int, persist_rows: bool) -> int:
+    """Flywheel entry: freeze every BU2-understood book not yet in A."""
+    conn = _connect()
+    try:
+        ids = pending_substrates(conn, limit)
+    finally:
+        conn.close()
+    failures = 0
+    for sid in ids:
+        argv = [sid, "--json"] + (["--persist"] if persist_rows else [])
+        try:
+            if main(argv) != 0:
+                failures += 1
+        except Exception as exc:  # one bad book must not stop the batch
+            failures += 1
+            print(json.dumps({"substrate_id": sid, "error": str(exc)[:300]}), file=sys.stderr)
+    print(json.dumps({"pending": len(ids), "failures": failures}))
+    return 1 if failures else 0
+
+
 def main(argv: list[str] | None = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+    if "--all-pending" in args:
+        bp = argparse.ArgumentParser(prog="book_freeze --all-pending")
+        bp.add_argument("--all-pending", action="store_true")
+        bp.add_argument("--persist", action="store_true")
+        bp.add_argument("--limit", type=int, default=20)
+        b = bp.parse_args(args)
+        return run_pending(b.limit, b.persist)
     p = argparse.ArgumentParser(prog="book_freeze", description=__doc__.split("\n\n")[0])
     p.add_argument("substrate_id")
     p.add_argument("--persist", action="store_true", help="write to the A warehouse")
     p.add_argument("--json", action="store_true")
     p.add_argument("--samples", type=int, default=0, help="print N sample KUs per role")
-    a = p.parse_args(argv)
+    a = p.parse_args(args)
 
     from stratum.services.bu_v2_entrypoint import BookLoader
 
