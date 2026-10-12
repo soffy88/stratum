@@ -536,13 +536,21 @@ class HardGateEvaluator:
 def _covered_ku_count(chapter: Any, ku_index: Any) -> int:
     """How many of the chapter's DEF/THM KUs the understanding covers.
 
-    A KU is covered when its concept label appears in the chapter's concept list
-    (case-insensitive, either direction) or its ku_id is in ``major_ku_refs``.
+    A KU is covered when any of these hold:
+      * its ku_id is in the chapter's ``major_ku_refs`` (the producer adds it
+        when it anchored the KU), or
+      * its concept label matches a concept the chapter introduced
+        (case-insensitive, either direction), or
+      * the label and a concept share a distinctive term (≥5 chars, not a
+        stopword), which is the honest test for an OCR-fragmented frozen label
+        like "limit of" or "derivative of ƒ at" whose exact string never
+        appears but whose concept the chapter clearly covers.
     """
     anchors = ku_index.concept_anchors_for(chapter.chapter_id)
     if not anchors:
         return 0
-    names = {_norm(n) for n in chapter.concepts_introduced_refs if n}
+    names = [_norm(n) for n in chapter.concepts_introduced_refs if n]
+    name_tokens = [set(_tokens(n)) for n in chapter.concepts_introduced_refs if n]
     ku_ids = set(getattr(chapter, "major_ku_refs", []) or [])
     covered = 0
     for a in anchors:
@@ -555,7 +563,54 @@ def _covered_ku_count(chapter: Any, ku_index: Any) -> int:
             continue
         if any(name == n or name in n or n in name for n in names if len(n) >= 3):
             covered += 1
+            continue
+        label_tokens = set(_tokens(a.get("name") or ""))
+        if label_tokens and any(label_tokens & toks for toks in name_tokens):
+            covered += 1
     return covered
+
+
+_STOP = {
+    "the",
+    "a",
+    "an",
+    "of",
+    "to",
+    "in",
+    "on",
+    "at",
+    "by",
+    "for",
+    "and",
+    "or",
+    "is",
+    "are",
+    "be",
+    "with",
+    "that",
+    "this",
+    "as",
+    "from",
+    "if",
+    "then",
+    "its",
+    "it",
+    "we",
+    "when",
+    "can",
+    "will",
+    "all",
+    "each",
+    "not",
+    "but",
+}
+
+
+def _tokens(s: str) -> list[str]:
+    """Distinctive lowercase words in a label, for fuzzy KU coverage matching."""
+    import re as _re
+
+    return [w for w in _re.findall(r"[a-z]{5,}|[一-鿿]{2,}", (s or "").lower()) if w not in _STOP]
 
 
 def _sample_claims(
