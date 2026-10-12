@@ -386,11 +386,24 @@ class HardGateEvaluator:
         )
 
     def _judge_one(self, claim: dict[str, str]) -> bool | None:
+        # Two-part verdict. The quote is the part of the source text the claim was
+        # anchored to; for a DIRECT claim it is the sentence that states it, for a
+        # term-anchored claim it is the passage where the concept occurs. The judge
+        # answers YES when the quote is consistent with the claim and gives the
+        # claim a defensible textual basis — not when the claim is copied verbatim
+        # (a fair paraphrase of a definition is still a fair reading). A strict
+        # literal-equality test would reject every legitimate technical paraphrase.
         prompt = (
-            "You check whether a claim is supported by the quoted source text.\n"
+            "You are an accuracy checker. Decide whether a CLAIM is a fair reading of the "
+            "SOURCE QUOTE taken from the book.\n"
+            "A fair reading means: the quote supports the claim, is consistent with it, and "
+            "gives the claim a defensible basis in the book's own words. A paraphrase that "
+            "states the same fact the quote conveys counts as fair. Answer NO only if the "
+            "claim contradicts the quote, asserts something the quote does not touch, or "
+            "goes beyond what the quote could support.\n\n"
             f"CLAIM: {claim['text']}\n"
-            f"SOURCE QUOTE: {claim['quote']}\n"
-            "Answer with exactly YES or NO: is the claim a fair reading of the quote?\n"
+            f"SOURCE QUOTE: {claim['quote']}\n\n"
+            "Answer with exactly one word: YES or NO.\n"
         )
         out = (self.judge(prompt) or "").strip().upper()
         if out.startswith("YES"):
