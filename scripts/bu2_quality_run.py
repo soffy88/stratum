@@ -6,6 +6,7 @@ Usage:
 Reads the gateway base URL / key from the environment (PPT_LLM_*), which the
 operator sources from ~/.config/keys/.env. Never prints the key.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,10 +30,17 @@ def build_provider(model: str):
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("substrate_id")
-    ap.add_argument("--model", default=os.environ.get("PPT_LLM_MODEL") or "deepseek-ai/DeepSeek-V3.2")
+    ap.add_argument(
+        "--model", default=os.environ.get("PPT_LLM_MODEL") or "deepseek-ai/DeepSeek-V3.2"
+    )
     ap.add_argument("--chapters", type=int, default=None)
     ap.add_argument("--persist", action="store_true")
     ap.add_argument("--no-judge", action="store_true")
+    ap.add_argument(
+        "--judge-model",
+        default=os.environ.get("BU2_JUDGE_MODEL"),
+        help="a different model for the accuracy dimension",
+    )
     ap.add_argument("--out", default=None, help="write the run JSON here")
     args = ap.parse_args(argv)
 
@@ -44,6 +52,7 @@ def main(argv=None) -> int:
         chapter_limit=args.chapters,
         use_ku_anchor=True,
         use_accuracy_judge=not args.no_judge,
+        judge_provider=build_provider(args.judge_model) if args.judge_model else None,
     )
     result = runner.execute(args.substrate_id)
 
@@ -56,12 +65,20 @@ def main(argv=None) -> int:
         "bu_status": result.bu.status.value if result.bu else None,
         "governing_questions": list(result.bu.governing_questions) if result.bu else [],
         "central_theses": list(result.bu.central_theses) if result.bu else [],
-        "concept_count": len((result.bu.concept_system or {}).get("concepts", {})) if result.bu else 0,
+        "concept_count": len((result.bu.concept_system or {}).get("concepts", {}))
+        if result.bu
+        else 0,
         "concepts_introduced": sum(len(c.concepts_introduced_refs) for c in result.chapters),
         "evidence_with_quote": sum(1 for e in result.evidence if getattr(e, "quote", "")),
-        "arguments_complete": getattr(result.p12.get("argument"), "complete_chains", 0) if result.p12 else 0,
+        "arguments_complete": getattr(result.p12.get("argument"), "complete_chains", 0)
+        if result.p12
+        else 0,
         "graph_stats": result.p12["dependency"].graph.stats() if result.p12 else {},
         "hard_gates": result.hard_gates.to_dict() if result.hard_gates else None,
+        "claim_verification": result.claim_verification.to_dict()
+        if result.claim_verification
+        else None,
+        "reconstructed_arguments": sum(len(c.arguments_refs) for c in result.chapters),
         "learning_guide_steps": len(result.learning_guide.steps) if result.learning_guide else 0,
         "failures": result.failures,
     }

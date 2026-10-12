@@ -190,9 +190,12 @@ class BU2IntermediateStore:
         checkpoint = ChapterCheckpoint(
             run_id=run_id,
             chapter_id=chapter_id,
-            chunks_completed=chunks_completed or (existing.get("chunks_completed", []) if existing else []),
-            chunk_understandings=chunk_understandings or (existing.get("chunk_understandings", []) if existing else []),
-            chapter_synthesis=chapter_synthesis or (existing.get("chapter_synthesis") if existing else None),
+            chunks_completed=chunks_completed
+            or (existing.get("chunks_completed", []) if existing else []),
+            chunk_understandings=chunk_understandings
+            or (existing.get("chunk_understandings", []) if existing else []),
+            chapter_synthesis=chapter_synthesis
+            or (existing.get("chapter_synthesis") if existing else None),
             started_at=existing.get("started_at", time.time()) if existing else time.time(),
             completed_at=time.time() if completed else None,
             success=completed and error is None,

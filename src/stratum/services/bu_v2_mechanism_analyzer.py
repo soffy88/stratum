@@ -60,9 +60,7 @@ class MechanismAnalyzer:
 
         for cu in chapters:
             for mech_ref in cu.mechanisms_refs:
-                mechanism = self._extract_mechanism_from_text(
-                    mech_ref, cu, chapters, graph
-                )
+                mechanism = self._extract_mechanism_from_text(mech_ref, cu, chapters, graph)
                 if mechanism:
                     system.mechanisms.append(mechanism)
                     traceability[mechanism.id] = mechanism.source_chapters
@@ -123,20 +121,26 @@ class MechanismAnalyzer:
                 intermediate = node.metadata.get("intermediate", "")
                 outcome = node.metadata.get("outcome", "")
 
-                provenance = ThesisProvenance.AUTHOR_ASSERTED if evidence_refs else ThesisProvenance.MODEL_INFERRED
+                provenance = (
+                    ThesisProvenance.AUTHOR_ASSERTED
+                    if evidence_refs
+                    else ThesisProvenance.MODEL_INFERRED
+                )
 
-                mechanisms.append(BookMechanism(
-                    id=_stable_id("mech", "graph", node.node_id),
-                    trigger=trigger,
-                    precondition=precondition,
-                    operation=operation,
-                    intermediate_state=intermediate,
-                    outcome=outcome,
-                    evidence_refs=evidence_refs,
-                    confidence=node.confidence,
-                    provenance=provenance,
-                    source_chapters=source_chapters,
-                ))
+                mechanisms.append(
+                    BookMechanism(
+                        id=_stable_id("mech", "graph", node.node_id),
+                        trigger=trigger,
+                        precondition=precondition,
+                        operation=operation,
+                        intermediate_state=intermediate,
+                        outcome=outcome,
+                        evidence_refs=evidence_refs,
+                        confidence=node.confidence,
+                        provenance=provenance,
+                        source_chapters=source_chapters,
+                    )
+                )
         return mechanisms
 
     def _find_trigger(self, text: str, cu: ChapterUnderstanding) -> str:
@@ -162,7 +166,19 @@ class MechanismAnalyzer:
     def _find_outcome(self, text: str, cu: ChapterUnderstanding) -> str:
         sentences = re.split(r"[.!?]+", text)
         for s in reversed(sentences):
-            if any(w in s.lower() for w in ["result", "conclude", "therefore", "thus", "hence", "gives", "yields", "produces"]):
+            if any(
+                w in s.lower()
+                for w in [
+                    "result",
+                    "conclude",
+                    "therefore",
+                    "thus",
+                    "hence",
+                    "gives",
+                    "yields",
+                    "produces",
+                ]
+            ):
                 return s.strip()[:200]
         if cu.qualifications:
             return cu.qualifications[0][:200]

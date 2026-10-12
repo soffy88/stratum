@@ -138,7 +138,9 @@ class BU2CrossBookCollectionManager:
         # Check for duplicate BU objects (same run_id)
         run_ids = [bu.run_id for bu in book_understandings]
         if len(run_ids) != len(set(run_ids)):
-            errors.append("Duplicate BU run_ids detected — each book must have independent understanding")
+            errors.append(
+                "Duplicate BU run_ids detected — each book must have independent understanding"
+            )
 
         valid = len(errors) == 0 and len(book_understandings) >= 2
 
@@ -156,18 +158,37 @@ class BU2CrossBookCollectionManager:
         for book_id in collection.book_ids:
             bu = self._get_book_understanding(book_id)
             synth = self._get_book_synthesis(book_id)
-            books.append({
-                "book_id": book_id,
-                "bu_id": bu.id if bu else None,
-                "bu_status": bu.status.value if bu else None,
-                "synthesis_id": synth.id if synth else None,
-                "core_thesis": synth.thesis.core_thesis.statement if synth and synth.thesis.core_thesis else None,
-                "concept_count": sum(len(getattr(synth.concept_system, role, [])) for role in
-                    ["foundational", "core", "derived", "bridging", "application", "terminal"]) if synth else 0,
-                "argument_count": sum(len(getattr(synth.argument_system, attr, [])) for attr in
-                    ["thesis_arguments", "major_arguments", "sub_arguments"]) if synth else 0,
-                "mechanism_count": len(synth.mechanism_system.mechanisms) if synth else 0,
-            })
+            books.append(
+                {
+                    "book_id": book_id,
+                    "bu_id": bu.id if bu else None,
+                    "bu_status": bu.status.value if bu else None,
+                    "synthesis_id": synth.id if synth else None,
+                    "core_thesis": synth.thesis.core_thesis.statement
+                    if synth and synth.thesis.core_thesis
+                    else None,
+                    "concept_count": sum(
+                        len(getattr(synth.concept_system, role, []))
+                        for role in [
+                            "foundational",
+                            "core",
+                            "derived",
+                            "bridging",
+                            "application",
+                            "terminal",
+                        ]
+                    )
+                    if synth
+                    else 0,
+                    "argument_count": sum(
+                        len(getattr(synth.argument_system, attr, []))
+                        for attr in ["thesis_arguments", "major_arguments", "sub_arguments"]
+                    )
+                    if synth
+                    else 0,
+                    "mechanism_count": len(synth.mechanism_system.mechanisms) if synth else 0,
+                }
+            )
         return books
 
 

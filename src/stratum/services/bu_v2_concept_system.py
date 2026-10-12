@@ -77,14 +77,30 @@ class ConceptSystemBuilder:
         for cu in chapters:
             for cid in cu.concepts_introduced_refs:
                 if cid not in info:
-                    info[cid] = {"introduced_at": cu.chapter_id, "definitions": [], "chapters": set(), "refinements": 0, "applications": 0, "connections": 0, "supports": []}
+                    info[cid] = {
+                        "introduced_at": cu.chapter_id,
+                        "definitions": [],
+                        "chapters": set(),
+                        "refinements": 0,
+                        "applications": 0,
+                        "connections": 0,
+                        "supports": [],
+                    }
                 info[cid]["chapters"].add(cu.chapter_id)
                 if cu.chapter_thesis:
                     info[cid]["definitions"].append(cu.chapter_thesis[:200])
 
             for cid in cu.concepts_redefined_refs:
                 if cid not in info:
-                    info[cid] = {"introduced_at": cu.chapter_id, "definitions": [], "chapters": set(), "refinements": 0, "applications": 0, "connections": 0, "supports": []}
+                    info[cid] = {
+                        "introduced_at": cu.chapter_id,
+                        "definitions": [],
+                        "chapters": set(),
+                        "refinements": 0,
+                        "applications": 0,
+                        "connections": 0,
+                        "supports": [],
+                    }
                 info[cid]["chapters"].add(cu.chapter_id)
                 info[cid]["refinements"] += 1
 
@@ -96,7 +112,15 @@ class ConceptSystemBuilder:
             for traj in evolution.trajectories:
                 cid = traj.concept
                 if cid not in info:
-                    info[cid] = {"introduced_at": traj.introduced_at, "definitions": [], "chapters": set(), "refinements": 0, "applications": 0, "connections": 0, "supports": []}
+                    info[cid] = {
+                        "introduced_at": traj.introduced_at,
+                        "definitions": [],
+                        "chapters": set(),
+                        "refinements": 0,
+                        "applications": 0,
+                        "connections": 0,
+                        "supports": [],
+                    }
                 info[cid]["chapters"].update(e.chapter_id for e in traj.events if e.chapter_id)
                 for e in traj.events:
                     if e.event_type == "REFINEMENT":
@@ -138,7 +162,15 @@ class ConceptSystemBuilder:
         supports_list = self._find_supports(label, info, chapters, graph)
 
         role = self._determine_role(
-            label, introduced_at, chapter_list, refinements, applications, connections, supports, chapters, bu
+            label,
+            introduced_at,
+            chapter_list,
+            refinements,
+            applications,
+            connections,
+            supports,
+            chapters,
+            bu,
         )
 
         definition = ""
@@ -170,7 +202,11 @@ class ConceptSystemBuilder:
         )
 
     def _find_prerequisites(
-        self, label: str, chapter_list: list[str], chapters: list[ChapterUnderstanding], graph: BookReasoningGraph | None
+        self,
+        label: str,
+        chapter_list: list[str],
+        chapters: list[ChapterUnderstanding],
+        graph: BookReasoningGraph | None,
     ) -> list[str]:
         prereqs = []
         if not chapter_list:
@@ -190,7 +226,11 @@ class ConceptSystemBuilder:
         return list(dict.fromkeys(prereqs))[:10]
 
     def _find_related_concepts(
-        self, label: str, info: dict, chapters: list[ChapterUnderstanding], graph: BookReasoningGraph | None
+        self,
+        label: str,
+        info: dict,
+        chapters: list[ChapterUnderstanding],
+        graph: BookReasoningGraph | None,
     ) -> list[str]:
         related = []
         chapter_list = info.get("chapters", set())
@@ -215,14 +255,18 @@ class ConceptSystemBuilder:
                             related.append(src.label)
         return list(dict.fromkeys(related))[:15]
 
-    def _find_refined_by(self, label: str, info: dict, chapters: list[ChapterUnderstanding]) -> list[str]:
+    def _find_refined_by(
+        self, label: str, info: dict, chapters: list[ChapterUnderstanding]
+    ) -> list[str]:
         refined = []
         for cu in chapters:
             if cu.chapter_id in info.get("chapters", set()) and label in cu.concepts_redefined_refs:
                 refined.append(cu.chapter_id)
         return list(dict.fromkeys(refined))[:10]
 
-    def _find_applied_in(self, label: str, info: dict, chapters: list[ChapterUnderstanding]) -> list[str]:
+    def _find_applied_in(
+        self, label: str, info: dict, chapters: list[ChapterUnderstanding]
+    ) -> list[str]:
         applied = []
         for cu in chapters:
             if cu.chapter_id in info.get("chapters", set()):
@@ -232,7 +276,11 @@ class ConceptSystemBuilder:
         return list(dict.fromkeys(applied))[:10]
 
     def _find_supports(
-        self, label: str, info: dict, chapters: list[ChapterUnderstanding], graph: BookReasoningGraph | None
+        self,
+        label: str,
+        info: dict,
+        chapters: list[ChapterUnderstanding],
+        graph: BookReasoningGraph | None,
     ) -> list[str]:
         supports = list(info.get("supports", []))
         if graph:
@@ -277,7 +325,9 @@ class ConceptSystemBuilder:
             return ConceptRole.TERMINAL
         return ConceptRole.DERIVED
 
-    def _describe_final_role(self, role: ConceptRole, refinements: int, applications: int, connections: int) -> str:
+    def _describe_final_role(
+        self, role: ConceptRole, refinements: int, applications: int, connections: int
+    ) -> str:
         parts = [role.value.lower()]
         if refinements > 0:
             parts.append(f"refined {refinements}x")
@@ -287,7 +337,9 @@ class ConceptSystemBuilder:
             parts.append(f"connected {connections}x")
         return "; ".join(parts)
 
-    def _compute_confidence(self, info: dict, evolution: EvolutionResult | None, label: str) -> float:
+    def _compute_confidence(
+        self, info: dict, evolution: EvolutionResult | None, label: str
+    ) -> float:
         base = 0.5
         if info.get("chapters"):
             base += min(0.2, len(info["chapters"]) * 0.05)
