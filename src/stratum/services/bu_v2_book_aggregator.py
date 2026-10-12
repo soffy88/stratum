@@ -267,7 +267,14 @@ class BU2BookAggregator:
             title=chapter_title,
             text=chapter_text,
             context=context,
-            role=classify_role(Chapter(chapter_id=chapter_id, number=chapter_number, title=chapter_title, text=chapter_text)),
+            role=classify_role(
+                Chapter(
+                    chapter_id=chapter_id,
+                    number=chapter_number,
+                    title=chapter_title,
+                    text=chapter_text,
+                )
+            ),
         )
 
         # Single bounded chapter synthesis call
@@ -320,7 +327,7 @@ class BU2BookAggregator:
             chunk_understandings=chunk_understandings,
             delta=delta,
             evidence=evidence,
-            synthesis_calls=attempt + 1 if 'attempt' in locals() else 0,
+            synthesis_calls=attempt + 1 if "attempt" in locals() else 0,
             chunk_calls=len(chunk_understandings),
             errors=errors,
         )
@@ -432,8 +439,10 @@ class BU2BookAggregator:
         dependency = DependencyBuilder().build(chapters, run_id=run_id, book_id=book_id)
         evolution = ConceptEvolutionBuilder().build(chapters, run_id=run_id, book_id=book_id)
         argument = ArgumentAnalyzer().analyze(
-            chapters, run_id=run_id, book_id=book_id,
-            evidence_by_chapter=self._evidence_by_chapter(chapters)
+            chapters,
+            run_id=run_id,
+            book_id=book_id,
+            evidence_by_chapter=self._evidence_by_chapter(chapters),
         )
 
         numbered_ids = numbered_chapter_ids(
@@ -471,14 +480,19 @@ class BU2BookAggregator:
 
         thesis_analysis = thesis_analyzer.analyze(bu, chapters, dependency.graph)
         concept_analysis = concept_builder.build(bu, chapters, evolution, dependency.graph)
-        argument_analysis_result = argument_builder.build(bu, chapters, thesis_analysis.model, argument, dependency.graph)
+        argument_analysis_result = argument_builder.build(
+            bu, chapters, thesis_analysis.model, argument, dependency.graph
+        )
         mechanism_analysis = mechanism_analyzer.analyze(bu, chapters, dependency.graph)
         evidence_analysis = evidence_builder.build(bu, chapters, argument, dependency.graph)
         chapter_roles_analysis = chapter_roles.analyze(bu, chapters, None)
         contradiction_analysis = contradiction_detector.detect(
-            bu, chapters,
-            thesis_analysis.model, concept_analysis.system,
-            argument_analysis_result.system, dependency.graph
+            bu,
+            chapters,
+            thesis_analysis.model,
+            concept_analysis.system,
+            argument_analysis_result.system,
+            dependency.graph,
         )
 
         return {

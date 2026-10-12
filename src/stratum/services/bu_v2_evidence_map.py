@@ -129,7 +129,9 @@ class EvidenceMapBuilder:
                                     if er not in entry.evidence_ids:
                                         entry.evidence_ids.append(er)
                                     if er not in entry.evidence_strengths:
-                                        entry.evidence_strengths[er] = self._edge_to_strength(edge.evidence_type)
+                                        entry.evidence_strengths[er] = self._edge_to_strength(
+                                            edge.evidence_type
+                                        )
                             if edge.edge_id not in entry.argument_ids:
                                 entry.argument_ids.append(edge.edge_id)
                     else:
@@ -155,7 +157,9 @@ class EvidenceMapBuilder:
 
         return list(claim_to_entry.values())
 
-    def _infer_strength(self, evidence_ref: str, cu: ChapterUnderstanding, ep: Any) -> EvidenceStrengthP13:
+    def _infer_strength(
+        self, evidence_ref: str, cu: ChapterUnderstanding, ep: Any
+    ) -> EvidenceStrengthP13:
         for e in cu.evidence_program:
             if evidence_ref in e.evidence_refs:
                 if hasattr(cu, "evidence_strengths") and evidence_ref in cu.evidence_strengths:
@@ -198,9 +202,13 @@ class EvidenceMapBuilder:
         em.unsupported_claim_count = total_claims - supported
 
         model_inferred = sum(
-            1 for e in em.entries for s in e.evidence_strengths.values()
+            1
+            for e in em.entries
+            for s in e.evidence_strengths.values()
             if s == EvidenceStrengthP13.MODEL_INFERENCE
         )
         total_evidence = sum(len(e.evidence_strengths) for e in em.entries)
-        em.model_inference_ratio = round(model_inferred / total_evidence, 4) if total_evidence else 0.0
+        em.model_inference_ratio = (
+            round(model_inferred / total_evidence, 4) if total_evidence else 0.0
+        )
         em.contradiction_count = 0

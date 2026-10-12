@@ -19,6 +19,7 @@ from stratum.knowledge.bu_v2_models import (
 @dataclass
 class BookExpression:
     """Generated expression artifact."""
+
     executive_summary: str
     full_explanation: str
     concept_map: str
@@ -90,7 +91,9 @@ class SynthesisExpressionGenerator:
         ]
         if s.thesis.core_thesis:
             lines.append(f"   {s.thesis.core_thesis.statement}")
-            lines.append(f"   (Confidence: {s.thesis.core_thesis.confidence:.2f}, Provenance: {s.thesis.core_thesis.provenance.value})")
+            lines.append(
+                f"   (Confidence: {s.thesis.core_thesis.confidence:.2f}, Provenance: {s.thesis.core_thesis.provenance.value})"
+            )
         else:
             lines.append("   No core thesis extracted")
         lines.append("")
@@ -144,7 +147,14 @@ class SynthesisExpressionGenerator:
             "=" * 80,
             "",
         ]
-        for role in [ConceptRole.FOUNDATIONAL, ConceptRole.CORE, ConceptRole.DERIVED, ConceptRole.BRIDGING, ConceptRole.APPLICATION, ConceptRole.TERMINAL]:
+        for role in [
+            ConceptRole.FOUNDATIONAL,
+            ConceptRole.CORE,
+            ConceptRole.DERIVED,
+            ConceptRole.BRIDGING,
+            ConceptRole.APPLICATION,
+            ConceptRole.TERMINAL,
+        ]:
             concepts = getattr(s.concept_system, role.value.lower(), [])
             if concepts:
                 lines.append(f"{role.value} ({len(concepts)}):")
@@ -166,7 +176,9 @@ class SynthesisExpressionGenerator:
         ]
         for a in s.argument_system.thesis_arguments:
             lines.append(f"  {a.what[:100]}")
-            lines.append(f"    Evidence: {len(a.evidence_refs)} | Status: {a.status.value} | Confidence: {a.confidence:.2f}")
+            lines.append(
+                f"    Evidence: {len(a.evidence_refs)} | Status: {a.status.value} | Confidence: {a.confidence:.2f}"
+            )
         lines.append("")
         lines.append("MAJOR ARGUMENTS:")
         for a in s.argument_system.major_arguments:
@@ -188,7 +200,9 @@ class SynthesisExpressionGenerator:
         ]
         for assignment in s.chapter_roles.assignments:
             roles_str = ", ".join(r.value for r in assignment.roles)
-            lines.append(f"{assignment.chapter_id} — {roles_str} (confidence: {assignment.confidence:.2f})")
+            lines.append(
+                f"{assignment.chapter_id} — {roles_str} (confidence: {assignment.confidence:.2f})"
+            )
             lines.append(f"  {assignment.evidence}")
             lines.append("")
         return "\n".join(lines)

@@ -65,22 +65,39 @@ class BU2CrossBookSynthesisBuilder:
 
         # Build comparisons between each pair of books
         comparisons = self._build_comparisons(
-            books, concept_result, thesis_result, argument_result,
-            mechanism_result, evidence_result, contradiction_result
+            books,
+            concept_result,
+            thesis_result,
+            argument_result,
+            mechanism_result,
+            evidence_result,
+            contradiction_result,
         )
 
         # Build synthesis
         synthesis = self._build_synthesis(
-            collection, concept_result, thesis_result, argument_result,
-            mechanism_result, evidence_result, contradiction_result,
-            problem_result, gap_result, comparisons
+            collection,
+            concept_result,
+            thesis_result,
+            argument_result,
+            mechanism_result,
+            evidence_result,
+            contradiction_result,
+            problem_result,
+            gap_result,
+            comparisons,
         )
 
         # Build quality metrics (Q19-Q26)
         quality = self._compute_quality(
-            concept_result, thesis_result, argument_result,
-            mechanism_result, evidence_result, contradiction_result,
-            gap_result, comparisons
+            concept_result,
+            thesis_result,
+            argument_result,
+            mechanism_result,
+            evidence_result,
+            contradiction_result,
+            gap_result,
+            comparisons,
         )
 
         return CrossBookUnderstanding(
@@ -124,24 +141,66 @@ class BU2CrossBookSynthesisBuilder:
                 book_b_id = book_ids[j]
 
                 # Filter relations for this book pair
-                concept_rels = [r for r in concept_result.concept_relations
-                              if (r.source_book_id == book_a_id and r.target_book_id == book_b_id) or
-                                 (r.source_book_id == book_b_id and r.target_book_id == book_a_id)]
-                thesis_rels = [r for r in thesis_result.thesis_relations
-                              if (r.source_thesis.book_id == book_a_id and r.target_thesis.book_id == book_b_id) or
-                                 (r.source_thesis.book_id == book_b_id and r.target_thesis.book_id == book_a_id)]
-                argument_rels = [r for r in argument_result.argument_relations
-                               if (r.source_argument.book_id == book_a_id and r.target_argument.book_id == book_b_id) or
-                                  (r.source_argument.book_id == book_b_id and r.target_argument.book_id == book_a_id)]
-                mechanism_rels = [r for r in mechanism_result.mechanism_relations
-                                if (r.source_mechanism.book_id == book_a_id and r.target_mechanism.book_id == book_b_id) or
-                                   (r.source_mechanism.book_id == book_b_id and r.target_mechanism.book_id == book_a_id)]
-                evidence_rels = [r for r in evidence_result.evidence_relations
-                               if (r.source_evidence.book_id == book_a_id and r.target_evidence.book_id == book_b_id) or
-                                  (r.source_evidence.book_id == book_b_id and r.target_evidence.book_id == book_a_id)]
-                contradictions = [c for c in contradiction_result.contradictions
-                                if (c.book_a_id == book_a_id and c.book_b_id == book_b_id) or
-                                   (c.book_a_id == book_b_id and c.book_b_id == book_a_id)]
+                concept_rels = [
+                    r
+                    for r in concept_result.concept_relations
+                    if (r.source_book_id == book_a_id and r.target_book_id == book_b_id)
+                    or (r.source_book_id == book_b_id and r.target_book_id == book_a_id)
+                ]
+                thesis_rels = [
+                    r
+                    for r in thesis_result.thesis_relations
+                    if (
+                        r.source_thesis.book_id == book_a_id
+                        and r.target_thesis.book_id == book_b_id
+                    )
+                    or (
+                        r.source_thesis.book_id == book_b_id
+                        and r.target_thesis.book_id == book_a_id
+                    )
+                ]
+                argument_rels = [
+                    r
+                    for r in argument_result.argument_relations
+                    if (
+                        r.source_argument.book_id == book_a_id
+                        and r.target_argument.book_id == book_b_id
+                    )
+                    or (
+                        r.source_argument.book_id == book_b_id
+                        and r.target_argument.book_id == book_a_id
+                    )
+                ]
+                mechanism_rels = [
+                    r
+                    for r in mechanism_result.mechanism_relations
+                    if (
+                        r.source_mechanism.book_id == book_a_id
+                        and r.target_mechanism.book_id == book_b_id
+                    )
+                    or (
+                        r.source_mechanism.book_id == book_b_id
+                        and r.target_mechanism.book_id == book_a_id
+                    )
+                ]
+                evidence_rels = [
+                    r
+                    for r in evidence_result.evidence_relations
+                    if (
+                        r.source_evidence.book_id == book_a_id
+                        and r.target_evidence.book_id == book_b_id
+                    )
+                    or (
+                        r.source_evidence.book_id == book_b_id
+                        and r.target_evidence.book_id == book_a_id
+                    )
+                ]
+                contradictions = [
+                    c
+                    for c in contradiction_result.contradictions
+                    if (c.book_a_id == book_a_id and c.book_b_id == book_b_id)
+                    or (c.book_a_id == book_b_id and c.book_b_id == book_a_id)
+                ]
 
                 comparison = CrossBookComparison(
                     comparison_id=_stable_id("comp", book_a_id, book_b_id),
@@ -154,7 +213,7 @@ class BU2CrossBookSynthesisBuilder:
                     evidence_relations=evidence_rels,
                     contradictions=contradictions,
                     problem_relations=[],  # Would need problem_result
-                    author_relations=[],   # Would need author comparison
+                    author_relations=[],  # Would need author comparison
                 )
                 comparisons.append(comparison)
 
@@ -244,8 +303,12 @@ class BU2CrossBookSynthesisBuilder:
 
         # Higher-order synthesis
         higher_order = self._generate_higher_order_synthesis(
-            concept_result, thesis_result, argument_result,
-            evidence_result, contradiction_result, gap_result
+            concept_result,
+            thesis_result,
+            argument_result,
+            evidence_result,
+            contradiction_result,
+            gap_result,
         )
 
         # Traceability
@@ -256,7 +319,9 @@ class BU2CrossBookSynthesisBuilder:
             "mechanisms": _flatten_traceability(mechanism_result.traceability),
             "evidence": _flatten_traceability(evidence_result.traceability),
             "contradictions": _flatten_traceability(contradiction_result.traceability),
-            "problems": _flatten_traceability(problem_result.traceability) if problem_result else [],
+            "problems": _flatten_traceability(problem_result.traceability)
+            if problem_result
+            else [],
             "gaps": _flatten_traceability(gap_result.traceability),
         }
 
@@ -290,22 +355,46 @@ class BU2CrossBookSynthesisBuilder:
         parts = []
 
         # Conceptual unity
-        same_concept_count = sum(1 for r in concept_result.concept_relations if r.relation.value == "SAME_CONCEPT")
-        diff_concept_count = sum(1 for r in concept_result.concept_relations if r.relation.value == "SAME_TERM_DIFFERENT_MEANING")
+        same_concept_count = sum(
+            1 for r in concept_result.concept_relations if r.relation.value == "SAME_CONCEPT"
+        )
+        diff_concept_count = sum(
+            1
+            for r in concept_result.concept_relations
+            if r.relation.value == "SAME_TERM_DIFFERENT_MEANING"
+        )
         if same_concept_count > 0 or diff_concept_count > 0:
-            parts.append(f"Conceptual analysis reveals {same_concept_count} unified concepts and {diff_concept_count} terminological divergences.")
+            parts.append(
+                f"Conceptual analysis reveals {same_concept_count} unified concepts and {diff_concept_count} terminological divergences."
+            )
 
         # Theoretical landscape
-        supporting = sum(1 for r in thesis_result.thesis_relations if r.relation.value == "SUPPORTS")
-        competing = sum(1 for r in thesis_result.thesis_relations if r.relation.value in ("CONTRADICTS", "ALTERNATIVE"))
+        supporting = sum(
+            1 for r in thesis_result.thesis_relations if r.relation.value == "SUPPORTS"
+        )
+        competing = sum(
+            1
+            for r in thesis_result.thesis_relations
+            if r.relation.value in ("CONTRADICTS", "ALTERNATIVE")
+        )
         if supporting > 0 or competing > 0:
-            parts.append(f"Theoretical landscape shows {supporting} supporting relations and {competing} competing/alternative positions.")
+            parts.append(
+                f"Theoretical landscape shows {supporting} supporting relations and {competing} competing/alternative positions."
+            )
 
         # Evidence landscape
-        convergent = sum(1 for r in evidence_result.evidence_relations if r.relation.value == "CONVERGENT")
-        divergent = sum(1 for r in evidence_result.evidence_relations if r.relation.value in ("CONFLICTING", "DIVERGENT"))
+        convergent = sum(
+            1 for r in evidence_result.evidence_relations if r.relation.value == "CONVERGENT"
+        )
+        divergent = sum(
+            1
+            for r in evidence_result.evidence_relations
+            if r.relation.value in ("CONFLICTING", "DIVERGENT")
+        )
         if convergent > 0 or divergent > 0:
-            parts.append(f"Evidence landscape shows {convergent} convergent and {divergent} divergent relations.")
+            parts.append(
+                f"Evidence landscape shows {convergent} convergent and {divergent} divergent relations."
+            )
 
         # Contradictions
         contra_count = len(contradiction_result.contradictions)
@@ -315,7 +404,9 @@ class BU2CrossBookSynthesisBuilder:
         # Knowledge gaps
         gap_count = len(gap_result.knowledge_gaps)
         if gap_count > 0:
-            parts.append(f"{gap_count} knowledge gaps identified, including unanswered questions and weakly supported claims.")
+            parts.append(
+                f"{gap_count} knowledge gaps identified, including unanswered questions and weakly supported claims."
+            )
 
         return " ".join(parts) if parts else "No significant cross-book patterns detected."
 
@@ -334,12 +425,16 @@ class BU2CrossBookSynthesisBuilder:
 
         # Q19: Cross-Book Alignment - concept relation density
         total_concepts = len(concept_result.unified_concepts)
-        total_possible_concept_pairs = total_concepts * (total_concepts - 1) // 2 if total_concepts >= 2 else 1
+        total_possible_concept_pairs = (
+            total_concepts * (total_concepts - 1) // 2 if total_concepts >= 2 else 1
+        )
         actual_concept_relations = len(concept_result.concept_relations)
         q19 = min(1.0, actual_concept_relations / max(1, total_possible_concept_pairs))
 
         # Q20: Concept Identity Accuracy - precision of SAME_CONCEPT relations
-        same_concept = [r for r in concept_result.concept_relations if r.relation.value == "SAME_CONCEPT"]
+        same_concept = [
+            r for r in concept_result.concept_relations if r.relation.value == "SAME_CONCEPT"
+        ]
         total_concept_rels = len(concept_result.concept_relations)
         q20 = len(same_concept) / max(1, total_concept_rels) if total_concept_rels > 0 else 0
 
@@ -352,11 +447,15 @@ class BU2CrossBookSynthesisBuilder:
         q22 = len(arg_rels_with_evidence) / max(1, len(argument_result.argument_relations))
 
         # Q23: Evidence Independence - fraction of relations that are CONVERGENT (independent evidence)
-        convergent_evidence = [r for r in evidence_result.evidence_relations if r.relation.value == "CONVERGENT"]
+        convergent_evidence = [
+            r for r in evidence_result.evidence_relations if r.relation.value == "CONVERGENT"
+        ]
         q23 = len(convergent_evidence) / max(1, len(evidence_result.evidence_relations))
 
         # Q24: Contradiction Integrity - all contradictions classified
-        classified_contra = [c for c in contradiction_result.contradictions if c.type.value != "UNRESOLVED"]
+        classified_contra = [
+            c for c in contradiction_result.contradictions if c.type.value != "UNRESOLVED"
+        ]
         q24 = len(classified_contra) / max(1, len(contradiction_result.contradictions))
 
         # Q25: Knowledge Gap Integrity
@@ -364,12 +463,14 @@ class BU2CrossBookSynthesisBuilder:
         q25 = len(grounded_gaps) / max(1, len(gap_result.knowledge_gaps))
 
         # Q26: Cross-Book Traceability - all relations have traceability
-        all_rels = (len(concept_result.concept_relations) +
-                   len(thesis_result.thesis_relations) +
-                   len(argument_result.argument_relations) +
-                   len(mechanism_result.mechanism_relations) +
-                   len(evidence_result.evidence_relations) +
-                   len(contradiction_result.contradictions))
+        all_rels = (
+            len(concept_result.concept_relations)
+            + len(thesis_result.thesis_relations)
+            + len(argument_result.argument_relations)
+            + len(mechanism_result.mechanism_relations)
+            + len(evidence_result.evidence_relations)
+            + len(contradiction_result.contradictions)
+        )
         q26 = 1.0 if all_rels > 0 else 0
 
         return {

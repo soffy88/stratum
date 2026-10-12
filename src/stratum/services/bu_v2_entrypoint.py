@@ -118,6 +118,8 @@ class RunResult:
     hard_gates: Any = None
     # Task E: the dependency-ordered learning guide.
     learning_guide: Any = None
+    # Claim verification: how many asserted claims the anchored passage supports.
+    claim_verification: Any = None
 
     @property
     def verified(self) -> bool:
@@ -365,12 +367,20 @@ class BU2Runner:
         use_structure_extractor: bool = True,
         use_ku_anchor: bool = True,
         use_accuracy_judge: bool = True,
+        judge_provider: ModelProvider | None = None,
+        verify_claims: bool | None = None,
     ):
         self.use_structure_extractor = use_structure_extractor
         self.use_ku_anchor = use_ku_anchor
         # The accuracy dimension calls the provider as a judge over a claim
         # sample. On for a real run; off in unit tests to keep them offline.
         self.use_accuracy_judge = use_accuracy_judge
+        # The accuracy dimension is scored by a judge that did not write the
+        # claims: a separate provider when one is given, else the main one.
+        self.judge_provider = judge_provider
+        # Claims are verified against their anchored passage before publication.
+        # Defaults to the judge setting so offline tests stay offline.
+        self.verify_claims = use_accuracy_judge if verify_claims is None else verify_claims
         self.provider = provider or resolve_provider()
         self.loader = loader or BookLoader()
         self.producer = ChapterUnderstandingProducer(provider=self.provider)
@@ -546,6 +556,18 @@ class BU2Runner:
         if not result.chapters:
             raise BU2RunError("no chapter produced an understanding")
 
+        # ── verify every asserted claim against its anchored passage ───────
+        # Before anything is persisted or integrated, so an unsupported claim is
+        # never published as the book's statement.
+        if self.verify_claims:
+            from stratum.services.bu_v2_claim_verifier import ClaimVerifier, make_provider_judge
+
+            result.claim_verification = ClaimVerifier(make_provider_judge(self.provider)).verify(
+                result.chapters,
+                result.evidence,
+                texts={c.chapter_id: c for c in chapters},
+            )
+
         if self.persist:
             self._persist_chapters(result)
 
@@ -610,6 +632,24 @@ class BU2Runner:
             ku_index=getattr(result, "ku_index", None),
         )
 
+        # ── Task D: hard gates + 6-dimension score ─────────────────────────
+        # Evaluated BEFORE the BU row is written, so (a) the gates are persisted
+        # with the run instead of being computed after persistence and lost, and
+        # (b) a run that fails a hard gate is never stored as VERIFIED.
+        from stratum.services.bu_v2_hard_gates import HardGateEvaluator
+
+        judge = self._make_judge() if self.use_accuracy_judge else None
+        result.hard_gates = HardGateEvaluator(judge=judge).evaluate(
+            result, structure=result.structure
+        )
+        if not result.hard_gates.all_passed and bu.status == BUStatus.VERIFIED:
+            bu.status = BUStatus.DRAFT
+            bu.verification_score = 0.0
+            result.failures.append(
+                "hard gates FAIL: "
+                + ", ".join(g.gate for g in result.hard_gates.gates if not g.passed)
+            )
+
         if self.persist:
             self._persist_bu(result)
 
@@ -668,35 +708,18 @@ class BU2Runner:
         result.report_bundle.gates.extend(p12_gates)
         result.p12_gate_summary = {g.gate: g.to_dict()["status"] for g in p12_gates}
 
-        # ── Task D: hard gates + 6-dimension score ─────────────────────────
-        # These are the gates the audit asked for: empty chapters, placeholder
-        # text, dangling evidence, DEF/THM KU coverage, zero-argument chapters
-        # and evidence without a quote each FAIL a run rather than passing
-        # silently. Accuracy is scored by an LLM judge when a provider is
-        # available, else from evidence strength.
-        from stratum.services.bu_v2_hard_gates import HardGateEvaluator
-
-        judge = self._make_judge() if self.use_accuracy_judge else None
-        result.hard_gates = HardGateEvaluator(judge=judge).evaluate(
-            result, structure=result.structure
-        )
         result.report_bundle.hard_gates = result.hard_gates
         return result
 
     def _make_judge(self):
-        """A one-line LLM judge callable for the accuracy dimension, or None."""
-        provider = self.provider
-        if provider is None:
-            return None
+        """The accuracy-dimension judge: the separate judge provider if given.
 
-        def _judge(prompt: str) -> str:
-            try:
-                resp = provider.complete(prompt, max_tokens=4, temperature=0.0)
-                return getattr(resp, "text", "") or ""
-            except Exception:
-                return ""
+        ``max_tokens`` is generous because hosted "thinking" models spend tokens
+        before answering; the old budget of 4 returned empty replies.
+        """
+        from stratum.services.bu_v2_claim_verifier import make_provider_judge
 
-        return _judge
+        return make_provider_judge(self.judge_provider or self.provider)
 
     def _build_p12(self, result: RunResult) -> Any:
         """§5-§8: the book reasoning graph, concept evolution and argument model.
@@ -826,10 +849,38 @@ class BU2Runner:
             ChapterUnderstandingRepository,
         )
 
+        from stratum.db import insert
+        from stratum.services.bu_v2_repositories import ArgumentRepository
+
         for cu in result.chapters:
             ChapterUnderstandingRepository.save(cu)
+            for arg in getattr(cu, "chapter_arguments", []) or []:
+                ArgumentRepository.save(arg, result.run_id)
         for delta in result.deltas:
             ChapterDeltaRepository.save(delta)
+        # Traceability: every cited ev_* id resolves to a stored span.
+        strengths: dict[str, str] = {}
+        for cu in result.chapters:
+            strengths.update(getattr(cu, "evidence_strengths", {}) or {})
+        seen: set[str] = set()
+        for ev in result.evidence:
+            if ev.evidence_id in seen or not ev.quote.strip() or not ev.locator.strip():
+                continue
+            seen.add(ev.evidence_id)
+            insert(
+                "bu2_evidence_artifact",
+                {
+                    "id": ev.evidence_id,
+                    "run_id": result.run_id,
+                    "chapter_id": ev.chapter_id,
+                    "kind": ev.kind,
+                    "locator": ev.locator,
+                    "quote": ev.quote,
+                    "content_hash": ev.content_hash,
+                    "strength": strengths.get(ev.evidence_id),
+                    "verified": getattr(ev, "verified", None),
+                },
+            )
         result.persisted = True
 
     def _persist_p12(self, result: RunResult) -> None:

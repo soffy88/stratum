@@ -50,8 +50,14 @@ class BU2CrossBookExpressionGenerator:
             return "No cross-book concepts identified."
 
         same = sum(1 for r in understanding.concept_relations if r.relation.value == "SAME_CONCEPT")
-        diff = sum(1 for r in understanding.concept_relations if r.relation.value == "SAME_TERM_DIFFERENT_MEANING")
-        related = sum(1 for r in understanding.concept_relations if r.relation.value == "RELATED_CONCEPT")
+        diff = sum(
+            1
+            for r in understanding.concept_relations
+            if r.relation.value == "SAME_TERM_DIFFERENT_MEANING"
+        )
+        related = sum(
+            1 for r in understanding.concept_relations if r.relation.value == "RELATED_CONCEPT"
+        )
 
         return (
             f"Concept alignment across {len(understanding.collection.book_ids)} books: "
@@ -66,8 +72,12 @@ class BU2CrossBookExpressionGenerator:
             return "No theses available for comparison."
 
         supports = sum(1 for r in understanding.thesis_relations if r.relation.value == "SUPPORTS")
-        contradicts = sum(1 for r in understanding.thesis_relations if r.relation.value == "CONTRADICTS")
-        alternative = sum(1 for r in understanding.thesis_relations if r.relation.value == "ALTERNATIVE")
+        contradicts = sum(
+            1 for r in understanding.thesis_relations if r.relation.value == "CONTRADICTS"
+        )
+        alternative = sum(
+            1 for r in understanding.thesis_relations if r.relation.value == "ALTERNATIVE"
+        )
 
         return (
             f"Thesis comparison: {total} theses across books, "
@@ -80,7 +90,9 @@ class BU2CrossBookExpressionGenerator:
         if total == 0:
             return "No arguments available for comparison."
 
-        supports = sum(1 for r in understanding.argument_relations if r.relation.value == "SUPPORTS")
+        supports = sum(
+            1 for r in understanding.argument_relations if r.relation.value == "SUPPORTS"
+        )
         extends = sum(1 for r in understanding.argument_relations if r.relation.value == "EXTENDS")
         transfers = len(understanding.argument_relations)  # Would need transfer tracking
 
@@ -124,36 +136,52 @@ class BU2CrossBookExpressionGenerator:
         parts = []
 
         if synth.common_ground:
-            parts.append(f"Common Ground ({len(synth.common_ground)}):\n" +
-                        "\n".join(f"  - {c}" for c in synth.common_ground[:5]))
+            parts.append(
+                f"Common Ground ({len(synth.common_ground)}):\n"
+                + "\n".join(f"  - {c}" for c in synth.common_ground[:5])
+            )
 
         if synth.major_differences:
-            parts.append(f"Major Differences ({len(synth.major_differences)}):\n" +
-                        "\n".join(f"  - {d}" for d in synth.major_differences[:5]))
+            parts.append(
+                f"Major Differences ({len(synth.major_differences)}):\n"
+                + "\n".join(f"  - {d}" for d in synth.major_differences[:5])
+            )
 
         if synth.supporting_theories:
-            parts.append(f"Supporting Theories ({len(synth.supporting_theories)}):\n" +
-                        "\n".join(f"  - {t}" for t in synth.supporting_theories[:5]))
+            parts.append(
+                f"Supporting Theories ({len(synth.supporting_theories)}):\n"
+                + "\n".join(f"  - {t}" for t in synth.supporting_theories[:5])
+            )
 
         if synth.competing_theories:
-            parts.append(f"Competing Theories ({len(synth.competing_theories)}):\n" +
-                        "\n".join(f"  - {t}" for t in synth.competing_theories[:5]))
+            parts.append(
+                f"Competing Theories ({len(synth.competing_theories)}):\n"
+                + "\n".join(f"  - {t}" for t in synth.competing_theories[:5])
+            )
 
         if synth.evidence_convergence:
-            parts.append(f"Evidence Convergence ({len(synth.evidence_convergence)}):\n" +
-                        "\n".join(f"  - {e}" for e in synth.evidence_convergence[:5]))
+            parts.append(
+                f"Evidence Convergence ({len(synth.evidence_convergence)}):\n"
+                + "\n".join(f"  - {e}" for e in synth.evidence_convergence[:5])
+            )
 
         if synth.evidence_divergence:
-            parts.append(f"Evidence Divergence ({len(synth.evidence_divergence)}):\n" +
-                        "\n".join(f"  - {e}" for e in synth.evidence_divergence[:5]))
+            parts.append(
+                f"Evidence Divergence ({len(synth.evidence_divergence)}):\n"
+                + "\n".join(f"  - {e}" for e in synth.evidence_divergence[:5])
+            )
 
         if synth.unresolved_conflicts:
-            parts.append(f"Unresolved Conflicts ({len(synth.unresolved_conflicts)}):\n" +
-                        "\n".join(f"  - {c.description[:80]}..." for c in synth.unresolved_conflicts[:5]))
+            parts.append(
+                f"Unresolved Conflicts ({len(synth.unresolved_conflicts)}):\n"
+                + "\n".join(f"  - {c.description[:80]}..." for c in synth.unresolved_conflicts[:5])
+            )
 
         if synth.knowledge_gaps:
-            parts.append(f"Knowledge Gaps ({len(synth.knowledge_gaps)}):\n" +
-                        "\n".join(f"  - {g.description[:80]}..." for g in synth.knowledge_gaps[:5]))
+            parts.append(
+                f"Knowledge Gaps ({len(synth.knowledge_gaps)}):\n"
+                + "\n".join(f"  - {g.description[:80]}..." for g in synth.knowledge_gaps[:5])
+            )
 
         if synth.higher_order_synthesis:
             parts.append(f"Higher-Order Synthesis:\n  {synth.higher_order_synthesis}")
@@ -185,10 +213,16 @@ class BU2CrossBookExpressionGenerator:
             return "No quality metrics available."
 
         lines = ["Quality Metrics (Q19-Q26):"]
-        for key in ["Q19_crossbook_alignment", "Q20_concept_identity_accuracy",
-                    "Q21_thesis_comparison_integrity", "Q22_crossbook_argument_validity",
-                    "Q23_evidence_independence", "Q24_contradiction_integrity",
-                    "Q25_knowledge_gap_integrity", "Q26_crossbook_traceability"]:
+        for key in [
+            "Q19_crossbook_alignment",
+            "Q20_concept_identity_accuracy",
+            "Q21_thesis_comparison_integrity",
+            "Q22_crossbook_argument_validity",
+            "Q23_evidence_independence",
+            "Q24_contradiction_integrity",
+            "Q25_knowledge_gap_integrity",
+            "Q26_crossbook_traceability",
+        ]:
             if key in q:
                 lines.append(f"  {key}: {q[key]:.3f}")
 
