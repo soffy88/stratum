@@ -25,7 +25,7 @@ summaries — the structure is computed, not generated.
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 from typing import Any
 
@@ -68,6 +68,29 @@ class IntegrationInput:
     deltas: list[ChapterDelta]
     evidence_by_chapter: dict[str, list[str]]
     genre: str = ""
+    # Task C: chapter_id -> span kind ("chapter" | "front_matter" | "back_matter").
+    # Worked answers, appendices and an index are book content but they are not
+    # numbered chapters, so they must not shape the discourse arc, the book's
+    # concept system or its framing. Without this the answer appendix "bm1"
+    # sorted to the front of the arc and read as the book's opening problem.
+    chapter_kinds: dict[str, str] = field(default_factory=dict)
+    # Task C: concept label -> the real definition text the book gives it, so a
+    # concept-evolution step carries the definition rather than the placeholder
+    # "introduced or redefined in chX".
+    concept_definitions: dict[str, str] = field(default_factory=dict)
+    # Task C: when True and the model cannot frame the book, a book-specific
+    # framing is derived from the chapters instead of left empty. Off by default
+    # so a direct caller (and the quality evaluator's "missing framing" case)
+    # still sees an unframed BU; the runner opts in.
+    allow_derived_framing: bool = False
+
+    def body_chapters(self) -> list[ChapterUnderstanding]:
+        """The numbered chapters — the ones the book's argument is made of."""
+        if not self.chapter_kinds:
+            return list(self.chapters)
+        return [
+            c for c in self.chapters if self.chapter_kinds.get(c.chapter_id, "chapter") == "chapter"
+        ]
 
 
 _SYSTEM = """You identify a book's intellectual structure from its per-chapter
@@ -90,13 +113,19 @@ class BookIntegrator:
 
     def __init__(self, provider: ModelProvider | None = None):
         self.provider = provider or resolve_provider()
+        # Task C: opt-in, set by the runner. See IntegrationInput.allow_derived_framing.
+        self.allow_derived_framing = False
 
     def integrate(self, data: IntegrationInput, *, version: int = 1) -> BookUnderstandingV2:
         if not data.chapters:
             raise ValueError("integration requires at least one chapter understanding")
 
         proposal = self._propose(data)
-        ordered = sorted(data.chapters, key=lambda c: _chapter_number(c.chapter_id))
+        # Task C: the discourse arc and the book's framing are made of numbered
+        # chapters only. Worked answers and appendices are book content but not
+        # part of the argument, so they are excluded here rather than shaping it.
+        body = data.body_chapters() or list(data.chapters)
+        ordered = sorted(body, key=lambda c: _chapter_number(c.chapter_id))
 
         return BookUnderstandingV2(
             id=f"bu_{data.run_id}",
@@ -106,9 +135,9 @@ class BookIntegrator:
             version=version,
             status=BUStatus.DRAFT,
             genre=_s(proposal.get("genre")) or data.genre,
-            governing_questions=_sl(proposal.get("governing_questions")),
-            central_theses=_sl(proposal.get("central_theses")),
-            sub_theses=_sl(proposal.get("sub_theses")),
+            governing_questions=_dedupe(_sl(proposal.get("governing_questions"))),
+            central_theses=_dedupe(_sl(proposal.get("central_theses"))),
+            sub_theses=_dedupe(_sl(proposal.get("sub_theses"))),
             concept_system=self._concept_system(data),
             argument_architecture=self._argument_architecture(data, proposal),
             chapter_dependency_graph=self._dependency_graph(data),
@@ -120,6 +149,8 @@ class BookIntegrator:
             unresolved_questions=self._unresolved(data, ordered),
             coverage_score=_coverage(data),
             verification_score=0.0,  # set by the verification gate, never by generation
+            # Task C: whether the framing was model-read or chapter-derived.
+            framing_derived=bool(proposal.get("derived_framing")),
         )
 
     # ── model proposal ─────────────────────────────────────────────────────
@@ -128,24 +159,37 @@ class BookIntegrator:
         """Ask the model only what cannot be computed: the book's framing.
 
         Everything structural is derived below. Keeping the model's job narrow
-        is what stops the result from being prose with good formatting.
+        is what stops the result from being prose with good formatting. The
+        prompt is fed the chapters' theses *and* their concept lists, and its
+        answer is rejected if it is a template — the audit found the model
+        returning "What is the intellectual structure of this book?" because the
+        prompt invited it and nothing checked the answer.
         """
-        digest = "\n".join(
-            f"  [{c.chapter_id}] {c.chapter_thesis[:150]}"
-            for c in sorted(data.chapters, key=lambda x: _chapter_number(x.chapter_id))[:60]
-        )
+        body = data.body_chapters() or list(data.chapters)
+        ordered = sorted(body, key=lambda x: _chapter_number(x.chapter_id))[:60]
+        lines = []
+        for c in ordered:
+            concepts = ", ".join((c.concepts_introduced_refs or [])[:8])
+            lines.append(f"  [{c.chapter_id}] {c.chapter_thesis[:140]}")
+            if concepts:
+                lines.append(f"       concepts: {concepts}")
+        digest = "\n".join(lines)
         from stratum.services.bu_v2_producer import _language_rule
 
         rule = _language_rule(digest)
         prompt = (
             f"BOOK with {len(data.chapters)} chapters.\n\n"
-            f"PER-CHAPTER THESES:\n{digest}\n\n"
+            f"PER-CHAPTER THESES AND CONCEPTS:\n{digest}\n\n"
             f"{rule}"
+            "The governing questions and central theses must name THIS book's own "
+            "subject matter (e.g. for a calculus book: limits, derivatives, "
+            "integration, series). A generic sentence about 'intellectual "
+            "structure' is a failure.\n\n"
             f"Respond with exactly this JSON shape:\n{_SCHEMA}"
         )
         # Chinese framing needs about twice the tokens; at 900 it was cut off
         # mid-JSON and the book lost its governing questions and theses.
-        max_tokens = 1800 if rule else 900
+        max_tokens = 1800 if rule else 1200
 
         def _ask() -> dict[str, Any]:
             try:
@@ -164,18 +208,69 @@ class BookIntegrator:
                 out.get("governing_questions") or out.get("central_theses")
             ):
                 raise ProviderError("integration proposal missing questions and theses")
+            # Reject a template answer so the retry asks again rather than
+            # accepting placeholder framing (§task C).
+            from stratum.services.bu_v2_hard_gates import is_placeholder
+
+            qs = [q for q in _sl(out.get("governing_questions")) if not is_placeholder(q)]
+            ts = [t for t in _sl(out.get("central_theses")) if not is_placeholder(t)]
+            if not qs and not ts:
+                raise ProviderError("integration proposal is template text, not book-specific")
+            out["governing_questions"] = qs
+            out["central_theses"] = ts
+            out["sub_theses"] = [t for t in _sl(out.get("sub_theses")) if not is_placeholder(t)]
             return out
 
         try:
-            return call_with_retry(
+            proposal = call_with_retry(
                 _ask,
                 attempts=int(os.environ.get("BU2_CHAPTER_ATTEMPTS", "3")),
                 retry_if=lambda exc: not isinstance(exc, ProviderUnavailable) or _is_transient(exc),
             )
+            if not proposal.get("governing_questions") and not proposal.get("central_theses"):
+                if self.allow_derived_framing:
+                    proposal.update(self._derived_framing(data))
+            return proposal
         except (ProviderError, ValueError):
-            # A book that cannot be framed by the model still integrates: every
-            # structural field below is derived and unaffected.
+            # A book the model cannot frame still integrates. By default the BU
+            # stays unframed — that is an honest signal the quality model reports.
+            # The runner opts in to a chapter-derived fallback when it wants a
+            # non-empty framing for downstream readers only.
+            if self.allow_derived_framing:
+                return self._derived_framing(data)
             return {}
+
+    @staticmethod
+    def _derived_framing(data: IntegrationInput) -> dict[str, Any]:
+        """A book-specific fallback framing computed from the chapters.
+
+        Not a template: the questions and theses are built from the book's own
+        chapter theses and concepts, so they name the book's subject matter even
+        when no model framed it. Marked derived by construction, never asserted.
+        """
+        body = data.body_chapters() or list(data.chapters)
+        ordered = sorted(body, key=lambda x: _chapter_number(x.chapter_id))
+        theses = [c.chapter_thesis.strip() for c in ordered if (c.chapter_thesis or "").strip()]
+        concepts: list[str] = []
+        for c in ordered:
+            for concept in c.concepts_introduced_refs:
+                if concept and concept not in concepts:
+                    concepts.append(concept)
+        questions: list[str] = []
+        # The book's opening chapter poses its first question.
+        if ordered and (ordered[0].chapter_question or "").strip():
+            questions.append(ordered[0].chapter_question.strip())
+        if concepts:
+            top = ", ".join(concepts[:6])
+            questions.append(f"How do {top} relate within this book's account?")
+        central = _dedupe(theses)[:3]
+        sub = _dedupe(theses)[3:8]
+        return {
+            "governing_questions": _dedupe(questions)[:3],
+            "central_theses": central,
+            "sub_theses": sub,
+            "derived_framing": True,
+        }
 
     # ── derived structure ──────────────────────────────────────────────────
 
@@ -338,12 +433,22 @@ class BookIntegrator:
         steps: list[ConceptEvolutionStep] = []
         for concept, appearances in sorted(versions.items()):
             ordered = sorted(set(appearances))
+            # The real definition text when the run recorded one; the locator
+            # is the honest fallback for a concept the book names but the model
+            # did not define.
+            real = (data.concept_definitions.get(concept) or "").strip()
             for idx, (_, chapter_ref) in enumerate(ordered, start=1):
+                if real and idx == 1:
+                    definition = real
+                elif real:
+                    definition = f"{real} (restated in {chapter_ref})"
+                else:
+                    definition = f"introduced or redefined in {chapter_ref}"
                 steps.append(
                     ConceptEvolutionStep(
                         concept_ref=concept,
                         version=idx,
-                        definition=f"introduced or redefined in {chapter_ref}",
+                        definition=definition[:400],
                         chapter_ref=chapter_ref,
                         evolution_type="REFINE" if idx > 1 else "DEFINE",
                     )

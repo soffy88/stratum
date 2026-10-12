@@ -10,7 +10,9 @@ def _stable_id(prefix: str, *parts: str) -> str:
     raw = "|".join(p for p in parts if p)
     return f"{prefix}_{hashlib.sha256(raw.encode()).hexdigest()[:12]}"
 
+
 # ── Enums ─────────────────────────────────────────────────────────────────────
+
 
 class DiscourseRole(str, Enum):
     DEFINITION = "DEFINITION"
@@ -29,6 +31,7 @@ class DiscourseRole(str, Enum):
     CONCLUSION = "CONCLUSION"
     QUESTION = "QUESTION"
 
+
 class EpistemicRole(str, Enum):
     AUTHOR_ASSERTED = "AUTHOR_ASSERTED"
     AUTHOR_HYPOTHESIZED = "AUTHOR_HYPOTHESIZED"
@@ -37,11 +40,13 @@ class EpistemicRole(str, Enum):
     OPPONENT_POSITION = "OPPONENT_POSITION"
     AUTHOR_REJECTED = "AUTHOR_REJECTED"
 
+
 class Severity(str, Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
+
 
 class GapType(str, Enum):
     MISSING_KU = "MISSING_KU"
@@ -59,11 +64,13 @@ class GapType(str, Enum):
     CONTRADICTION = "CONTRADICTION"
     UNRESOLVED = "UNRESOLVED"
 
+
 class VerificationStatus(str, Enum):
     PENDING = "PENDING"
     VERIFIED = "VERIFIED"
     FAILED = "FAILED"
     PARTIALLY_VERIFIED = "PARTIALLY_VERIFIED"
+
 
 class GapStatus(str, Enum):
     OPEN = "OPEN"
@@ -74,15 +81,18 @@ class GapStatus(str, Enum):
     REJECTED = "REJECTED"
     WONTFIX = "WONTFIX"
 
+
 class LearningImportance(str, Enum):
     CORE = "CORE"
     SUPPORTING = "SUPPORTING"
     PERIPHERAL = "PERIPHERAL"
 
+
 class Difficulty(str, Enum):
     EASY = "EASY"
     MEDIUM = "MEDIUM"
     HARD = "HARD"
+
 
 class InteractionType(str, Enum):
     FREE_RECALL = "FREE_RECALL"
@@ -100,11 +110,13 @@ class InteractionType(str, Enum):
     TEACH_BACK = "TEACH_BACK"
     TRANSFER = "TRANSFER"
 
+
 class BUStatus(str, Enum):
     DRAFT = "DRAFT"
     VERIFICATION_PENDING = "VERIFICATION_PENDING"
     VERIFIED = "VERIFIED"
     FAILED = "FAILED"
+
 
 class PipelineRunState(str, Enum):
     CREATED = "CREATED"
@@ -118,13 +130,16 @@ class PipelineRunState(str, Enum):
     COMPRESSION_TESTED = "COMPRESSION_TESTED"
     FAILED = "FAILED"
 
+
 # ── P1 / P2: Evidence & KU 2.0 ────────────────────────────────────────────────
+
 
 class Scope(BaseModel):
     population: str = ""
     temporal: str = ""
     spatial: str = ""
     domain: str = ""
+
 
 class KU20Extensions(BaseModel):
     discourse_role: Optional[DiscourseRole] = None
@@ -141,6 +156,7 @@ class KU20Extensions(BaseModel):
     grounding_status: str = "unverified"
     context_status: str = "unverified"
 
+
 class EvidenceTrajectory(BaseModel):
     id: str
     claim_id: str
@@ -151,6 +167,7 @@ class EvidenceTrajectory(BaseModel):
     reasoning_steps: List[str] = Field(default_factory=list)
     final_interpretation: str = ""
     verification_status: VerificationStatus = VerificationStatus.PENDING
+
 
 class VisualSemanticUnit(BaseModel):
     id: str
@@ -164,7 +181,9 @@ class VisualSemanticUnit(BaseModel):
     ku_refs: List[str] = Field(default_factory=list)
     argument_refs: List[str] = Field(default_factory=list)
 
+
 # ── P3: Explanation Structure ──────────────────────────────────────────────────
+
 
 class Argument(BaseModel):
     id: str
@@ -178,6 +197,7 @@ class Argument(BaseModel):
     conclusion: List[str] = Field(default_factory=list)
     ku_refs: List[str] = Field(default_factory=list)
     evidence_refs: List[str] = Field(default_factory=list)
+
 
 class AuthorMechanism(BaseModel):
     id: str
@@ -193,6 +213,7 @@ class AuthorMechanism(BaseModel):
     failure_conditions: List[str] = Field(default_factory=list)
     explicitness: str
 
+
 class SituationModel(BaseModel):
     id: str
     entities: List[str] = Field(default_factory=list)
@@ -205,32 +226,40 @@ class SituationModel(BaseModel):
     constraints: List[str] = Field(default_factory=list)
     boundary_conditions: List[str] = Field(default_factory=list)
 
+
 # ── P4 & P5 JSON Structured Sub-Models ─────────────────────────────────────────
+
 
 class EvidenceProgramItem(BaseModel):
     claim_ref: str
     evidence_refs: List[str]
     is_supported: bool
 
+
 class ArgumentArchitecture(BaseModel):
     root_arguments: List[str] = Field(default_factory=list)
     supporting_arguments: List[str] = Field(default_factory=list)
 
+
 class ChapterDependency(BaseModel):
     source_chapter: str
     target_chapter: str
-    relation: str # e.g. REQUIRES, DEFINES_FOR, SUPPORTS, EVIDENCES, QUALIFIES, CHALLENGES
+    relation: str  # e.g. REQUIRES, DEFINES_FOR, SUPPORTS, EVIDENCES, QUALIFIES, CHALLENGES
+
 
 class ChapterDependencyGraph(BaseModel):
     dependencies: List[ChapterDependency] = Field(default_factory=list)
 
+
 class DiscourseArcStep(BaseModel):
-    step_type: str # Problem, Definitions, Model, Evidence, etc.
+    step_type: str  # Problem, Definitions, Model, Evidence, etc.
     description: str
     chapter_ref: str
 
+
 class DiscourseArc(BaseModel):
     steps: List[DiscourseArcStep] = Field(default_factory=list)
+
 
 class NegativeKnowledge(BaseModel):
     rejected_claims: List[str] = Field(default_factory=list)
@@ -238,12 +267,14 @@ class NegativeKnowledge(BaseModel):
     open_problems: List[str] = Field(default_factory=list)
     unresolved_conflicts: List[str] = Field(default_factory=list)
 
+
 class ConceptEvolutionStep(BaseModel):
     concept_ref: str
     version: int
     definition: str
     chapter_ref: str
-    evolution_type: str # REFINE, QUALIFY, REVISE
+    evolution_type: str  # REFINE, QUALIFY, REVISE
+
 
 class ClaimEvolutionStep(BaseModel):
     claim_ref: str
@@ -252,7 +283,9 @@ class ClaimEvolutionStep(BaseModel):
     chapter_ref: str
     evolution_type: str
 
+
 # ── P4 & P5: Chapter Understanding and BU 2.0 ──────────────────────────────────
+
 
 class ChapterUnderstanding(BaseModel):
     id: str
@@ -278,6 +311,11 @@ class ChapterUnderstanding(BaseModel):
     # DERIVED, MODEL_INFERENCE}. Additive with a default, so every existing
     # ChapterUnderstanding still validates.
     evidence_strengths: Dict[str, str] = Field(default_factory=dict)
+    # Task C: concept label -> the definition text the book gives it. Additive
+    # with a default so the concept-evolution layer can carry a real definition
+    # instead of the placeholder "introduced or redefined in chX".
+    concept_definitions: Dict[str, str] = Field(default_factory=dict)
+
 
 class ChapterDelta(BaseModel):
     id: str
@@ -293,6 +331,7 @@ class ChapterDelta(BaseModel):
     revises_prior_refs: List[str] = Field(default_factory=list)
     resolves_questions: List[str] = Field(default_factory=list)
     opens_questions: List[str] = Field(default_factory=list)
+
 
 class BookUnderstandingV2(BaseModel):
     id: str
@@ -317,6 +356,11 @@ class BookUnderstandingV2(BaseModel):
     unresolved_questions: List[str] = Field(default_factory=list)
     coverage_score: float = 0.0
     verification_score: float = 0.0
+    # Task C: True when the governing questions / theses were derived from the
+    # chapters rather than read by the model. Kept honest: a derived framing is
+    # real content, but it is weaker than a model's reading, so the quality model
+    # reports it as a gap rather than counting it as full book-level framing.
+    framing_derived: bool = False
 
     # P12 §9: the ids of the reasoning artefacts persisted alongside this BU.
     # Nullable because a BU produced before P12 has none, and that should read
@@ -325,7 +369,9 @@ class BookUnderstandingV2(BaseModel):
     concept_evolution_id: Optional[str] = None
     argument_graph_id: Optional[str] = None
 
+
 # ── P6: Verification ───────────────────────────────────────────────────────────
+
 
 class UnderstandingGap(BaseModel):
     id: str
@@ -338,7 +384,9 @@ class UnderstandingGap(BaseModel):
     required_action: str = ""
     status: GapStatus = GapStatus.OPEN
 
+
 # ── P8 & P9: Learning ──────────────────────────────────────────────────────────
+
 
 class LearningObject(BaseModel):
     id: str
@@ -355,13 +403,16 @@ class LearningObject(BaseModel):
     assessment_modes: List[str] = Field(default_factory=list)
     source_refs: List[str] = Field(default_factory=list)
 
+
 class LearningGraphNode(BaseModel):
     learning_object_ref: str
+
 
 class LearningGraphEdge(BaseModel):
     source_ref: str
     target_ref: str
     relation: str
+
 
 class LearningGraph(BaseModel):
     id: str
@@ -370,10 +421,12 @@ class LearningGraph(BaseModel):
     nodes: List[LearningGraphNode] = Field(default_factory=list)
     edges: List[LearningGraphEdge] = Field(default_factory=list)
 
+
 class InteractionPayload(BaseModel):
     question: str = ""
     options: List[str] = Field(default_factory=list)
     expected_answer: str = ""
+
 
 class RetrievalItem(BaseModel):
     id: str
@@ -381,12 +434,15 @@ class RetrievalItem(BaseModel):
     interaction_type: InteractionType
     payload: InteractionPayload = Field(default_factory=InteractionPayload)
 
+
 # ── P6: Verification Artifact ──────────────────────────────────────────────────
+
 
 class VerificationOutcome(str, Enum):
     PASS = "PASS"
     FAIL = "FAIL"
     BLOCKED = "BLOCKED"
+
 
 class VerificationArtifact(BaseModel):
     id: str
@@ -397,7 +453,9 @@ class VerificationArtifact(BaseModel):
     unresolved_gap_count: int
     verification_timestamp: str
 
+
 # ── P3: UnderstandingFrontier (table stratum.understanding_frontiers, 054) ────
+
 
 class FrontierType(str, Enum):
     CLAIM_AWAITING_EVIDENCE = "CLAIM_AWAITING_EVIDENCE"
@@ -408,6 +466,7 @@ class FrontierType(str, Enum):
     REFERENCE_AWAITING_EXPLANATION = "REFERENCE_AWAITING_EXPLANATION"
     PROMISE_AWAITING_FULFILLMENT = "PROMISE_AWAITING_FULFILLMENT"
 
+
 class FrontierStatus(str, Enum):
     OPEN = "OPEN"
     RESOLVED = "RESOLVED"
@@ -417,6 +476,7 @@ class FrontierStatus(str, Enum):
     CONTRADICTED = "CONTRADICTED"
     REJECTED = "REJECTED"
 
+
 class FrontierResolution(str, Enum):
     RESOLVE = "RESOLVE"
     SUPPORT = "SUPPORT"
@@ -424,6 +484,7 @@ class FrontierResolution(str, Enum):
     REVISE = "REVISE"
     CONTRADICT = "CONTRADICT"
     REJECT = "REJECT"
+
 
 class UnderstandingFrontier(BaseModel):
     id: str
@@ -433,7 +494,9 @@ class UnderstandingFrontier(BaseModel):
     status: FrontierStatus = FrontierStatus.OPEN
     resolution_refs: List[str] = Field(default_factory=list)
 
+
 # ── P4: WorkingBU (§35: BU(t+1) = Apply(BU(t), ChapterDelta(t+1))) ────────────
+
 
 class WorkingBU(BaseModel):
     id: str
@@ -454,12 +517,15 @@ class WorkingBU(BaseModel):
     resolved_questions: List[str] = Field(default_factory=list)
     applied_delta_refs: List[str] = Field(default_factory=list)
 
+
 # ── P5: statement provenance (§§39-41) + multi-resolution (§§46-47) ───────────
+
 
 class StatementProvenance(str, Enum):
     AUTHOR_EXPLICIT = "AUTHOR_EXPLICIT"
     AUTHOR_SYNTHESIZED = "AUTHOR_SYNTHESIZED"
     STRATUM_DERIVED = "STRATUM_DERIVED"
+
 
 class BUStatement(BaseModel):
     id: str
@@ -473,10 +539,12 @@ class BUStatement(BaseModel):
     derivation_reason: str = ""
     confidence: float = 0.0
 
+
 class ResolutionLevel(str, Enum):
     ROOT = "ROOT"
     BRANCH = "BRANCH"
     LEAF = "LEAF"
+
 
 class ResolutionNode(BaseModel):
     node_id: str
@@ -487,18 +555,22 @@ class ResolutionNode(BaseModel):
     evidence_refs: List[str] = Field(default_factory=list)
     centrality: float = 0.0
 
+
 class BUVerificationState(str, Enum):
     UNVERIFIED = "UNVERIFIED"
     PARTIAL = "PARTIAL"
     QUALIFIED = "QUALIFIED"
     VERIFIED = "VERIFIED"
 
+
 # ── P6: challenge suite objects (§§54-58, §§117-118) ──────────────────────────
+
 
 class AblationVerdict(str, Enum):
     ARGUMENT_INVALID = "ARGUMENT_INVALID"
     SUPPORT_WEAKENED = "SUPPORT_WEAKENED"
     NO_MEANINGFUL_EFFECT = "NO_MEANINGFUL_EFFECT"
+
 
 class AblationResult(BaseModel):
     target: str
@@ -507,6 +579,7 @@ class AblationResult(BaseModel):
     broken_arguments: List[str] = Field(default_factory=list)
     verdict: AblationVerdict = AblationVerdict.NO_MEANINGFUL_EFFECT
     detail: str = ""
+
 
 class MutationType(str, Enum):
     WRONG_STANCE = "WRONG_STANCE"
@@ -517,6 +590,7 @@ class MutationType(str, Enum):
     FAKE_EVIDENCE = "FAKE_EVIDENCE"
     OVERSTATED_CONCLUSION = "OVERSTATED_CONCLUSION"
 
+
 class MutationCase(BaseModel):
     id: str
     mutation_type: MutationType
@@ -525,10 +599,12 @@ class MutationCase(BaseModel):
     mutated_statement: str = ""
     expected: str = "REJECT"
 
+
 class MutationVerdict(BaseModel):
     case_id: str
     rejected: bool
     reason: str = ""
+
 
 class HoldoutItem(BaseModel):
     holdout_id: str
@@ -536,13 +612,16 @@ class HoldoutItem(BaseModel):
     probe_question: str = ""
     required_refs: List[str] = Field(default_factory=list)
 
+
 class MinimalPairCase(BaseModel):
     id: str
     side_a: str
     side_b: str
     distinction: str = ""
 
+
 # ── P7: projection contract (§§64-67, §79 uses LearningObject) ────────────────
+
 
 class ExpressionProfile(BaseModel):
     purpose: str
@@ -556,6 +635,7 @@ class ExpressionProfile(BaseModel):
     compression_policy: str = "centrality"
     interaction_policy: str = "view"
 
+
 class CompressionLoss(BaseModel):
     omitted_concepts: List[str] = Field(default_factory=list)
     omitted_arguments: List[str] = Field(default_factory=list)
@@ -564,6 +644,7 @@ class CompressionLoss(BaseModel):
     thesis_preserved: bool = False
     mechanism_preserved: bool = False
     stance_preserved: bool = False
+
 
 class ProjectedArtifact(BaseModel):
     artifact_id: str
@@ -574,7 +655,9 @@ class ProjectedArtifact(BaseModel):
     compression_loss: CompressionLoss = Field(default_factory=CompressionLoss)
     fidelity_checks: Dict[str, bool] = Field(default_factory=dict)
 
+
 # ── P8: compiled path (§82) ───────────────────────────────────────────────────
+
 
 class LearningPath(BaseModel):
     id: str
@@ -585,7 +668,9 @@ class LearningPath(BaseModel):
     ordered_lo_refs: List[str] = Field(default_factory=list)
     rationale: str = ""
 
+
 # ── P9: tutor + errors (§§91-93) + mastery dimensions (§86, derived view) ──────
+
 
 class TutorState(str, Enum):
     SELECT_OBJECTIVE = "SELECT_OBJECTIVE"
@@ -599,6 +684,7 @@ class TutorState(str, Enum):
     MASTERY = "MASTERY"
     NEXT = "NEXT"
 
+
 class TutorSession(BaseModel):
     session_id: str
     bu_id: str = ""
@@ -606,11 +692,13 @@ class TutorSession(BaseModel):
     objective_ref: str = ""
     history: List[str] = Field(default_factory=list)
 
+
 class ErrorKind(str, Enum):
     KNOWLEDGE_STRUCTURAL = "knowledge_structural"
     UNDERSTANDING_DEVIATION = "understanding_deviation"
     APPLICATION_ERROR = "application_error"
     METACOGNITIVE = "metacognitive"
+
 
 class MisconceptionCandidate(BaseModel):
     answer: str = ""
@@ -619,9 +707,11 @@ class MisconceptionCandidate(BaseModel):
     is_candidate: bool = False
     strategy: str = ""
 
+
 class MasteryDimensions(BaseModel):
     """Derived assessment view only — never persisted as mastery authority.
     The sole mastery authority remains cx.learning_progress."""
+
     ref: str = ""
     recognition: float = 0.0
     recall: float = 0.0
@@ -632,7 +722,9 @@ class MasteryDimensions(BaseModel):
     stability: float = 0.0
     confidence: float = 0.0
 
+
 # ── Benchmark gold (§§113-118) + baselines (§119) ─────────────────────────────
+
 
 class BookGold(BaseModel):
     book_id: str
@@ -649,11 +741,13 @@ class BookGold(BaseModel):
     visual_evidence: List[str] = Field(default_factory=list)
     negative_knowledge: List[str] = Field(default_factory=list)
 
+
 class ResolutionGold(BaseModel):
     book_id: str
     root: List[str] = Field(default_factory=list)
     branch: List[str] = Field(default_factory=list)
     leaf_sample: List[str] = Field(default_factory=list)
+
 
 class EvidenceGold(BaseModel):
     question: str = ""
@@ -662,6 +756,7 @@ class EvidenceGold(BaseModel):
     required_facts: List[str] = Field(default_factory=list)
     required_ku: List[str] = Field(default_factory=list)
     expected_reasoning_relation: str = ""
+
 
 class BaselineKind(str, Enum):
     B0_CHUNK_RAG = "B0_CHUNK_RAG"
@@ -672,6 +767,7 @@ class BaselineKind(str, Enum):
     B5_BU_1_1 = "B5_BU_1_1"
     B6_BU_2_0 = "B6_BU_2_0"
 
+
 class MetricScore(BaseModel):
     metric: str
     score: float = 0.0
@@ -681,6 +777,7 @@ class MetricScore(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════════
 # P13: Book-Level Synthesis Models
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class ThesisType(str, Enum):
     CORE = "CORE"
@@ -745,6 +842,7 @@ class ConceptRole(str, Enum):
 
 class BookThesis(BaseModel):
     """A single thesis claim with full traceability."""
+
     id: str
     type: ThesisType
     statement: str
@@ -763,6 +861,7 @@ class BookThesis(BaseModel):
 
 class BookThesisModel(BaseModel):
     """The complete thesis structure of the book."""
+
     core_thesis: Optional[BookThesis] = None
     supporting_theses: List[BookThesis] = Field(default_factory=list)
     problem_statements: List[BookThesis] = Field(default_factory=list)
@@ -786,6 +885,7 @@ class BookThesisModel(BaseModel):
 
 class ConceptSystemEntry(BaseModel):
     """One concept in the book's concept system."""
+
     concept_id: str
     label: str
     definition: str
@@ -802,6 +902,7 @@ class ConceptSystemEntry(BaseModel):
 
 class BookConceptSystem(BaseModel):
     """The book's complete concept system with roles and dependencies."""
+
     foundational: List[ConceptSystemEntry] = Field(default_factory=list)
     core: List[ConceptSystemEntry] = Field(default_factory=list)
     derived: List[ConceptSystemEntry] = Field(default_factory=list)
@@ -828,6 +929,7 @@ class BookConceptSystem(BaseModel):
 
 class BookArgument(BaseModel):
     """A major or sub-argument in the book's argument hierarchy."""
+
     id: str
     level: int  # 0=thesis, 1=major, 2=sub, etc.
     what: str
@@ -843,6 +945,7 @@ class BookArgument(BaseModel):
 
 class BookArgumentSystem(BaseModel):
     """The book's complete argument hierarchy."""
+
     thesis_arguments: List[BookArgument] = Field(default_factory=list)
     major_arguments: List[BookArgument] = Field(default_factory=list)
     sub_arguments: List[BookArgument] = Field(default_factory=list)
@@ -857,6 +960,7 @@ class BookArgumentSystem(BaseModel):
 
 class BookMechanism(BaseModel):
     """A causal/explanatory mechanism identified in the book."""
+
     id: str
     trigger: str
     precondition: str
@@ -871,11 +975,13 @@ class BookMechanism(BaseModel):
 
 class BookMechanismSystem(BaseModel):
     """All mechanisms identified in the book."""
+
     mechanisms: List[BookMechanism] = Field(default_factory=list)
 
 
 class EvidenceMapEntry(BaseModel):
     """One claim-evidence-argument-chapter linkage."""
+
     claim_id: str
     claim_statement: str
     evidence_ids: List[str] = Field(default_factory=list)
@@ -888,6 +994,7 @@ class EvidenceMapEntry(BaseModel):
 
 class BookEvidenceMap(BaseModel):
     """Complete claim-evidence-argument-chapter map for the book."""
+
     entries: List[EvidenceMapEntry] = Field(default_factory=list)
     evidence_coverage: float = 0.0
     unsupported_claim_count: int = 0
@@ -897,6 +1004,7 @@ class BookEvidenceMap(BaseModel):
 
 class BookAuthorModel(BaseModel):
     """Structured model of the author's intellectual stance."""
+
     worldview: List[str] = Field(default_factory=list)
     assumptions: List[str] = Field(default_factory=list)
     explanatory_strategy: List[str] = Field(default_factory=list)
@@ -910,6 +1018,7 @@ class BookAuthorModel(BaseModel):
 
 class ChapterRoleAssignment(BaseModel):
     """One chapter's role(s) in the book."""
+
     chapter_id: str
     roles: List[ChapterRole] = Field(default_factory=list)
     evidence: str = ""
@@ -918,6 +1027,7 @@ class ChapterRoleAssignment(BaseModel):
 
 class BookChapterRoles(BaseModel):
     """All chapter role assignments."""
+
     assignments: List[ChapterRoleAssignment] = Field(default_factory=list)
 
     def get_roles(self, chapter_id: str) -> List[ChapterRole]:
@@ -929,6 +1039,7 @@ class BookChapterRoles(BaseModel):
 
 class ContradictionEntry(BaseModel):
     """A detected contradiction or tension."""
+
     id: str
     type: ContradictionType
     element_a: str  # claim_id, concept_id, or argument_id
@@ -942,11 +1053,13 @@ class ContradictionEntry(BaseModel):
 
 class BookContradictions(BaseModel):
     """All detected contradictions in the book."""
+
     contradictions: List[ContradictionEntry] = Field(default_factory=list)
 
 
 class BookSynthesis(BaseModel):
     """The final book-level synthesis."""
+
     id: str
     run_id: str
     book_id: str
@@ -969,8 +1082,10 @@ class BookSynthesis(BaseModel):
 # P14: Cross-Book Intelligence Models
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class CrossBookConceptRelationType(str, Enum):
     """Types of relations between concepts across books."""
+
     SAME_CONCEPT = "SAME_CONCEPT"
     RELATED_CONCEPT = "RELATED_CONCEPT"
     SUBSUMES = "SUBSUMES"
@@ -983,6 +1098,7 @@ class CrossBookConceptRelationType(str, Enum):
 
 class CrossBookThesisRelationType(str, Enum):
     """Types of relations between theses across books."""
+
     SUPPORTS = "SUPPORTS"
     EXTENDS = "EXTENDS"
     QUALIFIES = "QUALIFIES"
@@ -996,6 +1112,7 @@ class CrossBookThesisRelationType(str, Enum):
 
 class CrossBookClaimRelationType(str, Enum):
     """Types of relations between claims across books."""
+
     SAME_CLAIM = "SAME_CLAIM"
     RELATED_CLAIM = "RELATED_CLAIM"
     CONTRADICTORY_CLAIM = "CONTRADICTORY_CLAIM"
@@ -1005,6 +1122,7 @@ class CrossBookClaimRelationType(str, Enum):
 
 class CrossBookArgumentRelationType(str, Enum):
     """Types of relations between arguments across books."""
+
     SUPPORTS = "SUPPORTS"
     CHALLENGES = "CHALLENGES"
     EXTENDS = "EXTENDS"
@@ -1022,6 +1140,7 @@ class CrossBookArgumentRelationType(str, Enum):
 
 class CrossBookMechanismRelationType(str, Enum):
     """Types of relations between mechanisms across books."""
+
     SAME = "SAME"
     VARIANT = "VARIANT"
     COMPLEMENTARY = "COMPLEMENTARY"
@@ -1032,6 +1151,7 @@ class CrossBookMechanismRelationType(str, Enum):
 
 class CrossBookEvidenceRelationType(str, Enum):
     """Types of relations between evidence across books."""
+
     CONVERGENT = "CONVERGENT"
     DIVERGENT = "DIVERGENT"
     INDEPENDENT = "INDEPENDENT"
@@ -1042,6 +1162,7 @@ class CrossBookEvidenceRelationType(str, Enum):
 
 class CrossBookContradictionType(str, Enum):
     """Types of cross-book contradictions."""
+
     DIRECT_CONTRADICTION = "DIRECT_CONTRADICTION"
     DEFINITIONAL_CONFLICT = "DEFINITIONAL_CONFLICT"
     SCOPE_CONFLICT = "SCOPE_CONFLICT"
@@ -1054,6 +1175,7 @@ class CrossBookContradictionType(str, Enum):
 
 class CrossBookProblemRelationType(str, Enum):
     """Types of relations between problems across books."""
+
     SAME_PROBLEM = "SAME_PROBLEM"
     SUBPROBLEM = "SUBPROBLEM"
     SUPERPROBLEM = "SUPERPROBLEM"
@@ -1064,6 +1186,7 @@ class CrossBookProblemRelationType(str, Enum):
 
 class CrossBookArgumentTransferType(str, Enum):
     """Types of argument transfer across books."""
+
     THEORY_TO_APPLICATION = "THEORY_TO_APPLICATION"
     FOUNDATION_TO_EXTENSION = "FOUNDATION_TO_EXTENSION"
     CONCEPT_TO_MECHANISM = "CONCEPT_TO_MECHANISM"
@@ -1073,6 +1196,7 @@ class CrossBookArgumentTransferType(str, Enum):
 
 class KnowledgeGapType(str, Enum):
     """Types of knowledge gaps detected across books."""
+
     UNANSWERED = "UNANSWERED"
     WEAKLY_SUPPORTED = "WEAKLY_SUPPORTED"
     CONFLICTING = "CONFLICTING"
@@ -1084,6 +1208,7 @@ class KnowledgeGapType(str, Enum):
 
 class AuthorRelationType(str, Enum):
     """Types of author stance relations."""
+
     SHARED_ASSUMPTION = "SHARED_ASSUMPTION"
     DIFFERENT_ASSUMPTION = "DIFFERENT_ASSUMPTION"
     COMPETING_FRAMEWORK = "COMPETING_FRAMEWORK"
@@ -1093,6 +1218,7 @@ class AuthorRelationType(str, Enum):
 
 class CrossBookCollection(BaseModel):
     """A named collection of independently understood books for cross-book analysis."""
+
     collection_id: str = ""
     name: str
     description: str
@@ -1118,6 +1244,7 @@ class CrossBookCollection(BaseModel):
 
 class CrossBookConcept(BaseModel):
     """A concept identified across multiple books with alignment metadata."""
+
     concept_id: str
     label: str
     definition: str
@@ -1128,6 +1255,7 @@ class CrossBookConcept(BaseModel):
 
 class CrossBookConceptRelation(BaseModel):
     """A relation between two concepts from different books."""
+
     relation_id: str
     source_book_id: str
     source_concept_id: str
@@ -1142,14 +1270,18 @@ class CrossBookConceptRelation(BaseModel):
 
 class CrossBookConceptEvolution(BaseModel):
     """Cross-book concept evolution chain."""
+
     chain_id: str
-    sequence: List[Dict[str, Any]] = Field(default_factory=list)  # book_id, concept_id, evolution_type
+    sequence: List[Dict[str, Any]] = Field(
+        default_factory=list
+    )  # book_id, concept_id, evolution_type
     evolution_types: List[str] = Field(default_factory=list)  # INTRODUCES, REFINES, EXTENDS, etc.
     provenance: ThesisProvenance = ThesisProvenance.MODEL_INFERRED
 
 
 class CrossBookThesis(BaseModel):
     """A thesis from a book in cross-book context."""
+
     thesis_id: str
     book_id: str
     thesis_ref: str  # ref to BookThesis.id in that book's synthesis
@@ -1161,6 +1293,7 @@ class CrossBookThesis(BaseModel):
 
 class CrossBookThesisRelation(BaseModel):
     """A relation between theses from different books."""
+
     relation_id: str
     source_thesis: CrossBookThesis
     target_thesis: CrossBookThesis
@@ -1173,6 +1306,7 @@ class CrossBookThesisRelation(BaseModel):
 
 class CrossBookClaim(BaseModel):
     """A claim from a book in cross-book context."""
+
     claim_id: str
     book_id: str
     claim_ref: str  # ref to EvidenceMapEntry.claim_id
@@ -1183,6 +1317,7 @@ class CrossBookClaim(BaseModel):
 
 class CrossBookClaimRelation(BaseModel):
     """A relation between claims from different books."""
+
     relation_id: str
     source_claim: CrossBookClaim
     target_claim: CrossBookClaim
@@ -1195,6 +1330,7 @@ class CrossBookClaimRelation(BaseModel):
 
 class CrossBookArgument(BaseModel):
     """An argument from a book in cross-book context."""
+
     argument_id: str
     book_id: str
     argument_ref: str  # ref to BookArgument.id
@@ -1210,6 +1346,7 @@ class CrossBookArgument(BaseModel):
 
 class CrossBookArgumentRelation(BaseModel):
     """A relation between arguments from different books."""
+
     relation_id: str
     source_argument: CrossBookArgument
     target_argument: CrossBookArgument
@@ -1222,6 +1359,7 @@ class CrossBookArgumentRelation(BaseModel):
 
 class CrossBookArgumentTransfer(BaseModel):
     """A transfer of argument structure from one book to another."""
+
     transfer_id: str
     source_book_id: str
     source_argument_id: str
@@ -1234,6 +1372,7 @@ class CrossBookArgumentTransfer(BaseModel):
 
 class CrossBookMechanism(BaseModel):
     """A mechanism from a book in cross-book context."""
+
     mechanism_id: str
     book_id: str
     mechanism_ref: str  # ref to BookMechanism.id
@@ -1246,6 +1385,7 @@ class CrossBookMechanism(BaseModel):
 
 class CrossBookMechanismRelation(BaseModel):
     """A relation between mechanisms from different books."""
+
     relation_id: str
     source_mechanism: CrossBookMechanism
     target_mechanism: CrossBookMechanism
@@ -1258,6 +1398,7 @@ class CrossBookMechanismRelation(BaseModel):
 
 class CrossBookEvidence(BaseModel):
     """Evidence from a book in cross-book context."""
+
     evidence_id: str
     book_id: str
     evidence_ref: str  # ref to original evidence
@@ -1268,6 +1409,7 @@ class CrossBookEvidence(BaseModel):
 
 class CrossBookEvidenceRelation(BaseModel):
     """A relation between evidence from different books."""
+
     relation_id: str
     source_evidence: CrossBookEvidence
     target_evidence: CrossBookEvidence
@@ -1279,6 +1421,7 @@ class CrossBookEvidenceRelation(BaseModel):
 
 class CrossBookContradiction(BaseModel):
     """A contradiction detected across books."""
+
     contradiction_id: str
     type: CrossBookContradictionType
     book_a_id: str
@@ -1294,6 +1437,7 @@ class CrossBookContradiction(BaseModel):
 
 class CrossBookProblem(BaseModel):
     """A problem identified in a book in cross-book context."""
+
     problem_id: str
     book_id: str
     problem_ref: str  # ref to BookThesis (type PROBLEM) or ProblemStatement
@@ -1304,6 +1448,7 @@ class CrossBookProblem(BaseModel):
 
 class CrossBookProblemRelation(BaseModel):
     """A relation between problems from different books."""
+
     relation_id: str
     source_problem: CrossBookProblem
     target_problem: CrossBookProblem
@@ -1314,6 +1459,7 @@ class CrossBookProblemRelation(BaseModel):
 
 class CrossBookAuthorRelation(BaseModel):
     """A relation between author models from different books."""
+
     relation_id: str
     book_a_id: str
     book_b_id: str
@@ -1325,6 +1471,7 @@ class CrossBookAuthorRelation(BaseModel):
 
 class CrossBookKnowledgeGap(BaseModel):
     """A knowledge gap detected across the book collection."""
+
     gap_id: str
     type: KnowledgeGapType
     description: str
@@ -1336,6 +1483,7 @@ class CrossBookKnowledgeGap(BaseModel):
 
 class CrossBookComparison(BaseModel):
     """Complete comparison between two books."""
+
     comparison_id: str
     book_a_id: str
     book_b_id: str
@@ -1351,6 +1499,7 @@ class CrossBookComparison(BaseModel):
 
 class CrossBookSynthesis(BaseModel):
     """The final cross-book synthesis."""
+
     synthesis_id: str
     collection_id: str
     common_ground: List[str] = Field(default_factory=list)
@@ -1369,6 +1518,7 @@ class CrossBookSynthesis(BaseModel):
 
 class CrossBookUnderstanding(BaseModel):
     """The top-level cross-book understanding object."""
+
     understanding_id: str
     collection: CrossBookCollection
     shared_problems: List[CrossBookProblem] = Field(default_factory=list)

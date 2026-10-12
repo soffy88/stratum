@@ -193,7 +193,10 @@ class BUQualityEvaluator:
         rep.integration_score = by_key["Q5"].score
         rep.evidence_score = by_key["Q6"].score
         rep.boundary_score = by_key["Q7"].score
-        rep.overall = round(sum(d.score * d.weight for d in rep.dimensions) / sum(d.weight for d in rep.dimensions), 4)
+        rep.overall = round(
+            sum(d.score * d.weight for d in rep.dimensions) / sum(d.weight for d in rep.dimensions),
+            4,
+        )
         rep.quality_level = level_for(rep.overall)
         rep.limitations = [f for d in rep.dimensions for f in d.findings if f]
         return rep
@@ -248,7 +251,9 @@ class BUQualityEvaluator:
         persistence = min(1.0, n_concepts / 10.0)
         evolution_score = min(1.0, evolution / 8.0)
         d.score = round(0.4 * extraction + 0.35 * persistence + 0.25 * evolution_score, 4)
-        d.detail = f"{n_concepts} book concepts, {introduced} introduced, {evolution} evolution steps"
+        d.detail = (
+            f"{n_concepts} book concepts, {introduced} introduced, {evolution} evolution steps"
+        )
         if introduced == 0:
             d.findings.append("concept: no concepts extracted from any chapter")
         if evolution == 0 and len(chapters) > 1:
@@ -319,11 +324,17 @@ class BUQualityEvaluator:
         book_theses = len(getattr(bu, "central_theses", []) or [])
         questions = len(getattr(bu, "governing_questions", []) or [])
         n = len(chapters)
+        # A framing derived from the chapters rather than read by the model is
+        # real content but weaker evidence of book-level understanding, so it
+        # scores at half weight and is reported as a gap.
+        framing_derived = bool(getattr(bu, "framing_derived", False))
 
-        cross = min(1.0, edges / max(1.0, n - 1))          # relations spanning chapters
-        arc = min(1.0, arc_steps / max(1.0, n))            # a shape for the whole book
-        evo = min(1.0, evolution / 8.0)                     # something changed over time
+        cross = min(1.0, edges / max(1.0, n - 1))  # relations spanning chapters
+        arc = min(1.0, arc_steps / max(1.0, n))  # a shape for the whole book
+        evo = min(1.0, evolution / 8.0)  # something changed over time
         framing = min(1.0, (book_theses + questions) / 3.0)  # book-level, not chapter-level
+        if framing_derived:
+            framing *= 0.5
         d.score = round(0.3 * cross + 0.2 * arc + 0.2 * evo + 0.3 * framing, 4)
         d.detail = f"{edges} cross-chapter edges, {arc_steps} arc steps, {book_theses} book theses"
         if n > 1 and edges == 0:
@@ -333,6 +344,11 @@ class BUQualityEvaluator:
             )
         if book_theses == 0 and questions == 0:
             d.findings.append("integration: no book-level framing was produced")
+        elif framing_derived:
+            d.findings.append(
+                "integration: book-level framing was derived from the chapters rather "
+                "than read by the model"
+            )
         return d
 
     # ── Q6 evidence ─────────────────────────────────────────────────────────
@@ -413,6 +429,5 @@ def quality_context_lines(report: BUQualityReport) -> list[str]:
         f"Boundary (Q7): {by['Q7'].level} — {by['Q7'].detail}",
         f"Overall understanding confidence: {report.quality_level} "
         f"({report.overall:.2f}) — {LEVEL_MEANING[report.quality_level]}",
-        f"Pipeline status: {report.pipeline_status} "
-        f"(independent of understanding quality)",
+        f"Pipeline status: {report.pipeline_status} (independent of understanding quality)",
     ]
