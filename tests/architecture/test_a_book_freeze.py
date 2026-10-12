@@ -129,3 +129,36 @@ def test_persist_is_idempotent_and_insert_only():
     second = bf.persist(rows, conn)
     assert first["ku_occurrence"] == len(rows.occurrences) > 0
     assert sum(second.values()) == 0
+
+
+def test_upper_exercises_header_is_exercise():
+    text = "EXAMPLE 1  Compute a limit using the Limit Laws here.\n\n###### EXERCISES 2.1 \n\n**1.** Find the slope of the line.\n"
+    ex = bf.extract(text)
+    assert ex.role_counts()["EXERCISE"] == 1
+    assert next(k for k in ex.kus if k.role == "EXERCISE").number == "2.1"
+
+
+def test_same_name_different_number_is_not_restates():
+    text = (
+        "THEOREM 3—Limit Comparison Test If the positive functions f and g are continuous then.\n\n"
+        "THEOREM 11—Limit Comparison Test Suppose that a_n > 0 and b_n > 0 for all n.\n\n"
+        "THEOREM 3—Limit Comparison Test If the positive functions f and g (translated recap).\n"
+    )
+    ex = bf.extract(text)
+    pairs = [
+        (ex.kus[h.from_index].number, ex.kus[h.to_index].number)
+        for h in ex.hints
+        if h.kind == "RESTATES"
+    ]
+    assert pairs == [("3", "3")]
+
+
+def test_cli_dispatches_batch_mode(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(
+        bf,
+        "run_pending",
+        lambda limit, persist_rows: seen.update(limit=limit, persist=persist_rows) or 0,
+    )
+    assert bf.main(["--all-pending", "--persist", "--limit", "5"]) == 0
+    assert seen == {"limit": 5, "persist": True}
