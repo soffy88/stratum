@@ -1,13 +1,18 @@
 import json as _json
 import logging
+import os as _os
 from typing import Any
 
 from oprim import epistemic_confidence_compute as ecc_fn
 from oprim import failure_lesson_extract
 from obase import ProviderRegistry
 from aii.storage.pg_backend import PgBackend
+from aii import embedding_client
 
 logger = logging.getLogger(__name__)
+
+# synthesis_max_distance 阈值: eg2 时从 embedding_client.threshold() 取, bge 时返回原值
+_SYNTHESIS_MAX_DISTANCE = embedding_client.threshold("synthesis_max_distance")
 
 
 class _GraphAdapter:
@@ -57,15 +62,21 @@ _LOCAL_KW = ["是什么", "怎么", "怎样", "公式", "证明", "怎么样", "
 
 
 def _embed_query(query: str) -> list[float] | None:
-    """Embed query text using registered embedding provider."""
+    """查询嵌入: eg2 走 embedding_client.embed_queries(带 SearchQuery 前缀),
+    bge 走注册的默认 embedding provider。"""
     try:
-        reg = ProviderRegistry.get()
-        embed_fn = reg._generic.get("embedding", {}).get("default")
-        if embed_fn is None:
-            return None
+        from aii import embedding_client
+
+        if embedding_client.backend() == "eg2":
+            vecs = embedding_client.embed_queries([query])
+        else:
+            reg = ProviderRegistry.get()
+            embed_fn = reg._generic.get("embedding", {}).get("default")
+            if embed_fn is None:
+                return None
+            vecs = embed_fn([query])
         import numpy as np
 
-        vecs = embed_fn([query])
         arr = np.array(vecs, dtype="float32")
         norm = float(np.linalg.norm(arr[0]))
         return [float(x) / norm for x in arr[0]] if norm > 0 else [float(x) for x in arr[0]]
@@ -82,7 +93,6 @@ class SynthesisEngine:
 
     async def chat(self, message: str) -> dict[str, Any]:
         """Process a user message. Routes via LLM intent(global/grounded/chitchat); 关键词兜底."""
-        import os as _os
 
         intent = None
         if _os.getenv("AII_LLM_ROUTER", "1") == "1":
@@ -285,7 +295,6 @@ class SynthesisEngine:
 
         # ★混合检索(dense+lexical RRF)召回候选 → LLM 重排精排到 top-k
         # 治 dense-only 召回弱; 重排治融合稀释(评测: hybrid+rerank ≥ dense). 失败逐级降级.
-        import os as _os
 
         try:
             candidates = await self.backend.search_ku_hybrid(qv, query, limit=15)
@@ -366,11 +375,19 @@ class SynthesisEngine:
         results = list(results) + extra_kus[:3]
 
         # ★HyDE 回退: 低召回时用假设答案重新编码再检索一次(缩小问答语义差)再判无知识
-        if (not results or best_dist > 0.75) and _os.getenv("AII_HYDE", "1") == "1":
+        if (not results or best_dist > _SYNTHESIS_MAX_DISTANCE) and _os.getenv(
+            "AII_HYDE", "1"
+        ) == "1":
             try:
                 from aii.service.query_understanding import hyde_embed
 
-                _embed_fn = ProviderRegistry.get()._generic.get("embedding", {}).get("default")
+                from aii import embedding_client
+
+                _embed_fn = (
+                    embedding_client.embed_queries
+                    if embedding_client.backend() == "eg2"
+                    else ProviderRegistry.get()._generic.get("embedding", {}).get("default")
+                )
                 hv = await hyde_embed(ProviderRegistry.get().llm("default"), _embed_fn, query)
                 if hv:
                     hres = await self.backend.search_ku_hybrid(hv, query, limit=15)
@@ -382,9 +399,10 @@ class SynthesisEngine:
                 logger.warning("HyDE fallback failed: %s", _e)
 
         # 2. No Knowledge Check
-        # Threshold: cosine distance > 0.75 (similarity < 0.25); BGE-M3 typical semantic match ~0.65
+        # Threshold: cosine distance > synthesis_max_distance (similarity < 1-x);
+        # BGE-M3 typical semantic match ~0.65 distance
         # ★用召回候选最近距离(best_dist), 不用 results[0](重排后非距离序)
-        if not results or best_dist > 0.75:
+        if not results or best_dist > _SYNTHESIS_MAX_DISTANCE:
             logger.info(f"No grounding found. Best distance: {best_dist if results else 'N/A'}")
             # 记 retrieval_miss，供缺口感知 step5 聚合（旁路，不改 grade）
             try:

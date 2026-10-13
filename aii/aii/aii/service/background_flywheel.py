@@ -227,11 +227,12 @@ def _read_purpose_text() -> str:
 
 
 def _embed_batch(texts: list[str]) -> list[list[float]]:
-    """Embed texts via default provider (sync, run in thread executor)."""
-    from oprim import vector_encode
+    """Embed texts via embedding_client (sync, run in thread executor)."""
     import numpy as np
 
-    raw = vector_encode(texts=texts, provider="default")
+    from aii import embedding_client
+
+    raw = embedding_client.embed_documents(texts)
     arr = np.array(raw, dtype="float32")
     norms = np.linalg.norm(arr, axis=1, keepdims=True)
     norms = np.where(norms == 0, 1.0, norms)
@@ -603,7 +604,7 @@ async def _backfill_deep_one(backend) -> bool:
     onto 路径(_run_ontology_path)摄取时已内联做 KC/BU, 无需回填. 恒返回 False."""
     return False
 
-    await backend.mark_deep_understood(substrate_id)
+    await backend.mark_deep_understood(substrate_id)  # noqa: F821
     return True
 
 

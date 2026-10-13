@@ -143,24 +143,45 @@ def _get_bge():
     return _bge
 
 
-_EMBED_DIM = 1024  # Must match substrate_layers.embedding vector dimension
+_EMBED_DIM = 1024  # BGE-M3 (legacy backend) substrate_layers.embedding dimension
 _EMBEDDING_MODEL = "BAAI/bge-m3"
+_EG2_EMBEDDING_MODEL = "embeddinggemma-2"
+
+
+def _embed_backend_is_eg2() -> bool:
+    """AII_EMBED_BACKEND=eg2 → EmbeddingGemma2 (768-d) through aii.embedding_client."""
+    try:
+        from aii import embedding_client
+
+        return embedding_client.backend() == "eg2"
+    except Exception:
+        return False
+
+
+def _embedding_model() -> str:
+    return _EG2_EMBEDDING_MODEL if _embed_backend_is_eg2() else _EMBEDDING_MODEL
 
 
 def _get_embedding(text: str) -> list[float] | None:
-    """Get embedding vector for text using BGE-M3 — same space as substrate_layers.
+    """Document embedding for substrate/KU layers in the active backend's space.
 
-    Truncates to _EMBED_DIM (1024) to match pgvector column.
+    eg2: embedding_client.embed_documents(doc_text("", text)) — same text
+    convention as scripts/eg2_backfill.py (768-d).  bge: in-process BGE-M3,
+    truncated to _EMBED_DIM (1024) to match the legacy pgvector column.
     """
     try:
         text = text[:4000] if len(text) > 4000 else text
+        if _embed_backend_is_eg2():
+            from aii import embedding_client
+
+            return embedding_client.embed_documents([embedding_client.doc_text("", text)])[0]
         emb = _get_bge().embed([text], dim=1024)
         if not emb or not emb[0]:
             return None
         vec = emb[0]
         return vec[:_EMBED_DIM] if len(vec) > _EMBED_DIM else vec
     except Exception as exc:
-        logger.warning("layer_generator: BGE-M3 embedding failed: %s", exc)
+        logger.warning("layer_generator: embedding failed: %s", exc)
         return None
 
 
@@ -274,7 +295,7 @@ def _persist_substrate_layers(substrate_id: str, layers: dict[str, str]) -> None
 
             if embedding:
                 emb_str = "[" + ",".join(str(x) for x in embedding) + "]"
-                model_used = _EMBEDDING_MODEL if layer_name == "L0" else _MODEL
+                model_used = _embedding_model() if layer_name == "L0" else _MODEL
                 conn.execute(
                     """INSERT INTO substrate_layers (id, substrate_id, layer, content, token_count, model_used, embedding)
                        VALUES (?, ?, ?, ?, ?, ?, ?::vector)
@@ -295,7 +316,7 @@ def _persist_substrate_layers(substrate_id: str, layers: dict[str, str]) -> None
                     ),
                 )
             else:
-                model_used = _EMBEDDING_MODEL if layer_name == "L0" else _MODEL
+                model_used = _embedding_model() if layer_name == "L0" else _MODEL
                 conn.execute(
                     """INSERT INTO substrate_layers (id, substrate_id, layer, content, token_count, model_used)
                        VALUES (?, ?, ?, ?, ?, ?)
@@ -479,7 +500,7 @@ def backfill_embeddings(batch_size: int = 50) -> int:
             with get_conn() as conn:
                 conn.execute(
                     "UPDATE substrate_layers SET embedding = ?::vector, model_used = ? WHERE id = ?",
-                    (emb_str, _EMBEDDING_MODEL, row_id),
+                    (emb_str, _embedding_model(), row_id),
                 )
             count += 1
             logger.info("backfill_embeddings: %s (%d/%d)", substrate_id[:12], count, len(rows))

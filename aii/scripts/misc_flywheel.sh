@@ -68,12 +68,16 @@ export CUDA_VISIBLE_DEVICES=""          # 嵌入走 CPU(GPU 让给 math-prog, �
 export HF_HUB_OFFLINE=1                 # ★用本地缓存 BGE-M3, 不连 huggingface(直连超时→卡死)
 export TRANSFORMERS_OFFLINE=1
 # ★嵌入走共享 aii-embed 微服务(笔记本GPU); 不可用时走本地 BGE-M3(CPU, 慢但可用)
-if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://127.0.0.1:8102}/health" >/dev/null 2>&1; then
-  export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"
-  echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
+if [ "${AII_EMBED_BACKEND:-bge}" = "eg2" ]; then
+  echo "  ▶ 使用 EmbeddingGemma2: ${AII_EMBED_BASE_URL:-http://100.68.226.13:8790/v1}"
 else
-  unset AII_EMBED_URL
-  echo "  ▶ 远端 embed 不可用, 回退本地 BGE-M3(CPU)"
+  if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://127.0.0.1:8102}/health" >/dev/null 2>&1; then
+    export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"
+    echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
+  else
+    unset AII_EMBED_URL
+    echo "  ▶ 远端 embed 不可用, 回退本地 BGE-M3(CPU)"
+  fi
 fi
 # ★忠实模式(同中文版): 只忠实呈现原书内容, 不过度LLM判断/why-how; section 默认13000
 export ECON_FAITHFUL=1

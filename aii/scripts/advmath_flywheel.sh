@@ -52,12 +52,16 @@ export CUDA_VISIBLE_DEVICES=""
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 # ★嵌入走共享 aii-embed 微服务(笔记本GPU); 不可用时走本地 BGE-M3(CPU, 慢但可用)
-if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://127.0.0.1:8102}/health" >/dev/null 2>&1; then
-  export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"
-  echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
+if [ "${AII_EMBED_BACKEND:-bge}" = "eg2" ]; then
+  echo "  ▶ 使用 EmbeddingGemma2: ${AII_EMBED_BASE_URL:-http://100.68.226.13:8790/v1}"
 else
-  unset AII_EMBED_URL
-  echo "  ▶ 远端 embed 不可用, 回退本地 BGE-M3(CPU)"
+  if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://127.0.0.1:8102}/health" >/dev/null 2>&1; then
+    export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"
+    echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
+  else
+    unset AII_EMBED_URL
+    echo "  ▶ 远端 embed 不可用, 回退本地 BGE-M3(CPU)"
+  fi
 fi
 export ECON_QUARANTINE_JSON="advmath_pipeline/quarantine.json"
 export ECON_BATCH_REPORT="advmath_pipeline/batch_report.json"
