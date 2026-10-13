@@ -28,6 +28,7 @@ def _j(v, default=None):
 
 class BuListItem(BaseModel):
     id: str
+    run_id: str
     substrate_id: str
     book_title: str
     summary: str
@@ -92,6 +93,7 @@ async def list_bu(
     for r in rows:
         items.append(BuListItem(
             id=r['id'],
+            run_id=r['run_id'],
             substrate_id=r['substrate_id'],
             book_title=r['book_title'] or r['book_id'],
             summary=f"Coverage: {r['coverage_score']:.0%}, Verification: {r['verification_score']:.0%}",

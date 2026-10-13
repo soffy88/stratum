@@ -9,6 +9,7 @@
  */
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { OEmptyState, OLoadingState, OErrorState } from '@helios/blocks';
 import { useApiNoArg, useApi } from '@/aii/hooks/useApi';
@@ -240,7 +241,10 @@ export default function BooksPage() {
   return (
     <div className="aii-page-content flex flex-col gap-5 max-w-5xl mx-auto">
       <header className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">书级理解 / Book Understanding</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-xl font-semibold">书级理解 / Book Understanding</h1>
+          <Link href="/books/bu2" className="text-sm text-emerald-600 hover:underline">BU2 深度理解（论证链 · 证据 · 质量门）→</Link>
+        </div>
         <p className="text-sm text-[color:var(--text-secondary)]">
           每本书一个 BU。<strong>论断带立场标记(论断≠真理)</strong>,<strong>论据可信度独立显示</strong>。
         </p>
