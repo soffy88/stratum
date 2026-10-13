@@ -16,7 +16,7 @@ Triage(按 archiver 的受控 type):
   实质内容 → 该条 **不入库**(宁缺毋滥), 报告标 gate_fail 等 Wiki 裁决。
 
 纪律: grade 全部默认 unverified(建表默认值, 不显式传); source_files=[file_id] 溯源;
-     embedding=BGE-M3(共享 aii-embed 服务, 笔记本 GPU); 默认 dry-run, --do 才写库。
+     embedding=统一 embedding_client(AII_EMBED_BACKEND=bge|eg2); 默认 dry-run, --do 才写库。
 
 用法:
   .venv/bin/python scripts/context_compiler.py         # dry-run: 提炼并打印, 不写库不标记
@@ -35,7 +35,6 @@ import subprocess
 import sys
 import tempfile
 import time
-import urllib.request
 from pathlib import Path
 
 import asyncpg
@@ -87,14 +86,12 @@ def _llm(prompt: str) -> str:
 
 
 def _embed(text: str) -> list[float]:
-    """BGE-M3 via 共享服务(笔记本GPU)。urllib 不认 no_proxy 的 CIDR, 显式绕代理。"""
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    req = urllib.request.Request(
-        f"{EMBED_URL}/embed",
-        json.dumps({"texts": [text[:2000]]}).encode(),
-        {"Content-Type": "application/json"},
-    )
-    return json.loads(opener.open(req, timeout=120).read())["embeddings"][0]
+    """文档向量(写 cx.*), 走统一 embedding_client:
+    bge=共享 aii-embed(BGE-M3 1024), eg2=EmbeddingGemma2 Document 口径(768)。
+    文本与 scripts/eg2_backfill_refined.py 的 C仓口径一致(situation/description 优先)。"""
+    from aii import embedding_client  # noqa: PLC0415
+
+    return embedding_client.embed_documents([(text or "")[:2000]])[0]
 
 
 def _fetch_file(archived_path: str, td: str) -> str:

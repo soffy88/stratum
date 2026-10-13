@@ -38,6 +38,11 @@ def _log(msg: str) -> None:
 
 
 async def main() -> int:
+    if os.getenv("AII_EMBED_BACKEND", "bge").strip().lower() == "eg2":
+        raise SystemExit(
+            "AII_EMBED_BACKEND=eg2: this BGE-M3 (1024-d) tool must not write the 768-d "
+            "EmbeddingGemma2 columns; use scripts/eg2_backfill.py instead"
+        )
     import asyncpg
     from pgvector.asyncpg import register_vector
     from obase import ProviderRegistry

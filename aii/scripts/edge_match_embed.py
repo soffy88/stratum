@@ -18,10 +18,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import os
 import sys
-import urllib.request
 
 import asyncpg
 
@@ -32,14 +30,10 @@ _REL_MAP = {"prerequisite": "prerequisite", "derives": "derives", "subsumes": "s
 
 
 def _embed(texts: list[str]) -> list[list[float]]:
-    req = urllib.request.Request(
-        f"{EMBED_URL}/embed",
-        data=json.dumps({"texts": texts}).encode(),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        return json.loads(resp.read())["embeddings"]
+    """概念名 → 文档向量(与 rf.refined_concept 向量同口径, 文档对文档比较)。"""
+    from aii import embedding_client  # noqa: PLC0415
+
+    return embedding_client.embed_documents(list(texts))
 
 
 async def main() -> int:

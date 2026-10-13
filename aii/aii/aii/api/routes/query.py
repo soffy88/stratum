@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Body
 from aii.api._dependencies import backend
 from aii.api._envelope import success_response, error_response
-from oprim import vector_encode
+from aii import embedding_client
 
 router = APIRouter()
 
@@ -23,7 +23,7 @@ async def query_ku(
             kt = [k for k in kt if k in _VALID_KT] or None
 
         # 1. Encode query
-        qv = vector_encode(texts=[query], provider="default")[0]
+        qv = embedding_client.embed_queries([query])[0]
 
         # 2. Search DB (Ensure plain Python floats for asyncpg/pgvector)
         results = await backend.search_ku_by_vector(

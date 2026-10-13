@@ -99,23 +99,46 @@ class RetrievalResponse:
 
 # ── Embedding ────────────────────────────────────────────────────────────────
 
-_EMBED_DIM = 1024  # Must match substrate_layers.embedding vector dimension
+
+def _embed_dim() -> int:
+    """Query/document embedding dimension for the active backend.
+
+    Lazy-imports ``aii.embedding_client``; falls back to 1024 if AII package
+    is unavailable so BGE-only deployments still work.
+    """
+    try:
+        from aii import embedding_client
+
+        return embedding_client.dim()
+    except Exception:
+        return 1024
 
 
 def get_embedding(text: str) -> list[float] | None:
-    """Get embedding vector for text using BGE-M3 — same space as substrate_layers.
+    """Embed a query through the active backend (bge or eg2).
 
-    Truncates to _EMBED_DIM (1024) to match pgvector column.
+    eg2 → embedding_client.embed_queries (SearchQuery prefix added server-side);
+    bge → in-process BGE-M3, same space as substrate_layers / substrate_chunk.
     """
     try:
         text = text[:8000] if len(text) > 8000 else text
-        emb = _get_bge().embed([text], dim=1024)
+        try:
+            from aii import embedding_client
+
+            _is_eg2 = embedding_client.backend() == "eg2"
+        except Exception:
+            _is_eg2 = False
+        if _is_eg2:
+            emb = embedding_client.embed_queries([text])
+        else:
+            emb = _get_bge().embed([text], dim=1024)
         if not emb or not emb[0]:
             return None
         vec = emb[0]
-        return vec[:_EMBED_DIM] if len(vec) > _EMBED_DIM else vec
+        _dim = _embed_dim()
+        return vec[:_dim] if len(vec) > _dim else vec
     except Exception as exc:
-        logger.warning("retrieval_engine: BGE-M3 embedding failed: %s", exc)
+        logger.warning("retrieval_engine: embedding failed: %s", exc)
         return None
 
 

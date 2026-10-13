@@ -14,7 +14,7 @@ import re
 from collections import defaultdict
 
 import numpy as np
-from oprim import vector_encode
+from aii import embedding_client
 
 _DEDUP_SYS = (
     "You judge whether knowledge units express the SAME knowledge point or DIFFERENT ones. "
@@ -51,14 +51,16 @@ def _parse(resp) -> dict:
 
 
 async def dedup_kus(
-    kus: list[dict], llm, *, sim_threshold: float = 0.82, concurrency: int = 5
+    kus: list[dict], llm, *, sim_threshold: float | None = None, concurrency: int = 5
 ) -> dict:
     """返回 {kept: [...], dropped: [...], groups: [...]}. kept 保 KU 原 dict."""
     n = len(kus)
     if n < 2:
         return {"kept": list(kus), "dropped": [], "groups": []}
+    if sim_threshold is None:
+        sim_threshold = embedding_client.threshold("chapter_dedup")
     vecs = np.asarray(
-        vector_encode(texts=[k.get("content", "") for k in kus], provider="default"),
+        embedding_client.embed_documents([k.get("content", "") for k in kus]),
         dtype=np.float32,
     )
     En = vecs / (np.linalg.norm(vecs, axis=1, keepdims=True) + 1e-12)

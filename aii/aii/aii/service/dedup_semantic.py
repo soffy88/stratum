@@ -23,6 +23,7 @@ import asyncpg
 from obase import ProviderRegistry
 
 from aii.api._provider import register_providers
+from aii import embedding_client
 from aii.storage.pg_backend import PgBackend
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,11 @@ DEDUP_SEMANTIC_ENABLED = os.getenv("DEDUP_SEMANTIC_ENABLED", "true").lower() not
     "no",
 }
 DEDUP_SEMANTIC_INTERVAL_SECONDS = int(os.getenv("DEDUP_SEMANTIC_INTERVAL_SECONDS", str(6 * 3600)))
-DEDUP_SEMANTIC_SIM_THRESHOLD = float(os.getenv("DEDUP_SEMANTIC_SIM_THRESHOLD", "0.86"))
+# BGE-calibrated 0.86; eg2 gets embedding_client.threshold('dedup_semantic')
+# (EG2-calibrated). Env override wins.
+DEDUP_SEMANTIC_SIM_THRESHOLD = float(
+    os.getenv("DEDUP_SEMANTIC_SIM_THRESHOLD", str(embedding_client.threshold("dedup_semantic")))
+)
 DEDUP_SEMANTIC_MAX_PAIRS = int(os.getenv("DEDUP_SEMANTIC_MAX_PAIRS", "80"))
 
 
