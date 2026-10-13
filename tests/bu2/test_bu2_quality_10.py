@@ -426,8 +426,11 @@ def test_learning_guide_is_dependency_ordered():
 def test_learning_guide_falls_back_to_chapters():
     chapters = [
         ChapterUnderstanding(
-            id="cu1", run_id="r", chapter_id="ch1", concepts_introduced_refs=["A", "B"]
+            id="cu1",
+            run_id="r",
+            chapter_id="ch1",
+            concepts_introduced_refs=["limit", "derivative", "例1 求极限"],
         )
     ]
     guide = LearningGuideBuilder().build(run_id="r", book_id="b", graph=None, chapters=chapters)
-    assert [s.concept for s in guide.steps] == ["A", "B"]
+    assert [s.concept for s in guide.steps] == ["limit", "derivative"]
