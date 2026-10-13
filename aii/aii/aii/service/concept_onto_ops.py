@@ -21,7 +21,7 @@ import re
 from itertools import combinations
 
 import numpy as np
-from oprim import vector_encode
+from aii import embedding_client
 
 
 def _cos(a, b) -> float:
@@ -29,8 +29,8 @@ def _cos(a, b) -> float:
 
 
 def _encode(texts: list[str]) -> np.ndarray:
-    """同 KU 一套 1024 维向量 (带 concept 类型语义, 类型隔离靠存储位置=方案A)."""
-    return np.asarray(vector_encode(texts=texts, provider="default"))
+    """Embed texts using the active backend (bge or eg2 document)."""
+    return np.asarray(embedding_client.embed_documents(texts), dtype=np.float32)
 
 
 def _union_groups(items: list, vecs: np.ndarray, threshold: float, forbid=None) -> list[list[int]]:
@@ -152,7 +152,7 @@ async def vectorize_and_normalize(
     *,
     substrate_id: str,
     discipline: str,
-    screen_threshold: float = 0.85,
+    screen_threshold: float | None = None,
     concurrency: int = 5,
 ) -> dict:
     """里程碑3: 给 substrate 的概念算向量并填 vector/discipline, 然后语义归一.
@@ -174,6 +174,9 @@ async def vectorize_and_normalize(
     names = [r["name"] for r in rows]
     if not cids:
         return {"before": 0, "after": 0, "merged": 0, "candidates": 0, "groups": []}
+
+    if screen_threshold is None:
+        screen_threshold = embedding_client.threshold("concept_screen")
 
     vecs = _encode(names)
     # 填 vector; discipline 用 COALESCE — ★保留路A的每概念 discipline, 只给没填的补书级默认
@@ -329,7 +332,7 @@ async def vectorize_and_normalize_global(
     llm,
     *,
     name_filter: str | None = None,
-    screen_threshold: float = 0.85,
+    screen_threshold: float | None = None,
     concurrency: int = 5,
     dry_run: bool = False,
 ) -> dict:
@@ -355,6 +358,9 @@ async def vectorize_and_normalize_global(
     names = [r["name"] for r in rows]
     if len(cids) < 2:
         return {"before": len(cids), "after": len(cids), "merged": 0, "candidates": 0, "groups": []}
+
+    if screen_threshold is None:
+        screen_threshold = embedding_client.threshold("concept_screen")
 
     # 向量: 全部重编(同 BGE-M3 空间一致), 顺带回填缺 vector 的概念(0 成本)
     vecs = _encode(names)

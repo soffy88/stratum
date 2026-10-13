@@ -14,10 +14,11 @@ from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
-import asyncpg
-import numpy as np
-from aii.api._provider import register_providers
-from obase import ProviderRegistry
+import asyncpg  # noqa: E402
+import numpy as np  # noqa: E402
+from aii.api._provider import register_providers  # noqa: E402
+from aii import embedding_client  # noqa: E402
+from obase import ProviderRegistry  # noqa: E402
 
 
 def _norm(v):
@@ -30,6 +31,7 @@ async def main():
     do_all = "--all" in sys.argv
     register_providers()
     embed_fn = ProviderRegistry.get()._generic.get("embedding", {}).get("default")
+    is_eg2 = embedding_client.backend() == "eg2"
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
     # 确保迁移已应用
     await conn.execute(open(ROOT / "migrations" / "0004_kc_embedding.sql").read())
@@ -40,9 +42,13 @@ async def main():
     print(f"embedding {len(rows)} KC summaries...", flush=True)
     n = 0
     for r in rows:
-        text = " — ".join(filter(None, [r["community_label"], r["summary_en"] or r["summary"]]))[
-            :2000
-        ]
+        if is_eg2:
+            # eg2 统一口径: doc_text(community_label, summary or summary_en)
+            text = embedding_client.doc_text(r["community_label"], r["summary"] or r["summary_en"])
+        else:
+            text = " — ".join(
+                filter(None, [r["community_label"], r["summary_en"] or r["summary"]])
+            )[:2000]
         if not text.strip():
             continue
         vec = _norm(embed_fn([text])[0])

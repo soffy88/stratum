@@ -34,7 +34,7 @@ from pgvector.asyncpg import register_vector  # noqa: E402
 from candidates import ku_candidates  # noqa: E402
 from judge import judge_pair  # noqa: E402
 from ledger import DecisionLedger  # noqa: E402
-from integrate import (
+from integrate import (  # noqa: E402
     cluster_same,
     build_contributions,
     needs_split,  # noqa: E402
@@ -334,18 +334,21 @@ async def main():
         loop = asyncio.get_event_loop()
         # B仓 向量策略:
         #  · 单例(1:1 未合并): 直接复用 A仓 embedding(内容未改, BGE-M3 同模型; 省 GPU/避 OOM)
-        #  · 合并簇: 必须在合并后文本上重算(走 aii-embed; trust_env=False 防代理误路由)
-        import httpx as _httpx
+        #  · 合并簇: 必须在合并后文本上重算(走统一 embedding_client: bge=aii-embed,
+        #    eg2=EmbeddingGemma2 文档口径; 两种后端都绕过 http_proxy)
+        #  · 切换后 A/B 两仓都是 EG2 768 维同一空间, 单例复用仍成立。
         import numpy as np
 
-        embed_url = os.getenv("AII_EMBED_URL", "http://127.0.0.1:8102")
+        from aii import embedding_client
+
+        embed_url = (
+            embedding_client.EG2_BASE_URL
+            if embedding_client.backend() == "eg2"
+            else os.getenv("AII_EMBED_URL", "http://127.0.0.1:8102")
+        )
 
         def _embed_batch(batch):
-            timeout = _httpx.Timeout(connect=10, read=300, write=30, pool=10)
-            with _httpx.Client(trust_env=False, timeout=timeout) as c:
-                r = c.post(f"{embed_url}/embed", json={"texts": batch})
-                r.raise_for_status()
-                return r.json()["embeddings"]
+            return embedding_client.embed_documents(list(batch))
 
         # 1) 尽量从 A仓 搬单例向量
         need_reembed_idx = []  # indices into built that must re-embed
@@ -390,7 +393,9 @@ async def main():
             for i in need_reembed_idx:
                 members, contribs, _ = built[i]
                 texts.append(embed_text(contribs) or (members[0].get("name") or "") or " ")
-            BATCH = int(os.getenv("B_REPO_EMBED_BATCH", "8"))  # 长文小批, 防 10G 卡 OOM
+            BATCH = int(
+                os.getenv("B_REPO_EMBED_BATCH", "8")
+            )  # 长文小批, 防 10G 卡 OOM(eg2 内部再按 ≤4 切)
             print(f"重算嵌入 {len(texts)} 条 → {embed_url} (batch={BATCH})…", flush=True)
             fresh = []
             for i in range(0, len(texts), BATCH):

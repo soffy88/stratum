@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(ROOT / "aii" / ".env", override=True)
 SUB = os.getenv("SUBSTRATE", "microecon_en_full_v2")
@@ -73,7 +73,10 @@ async def _persist_paper(bu: dict):
     )
     # 技能检索向量: overview+problem+use_when+do_not_use_when → agent 按任务意图检索(/api/skills/search)。
     # 非致命: embed 服务挂了不拦入库, 只是这篇暂不可被技能检索命中(下次重跑补)。
+    # eg2 时用统一文档口径 doc_text('', rtext); bge 时 rtext 原样。
     try:
+        from aii import embedding_client
+
         rtext = "。".join(
             [bu.get("overview_oneline", ""), bu.get("problem_statement", "")]
             + list(skill.get("use_when", []) or [])
@@ -81,10 +84,14 @@ async def _persist_paper(bu: dict):
         ).strip()
         if rtext:
             from aii.api._provider import register_providers
-            from oprim import vector_encode
 
             register_providers()  # 注册 embedding provider(AiiRemoteEmbedder→aii-embed), 否则回退128维桩
-            vec = vector_encode(texts=[rtext], provider="default")[0]
+            emb_text = (
+                embedding_client.doc_text("", rtext)
+                if embedding_client.backend() == "eg2"
+                else rtext
+            )
+            vec = embedding_client.embed_documents([emb_text])[0]
             await c.execute(
                 "UPDATE aii.bu_onto SET embedding=$2 WHERE substrate_id=$1",
                 SUB,
