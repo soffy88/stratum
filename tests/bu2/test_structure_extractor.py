@@ -10,7 +10,6 @@ and in the §14 trial.
 
 from __future__ import annotations
 
-import pytest
 
 from stratum.services.bu_v2_structure_extractor import (
     BookStructureExtractor,
@@ -145,9 +144,7 @@ def test_book_without_overview_falls_back_to_headings():
 
 def test_index_titles_fill_a_missing_heading():
     """§5.4 confidence falls, but the chapter is still found and named."""
-    text = "".join(
-        make_chapter_text(i, f"Topic{i}", heading="") for i in range(1, 4)
-    )
+    text = "".join(make_chapter_text(i, f"Topic{i}", heading="") for i in range(1, 4))
     index = [{"title": f"{i}. Topic{i}", "page": 10 * i, "level": 1} for i in range(1, 4)]
     s = BookStructureExtractor().extract_from_text(text, book_id="b1", index=index)
     assert s.expected_chapters == 3
@@ -227,6 +224,7 @@ def test_empty_text_yields_empty_structure():
     assert s.coverage_ratio == 0.0
     assert s.confidence_mean == 0.0
 
+
 # ── context plumbing (§6.1): regression for a real bug ───────────────────────
 
 
@@ -283,7 +281,10 @@ def test_concept_confidence_stays_in_range():
 
     def cu(i, intro=(), redef=(), deps=()):
         return ChapterUnderstanding(
-            id=f"cu{i}", run_id="r", chapter_id=f"ch{i}", chapter_thesis="t",
+            id=f"cu{i}",
+            run_id="r",
+            chapter_id=f"ch{i}",
+            chapter_thesis="t",
             concepts_introduced_refs=list(intro),
             concepts_redefined_refs=list(redef),
             dependencies_on_prior=list(deps),
@@ -339,3 +340,111 @@ def _book_with_back_matter() -> str:
     answers = "ANSWERS TO ODD-NUMBERED EXERCISES\n" + "a" * (min_chars + 500) + "\n"
     appendix = "# APPENDIX 1\n" + "p" * (min_chars + 500) + "\n"
     return f"OVERVIEW\n{chapter}{answers}{appendix}"
+
+
+# ── index-driven openings: books with no numbered heading ──────────────────
+
+
+def _openstax_book(n: int = 3) -> tuple[str, list[dict]]:
+    """An OpenStax-style book and the parser index it came with.
+
+    The markdown carries no numbered level-1 heading: chapter titles appear as
+    bare lines above a figure caption, and the body opens with a "Chapter
+    Objectives" heading. The parser index is the only place the chapter numbers
+    live. This is the shape that made the heading scan report 2-3 chapters on a
+    21-chapter book.
+    """
+    parts = ["# Principles of Economics\n\n" + "preface " * 400 + "\n\n"]
+    index: list[dict] = []
+    titles = [
+        "Welcome to Economics!",
+        "Choice in a World of Scarcity",
+        "Demand and Supply",
+        "Labor and Financial Markets",
+    ]
+    for i in range(1, n + 1):
+        title = titles[(i - 1) % len(titles)] + (f" {i}" if i > 4 else "")
+        index.append({"title": f"Chapter {i} {title}", "page": 20 + i * 20, "level": 1})
+        parts.append(
+            f"**{i}** \n\n{title} \n\n"
+            f"**FIGURE {i}.1 Choices and Tradeoffs** A caption for chapter {i}.\n\n"
+            f"#### **Chapter Objectives** \n\nIn this chapter you will learn about {title}.\n\n"
+            + ("b" * 20_000)
+            + "\n\n"
+        )
+    index.append({"title": "Appendix A The Use of Mathematics", "page": 900, "level": 1})
+    parts.append("**APPENDIX A** " + "x" * 6000 + "\n\n")
+    parts.append("**Answer Key** " + "k" * 6000 + "\n\n")
+    parts.append("**Index** " + "i" * 4000 + "\n")
+    return "".join(parts), index
+
+
+def test_index_openings_finds_every_indexed_chapter():
+    """21 chapters of the real book were 2 spans before this path existed."""
+    text, index = _openstax_book(4)
+    s = BookStructureExtractor().extract_from_text(text, book_id="b1", index=index)
+    assert s.expected_chapters == 4
+    numbered = [c for c in s.chapters if c.kind == "chapter"]
+    assert [c.title for c in numbered] == [
+        "1. Welcome to Economics!",
+        "2. Choice in a World of Scarcity",
+        "3. Demand and Supply",
+        "4. Labor and Financial Markets",
+    ]
+    assert s.extraction_method == "index_openings"
+    assert all(c.detection_level == "L2_TYPOGRAPHY" for c in numbered)
+
+
+def test_index_openings_text_balances_and_orders():
+    text, index = _openstax_book(4)
+    s = BookStructureExtractor().extract_from_text(text, book_id="b1", index=index)
+    total = sum(c.char_count for c in s.chapters)
+    assert s.front_matter_chars + total + s.back_matter_chars == s.total_chars
+    for a, b in zip(s.chapters, s.chapters[1:]):
+        assert a.start_offset < a.end_offset <= b.start_offset
+
+
+def test_index_openings_does_not_cut_a_book_it_cannot_beat():
+    """With no index there is nothing to index into, so the scan's result stands."""
+    text, _index = _openstax_book(2)
+    s = BookStructureExtractor().extract_from_text(text, book_id="b1")
+    assert s.extraction_method == "heading_scan"
+    # The only heading is the title line, so that is the one span the scan finds.
+    assert [c.title for c in s.chapters if c.kind == "chapter"] == ["Principles of Economics"]
+    # Back matter is still split out — that is independent of chapter detection.
+    assert [c.kind for c in s.chapters].count("back_matter") == 1
+
+
+def test_index_openings_separates_bold_back_matter():
+    """Appendices/index written as ``**APPENDIX A**`` must not be a chapter."""
+    text, index = _openstax_book(4)
+    s = BookStructureExtractor().extract_from_text(text, book_id="b1", index=index)
+    kinds = [c.kind for c in s.chapters]
+    assert "back_matter" in kinds
+    assert s.back_matter_chars > 0
+    assert [c for c in s.chapters if c.kind == "back_matter"][0].title == "Appendices"
+    # The numbered chapters end at their own content, not at the index.
+    assert s.chapters[-2].kind == "chapter"
+
+
+def test_index_titles_accept_both_index_shapes():
+    """The corpus writes "3. Demand" and "Chapter 3 Demand" interchangeably."""
+    from stratum.services.bu_v2_structure_extractor import _index_titles
+
+    assert _index_titles([{"title": "3. Demand", "level": 1}]) == {3: "3. Demand"}
+    assert _index_titles([{"title": "Chapter 3 Demand", "level": 1}]) == {3: "3. Demand"}
+    assert _index_titles([{"title": "Appendix A Maths", "level": 1}]) == {}
+    assert _index_titles([{"title": "Chapter 3 Demand", "level": 2}]) == {}
+    assert _index_titles([]) == {}
+
+
+def test_index_openings_a_toc_title_is_not_consumed_twice():
+    """A chapter title repeated in a running header must not steal a span."""
+    text, index = _openstax_book(3)
+    # Inject the first chapter's title as a bare line late in the book, the way
+    # a running page header repeats it.
+    marker = "Welcome to Economics!"
+    text = text.replace(marker, marker + "\n\n" + marker + "\n\n", 1)
+    s = BookStructureExtractor().extract_from_text(text, book_id="b1", index=index)
+    labels = [c.title for c in s.chapters if c.kind == "chapter"]
+    assert len(labels) == len(set(labels)) == 3
