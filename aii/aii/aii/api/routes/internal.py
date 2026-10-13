@@ -8,13 +8,13 @@ different embedder (e.g. Ollama qwen3-embedding).
 """
 
 from fastapi import APIRouter, Body
-from oprim import vector_encode
+from aii import embedding_client
 
 router = APIRouter()
 
 
 @router.post("/internal/embed")
 async def internal_embed(text: str = Body(..., embed=True)):
-    """Return the BGE-M3 embedding (provider='default', 1024-dim) for one text."""
-    vec = vector_encode(texts=[text], provider="default")[0]
+    """Unified embedding endpoint (bge or eg2). Returns dim matching active backend."""
+    vec = embedding_client.embed_documents([text])[0]
     return {"embedding": [float(x) for x in vec], "dim": len(vec)}

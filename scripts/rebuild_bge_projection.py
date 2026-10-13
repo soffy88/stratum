@@ -69,7 +69,9 @@ def rebuild(
         batch = targets[offset : offset + batch_size]
         texts = [(content or "")[:max_length] for _, content in batch]
         try:
-            vectors = model.encode(texts, batch_size=batch_size, max_length=max_length)["dense_vecs"]
+            vectors = model.encode(texts, batch_size=batch_size, max_length=max_length)[
+                "dense_vecs"
+            ]
             if len(vectors) != len(batch):
                 raise RuntimeError(f"embedding count {len(vectors)} != target count {len(batch)}")
             for (layer_id, _), vector in zip(batch, vectors):
@@ -125,6 +127,11 @@ def rebuild(
 
 
 def main() -> int:
+    if os.getenv("AII_EMBED_BACKEND", "bge").strip().lower() == "eg2":
+        raise SystemExit(
+            "AII_EMBED_BACKEND=eg2: this BGE-M3 (1024-d) tool must not write the 768-d "
+            "EmbeddingGemma2 columns; use scripts/eg2_backfill.py instead"
+        )
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--max-length", type=int, default=8192)

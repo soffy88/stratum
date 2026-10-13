@@ -157,8 +157,8 @@ services:
       - https_proxy=http://172.19.0.1:10808
       # ★100.119.113.90(tailscale笔记本, aii-embed宿主)必须在NO_PROXY里: httpx尊重代理env,
       #   不排除的话 embed 请求会被路由进 sing-box 代理而不可达。
-      - NO_PROXY=localhost,127.0.0.1,::1,172.19.0.1,100.119.113.90,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend,api.nvidia.com,integrate.api.nvidia.com
-      - no_proxy=localhost,127.0.0.1,::1,172.19.0.1,100.119.113.90,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend,api.nvidia.com,integrate.api.nvidia.com
+      - NO_PROXY=localhost,127.0.0.1,::1,172.19.0.1,100.119.113.90,100.68.226.13,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend,api.nvidia.com,integrate.api.nvidia.com
+      - no_proxy=localhost,127.0.0.1,::1,172.19.0.1,100.119.113.90,100.68.226.13,stratum-api,stratum-sl,stratum-web,aii-web,aii-postgres,aii-refined-postgres,aegis-backend,api.nvidia.com,integrate.api.nvidia.com
       # PaddleOCR: skip network model-source check, use pre-downloaded models from volume
       - PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
       # ★2026-07-10: 原 qwen3_local→aegis ollama 网关已死(每条入库404×3, 向量从未写入,
@@ -166,6 +166,11 @@ services:
       #   自带短connect超时+本机CPU兜底(oprim PR#18)。
       - EMBEDDING_PROVIDER=aii_remote
       - AII_EMBED_URL=http://172.19.0.1:8102
+      # ★2026-10 EmbeddingGemma2 统一: AII_EMBED_BACKEND=eg2 时 AII/stratum 文本向量走笔记本
+      #   EG2 服务(OpenAI 兼容 /v1/embeddings, 768 维); bge 仅回滚用(上面两行 BGE 配置随之生效)。
+      #   值由宿主 env / deploy/.env 提供, 默认 bge 保证未切换的库行为不变。
+      - AII_EMBED_BACKEND=${AII_EMBED_BACKEND:-bge}
+      - AII_EMBED_BASE_URL=${AII_EMBED_BASE_URL:-http://100.68.226.13:8790/v1}
       # ★2026-07-10: DuckDB 已弃用。oskill.ingest_substrate/detect_duplicate 走 oprim.meta_db
       #   的 open_meta_db——原来返回 DuckDB(迁PG后表空, substrate持久化静默死掉)。改用
       #   META_DB_BACKEND=postgres → PgMetaDB 直接写入 stratum 读的同一个 aii-postgres,

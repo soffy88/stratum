@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+from aii import embedding_client
+
 _DDL = """
 CREATE TABLE IF NOT EXISTS aii.ku_cooccurrence (
     substrate_id          text NOT NULL,
@@ -57,8 +59,12 @@ ON CONFLICT (substrate_id, ku_a, ku_b) DO UPDATE SET
 """
 
 
-async def compute_cooccurrence(conn, *, substrate_id: str, sim_threshold: float = 0.80) -> dict:
+async def compute_cooccurrence(
+    conn, *, substrate_id: str, sim_threshold: float | None = None
+) -> dict:
     """纯计算跨块共现强度并入 ku_cooccurrence (0 LLM). 幂等: 先清本 substrate 再重算."""
+    if sim_threshold is None:
+        sim_threshold = embedding_client.threshold("cooccurrence")
     await conn.execute(_DDL)
     await conn.execute("DELETE FROM aii.ku_cooccurrence WHERE substrate_id = $1", substrate_id)
     await conn.execute(_COMPUTE, substrate_id, sim_threshold)

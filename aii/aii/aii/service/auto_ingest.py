@@ -191,7 +191,7 @@ def _split_text_into_chunks(text: str) -> list[str]:
             combined = (carry + "\n\n" + sec).strip() if carry else sec
             # 计算"实质内容"字符数：去掉首行标题行
             body_lines = combined.splitlines()[1:]
-            body_chars = sum(len(l) for l in body_lines)
+            body_chars = sum(len(l) for l in body_lines)  # noqa: E741
             if body_chars < _CHUNK_MIN_CONTENT_CHARS:
                 carry = combined  # 太小，继续往后合并
             else:
@@ -347,7 +347,7 @@ async def _run_ontology_path(
             conn, llm, substrate_id=substrate_id, discipline=(subject or "general")
         )
         # Step 4: 跨块连接 (概念/语义筛候选 → LLM 判真关系 → 连真边)
-        cands = await gen_candidates(conn, substrate_id=substrate_id, sem_threshold=0.80)
+        cands = await gen_candidates(conn, substrate_id=substrate_id)
         cstats = await judge_and_link(conn, llm, cands, substrate_id=substrate_id)
         # Step 5: KC 聚类 (★Louvain res>=1.0, 不用 community_cluster/连通分量) → kc_onto
         kstats = await cluster_and_persist(conn, llm, substrate_id=substrate_id, resolution=1.0)
@@ -416,7 +416,7 @@ async def ingest_one(md_path: Path, backend: PgBackend) -> int:
         await backend.mark_substrate_ingested(substrate_id, title, medium, 0, subject=subject)
         return 0
 
-    grade_cap = _MEDIUM_GRADE_CAP.get(medium)
+    grade_cap = _MEDIUM_GRADE_CAP.get(medium)  # noqa: F841
     provider = _MEDIUM_PROVIDER.get(medium, "default")
     doc_type = _MEDIUM_DOC_TYPE.get(medium, "science")
 

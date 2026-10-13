@@ -16,6 +16,16 @@ async def ping():
     return {"status": "ok"}
 
 
+@router.get("/health")
+async def health():
+    """Service health. Includes embedding backend probe (cached 30s,
+    3s timeout for eg2) so a down embed service surfaces here without
+    blocking or failing the health check itself."""
+    from aii import embedding_client
+
+    return {"status": "ok", "embedding": embedding_client.health()}
+
+
 @router.get("/health/watchdog")
 async def health_watchdog():
     """返回看门狗最近一次体检报告(前端健康横幅读这个; 零耦合, 只读文件)。"""

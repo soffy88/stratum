@@ -116,7 +116,9 @@ def _make_deepseek_caller(
 
     def _client_for(url: str):
         host = (urlparse(url).hostname or "").lower()
-        return _direct_client if host in {"127.0.0.1", "localhost", "192.168.80.1"} else _proxy_client
+        return (
+            _direct_client if host in {"127.0.0.1", "localhost", "192.168.80.1"} else _proxy_client
+        )
 
     # ★2026-08-10 多 key 池轮询: NIM_KEY_POOL 存在时(逗号分隔), 每次请求/重试轮换 key —
     #   单 key 免费层 40/min 是 misc 781 次 504 的根因; 池化后总配额 = 40 × key数。
@@ -209,7 +211,11 @@ def _make_deepseek_caller(
             """fallback 规范: 单个三元组 或 三元组列表(后者按序逐个尝试)."""
             if not fallback:
                 return []
-            if isinstance(fallback, (list, tuple)) and fallback and isinstance(fallback[0], (list, tuple)):
+            if (
+                isinstance(fallback, (list, tuple))
+                and fallback
+                and isinstance(fallback[0], (list, tuple))
+            ):
                 return [tuple(x) for x in fallback]  # type: ignore[misc]
             return [tuple(fallback)]  # type: ignore[arg-type]
 
@@ -255,8 +261,7 @@ def _make_deepseek_caller(
                         if _ERR_TEXT.search(_b2 or ""):
                             last2 = _b2[:100]
                             print(
-                                f"  ⚠ fallback({fb_model}) 返回错误文本 → 试下一级: "
-                                f"{_b2[:100]}",
+                                f"  ⚠ fallback({fb_model}) 返回错误文本 → 试下一级: {_b2[:100]}",
                                 flush=True,
                             )
                             break
@@ -338,8 +343,7 @@ def _make_deepseek_caller(
             _body = _sneaky(resp)
             if _ERR_TEXT.search(_body or ""):
                 print(
-                    f"  ⚠ 网关以 200 返回错误文本(配额/限流) → fallback: "
-                    f"{_body[:110]}",
+                    f"  ⚠ 网关以 200 返回错误文本(配额/限流) → fallback: {_body[:110]}",
                     flush=True,
                 )
                 return _fallback(payload)
@@ -376,12 +380,12 @@ def _make_deepseek_caller(
         _traj_fire_and_forget(
             "llm_call",
             "llm_retry_exhausted",
-            f"{type(last_err).__name__ if 'last_err' in dir() else 'exhausted'}",
+            f"{type(last_err).__name__ if 'last_err' in dir() else 'exhausted'}",  # noqa: F821
             {
                 "base_url": base_url,
                 "model": model,
                 "attempts": _max_retries,
-                "last_status": getattr(last_err, "code", None) if "last_err" in dir() else None,
+                "last_status": getattr(last_err, "code", None) if "last_err" in dir() else None,  # noqa: F821
             },
         )
         raise RuntimeError("LLM 调用失败(无响应)")
@@ -593,7 +597,9 @@ def register_providers():
         #   gpt-5.6-luna 配额冷却。claude-sonnet-4-6 抽中文知识点 7 点含 2 个
         #   rationale, 比 NIM nemotron(23s)还快 5 倍。
         #   之所以放最后: 它是本地服务, 只有在外部上游全挂时才该被用到。
-        cpa_base = _fix_local_url(os.getenv("CPA_BASE_URL", "http://127.0.0.1:8317/v1/chat/completions"))
+        cpa_base = _fix_local_url(
+            os.getenv("CPA_BASE_URL", "http://127.0.0.1:8317/v1/chat/completions")
+        )
         cpa_key = os.getenv("CPA_API_KEY", "")
         cpa_model = os.getenv("CPA_MODEL", "claude-sonnet-4-6")
         cpa_spec = [(cpa_base, cpa_key, cpa_model)] if cpa_key else []
@@ -699,7 +705,9 @@ def register_providers():
         "local-veya",
     }:
         ProviderRegistry.register("llm", "default", local_veya_caller)
-        logger.info("Veya local free pool registered as DEFAULT: %s @ %s", local_veya_model, local_veya_base)
+        logger.info(
+            "Veya local free pool registered as DEFAULT: %s @ %s", local_veya_model, local_veya_base
+        )
 
     # 2. LLM Provider (Ollama) — low-trust sources OR local testing (ECON_LLM_PROVIDER=ollama)
     try:
@@ -719,8 +727,19 @@ def register_providers():
     #    设 AII_EMBED_URL → 调共享 aii-embed 微服务(不在本进程加载模型, 去冗余/省内存);
     #    否则 → 进程内 BGE-M3(单机/服务未起时的兜底).
     embed_url = os.getenv("AII_EMBED_URL")
+    from aii.embedding_client import backend as _embed_backend
+    from aii.embedding_client import embed_documents, embed_queries
+
     try:
-        if embed_url:
+        if _embed_backend() == "eg2":
+            # AII_EMBED_BACKEND=eg2: EmbeddingGemma2 (768-d) via the shared
+            # embedding_client — never load/route to BGE-M3.
+            # ("embedding","default") = document embeddings (write path),
+            # ("embedding","query") = query embeddings (SearchQuery prefix).
+            ProviderRegistry.register("embedding", "default", embed_documents)
+            ProviderRegistry.register("embedding", "query", embed_queries)
+            logger.info("EmbeddingGemma2 (eg2) providers registered: document+query.")
+        elif embed_url:
             from oprim.embedding.aii_remote import AiiRemoteEmbedder
 
             # ★降级链: 笔记本 GPU 服务间歇 502(idle-unload 重载窗口)时退到本机 8102。
@@ -746,6 +765,9 @@ def register_providers():
             embedder = BgeM3Embedder()
             ProviderRegistry.register("embedding", "default", embedder.embed)
             logger.info("REAL BGE-M3 Provider registered (in-process).")
+        if _embed_backend() != "eg2":
+            # bge: query and document share the same BGE-M3 space/endpoint.
+            ProviderRegistry.register("embedding", "query", embed_documents)
     except Exception as e:
         logger.error(f"Failed to register embedding provider: {e}")
 

@@ -20,12 +20,16 @@ PY=.venv/bin/python
 export DATABASE_URL="${DATABASE_URL:-postgresql://aii:***REMOVED***@localhost:5437/aii_kg}"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1   # 用本地缓存 BGE-M3, 不连 huggingface
 # ★嵌入走共享 aii-embed 微服务(笔记本GPU); 不可用时走本地 BGE-M3(CPU, 慢但可用)
-if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://127.0.0.1:8102}/health" >/dev/null 2>&1; then
-  export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"
-  echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
+if [ "${AII_EMBED_BACKEND:-bge}" = "eg2" ]; then
+  echo "  ▶ 使用 EmbeddingGemma2: ${AII_EMBED_BASE_URL:-http://100.68.226.13:8790/v1}"
 else
-  unset AII_EMBED_URL
-  echo "  ▶ 远端 embed 不可用, 回退本地 BGE-M3(CPU)"
+  if curl -sf --connect-timeout 3 "${AII_EMBED_URL:-http://127.0.0.1:8102}/health" >/dev/null 2>&1; then
+    export AII_EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"
+    echo "  ▶ 使用远端 embed 服务: $AII_EMBED_URL"
+  else
+    unset AII_EMBED_URL
+    echo "  ▶ 远端 embed 不可用, 回退本地 BGE-M3(CPU)"
+  fi
 fi
 export CUDA_VISIBLE_DEVICES=""   # ★嵌入已外包给服务, 本飞轮彻底不碰 GPU(抽取0-LLM纯CPU)
 # ★规划审核用key。原来只取 'math_prog_verify' —— 该键在 .pipeline_keys.json 里【不存在】

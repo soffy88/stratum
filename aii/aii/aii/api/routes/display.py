@@ -12,10 +12,10 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Body, Query
-from oprim import vector_encode
 
 from aii.api._dependencies import backend
 from aii.api._envelope import success_response, error_response
+from aii import embedding_client
 
 router = APIRouter()
 
@@ -299,7 +299,7 @@ async def graph_subgraph(
 async def graph_search(q: str = Query(..., min_length=1), limit: int = Query(20, ge=1, le=50)):
     """Vector search over ku_onto embeddings. Returns {matches:[{id,label,grade}]}."""
     try:
-        qv = vector_encode(texts=[q], provider="default")[0]
+        qv = embedding_client.embed_queries([q])[0]
         vec = [float(x) for x in qv]
         pool = await backend._ensure_pool()
         async with pool.acquire() as conn:

@@ -12,7 +12,7 @@ from fastapi import APIRouter, Body
 
 from aii.api._dependencies import backend
 from aii.api._envelope import error_response, success_response
-from oprim import vector_encode
+from aii import embedding_client
 
 router = APIRouter()
 
@@ -170,7 +170,7 @@ async def search_skills(
         elif isinstance(ct, list):
             ct = [c for c in ct if c in _VALID_CT] or None
 
-        qv = vector_encode(texts=[task], provider="default")[0]
+        qv = embedding_client.embed_queries([task])[0]
         rows = await backend.search_paper_skill_by_vector(
             [float(x) for x in qv], limit=top_k, contribution_type=ct
         )
