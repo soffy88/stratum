@@ -583,3 +583,95 @@ async def get_concept_evolution(
     data = _j(rows[0]["concept_evolution_json"]) if rows else None
     items = data if isinstance(data, list) else []
     return {"total": len(items), "items": items[offset : offset + limit]}
+
+
+def _chapter_order_key(chapter_id: str) -> tuple[int, int, str]:
+    import re as _re
+
+    m = _re.match(r"^([a-z]+)(\d+)$", chapter_id or "")
+    if not m:
+        return (2, 0, chapter_id or "")
+    prefix, num = m.group(1), int(m.group(2))
+    rank = {"fm": 0, "ch": 1}.get(prefix, 2)
+    return (rank, num, prefix)
+
+
+@router.get("/{run_id}/learning-guide")
+async def get_learning_guide(
+    run_id: str,
+    user_id: str = Depends(jwt_auth),
+    limit: int = Query(500, ge=1, le=5000),
+    offset: int = Query(0, ge=0),
+):
+    """Dependency-ordered learning path, computed on demand (never persisted)."""
+    from types import SimpleNamespace
+
+    from stratum.services.bu_v2_learning_guide import LearningGuideBuilder
+
+    bu = _owned_bu(run_id, user_id)
+    ch_rows = query(
+        """
+        SELECT chapter_id, concepts_introduced_refs FROM stratum.chapter_understandings
+        WHERE run_id = %(run_id)s
+        LIMIT 1000
+        """,
+        {"run_id": run_id},
+    )
+    chapters = sorted(
+        (
+            SimpleNamespace(
+                chapter_id=c["chapter_id"],
+                concepts_introduced_refs=c["concepts_introduced_refs"] or [],
+            )
+            for c in ch_rows
+        ),
+        key=lambda c: _chapter_order_key(c.chapter_id),
+    )
+    graph = None
+    if bu["reasoning_graph_id"]:
+        nodes = query(
+            """
+            SELECT id, node_type, label, chapter_id, metadata
+            FROM stratum.reasoning_node
+            WHERE graph_id = %(g)s AND node_type IN ('CONCEPT', 'THEOREM')
+            LIMIT 20000
+            """,
+            {"g": bu["reasoning_graph_id"]},
+        )
+        edges = query(
+            """
+            SELECT source_node_id, target_node_id, relation_type
+            FROM stratum.reasoning_edge
+            WHERE graph_id = %(g)s
+              AND relation_type IN ('DEPENDS_ON', 'EXTENDS', 'REFINES', 'APPLIES_TO')
+            LIMIT 50000
+            """,
+            {"g": bu["reasoning_graph_id"]},
+        )
+        graph = SimpleNamespace(
+            nodes={
+                n["id"]: SimpleNamespace(
+                    node_id=n["id"],
+                    node_type=n["node_type"],
+                    label=n["label"],
+                    chapter_id=n["chapter_id"],
+                    metadata=_j(n["metadata"], {}) if n["metadata"] is not None else {},
+                )
+                for n in nodes
+            },
+            edges=[SimpleNamespace(**e) for e in edges],
+        )
+    guide = (
+        LearningGuideBuilder()
+        .build(
+            run_id=run_id,
+            book_id=bu["book_id"] or bu["substrate_id"],
+            graph=graph,
+            chapters=chapters,
+        )
+        .to_dict()
+    )
+    steps = guide["steps"]
+    guide["steps"] = steps[offset : offset + limit]
+    guide["chapter_order"] = [c.chapter_id for c in chapters]
+    return guide
