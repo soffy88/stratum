@@ -17,6 +17,7 @@ router = APIRouter(prefix="/api/v1/bu", tags=["bu"])
 def _j(v, default=None):
     """jsonb may arrive as text (double-encoded); decode it."""
     import json as _json
+
     for _ in range(2):
         if isinstance(v, str):
             try:
@@ -91,18 +92,20 @@ async def list_bu(
 
     items = []
     for r in rows:
-        items.append(BuListItem(
-            id=r['id'],
-            run_id=r['run_id'],
-            substrate_id=r['substrate_id'],
-            book_title=r['book_title'] or r['book_id'],
-            summary=f"Coverage: {r['coverage_score']:.0%}, Verification: {r['verification_score']:.0%}",
-            grade="verified" if r['verification_score'] > 0.7 else "unverified",
-            main_claim_count=0,
-            version=r['version'],
-            status=r['status'],
-            created_at=str(r['created_at']),
-        ))
+        items.append(
+            BuListItem(
+                id=r["id"],
+                run_id=r["run_id"],
+                substrate_id=r["substrate_id"],
+                book_title=r["book_title"] or r["book_id"],
+                summary=f"Coverage: {r['coverage_score']:.0%}, Verification: {r['verification_score']:.0%}",
+                grade="verified" if r["verification_score"] > 0.7 else "unverified",
+                main_claim_count=0,
+                version=r["version"],
+                status=r["status"],
+                created_at=str(r["created_at"]),
+            )
+        )
     return items
 
 
@@ -127,8 +130,8 @@ async def get_bu(run_id: str, user_id: str = Depends(jwt_auth)):
         raise HTTPException(404, "Book Understanding not found")
 
     r = bu_row[0]
-    bu_id = r['id']
-    substrate_id = r['substrate_id']
+    bu_id = r["id"]
+    substrate_id = r["substrate_id"]
 
     # Get chapter summaries using actual schema
     ch_rows = query(
@@ -149,12 +152,12 @@ async def get_bu(run_id: str, user_id: str = Depends(jwt_auth)):
     )
     chapters = [
         ChapterSummary(
-            chapter_id=c['chapter_id'],
-            chapter_question=c['chapter_question'],
-            primary_role=c['primary_role'],
-            concepts_introduced=c['concepts_count'] or 0,
-            arguments_count=c['args_count'] or 0,
-            evidence_count=c['ev_count'] or 0,
+            chapter_id=c["chapter_id"],
+            chapter_question=c["chapter_question"],
+            primary_role=c["primary_role"],
+            concepts_introduced=c["concepts_count"] or 0,
+            arguments_count=c["args_count"] or 0,
+            evidence_count=c["ev_count"] or 0,
             quality_score=0.5,
         )
         for c in ch_rows
@@ -164,17 +167,17 @@ async def get_bu(run_id: str, user_id: str = Depends(jwt_auth)):
         id=bu_id,
         substrate_id=substrate_id,
         run_id=run_id,
-        book_title=r['book_title'] or r['book_id'],
-        version=r['version'],
-        status=r['status'],
-        grade="verified" if r['verification_score'] > 0.7 else "unverified",
+        book_title=r["book_title"] or r["book_id"],
+        version=r["version"],
+        status=r["status"],
+        grade="verified" if r["verification_score"] > 0.7 else "unverified",
         summary=f"Coverage: {r['coverage_score']:.0%}, Verification: {r['verification_score']:.0%}",
         main_claim_count=0,
-        coverage_score=r['coverage_score'] or 0.0,
-        verification_score=r['verification_score'] or 0.0,
+        coverage_score=r["coverage_score"] or 0.0,
+        verification_score=r["verification_score"] or 0.0,
         chapters=chapters,
-        created_at=str(r['created_at']),
-        updated_at=str(r['updated_at']),
+        created_at=str(r["created_at"]),
+        updated_at=str(r["updated_at"]),
     )
 
 
@@ -210,12 +213,12 @@ async def list_chapters(run_id: str, user_id: str = Depends(jwt_auth)):
     )
     return [
         ChapterSummary(
-            chapter_id=c['chapter_id'],
-            chapter_question=c['chapter_question'],
-            primary_role=c['primary_role'],
-            concepts_introduced=c['concepts_count'] or 0,
-            arguments_count=c['args_count'] or 0,
-            evidence_count=c['ev_count'] or 0,
+            chapter_id=c["chapter_id"],
+            chapter_question=c["chapter_question"],
+            primary_role=c["primary_role"],
+            concepts_introduced=c["concepts_count"] or 0,
+            arguments_count=c["args_count"] or 0,
+            evidence_count=c["ev_count"] or 0,
             quality_score=0.5,
         )
         for c in ch_rows
@@ -254,27 +257,27 @@ async def get_chapter(run_id: str, chapter_id: str, user_id: str = Depends(jwt_a
 
     r = row[0]
     return {
-        "chapter_id": r['chapter_id'],
-        "chapter_question": r['chapter_question'],
-        "chapter_goal": r['chapter_goal'],
-        "chapter_thesis": r['chapter_thesis'],
-        "primary_role": r['primary_role'],
-        "secondary_roles": _j(r['secondary_roles_json'], []),
-        "concepts_introduced": r['concepts_introduced_refs'] or [],
-        "concepts_redefined": r['concepts_redefined_refs'] or [],
-        "major_ku_refs": r['major_ku_refs'] or [],
-        "supporting_ku_refs": r['supporting_ku_refs'] or [],
-        "arguments_refs": r['arguments_refs'] or [],
-        "mechanisms_refs": r['mechanisms_refs'] or [],
-        "evidence_program": _j(r['evidence_program_json'], []),
-        "claims": _claims_from_program(_j(r['evidence_program_json'], [])),
-        "evidence_strengths": _j(r.get('evidence_strengths'), {}),
-        "concept_definitions": _j(r.get('concept_definitions'), []),
-        "assumptions": _j(r['assumptions_json'], []),
-        "qualifications": _j(r['qualifications_json'], []),
-        "dependencies_on_prior": _j(r['dependencies_on_prior'], []),
-        "promises_to_future": _j(r['promises_to_future'], []),
-        "created_at": str(r['created_at']),
+        "chapter_id": r["chapter_id"],
+        "chapter_question": r["chapter_question"],
+        "chapter_goal": r["chapter_goal"],
+        "chapter_thesis": r["chapter_thesis"],
+        "primary_role": r["primary_role"],
+        "secondary_roles": _j(r["secondary_roles_json"], []),
+        "concepts_introduced": r["concepts_introduced_refs"] or [],
+        "concepts_redefined": r["concepts_redefined_refs"] or [],
+        "major_ku_refs": r["major_ku_refs"] or [],
+        "supporting_ku_refs": r["supporting_ku_refs"] or [],
+        "arguments_refs": r["arguments_refs"] or [],
+        "mechanisms_refs": r["mechanisms_refs"] or [],
+        "evidence_program": _j(r["evidence_program_json"], []),
+        "claims": _claims_from_program(_j(r["evidence_program_json"], [])),
+        "evidence_strengths": _j(r.get("evidence_strengths"), {}),
+        "concept_definitions": _j(r.get("concept_definitions"), []),
+        "assumptions": _j(r["assumptions_json"], []),
+        "qualifications": _j(r["qualifications_json"], []),
+        "dependencies_on_prior": _j(r["dependencies_on_prior"], []),
+        "promises_to_future": _j(r["promises_to_future"], []),
+        "created_at": str(r["created_at"]),
     }
 
 
@@ -292,7 +295,7 @@ async def get_synthesis(run_id: str, user_id: str = Depends(jwt_auth)):
     if not bu_row:
         raise HTTPException(404, "Book Understanding not found")
     r = bu_row[0]
-    substrate_id = r['substrate_id']
+    substrate_id = r["substrate_id"]
 
     # Read from book_syntheses (created by P13)
     synth_rows = query(
@@ -305,10 +308,14 @@ async def get_synthesis(run_id: str, user_id: str = Depends(jwt_auth)):
         raise HTTPException(404, "Synthesis not found")
 
     # Ensure ownership
-    if synth.get("book_id") and str(synth.get("book_id")) not in (substrate_id, str(r.get("book_id") or "")):
+    if synth.get("book_id") and str(synth.get("book_id")) not in (
+        substrate_id,
+        str(r.get("book_id") or ""),
+    ):
         raise HTTPException(404, "Synthesis not found for this book")
 
     return {k: (str(v) if k == "created_at" else v) for k, v in synth.items()}
+
 
 # ── BU2 artifacts (PR #23): quality gates, evidence, arguments, graphs ──────
 
@@ -343,12 +350,14 @@ def _claims_from_program(program) -> list[dict]:
         if not isinstance(e, dict):
             continue
         supported = e.get("is_supported")
-        out.append({
-            "claim": e.get("claim_ref") or e.get("claim") or "",
-            "is_supported": supported if isinstance(supported, bool) else None,
-            "evidence_refs": e.get("evidence_refs") or [],
-            "presented_as": "SOURCE" if supported is not False else "MODEL_INFERENCE",
-        })
+        out.append(
+            {
+                "claim": e.get("claim_ref") or e.get("claim") or "",
+                "is_supported": supported if isinstance(supported, bool) else None,
+                "evidence_refs": e.get("evidence_refs") or [],
+                "presented_as": "SOURCE" if supported is not False else "MODEL_INFERENCE",
+            }
+        )
     return out
 
 
@@ -401,8 +410,7 @@ async def list_evidence(
 ):
     """Persisted evidence artifacts: quote, locator, strength, verified."""
     _owned_bu(run_id, user_id)
-    params = {"run_id": run_id, "ch": chapter_id, "kind": kind,
-              "limit": limit, "offset": offset}
+    params = {"run_id": run_id, "ch": chapter_id, "kind": kind, "limit": limit, "offset": offset}
     total = query(
         """
         SELECT count(*) AS n FROM stratum.bu2_evidence_artifact
@@ -481,19 +489,21 @@ async def list_arguments(
         concl = _j(r["conclusion"])
         if isinstance(concl, list):
             concl = " ".join(str(x) for x in concl)
-        items.append({
-            "id": r["id"],
-            "chapter_id": chapter_of.get(r["id"]),
-            "claim": r["question"],
-            "premises": _j(r["premises_json"], []),
-            "warrants": _j(r["warrants_json"], []),
-            "inference_steps": _j(r["inference_steps_json"], []),
-            "qualifiers": _j(r["qualifiers_json"], []),
-            "conclusion": concl,
-            "confidence": r["confidence"],
-            "evidence": evidence,
-            "is_supported": (all(verified) if verified else None),
-        })
+        items.append(
+            {
+                "id": r["id"],
+                "chapter_id": chapter_of.get(r["id"]),
+                "claim": r["question"],
+                "premises": _j(r["premises_json"], []),
+                "warrants": _j(r["warrants_json"], []),
+                "inference_steps": _j(r["inference_steps_json"], []),
+                "qualifiers": _j(r["qualifiers_json"], []),
+                "conclusion": concl,
+                "confidence": r["confidence"],
+                "evidence": evidence,
+                "is_supported": (all(verified) if verified else None),
+            }
+        )
     items.sort(key=lambda a: (a["chapter_id"] or "", a["id"]))
     return {"total": len(items), "items": items}
 
@@ -511,8 +521,11 @@ async def get_graph(
     graph_id = bu["reasoning_graph_id"] if kind == "reasoning" else bu["argument_graph_id"]
     if not graph_id:
         raise HTTPException(404, f"No {kind} graph for this run")
-    node_t, edge_t = (("reasoning_node", "reasoning_edge") if kind == "reasoning"
-                      else ("argument_node", "argument_edge"))
+    node_t, edge_t = (
+        ("reasoning_node", "reasoning_edge")
+        if kind == "reasoning"
+        else ("argument_node", "argument_edge")
+    )
     nodes = query(
         f"""
         SELECT id, node_type, label, chapter_id, confidence
@@ -569,4 +582,4 @@ async def get_concept_evolution(
     )
     data = _j(rows[0]["concept_evolution_json"]) if rows else None
     items = data if isinstance(data, list) else []
-    return {"total": len(items), "items": items[offset:offset + limit]}
+    return {"total": len(items), "items": items[offset : offset + limit]}

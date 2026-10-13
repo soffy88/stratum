@@ -57,14 +57,34 @@ def test_quality_gates_splits_six_dimension(monkeypatch):
     def fake_query(sql, params=None, limit=100):
         calls.append(sql)
         if "book_understandings_v2" in sql:
-            return [{"id": "bu1", "substrate_id": "s", "book_id": "b",
-                     "reasoning_graph_id": None, "argument_graph_id": None}]
+            return [
+                {
+                    "id": "bu1",
+                    "substrate_id": "s",
+                    "book_id": "b",
+                    "reasoning_graph_id": None,
+                    "argument_graph_id": None,
+                }
+            ]
         return [
-            {"gate_number": 1, "gate_name": "H1_no_empty_chapter", "status": "PASS",
-             "score": 1.0, "detail": "", "evidence": "{}", "checked_at": "t"},
-            {"gate_number": 8, "gate_name": "six_dimension_score", "status": "PASS",
-             "score": 9.9, "detail": "", "evidence": '{"dimensions": {"depth": 10}}',
-             "checked_at": "t"},
+            {
+                "gate_number": 1,
+                "gate_name": "H1_no_empty_chapter",
+                "status": "PASS",
+                "score": 1.0,
+                "detail": "",
+                "evidence": "{}",
+                "checked_at": "t",
+            },
+            {
+                "gate_number": 8,
+                "gate_name": "six_dimension_score",
+                "status": "PASS",
+                "score": 9.9,
+                "detail": "",
+                "evidence": '{"dimensions": {"depth": 10}}',
+                "checked_at": "t",
+            },
         ]
 
     monkeypatch.setattr(bu, "query", fake_query)

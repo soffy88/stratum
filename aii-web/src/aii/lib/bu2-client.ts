@@ -2,7 +2,7 @@
  * BU2 (Book Understanding v2) client — /api/v1/bu/* on stratum-sl.
  * Uses the authenticated apiClient (Bearer + refresh), returns raw JSON.
  */
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/api-client';
 
 const base = (runId: string) => `/api/v1/bu/${encodeURIComponent(runId)}`;
 
