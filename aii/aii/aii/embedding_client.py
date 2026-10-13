@@ -85,7 +85,7 @@ EG2_MAX_CHARS = 1800
 EG2_THRESHOLDS: dict[str, float] = {
     "dedup_semantic": 0.92,
     "chapter_dedup": 0.90,
-    "concept_screen": 0.92,
+    "concept_screen": 0.93,
     "cross_chunk": 0.89,
     "cooccurrence": 0.89,
     "context_recall": 0.72,
