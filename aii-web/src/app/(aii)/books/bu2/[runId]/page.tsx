@@ -1,0 +1,300 @@
+/**
+ * /books/bu2/[runId] — BU2 详情：质量门 + 六维、章节主张（支持/模型推断）、
+ * 重建论证链、证据引文+定位、推理图/论证图、概念演化。
+ */
+'use client';
+
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
+import { OLoadingState, OErrorState } from '@helios/blocks';
+import {
+  bu2,
+  type Bu2Argument,
+  type Bu2ChapterDetail,
+  type Bu2Detail,
+  type Bu2Evidence,
+  type Bu2Evolution,
+  type Bu2Graph,
+  type Bu2QualityGates,
+} from '@/aii/lib/bu2-client';
+
+type Tab = 'chapters' | 'arguments' | 'evidence' | 'graph' | 'evolution';
+const TABS: Array<[Tab, string]> = [
+  ['chapters', '章节主张'],
+  ['arguments', '论证链'],
+  ['evidence', '证据'],
+  ['graph', '图谱'],
+  ['evolution', '概念演化'],
+];
+
+const DIM_LABEL: Record<string, string> = {
+  accuracy: "准确性", coverage: "覆盖", depth: "深度",
+  traceability: "可追溯", cross_chapter: "跨章", expression: "表达",
+};
+
+const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+function useLoad<T>(fn: () => Promise<T>, deps: unknown[]) {
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(() => {
+    setError(null);
+    setData(null);
+    fn().then(setData).catch(e => setError(errMsg(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+  useEffect(load, [load]);
+  return { data, error, reload: load };
+}
+
+function SupportBadge({ supported }: { supported: boolean | null }) {
+  if (supported === false)
+    return <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 shrink-0">模型推断</span>;
+  if (supported === true)
+    return <span className="text-[11px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 shrink-0">原文支持</span>;
+  return <span className="text-[11px] px-1.5 py-0.5 rounded bg-zinc-500/15 text-zinc-500 shrink-0">未校验</span>;
+}
+
+function Quote({ ev }: { ev: Bu2Evidence }) {
+  return (
+    <blockquote className="border-l-2 border-[color:var(--border)] pl-3 flex flex-col gap-1">
+      <p className="text-sm leading-relaxed whitespace-pre-wrap line-clamp-6">{ev.quote}</p>
+      <span className="text-[11px] text-[color:var(--text-secondary)]">
+        定位 {ev.chapter_id ? `${ev.chapter_id} · ` : ''}{ev.locator}
+        {ev.strength ? ` · ${ev.strength}` : ''}
+        {ev.verified === false ? ' · 未通过校验' : ev.verified ? ' · 已校验' : ''}
+      </span>
+    </blockquote>
+  );
+}
+
+function GatesPanel({ g }: { g: Bu2QualityGates }) {
+  const six = g.six_dimension;
+  const dims = (six?.evidence as { dimensions?: Record<string, number> } | null)?.dimensions;
+  return (
+    <section className="flex flex-col gap-3 rounded-lg border border-[color:var(--border)] p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold">质量门 H1–H7</h2>
+        <span className={`text-xs ${g.all_passed ? 'text-emerald-600' : 'text-red-600'}`}>
+          {g.all_passed ? '全部通过' : '存在未通过项'}
+        </span>
+      </div>
+      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+        {g.hard_gates.map(h => (
+          <li key={h.gate_number} className="flex gap-2 text-xs">
+            <span className={h.status === 'PASS' ? 'text-emerald-600' : 'text-red-600'}>{h.status === 'PASS' ? '✓' : '✗'}</span>
+            <span className="font-medium shrink-0">H{h.gate_number}</span>
+            <span className="text-[color:var(--text-secondary)]">{h.detail}</span>
+          </li>
+        ))}
+      </ul>
+      {six && (
+        <div className="flex flex-col gap-2 pt-2 border-t border-[color:var(--border)]">
+          <span className="text-sm font-semibold">六维评分 {six.score?.toFixed(2)} / 10</span>
+          {dims && (
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {Object.entries(dims).map(([k, v]) => (
+                <div key={k} className="flex flex-col items-center rounded bg-[color:var(--muted,#f4f4f5)] py-1.5">
+                  <span className="text-base font-semibold">{Number(v).toFixed(1)}</span>
+                  <span className="text-[11px] text-[color:var(--text-secondary)]">{DIM_LABEL[k] ?? k}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ChaptersTab({ runId, d }: { runId: string; d: Bu2Detail }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const [ch, setCh] = useState<Bu2ChapterDetail | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    setCh(null);
+    setErr(null);
+    bu2.chapter(runId, open).then(setCh).catch(e => setErr(errMsg(e)));
+  }, [runId, open]);
+  return (
+    <ul className="flex flex-col divide-y divide-[color:var(--border)]">
+      {d.chapters.map(c => (
+        <li key={c.chapter_id} className="py-2.5 flex flex-col gap-2">
+          <button className="flex items-center justify-between text-left gap-3" onClick={() => setOpen(open === c.chapter_id ? null : c.chapter_id)}>
+            <span className="text-[15px]">
+              <span className="font-medium mr-2">{c.chapter_id}</span>
+              <span className="text-[color:var(--text-secondary)]">{c.chapter_question}</span>
+            </span>
+            <span className="text-xs text-[color:var(--text-secondary)] shrink-0">
+              概念 {c.concepts_introduced} · 论证 {c.arguments_count} · 主张 {c.evidence_count}
+            </span>
+          </button>
+          {open === c.chapter_id && (
+            <div className="ml-3 flex flex-col gap-2">
+              {err && <OErrorState error={err} />}
+              {!err && !ch && <OLoadingState rows={2} />}
+              {ch?.chapter_thesis && <p className="text-sm"><span className="font-medium">本章论旨：</span>{ch.chapter_thesis}</p>}
+              {ch && (
+                <ul className="flex flex-col gap-1.5">
+                  {ch.claims.map((cl, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm">
+                      <SupportBadge supported={cl.is_supported} />
+                      <span className={cl.is_supported === false ? 'text-[color:var(--text-secondary)] italic' : ''}>{cl.claim}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ArgumentsTab({ runId }: { runId: string }) {
+  const { data, error, reload } = useLoad(() => bu2.arguments(runId), [runId]);
+  if (error) return <OErrorState error={error} onRetry={reload} />;
+  if (!data) return <OLoadingState rows={4} />;
+  return (
+    <div className="flex flex-col gap-5">
+      <p className="text-xs text-[color:var(--text-secondary)]">共 {data.total} 条重建论证：前提 → 推理步骤 → 结论，附原文引文。</p>
+      {data.items.map((a: Bu2Argument) => (
+        <article key={a.id} className="flex flex-col gap-2 rounded-lg border border-[color:var(--border)] p-3">
+          <div className="flex items-start gap-2">
+            <span className="text-[11px] text-[color:var(--text-secondary)] shrink-0 mt-0.5">{a.chapter_id}</span>
+            <p className="text-[15px] font-medium flex-1">{a.claim || a.conclusion}</p>
+            <SupportBadge supported={a.is_supported} />
+          </div>
+          {a.premises.length > 0 && (
+            <div className="text-sm"><span className="font-medium">前提</span>
+              <ul className="list-disc ml-5">{a.premises.map((p, i) => <li key={i}>{p}</li>)}</ul>
+            </div>
+          )}
+          {a.inference_steps.length > 0 && (
+            <div className="text-sm"><span className="font-medium">推理</span>
+              <ol className="list-decimal ml-5">{a.inference_steps.map((s, i) => <li key={i}>{s}</li>)}</ol>
+            </div>
+          )}
+          {a.conclusion && <p className="text-sm"><span className="font-medium">结论 </span>{a.conclusion}</p>}
+          {a.evidence.map(ev => <Quote key={ev.id} ev={ev} />)}
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function EvidenceTab({ runId }: { runId: string }) {
+  const [offset, setOffset] = useState(0);
+  const { data, error, reload } = useLoad(() => bu2.evidence(runId, undefined, 50, offset), [runId, offset]);
+  if (error) return <OErrorState error={error} onRetry={reload} />;
+  if (!data) return <OLoadingState rows={4} />;
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-[color:var(--text-secondary)]">共 {data.total} 条持久化证据（引文 + 定位）。</p>
+      {data.items.map(ev => <Quote key={ev.id} ev={ev} />)}
+      <div className="flex gap-3 text-sm">
+        <button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - 50))} className="disabled:opacity-40">上一页</button>
+        <span className="text-[color:var(--text-secondary)]">{offset + 1}–{Math.min(offset + 50, data.total)}</span>
+        <button disabled={offset + 50 >= data.total} onClick={() => setOffset(offset + 50)} className="disabled:opacity-40">下一页</button>
+      </div>
+    </div>
+  );
+}
+
+function GraphSummary({ g, title }: { g: Bu2Graph; title: string }) {
+  const types: Record<string, number> = {};
+  g.nodes.forEach(n => { types[n.node_type] = (types[n.node_type] ?? 0) + 1; });
+  const rels: Record<string, number> = {};
+  g.edges.forEach(e => { rels[e.relation_type] = (rels[e.relation_type] ?? 0) + 1; });
+  const label = new Map(g.nodes.map(n => [n.id, n.label]));
+  return (
+    <section className="flex flex-col gap-2 rounded-lg border border-[color:var(--border)] p-3">
+      <h3 className="text-sm font-semibold">{title}：{g.total_nodes} 节点 / {g.total_edges} 边</h3>
+      <p className="text-xs text-[color:var(--text-secondary)]">
+        样本节点类型 {Object.entries(types).map(([k, v]) => `${k} ${v}`).join(' · ')}；关系 {Object.entries(rels).map(([k, v]) => `${k} ${v}`).join(' · ')}
+      </p>
+      <ul className="flex flex-col gap-1 text-xs max-h-72 overflow-y-auto">
+        {g.edges.slice(0, 80).map(e => (
+          <li key={e.id} className="truncate">
+            {label.get(e.source_node_id)} <span className="text-[color:var(--text-secondary)]">—{e.relation_type}→</span> {label.get(e.target_node_id)}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function GraphTab({ runId }: { runId: string }) {
+  const r = useLoad(() => bu2.graph(runId, 'reasoning'), [runId]);
+  const a = useLoad(() => bu2.graph(runId, 'argument'), [runId]);
+  return (
+    <div className="flex flex-col gap-4">
+      {r.error ? <OErrorState error={r.error} onRetry={r.reload} /> : r.data ? <GraphSummary g={r.data} title="推理图" /> : <OLoadingState rows={3} />}
+      {a.error ? <OErrorState error={a.error} onRetry={a.reload} /> : a.data ? <GraphSummary g={a.data} title="论证图" /> : <OLoadingState rows={3} />}
+    </div>
+  );
+}
+
+function EvolutionTab({ runId }: { runId: string }) {
+  const { data, error, reload } = useLoad(() => bu2.evolution(runId, 200), [runId]);
+  if (error) return <OErrorState error={error} onRetry={reload} />;
+  if (!data) return <OLoadingState rows={4} />;
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs text-[color:var(--text-secondary)]">共 {data.total} 条概念引入/重定义记录（显示前 {data.items.length} 条）。</p>
+      <ul className="flex flex-col divide-y divide-[color:var(--border)]">
+        {data.items.map((e: Bu2Evolution, i) => (
+          <li key={i} className="py-2 flex flex-col gap-0.5">
+            <span className="text-sm"><span className="font-medium">{e.concept_ref}</span>
+              <span className="text-xs text-[color:var(--text-secondary)]"> · {e.chapter_ref} · {e.evolution_type} · v{e.version}</span>
+            </span>
+            <span className="text-xs text-[color:var(--text-secondary)] line-clamp-2">{e.definition}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default function Bu2DetailPage() {
+  const params = useParams<{ runId: string }>();
+  const runId = decodeURIComponent(params.runId);
+  const [tab, setTab] = useState<Tab>('chapters');
+  const detail = useLoad(() => bu2.detail(runId), [runId]);
+  const gates = useLoad(() => bu2.gates(runId), [runId]);
+  const d = detail.data;
+
+  return (
+    <div className="aii-page-content flex flex-col gap-5 max-w-5xl mx-auto">
+      <Link href="/books/bu2" className="text-sm text-[color:var(--text-secondary)]">← BU2 列表</Link>
+      {detail.error && <OErrorState error={detail.error} onRetry={detail.reload} />}
+      {!detail.error && !d && <OLoadingState rows={4} />}
+      {d && (
+        <header className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold">{d.book_title}</h1>
+          <p className="text-sm text-[color:var(--text-secondary)]">
+            {d.status} · v{d.version} · {d.chapters.length} 章 · 覆盖 {(d.coverage_score * 100).toFixed(0)}% · 校验 {(d.verification_score * 100).toFixed(0)}%
+          </p>
+        </header>
+      )}
+      {gates.data && <GatesPanel g={gates.data} />}
+      {gates.error && <p className="text-xs text-red-600">质量门加载失败：{gates.error}</p>}
+      <nav className="flex gap-4 border-b border-[color:var(--border)] text-sm">
+        {TABS.map(([k, label]) => (
+          <button key={k} onClick={() => setTab(k)}
+            className={`pb-2 -mb-px ${tab === k ? 'border-b-2 border-[color:var(--foreground)] font-medium' : 'text-[color:var(--text-secondary)]'}`}>
+            {label}
+          </button>
+        ))}
+      </nav>
+      {tab === 'chapters' && d && <ChaptersTab runId={runId} d={d} />}
+      {tab === 'arguments' && <ArgumentsTab runId={runId} />}
+      {tab === 'evidence' && <EvidenceTab runId={runId} />}
+      {tab === 'graph' && <GraphTab runId={runId} />}
+      {tab === 'evolution' && <EvolutionTab runId={runId} />}
+    </div>
+  );
+}
