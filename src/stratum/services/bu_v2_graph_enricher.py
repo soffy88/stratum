@@ -31,6 +31,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from stratum.services.bu_v2_concept_filter import is_noise_concept
 from stratum.knowledge.bu_v2_models import ChapterUnderstanding
 from stratum.services.bu_v2_reasoning_graph import (
     BookReasoningGraph,
@@ -116,12 +117,12 @@ class ReasoningGraphEnricher:
                 anchors = []
         for a in anchors:
             name = (a.get("name") or "").strip()
-            if len(name) < MIN_CONCEPT_CHARS:
+            kind = (a.get("kind") or "").upper()
+            if len(name) < MIN_CONCEPT_CHARS or is_noise_concept(name, kind):
                 continue
             key = _norm(name)
             if not key or key in self._concept_nodes or key in self._theorem_nodes:
                 continue
-            kind = (a.get("kind") or "").upper()
             ntype = "THEOREM" if kind == "THEOREM" else "CONCEPT"
             self._register_concept(
                 cid,
@@ -141,7 +142,7 @@ class ReasoningGraphEnricher:
         # The chapter's own concept list covers books without frozen KUs.
         for concept in cu.concepts_introduced_refs:
             name = (concept or "").strip()
-            if len(name) < MIN_CONCEPT_CHARS:
+            if len(name) < MIN_CONCEPT_CHARS or is_noise_concept(name):
                 continue
             key = _norm(name)
             if not key or key in self._concept_nodes or key in self._theorem_nodes:

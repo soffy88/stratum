@@ -21,6 +21,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from stratum.services.bu_v2_concept_filter import display_label, is_noise_concept
+
 
 @dataclass
 class GuideStep:
@@ -109,7 +111,9 @@ class LearningGuideBuilder:
         requires: dict[str, list[str]] = {}
         if graph is not None:
             for node in graph.nodes.values():
-                if node.node_type in ("CONCEPT", "THEOREM"):
+                if node.node_type in ("CONCEPT", "THEOREM") and not is_noise_concept(
+                    node.label, (node.metadata or {}).get("kind", "")
+                ):
                     concept_nodes[node.node_id] = node
             for edge in graph.edges:
                 if edge.relation_type in ("DEPENDS_ON", "EXTENDS", "REFINES", "APPLIES_TO"):
@@ -125,7 +129,7 @@ class LearningGuideBuilder:
 
         # Topological order (Kahn), ties broken by chapter order then label.
         order_index = {c.chapter_id: i for i, c in enumerate(chapters)}
-        labels = {nid: node.label for nid, node in concept_nodes.items()}
+        labels = {nid: display_label(node.label) for nid, node in concept_nodes.items()}
 
         def sort_key(nid: str) -> tuple[int, str]:
             node = concept_nodes[nid]
@@ -167,7 +171,7 @@ class LearningGuideBuilder:
         for nid in ordered:
             node = concept_nodes[nid]
             step = GuideStep(
-                concept=node.label,
+                concept=labels[nid],
                 chapter_id=node.chapter_id,
                 ku_id=(node.metadata or {}).get("ku_id", ""),
                 kind=node.node_type,
@@ -175,14 +179,14 @@ class LearningGuideBuilder:
                 quote=(node.metadata or {}).get("quote", ""),
             )
             guide.steps.append(step)
-            guide.by_chapter.setdefault(node.chapter_id, []).append(node.label)
+            guide.by_chapter.setdefault(node.chapter_id, []).append(labels[nid])
         return guide
 
     @staticmethod
     def _from_chapters(chapters: list[Any], guide: LearningGuide) -> LearningGuide:
         for c in chapters:
             for concept in c.concepts_introduced_refs:
-                if not concept:
+                if not concept or is_noise_concept(concept):
                     continue
                 guide.steps.append(GuideStep(concept=concept, chapter_id=c.chapter_id))
                 guide.by_chapter.setdefault(c.chapter_id, []).append(concept)
