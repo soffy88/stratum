@@ -15,12 +15,14 @@ import {
   type Bu2Detail,
   type Bu2Evidence,
   type Bu2Evolution,
+  type Bu2GuideStep,
   type Bu2Graph,
   type Bu2QualityGates,
 } from '@/aii/lib/bu2-client';
 
-type Tab = 'chapters' | 'arguments' | 'evidence' | 'graph' | 'evolution';
+type Tab = 'guide' | 'chapters' | 'arguments' | 'evidence' | 'graph' | 'evolution';
 const TABS: Array<[Tab, string]> = [
+  ['guide', '学习导览'],
   ['chapters', '章节主张'],
   ['arguments', '论证链'],
   ['evidence', '证据'],
@@ -238,6 +240,51 @@ function GraphTab({ runId }: { runId: string }) {
   );
 }
 
+function GuideTab({ runId }: { runId: string }) {
+  const { data, error, reload } = useLoad(() => bu2.learningGuide(runId), [runId]);
+  if (error) return <OErrorState error={error} onRetry={reload} />;
+  if (!data) return <OLoadingState rows={4} />;
+  const groups: Array<[string, Bu2GuideStep[]]> = [];
+  data.steps.forEach(s => {
+    const last = groups[groups.length - 1];
+    if (last && last[0] === s.chapter_id) last[1].push(s);
+    else groups.push([s.chapter_id, [s]]);
+  });
+  let n = 0;
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-xs text-[color:var(--text-secondary)]">
+        按依赖排序的学习路径：先学前置概念，再学依赖它们的定理与方法。共 {data.step_count} 步{data.steps.length < data.step_count ? `（显示前 ${data.steps.length} 步）` : ''}。
+      </p>
+      {data.cycles.length > 0 && <p className="text-xs text-amber-600">{data.cycles.join('；')}</p>}
+      {groups.map(([ch, steps], gi) => (
+        <section key={`${ch}-${gi}`} className="flex flex-col gap-1.5">
+          <h3 className="text-sm font-semibold">{ch}</h3>
+          <ol className="flex flex-col gap-1 ml-1">
+            {steps.map(s => {
+              n += 1;
+              return (
+                <li key={n} className="flex gap-2 text-sm">
+                  <span className="text-[color:var(--text-secondary)] w-10 shrink-0 text-right">{n}.</span>
+                  <span className="flex flex-col">
+                    <span>
+                      <span className={s.kind === 'THEOREM' ? 'font-medium text-indigo-600' : 'font-medium'}>{s.concept}</span>
+                      {s.kind === 'THEOREM' && <span className="text-[11px] text-[color:var(--text-secondary)]"> · 定理</span>}
+                    </span>
+                    {s.requires.length > 0 && (
+                      <span className="text-xs text-[color:var(--text-secondary)]">先修：{s.requires.join('、')}</span>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 function EvolutionTab({ runId }: { runId: string }) {
   const { data, error, reload } = useLoad(() => bu2.evolution(runId, 200), [runId]);
   if (error) return <OErrorState error={error} onRetry={reload} />;
@@ -262,7 +309,7 @@ function EvolutionTab({ runId }: { runId: string }) {
 export default function Bu2DetailPage() {
   const params = useParams<{ runId: string }>();
   const runId = decodeURIComponent(params.runId);
-  const [tab, setTab] = useState<Tab>('chapters');
+  const [tab, setTab] = useState<Tab>('guide');
   const detail = useLoad(() => bu2.detail(runId), [runId]);
   const gates = useLoad(() => bu2.gates(runId), [runId]);
   const d = detail.data;
@@ -290,6 +337,7 @@ export default function Bu2DetailPage() {
           </button>
         ))}
       </nav>
+      {tab === 'guide' && <GuideTab runId={runId} />}
       {tab === 'chapters' && d && <ChaptersTab runId={runId} d={d} />}
       {tab === 'arguments' && <ArgumentsTab runId={runId} />}
       {tab === 'evidence' && <EvidenceTab runId={runId} />}

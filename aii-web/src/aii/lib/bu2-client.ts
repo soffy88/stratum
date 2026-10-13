@@ -110,6 +110,22 @@ export interface Bu2Evolution {
   version: number;
 }
 
+export interface Bu2GuideStep {
+  concept: string;
+  chapter_id: string;
+  kind: string;
+  requires: string[];
+  quote: string;
+}
+
+export interface Bu2LearningGuide {
+  step_count: number;
+  steps: Bu2GuideStep[];
+  by_chapter: Record<string, string[]>;
+  chapter_order: string[];
+  cycles: string[];
+}
+
 export const bu2 = {
   list: () => apiClient.get<Bu2ListItem[]>('/api/v1/bu'),
   detail: (runId: string) => apiClient.get<Bu2Detail>(base(runId)),
@@ -126,6 +142,8 @@ export const bu2 = {
     ),
   graph: (runId: string, kind: 'reasoning' | 'argument', limit = 300) =>
     apiClient.get<Bu2Graph>(`${base(runId)}/graph?kind=${kind}&limit=${limit}`),
+  learningGuide: (runId: string, limit = 500) =>
+    apiClient.get<Bu2LearningGuide>(`${base(runId)}/learning-guide?limit=${limit}`),
   evolution: (runId: string, limit = 100, offset = 0) =>
     apiClient.get<{ total: number; items: Bu2Evolution[] }>(
       `${base(runId)}/concept-evolution?limit=${limit}&offset=${offset}`,

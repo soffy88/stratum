@@ -92,3 +92,48 @@ def test_quality_gates_splits_six_dimension(monkeypatch):
     assert out["all_passed"] is True
     assert len(out["hard_gates"]) == 1
     assert out["six_dimension"]["evidence"] == {"dimensions": {"depth": 10}}
+
+
+def test_learning_guide_orders_prerequisites_first(monkeypatch):
+    def fake_query(sql, params=None, limit=100):
+        if "book_understandings_v2" in sql:
+            return [
+                {
+                    "id": "bu1",
+                    "substrate_id": "s",
+                    "book_id": "b",
+                    "reasoning_graph_id": "g1",
+                    "argument_graph_id": None,
+                }
+            ]
+        if "chapter_understandings" in sql:
+            return [
+                {"chapter_id": "ch2", "concepts_introduced_refs": ["series"]},
+                {"chapter_id": "ch1", "concepts_introduced_refs": ["sequence"]},
+            ]
+        if "reasoning_node" in sql:
+            return [
+                {
+                    "id": "n2",
+                    "node_type": "CONCEPT",
+                    "label": "series",
+                    "chapter_id": "ch2",
+                    "metadata": "{}",
+                },
+                {
+                    "id": "n1",
+                    "node_type": "CONCEPT",
+                    "label": "sequence",
+                    "chapter_id": "ch1",
+                    "metadata": None,
+                },
+            ]
+        if "reasoning_edge" in sql:
+            return [{"source_node_id": "n2", "target_node_id": "n1", "relation_type": "DEPENDS_ON"}]
+        return []
+
+    monkeypatch.setattr(bu, "query", fake_query)
+    out = asyncio.run(bu.get_learning_guide("run", "u", 500, 0))
+    assert [s["concept"] for s in out["steps"]] == ["sequence", "series"]
+    assert out["steps"][1]["requires"] == ["sequence"]
+    assert out["chapter_order"] == ["ch1", "ch2"]
