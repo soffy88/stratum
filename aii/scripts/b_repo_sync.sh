@@ -59,6 +59,15 @@ log() { echo "[b_repo_sync $(ts)] $*"; }
 # embed 必须可达(落库要重算 B 仓向量); dry-run 可跳过
 ensure_embed() {
   if [[ -n "$DRY" ]]; then return 0; fi
+  if [[ "${AII_EMBED_BACKEND:-bge}" == "eg2" ]]; then
+    local eg2_base="${AII_EMBED_BASE_URL:-http://100.68.226.13:8790/v1}"
+    log "使用 EmbeddingGemma2: ${eg2_base}"
+    if curl -sf --noproxy '*' --max-time 8 "${eg2_base%/v1}/health" >/dev/null 2>&1; then
+      return 0
+    fi
+    log "ERROR: EmbeddingGemma2(${eg2_base}) 不可达 — 检查笔记本 EG2 服务(8790)与 tailscale"
+    return 1
+  fi
   if curl -sf --max-time 3 "${AII_EMBED_URL}/health" >/dev/null 2>&1; then
     return 0
   fi

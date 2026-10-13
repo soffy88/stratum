@@ -425,18 +425,27 @@ app.mount("/mcp", mcp_app)
 @app.get("/api/v1/health")
 async def health(response: Response):
     """Was a bare 200 regardless of DB state. Verifies the DB connection this
-    app's routers actually depend on (documents/notes/graph/billing/etc.)."""
+    app's routers actually depend on (documents/notes/graph/billing/etc.).
+    Also includes embedding backend probe (cached 30s, 3s timeout for eg2)
+    so a down embed service surfaces here without blocking or failing.
+    """
+    result: dict = {"status": "ok", "version": "0.5.0", "database": "connected"}
     try:
         from stratum.db import get_conn
 
         with get_conn() as conn:
             conn.execute("SELECT 1")
-        return {"status": "ok", "version": "0.5.0", "database": "connected"}
     except Exception as e:
         response.status_code = 503
-        return {
-            "status": "unhealthy",
-            "version": "0.5.0",
-            "database": "unreachable",
-            "error": str(e),
-        }
+        result["status"] = "unhealthy"
+        result["database"] = "unreachable"
+        result["error"] = str(e)
+        return result
+    # embedding health — best-effort, cached, never blocks
+    try:
+        from aii import embedding_client
+
+        result["embedding"] = embedding_client.health()
+    except Exception as e:
+        result["embedding"] = {"backend": "unavailable", "error": str(e)[:80]}
+    return result

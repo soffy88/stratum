@@ -19,11 +19,11 @@ except ImportError:
     pass
 sys.path.insert(0, str(ROOT / "scripts"))
 
-import asyncpg
-from ku_schema import build_grounded_by, parse_chapter_anchor, ku_fingerprint, validate_ku_point
-from pgvector.asyncpg import register_vector
-from aii.api._provider import register_providers
-from oprim import vector_encode
+import asyncpg  # noqa: E402
+from ku_schema import build_grounded_by, parse_chapter_anchor, ku_fingerprint, validate_ku_point  # noqa: E402
+from pgvector.asyncpg import register_vector  # noqa: E402
+from aii.api._provider import register_providers  # noqa: E402
+from oprim import vector_encode  # noqa: E402
 
 try:
     from oprim.embedding.aii_remote import AiiRemoteEmbedder
@@ -37,12 +37,18 @@ register_providers()
 # 飞轮已通过 AII_EMBED_URL 做过健康检查，这里直接复用该已验证的服务。
 _REMOTE_EMBEDDER = (
     AiiRemoteEmbedder(os.environ["AII_EMBED_URL"], timeout=120.0)
-    if os.getenv("AII_EMBED_URL") and AiiRemoteEmbedder is not None
+    if os.getenv("AII_EMBED_URL")
+    and AiiRemoteEmbedder is not None
+    and os.getenv("AII_EMBED_BACKEND", "bge").strip().lower() != "eg2"
     else None
 )
 
 
 def _encode(texts):
+    from aii import embedding_client  # noqa: PLC0415
+
+    if embedding_client.backend() == "eg2":
+        return embedding_client.embed_documents(list(texts))
     if _REMOTE_EMBEDDER is not None:
         return _REMOTE_EMBEDDER.embed(texts)
     return vector_encode(texts=texts, provider="default")
@@ -130,6 +136,15 @@ async def main(substrate: str, staging_dir: Path, dry_run: bool = False):
     rows = []
     for k in kus_all:
         embed_text = (k.get("en", "") or k.get("zh", "")).strip()
+        if embed_text:
+            from aii import embedding_client  # noqa: PLC0415
+
+            if embedding_client.backend() == "eg2":
+                # 与 eg2_backfill.py 的 ku_onto 口径一致: title + (natural_text_zh 优先)
+                embed_text = embedding_client.doc_text(
+                    k.get("label") or k.get("point", ""),
+                    (k.get("zh", "") or "").strip() or k.get("en", ""),
+                )
         if not embed_text:
             print(
                 f"  ★skip empty: {substrate}::{k.get('chapter', 0)}::{k.get('point', '')}",
@@ -145,7 +160,7 @@ async def main(substrate: str, staging_dir: Path, dry_run: bool = False):
     for i in range(0, len(rows), B):
         chunk = [t for _, t in rows[i : i + B]]
         try:
-                embs.extend(_encode(chunk))
+            embs.extend(_encode(chunk))
         except Exception as e:
             print(f"  ★batch embed fail @{i} 降级逐条: {e}", flush=True)
             for t in chunk:

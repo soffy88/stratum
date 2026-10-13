@@ -24,13 +24,13 @@ from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
-import asyncpg
-from pgvector.asyncpg import register_vector
-from aii.api._provider import register_providers
-from obase import ProviderRegistry
+import asyncpg  # noqa: E402
+from pgvector.asyncpg import register_vector  # noqa: E402
+from aii.api._provider import register_providers  # noqa: E402
+from obase import ProviderRegistry  # noqa: E402
 
 sys.path.insert(0, str(ROOT / "scripts"))
-from refined_dedup_dryrun import _pairs, _judge, DEFAULT_BOOKS  # 复用判同
+from refined_dedup_dryrun import _pairs, _judge, DEFAULT_BOOKS  # 复用判同  # noqa: E402
 
 A_DSN = os.getenv("DATABASE_URL")  # A仓 aii_kg
 B_DSN = os.getenv(
@@ -283,9 +283,20 @@ async def main():
     # 本地GPU常被 ocr-vllm 占满(9.65G卡装不下两个都要显存的模型), 之前直接在这里
     # local-load 会跟正在跑的 OCR daemon 撞显存 OOM(实测复现)。
     embed_url = os.getenv("AII_EMBED_URL", "http://127.0.0.1:8102")
-    from oprim.embedding.aii_remote import AiiRemoteEmbedder
+    from aii import embedding_client
 
-    embedder = AiiRemoteEmbedder(embed_url)
+    if embedding_client.backend() == "eg2":
+
+        class _Eg2Embedder:
+            @staticmethod
+            def embed(texts):
+                return embedding_client.embed_documents(list(texts))
+
+        embedder = _Eg2Embedder()
+    else:
+        from oprim.embedding.aii_remote import AiiRemoteEmbedder
+
+        embedder = AiiRemoteEmbedder(embed_url)
     sem = asyncio.Semaphore(len(pool))  # 并发=key数, round-robin 每item一key
     no_title_trans = (
         "--no-title-trans" in sys.argv

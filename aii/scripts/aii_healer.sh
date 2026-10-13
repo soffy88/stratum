@@ -36,7 +36,17 @@ done
 #    0 新增。真正的生产请求由飞轮自己发起，服务只要 health 可达就不重启。
 EMBED_URL="${AII_EMBED_URL:-http://127.0.0.1:8102}"
 EMBED_OK=0
-if curl -sS -m 8 -f -o /dev/null "$EMBED_URL/health" 2>/dev/null; then
+if [ "${AII_EMBED_BACKEND:-bge}" = "eg2" ]; then
+    # EmbeddingGemma2 跑在笔记本 GPU(不归本机管)，本机 BGE 服务已停用：
+    # 只探测 /health，失败只告警，绝不 systemctl restart aii-embed。
+    EG2_BASE="${AII_EMBED_BASE_URL:-http://100.68.226.13:8790/v1}"
+    EG2_HEALTH="${EG2_BASE%/}"; EG2_HEALTH="${EG2_HEALTH%/v1}/health"
+    if curl -sS -m 8 -f --noproxy '*' -o /dev/null "$EG2_HEALTH" 2>/dev/null; then
+        log "✅ EmbeddingGemma2($EG2_HEALTH) /health 正常"
+    else
+        log "🚨 EmbeddingGemma2($EG2_HEALTH) health 不可达 — 需人工检查笔记本 EG2 服务(本机不重启任何 embed unit)"
+    fi
+elif curl -sS -m 8 -f -o /dev/null "$EMBED_URL/health" 2>/dev/null; then
     EMBED_OK=1
     log "✅ aii-embed($EMBED_URL) /health 正常；跳过主动 /embed 探针"
 else
@@ -48,7 +58,7 @@ else
         log "⚠ aii-embed($EMBED_URL) health 不可达，尝试重启本机 unit"
     fi
 fi
-if [ "$EMBED_OK" -eq 0 ]; then
+if [ "${AII_EMBED_BACKEND:-bge}" != "eg2" ] && [ "$EMBED_OK" -eq 0 ]; then
     if systemctl --user restart aii-embed 2>/dev/null && systemctl --user is-active --quiet aii-embed 2>/dev/null; then
         log "🔄 自愈: aii-embed health 不可达 → 本机 unit 已重启"
     else
