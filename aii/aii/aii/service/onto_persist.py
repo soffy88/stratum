@@ -27,14 +27,15 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-import asyncpg
-from oprim import vector_encode
+import asyncpg  # noqa: E402
 
-from aii.service import onto_vocab as V
-from aii.service.structural_gate import is_structural_noise
-from aii.service.discipline_rules import classify as classify_discipline
+from aii import embedding_client  # noqa: E402
 
-from omodul.register_ku_ontology import (
+from aii.service import onto_vocab as V  # noqa: E402
+from aii.service.structural_gate import is_structural_noise  # noqa: E402
+from aii.service.discipline_rules import classify as classify_discipline  # noqa: E402
+
+from omodul.register_ku_ontology import (  # noqa: E402
     register_ku_ontology,
     RegisterKuOntologyConfig,
     RegisterKuOntologyInput,
@@ -233,12 +234,19 @@ async def persist_ontology_result(
                 continue
 
             # ── embedding 入库时填 (写 ku_onto 前算, 和旧链路一致) ──────
+            # eg2: 统一文档口径 doc_text(title, natural_text_zh 优先, 否则 natural_text),
+            #      与 scripts/eg2_backfill.py 一致; bge: 旧口径 content(natural_text)。
             content = _as_text(ku.get("content")) or ""
+            if embedding_client.backend() == "eg2":
+                _zh = (_as_text(ku.get("content_zh")) or "").strip()
+                _emb_text = embedding_client.doc_text(_as_text(ku.get("title")), _zh or content)
+            else:
+                _emb_text = content
             _emb = (
                 await loop.run_in_executor(
-                    None, lambda c=content: vector_encode(texts=[c], provider="default")
+                    None, lambda t=_emb_text: embedding_client.embed_documents([t])
                 )
-            )[0]  # (1,1024) → 取第 0 行; register_vector 后 pgvector 收 np 向量
+            )[0]
 
             # ── 写 ku_onto ───────────────────────────────────────────
             async with conn.transaction():
@@ -373,7 +381,7 @@ async def persist_ontology_result(
                     iv = (
                         await loop.run_in_executor(
                             None,
-                            lambda t=m["invariant"]: vector_encode(texts=[t], provider="default"),
+                            lambda t=m["invariant"]: embedding_client.embed_documents([t]),
                         )
                     )[0]
                     inv_id = await conn.fetchval(

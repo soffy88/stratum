@@ -15,6 +15,7 @@ import json
 import re
 
 import numpy as np
+from aii import embedding_client
 from aii.service.onto_vocab import VALID_RELATION_TYPES  # AII 单一权威词表(避免漂移)
 
 _CHUNK = re.compile(r"ku_c(\d+)_")
@@ -25,12 +26,16 @@ def _chunk_of(ku_id: str) -> str | None:
     return m.group(1) if m else None
 
 
-async def gen_candidates(conn, *, substrate_id: str, sem_threshold: float = 0.80) -> list[tuple]:
+async def gen_candidates(
+    conn, *, substrate_id: str, sem_threshold: float | None = None
+) -> list[tuple]:
     """产候选对 (只筛范围, 不连边):
       ① 共享归一后概念 + 跨块 + 无边
       ② KU embedding 语义相似 >= sem_threshold + 跨块 + 无边
     返回去重无序对列表 [(k1,k2), ...].
     """
+    if sem_threshold is None:
+        sem_threshold = embedding_client.threshold("cross_chunk")
     shared = await conn.fetch(
         """
       SELECT DISTINCT a.ku_id k1, b.ku_id k2 FROM aii.ku_concept_onto a

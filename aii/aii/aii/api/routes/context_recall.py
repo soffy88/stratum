@@ -21,12 +21,12 @@ reuse_conditions(CBR 核心: 这条理由在什么情境成立/什么情境反�
 
 import json
 import os
-import urllib.request
 
 import asyncpg
 from fastapi import APIRouter, Query
 
-from aii.api._envelope import success_response, error_response
+from aii.api._envelope import error_response, success_response
+from aii import embedding_client
 
 router = APIRouter()
 
@@ -58,18 +58,12 @@ _HAS_ASSET_ADVISORY = (
 # ★这是启发式, 不是客观裁判(原则二): 判断资产多起来之后需要拿真实问题重新校准。所以
 # ① 门槛是显式参数, 调用方可以自己调; ② 被门槛挡下的不静默丢弃, 在 near_misses 里如实
 # 报出最高相似度, 让人看得见"其实有个 0.52 的擦肩而过", 而不是以为库里空空如也。
-_DEFAULT_MIN_SIMILARITY = 0.55
+_DEFAULT_MIN_SIMILARITY = embedding_client.threshold("context_recall")
 
 
 def _embed(text: str) -> list[float]:
-    """urllib 不认 no_proxy 的 CIDR, 显式绕代理(同 context_compiler._embed)。"""
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    req = urllib.request.Request(
-        f"{EMBED_URL}/embed",
-        json.dumps({"texts": [text[:2000]]}).encode(),
-        {"Content-Type": "application/json"},
-    )
-    return json.loads(opener.open(req, timeout=60).read())["embeddings"][0]
+    """查询嵌入(eg2 时服务端自动加 SearchQuery 前缀, bge 走默认 provider)。"""
+    return embedding_client.embed_queries([text[:2000]])[0]
 
 
 def _jsonb(v, default):

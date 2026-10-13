@@ -60,8 +60,14 @@ FLYWHEELS = {
     },
     "aii-flywheel-math-prog": {"prefixes": ["math_prog_"], "booklist": None},
     "aii-flywheel-advmath": {"prefixes": ["advmath_zh_", "advmath_en_"], "booklist": None},
-    "aii-flywheel-cs": {"prefixes": ["cs_zh_", "cs_en_"], "booklist": ROOT / "cs_pipeline/flywheel_cs_booklist.txt"},
-    "aii-flywheel-edu": {"prefixes": ["edu_zh_", "edu_en_"], "booklist": ROOT / "edu_pipeline/flywheel_edu_booklist.txt"},
+    "aii-flywheel-cs": {
+        "prefixes": ["cs_zh_", "cs_en_"],
+        "booklist": ROOT / "cs_pipeline/flywheel_cs_booklist.txt",
+    },
+    "aii-flywheel-edu": {
+        "prefixes": ["edu_zh_", "edu_en_"],
+        "booklist": ROOT / "edu_pipeline/flywheel_edu_booklist.txt",
+    },
     # Paper BU is intentionally KU=0; keep it out of KU freshness checks.
 }
 
@@ -286,7 +292,7 @@ def check_ingestion_and_flywheels(state: dict) -> list[dict]:
         booklist_len = 0
         if booklist and booklist.exists():
             try:
-                booklist_len = len([l for l in booklist.read_text().splitlines() if l.strip()])
+                booklist_len = len([l for l in booklist.read_text().splitlines() if l.strip()])  # noqa: E741
             except Exception:
                 booklist_len = 0
         ku_age_h = ((now - latest_ku).total_seconds() / 3600) if latest_ku else 9999
@@ -322,6 +328,31 @@ def check_ingestion_and_flywheels(state: dict) -> list[dict]:
 
 def check_embed() -> list[dict]:
     import urllib.request
+
+    try:
+        from aii import embedding_client  # noqa: PLC0415
+
+        if embedding_client.backend() == "eg2":
+            h = embedding_client.health()
+            if h.get("ok"):
+                return [
+                    {
+                        "name": "embedding(eg2)",
+                        "status": "ok",
+                        "severity": "info",
+                        "detail": f"EmbeddingGemma2 /health 正常 {h.get('latency_ms', '?')}ms",
+                    }
+                ]
+            return [
+                {
+                    "name": "embedding(eg2)",
+                    "status": "unreachable",
+                    "severity": "warn",
+                    "detail": f"EmbeddingGemma2 不可达: {str(h.get('error', ''))[:80]}",
+                }
+            ]
+    except ImportError:
+        pass
 
     try:
         # ★2026-08-10: urllib 的 no_proxy 不支持 CIDR(100.64.0.0/10 被无视→tailscale 走代理→502 误报)
@@ -506,7 +537,7 @@ def check_convert_output() -> list[dict]:
         recent = log.read_text(encoding="utf-8", errors="replace").splitlines()[-200:]
         bad = [
             l
-            for l in recent
+            for l in recent  # noqa: E741
             if re.search(r"Traceback|UnboundLocal|cannot access|NameError|Error:", l)
         ]
         if bad:
@@ -518,7 +549,7 @@ def check_convert_output() -> list[dict]:
                     "detail": f"convert 最近输出异常: {bad[-1][:110]}",
                 }
             ]
-        tots = [int(m.group(1)) for l in recent for m in [re.search(r"新转: (\d+)", l)] if m]
+        tots = [int(m.group(1)) for l in recent for m in [re.search(r"新转: (\d+)", l)] if m]  # noqa: E741
         pool = sum(
             len(list(d.glob("*.pdf"))) + len(list(d.glob("*.epub")))
             for d in (
@@ -587,7 +618,7 @@ def check_repeat_extraction() -> list[dict]:
             from collections import Counter
 
             cnt: Counter = Counter()
-            for l in lines:
+            for l in lines:  # noqa: E741
                 m = re.search(r"sub=([a-f0-9]{10})", l)
                 if m:
                     cnt[m.group(1)] += 1
