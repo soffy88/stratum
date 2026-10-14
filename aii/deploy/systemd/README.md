@@ -12,3 +12,4 @@
   ★math-prog(B-pipeline, 0 LLM程序抽取) 已取代旧 math-zh/math-en 飞轮(2026-07起, 后者不再运行)
 - aii-flywheel-paper.service  论文飞轮(paper_pipeline, 0 LLM, 独立处理论文)
 - aii-feeder.service     上游喂书守护(PDF→MD 分拣)
+- aii-flywheel-health.timer/.service  每 30 分钟飞轮体检(scripts/flywheel_health.py): 单元死/日志停/空转热循环/LLM 错误率/24h 零 KU/日志>200MB; 安全自愈(重启/轮转/idle 退避 drop-in); 输出 ~/shared/aii-health/{status.json,alerts.log}
