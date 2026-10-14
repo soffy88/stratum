@@ -6,27 +6,28 @@ import json
 import os
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 sys.path.insert(0, str(ROOT / "scripts"))
-import asyncpg
-import opencc
-from chapter_ingest import slice_chapter, SM, chapter_numbers
-from chapter_synthesize import _plan, _synth, _find_pos
-from clean_ku import clean, is_empty_shell, is_junk
-from aii.api._provider import register_providers
-from aii.service.planning_completeness import check_completeness
-from ku_schema import (
+import asyncpg  # noqa: E402
+import opencc  # noqa: E402
+from chapter_ingest import slice_chapter, SM, chapter_numbers  # noqa: E402
+from chapter_synthesize import _plan, _synth, _find_pos  # noqa: E402
+from clean_ku import clean, is_empty_shell, is_junk  # noqa: E402
+from aii.api._provider import register_providers  # noqa: E402
+from aii.service.planning_completeness import check_completeness  # noqa: E402
+from ku_schema import (  # noqa: E402
     build_grounded_by,
     ensure_evidence_number_coverage,
     ku_fingerprint,
     validate_ku_point,
 )
-from oprim import vector_encode
-from obase import ProviderRegistry
+from oprim import vector_encode  # noqa: E402
+from obase import ProviderRegistry  # noqa: E402
 
 _T2S = opencc.OpenCC("t2s")
 
@@ -135,7 +136,24 @@ _PER_SOURCE_BUDGET = int(
 _FAIL_COUNT = [0]  # 跨章累计(协议失败/幻觉/软分)
 
 
+def _shell_reject_reason(zh: str, en: str) -> str | None:
+    """persist 前的空壳/语种/垃圾筛, 返回拒绝原因(None=通过)。与旧条件逐字等价, 只是给出原因。
+    ★2026-10-14: 免费推理模型常把中文书的讲透写成英文(或只给英文不给中文), 旧代码静默丢弃
+    且仍把章节记为完成。现在显式记 LANG_MISMATCH(拒绝, 不翻译: 翻译会让 KU 与原文证据
+    语种错位, 过不了 grounding), 由调用方据实际入库数决定是否 checkpoint。"""
+    if is_empty_shell(zh or en):
+        return "EMPTY_SHELL"
+    if len(re.findall(r"[一-龥]", zh or "")) < 10:
+        return "LANG_MISMATCH" if (en or zh or "").strip() else "EMPTY_SHELL"
+    if is_junk(f"{zh or ''} {en or ''}"):
+        return "JUNK"
+    return None
+
+
 async def persist(conn, n, kus):
+    """落库一章。返回 {"candidates", "written", "dropped": Counter(原因)}——written 是真正
+    INSERT/UPSERT 成功的行数(旧版只打印候选数 len(kus), 0 行入库也报"N KU persisted")。"""
+    stats = {"candidates": len(kus), "written": 0, "dropped": Counter()}
     loop = asyncio.get_event_loop()
     # ★双仓: A仓只抽原始KU不建关系. explains 链留在 KU 的 provenance(下方 prov["explains"]),
     #   explains 超边由 B仓 从 provenance 建(关系=B仓). A仓 不写 explains 边.
@@ -152,11 +170,7 @@ async def persist(conn, n, kus):
         zh, _ = clean(zh_raw)
         if BOOK_LANG == "zh" and zh:
             zh = _T2S.convert(zh)
-        if (
-            is_empty_shell(zh or en)
-            or len(re.findall(r"[一-龥]", zh or "")) < 10
-            or is_junk(f"{zh or ''} {en or ''}")
-        ):
+        if _shell_reject_reason(zh, en):
             continue
         embed_items.append((i, (zh or en)[:2000]))
 
@@ -190,11 +204,21 @@ async def persist(conn, n, kus):
             zh = _T2S.convert(zh)  # 繁体→简体(机械转换, 简体输入原样不变)
         # 全空壳(书没讲)→ 不入库; 中文<10字也丢弃(对齐质量门空壳判定: 有英文无中文也算空壳)
         # ★LLM 拒答/脚手架泄漏/空 facet 壳(内容窗口空→LLM回道歉)也丢弃, 防垃圾入库
-        if (
-            is_empty_shell(zh or en)
-            or len(re.findall(r"[一-龥]", zh or "")) < 10
-            or is_junk(f"{zh or ''} {en or ''}")
-        ):
+        reason = _shell_reject_reason(zh, en)
+        if reason:
+            stats["dropped"][reason] += 1
+            if reason == "LANG_MISMATCH":
+                print(
+                    f"  ⚠ LANG_MISMATCH {SUB}::ch{n}_ku{i}: {name[:30]} — 中文<10字"
+                    f"(书={BOOK_LANG}, 模型输出语种不符), 显式拒绝",
+                    flush=True,
+                )
+                _traj_sync(
+                    "persist",
+                    "LANG_MISMATCH",
+                    f"book_lang={BOOK_LANG} zh_chars<10",
+                    {"ku_id": f"{SUB}::ch{n}_ku{i}", "chapter": n},
+                )
             continue
         kt = _TYPE_MAP.get(typ, "conceptual")
         is_pos = kt == "positional"
@@ -259,6 +283,7 @@ async def persist(conn, n, kus):
                 },
             )
             print(f"  ⚠ {sig} {ku_id}: {name[:30]} ({chain['status']})", flush=True)
+            stats["dropped"][f"QUALITY:{sig}"] += 1
             _FAIL_COUNT[0] += 1
             if _FAIL_COUNT[0] >= _PER_SOURCE_BUDGET:
                 from ku_pipeline import investigate_fallback
@@ -286,6 +311,7 @@ async def persist(conn, n, kus):
                 {"ku_id": ku_id, "chapter": n},
             )
             print(f"  ⚠ DUPLICATE {ku_id}", flush=True)
+            stats["dropped"]["DUPLICATE"] += 1
             continue
         grounded_by = build_grounded_by(
             SUB, f"ch{n}", evidence_quotes=[{"chunk_id": f"ch{n}", **q} for q in quotes]
@@ -299,6 +325,7 @@ async def persist(conn, n, kus):
                 {"ku_id": ku_id, "substrate": SUB, "chapter": n},
             )
             print(f"  ⚠ 海关拒绝 {ku_id}: {violations[0]}", flush=True)
+            stats["dropped"]["SCHEMA"] += 1
             continue  # 丢弃该条(整章不中断; 下轮重跑该章可补)
         fp = ku_fingerprint(en or zh)
 
@@ -333,7 +360,9 @@ async def persist(conn, n, kus):
             f"flywheel:{os.getenv('AII_FLYWHEEL', 'unknown')}",
             quality.get("claim_type"),
         )
+        stats["written"] += 1
         # explains 链已写入 prov["explains"](上方) → B仓据此建 explains 超边; A仓不写边.
+    return stats
 
 
 def _traj_sync(phase: str, failure_mode: str, error_sig: str, context: dict | None = None) -> None:
@@ -360,7 +389,22 @@ async def main():
     register_providers()
     llm = ProviderRegistry.get().llm("default")
     chapters = chapter_numbers(SM.read_text(encoding="utf-8", errors="replace"))  # 实际章数(英/中)
-    done = set(json.loads(CKPT.read_text())["done"]) if CKPT.exists() else set()
+    _ck = json.loads(CKPT.read_text()) if CKPT.exists() else {}
+    done = set(_ck.get("done", []))
+    # ★2026-10-14 0 入库章节不写 done(可重试); 连续 AII_ZERO_KU_MAX_ATTEMPTS 次仍 0 才放弃并记录
+    zero_attempts = {int(k): int(v) for k, v in (_ck.get("zero_attempts") or {}).items()}
+    zero_max = max(1, int(os.getenv("AII_ZERO_KU_MAX_ATTEMPTS", "3")))
+
+    def _save_ckpt():
+        CKPT.write_text(
+            json.dumps(
+                {
+                    "done": sorted(done),
+                    "zero_attempts": {str(k): v for k, v in zero_attempts.items()},
+                }
+            )
+        )
+
     print(f"[{SUB}] {len(done)}/{len(chapters)} chapters done; book has {chapters}", flush=True)
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
     from pgvector.asyncpg import register_vector
@@ -374,6 +418,7 @@ async def main():
     ):
         print("  ⚠ 检测到0 KU旧 checkpoint，清除完成标记并重新规划", flush=True)
         done.clear()
+        zero_attempts.clear()
         CKPT.unlink(missing_ok=True)
     pending = [n for n in chapters if n not in done]
     chapter_parallel = max(1, int(os.getenv("AII_CHAPTER_PARALLEL", "1")))
@@ -412,11 +457,34 @@ async def main():
                 continue
             _text, kus, comp = result
             try:
-                await persist(conn, n, kus)
+                st = await persist(conn, n, kus)
+                written = st["written"]
+                dropped = dict(st["dropped"])
+                if written == 0:
+                    zero_attempts[n] = zero_attempts.get(n, 0) + 1
+                    if zero_attempts[n] >= zero_max:
+                        done.add(n)
+                        _save_ckpt()
+                        print(
+                            f"  ch{n}: 0/{len(kus)} KU 入库(丢弃 {dropped}); 已连续 "
+                            f"{zero_attempts[n]} 次为 0 → 放弃本章并写 checkpoint "
+                            f"[{len(done)}/{len(chapters)}]",
+                            flush=True,
+                        )
+                    else:
+                        _save_ckpt()
+                        print(
+                            f"  ch{n}: 0/{len(kus)} KU 入库(丢弃 {dropped}) → 不写完成 checkpoint, "
+                            f"下轮重试 [{zero_attempts[n]}/{zero_max}]",
+                            flush=True,
+                        )
+                    continue
+                zero_attempts.pop(n, None)
                 done.add(n)
-                CKPT.write_text(json.dumps({"done": sorted(done)}))
+                _save_ckpt()
                 print(
-                    f"  ch{n}: {len(kus)} KU persisted; complete={comp['complete']} "
+                    f"  ch{n}: {written}/{len(kus)} KU persisted (dropped={dropped}); "
+                    f"complete={comp['complete']} "
                     f"missing={comp['missing_bold_terms']} [{len(done)}/{len(chapters)}]",
                     flush=True,
                 )

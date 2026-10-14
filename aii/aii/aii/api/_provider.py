@@ -1,7 +1,9 @@
 import asyncio
 import concurrent.futures
 import itertools
+import json
 import os
+import re
 import uuid
 import logging
 import threading
@@ -73,6 +75,69 @@ def _read_opencode_keys() -> str:
         return ",".join(keys)
     except Exception:
         return ""
+
+
+# ★2026-10-14 推理模型输出清洗: 免费池(auto:veya-fllm)里的推理模型常在 content 里先写
+#   "Thinking Process: …"/<think>…</think> 再给答案(或根本不给 JSON)。实测 econ_zh ch3/ch6
+#   规划返回 24~29k 字纯推理文本 → "规划未返回知识点" → 整章 FAILED。
+_THINK_BLOCK = re.compile(r"<(think|thinking|reasoning)>.*?</\1>", re.S | re.I)
+_THINK_CLOSE = re.compile(r"</(?:think|thinking|reasoning)>", re.I)
+
+
+def strip_reasoning(text: str) -> str:
+    """去掉 <think>…</think> 块; 只有闭合标签(开标签被网关吃掉)时取最后一个闭合标签之后。"""
+    if not text:
+        return ""
+    t = _THINK_BLOCK.sub("", text)
+    closes = list(_THINK_CLOSE.finditer(t))
+    if closes:
+        t = t[closes[-1].end() :]
+    return t.strip()
+
+
+def extract_json_object(text: str) -> str | None:
+    """从(可能夹带推理散文/代码围栏的)模型输出里取最后一个可完整解析的 JSON 对象文本。
+    取"最后一个"是因为推理散文里可能先引用 schema 示例, 真正答案在末尾。找不到返回 None。"""
+    t = strip_reasoning(text)
+    if not t:
+        return None
+    whole = re.sub(r"^```(?:json)?\s*|\s*```$", "", t.strip())
+    try:
+        json.loads(whole)
+        return whole  # 整体就是合法 JSON(含顶层数组), 原样返回, 不改变旧调用方语义
+    except ValueError:
+        pass
+    dec = json.JSONDecoder()
+    found: str | None = None
+    i = t.find("{")
+    while i != -1:
+        try:
+            obj, end = dec.raw_decode(t, i)
+        except ValueError:
+            i = t.find("{", i + 1)
+            continue
+        if isinstance(obj, dict) and obj:
+            found = t[i:end]
+            i = t.find("{", end)
+        else:
+            i = t.find("{", i + 1)
+    return found
+
+
+def _has_json_object(text: str) -> bool:
+    return extract_json_object(text) is not None
+
+
+def _json_request_extras() -> dict:
+    """JSON 型调用的附加请求字段。AII_LLM_JSON_MODE=1(默认)带 response_format;
+    AII_LLM_NO_THINK=1 额外请求关闭思考(chat_template_kwargs / reasoning), 仅在上游接受时开启。"""
+    extra: dict = {}
+    if os.getenv("AII_LLM_JSON_MODE", "1") != "0":
+        extra["response_format"] = {"type": "json_object"}
+    if os.getenv("AII_LLM_NO_THINK", "0") == "1":
+        extra["chat_template_kwargs"] = {"enable_thinking": False, "thinking": False}
+        extra["reasoning"] = {"enabled": False, "exclude": True}
+    return extra
 
 
 def _extract_content(resp) -> str:
@@ -185,7 +250,7 @@ def _make_deepseek_caller(
         except Exception:  # noqa: BLE001
             return "?"
 
-    def _post_with_retry(payload: dict, max_retries: int = 5):
+    def _post_with_retry(payload: dict, max_retries: int = 5, validate=None):
         # ★429限流是瞬时的(尤其NIM key被econ_zh/misc/BU等多个进程共用, _throttle()只在
         # 单进程内生效, 挡不住跨进程撞车), 之前遇到429直接抛异常、整本书(哪怕[1/5]已经
         # 抽出了几十条好KU)被判 pipeline_error 永久放弃——实测撞过好几次。重试等窗口过去。
@@ -273,6 +338,15 @@ def _make_deepseek_caller(
                                 flush=True,
                             )
                             break
+                        # ★2026-10-14 期望 JSON 却只有推理散文 → 该模型本次无效, 换下一级
+                        if validate is not None and not validate(_content_of(_resp2)):
+                            last2 = "非 JSON 输出"
+                            print(
+                                f"  ⚠ fallback({fb_model}) 输出无可解析 JSON"
+                                f"(len={len(_content_of(_resp2))}) → 试下一级",
+                                flush=True,
+                            )
+                            break
                         return _resp2
                     except Exception as _e2:
                         last2 = _e2
@@ -289,6 +363,7 @@ def _make_deepseek_caller(
         _max_retries = max(1, int(os.getenv("AII_LLM_MAX_RETRIES", str(max_retries))))
         _empty_budget = max(0, int(os.getenv("AII_LLM_EMPTY_RETRY", "2")))
         _empty_left = [_empty_budget]
+        _invalid_left = [max(0, int(os.getenv("AII_LLM_NONJSON_RETRY", "2")))]
 
         for attempt in range(_max_retries):
             key = next(_key_iter)  # 轮换 key(池>1 时每次尝试用不同 key, 撞 504/429 换槽位)
@@ -372,6 +447,20 @@ def _make_deepseek_caller(
                     _t.sleep(3)
                     continue
                 return _fallback(payload)
+            # ★2026-10-14 期望 JSON 但主路只回推理散文("Thinking Process: …"): 不当成功返回
+            #   (否则上层解析失败 → 整章 FAILED)。主路是 auto 路由, 重试一次通常换到别的模型;
+            #   仍无效则走下一级 fallback 模型。
+            if validate is not None and not validate(_content_of(resp)):
+                print(
+                    f"  ⚠ 主路输出无可解析 JSON(len={len(_content_of(resp))}, "
+                    f"finish={_finish_of(resp)}) → 重试/换下一级模型",
+                    flush=True,
+                )
+                _invalid_left[0] -= 1
+                if _invalid_left[0] > 0 and attempt < _max_retries - 1:
+                    _t.sleep(2)
+                    continue
+                return _fallback(payload)
             return resp
         # 循环耗尽(理论上不可达, 防御) → fallback
         return _fallback(payload)
@@ -401,7 +490,22 @@ def _make_deepseek_caller(
         if max_tokens and max_tokens > 0:
             payload["max_tokens"] = int(max_tokens)
         resp = _post_with_retry(payload)
-        return _extract_content(resp)
+        return strip_reasoning(_extract_content(resp))
+
+    def _call_sync_expect_json(prompt: str, max_tokens: int | None = None) -> str:
+        """期望 JSON 的普通调用(规划器等): 请求 JSON 模式, 非 JSON 输出视为该模型失败
+        → 重试/下一级 fallback; 返回抽出的 JSON 对象文本(抽不到则原文)。"""
+        _throttle()
+        payload: dict = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            **_json_request_extras(),
+        }
+        if max_tokens and max_tokens > 0:
+            payload["max_tokens"] = int(max_tokens)
+        resp = _post_with_retry(payload, validate=_has_json_object)
+        raw = _extract_content(resp)
+        return extract_json_object(raw) or strip_reasoning(raw)
 
     def _call_sync_json(prompt: str, max_tokens: int = 0) -> str:
         """Synchronous DeepSeek call for extraction (JSON mode → eliminates markdown fence retries).
@@ -417,15 +521,20 @@ def _make_deepseek_caller(
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "response_format": {"type": "json_object"},
+            **_json_request_extras(),
         }
         if _json_mt > 0:
             _payload["max_tokens"] = _json_mt
-        resp = _post_with_retry(_payload)
-        return _extract_content(resp)
+        resp = _post_with_retry(_payload, validate=_has_json_object)
+        raw = _extract_content(resp)
+        return extract_json_object(raw) or strip_reasoning(raw)
 
-    async def _call_async(messages=None, *, system: str = "", max_tokens: int = 4096, **_):
+    async def _call_async(
+        messages=None, *, system: str = "", max_tokens: int = 4096, expect_json: bool = False, **_
+    ):
         """Async omodul-compatible LLM caller (Anthropic message format → Anthropic response dict).
-        Uses plain-text _call_sync (not JSON mode) for synthesis compatibility."""
+        Uses plain-text _call_sync (not JSON mode) for synthesis compatibility.
+        expect_json=True(规划器等): JSON 模式 + 非 JSON 输出换模型重试 + 抽出 JSON 对象。"""
         parts: list[str] = []
         if system:
             parts.append(system)
@@ -435,7 +544,9 @@ def _make_deepseek_caller(
         combined = "\n\n".join(p for p in parts if p)
         loop = asyncio.get_event_loop()
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-            answer = await loop.run_in_executor(ex, _call_sync, combined, max_tokens)
+            answer = await loop.run_in_executor(
+                ex, _call_sync_expect_json if expect_json else _call_sync, combined, max_tokens
+            )
         # ★NIM API偶发返回 message.content=null(见 nemotron-super-49b reasoning 模型),
         #   None 会一路传到消费方的 "".join(...text...) 直接崩 "expected str, NoneType"。
         #   在源头挡掉, 消费方多处调用不用各自防御.

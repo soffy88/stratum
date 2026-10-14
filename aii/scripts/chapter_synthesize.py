@@ -548,6 +548,8 @@ async def _plan(llm, text, n):
                 #   "规划未返回知识点"(实测 misc_zh_89fad961de ch2: 4390 字纯推理, 0 点)。
                 #   与 chapter_synthesize_llm_v1 同一个 env, 飞轮 drop-in 设 8000。
                 max_tokens=int(os.getenv("PLAN_MAX_TOKENS", "1200")),
+                # ★2026-10-14 规划要 JSON: JSON 模式 + 推理散文/非 JSON 输出换模型重试
+                expect_json=True,
             )
             t = "".join(b.get("text", "") for b in r.get("content", []) if b.get("type") == "text")
             pts = _parse_points(t)
