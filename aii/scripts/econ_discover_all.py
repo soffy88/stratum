@@ -104,6 +104,34 @@ async def _ingested(ids):
     return {r["substrate_id"] for r in rows}
 
 
+async def _thin(cands):
+    """★2026-10-14: ids that look finished (state 'ingested' / DB complete) but sit below the
+    absolute KU floor (ku_floor.thin_reason) -> retryable. Same rule as econ_batch_run.sh's
+    skip check and the quality gate, so discover and batch never disagree (hot loop)."""
+    from ku_floor import thin_reason
+
+    if not cands:
+        return {}
+    conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
+    rows = await conn.fetch(
+        """
+        SELECT substrate_id, count(*) AS ku,
+               count(DISTINCT provenance->>'chapter') AS kch
+        FROM aii.ku_onto WHERE substrate_id = ANY($1::text[]) GROUP BY substrate_id
+        """,
+        [c["id"] for c in cands],
+    )
+    await conn.close()
+    stats = {r["substrate_id"]: (r["ku"], r["kch"]) for r in rows}
+    out = {}
+    for c in cands:
+        ku, kch = stats.get(c["id"], (0, 0))
+        reason = thin_reason(ku, kch, c.get("chapters"))
+        if reason:
+            out[c["id"]] = reason
+    return out
+
+
 async def main():
     import argparse
 
@@ -124,9 +152,27 @@ async def main():
         except Exception:
             pass
     done = {"ingested", "precheck_fail", "quarantine", "skip"}
-    cands = [c for c in cands if state["processed"].get(c["id"], {}).get("status") not in done]
-    ing = await _ingested([c["id"] for c in cands])
-    cands = [c for c in cands if c["id"] not in ing]
+    # ★2026-10-14: "ingested"/DB-complete books below the absolute KU floor are retryable.
+    looks_done = [
+        c for c in cands if state["processed"].get(c["id"], {}).get("status") in (None, "ingested")
+    ]
+    ing = await _ingested([c["id"] for c in looks_done])
+    thin = await _thin(
+        [
+            c
+            for c in looks_done
+            if c["id"] in ing or state["processed"].get(c["id"], {}).get("status") == "ingested"
+        ]
+    )
+    if args.verbose and thin:
+        for sid, why in thin.items():
+            print(f"  ↻ {sid} 低于KU绝对下限, 视为可重试: {why}", file=sys.stderr)
+    cands = [
+        c
+        for c in cands
+        if c["id"] in thin
+        or (state["processed"].get(c["id"], {}).get("status") not in done and c["id"] not in ing)
+    ]
     if args.verbose:
         print(f"排已入库/终态后: {len(cands)} 本", file=sys.stderr)
     if args.limit > 0:

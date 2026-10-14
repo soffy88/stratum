@@ -132,16 +132,25 @@ while IFS='|' read -r MD_PATH SUBSTRATE ECON_TITLE || [ -n "$MD_PATH" ]; do
 
     # ── 检查是否已经入库(flywheel) ──
     if [ "$FORCE" != "1" ]; then
-        ALREADY=$($PY -c "
+        ALREADY=$(QG_MD_PATH="$MD_PATH" $PY -c "
 import asyncio, asyncpg, os; from dotenv import load_dotenv; from pathlib import Path
 load_dotenv(Path('aii/.env'))
 async def chk():
     c = await asyncpg.connect(os.getenv('DATABASE_URL'))
     # 已完整入库: 登记 + BU + 至少1条KU。仅有登记/BU的半成品不能跳过，
     # 否则“0 KU但已有BU”的失败书会被永久当成完成，飞轮再也不会消费。
-    r = await c.fetchrow('SELECT (SELECT count(*) FROM aii.ingested_substrate WHERE substrate_id=\$1) AS reg, (SELECT count(*) FROM aii.bu_onto WHERE substrate_id=\$1) AS bu, (SELECT count(*) FROM aii.ku_onto WHERE substrate_id=\$1) AS ku', '$SUBSTRATE')
+    r = await c.fetchrow('SELECT (SELECT count(*) FROM aii.ingested_substrate WHERE substrate_id=\$1) AS reg, (SELECT count(*) FROM aii.bu_onto WHERE substrate_id=\$1) AS bu, (SELECT count(*) FROM aii.ku_onto WHERE substrate_id=\$1) AS ku, (SELECT count(DISTINCT provenance->>\'chapter\') FROM aii.ku_onto WHERE substrate_id=\$1) AS kch', '$SUBSTRATE')
     await c.close()
-    if r and (r['reg'] or 0) > 0 and (r['bu'] or 0) > 0 and (r['ku'] or 0) > 0:
+    # ★2026-10-14 绝对下限(ku_floor.py, 与 econ_discover_all 同一判据): 近乎空的书不算完成
+    import sys; sys.path.insert(0, 'scripts')
+    from ku_floor import thin_reason
+    from econ_discover_all import _chapters
+    try:
+        nch = _chapters(open(os.environ['QG_MD_PATH'], encoding='utf-8', errors='replace').read())
+    except Exception:
+        nch = None
+    thin = thin_reason(r['ku'] or 0, r['kch'] or 0, nch) if r else 'no row'
+    if r and (r['reg'] or 0) > 0 and (r['bu'] or 0) > 0 and (r['ku'] or 0) > 0 and not thin:
         print('yes')
     else:
         print('no')
