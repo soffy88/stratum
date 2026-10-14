@@ -162,3 +162,59 @@ def test_cli_dispatches_batch_mode(monkeypatch):
     )
     assert bf.main(["--all-pending", "--persist", "--limit", "5"]) == 0
     assert seen == {"limit": 5, "persist": True}
+
+
+class _PendingCur:
+    def __init__(self, log, fail_aii):
+        self.log, self.fail_aii, self._rows = log, fail_aii, []
+
+    def execute(self, sql, params):
+        self.log.append((sql, params))
+        if self.fail_aii and "aii." in sql:
+            raise RuntimeError('relation "aii.ingested_substrate" does not exist')
+        self._rows = [("S1",), ("S2",)]
+
+    def fetchall(self):
+        return self._rows
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class _PendingConn:
+    def __init__(self, fail_aii=False):
+        self.log, self.fail_aii, self.rolled_back = [], fail_aii, False
+
+    def cursor(self):
+        return _PendingCur(self.log, self.fail_aii)
+
+    def rollback(self):
+        self.rolled_back = True
+
+
+def test_pending_covers_flywheel_ingested_books_and_stays_idempotent():
+    conn = _PendingConn()
+    assert bf.pending_substrates(conn, 7) == ["S1", "S2"]
+    sql, params = conn.log[0]
+    assert params == (bf.FREEZE_VERSION, 7)
+    for needle in (
+        "stratum.book_understandings_v2",
+        "aii.ingested_substrate",
+        "aii.ku_onto",
+        "stratum.derivative",
+        "kind = 'markdown'",
+        "NOT EXISTS",
+        "stratum.source_version",
+        "LIMIT %s",
+    ):
+        assert needle in sql
+
+
+def test_pending_falls_back_to_bu2_only_without_aii_schema():
+    conn = _PendingConn(fail_aii=True)
+    assert bf.pending_substrates(conn, 3) == ["S1", "S2"]
+    assert conn.rolled_back
+    assert conn.log[-1][0] == bf.PENDING_SQL_BU2_ONLY

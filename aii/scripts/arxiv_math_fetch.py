@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
@@ -21,7 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEST = Path(
-    "/home/soffy/books/论文"
+    os.getenv("ARXIV_DEST", "/home/soffy/books/论文")
 )  # ★2026-08-10 论文精髓通道: PDF 源 → convert → books/MD/论文 → paper 飞轮 BU+skill
 STATE = ROOT / "watchdog" / "arxiv_math_state.json"
 ARXIV_API = "http://export.arxiv.org/api/query"
@@ -126,8 +127,14 @@ def main() -> int:
     ap.add_argument("--per-cat", type=int, default=5)
     args = ap.parse_args()
 
+    global DEST
     op = _opener()
     done = _load_state()
+    # ★2026-10-14: /home/soffy/books 现为 GDrive 只读挂载, 写入全部 EROFS 失败(新增 0 篇)。
+    # 不可写时落本地收件箱, pull_ingest.sh 会从 gdrive_staging/inbox/论文 转 MD 喂 paper 飞轮。
+    if not os.access(DEST, os.W_OK):
+        DEST = Path(__file__).resolve().parents[1] / "gdrive_staging" / "inbox" / "论文"
+        print(f"  源目录只读, 改落本地收件箱: {DEST}")
     DEST.mkdir(parents=True, exist_ok=True)
 
     new = 0
@@ -153,7 +160,7 @@ def main() -> int:
             time.sleep(2)  # arXiv API 礼貌间隔
 
     _save_state(done)
-    print(f"\n完成: 新增 {new} 篇 → /home/soffy/books/数学 (math_convert → math 飞轮)")
+    print(f"\n完成: 新增 {new} 篇 → {DEST} (misc_convert[论文] → paper 飞轮)")
     return 0
 
 
