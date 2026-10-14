@@ -385,7 +385,10 @@ def _write_if_math_textbook(stem, text, path, force=False):
 
 if DO:
     print("\n=== 转换「可转」+ 分类入文件夹 ===")
-    for stem, npg, path in results.get("可转", []):
+    _todo = list(results.get("可转", []))
+    # ★2026-10-14: 打乱顺序, 防一本慢书(被外层 timeout 腰斩)每轮都排第一造成队头阻塞
+    __import__("random").shuffle(_todo)
+    for stem, npg, path in _todo:
         try:
             text = convert(path)
         except Exception as e:
