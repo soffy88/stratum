@@ -156,6 +156,9 @@ def convert(path):
 
         return pdf_to_md(str(path))
     except Exception as _e:
+        if getattr(_e, "aii_no_local_fallback", False):
+            # ★2026-10-14 容器超时不再本地重算(主机过载根因之一), 抛给上层, 本书下轮重试
+            raise
         print(f"  ⚠ 容器转换失败({str(_e)[:70]}), 本地兜底", flush=True)
     # ★2026-08-07 全面接入 opendataloader(benchmark#1 表格/无cid), PDF 优先; 失败回退 markitdown
     text = None
@@ -208,6 +211,19 @@ for cat in ["可转", "需OCR(无文字层)", "无章节结构", "已转", "打�
         print(f"  {'%4d页 ' % npg if npg else ''}{stem[:60]}")
 
 
+def ensure_paper_frontmatter(text: str) -> str:
+    """★2026-10-14 论文桶 MD 必须带 doc_type: paper frontmatter(与 classify_md.py 同格式)。
+    generate_bu.py 靠它走论文分支; 缺了就走教材分支 → 0 KU → BU 写"[数据不足]"占位并被登记为
+    已入库(实测今日 113 篇 arXiv 全部如此)。已有 frontmatter 的原样保留。"""
+    head = text.lstrip()[:600].lower().replace(" ", "")
+    if "doc_type:paper" in head:
+        return text
+    if text.lstrip().startswith("---\n"):
+        body = text.lstrip()[4:]
+        return "---\ndoc_type: paper\n" + body
+    return "---\ndoc_type: paper\n---\n\n" + text
+
+
 def _write(stem, text, force=False):
     """写文件(可转/OCR共用尾段). 返回 True=已写入.
     analyze() 已按章节结构门禁过一次("可转"分类才会走到这里); force=True(仅OCR调用路径用)
@@ -220,6 +236,7 @@ def _write(stem, text, force=False):
     if os.path.exists(dst):
         print(f"  – 已存在, 跳过: {clean[:40]}")
         return False
+    text = ensure_paper_frontmatter(text) if TAG == "论文" else text
     try:
         with open(dst, "w", encoding="utf-8") as fh:
             fh.write(text)
