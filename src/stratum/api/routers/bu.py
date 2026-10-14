@@ -5,11 +5,19 @@ Thin adapter over BU2Query service. Reads from book_understandings_v2 (authority
 
 from __future__ import annotations
 
+import copy
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from stratum.common import jwt_auth
 from stratum.db import query
+from stratum.services.bu_v2_learning_guide import LearningGuideBuilder
+from stratum.services.bu_v2_learning_guide_cache import (
+    guide_version_of,
+    read_cache,
+    write_cache,
+)
 
 router = APIRouter(prefix="/api/v1/bu", tags=["bu"])
 
@@ -602,13 +610,42 @@ async def get_learning_guide(
     user_id: str = Depends(jwt_auth),
     limit: int = Query(500, ge=1, le=5000),
     offset: int = Query(0, ge=0),
+    fresh: bool = Query(False, description="Recompute and refresh the cache"),
 ):
-    """Dependency-ordered learning path, computed on demand (never persisted)."""
+    """Dependency-ordered learning path.
+
+    The guide is a topological order over the run's reasoning graph, which is
+    expensive to rebuild and stable for the life of that graph, so it is cached
+    per (run, graph) and recomputed on a miss. A graph rebuild changes the graph
+    id, which is a miss rather than a stale hit, so the cache cannot serve a
+    guide ordered by a graph that no longer exists.
+
+    The cache is not an authority. ``?fresh=1`` bypasses the read and rewrites the
+    row, and every request still falls back to computing from the database when
+    the row is absent — deleting the table costs a recomputation, nothing more.
+    """
     from types import SimpleNamespace
 
-    from stratum.services.bu_v2_learning_guide import LearningGuideBuilder
+    # Resolve every parameter first: a handler called directly rather than through
+    # FastAPI receives its ``Query`` default objects, not parsed values, and
+    # arithmetic on those is a TypeError on the way out.
+    requested_fresh = fresh if isinstance(fresh, bool) else False
+    page_limit = limit if isinstance(limit, int) else 500
+    page_offset = offset if isinstance(offset, int) else 0
 
     bu = _owned_bu(run_id, user_id)
+    book_id = bu["book_id"] or bu["substrate_id"]
+    graph_id = bu["reasoning_graph_id"] or None
+    graph_version = guide_version_of(graph_id, run_id)
+
+    if not requested_fresh:
+        cached = read_cache(run_id, graph_version)
+        if cached is not None:
+            steps = cached.get("steps") or []
+            cached["steps"] = steps[page_offset : page_offset + page_limit]
+            cached["cached"] = True
+            return cached
+
     ch_rows = query(
         """
         SELECT chapter_id, concepts_introduced_refs FROM stratum.chapter_understandings
@@ -661,17 +698,29 @@ async def get_learning_guide(
             },
             edges=[SimpleNamespace(**e) for e in edges],
         )
-    guide = (
+    built = (
         LearningGuideBuilder()
         .build(
             run_id=run_id,
-            book_id=bu["book_id"] or bu["substrate_id"],
+            book_id=book_id,
             graph=graph,
             chapters=chapters,
         )
         .to_dict()
     )
-    steps = guide["steps"]
-    guide["steps"] = steps[offset : offset + limit]
-    guide["chapter_order"] = [c.chapter_id for c in chapters]
-    return guide
+    # Cache the whole guide, not the window: the store is per (run, graph) and a
+    # client paging through it must see the same ordering on every page. The
+    # stored copy is a deep copy on purpose — paging mutates the response object
+    # in place, and without the copy the second page would truncate the first.
+    write_cache(
+        run_id=run_id,
+        graph_version=graph_version,
+        book_id=book_id,
+        guide=copy.deepcopy(built),
+        graph_id=graph_id,
+    )
+    steps = built.get("steps") or []
+    built["steps"] = steps[page_offset : page_offset + page_limit]
+    built["chapter_order"] = [c.chapter_id for c in chapters]
+    built["cached"] = False
+    return built

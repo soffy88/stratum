@@ -232,8 +232,14 @@ def write(
     table: str,
     data: dict[str, Any],
     conflict_on: list[str] | None = None,
+    returning: str = "id",
 ) -> Any:
-    """INSERT … ON CONFLICT DO UPDATE (upsert), return id."""
+    """INSERT … ON CONFLICT DO UPDATE (upsert), return the ``returning`` column.
+
+    ``returning`` is a parameter because not every table is keyed by a column
+    called ``id``: ``bu2_learning_guide`` is keyed by (run_id, graph_version) and
+    the hardcoded ``id`` made every upsert against it fail.
+    """
     d = _prep(data)
     cols = ", ".join(d.keys())
     placeholders = ", ".join(f"%({k})s" for k in d)
@@ -243,10 +249,10 @@ def write(
         sql = (
             f"INSERT INTO {table} ({cols}) VALUES ({placeholders})"
             f" ON CONFLICT ({conflict_cols}) DO UPDATE SET {updates}"
-            f" RETURNING id"
+            f" RETURNING {returning}"
         )
     else:
-        sql = f"INSERT INTO {table} ({cols}) VALUES ({placeholders}) RETURNING id"
+        sql = f"INSERT INTO {table} ({cols}) VALUES ({placeholders}) RETURNING {returning}"
     with _cursor() as cur:
         cur.execute(sql, d)
         row = cur.fetchone()
