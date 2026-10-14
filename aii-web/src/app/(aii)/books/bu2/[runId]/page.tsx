@@ -18,9 +18,10 @@ import {
   type Bu2GuideStep,
   type Bu2Graph,
   type Bu2QualityGates,
+  type Bu2Synthesis,
 } from '@/aii/lib/bu2-client';
 
-type Tab = 'guide' | 'chapters' | 'arguments' | 'evidence' | 'graph' | 'evolution';
+type Tab = 'guide' | 'chapters' | 'arguments' | 'evidence' | 'graph' | 'evolution' | 'synthesis';
 const TABS: Array<[Tab, string]> = [
   ['guide', '学习导览'],
   ['chapters', '章节主张'],
@@ -28,6 +29,7 @@ const TABS: Array<[Tab, string]> = [
   ['evidence', '证据'],
   ['graph', '图谱'],
   ['evolution', '概念演化'],
+  ['synthesis', '综合'],
 ];
 
 const DIM_LABEL: Record<string, string> = {
@@ -306,6 +308,188 @@ function EvolutionTab({ runId }: { runId: string }) {
   );
 }
 
+function SynthesisTab({ runId }: { runId: string }) {
+  // The synthesis endpoint returns a bounded summary by default; concepts and
+  // claims are paged on demand, one page of 50 at a time.
+  const [list, setList] = useState<'concepts' | 'claims' | null>(null);
+  const [page, setPage] = useState<Bu2Synthesis | null>(null);
+  const [pageErr, setPageErr] = useState<string | null>(null);
+  const [loadingPage, setLoadingPage] = useState(false);
+  const summary = useLoad(() => bu2.synthesis(runId), [runId]);
+  const s = summary.data;
+
+  const loadPage = useCallback(
+    (view: 'concepts' | 'claims', offset: number) => {
+      setLoadingPage(true);
+      setPageErr(null);
+      bu2
+        .synthesisPage(runId, view, 50, offset)
+        .then(setPage)
+        .catch((e: unknown) => setPageErr(errMsg(e)))
+        .finally(() => setLoadingPage(false));
+    },
+    [runId],
+  );
+
+  if (summary.error) return <OErrorState error={summary.error} onRetry={summary.reload} />;
+  if (!s) return <OLoadingState rows={5} />;
+
+  const counts = s.counts;
+  return (
+    <div className="flex flex-col gap-5">
+      <section className="flex flex-col gap-2 rounded-lg border border-[color:var(--border)] p-4">
+        <h2 className="text-sm font-semibold">核心论点</h2>
+        <p className="text-sm leading-relaxed">{s.thesis?.core_thesis || '—'}</p>
+        {s.thesis?.core_thesis_provenance && (
+          <span className="text-[11px] text-[color:var(--text-secondary)]">
+            来源 {s.thesis.core_thesis_provenance}
+          </span>
+        )}
+      </section>
+
+      {counts && (
+        <section className="flex flex-col gap-3 rounded-lg border border-[color:var(--border)] p-4">
+          <h2 className="text-sm font-semibold">规模</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              ['概念', counts.concepts],
+              ['主张', counts.claims],
+              ['机制', counts.mechanisms],
+              ['章节', s.chapters?.chapter_count ?? 0],
+            ].map(([k, v]) => (
+              <div
+                key={String(k)}
+                className="flex flex-col items-center rounded bg-[color:var(--muted,#f4f4f5)] py-2"
+              >
+                <span className="text-lg font-semibold">{String(v)}</span>
+                <span className="text-[11px] text-[color:var(--text-secondary)]">{String(k)}</span>
+              </div>
+            ))}
+          </div>
+          {s.concept_roles && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {Object.entries(s.concept_roles).map(([role, n]) => (
+                <span
+                  key={role}
+                  className="text-[11px] px-2 py-0.5 rounded-full bg-[color:var(--muted,#f4f4f5)]"
+                >
+                  {role} · {n}
+                </span>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {s.core_concepts && s.core_concepts.length > 0 && (
+        <section className="flex flex-col gap-2 rounded-lg border border-[color:var(--border)] p-4">
+          <h2 className="text-sm font-semibold">核心概念（{s.core_concepts.length}）</h2>
+          <ul className="flex flex-wrap gap-1.5">
+            {s.core_concepts.map(c => (
+              <li
+                key={c.concept_id}
+                className="text-xs px-2 py-1 rounded border border-[color:var(--border)]"
+                title={c.chapter_refs.join(', ')}
+              >
+                {c.label}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="flex flex-col gap-3 rounded-lg border border-[color:var(--border)] p-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold">明细</h2>
+          <button
+            onClick={() => {
+              setList('concepts');
+              loadPage('concepts', 0);
+            }}
+            className={`text-xs px-2 py-1 rounded ${
+              list === 'concepts'
+                ? 'bg-[color:var(--foreground)] text-[color:var(--background)]'
+                : 'border border-[color:var(--border)]'
+            }`}
+          >
+            概念
+          </button>
+          <button
+            onClick={() => {
+              setList('claims');
+              loadPage('claims', 0);
+            }}
+            className={`text-xs px-2 py-1 rounded ${
+              list === 'claims'
+                ? 'bg-[color:var(--foreground)] text-[color:var(--background)]'
+                : 'border border-[color:var(--border)]'
+            }`}
+          >
+            主张
+          </button>
+        </div>
+        {pageErr && <p className="text-xs text-red-600">{pageErr}</p>}
+        {loadingPage && <OLoadingState rows={3} />}
+        {!loadingPage && list && page && (
+          <>
+            <p className="text-xs text-[color:var(--text-secondary)]">
+              共 {page.total ?? 0} 条，第 {(page.offset ?? 0) + 1}–
+              {(page.offset ?? 0) +
+                (list === 'concepts' ? (page.concepts?.length ?? 0) : (page.claims?.length ?? 0))} 条
+            </p>
+            {list === 'concepts' &&
+              (page.concepts ?? []).map(c => (
+                <div
+                  key={c.concept_id}
+                  className="flex flex-col gap-0.5 py-1.5 border-b border-[color:var(--border)] last:border-0"
+                >
+                  <span className="text-sm font-medium">
+                    {c.label}
+                    <span className="text-xs text-[color:var(--text-secondary)]">
+                      {' '}
+                      · {c.role} · {c.chapter_refs.join(', ')}
+                    </span>
+                  </span>
+                  {c.definition && (
+                    <span className="text-xs text-[color:var(--text-secondary)] line-clamp-2">
+                      {c.definition}
+                    </span>
+                  )}
+                </div>
+              ))}
+            {list === 'claims' &&
+              (page.claims ?? []).map(c => (
+                <div
+                  key={c.claim_id}
+                  className="flex items-start gap-2 py-1.5 border-b border-[color:var(--border)] last:border-0"
+                >
+                  <SupportBadge supported={c.is_supported} />
+                  <span className="text-sm leading-relaxed">{c.claim}</span>
+                </div>
+              ))}
+            <div className="flex gap-2 pt-1">
+              <button
+                disabled={(page.offset ?? 0) === 0}
+                onClick={() => loadPage(list, (page.offset ?? 0) - 50)}
+                className="text-xs px-2 py-1 rounded border border-[color:var(--border)] disabled:opacity-40"
+              >
+                上一页
+              </button>
+              <button
+                disabled={!page.has_more}
+                onClick={() => loadPage(list, (page.offset ?? 0) + 50)}
+                className="text-xs px-2 py-1 rounded border border-[color:var(--border)] disabled:opacity-40"
+              >
+                下一页
+              </button>
+            </div>
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+
 export default function Bu2DetailPage() {
   const params = useParams<{ runId: string }>();
   const runId = decodeURIComponent(params.runId);
@@ -343,6 +527,7 @@ export default function Bu2DetailPage() {
       {tab === 'evidence' && <EvidenceTab runId={runId} />}
       {tab === 'graph' && <GraphTab runId={runId} />}
       {tab === 'evolution' && <EvolutionTab runId={runId} />}
+      {tab === 'synthesis' && <SynthesisTab runId={runId} />}
     </div>
   );
 }

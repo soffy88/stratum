@@ -295,20 +295,92 @@ export async function getChapterDetail(runId: string, chapterId: string): Promis
 }
 
 // ── BU2 Synthesis ──
-export interface BuSynthesis {
-  thesis: any;
-  concept_system: any;
-  argument_system: any;
-  mechanism_system: any;
-  evidence_map: any;
-  author_model: any;
-  chapter_roles: any;
-  contradictions: any;
-  unresolved_questions: string[];
+// The stored synthesis row is the whole artefact (~1.7 MB for an 18-chapter
+// textbook), so the endpoint now returns a bounded summary by default and the
+// item lists are paged. `view=full` still returns the raw row for callers that
+// want it all.
+export type SynthesisView = 'summary' | 'concepts' | 'claims' | 'full';
+
+export interface SynthesisConcept {
+  concept_id: string;
+  label: string;
+  role: string;
+  final_role?: string | null;
+  confidence?: number | null;
+  definition?: string;
+  chapter_refs: string[];
+  prerequisites?: string[];
+  related_concepts?: string[];
 }
 
+export interface SynthesisClaim {
+  claim_id: string;
+  claim: string;
+  is_supported: boolean | null;
+  provenance?: string | null;
+  chapter_ids: string[];
+  evidence_ids: string[];
+  evidence_strengths?: Record<string, string>;
+}
+
+export interface BuSynthesis {
+  run_id: string;
+  book_id: string;
+  view: SynthesisView;
+  available_views: SynthesisView[];
+  /** Bounded: the core thesis statement plus per-section counts. */
+  thesis: {
+    core_thesis: string;
+    core_thesis_provenance?: string | null;
+    counts: Record<string, number>;
+  };
+  problem_definition?: string;
+  counts?: {
+    concepts: number;
+    claims: number;
+    mechanisms: number;
+    arithmetic_arguments: Record<string, number>;
+  };
+  /** The evidence-map rollup; deliberately not named `evidence_map`. */
+  claims_summary?: Record<string, unknown>;
+  chapters?: { chapter_count: number; assignments: Array<Record<string, unknown>> };
+  concept_roles?: Record<string, number>;
+  unresolved_questions?: { count: number; items: string[] };
+  limitations?: { count: number; items: string[] };
+  author_model?: Record<string, unknown>;
+  contradictions?: Record<string, unknown>;
+  /** Core concepts in full: the few a page needs before a second request. */
+  core_concepts?: SynthesisConcept[];
+  /** Present on the concepts/claims views. */
+  concepts?: SynthesisConcept[];
+  claims?: SynthesisClaim[];
+  total?: number;
+  offset?: number;
+  limit?: number;
+  has_more?: boolean;
+}
+
+export interface BuSynthesisPage {
+  view?: SynthesisView;
+  limit?: number;
+  offset?: number;
+  chapter?: string;
+}
+
+/** The bounded synthesis summary: a few KB, not the ~1.7 MB whole row. */
 export async function getBuSynthesis(runId: string): Promise<ApiResult<BuSynthesis>> {
   return request<BuSynthesis>(`/api/v1/bu/${encodeURIComponent(runId)}/synthesis`, { method: 'GET' });
+}
+
+/** One page of the synthesis's concepts or claims, optionally per chapter. */
+export async function getBuSynthesisPage(
+  runId: string,
+  page: BuSynthesisPage = {}
+): Promise<ApiResult<BuSynthesis>> {
+  return request<BuSynthesis>(
+    `/api/v1/bu/${encodeURIComponent(runId)}/synthesis${qs({ ...page })}`,
+    { method: 'GET' }
+  );
 }
 
 // ── Cross-Book (P14) ──

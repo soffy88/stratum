@@ -290,8 +290,31 @@ async def get_chapter(run_id: str, chapter_id: str, user_id: str = Depends(jwt_a
 
 
 @router.get("/{run_id}/synthesis")
-async def get_synthesis(run_id: str, user_id: str = Depends(jwt_auth)):
-    """Get P13 book synthesis."""
+async def get_synthesis(
+    run_id: str,
+    user_id: str = Depends(jwt_auth),
+    view: str = Query("summary", pattern="^(summary|full|concepts|claims)$"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    chapter: str | None = Query(None, max_length=64),
+):
+    """Get P13 book synthesis.
+
+    The stored row is the whole synthesis — ~1.7 MB for an 18-chapter textbook —
+    because ``concept_system`` and ``evidence_map`` hold every concept and every
+    claim. Returning it verbatim on every request made one page transfer more
+    than the rest of the BU2 API combined, so the default is now a bounded
+    summary and the item lists are paged and filterable:
+
+    * ``view=summary``  counts + core thesis + core concepts (a few KB)
+    * ``view=concepts`` ?limit&offset pages over all concepts
+    * ``view=claims``   ?limit&offset pages over all evidence-map claims
+    * ``?chapter=ch5``  narrows concepts/claims to one chapter
+    * ``view=full``     the untouched row, for callers that want it all
+
+    ``view=full`` is exactly what this endpoint returned before, so an existing
+    client keeps working by asking for it explicitly.
+    """
     bu_row = query(
         """
         SELECT bu.id, bu.substrate_id, bu.book_id FROM stratum.book_understandings_v2 bu
@@ -322,7 +345,16 @@ async def get_synthesis(run_id: str, user_id: str = Depends(jwt_auth)):
     ):
         raise HTTPException(404, "Synthesis not found for this book")
 
-    return {k: (str(v) if k == "created_at" else v) for k, v in synth.items()}
+    # `view` may arrive as a FastAPI ``Query`` default object when a test calls
+    # the handler directly rather than through the HTTP layer, so resolve it to
+    # a plain string before branching on it.
+    requested = view if isinstance(view, str) else ""
+    if requested.lower() == "full":
+        return {k: (str(v) if k == "created_at" else v) for k, v in synth.items()}
+
+    from stratum.services.bu_v2_synthesis_view import build_synthesis_view
+
+    return build_synthesis_view(synth, view=requested, limit=limit, offset=offset, chapter=chapter)
 
 
 # ── BU2 artifacts (PR #23): quality gates, evidence, arguments, graphs ──────
