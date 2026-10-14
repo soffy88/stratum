@@ -126,6 +126,53 @@ export interface Bu2LearningGuide {
   cycles: string[];
 }
 
+/** The bounded P13 synthesis summary (see api-client BuSynthesis). */
+export interface Bu2Synthesis {
+  run_id: string;
+  book_id: string;
+  view: 'summary' | 'concepts' | 'claims' | 'full';
+  available_views: string[];
+  thesis: {
+    core_thesis: string;
+    core_thesis_provenance?: string | null;
+    counts: Record<string, number>;
+  };
+  problem_definition?: string;
+  counts?: {
+    concepts: number;
+    claims: number;
+    mechanisms: number;
+    arithmetic_arguments: Record<string, number>;
+  };
+  claims_summary?: Record<string, unknown>;
+  chapters?: { chapter_count: number; assignments: Array<Record<string, unknown>> };
+  concept_roles?: Record<string, number>;
+  unresolved_questions?: { count: number; items: string[] };
+  limitations?: { count: number; items: string[] };
+  author_model?: Record<string, unknown>;
+  contradictions?: Record<string, unknown>;
+  core_concepts?: Array<{ concept_id: string; label: string; role: string; chapter_refs: string[] }>;
+  concepts?: Array<{
+    concept_id: string;
+    label: string;
+    role: string;
+    definition?: string;
+    chapter_refs: string[];
+    prerequisites?: string[];
+  }>;
+  claims?: Array<{
+    claim_id: string;
+    claim: string;
+    is_supported: boolean | null;
+    chapter_ids: string[];
+    evidence_ids: string[];
+  }>;
+  total?: number;
+  offset?: number;
+  limit?: number;
+  has_more?: boolean;
+}
+
 export const bu2 = {
   list: () => apiClient.get<Bu2ListItem[]>('/api/v1/bu'),
   detail: (runId: string) => apiClient.get<Bu2Detail>(base(runId)),
@@ -147,5 +194,12 @@ export const bu2 = {
   evolution: (runId: string, limit = 100, offset = 0) =>
     apiClient.get<{ total: number; items: Bu2Evolution[] }>(
       `${base(runId)}/concept-evolution?limit=${limit}&offset=${offset}`,
+    ),
+  synthesis: (runId: string) => apiClient.get<Bu2Synthesis>(`${base(runId)}/synthesis`),
+  synthesisPage: (runId: string, view: 'concepts' | 'claims', limit = 50, offset = 0, chapter?: string) =>
+    apiClient.get<Bu2Synthesis>(
+      `${base(runId)}/synthesis?view=${view}&limit=${limit}&offset=${offset}${
+        chapter ? `&chapter=${encodeURIComponent(chapter)}` : ''
+      }`,
     ),
 };

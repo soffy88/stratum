@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import inspect
 import re
+import json
+
 
 from stratum.api.routers import bu
 
@@ -47,8 +49,95 @@ def test_bu2_artifact_routes_registered():
         "/api/v1/bu/{run_id}/arguments",
         "/api/v1/bu/{run_id}/graph",
         "/api/v1/bu/{run_id}/concept-evolution",
+        "/api/v1/bu/{run_id}/synthesis",
     ):
         assert p in paths
+
+
+_SYNTH_ROW = {
+    "id": "s1",
+    "run_id": "br_1",
+    # Must match the substrate_id the ownership check compares against.
+    "book_id": "b",
+    "created_at": "2026-10-13 00:00:00+00:00",
+    "thesis": '{"core_thesis": {"statement": "Core"}}',
+    "problem_definition": "Problems: p",
+    "concept_system": '{"core": [{"concept_id": "c1", "label": "Limit", "chapter_refs": ["ch1"]}]}',
+    "argument_system": '{"major_arguments": []}',
+    "mechanism_system": '{"mechanisms": []}',
+    "evidence_map": '{"entries": [{"claim_id": "cl1", "claim_statement": "A", '
+    '"is_supported": true, "chapter_ids": ["ch1"], "evidence_ids": ["ev1"]}]}',
+    "author_model": "{}",
+    "chapter_roles": '{"assignments": []}',
+    "unresolved_questions": "[]",
+    "contradictions": "{}",
+    "limitations": "[]",
+    "synthesis_evidence": "{}",
+}
+
+
+def _patch_synth(monkeypatch):
+    def fake_query(sql, params=None, limit=100):
+        if "book_understandings_v2" in sql:
+            return [{"id": "bu1", "substrate_id": "s", "book_id": "b"}]
+        return [dict(_SYNTH_ROW)]
+
+    monkeypatch.setattr(bu, "query", fake_query)
+
+
+def test_synthesis_defaults_to_a_bounded_summary(monkeypatch):
+    """The row is ~1.7 MB; the default response must not be."""
+    _patch_synth(monkeypatch)
+    out = asyncio.run(bu.get_synthesis("run", "u"))
+    assert out["view"] == "summary"
+    assert out["counts"]["concepts"] == 1
+    assert out["counts"]["claims"] == 1
+    assert "concept_system" not in out
+    assert "evidence_map" not in out
+    assert len(json.dumps(out, default=str)) < 200_000
+
+
+def test_synthesis_full_view_preserves_the_old_response(monkeypatch):
+    _patch_synth(monkeypatch)
+    out = asyncio.run(bu.get_synthesis("run", "u", view="full"))
+    assert out["concept_system"] == _SYNTH_ROW["concept_system"]
+    assert out["evidence_map"] == _SYNTH_ROW["evidence_map"]
+    assert out["created_at"] == _SYNTH_ROW["created_at"]
+    assert out["run_id"] == "br_1"
+
+
+def test_synthesis_concepts_and_claims_pages(monkeypatch):
+    _patch_synth(monkeypatch)
+    concepts = asyncio.run(bu.get_synthesis("run", "u", view="concepts", limit=10, offset=0))
+    assert concepts["total"] == 1
+    assert concepts["concepts"][0]["concept_id"] == "c1"
+    claims = asyncio.run(bu.get_synthesis("run", "u", view="claims", limit=10, offset=0))
+    assert claims["claims"][0]["is_supported"] is True
+    # ?chapter= narrows both item views.
+    empty = asyncio.run(bu.get_synthesis("run", "u", view="concepts", chapter="ch9"))
+    assert empty["total"] == 0
+    assert empty["concepts"] == []
+
+
+def test_synthesis_rejects_an_unknown_view(monkeypatch):
+    """A typo must not silently return the 1.7 MB row."""
+
+    # The handler resolves an unknown view through the view module, which falls
+    # back to summary, so a typo never falls through to the 1.7 MB row.
+    _patch_synth(monkeypatch)
+    out = asyncio.run(bu.get_synthesis("run", "u", view="everything"))
+    assert out["view"] == "summary"
+
+
+def test_synthesis_view_pattern_is_declared_on_the_route():
+    """The OpenAPI schema must restrict view to the four known values."""
+    route = next(r for r in bu.router.routes if getattr(r, "path", "").endswith("/synthesis"))
+    patterns = {}
+    for field in route.dependant.query_params:
+        for m in field.field_info.metadata:
+            if getattr(m, "pattern", None):
+                patterns[field.name] = m.pattern
+    assert patterns["view"] == "^(summary|full|concepts|claims)$"
 
 
 def test_quality_gates_splits_six_dimension(monkeypatch):
