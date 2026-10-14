@@ -166,8 +166,7 @@ def _chapter_starts(text):
     if len(bare_en) >= 3:
         bare_nums = sorted(bare_en)
         reliable = all(
-            b == a + 1 and bare_en[b] > bare_en[a] + 3000
-            for a, b in zip(bare_nums, bare_nums[1:])
+            b == a + 1 and bare_en[b] > bare_en[a] + 3000 for a, b in zip(bare_nums, bare_nums[1:])
         )
         if reliable:
             return bare_en
@@ -388,6 +387,7 @@ async def run():
     # ── 完整性(重算 should-have) ──
     # 直接用内联函数, 绕过 chapter_ingest → onto_persist → omodul 传递依赖
     complete_pct = None
+    n_book_chs = None  # chapters in the source MD (None = unknown)
     try:
         from aii.service.planning_completeness import check_completeness
 
@@ -402,6 +402,7 @@ async def run():
         full = md_path.read_text(encoding="utf-8", errors="replace")
         chs = _chapter_numbers(full)
         n_total_chs = len(chs)
+        n_book_chs = n_total_chs or None
         if n_total_chs == 0:
             # ★没读到章节(章节识别regex没命中这本书的标题格式)≠"0%完整"——旧公式
             # 100*(0-0)/max(0,1)=0 会把"算不出来"误报成"确认0%完整、漏光了", 附带的
@@ -474,6 +475,16 @@ async def run():
             f"KU密度不足: 实抽{ku_total}仅{density_ratio:.0%}×预期{expected_ku}"
             f"(基准~{ku_per_chapter}/章×{n_chapters}章)"
         )
+
+    # ★2026-10-14 绝对下限(ku_floor.py): 密度只按"有KU的章"算预期, 1 章抽到 4 KU 也是
+    #   4/10=40% 过门 → 11 章的书几乎空着被当成完成(好好赚钱)。0 章有KU / KU 低于绝对下限 /
+    #   有KU的章 < 30% 书章数 → 报警隔离(可重试), 不再 PASS。
+    from ku_floor import thin_reason
+
+    thin = thin_reason(ku_total, n_chapters, n_book_chs, is_misc=is_misc)
+    metrics["KU绝对下限"] = thin or "OK"
+    if thin and thin not in alarms:
+        alarms.append(thin)
 
     # 低密度章报警(misc: 长尾书低密度章是常态, 仅 warning 不拦截; econ: 固定数+30%双限)
     low_ch_limit = (
