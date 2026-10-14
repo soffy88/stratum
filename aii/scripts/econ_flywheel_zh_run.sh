@@ -51,5 +51,17 @@ while true; do
     if [ ! -s "$BOOKLIST" ]; then
         echo "── [连续] 无新中文经济书, sleep ${IDLE}s 后再发现… $(date '+%H:%M') ──"
         sleep "$IDLE"
+    else
+        # ★2026-10-14 热循环保护: 书单非空但本轮 0 本真正处理(全被 batch 跳过)
+        # → 同样 sleep, 防 discover/batch 判据不一致时每几秒空转一轮。
+        PROCESSED=$(.venv/bin/python -c "
+import json
+s = json.load(open('econ_pipeline/batch_report.json')).get('summary', {})
+print(int(s.get('total', 0)) - int(s.get('skipped(已入库)', 0)))
+" 2>/dev/null || echo 1)
+        if [ "${PROCESSED:-1}" -le 0 ] 2>/dev/null; then
+            echo "── [连续] 书单非空但本轮 0 本实际处理(全部跳过), sleep ${IDLE}s… $(date '+%H:%M') ──"
+            sleep "$IDLE"
+        fi
     fi
 done

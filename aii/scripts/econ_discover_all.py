@@ -87,8 +87,17 @@ async def _ingested(ids):
     if not ids:
         return set()
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
+    # ★2026-10-14 热循环修复: 必须与 econ_batch_run.sh 的"已完整入库"判据一致
+    # (登记 + BU + 至少1条KU)。之前只认 ku_count>100, 而 batch 对 1..100 KU 的书
+    # 直接 SKIP(FORCE=0) → 书永远"待处理"又永远被跳过 → 飞轮每几秒空转一轮。
     rows = await conn.fetch(
-        "SELECT substrate_id FROM aii.ingested_substrate WHERE substrate_id=ANY($1::text[]) AND ku_count>100",
+        """
+        SELECT s.substrate_id FROM aii.ingested_substrate s
+        WHERE s.substrate_id = ANY($1::text[])
+          AND (s.ku_count > 100
+               OR (EXISTS (SELECT 1 FROM aii.bu_onto b WHERE b.substrate_id = s.substrate_id)
+                   AND EXISTS (SELECT 1 FROM aii.ku_onto k WHERE k.substrate_id = s.substrate_id)))
+        """,
         ids,
     )
     await conn.close()
