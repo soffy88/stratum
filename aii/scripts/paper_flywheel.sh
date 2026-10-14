@@ -111,12 +111,19 @@ open(state_path, "w", encoding="utf-8").write(json.dumps(state, ensure_ascii=Fal
 PYEOF
     else
         fail=$((fail + 1))
-        echo "    ⚠ 失败, 跳过(下轮不重试——见flywheel_state标记precheck_fail)"
+        # ★2026-10-14 失败多为免费 LLM 池 429/502(瞬时), 不再一次就永久 precheck_fail:
+        #   先记 quarantine(paper_discover 冷却 AII_QUARANTINE_RETRY_MINUTES 后重试),
+        #   累计失败 PAPER_MAX_FAILS(默认 3)次才判 precheck_fail。
+        echo "    ⚠ 失败 → quarantine(冷却后重试; 累计 ${PAPER_MAX_FAILS:-3} 次判 precheck_fail)"
         $PY - "$FLYWHEEL_STATE" "$substrate" << 'PYEOF'
 import json, sys, datetime
 state_path, sid = sys.argv[1], sys.argv[2]
 state = json.loads(open(state_path, encoding="utf-8").read())
-state["processed"][sid] = {"status": "precheck_fail", "ts": datetime.datetime.now(datetime.timezone.utc).isoformat()}
+import os
+prev = state["processed"].get(sid) or {}
+fails = int(prev.get("fails", 0)) + 1
+status = "precheck_fail" if fails >= int(os.getenv("PAPER_MAX_FAILS", "3")) else "quarantine"
+state["processed"][sid] = {"status": status, "fails": fails, "ts": datetime.datetime.now(datetime.timezone.utc).isoformat()}
 open(state_path, "w", encoding="utf-8").write(json.dumps(state, ensure_ascii=False, indent=2))
 PYEOF
     fi
