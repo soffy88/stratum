@@ -9,11 +9,18 @@ Per flywheel it detects:
   * KU output zero for 24h (aii.ku_onto rows by substrate prefix)
   * log size > LOG_MAX_MB (rotated: gzip copy + in-place truncate)
 plus pipeline-level checks: aii-* timers that will never fire again (bad
-OnCalendar / elapsed OnBootSec) and the feeder's staged-markdown freshness.
+OnCalendar / elapsed OnBootSec) and the feeder's staged-markdown freshness,
+and the two local LLM services every flywheel depends on: freellmapi (:3001)
+and veya-llm-gateway (:8791) — /health with a short timeout, one tiny
+completion, and the router success rate of the last hour (freellmapi request
+table / gateway access log). A degraded service (jammed /health, or the probe
+failing while the router success rate collapses) is restarted, at most
+LLM_RESTART_MAX times per LLM_RESTART_WINDOW_H.
 
 Safe auto-remediation only: restart a dead / stale unit (max RESTART_MAX per
 RESTART_WINDOW_H, so a crash loop is alerted instead of hammered), rotate an
-oversized log, and add an idle-sleep backoff drop-in for a hot-looping unit.
+oversized log, add an idle-sleep backoff drop-in for a hot-looping unit, and
+restart a degraded local LLM service (max LLM_RESTART_MAX per 6h).
 It never edits code, LLM config or the database.
 
 Outputs (machine-readable):
@@ -32,9 +39,12 @@ import json
 import os
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import time
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 AII = Path(os.getenv("AII_ROOT", "/data/soffy/projects/stratum/aii"))
@@ -82,6 +92,30 @@ FLYWHEELS: dict[str, dict[str, str]] = {
     },
     "paper": {"log": "paper_pipeline/flywheel.log", "prefix": "paper_", "idle": "PAPER_IDLE_SLEEP"},
 }
+# local LLM services the flywheels call (see aii-flywheel-*.service.d drop-ins)
+LLM_PROBE_TIMEOUT = float(os.getenv("AII_HEALTH_LLM_PROBE_TIMEOUT", "60"))
+LLM_HEALTH_TIMEOUT = float(os.getenv("AII_HEALTH_LLM_HEALTH_TIMEOUT", "5"))
+LLM_MIN_SUCCESS = float(os.getenv("AII_HEALTH_LLM_MIN_SUCCESS", "0.15"))
+LLM_MIN_REQUESTS = int(os.getenv("AII_HEALTH_LLM_MIN_REQUESTS", "20"))
+LLM_RESTART_MAX = int(os.getenv("AII_HEALTH_LLM_RESTART_MAX", "2"))
+LLM_RESTART_WINDOW_H = float(os.getenv("AII_HEALTH_LLM_RESTART_WINDOW_H", "6"))
+FREELLMAPI_DB = Path(
+    os.getenv("AII_HEALTH_FREELLMAPI_DB", str(Path.home() / "freellmapi/server/data/freeapi.db"))
+)
+LLM_SERVICES: dict[str, dict[str, str]] = {
+    "freellmapi": {
+        "unit": "freellmapi",
+        "base": os.getenv("AII_HEALTH_FREELLMAPI_BASE", "http://127.0.0.1:3001"),
+        "model": os.getenv("AII_HEALTH_FREELLMAPI_MODEL", "nemotron-3-super-120b"),
+    },
+    "veya-llm-gateway": {
+        "unit": "veya-llm-gateway",
+        "base": os.getenv("AII_HEALTH_GATEWAY_BASE", "http://127.0.0.1:8791"),
+        "model": os.getenv("AII_HEALTH_GATEWAY_MODEL", "veya1.2-free"),
+    },
+}
+ACCESS_RE = re.compile(r'"POST /v1/chat/completions HTTP/[\d.]+" (\d{3})')
+
 OTHER_LOGS = {"feeder": "econ_pipeline/feeder.log", "pull_ingest": ".logs/pull_ingest.out"}
 STAGE = AII / "gdrive_staging" / "MD"
 
@@ -253,11 +287,19 @@ def rotate_log(path: Path, dry: bool) -> str:
     return f"rotated {path.name} -> {dst.name}"
 
 
-def restart_unit(unit: str, st: dict, dry: bool) -> tuple[bool, str]:
-    hist = [t for t in st.get("restarts", []) if now() - t < RESTART_WINDOW_H * 3600]
-    if len(hist) >= RESTART_MAX:
+def restart_unit(
+    unit: str,
+    st: dict,
+    dry: bool,
+    max_n: int | None = None,
+    window_h: float | None = None,
+) -> tuple[bool, str]:
+    max_n = RESTART_MAX if max_n is None else max_n
+    window_h = RESTART_WINDOW_H if window_h is None else window_h
+    hist = [t for t in st.get("restarts", []) if now() - t < window_h * 3600]
+    if len(hist) >= max_n:
         st["restarts"] = hist
-        return False, f"restart suppressed ({len(hist)} in {RESTART_WINDOW_H:g}h) — needs a human"
+        return False, f"restart suppressed ({len(hist)} in {window_h:g}h) — needs a human"
     if dry:
         return True, f"would restart {unit}"
     rc, out = sh(["systemctl", "--user", "restart", unit], timeout=120)
@@ -285,6 +327,165 @@ def add_backoff(unit: str, var: str, dry: bool) -> tuple[bool, str]:
         rc == 0,
         f"backoff {var}={BACKOFF_SLEEP} + restart: {'ok' if rc == 0 else out.strip()[:200]}",
     )
+
+
+def _freellmapi_key() -> str:
+    try:
+        con = sqlite3.connect(f"file:{FREELLMAPI_DB}?mode=ro", uri=True, timeout=5)
+        try:
+            row = con.execute("SELECT value FROM settings WHERE key='unified_api_key'").fetchone()
+        finally:
+            con.close()
+        return str(row[0]) if row and row[0] else ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def http_health(base: str) -> tuple[bool, str]:
+    try:
+        with urllib.request.urlopen(f"{base}/health", timeout=LLM_HEALTH_TIMEOUT) as r:
+            return r.status == 200, f"HTTP {r.status}"
+    except Exception as exc:  # noqa: BLE001
+        return False, f"{type(exc).__name__}: {str(exc)[:120]}"
+
+
+def probe_completion(base: str, model: str, key: str = "") -> dict:
+    """One tiny completion with a short timeout. Never raises."""
+    body = json.dumps(
+        {
+            "model": model,
+            "messages": [{"role": "user", "content": "Reply with OK."}],
+            "max_tokens": 16,
+        }
+    ).encode()
+    headers = {"Content-Type": "application/json"}
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+    t0 = now()
+    try:
+        req = urllib.request.Request(f"{base}/v1/chat/completions", data=body, headers=headers)
+        with urllib.request.urlopen(req, timeout=LLM_PROBE_TIMEOUT) as r:
+            data = json.loads(r.read().decode("utf-8", "replace") or "{}")
+        msg = ((data.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+        routed = (data.get("veya_routing") or {}).get("resolved_model") or data.get("model")
+        ok = bool(msg.strip()) and not data.get("error")
+        return {"ok": ok, "seconds": round(now() - t0, 1), "routed": routed, "detail": msg[:40]}
+    except Exception as exc:  # noqa: BLE001
+        detail = f"{type(exc).__name__}: {str(exc)[:160]}"
+        return {"ok": False, "seconds": round(now() - t0, 1), "routed": None, "detail": detail}
+
+
+def freellmapi_success_1h() -> tuple[float | None, int]:
+    """Router success rate from freellmapi's request table (success / success+error, 1h)."""
+    try:
+        con = sqlite3.connect(f"file:{FREELLMAPI_DB}?mode=ro", uri=True, timeout=5)
+        try:
+            ok, err = con.execute(
+                "SELECT count(*) FILTER (WHERE status='success'),"
+                " count(*) FILTER (WHERE status='error')"
+                " FROM requests WHERE created_at > datetime('now','-60 minutes')"
+            ).fetchone()
+        finally:
+            con.close()
+    except Exception:  # noqa: BLE001
+        return None, 0
+    n = int(ok or 0) + int(err or 0)
+    return (round(int(ok or 0) / n, 3) if n else None), n
+
+
+def gateway_success_1h(unit: str) -> tuple[float | None, int]:
+    """Router success rate from the gateway's uvicorn access log (2xx / all, 1h)."""
+    rc, out = sh(
+        ["journalctl", "--user", "-u", unit, "--since", "-60min", "--no-pager", "-o", "cat"],
+        timeout=60,
+    )
+    codes = ACCESS_RE.findall(out) if rc == 0 else []
+    n = len(codes)
+    ok = sum(1 for c in codes if c.startswith("2"))
+    return (round(ok / n, 3) if n else None), n
+
+
+def assess_llm_service(health_ok: bool, probe_ok: bool, rate: float | None, n: int) -> str:
+    """ok | slow | degraded. Only a jammed process or a collapsed router counts as degraded:
+    a slow upstream with a healthy router is not something a restart fixes."""
+    if not health_ok:
+        return "degraded"
+    if probe_ok:
+        return "ok"
+    if rate is not None and n >= LLM_MIN_REQUESTS and rate < LLM_MIN_SUCCESS:
+        return "degraded"
+    return "slow"
+
+
+def check_llm_services(state: dict, remediate: bool, dry: bool, alert) -> dict:
+    keys = {"freellmapi": _freellmapi_key(), "veya-llm-gateway": ""}
+
+    def one(name: str) -> dict:
+        cfg = LLM_SERVICES[name]
+        h_ok, h_detail = http_health(cfg["base"])
+        probe = (
+            probe_completion(cfg["base"], cfg["model"], keys.get(name, ""))
+            if h_ok
+            else {"ok": False, "seconds": None, "routed": None, "detail": "skipped: /health failed"}
+        )
+        if name == "freellmapi":
+            rate, n = freellmapi_success_1h()
+        else:
+            rate, n = gateway_success_1h(cfg["unit"])
+        return {"h_ok": h_ok, "h_detail": h_detail, "probe": probe, "rate": rate, "n": n}
+
+    with ThreadPoolExecutor(max_workers=len(LLM_SERVICES)) as pool:
+        results = dict(zip(LLM_SERVICES, pool.map(one, LLM_SERVICES)))
+
+    out: dict[str, dict] = {}
+    verdicts: dict[str, str] = {}
+    for name, r in results.items():  # freellmapi first: the gateway's veya-fllm pool sits on it
+        cfg = LLM_SERVICES[name]
+        st = state.setdefault("llm_services", {}).setdefault(name, {})
+        verdict = assess_llm_service(r["h_ok"], r["probe"]["ok"], r["rate"], r["n"])
+        if (
+            name != "freellmapi"
+            and verdict == "degraded"
+            and r["h_ok"]
+            and verdicts.get("freellmapi") not in (None, "ok")
+        ):
+            verdict = (
+                "slow"  # upstream freellmapi is the problem; restarting the gateway won't help
+            )
+        verdicts[name] = verdict
+        anomalies = []
+        if verdict == "degraded":
+            act = None
+            if remediate or dry:
+                _, act = restart_unit(cfg["unit"], st, dry, LLM_RESTART_MAX, LLM_RESTART_WINDOW_H)
+            why = (
+                f"/health {r['h_detail']}"
+                if not r["h_ok"]
+                else f"probe failed ({r['probe']['detail']}) and router success "
+                f"{r['rate']:.0%} of {r['n']} req/1h < {LLM_MIN_SUCCESS:.0%}"
+            )
+            anomalies.append(alert(name, "llm_service_degraded", why, act))
+        elif verdict == "slow":
+            anomalies.append(
+                alert(name, "llm_probe_failed", f"probe {r['probe']['detail']} (router healthy)")
+            )
+        restarts = [t for t in st.get("restarts", []) if now() - t < LLM_RESTART_WINDOW_H * 3600]
+        out[name] = {
+            "state": verdict,
+            "unit": cfg["unit"],
+            "health_ok": r["h_ok"],
+            "probe_ok": r["probe"]["ok"],
+            "probe_seconds": r["probe"]["seconds"],
+            "probe_model": cfg["model"],
+            "probe_routed": r["probe"]["routed"],
+            "router_success_1h": r["rate"],
+            "router_requests_1h": r["n"],
+            "restarts_window": len(restarts),
+            "anomalies": [
+                {k: v for k, v in a.items() if k not in ("ts", "flywheel")} for a in anomalies
+            ],
+        }
+    return out
 
 
 def broken_timers() -> list[str]:
@@ -467,6 +668,7 @@ def main(argv: list[str]) -> int:
             alert("pipeline", "feeder_dead", f"aii-feeder ActiveState={feeder.get('ActiveState')}")
         )
     stage = stage_summary()
+    llm_services = check_llm_services(state, remediate, dry, alert)
     if db_err:
         pipeline_anoms.append(alert("pipeline", "db_unreachable", db_err))
 
@@ -479,8 +681,12 @@ def main(argv: list[str]) -> int:
             "llm_err_per_h": LLM_ERR_PER_H,
             "log_stale_h": LOG_STALE_H,
             "log_max_mb": LOG_MAX_MB,
+            "llm_probe_timeout_s": LLM_PROBE_TIMEOUT,
+            "llm_min_success": LLM_MIN_SUCCESS,
+            "llm_restart_max": LLM_RESTART_MAX,
         },
         "flywheels": flywheels,
+        "llm_services": llm_services,
         "pipeline": {
             "feeder_active": feeder.get("ActiveState"),
             "staged_md": stage,
@@ -506,6 +712,14 @@ def main(argv: list[str]) -> int:
         )
     )
     print(json.dumps({"pipeline": [a["anomaly"] for a in pipeline_anoms]}))
+    print(
+        json.dumps(
+            {
+                n: (v["state"], v["probe_seconds"], v["router_success_1h"])
+                for n, v in llm_services.items()
+            }
+        )
+    )
     return 0
 
 
