@@ -45,7 +45,9 @@ STATE = OUT / "state.json"
 DROPIN_DIR = Path.home() / ".config/systemd/user"
 
 LOG_STALE_H = float(os.getenv("AII_HEALTH_LOG_STALE_H", "3"))
-HOT_CYCLES_PER_H = float(os.getenv("AII_HEALTH_HOT_CYCLES_PER_H", "20"))
+# a normal idle loop sleeps 120s (~30 cycles/h); the econ-zh incident was ~420/h
+HOT_CYCLES_PER_H = float(os.getenv("AII_HEALTH_HOT_CYCLES_PER_H", "90"))
+MIN_RATE_WINDOW_MIN = float(os.getenv("AII_HEALTH_MIN_RATE_WINDOW_MIN", "20"))
 LLM_ERR_PER_H = float(os.getenv("AII_HEALTH_LLM_ERR_PER_H", "60"))
 LOG_MAX_MB = float(os.getenv("AII_HEALTH_LOG_MAX_MB", "200"))
 RESTART_MAX = int(os.getenv("AII_HEALTH_RESTART_MAX", "3"))
@@ -381,7 +383,7 @@ def main(argv: list[str]) -> int:
         if window_h and not scan["baseline"]:
             cycles_h = scan["cycles"] / window_h
             errs_h = scan["llm_errors"] / window_h
-            if cycles_h > HOT_CYCLES_PER_H:
+            if cycles_h > HOT_CYCLES_PER_H and window_h * 60 >= MIN_RATE_WINDOW_MIN:
                 got = books_since(cfg["prefix"], prev_run)
                 if got == 0:
                     act = None
@@ -395,7 +397,7 @@ def main(argv: list[str]) -> int:
                             act,
                         )
                     )
-            if errs_h >= LLM_ERR_PER_H:
+            if errs_h >= LLM_ERR_PER_H and window_h * 60 >= MIN_RATE_WINDOW_MIN:
                 anomalies.append(alert(name, "llm_errors_high", f"{errs_h:.0f} LLM error lines/h"))
 
         if m.get("ku_24h") == 0:
