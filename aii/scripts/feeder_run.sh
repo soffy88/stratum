@@ -38,7 +38,9 @@ while true; do
     mkdir -p .locks
     # ★2026-08-27 提速: -n 非阻塞(已被别人持有时立即跳), pull_ingest 放后台跑(timeout 7200=2h
     # 足够处理 ~5000 本 PDF). 飞轮本身不依赖 pull_ingest 完成,下一轮发现新 MD 即可处理.
-flock -n .locks/classify_md.lock -c "timeout --kill-after=30s 600 bash scripts/pull_ingest.sh" >> .logs/pull_ingest.out 2>&1 &
+# ★2026-10-14: 600s 总预算会在每轮把慢书的转换腰斩(同一本排第一的书永远转不完, 队头阻塞),
+# 论文桶排在最后几乎轮不到。放宽到 3600s; flock -n 保证不会叠跑。
+flock -n .locks/classify_md.lock -c "timeout --kill-after=30s ${PULL_INGEST_TIMEOUT:-3600} bash scripts/pull_ingest.sh" >> .logs/pull_ingest.out 2>&1 &
     disown
 
     after=$(ls /home/soffy/books/MD/经济学/*.md /home/soffy/books/MD/中文数学/*.md /home/soffy/books/MD/英文数学/*.md 2>/dev/null | wc -l)
