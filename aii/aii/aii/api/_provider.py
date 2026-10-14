@@ -686,11 +686,25 @@ def register_providers():
     # Veya provider 的默认路由，仍保留 ``veya1.2-free`` 这个 provider 名称
     # 供旧调用方兼容。
     local_veya_model = os.getenv("VEYA_LLM_MODEL", "gpt-5.6-luna")
-    local_veya_fallback = (
-        ("https://integrate.api.nvidia.com/v1/chat/completions", nim_key, nim_model)
-        if nim_key
-        else None
+    # ★2026-10-14 多级兜底(仍走本地网关): AII_VEYA_FALLBACK_MODELS=逗号分隔模型名,
+    #   每个都作为一级 fallback 打同一个本地网关(VEYA_LLM_BASE_URL), 按序尝试, 再接 NIM 直连。
+    #   根因: edu 飞轮 auto:veya-fllm 主路 502 后唯一兜底 NIM z-ai/glm-5.3 恒读超时,
+    #   "全部 1 级 fallback 均失败" → 整章 FAILED/零KU。指名模型让网关换一条健康上游再试。
+    #   AII_VEYA_FALLBACK_NIM=0 去掉 NIM 直连级(stratum LLM 只走本地 veya-fllm 时用)。
+    _veya_fb_key = next(
+        (k.strip() for k in os.getenv("VEYA_LLM_KEY_POOL", "").split(",") if k.strip()),
+        "sk-veya",
     )
+    _veya_fb_specs: list[tuple[str, str, str]] = [
+        (local_veya_base, _veya_fb_key, m.strip())
+        for m in os.getenv("AII_VEYA_FALLBACK_MODELS", "").split(",")
+        if m.strip()
+    ]
+    if nim_key and os.getenv("AII_VEYA_FALLBACK_NIM", "1").strip() != "0":
+        _veya_fb_specs.append(
+            ("https://integrate.api.nvidia.com/v1/chat/completions", nim_key, nim_model)
+        )
+    local_veya_fallback = _veya_fb_specs or None
     local_veya_caller = _make_deepseek_caller(
         "sk-veya",
         model=local_veya_model,
