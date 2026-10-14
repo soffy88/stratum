@@ -54,13 +54,24 @@ _NUM_TITLE = re.compile(
 )
 _H1_NUM_TITLE = re.compile(r"#\s*(\d{1,2})\s*[.:、]?\s+(.{3,80}?)\s*$")
 
-# A heading sits at the END of its line. In OCR-and-reflow output a heading is
-# routinely glued onto the tail of a long paragraph, so the search looks at the
-# last HEADING_TAIL_CHARS of each line rather than rejecting long lines outright.
-# Rejecting them was the earlier approach and it silently lost every chapter
-# whose title was glued to a paragraph.
 HEADING_TAIL_CHARS = 160
 _PAGE_NUM = re.compile(r"\bpage\s+(\d{1,5})\b", re.I)
+
+# Where a chapter's body starts, for books whose index numbers chapters as
+# "Chapter 3 Demand and Supply" and whose markdown keeps no level-1 heading.
+# An OpenStax-style textbook opens every chapter with a "Chapter Objectives"
+# heading, and the marker fires exactly once per chapter. Tried only after the
+# heading scan has already failed, and only when the parser index declares more
+# chapters than that scan found — so a book that genuinely has few chapters is
+# never cut into more pieces than it has.
+_CHAPTER_OPENING = re.compile(r"^#{1,6}\s*\*{0,2}(?:Chapter|Learning)\s+Objectives\b", re.M)
+
+# The chapter number in a parser-index title, in the two shapes this corpus
+# uses: "3. Demand and Supply" and "Chapter 3 Demand and Supply".
+# The third shape is the Chinese one the Tongji textbook uses: "第1章 函数与极限".
+_INDEX_CH_NUM = re.compile(
+    r"^(?:chapter\s+|第\s*)?(\d{1,2})\s*(?:章|节)?\s*[.:、]?\s+(.+?)\s*$", re.I
+)
 
 # Where worked answers, appendices or an index begin. Used to stop the last
 # chapter at real content rather than swallowing the back matter.
@@ -243,6 +254,26 @@ class BookStructureExtractor:
         else:
             structure.extraction_method = "heading_scan"
             structure.chapters = self._from_headings(text, index)
+            # Heading scan keys on level-1/2 markdown headings. Some books (the
+            # OpenStax economics texts) carry their chapter numbers only in the
+            # parser index ("Chapter 3 Demand and Supply") and open each body
+            # with a "Chapter Objectives" heading instead of a numbered one. The
+            # scan then finds 2–3 spans and silently drops ~19 chapters. When the
+            # index declares far more chapters than the scan found, fall back to
+            # locating each chapter by its index title and opening marker. The
+            # index is the denominator §14 trusts, so using it here is measured,
+            # not guessed.
+            # The scan has to be clearly behind the index: it loses when it found
+            # at least half of what the index declares. An integer-halved
+            # threshold was the original form and it let a 21-chapter book with
+            # 1 heading through (1 < 10), while a 3-chapter book with 1 heading
+            # and 2 indexed titles was blocked (1 < 1) — the same condition
+            # inverted on the two ends of the range.
+            if len(structure.chapters) * 2 < len(_index_titles(index)):
+                indexed = self._from_index_openings(text, index)
+                if len(indexed) > len(structure.chapters):
+                    structure.extraction_method = "index_openings"
+                    structure.chapters = indexed
 
         self._resolve_boundaries(structure, text)
         structure.chapters = [
@@ -273,22 +304,39 @@ class BookStructureExtractor:
             return
         last = structure.chapters[-1]
         tail_start = last.end_offset
+        # When the last span runs to EOF (the index-openings path leaves it there
+        # until this runs) there is no tail to scan, so scan the last chapter
+        # itself: the appendices and index live inside it. Without this an
+        # OpenStax-style book folded ~340 KB of appendices into chapter 21.
+        search_from = tail_start
         if structure.total_chars - tail_start < self.min_chapter_chars:
+            search_from = last.start_offset
+        if structure.total_chars - search_from < self.min_chapter_chars:
             return
 
-        tail = text[tail_start:]
+        tail = text[search_from:]
+        tail_start = search_from
         marks: list[tuple[str, int, bool]] = []
         for label, pattern, is_appendix in (
+            # Worked answers can be a bare line or a "# " heading.
             ("Worked Answers", r"ANSWERS TO ODD-NUMBERED EXERCISES|ANSWERS TO SELECTED", False),
-            ("Appendices", r"^#{0,6}\s*APPENDIX\s+\d|^#{0,6}\s*APPENDICES\b", True),
-            ("Index", r"^#{1,6}\s*(Applications\s+|General\s+)?Index\b", True),
+            # Appendices appear both as "# Appendix 1" and as "**Appendix A**",
+            # the latter being how the OpenStax economics books mark them.
+            (
+                "Appendices",
+                r"^#{0,6}\s*APPENDIX\s+\d|^#{0,6}\s*APPENDICES\b|\*\*APPENDIX\s+[A-Z]\*\*",
+                True,
+            ),
+            # An index can be a "# Index" heading or the bold "Index 617" line
+            # the economics books close on. Either way it is a locator, excluded.
+            ("Index", r"^#{1,6}\s*(Applications\s+|General\s+)?Index\b|\*\*Index\b", True),
         ):
             m = re.search(pattern, tail, re.M)
             # A marker at relative offset 0 is expected for the first one: the
             # previous chapter has already been trimmed back to it. Only a
             # marker found inside the tail body needs the size guard, which
             # exists to skip an incidental mention in running prose.
-            if m and (m.start() == 0 or m.start() >= self.min_chapter_chars):
+            if m and (m.start() == 0 or m.start() >= self.min_chapter_chars or label == "Index"):
                 marks.append((label, tail_start + m.start(), is_appendix))
         marks.sort(key=lambda x: x[1])
 
@@ -465,6 +513,120 @@ class BookStructureExtractor:
             )
         return spans
 
+    def _from_index_openings(self, text: str, index: list[dict] | None) -> list[ChapterSpan]:
+        """Locate chapters by their parser-index title, using a body marker.
+
+        For books whose markdown has no numbered level-1 heading. The parser
+        index still knows the titles and the page each chapter starts on, and the
+        body still opens every chapter with the same marker ("Chapter
+        Objectives" in the OpenStax economics texts). So the title is matched in
+        the text and the span then runs to the next opening.
+
+        Titles must be matched in document order and each used once: chapter
+        titles occur in the table of contents, in running page headers and in
+        cross-references, so first-match is useless. Requiring the match to
+        appear after the previous chapter, and only accepting the one closest to
+        the following opening marker, is what makes the walk monotonic.
+        """
+        openings = [m.start() for m in _CHAPTER_OPENING.finditer(text)]
+        if len(openings) < 2:
+            return []
+        titles = _index_titles(index)
+        if not titles:
+            return []
+        spans: list[ChapterSpan] = []
+        used_titles: set[str] = set()
+        for i, pos in enumerate(openings):
+            end = openings[i + 1] if i + 1 < len(openings) else len(text)
+            start, label = self._chapter_above_opening(text, pos, openings[0], titles, used_titles)
+            if label is None:
+                # Keep the span: it is real content, and dropping it would turn a
+                # detected chapter into a hole in the book. An unnamed chapter is
+                # better reported than a missing one.
+                labels = [t for n, t in titles.items() if t not in used_titles]
+                label = labels[0] if labels else f"Chapter {i + 1}"
+            used_titles.add(label)
+            spans.append(
+                ChapterSpan(
+                    chapter_id=f"ch{i + 1}",
+                    title=label,
+                    start_offset=start,
+                    end_offset=end,
+                    confidence=0.85,
+                    detection_level="L2_TYPOGRAPHY",
+                    subsections=self._subsections(text[pos:end]),
+                )
+            )
+        return spans
+
+    def _chapter_above_opening(
+        self,
+        text: str,
+        pos: int,
+        first_opening: int,
+        titles: dict[int, str],
+        used: set[str],
+    ) -> tuple[int, str | None]:
+        """Find the start and label of the chapter whose body opens at ``pos``.
+
+        The chapter's own heading is somewhere above the opening marker but the
+        gap is not fixed: an OpenStax chapter puts a figure caption between the
+        heading and "Chapter Objectives". So the search goes back line by line
+        over a generous window, matching each indexed title in document order,
+        and stops at the first (nearest) one found. Matching in order matters
+        because chapter titles recur in the table of contents and in running
+        page headers, and only the nearest occurrence above the marker is the
+        chapter's own heading.
+        """
+        limit = max(0, first_opening)
+        probe = text[limit:pos]
+        lines = [ln for ln in probe.split("\n")]
+        # Walk backwards over non-blank lines, which is what keeps the search
+        # on headings rather than the blank runs markdown inserts.
+        start = first_opening
+        for ln in reversed(lines):
+            if not ln.strip():
+                continue
+            start = probe.rfind("\n" + ln) if ("\n" + ln) in probe else probe.rfind(ln)
+            label = self._match_indexed_title(ln, titles, used)
+            if label is not None:
+                return start, label
+        return self._title_line_start(text, pos), None
+
+    @staticmethod
+    def _title_line_start(text: str, anchor: int) -> int:
+        """Start of the non-blank line holding the heading above ``anchor``."""
+        window_start = text.rfind("\n", 0, max(0, anchor - 1))
+        for _ in range(TITLE_LOOKBACK_LINES):
+            if window_start <= 0:
+                return 0
+            window_start = text.rfind("\n", 0, window_start - 1)
+            if window_start <= 0:
+                return 0
+        # A chapter's title is a single line; take the line that begins it.
+        line_start = text.rfind("\n", 0, max(0, window_start)) + 1
+        # Skip blank lines between the title and the opening marker.
+        m = re.search(r"^\S", text[line_start:anchor], re.M)
+        return line_start + (m.start() if m else 0)
+
+    @staticmethod
+    def _match_indexed_title(line: str, titles: dict[int, str], used: set[str]) -> str | None:
+        """The index title ``line`` names, in the ``N. Title`` form.
+
+        Returns the label in the form the rest of the pipeline expects so a
+        consumer cannot tell which detection path produced it. Unused only: each
+        indexed title is consumed once, in document order.
+        """
+        for num in sorted(titles):
+            label = titles[num]
+            if label in used:
+                continue
+            title = label.split(".", 1)[1].strip() if "." in label else label
+            probe = title[: min(len(title), 28)]
+            if probe and probe in line:
+                return label
+        return None
+
     # ── §5.6 boundary resolution ────────────────────────────────────────────
 
     @staticmethod
@@ -541,7 +703,7 @@ def _index_titles(index: list[dict] | None) -> dict[int, str]:
         if h.get("level") != 1:
             continue
         title = str(h.get("title") or "")
-        m = re.match(r"^(\d{1,2})\.\s+(.+)$", title)
+        m = _INDEX_CH_NUM.match(title)
         if m:
             out[int(m.group(1))] = f"{m.group(1)}. {m.group(2).strip()}"
     return out
