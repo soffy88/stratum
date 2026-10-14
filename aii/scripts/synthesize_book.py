@@ -13,21 +13,21 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / "aii" / ".env", override=True)
 sys.path.insert(0, str(ROOT / "scripts"))
-import asyncpg
-import opencc
-from chapter_ingest import slice_chapter, SM, chapter_numbers
-from chapter_synthesize import _plan, _synth, _find_pos
-from clean_ku import clean, is_empty_shell, is_junk
-from aii.api._provider import register_providers
-from aii.service.planning_completeness import check_completeness
-from ku_schema import (
+import asyncpg  # noqa: E402
+import opencc  # noqa: E402
+from chapter_ingest import slice_chapter, SM, chapter_numbers  # noqa: E402
+from chapter_synthesize import _plan, _synth, _find_pos  # noqa: E402
+from clean_ku import clean, is_empty_shell, is_junk  # noqa: E402
+from aii.api._provider import register_providers  # noqa: E402
+from aii.service.planning_completeness import check_completeness  # noqa: E402
+from ku_schema import (  # noqa: E402
     build_grounded_by,
     ensure_evidence_number_coverage,
     ku_fingerprint,
     validate_ku_point,
 )
-from oprim import vector_encode
-from obase import ProviderRegistry
+from oprim import vector_encode  # noqa: E402
+from obase import ProviderRegistry  # noqa: E402
 
 _T2S = opencc.OpenCC("t2s")
 
