@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import mimetypes
 import os
+import urllib.error
 import urllib.request
 import uuid
 from pathlib import Path
@@ -48,7 +49,65 @@ def _multipart(path: str, extra: dict | None = None) -> tuple[bytes, str]:
     return b"".join(body), f"multipart/form-data; boundary={boundary}"
 
 
+# ★2026-10-14 主机过载修复: 多个 convert 进程(pull_ingest 里 math/econ/misc 并行 +
+#   一次性 backfill + 飞轮自己的 pull_ingest)同时往 stratum-docs 塞 PDF, 容器 1000% CPU,
+#   客户端 300s 超时后服务端仍在算, 客户端又转本地兜底再算一遍 → load≈200 / swap 打满。
+#   现在: 跨进程文件锁让同一时刻只有 DOCS_MAX_CONCURRENCY(默认 1)个转换请求在飞;
+#   容器超时不再触发本地兜底(DOCS_LOCAL_FALLBACK_ON_TIMEOUT=0 默认), 书留到下一轮重试。
+LOCK_DIR = os.getenv("DOCS_LOCK_DIR", str(Path(__file__).resolve().parents[1] / ".locks"))
+MAX_CONCURRENCY = max(1, int(os.getenv("DOCS_MAX_CONCURRENCY", "1")))
+
+
+class DocsTimeout(TimeoutError):
+    """容器转换超时。aii_no_local_fallback=True 时调用方不应再本地重算(防 CPU 双算)。"""
+
+    aii_no_local_fallback = os.getenv("DOCS_LOCAL_FALLBACK_ON_TIMEOUT", "0") != "1"
+
+
+class _ConvertSlot:
+    """跨进程信号量: 在 LOCK_DIR/docs_convert.<i>.lock 上 flock, 拿到任一槽位即可。"""
+
+    def __init__(self) -> None:
+        self._fh = None
+
+    def __enter__(self):
+        import fcntl
+        import time
+
+        os.makedirs(LOCK_DIR, exist_ok=True)
+        announced = False
+        while True:
+            for i in range(MAX_CONCURRENCY):
+                fh = open(os.path.join(LOCK_DIR, f"docs_convert.{i}.lock"), "a+")
+                try:
+                    fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    self._fh = fh
+                    return self
+                except OSError:
+                    fh.close()
+            if not announced:
+                print("  … stratum-docs 转换槽位占用中, 排队等待", flush=True)
+                announced = True
+            time.sleep(2.0)
+
+    def __exit__(self, *exc):
+        import fcntl
+
+        if self._fh is not None:
+            try:
+                fcntl.flock(self._fh, fcntl.LOCK_UN)
+            finally:
+                self._fh.close()
+                self._fh = None
+        return False
+
+
 def _post(route: str, path: str, extra: dict | None = None) -> bytes:
+    with _ConvertSlot():
+        return _post_unlocked(route, path, extra)
+
+
+def _post_unlocked(route: str, path: str, extra: dict | None = None) -> bytes:
     data, ctype = _multipart(path, extra)
     req = urllib.request.Request(
         f"{DOCS_URL}{route}", data=data, method="POST", headers={"Content-Type": ctype}
@@ -62,6 +121,12 @@ def _post(route: str, path: str, extra: dict | None = None) -> bytes:
     try:
         with urllib.request.urlopen(req) as r:
             return r.read()
+    except (TimeoutError, _socket.timeout) as e:
+        raise DocsTimeout(f"stratum-docs {route} timed out after {TIMEOUT}s") from e
+    except urllib.error.URLError as e:
+        if isinstance(getattr(e, "reason", None), (TimeoutError, _socket.timeout)):
+            raise DocsTimeout(f"stratum-docs {route} timed out after {TIMEOUT}s") from e
+        raise
     finally:
         _socket.setdefaulttimeout(None)
 

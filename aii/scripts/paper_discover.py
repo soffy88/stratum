@@ -39,8 +39,35 @@ def _sid(stem: str) -> str:
     return f"paper_{hashlib.md5(stem.encode('utf-8')).hexdigest()[:10]}"
 
 
+def _ensure_paper_frontmatter(md: str) -> bool:
+    """★2026-10-14 论文桶 MD 缺 doc_type: paper frontmatter 时就地补上(与 classify_md.py 同格式)。
+    misc_convert.py 写入 gdrive_staging/MD/论文 时曾不带 frontmatter → generate_bu.py 不走
+    论文分支 → BU 只写"[数据不足]"占位。返回 True=本次补写了。只读挂载写失败则跳过。"""
+    try:
+        with open(md, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+    except OSError:
+        return False
+    if "doc_type:paper" in text.lstrip()[:600].lower().replace(" ", ""):
+        return False
+    stripped = text.lstrip()
+    if stripped.startswith("---\n"):
+        new = "---\ndoc_type: paper\n" + stripped[4:]
+    else:
+        new = "---\ndoc_type: paper\n---\n\n" + text
+    try:
+        tmp = f"{md}.fmtmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            fh.write(new)
+        os.replace(tmp, md)
+    except OSError:
+        return False
+    return True
+
+
 def discover() -> list[dict]:
     out = []
+    fixed = 0
     for md in sorted(path for root in PAPER_DIRS for path in glob.glob(f"{root}/*.md")):
         stem = Path(md).stem
         try:
@@ -49,7 +76,11 @@ def discover() -> list[dict]:
             continue
         if n < 1000:  # 空壳/读取失败的残渣, 不当候选
             continue
+        if os.getenv("PAPER_FIX_FRONTMATTER", "1") == "1" and _ensure_paper_frontmatter(md):
+            fixed += 1
         out.append({"id": _sid(stem), "title": stem, "md_path": md})
+    if fixed:
+        print(f"补 doc_type: paper frontmatter: {fixed} 篇", file=sys.stderr)
     return out
 
 
@@ -57,9 +88,14 @@ async def _ingested(ids):
     if not ids:
         return set()
     conn = await asyncpg.connect(os.getenv("DATABASE_URL"))
+    # ★2026-10-14: 被错走教材分支(缺 frontmatter)而只得到"[数据不足]"占位 BU 的论文
+    #   (bu_onto.doc_type<>'paper' 且 overview 以 [数据不足] 开头)不算已处理, 允许重跑论文分支。
+    #   persist_bu.py 会按 substrate 覆盖该占位 BU。
     rows = await conn.fetch(
-        "SELECT substrate_id FROM aii.ingested_substrate "
-        "WHERE substrate_id=ANY($1::text[]) AND deep_understood_at IS NOT NULL",
+        "SELECT s.substrate_id FROM aii.ingested_substrate s "
+        "WHERE s.substrate_id=ANY($1::text[]) AND s.deep_understood_at IS NOT NULL "
+        "AND NOT EXISTS (SELECT 1 FROM aii.bu_onto b WHERE b.substrate_id=s.substrate_id "
+        "AND coalesce(b.doc_type,'')<>'paper' AND coalesce(b.overview_oneline,'') LIKE '[数据不足]%')",
         ids,
     )
     await conn.close()
