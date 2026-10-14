@@ -159,6 +159,11 @@ if [ "$GDRIVE_MOUNT_ACTIVE" -eq 1 ]; then
   timeout --kill-after=30s 3600 env DOCS_TIMEOUT=300 KEEP_SRC=1 CONVERT_SRC=/home/soffy/books/其它 CONVERT_DST="$STAGE_ROOT/其它" CONVERT_TAG=其它 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  gdrive misc_convert 新转: /' || true
   timeout --kill-after=30s 3600 env DOCS_TIMEOUT=300 KEEP_SRC=1 CONVERT_SRC=/home/soffy/books/教辅 CONVERT_DST="$STAGE_ROOT/教辅" CONVERT_TAG=教辅 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  gdrive edu_convert 新转: /' || true
   timeout --kill-after=30s 3600 env DOCS_TIMEOUT=300 KEEP_SRC=1 CONVERT_SRC=/home/soffy/books/计算机 CONVERT_DST="$STAGE_ROOT/计算机" CONVERT_TAG=计算机 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  gdrive cs_convert 新转: /' || true
+  # ★2026-10-14: 拉料器(arxiv 等)在源目录只读时落本地收件箱 gdrive_staging/inbox/<桶>
+  INBOX_ROOT="$(dirname "$STAGE_ROOT")/inbox"
+  if [ -d "$INBOX_ROOT/论文" ]; then
+    timeout --kill-after=30s 1800 env DOCS_TIMEOUT=300 KEEP_SRC=1 CONVERT_SRC="$INBOX_ROOT/论文" CONVERT_DST="$STAGE_ROOT/论文" CONVERT_TAG=论文 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  inbox paper_convert 新转: /' || true
+  fi
   timeout --kill-after=30s 3600 env DOCS_TIMEOUT=300 KEEP_SRC=1 CONVERT_SRC=/home/soffy/books/论文 CONVERT_DST="$STAGE_ROOT/论文" CONVERT_TAG=论文 $PY misc_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  gdrive paper_convert 新转: /' || true
 else
   $PY math_convert.py --do 2>&1 | grep -cE '✓ \[' | sed 's/^/  math_convert 新转: /' &

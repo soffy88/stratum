@@ -1,0 +1,12 @@
+[Unit]
+Description=AII flywheel health — per-flywheel anomaly detection + safe auto-remediation (status.json)
+After=aii-backend.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/data/soffy/projects/stratum/aii
+Environment=XDG_RUNTIME_DIR=%t
+ExecStart=/usr/bin/python3 scripts/flywheel_health.py
+# log rotation gzips up to a few hundred MB
+TimeoutStartSec=900
+Nice=10

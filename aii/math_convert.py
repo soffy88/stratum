@@ -4,10 +4,16 @@
 """
 
 import os
-import sys, re, sys, glob, unicodedata, subprocess
+import re
+import sys
+import glob
+import subprocess
 import fitz  # pymupdf
+
 try:
-    fitz.TOOLS.mupdf_display_errors(False)  # 静音 EPUB HTML/CSS 解析噪音(immersive-translate 导出书 css 大量垃圾)
+    fitz.TOOLS.mupdf_display_errors(
+        False
+    )  # 静音 EPUB HTML/CSS 解析噪音(immersive-translate 导出书 css 大量垃圾)
 except Exception:
     pass
 from pathlib import Path
@@ -16,12 +22,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
 from math_ocr_gate import needs_ocr  # noqa: E402
 from convert_analyze_cache import get as _cat_cache_get, put as _cat_cache_put  # noqa: E402
 
-SRC = "/home/soffy/books/数学"
-MD_ZH = "/home/soffy/books/MD/中文数学"
-MD_EN = "/home/soffy/books/MD/英文数学"
+# ★2026-10-14 修复: GDrive 只读挂载后 pull_ingest 传 CONVERT_SRC/CONVERT_DST_ROOT 指向可写的
+# gdrive_staging, 但这里写死了 /home/soffy/books/MD/* (只读 FUSE) → 第一本书写入就 OSError 崩溃,
+# 每 60s 重转同一本, advmath/math-prog 永远"无新书"。现在尊重 env, 默认值不变。
+LEGACY_MD_ZH = "/home/soffy/books/MD/中文数学"
+LEGACY_MD_EN = "/home/soffy/books/MD/英文数学"
+SRC = os.getenv("CONVERT_SRC", "/home/soffy/books/数学")
+_DST_ROOT = os.getenv("CONVERT_DST_ROOT", "")
+MD_ZH = f"{_DST_ROOT}/中文数学" if _DST_ROOT else LEGACY_MD_ZH
+MD_EN = f"{_DST_ROOT}/英文数学" if _DST_ROOT else LEGACY_MD_EN
 DO = "--do" in sys.argv
 
-import json
+import json  # noqa: E402
 
 
 def _load_drive_ids() -> dict:
@@ -86,7 +98,7 @@ def _ingested_titles():
             text=True,
             timeout=20,
         ).stdout
-        return [l for l in out.splitlines() if l.strip()]
+        return [l for l in out.splitlines() if l.strip()]  # noqa: E741
     except Exception as e:
         print(f"  ⚠ 取已入库清单失败(只按MD去重): {e}", file=sys.stderr)
         return []
@@ -94,7 +106,7 @@ def _ingested_titles():
 
 # 已完成的归一标题: 已有MD(中英数学+MD根) ∪ 已入库标题
 existing = set()
-for d in (MD_ZH, MD_EN, "/home/soffy/books/MD"):
+for d in (MD_ZH, MD_EN, LEGACY_MD_ZH, LEGACY_MD_EN, "/home/soffy/books/MD"):
     for f in glob.glob(f"{d}/*.md"):
         existing.add(norm(Path(f).stem))
 for t in _ingested_titles():
@@ -119,15 +131,16 @@ def chapters(text):
     # 恰好只有英文分支认这个前缀, 中文分支永远算0章(实测斯图尔特今晚OCR复现: 0章被拒,
     # 而同一本书旧版手工转换的MD因为没有"#"前缀反而能通过). 中文分支也加上同样的可选前缀.
     n = len(
-        re.findall(r"(?m)^(?:#{1,6}\s+)?Chapter\s+\d|^(?:#{1,6}\s+)?第[一二三四五六七八九十百\d]+\s*章"
-                   r"|^\d{1,2}\.\s+[A-Z][A-Za-z]{2,}",  # ★2026-08-10 arXiv 论文 "1. Introduction" 式
-                   text)
+        re.findall(
+            r"(?m)^(?:#{1,6}\s+)?Chapter\s+\d|^(?:#{1,6}\s+)?第[一二三四五六七八九十百\d]+\s*章"
+            r"|^\d{1,2}\.\s+[A-Z][A-Za-z]{2,}",  # ★2026-08-10 arXiv 论文 "1. Introduction" 式
+            text,
+        )
     )
     if n >= 3:
         return n
     # ★opendataloader 输出数字编号章节(如 "1.2 完备性", "1.1.1 邻域和邻域基")
-    n = len(re.findall(
-        r"(?m)^\d{1,2}(?:\.\d{1,2}){0,2}\s+[^\n。！？.!?]{2,40}$", text))
+    n = len(re.findall(r"(?m)^\d{1,2}(?:\.\d{1,2}){0,2}\s+[^\n。！？.!?]{2,40}$", text))
     return n
 
 
@@ -150,7 +163,7 @@ def _analyze_uncached(path):
         return ("已转", stem, None)
     try:
         d = fitz.open(path)
-    except Exception as e:
+    except Exception:
         return ("打不开", stem, None)
     npg = d.page_count
     # 抽样查文字层
@@ -174,11 +187,13 @@ def _analyze_uncached(path):
     return ("可转", stem, npg)
 
 
-from collections import Counter
+from collections import Counter  # noqa: E402
+
 
 def _rm_src(path) -> None:
     """★2026-08-10 转换成功删源文件省空间(磁盘94%)。KEEP_SRC=1 时保留。"""
     import os as _os
+
     if _os.getenv("KEEP_SRC") == "1":
         return
     try:
@@ -186,7 +201,6 @@ def _rm_src(path) -> None:
         print(f"  🗑 已删源文件: {Path(path).name[:50]}")
     except OSError as e:
         print(f"  ⚠ 删源失败 {Path(path).name[:40]}: {e}")
-
 
 
 def _convert_odl(path):
@@ -202,10 +216,14 @@ def _convert_odl(path):
         with tempfile.TemporaryDirectory() as td:
             r = subprocess.run(
                 ["opendataloader-pdf", "convert", str(path), "-o", td, "-f", "markdown"],
-                capture_output=True, text=True, timeout=240,
-                env={**os.environ,
-                     "PATH": f"{Path.home() / 'jdk' / 'bin'}:"
-                             f"{str(Path(sys.executable).parent)}:{os.environ.get('PATH', '')}"},
+                capture_output=True,
+                text=True,
+                timeout=240,
+                env={
+                    **os.environ,
+                    "PATH": f"{Path.home() / 'jdk' / 'bin'}:"
+                    f"{str(Path(sys.executable).parent)}:{os.environ.get('PATH', '')}",
+                },
             )
             mds = list(Path(td).rglob("*.md")) if r.returncode in (0, 1) else []
             if not mds:
@@ -223,8 +241,10 @@ def convert(path):
     try:
         import sys as _sys
         from pathlib import Path as _P
+
         _sys.path.insert(0, str(_P(__file__).resolve().parent / "scripts"))
         from docs_client import pdf_to_md
+
         return pdf_to_md(str(path))
     except Exception as _e:
         print(f"  ⚠ 容器转换失败({str(_e)[:70]}), 本地兜底", flush=True)
@@ -236,6 +256,7 @@ def convert(path):
     if str(path).lower().endswith(".pdf"):
         try:
             from oprim.parser.parse_pdf import parse_pdf
+
             # ★2026-08-07: 默认 pdf_inspector(firecrawl, benchmark 0.875/表格0.814/0.47s,
             # 原生 CID 解码); ODL_HYBRID=1 时走 opendataloader hybrid(公式 LaTeX 深加工)
             if os.getenv("ODL_HYBRID") == "1":
@@ -248,11 +269,11 @@ def convert(path):
     if text is None:
         text = MarkItDown().convert(path).text_content
     lines = text.split("\n")
-    cnt = Counter(l.strip() for l in lines if l.strip())
+    cnt = Counter(l.strip() for l in lines if l.strip())  # noqa: E741
     thresh = max(3, int(npg * 0.12))
-    headers = {l for l, c in cnt.items() if c > thresh and len(l) < 80}
+    headers = {l for l, c in cnt.items() if c > thresh and len(l) < 80}  # noqa: E741
     out = []
-    for l in lines:
+    for l in lines:  # noqa: E741
         s = l.strip()
         if not s or s in headers or re.fullmatch(r"\d{1,4}", s):
             continue
@@ -308,7 +329,15 @@ for path in sorted(glob.glob(f"{SRC}/*.pdf") + glob.glob(f"{SRC}/*.epub")):
     cat, stem, npg = analyze(path)
     results.setdefault(cat, []).append((stem, npg, path))
 
-for cat in ["可转", "需OCR(烂文本层)", "需OCR(无文字层)", "无章节结构", "已转", "打不开"]:
+for cat in [
+    "可转",
+    "需OCR(烂文本层)",
+    "需OCR(无文字层)",
+    "无章节结构",
+    "质量门未过",
+    "已转",
+    "打不开",
+]:
     items = results.get(cat, [])
     print(f"\n=== {cat} ({len(items)}) ===")
     for stem, npg, _ in items[:40]:
@@ -327,6 +356,7 @@ def _write_if_math_textbook(stem, text, path, force=False):
     if not ok:
         if not force:
             print(f"  – 跳过[{m}]: {stem[:42]}")
+            _cat_cache_put(path, ("质量门未过", stem, None))  # 别每轮重转同一本
             return False
         zh = len(re.findall(r"[一-鿿]", text[:300000]))
         en = len(re.findall(r"[A-Za-z]", text[:300000]))
@@ -341,7 +371,13 @@ def _write_if_math_textbook(stem, text, path, force=False):
     if os.path.exists(dst):
         print(f"  – 已存在, 跳过: {clean[:40]}")
         return False
-    open(dst, "w", encoding="utf-8").write(_frontmatter(clean, path, lang) + text)
+    try:
+        os.makedirs(tgt, exist_ok=True)
+        with open(dst, "w", encoding="utf-8") as fh:
+            fh.write(_frontmatter(clean, path, lang) + text)
+    except OSError as e:  # 一本写失败不能拖垮整批
+        print(f"  ✗ 写入失败 {clean[:40]}: {e}")
+        return False
     existing.add(norm(clean))  # 记入, 防同轮后续重复
     print(f"  ✓ [{lang}] {clean[:45]} ({len(text) // 1024}KB)")
     return True

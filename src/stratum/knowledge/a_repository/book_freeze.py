@@ -587,7 +587,41 @@ def _connect() -> Any:
     return psycopg2.connect(**_dsn_kwargs())
 
 
+# Books BU2 understood come first; then books the AII flywheels have ingested
+# (aii.ingested_substrate with KUs, or any substrate with rows in aii.ku_onto),
+# newest ingest first. Only substrates with a markdown derivative are eligible,
+# because BookLoader freezes from stratum.derivative. Idempotency is the
+# source_version check: a frozen book is never selected again.
 PENDING_SQL = """
+WITH cand AS (
+    SELECT u.substrate_id, 0 AS prio, NULL::timestamptz AS ts
+    FROM stratum.book_understandings_v2 u
+    UNION ALL
+    SELECT i.substrate_id, 1 AS prio, i.ingested_at AS ts
+    FROM aii.ingested_substrate i
+    WHERE COALESCE(i.ku_count, 0) > 0
+    UNION ALL
+    SELECT k.substrate_id, 2 AS prio, NULL::timestamptz AS ts
+    FROM (SELECT DISTINCT substrate_id FROM aii.ku_onto) k
+)
+SELECT c.substrate_id
+FROM cand c
+WHERE EXISTS (
+    SELECT 1 FROM stratum.derivative d
+    WHERE d.substrate_id = c.substrate_id AND d.kind = 'markdown'
+      AND d.content IS NOT NULL AND d.content <> ''
+)
+AND NOT EXISTS (
+    SELECT 1 FROM stratum.source_version sv
+    WHERE sv.book_source_id = c.substrate_id AND sv.version = %s
+)
+GROUP BY c.substrate_id
+ORDER BY MIN(c.prio), MAX(c.ts) DESC NULLS LAST, c.substrate_id
+LIMIT %s
+"""
+
+# Fallback when the aii schema is absent (fresh / non-AII deployments).
+PENDING_SQL_BU2_ONLY = """
 SELECT DISTINCT u.substrate_id
 FROM stratum.book_understandings_v2 u
 WHERE NOT EXISTS (
@@ -600,14 +634,22 @@ LIMIT %s
 
 
 def pending_substrates(conn: Any, limit: int) -> list[str]:
-    """Books BU2 has understood but the A warehouse has not frozen yet."""
-    with conn.cursor() as cur:
-        cur.execute(PENDING_SQL, (FREEZE_VERSION, limit))
-        return [r[0] for r in cur.fetchall()]
+    """Books understood (BU2) or ingested by the AII flywheels, not yet frozen into A."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute(PENDING_SQL, (FREEZE_VERSION, limit))
+            return [r[0] for r in cur.fetchall()]
+    except Exception as exc:  # aii schema missing -> BU2-only selection
+        if "aii." not in str(exc) and "does not exist" not in str(exc):
+            raise
+        conn.rollback()
+        with conn.cursor() as cur:
+            cur.execute(PENDING_SQL_BU2_ONLY, (FREEZE_VERSION, limit))
+            return [r[0] for r in cur.fetchall()]
 
 
 def run_pending(limit: int, persist_rows: bool) -> int:
-    """Flywheel entry: freeze every BU2-understood book not yet in A."""
+    """Flywheel entry: freeze up to ``limit`` pending books (BU2 or flywheel-ingested)."""
     conn = _connect()
     try:
         ids = pending_substrates(conn, limit)

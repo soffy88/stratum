@@ -4,10 +4,17 @@
       econ_convert.py --do     # 转换可转的(文字层+章节)并入 /books/MD/经济学
 """
 
-import os, re, sys, glob, subprocess
+import os
+import re
+import sys
+import glob
+import subprocess
 import fitz  # pymupdf
+
 try:
-    fitz.TOOLS.mupdf_display_errors(False)  # 静音 EPUB HTML/CSS 解析噪音(immersive-translate 导出书 css 大量垃圾)
+    fitz.TOOLS.mupdf_display_errors(
+        False
+    )  # 静音 EPUB HTML/CSS 解析噪音(immersive-translate 导出书 css 大量垃圾)
 except Exception:
     pass
 from pathlib import Path
@@ -17,12 +24,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
 try:
     from convert_analyze_cache import get as _cat_cache_get, put as _cat_cache_put  # noqa: E402
 except Exception:
-    _cat_cache_get = lambda _p: None
-    _cat_cache_put = lambda _p, _r: None
+    _cat_cache_get = lambda _p: None  # noqa: E731
+    _cat_cache_put = lambda _p, _r: None  # noqa: E731
+
 
 def _rm_src(path) -> None:
     """★2026-08-10 转换成功删源文件省空间(磁盘94%)。KEEP_SRC=1 时保留。"""
     import os as _os
+
     if _os.getenv("KEEP_SRC") == "1":
         return
     try:
@@ -32,8 +41,10 @@ def _rm_src(path) -> None:
         print(f"  ⚠ 删源失败 {Path(path).name[:40]}: {e}")
 
 
-SRC = "/home/soffy/books/Economic"
-DST = "/home/soffy/books/MD/经济学"
+# ★2026-10-14 修复: 尊重 pull_ingest 传入的 CONVERT_SRC/CONVERT_DST(GDrive 只读模式写 gdrive_staging)。
+LEGACY_DST = "/home/soffy/books/MD/经济学"
+SRC = os.getenv("CONVERT_SRC", "/home/soffy/books/Economic")
+DST = os.getenv("CONVERT_DST", LEGACY_DST)
 DO = "--do" in sys.argv
 
 # 经济关键词(同 classify_md.py 的 ECON), 用于密度判定
@@ -103,7 +114,7 @@ def _ingested_titles():
             text=True,
             timeout=20,
         ).stdout
-        return [l for l in out.splitlines() if l.strip()]
+        return [l for l in out.splitlines() if l.strip()]  # noqa: E741
     except Exception as e:
         print(f"  ⚠ 取已入库清单失败(只按MD去重): {e}", file=sys.stderr)
         return []
@@ -111,7 +122,7 @@ def _ingested_titles():
 
 # 已完成的归一标题(查重): 已有MD(经济学目录+MD根) ∪ 已入库标题
 existing = set()
-for d in (DST, "/home/soffy/books/MD"):
+for d in (DST, LEGACY_DST, "/home/soffy/books/MD"):
     for f in glob.glob(f"{d}/*.md"):
         existing.add(norm(Path(f).stem))
 for t in _ingested_titles():
@@ -194,8 +205,10 @@ def convert(path):
     try:
         import sys as _sys
         from pathlib import Path as _P
+
         _sys.path.insert(0, str(_P(__file__).resolve().parent / "scripts"))
         from docs_client import pdf_to_md
+
         return pdf_to_md(str(path))
     except Exception as _e:
         print(f"  ⚠ 容器转换失败({str(_e)[:70]}), 本地兜底", flush=True)
@@ -204,6 +217,7 @@ def convert(path):
     if str(path).lower().endswith(".pdf"):
         try:
             from oprim.parser.parse_pdf import parse_pdf
+
             # ★2026-08-07: 默认 pdf_inspector(firecrawl, benchmark 0.875/表格0.814/0.47s,
             # 原生 CID 解码); ODL_HYBRID=1 时走 opendataloader hybrid(公式 LaTeX 深加工)
             if os.getenv("ODL_HYBRID") == "1":
@@ -215,17 +229,18 @@ def convert(path):
             print(f"  ⚠ pdf_inspector 回退 markitdown: {str(e)[:80]}", flush=True)
     if text is None:
         from markitdown import MarkItDown
+
         # ★2026-08-09 修复: 原调用在 if 外 → pdf_inspector 成功时 MarkItDown 未 import
         #   UnboundLocalError 全文件转换失败; 且成功结果被 markitdown 覆盖(违背 PDF 优先)
         text = MarkItDown().convert(path).text_content
 
     npg = fitz.open(path).page_count
     lines = text.split("\n")
-    cnt = Counter(l.strip() for l in lines if l.strip())
+    cnt = Counter(l.strip() for l in lines if l.strip())  # noqa: E741
     thresh = max(3, int(npg * 0.12))
-    headers = {l for l, c in cnt.items() if c > thresh and len(l) < 80}
+    headers = {l for l, c in cnt.items() if c > thresh and len(l) < 80}  # noqa: E741
     out = []
-    for l in lines:
+    for l in lines:  # noqa: E741
         s = l.strip()
         if not s or s in headers or re.fullmatch(r"\d{1,4}", s):
             continue
@@ -260,7 +275,7 @@ for cat in ["可转", "需OCR(无文字层)", "无章节结构", "已转", "打�
         print(f"  {'%4d页 ' % npg if npg else ''}{stem[:60]}")
 
 
-def _write_if_econ_textbook(stem, text, force=False):
+def _write_if_econ_textbook(stem, text, force=False, path=None):
     """判定+写文件(可转/OCR共用尾段). 返回 True=已写入.
     force=True(仅OCR调用路径用): OCR是几十分钟到数小时一次性投入, 门禁(关键词密度/章节)
     没过也必须写出MD——门禁只该决定"是否自动入飞轮队列", 不该决定"OCR结果要不要保留"。"""
@@ -268,6 +283,8 @@ def _write_if_econ_textbook(stem, text, force=False):
     if not ok:
         if not force:
             print(f"  – 跳过[{m}]: {stem[:42]}")
+            if path is not None:
+                _cat_cache_put(path, ("质量门未过", stem, None))  # 别每轮重转同一本
             return False
         print(f"  ⚠ 质量门未过[{m}], 仍写入(OCR产物不丢): {stem[:35]}")
     clean = re.sub(r"\s*\(z-lib[^)]*\)|\s*\(z-library[^)]*\)", "", stem).strip()
@@ -278,7 +295,13 @@ def _write_if_econ_textbook(stem, text, force=False):
     if os.path.exists(dst):
         print(f"  – 已存在, 跳过: {clean[:40]}")
         return False
-    open(dst, "w", encoding="utf-8").write(text)
+    try:
+        os.makedirs(DST, exist_ok=True)
+        with open(dst, "w", encoding="utf-8") as fh:
+            fh.write(text)
+    except OSError as e:  # 一本写失败不能拖垮整批
+        print(f"  ✗ 写入失败 {clean[:40]}: {e}")
+        return False
     existing.add(norm(clean))  # 记入, 防同轮后续重复
     print(f"  ✓ [经济学] {clean[:45]} ({len(text) // 1024}KB)")
     return True
@@ -292,7 +315,7 @@ if DO:
         except Exception as e:
             print(f"  ✗ 转换失败 {stem[:40]}: {e}")
             continue
-        if _write_if_econ_textbook(stem, text):
+        if _write_if_econ_textbook(stem, text, path=path):
             _rm_src(path)  # ★2026-08-10 转换成功删源省空间(KEEP_SRC=1 跳过)
 
     # ★自主OCR(与math_convert.py同款, 复用同一套vLLM容器逻辑): 默认关, 只在
