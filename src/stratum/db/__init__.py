@@ -22,6 +22,10 @@ import threading
 from contextlib import contextmanager
 from typing import Any
 
+import psycopg2
+import psycopg2.extras
+import psycopg2.pool
+
 # DuckDB named params `$name` → psycopg2 pyformat `%(name)s`. Some routers/DAOs
 # pass DuckDB-style SQL directly to query()/execute(); translate so both styles work.
 _DOLLAR_RE = re.compile(r"\$(\w+)")
@@ -30,10 +34,6 @@ _DOLLAR_RE = re.compile(r"\$(\w+)")
 def _to_pyformat(sql: str) -> str:
     return _DOLLAR_RE.sub(r"%(\1)s", sql)
 
-
-import psycopg2
-import psycopg2.extras
-import psycopg2.pool
 
 # Return JSON/JSONB columns as RAW STRINGS, matching DuckDB's behaviour, so the
 # many callers that do `json.loads(col)` (DAOs, dao.graph, …) work unchanged.
