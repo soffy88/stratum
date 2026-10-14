@@ -6,10 +6,17 @@
       misc_convert.py --do     # 转换可转的(文字层+章节)并入 /books/MD/其它
 """
 
-import os, re, sys, glob, subprocess
+import os
+import re
+import sys
+import glob
+import subprocess
 import fitz  # pymupdf
+
 try:
-    fitz.TOOLS.mupdf_display_errors(False)  # 静音 EPUB HTML/CSS 解析噪音(immersive-translate 导出书 css 大量垃圾)
+    fitz.TOOLS.mupdf_display_errors(
+        False
+    )  # 静音 EPUB HTML/CSS 解析噪音(immersive-translate 导出书 css 大量垃圾)
 except Exception:
     pass
 from pathlib import Path
@@ -19,12 +26,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
 try:
     from convert_analyze_cache import get as _cat_cache_get, put as _cat_cache_put  # noqa: E402
 except Exception:
-    _cat_cache_get = lambda _p: None
-    _cat_cache_put = lambda _p, _r: None
+    _cat_cache_get = lambda _p: None  # noqa: E731
+    _cat_cache_put = lambda _p, _r: None  # noqa: E731
 
 SRC = os.getenv("CONVERT_SRC", "/home/soffy/books/其它")
 DST = os.getenv("CONVERT_DST", "/home/soffy/books/MD/其它")
 TAG = os.getenv("CONVERT_TAG", "其它")
+# ★2026-10-14 修复: 论文(arXiv 短文)没有"第N章/Chapter"结构, 章节门禁把 302 篇全判"无章节结构",
+# paper 飞轮(通用短论文 BU, 不套教材模板)因此永远"无新论文"。论文桶跳过章节门禁。
+NO_CHAPTER_GATE = TAG == "论文" or os.getenv("CONVERT_NO_CHAPTER_GATE") == "1"
+LEGACY_DST = f"/home/soffy/books/MD/{TAG}"
 DO = "--do" in sys.argv
 
 
@@ -55,7 +66,7 @@ def _ingested_titles():
             text=True,
             timeout=20,
         ).stdout
-        return [l for l in out.splitlines() if l.strip()]
+        return [l for l in out.splitlines() if l.strip()]  # noqa: E741
     except Exception as e:
         print(f"  ⚠ 取已入库清单失败(只按MD去重): {e}", file=sys.stderr)
         return []
@@ -63,7 +74,7 @@ def _ingested_titles():
 
 # 已完成的归一标题(查重): 已有MD(其它目录+MD根) ∪ 已入库标题
 existing = set()
-for d in (DST, "/home/soffy/books/MD"):
+for d in (DST, LEGACY_DST, "/home/soffy/books/MD"):
     for f in glob.glob(f"{d}/*.md"):
         existing.add(norm(Path(f).stem))
 for t in _ingested_titles():
@@ -97,11 +108,12 @@ def analyze(path):
     if matched(stem):
         return ("已转", stem, None)
     hit = _cat_cache_get(path)
-    if hit is not None:
-        return hit
-    res = _analyze_uncached(path)
-    _cat_cache_put(path, res)
-    return res
+    if hit is None:
+        hit = _analyze_uncached(path)
+        _cat_cache_put(path, hit)
+    if NO_CHAPTER_GATE and hit[0] == "无章节结构":
+        return ("可转", hit[1], hit[2])
+    return hit
 
 
 def _analyze_uncached(path):
@@ -125,7 +137,7 @@ def _analyze_uncached(path):
         # 个别PDF损坏字体表等会让pymupdf在读页时直接崩(不是open()阶段) ——
         # 同"打不开"处理, 不能让一本坏书拖垮整批(misc来源杂, 比math/econ更常见)
         return ("打不开", stem, None)
-    txt_ratio = len(txt) / max(min(npg, 60) // 6, 1)
+    txt_ratio = len(txt) / max(min(npg, 60) // 6, 1)  # noqa: F841
     nch = chapters(full)
     if nch < 3:
         return ("无章节结构", stem, npg)
@@ -138,8 +150,10 @@ def convert(path):
     try:
         import sys as _sys
         from pathlib import Path as _P
+
         _sys.path.insert(0, str(_P(__file__).resolve().parent / "scripts"))
         from docs_client import pdf_to_md
+
         return pdf_to_md(str(path))
     except Exception as _e:
         print(f"  ⚠ 容器转换失败({str(_e)[:70]}), 本地兜底", flush=True)
@@ -148,6 +162,7 @@ def convert(path):
     if str(path).lower().endswith(".pdf"):
         try:
             from oprim.parser.parse_pdf import parse_pdf
+
             # ★2026-08-07: 默认 pdf_inspector(firecrawl, benchmark 0.875/表格0.814/0.47s,
             # 原生 CID 解码); ODL_HYBRID=1 时走 opendataloader hybrid(公式 LaTeX 深加工)
             if os.getenv("ODL_HYBRID") == "1":
@@ -159,17 +174,18 @@ def convert(path):
             print(f"  ⚠ pdf_inspector 回退 markitdown: {str(e)[:80]}", flush=True)
     if text is None:
         from markitdown import MarkItDown
+
         # ★2026-08-09 修复: 原调用在 if 外 → pdf_inspector 成功时 MarkItDown 未 import
         #   UnboundLocalError 全文件转换失败; 且成功结果被 markitdown 覆盖(违背 PDF 优先)
         text = MarkItDown().convert(path).text_content
 
     npg = fitz.open(path).page_count
     lines = text.split("\n")
-    cnt = Counter(l.strip() for l in lines if l.strip())
+    cnt = Counter(l.strip() for l in lines if l.strip())  # noqa: E741
     thresh = max(3, int(npg * 0.12))
-    headers = {l for l, c in cnt.items() if c > thresh and len(l) < 80}
+    headers = {l for l, c in cnt.items() if c > thresh and len(l) < 80}  # noqa: E741
     out = []
-    for l in lines:
+    for l in lines:  # noqa: E741
         s = l.strip()
         if not s or s in headers or re.fullmatch(r"\d{1,4}", s):
             continue
@@ -204,16 +220,21 @@ def _write(stem, text, force=False):
     if os.path.exists(dst):
         print(f"  – 已存在, 跳过: {clean[:40]}")
         return False
-    open(dst, "w", encoding="utf-8").write(text)
+    try:
+        with open(dst, "w", encoding="utf-8") as fh:
+            fh.write(text)
+    except OSError as e:  # 一本写失败不能拖垮整批
+        print(f"  ✗ 写入失败 {clean[:40]}: {e}")
+        return False
     existing.add(norm(clean))  # 记入, 防同轮后续重复
     print(f"  ✓ [{TAG}] {clean[:45]} ({len(text) // 1024}KB)")
     return True
 
 
-
 def _rm_src(path) -> None:
     """★2026-08-10 转换成功删源文件省空间(磁盘94%)。KEEP_SRC=1 时保留。"""
     import os as _os
+
     if _os.getenv("KEEP_SRC") == "1":
         return
     try:
@@ -281,5 +302,3 @@ if DO:
             print("  ✗ vLLM 容器未就绪(显存不足或启动失败), 本轮跳过 OCR")
 
     print("✓ 完成. 需OCR/无章节 的未处理(见上).")
-
-
