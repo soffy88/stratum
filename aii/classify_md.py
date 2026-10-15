@@ -1,4 +1,9 @@
-import os, re, glob, sys, shutil, subprocess
+import glob
+import os
+import re
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
@@ -172,8 +177,6 @@ def classify(path):
     low = samp.lower()
     fffd = text.count("�")
     zh = len(re.findall(r"[一-鿿]", samp))
-    en = len(re.findall(r"[A-Za-z]", samp))
-    headings = len(re.findall(r"(?m)^#{1,4}\s", text))
     chaps = len(re.findall(r"(?m)^#{1,3}\s+\**Chapter\s+\d|^第[一二三四五六七八九十百\d]+章", text))
     # ★2026-07-06: 有些教材章节标题本身没有"Chapter N"/"第N章"字样(如Mathematics for Machine
     # Learning: 章节直接叫"Introduction and Motivation", 靠小节编号"1.1/2.1"体现结构), 上面
@@ -200,6 +203,19 @@ def classify(path):
     # B范式(程序抠编号陈述+证明, 0-LLM, 不需要章节结构)的对口粮。短论文(<300KB 或定理<40)
     # 照旧进低质。计数用全文而非 samp, 长文档定理分布在后半部。
     if "doc_type: paper" in text[:500]:
+        # ★网页/微信文章摄入(web_ingest.py): 前端 doc_kind:article 标记 → 直接进论文(文档)
+        # 桶, 不套用学术论文的 15KB 地板(网页文章普遍短于 15KB, 会被误判"太短"永久丢弃)。
+        # 它们同样走 generate_bu.py 的文档分支(BU 两层理解, 不需章节结构), 与论文同管道。
+        if (
+            "doc_kind: article" in text[:500]
+            or "source_type: web" in text[:500]
+            or "source_type: wechat" in text[:500]
+        ):
+            if fffd / max(n, 1) > 0.008:
+                return ("低质", f"OCR乱码({100 * fffd // n}%)", None)
+            if n < 1000:  # 与 paper_discover.py 的下限一致, 只挡空壳
+                return ("低质", f"网页文章太短({n}B)", None)
+            return ("论文", f"网页文章 {n // 1024}KB", _out)
         _thm_full = len(
             re.findall(r"\b(theorem|definition|lemma|corollary)\s+\d", text.lower())
         ) + len(re.findall(r"(定理|定义|引理|推论)\s*[\d一二三四五六七八九十]", text))
