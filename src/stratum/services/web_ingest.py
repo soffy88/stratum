@@ -1,12 +1,9 @@
 """stratum.services.web_ingest — ingest a URL (webpage or WeChat article) into the AII flywheel.
 
 Fetches the URL with the cascade/WeChat fetchers, converts it to a Markdown file with the
-frontmatter the file-based flywheel expects, and drops it into the shared intake directory
-(``STRATUM_AII_INTAKE_DIR``, default ``/home/soffy/shared/stratum-to-aii``). From there the
-existing pipeline takes over — no new flywheel:
-
-    intake dir → aii/classify_md.py → books/MD/论文 → aii/scripts/paper_discover.py
-              → aii/scripts/paper_pipeline.sh → generate_bu.py (paper/document branch)
+frontmatter the file-based flywheel expects, and drops it into the paper intake directory
+(``STRATUM_AII_INTAKE_DIR``, default ``/home/soffy/books/MD/论文``). From there the
+paper flywheel (``paper_discover.py``) picks it up directly — no feeder/classify step:
 
 Why the *paper* (document) bucket: ``classify_md.py`` only routes a non-book document into
 a consumed bucket when its frontmatter carries ``doc_type: paper``. The API's own webpage
@@ -48,7 +45,7 @@ from stratum.services.web_fetch_cascade import (
 
 log = logging.getLogger(__name__)
 
-_DEFAULT_INTAKE = "/home/soffy/shared/stratum-to-aii"
+_DEFAULT_INTAKE = "/home/soffy/books/MD/论文"
 _MAX_STEM = 80  # keep filenames well under the 255-byte limit even for CJK titles
 
 
@@ -156,7 +153,7 @@ def render_markdown(title: str, body: str, frontmatter: str) -> str:
     return f"{frontmatter}\n\n{heading}{body.strip()}\n"
 
 
-def _fetch(url: str, *, client: httpx.Client | None, timeout: float | None):
+def _fetch(url: str, *, client: httpx.Client | None, timeout: float | None) -> tuple[WebFetchResult, str]:
     """Dispatch to the WeChat or generic cascade fetcher. Returns (result, source_type)."""
     if is_wechat_url(url):
         art = fetch_wechat_article(url, client=client, timeout=timeout)
