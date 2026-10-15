@@ -1,9 +1,23 @@
 """stratum.services.web_ingest — ingest a URL (webpage or WeChat article) into the AII flywheel.
 
 Fetches the URL with the cascade/WeChat fetchers, converts it to a Markdown file with the
-frontmatter the file-based flywheel expects, and drops it into the paper intake directory
-(``STRATUM_AII_INTAKE_DIR``, default ``/home/soffy/books/MD/论文``). From there the
-paper flywheel (``paper_discover.py``) picks it up directly — no feeder/classify step:
+frontmatter the file-based flywheel expects, and drops it into the paper flywheel's intake
+directory. From there ``aii/scripts/paper_discover.py`` (aii-flywheel-paper) picks it up
+directly — no feeder/classify step, no new flywheel.
+
+Intake resolution (first match wins, see :func:`intake_dir`):
+
+1. ``STRATUM_AII_INTAKE_DIR`` if set (explicit override, used as-is);
+2. the first *existing, writable* entry of :data:`_PAPER_INTAKE_CANDIDATES` — these mirror
+   ``paper_discover.PAPER_DIRS``: ``aii/gdrive_staging/MD/论文`` (local staging; the real
+   intake while ``/home/soffy/books`` is the read-only GDrive rclone mount), then
+   ``/home/soffy/books/MD/论文`` (only when that mount is writable/local);
+3. legacy ``/home/soffy/shared/stratum-to-aii`` as a last resort (only consumed by
+   ``classify_md.py`` when the GDrive mount is *not* active).
+
+The old default ``/home/soffy/books/MD/论文`` sits on a ``ro`` FUSE mount in production, so
+writing there raised ``OSError: Read-only file system``; and ``stratum-to-aii`` is skipped by
+``pull_ingest.sh`` in GDrive mode — articles dropped there were never consumed.
 
 Why the *paper* (document) bucket: ``classify_md.py`` only routes a non-book document into
 a consumed bucket when its frontmatter carries ``doc_type: paper``. The API's own webpage
@@ -45,7 +59,15 @@ from stratum.services.web_fetch_cascade import (
 
 log = logging.getLogger(__name__)
 
-_DEFAULT_INTAKE = "/home/soffy/books/MD/论文"
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+# Must stay in sync with aii/scripts/paper_discover.py PAPER_DIRS (the dirs the paper flywheel scans).
+_PAPER_INTAKE_CANDIDATES: tuple[Path, ...] = (
+    _REPO_ROOT / "aii" / "gdrive_staging" / "MD" / "论文",
+    Path("/data/soffy/projects/stratum/aii/gdrive_staging/MD/论文"),
+    Path("/home/soffy/books/MD/论文"),
+)
+_LEGACY_INTAKE = Path("/home/soffy/shared/stratum-to-aii")
+_DEFAULT_INTAKE = str(_PAPER_INTAKE_CANDIDATES[0])
 _MAX_STEM = 80  # keep filenames well under the 255-byte limit even for CJK titles
 
 
@@ -66,8 +88,19 @@ class IngestResult:
     deep_read_path: str = ""  # optional BU2/KU supplement JSON sidecar
 
 
+def _writable_dir(path: Path) -> bool:
+    return path.is_dir() and os.access(path, os.W_OK | os.X_OK)
+
+
 def intake_dir() -> Path:
-    return Path(os.environ.get("STRATUM_AII_INTAKE_DIR") or _DEFAULT_INTAKE)
+    """Directory the paper flywheel (paper_discover.py) actually scans and we can write to."""
+    override = os.environ.get("STRATUM_AII_INTAKE_DIR")
+    if override:
+        return Path(override)
+    for cand in _PAPER_INTAKE_CANDIDATES:
+        if _writable_dir(cand):
+            return cand
+    return _LEGACY_INTAKE
 
 
 def _maybe_auto_deep_read(path: Path) -> str:
@@ -275,7 +308,7 @@ def _cmd_ingest_url(argv: list[str]) -> int:
     )
     ap.add_argument("url", help="URL to ingest")
     ap.add_argument("--domain", default=None, help="optional domain/subject tag (frontmatter)")
-    ap.add_argument("--sink", default=None, help=f"intake dir (default {_DEFAULT_INTAKE})")
+    ap.add_argument("--sink", default=None, help="intake dir (default: paper flywheel intake)")
     ap.add_argument("--force", action="store_true", help="overwrite if the file already exists")
     ap.add_argument("--dry-run", action="store_true", help="fetch + render but write nothing")
     ap.add_argument("--json", action="store_true", help="print the result as JSON")
