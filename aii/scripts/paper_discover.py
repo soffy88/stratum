@@ -65,6 +65,18 @@ def _ensure_paper_frontmatter(md: str) -> bool:
     return True
 
 
+def _is_web_article(md: str) -> bool:
+    """frontmatter 带 doc_kind: article(stratum web_ingest.py 写入的网页/微信文章)。"""
+    try:
+        with open(md, encoding="utf-8", errors="replace") as fh:
+            head = fh.read(800)
+    except OSError:
+        return False
+    if not head.lstrip().startswith("---"):
+        return False
+    return "doc_kind:article" in head.lower().replace(" ", "")
+
+
 def discover() -> list[dict]:
     out = []
     fixed = 0
@@ -78,7 +90,10 @@ def discover() -> list[dict]:
             continue
         if os.getenv("PAPER_FIX_FRONTMATTER", "1") == "1" and _ensure_paper_frontmatter(md):
             fixed += 1
-        out.append({"id": _sid(stem), "title": stem, "md_path": md})
+        out.append({"id": _sid(stem), "title": stem, "md_path": md, "prio": _is_web_article(md)})
+    # ★2026-10-16: ingest-url 用户主动投递的网页/微信文章(doc_kind: article)排在批量回填论文
+    #   之前 —— 否则在数百篇 arxiv 积压后面要等很多轮才轮到。稳定排序, 其余顺序不变。
+    out.sort(key=lambda c: 0 if c["prio"] else 1)
     if fixed:
         print(f"补 doc_type: paper frontmatter: {fixed} 篇", file=sys.stderr)
     return out
