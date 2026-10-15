@@ -66,10 +66,29 @@ class IngestResult:
     char_count: int = 0
     skipped: bool = False  # file already existed (idempotent re-run)
     error: str | None = None
+    deep_read_path: str = ""  # optional BU2/KU supplement JSON sidecar
 
 
 def intake_dir() -> Path:
     return Path(os.environ.get("STRATUM_AII_INTAKE_DIR") or _DEFAULT_INTAKE)
+
+
+def _maybe_auto_deep_read(path: Path) -> str:
+    """Run the optional supplement only when explicitly enabled; preserve ingestion on failure."""
+    enabled = (os.environ.get("STRATUM_DEEP_READ_ENABLED") or "").strip().lower()
+    if enabled not in {"1", "true", "yes", "on"}:
+        return ""
+    try:
+        from stratum.services.deep_read_enrichment import enrich_file
+
+        artifact = enrich_file(path)
+        log.info("web_ingest: deep-read supplement wrote %s", artifact.name)
+        return str(artifact)
+    except Exception as exc:  # optional enrichment must never block core ingestion
+        log.warning(
+            "web_ingest: optional deep-read failed for %s (%s)", path.name, type(exc).__name__
+        )
+        return ""
 
 
 def _slug(text: str, max_len: int = _MAX_STEM) -> str:
@@ -219,6 +238,7 @@ def ingest_url(
             domain=domain,
             char_count=len(res.markdown),
             skipped=True,
+            deep_read_path=_maybe_auto_deep_read(dest) if not dry_run else "",
         )
 
     if not dry_run:
@@ -242,6 +262,7 @@ def ingest_url(
         source_type=source_type,
         domain=domain,
         char_count=len(res.markdown),
+        deep_read_path=_maybe_auto_deep_read(dest) if not dry_run else "",
     )
 
 
@@ -286,14 +307,54 @@ def _cmd_ingest_url(argv: list[str]) -> int:
     return 0 if result.success else 1
 
 
+def _cmd_deep_read(argv: list[str]) -> int:
+    ap = argparse.ArgumentParser(
+        prog="python -m stratum.services.web_ingest deep-read",
+        description="Create a 12-question three-round BU2/KU supplement from Markdown, text, or EPUB.",
+    )
+    ap.add_argument("path", help="source Markdown, text, or EPUB file")
+    ap.add_argument("--kind", choices=("book", "article", "document"), default=None)
+    ap.add_argument(
+        "--output", default=None, help="JSON sidecar destination (default next to source)"
+    )
+    ap.add_argument("--force", action="store_true", help="regenerate an existing JSON sidecar")
+    ap.add_argument("--json", action="store_true", help="print result metadata as JSON")
+    args = ap.parse_args(argv)
+    try:
+        from stratum.services.deep_read_enrichment import enrich_file
+
+        output = enrich_file(args.path, output_path=args.output, kind=args.kind, force=args.force)
+        artifact = json.loads(output.read_text(encoding="utf-8"))
+        result = {
+            "success": True,
+            "path": str(output),
+            "source_title": artifact["source"]["title"],
+            "source_kind": artifact["source"]["kind"],
+            "question_count": artifact["question_count"],
+        }
+    except Exception as exc:
+        result = {"success": False, "error": f"{type(exc).__name__}: {exc}"}
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    elif result["success"]:
+        print(f"✅ deep-read supplement: {result['path']} ({result['question_count']} questions)")
+    else:
+        print(f"❌ deep-read failed: {result['error']}", file=sys.stderr)
+    return 0 if result["success"] else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
-        print("usage: python -m stratum.services.web_ingest ingest-url <url> [--domain X] ...")
+        print(
+            "usage: python -m stratum.services.web_ingest {ingest-url <url>|deep-read <path>} ..."
+        )
         return 0 if argv else 2
     cmd, rest = argv[0], argv[1:]
     if cmd == "ingest-url":
         return _cmd_ingest_url(rest)
+    if cmd == "deep-read":
+        return _cmd_deep_read(rest)
     print(f"unknown command: {cmd}", file=sys.stderr)
     return 2
 
