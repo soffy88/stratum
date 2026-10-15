@@ -153,7 +153,9 @@ def render_markdown(title: str, body: str, frontmatter: str) -> str:
     return f"{frontmatter}\n\n{heading}{body.strip()}\n"
 
 
-def _fetch(url: str, *, client: httpx.Client | None, timeout: float | None) -> tuple[WebFetchResult, str]:
+def _fetch(
+    url: str, *, client: httpx.Client | None, timeout: float | None
+) -> tuple[WebFetchResult, str]:
     """Dispatch to the WeChat or generic cascade fetcher. Returns (result, source_type)."""
     if is_wechat_url(url):
         art = fetch_wechat_article(url, client=client, timeout=timeout)
