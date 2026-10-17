@@ -153,3 +153,13 @@ aii/quark_pipeline/*.bak.*
 e2e_*.json
 e2e_*.txt
 *.backup
+
+# 仓库卫生 (2026-10-17 审计 🟢28/29): 临时/日志/运行时状态文件不入库
+_tmp_*
+*.log
+# BU2 验收报告引用的证据日志保留在库中
+!docs/**/evidence/**/*.log
+e2e_*_resp*.json
+# 运行时状态 (watchdog / quark 扫描每次运行都会重写); 模板见同目录 *.example
+aii/watchdog/arxiv_math_state.json
+aii/quark_pipeline/quark_catalog.json
