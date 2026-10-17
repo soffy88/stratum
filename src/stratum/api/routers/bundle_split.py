@@ -15,6 +15,8 @@ import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
 from stratum.api.deps import get_current_user
+from stratum.api.routers.metrics import _require_admin_secret
+from stratum.api.routers.quality import _owns_substrate
 from stratum.db import get_conn
 
 log = logging.getLogger(__name__)
@@ -32,13 +34,18 @@ async def trigger_split_one(
     """拆分单个 EPUB 套装（同步执行，结果直接返回）。"""
     from stratum.services.bundle_split_service import split_one
 
+    # 安全审计 🔴4: 只允许拆分自己的文档(他人/不存在统一 404)。
+    with get_conn() as conn:
+        if not _owns_substrate(conn, substrate_id, user.user_id):
+            raise HTTPException(status_code=404, detail="substrate not found")
+
     result = split_one(substrate_id, force=force)
     if result["status"] == "not_found":
         raise HTTPException(status_code=404, detail="substrate not found")
     return result
 
 
-@router.post("/api/v1/admin/bundle-split-batch")
+@router.post("/api/v1/admin/bundle-split-batch", dependencies=[Depends(_require_admin_secret)])
 async def trigger_split_batch(
     background_tasks: BackgroundTasks,
     force: bool = Query(False),
@@ -56,7 +63,7 @@ async def trigger_split_batch(
     return {"status": "queued", "message": "Bundle split batch started in background"}
 
 
-@router.post("/api/v1/admin/hash-backfill")
+@router.post("/api/v1/admin/hash-backfill", dependencies=[Depends(_require_admin_secret)])
 async def trigger_hash_backfill(
     user=Depends(get_current_user),
 ):
@@ -67,7 +74,7 @@ async def trigger_hash_backfill(
     return result
 
 
-@router.post("/api/v1/admin/dedup-by-hash")
+@router.post("/api/v1/admin/dedup-by-hash", dependencies=[Depends(_require_admin_secret)])
 async def trigger_dedup(
     title_like: str = Query(..., description="LIKE pattern, e.g. '%投资者与市场%'"),
     user=Depends(get_current_user),
@@ -117,7 +124,7 @@ class BulkMetaPatchRequest(BaseModel):
     patch: dict
 
 
-@router.post("/api/v1/admin/bulk-meta-patch")
+@router.post("/api/v1/admin/bulk-meta-patch", dependencies=[Depends(_require_admin_secret)])
 async def bulk_meta_patch(
     body: BulkMetaPatchRequest,
     user=Depends(get_current_user),
@@ -151,7 +158,7 @@ class BulkDeleteRequest(BaseModel):
     ids: list[str]
 
 
-@router.post("/api/v1/admin/bulk-delete")
+@router.post("/api/v1/admin/bulk-delete", dependencies=[Depends(_require_admin_secret)])
 async def bulk_delete(
     body: BulkDeleteRequest,
     user=Depends(get_current_user),
