@@ -1,13 +1,16 @@
 """stratum.services.web_fetch_enhanced — 增强版 URL 抓取: 付费墙绕过 + 多源适配 + JS 渲染.
 
-集成 oprim.fetch_url_with_bypass + Crawl4AI 到 stratum web-clip / source_watcher 管线.
+集成 Crawl4AI 到 stratum web-clip / source_watcher 管线.
 
 支持:
-  - 微信公众号 (mp.weixin.qq.com) → jina.ai 代理
-  - X/Twitter 线程 (x.com/twitter.com) → jina.ai / agent-fetch 级联
-  - 付费墙站点 (nytimes/wsj/ft/economist/bloomberg/medium...) → Bot UA + AMP + archive 级联
   - JS 渲染/SPA (React/Vue/Angular) → Crawl4AI (Playwright 异步抓取)
   - 普通网页 → SSRF-safe 直取 + oprim 标准流程
+
+★ 降级说明 (2026-10-17, 审计 🟡15): 原设计中微信公众号 / X(Twitter) / 付费墙站点走
+  ``oprim.fetch_url_with_bypass``, 但已发布的 oprim 中不存在该函数 (仅在未合并的分支里),
+  该分支一直静默回退直取. 现删除死分支, 这三类请求 **明确降级** 为 SSRF-safe 直取:
+  每次降级记 WARNING 日志 ``fetch_strategy_degraded`` 并计入 ``get_fetch_metrics()``,
+  成功结果的 ``strategy_used`` 为 ``direct_degraded_<kind>``. oprim 正式提供绕过能力后再接回.
 
 用法:
   from stratum.services.web_fetch_enhanced import fetch_url_enhanced
@@ -22,9 +25,29 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import threading
+from collections import Counter
 from dataclasses import dataclass
 
 log = logging.getLogger(__name__)
+
+# 需要专用绕过能力、但当前没有可用实现的策略 → 明确降级为直取.
+_DEGRADED_KINDS = frozenset(("wechat", "twitter", "paywall"))
+
+# 进程内抓取策略计数 (key 集合有限: <outcome>:<strategy>, 不会无界增长).
+_FETCH_METRICS: Counter[str] = Counter()
+_FETCH_METRICS_LOCK = threading.Lock()
+
+
+def _record_metric(key: str) -> None:
+    with _FETCH_METRICS_LOCK:
+        _FETCH_METRICS[key] += 1
+
+
+def get_fetch_metrics() -> dict[str, int]:
+    """返回抓取策略计数快照, 如 {"degraded:wechat": 3, "ok:direct": 10}."""
+    with _FETCH_METRICS_LOCK:
+        return dict(_FETCH_METRICS)
 
 # 已知 JS 渲染/SPA 域名 (触发 Crawl4AI)
 _JS_HEAVY_DOMAINS = frozenset(
@@ -104,40 +127,55 @@ async def fetch_url_enhanced(
     max_bytes: int = 5 * 1024 * 1024,
     strategy: str = "auto",
 ) -> FetchResult:
-    """增强 URL 抓取: 付费墙绕过 + 多源适配 + JS 渲染 + SSRF 安全.
+    """增强 URL 抓取: 多源适配 + JS 渲染 + SSRF 安全.
 
     策略:
-      1. 检测域名类型 (wechat/twitter/paywall/js_heavy/普通)
-      2. wechat/twitter → 专用 fetcher (jina.ai 代理)
-      3. paywall → oprim.fetch_url_with_bypass(strategy=auto) 级联绕过
-      4. js_heavy → Crawl4AI (Playwright 异步抓取, LLM-ready Markdown)
-      5. 普通 → oprim.url_fetch_ssrf_safe (DNS-pinned)
-      6. 所有策略失败 → 回退普通抓取
+      1. 检测域名类型 (wechat/twitter/paywall/js_heavy/普通); 显式 ``strategy`` 参数
+         为 wechat/twitter/paywall/crawl4ai 时优先于域名检测
+      2. wechat/twitter/paywall → 当前无可用绕过实现, 明确降级为 SSRF-safe 直取
+         (WARNING 日志 + metrics ``degraded:<kind>``)
+      3. js_heavy → Crawl4AI (Playwright 异步抓取, LLM-ready Markdown), 失败回退直取
+      4. 普通 → SSRF-safe 直取 (DNS-pinned)
     """
     domain_type = _detect_paywall_domain(url)
     log.info(
         "fetch_url_enhanced url=%s domain_type=%s strategy=%s", url[:80], domain_type, strategy
     )
 
-    # 源专用抓取
-    if domain_type in ("wechat", "twitter"):
-        return await _fetch_with_bypass(url, domain_type, timeout, max_bytes)
-
-    # 付费墙 → 级联绕过 (包含 stealth 策略)
-    if domain_type == "paywall" or strategy == "paywall":
-        return await _fetch_with_bypass(url, "stealth", timeout, max_bytes)
+    degraded_kind = strategy if strategy in _DEGRADED_KINDS else None
+    if degraded_kind is None and domain_type in _DEGRADED_KINDS:
+        degraded_kind = domain_type
+    if degraded_kind is not None:
+        return await _fetch_degraded(url, degraded_kind, timeout, max_bytes)
 
     # JS 渲染/SPA → Crawl4AI
     if domain_type == "js_heavy" or strategy == "crawl4ai":
         result = await _fetch_with_crawl4ai(url, timeout, max_bytes)
         if result.success:
+            _record_metric("ok:crawl4ai")
             return result
-        # 降级: 尝试级联绕过或直取
-        if domain_type == "paywall":
-            return await _fetch_with_bypass(url, "paywall", timeout, max_bytes)
+        _record_metric("fallback:crawl4ai")
 
     # 普通网页 → SSRF-safe 直取
-    return await _fetch_direct(url, timeout, max_bytes)
+    result = await _fetch_direct(url, timeout, max_bytes)
+    _record_metric(("ok:" if result.success else "fail:") + "direct")
+    return result
+
+
+async def _fetch_degraded(url: str, kind: str, timeout: int, max_bytes: int) -> FetchResult:
+    """wechat/twitter/paywall: 无专用绕过实现, 明确降级为直取并记录."""
+    _record_metric(f"degraded:{kind}")
+    log.warning(
+        "fetch_strategy_degraded url=%s requested=%s fallback=direct "
+        "reason=no_bypass_fetcher_available",
+        url[:80],
+        kind,
+    )
+    result = await _fetch_direct(url, timeout, max_bytes)
+    _record_metric(("ok:" if result.success else "fail:") + f"direct_degraded_{kind}")
+    if result.success:
+        result.strategy_used = f"direct_degraded_{kind}"
+    return result
 
 
 async def _fetch_with_crawl4ai(
@@ -223,53 +261,6 @@ async def _fetch_with_crawl4ai(
             success=False,
             error=str(e),
         )
-
-
-async def _fetch_with_bypass(
-    url: str,
-    strategy: str,
-    timeout: int,
-    max_bytes: int,
-) -> FetchResult:
-    """通过 oprim.fetch_url_with_bypass 抓取."""
-    try:
-        from oprim import fetch_url_with_bypass
-    except ImportError:
-        log.warning("oprim.fetch_url_with_bypass not available, falling back to direct")
-        return await _fetch_direct(url, timeout, max_bytes)
-
-    try:
-        result = await asyncio.to_thread(
-            fetch_url_with_bypass,
-            url,
-            strategy=strategy if strategy not in ("auto", "paywall") else "stealth",
-        )
-    except Exception as e:
-        log.warning("bypass_fetch_error url=%s strategy=%s error=%s", url[:80], strategy, e)
-        return await _fetch_direct(url, timeout, max_bytes)
-
-    if result.get("success"):
-        content = result.get("content", "")
-        if len(content) > max_bytes:
-            content = content[:max_bytes]
-        return FetchResult(
-            html=content,
-            title=result.get("title", ""),
-            strategy_used=result.get("strategy", "unknown"),
-            content_type=result.get("content_type", "generic"),
-            source_url=url,
-            success=True,
-            error=None,
-        )
-
-    log.warning(
-        "bypass_failed url=%s strategy=%s error=%s",
-        url[:80],
-        result.get("strategy"),
-        result.get("error"),
-    )
-    # 降级: 尝试 SSRF-safe 直取
-    return await _fetch_direct(url, timeout, max_bytes)
 
 
 async def _fetch_direct(
