@@ -21,16 +21,16 @@ dependencies = [
     "httpx",
     "python-multipart",
     "email-validator",
-    "mcp>=1.27,<2",
+    "mcp>=1.30,<2",
     "psycopg2-binary",
     "duckdb>=1.0",
     "numpy",
     "argon2-cffi",
-    "PyJWT",
+    "PyJWT>=2.15",
     "apscheduler",
     "fsrs>=6.3,<7",
     "python-pptx>=1.0",
-    "pillow>=10",
+    "pillow>=12.3",
     "lxml>=5",
 ]
 
@@ -38,7 +38,7 @@ dependencies = [
 # 以下为预期依赖, 实际选型见批 2 实证结果
 # [PENDING_VALIDATION]
 ingest-pdf = [
-    "docling>=2,<3",  # MIT — 默认 PDF 解析器 (表格+代码保留), 替换 AGPL pymupdf4llm
+    "docling>=2.132,<3",  # MIT — 默认 PDF 解析器 (表格+代码保留), 替换 AGPL pymupdf4llm
     "pymupdf4llm",    # AGPL — 仅作 fallback, 镜像内可选裁剪
     # "unstructured",  # 实证后选一
     # "marker-pdf",
@@ -59,7 +59,7 @@ dev = [
     "pytest-asyncio",
     "pytest-cov",
     "pytest-timeout",
-    "httpx2",
+    "httpx2>=2.10",
     "ruff>=0.6",
     "mypy>=1.10",
 ]
