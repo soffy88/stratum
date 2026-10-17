@@ -41,3 +41,11 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["aii"]
+
+[tool.uv]
+# 本地 editable oprim(3.23.0)现声明 obase>=0.31,与本项目钉住的 obase v0.15.10 冲突,
+# 导致 uv lock 无法重新解析(与本次升级无关的既有漂移)。此处 override 维持锁内既有的
+# obase 0.15.10,仅为能刷新安全补丁版本;obase 升级需单独评估。
+override-dependencies = [
+    "obase @ git+ssh://git@github.com/helios-plat/obase.git@v0.15.10",
+]
