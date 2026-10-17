@@ -184,7 +184,15 @@ export function PdfReader({ blobUrl, documentId, fullHeight }: { blobUrl: string
   return (
     <div className="border border-border rounded-lg overflow-hidden" style={{ height: fullHeight ? '100%' : '80vh' }}>
       <Worker workerUrl="/pdf.worker.min.js">
-        <Viewer fileUrl={blobUrl} plugins={[defaultLayoutPluginInstance, highlightPluginInstance]} />
+        <Viewer
+          fileUrl={blobUrl}
+          plugins={[defaultLayoutPluginInstance, highlightPluginInstance]}
+          // 安全缓解(CVE-2024-4367 / GHSA-wgrm-67xf-hhpq):@react-pdf-viewer 3.12 只兼容
+          // pdfjs-dist@3,无法升到已修复的 >=4.2;关闭 eval 字体路径可阻断恶意 PDF 执行任意 JS。
+          transformGetDocumentParams={(params) =>
+            ({ ...params, isEvalSupported: false }) as typeof params
+          }
+        />
       </Worker>
       {editingHighlight && (
         <HighlightNotePopover
