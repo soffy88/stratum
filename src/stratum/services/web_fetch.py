@@ -64,6 +64,47 @@ def _is_public_url(url: str) -> bool:
     return True
 
 
+def host_resolves_public(hostname: str) -> bool:
+    """True only if every address the host resolves to is a public (global) IP."""
+    import ipaddress
+    import socket
+
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+    except (OSError, UnicodeError):
+        return False
+    if not infos:
+        return False
+    for info in infos:
+        try:
+            ip = ipaddress.ip_address(str(info[4][0]).split("%", 1)[0])
+        except ValueError:
+            return False
+        if not ip.is_global or ip.is_multicast:
+            return False
+    return True
+
+
+def is_public_destination(url: str) -> bool:
+    """String guard (_is_public_url) + local DNS check that the host is public.
+
+    Used for every hop on paths that cannot DNS-pin (outbound proxy, httpx
+    clients): the initial URL and each redirect target (安全审计 🟡8/🟡9)."""
+    if not _is_public_url(url):
+        return False
+    host = (urllib.parse.urlparse(url).hostname or "").lower().rstrip(".")
+    return host_resolves_public(host)
+
+
+class _SSRFSafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Re-validate every redirect target; refuse hops to private networks."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D401
+        if not is_public_destination(newurl):
+            raise urllib.error.URLError(f"ssrf_blocked: redirect to non-public {newurl!r}")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def _perform(
     opener: urllib.request.OpenerDirector,
     url: str,
@@ -135,7 +176,8 @@ def _direct_fetch(url: str, timeout: int, max_bytes: int, headers: dict | None) 
 
 def _proxy_fetch(proxy: str, url: str, timeout: int, max_bytes: int, headers: dict | None) -> dict:
     opener = urllib.request.build_opener(
-        urllib.request.ProxyHandler({"http": proxy, "https": proxy})
+        urllib.request.ProxyHandler({"http": proxy, "https": proxy}),
+        _SSRFSafeRedirectHandler,
     )
     try:
         return _perform(opener, url, timeout, max_bytes, headers)
@@ -188,7 +230,7 @@ def fetch_url_ssrf_safe(
         return result
 
     proxy = os.environ.get("STRATUM_OUTBOUND_PROXY") or _DEFAULT_OUTBOUND_PROXY
-    if proxy and _is_public_url(url):
+    if proxy and is_public_destination(url):
         log.warning("web_fetch: direct failed url=%s err=%s retry via proxy", url, result["error"])
         result = _proxy_fetch(proxy, url, timeout, max_bytes, headers)
         if result["error"] is None:

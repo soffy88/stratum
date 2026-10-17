@@ -86,13 +86,20 @@ class APIKeyMiddleware:
         )
 
         matched = False
+        read_only = False
         if provided:
             if secrets.compare_digest(provided, main_key):
                 matched = True
             elif stratum_key and secrets.compare_digest(provided, stratum_key):
                 matched = True
+                read_only = True
         if not matched:
             resp = _err_response(401, "unauthorized", "Missing or invalid API key")
+            await resp(scope, receive, send)
+            return
+        # 安全审计 🟡7: STRATUM_API_KEY is the read-only key — GET/HEAD only.
+        if read_only and scope.get("method", "GET").upper() not in ("GET", "HEAD"):
+            resp = _err_response(403, "forbidden", "STRATUM_API_KEY is read-only (GET/HEAD only)")
             await resp(scope, receive, send)
             return
 
