@@ -17,6 +17,7 @@ import glob
 import signal
 import hashlib
 import subprocess
+import threading
 from pathlib import Path
 
 import asyncpg
@@ -410,15 +411,18 @@ async def start_pipeline(cid: str):
     if c["needs_key"] and not _keys().get(c["key_id"]):
         raise HTTPException(400, f"通道 {cid} 未配置 NIM key")
     c["log"].parent.mkdir(parents=True, exist_ok=True)
-    logf = open(c["log"], "ab")
-    subprocess.Popen(
-        ["bash", f"scripts/{c['runner']}"],
-        cwd=str(ROOT),
-        env={**os.environ, "DATABASE_URL": DSN},
-        stdout=logf,
-        stderr=logf,
-        start_new_session=True,
-    )
+    # 安全审计 🟡18: the child inherits a dup of the log fd; close ours right
+    # away and reap the child in a daemon thread so it never lingers as a zombie.
+    with open(c["log"], "ab") as logf:
+        proc = subprocess.Popen(
+            ["bash", f"scripts/{c['runner']}"],
+            cwd=str(ROOT),
+            env={**os.environ, "DATABASE_URL": DSN},
+            stdout=logf,
+            stderr=logf,
+            start_new_session=True,
+        )
+    threading.Thread(target=proc.wait, name=f"reap-{cid}", daemon=True).start()
     return {"status": "ok", "msg": f"{cid} flywheel started"}
 
 

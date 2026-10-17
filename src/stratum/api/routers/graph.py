@@ -9,11 +9,29 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+import logging
 
-from stratum.services.graph_query import get_graph
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-router = APIRouter(prefix="/graph", tags=["graph"])
+from stratum.common import jwt_auth
+from stratum.services.graph_query import get_graph as _load_graph
+
+log = logging.getLogger(__name__)
+
+# 安全审计 🟡14: /graph/* 不在 /api/ 下, 中间件不管它 → 显式要求 JWT。
+router = APIRouter(prefix="/graph", tags=["graph"], dependencies=[Depends(jwt_auth)])
+
+
+def get_graph():
+    """Load the B-graph; a missing/unreachable refined DB is a 503, not a 500.
+
+    (The 500 on /graph/explain was psycopg2.OperationalError: REFINED_URL is not
+    set in stratum-sl so it falls back to localhost:5436, unreachable in-container.)"""
+    try:
+        return _load_graph()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("graph store unavailable: %s", exc)
+        raise HTTPException(503, "graph store unavailable") from exc
 
 
 @router.get("/explain")

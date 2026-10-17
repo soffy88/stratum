@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 
 from fastapi import APIRouter, Depends, Query
+from fastapi import Path as FPath
 from pydantic import BaseModel
 
 from stratum.common import jwt_auth
@@ -386,32 +387,32 @@ async def analyze_knowledge_gaps(
 
 @router.get("/agent/states")
 async def list_agent_states(user_id: str = Depends(jwt_auth)):
-    """列出所有 Agent 的 Post-it 状态."""
-    from stratum.services.agent_state import get_manager
+    """列出当前用户的 Agent Post-it 状态(安全审计 🔴4: 按用户隔离)."""
+    from stratum.services.agent_state import get_user_manager
 
-    return {"states": get_manager().list_states()}
+    return {"states": get_user_manager(user_id).list_states()}
 
 
 @router.get("/agent/states/{agent_name}")
 async def get_agent_state(
-    agent_name: str,
+    agent_name: str = FPath(..., pattern=r"^[A-Za-z0-9_.-]{1,64}$"),
     user_id: str = Depends(jwt_auth),
 ):
-    """获取单个 Agent 的状态摘要."""
-    from stratum.services.agent_state import get_manager
+    """获取当前用户单个 Agent 的状态摘要."""
+    from stratum.services.agent_state import get_user_manager
 
-    return get_manager().get_state_summary(agent_name)
+    return get_user_manager(user_id).get_state_summary(agent_name)
 
 
 @router.post("/agent/states/{agent_name}/clear")
 async def clear_agent_state(
-    agent_name: str,
+    agent_name: str = FPath(..., pattern=r"^[A-Za-z0-9_.-]{1,64}$"),
     user_id: str = Depends(jwt_auth),
 ):
-    """清除 Agent 状态 (重置)."""
-    from stratum.services.agent_state import get_manager
+    """清除当前用户的 Agent 状态 (重置); 不再能清除全局/他人状态."""
+    from stratum.services.agent_state import get_user_manager
 
-    deleted = get_manager().clear_state(agent_name)
+    deleted = get_user_manager(user_id).clear_state(agent_name)
     return {"agent_name": agent_name, "deleted": deleted}
 
 
