@@ -95,6 +95,8 @@ async def refresh(request: Request, db=Depends(get_db)):
     user = UserDAO(db).get_user_by_id(session.user_id)
     if not user:
         raise HTTPException(401, "User not found")
+    if user.is_suspended is True or user.is_active is False:  # 安全审计 🟡22
+        raise HTTPException(401, "Account suspended")
     return RefreshResponse(access_token=encode_access(user.email, user.corpus_id))
 
 

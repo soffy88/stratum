@@ -17,6 +17,7 @@ import glob
 import signal
 import hashlib
 import subprocess
+import threading
 from pathlib import Path
 
 import asyncpg
@@ -133,10 +134,10 @@ def _running_pids(cid: str) -> list[int]:
 
 def _last_log(p: Path) -> str:
     try:
-        lines = [l.strip() for l in p.read_text(errors="replace").splitlines() if l.strip()]
-        for l in reversed(lines):
-            if not any(x in l for x in ("INFO", "WARNING", "huggingface", "tokenizer")):
-                return l[:160]
+        lines = [ln.strip() for ln in p.read_text(errors="replace").splitlines() if ln.strip()]
+        for ln in reversed(lines):
+            if not any(x in ln for x in ("INFO", "WARNING", "huggingface", "tokenizer")):
+                return ln[:160]
         return lines[-1][:160] if lines else ""
     except Exception:
         return ""
@@ -209,13 +210,13 @@ def _flywheel_progress(cid: str) -> dict | None:
 
     if cid == "math_prog":
         book, idx = None, -1
-        for i, l in enumerate(lines):
-            m = _MATH_BOOK_START_RE.search(l)
+        for i, ln in enumerate(lines):
+            m = _MATH_BOOK_START_RE.search(ln)
             if m:
                 book, idx = m.group(1), i
         if book is None:
             return None
-        if any(("本轮处理" in l or "飞轮完成" in l) for l in lines[idx + 1 :]):
+        if any(("本轮处理" in ln or "飞轮完成" in ln) for ln in lines[idx + 1 :]):
             return None
         return {
             "book": book,
@@ -228,8 +229,8 @@ def _flywheel_progress(cid: str) -> dict | None:
 
     # econ_zh / misc
     book, sub, idx = None, None, -1
-    for i, l in enumerate(lines):
-        m = _ECON_BOOK_START_RE.search(l)
+    for i, ln in enumerate(lines):
+        m = _ECON_BOOK_START_RE.search(ln)
         if m:
             book, idx = m.group(1).strip(), i
             for j in range(i, min(i + 4, len(lines))):
@@ -240,8 +241,8 @@ def _flywheel_progress(cid: str) -> dict | None:
     if book is None:
         return None
     after = lines[idx + 1 :]
-    if any(_ECON_BOOK_START_RE.search(l) for l in after) or any(
-        ("✓ 移动" in l or "飞轮完成" in l) for l in after
+    if any(_ECON_BOOK_START_RE.search(ln) for ln in after) or any(
+        ("✓ 移动" in ln or "飞轮完成" in ln) for ln in after
     ):
         return None
 
@@ -410,15 +411,18 @@ async def start_pipeline(cid: str):
     if c["needs_key"] and not _keys().get(c["key_id"]):
         raise HTTPException(400, f"通道 {cid} 未配置 NIM key")
     c["log"].parent.mkdir(parents=True, exist_ok=True)
-    logf = open(c["log"], "ab")
-    subprocess.Popen(
-        ["bash", f"scripts/{c['runner']}"],
-        cwd=str(ROOT),
-        env={**os.environ, "DATABASE_URL": DSN},
-        stdout=logf,
-        stderr=logf,
-        start_new_session=True,
-    )
+    # 安全审计 🟡18: the child inherits a dup of the log fd; close ours right
+    # away and reap the child in a daemon thread so it never lingers as a zombie.
+    with open(c["log"], "ab") as logf:
+        proc = subprocess.Popen(
+            ["bash", f"scripts/{c['runner']}"],
+            cwd=str(ROOT),
+            env={**os.environ, "DATABASE_URL": DSN},
+            stdout=logf,
+            stderr=logf,
+            start_new_session=True,
+        )
+    threading.Thread(target=proc.wait, name=f"reap-{cid}", daemon=True).start()
     return {"status": "ok", "msg": f"{cid} flywheel started"}
 
 
