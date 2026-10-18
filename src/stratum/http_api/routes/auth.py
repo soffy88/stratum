@@ -14,9 +14,21 @@ from ...auth.jwt_handler import encode_access, decode_access
 from ...auth.refresh_handler import create_refresh
 from ...middleware.abuse_detection import record_auth_event, _get_ip
 import hashlib
+import os
 from datetime import datetime, timezone
 
 router = APIRouter()
+
+
+def registration_enabled() -> bool:
+    """Open self-registration switch.
+
+    STRATUM_REGISTRATION_ENABLED defaults to enabled (backward compatible).
+    Set it to 0/false/no/off to close public sign-up; re-enable by removing the
+    variable or setting it to 1 and restarting the auth service.
+    """
+    v = os.getenv("STRATUM_REGISTRATION_ENABLED", "1").strip().lower()
+    return v not in ("0", "false", "no", "off")
 
 
 def get_db():
@@ -28,6 +40,8 @@ def get_db():
 
 @router.post("/register", response_model=RegisterResponse)
 async def register(req: RegisterRequest, request: Request, db=Depends(get_db)):
+    if not registration_enabled():
+        raise HTTPException(403, "Registration is disabled")
     dao = UserDAO(db)
     if dao.get_user_by_email(req.email):
         raise HTTPException(400, "Email already registered")
