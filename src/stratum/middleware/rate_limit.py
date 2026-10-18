@@ -14,6 +14,7 @@ API Key auth (P2):
 Uses in-memory store (no Redis dependency for MVP).
 """
 
+from typing import Any
 import os
 import secrets
 import time
@@ -45,7 +46,7 @@ _user_windows: dict[str, dict[str, _Window]] = defaultdict(lambda: defaultdict(_
 _aii_windows: dict[str, deque] = {}
 
 # Config
-LIMITS = {
+LIMITS: dict[str, dict[str, Any]] = {
     "register": {"window": 3600, "max": 3, "key": "ip"},
     "login": {"window": 3600, "max": 10, "key": "ip"},
     "refresh": {"window": 3600, "max": 30, "key": "user"},

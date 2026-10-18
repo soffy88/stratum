@@ -220,7 +220,8 @@ def test_is_public_destination_resolves_dns(monkeypatch):
     from stratum.services import web_fetch
 
     monkeypatch.setattr(
-        "socket.getaddrinfo", _fake_dns({"good.example.com": "93.184.216.34", "evil.example.com": "10.0.0.5"})
+        "socket.getaddrinfo",
+        _fake_dns({"good.example.com": "93.184.216.34", "evil.example.com": "10.0.0.5"}),
     )
     assert web_fetch.is_public_destination("https://good.example.com/a")
     assert not web_fetch.is_public_destination("https://evil.example.com/a")  # rebinding-style name
@@ -258,7 +259,8 @@ def test_cascade_client_blocks_redirect_hop_to_private(monkeypatch):
     from stratum.services import web_fetch_cascade as wc
 
     monkeypatch.setattr(
-        "socket.getaddrinfo", _fake_dns({"pub.example.com": "93.184.216.34", "priv.example.com": "10.1.2.3"})
+        "socket.getaddrinfo",
+        _fake_dns({"pub.example.com": "93.184.216.34", "priv.example.com": "10.1.2.3"}),
     )
 
     def handler(request):
@@ -284,7 +286,9 @@ def test_watch_path_restricted_to_users_own_subtree(tmp_path, monkeypatch):
     bob = tmp_path / hash_user_id("bob@example.com") / "docs"
     alice.mkdir(parents=True)
     bob.mkdir(parents=True)
-    assert user_watch_roots("alice@example.com") == [(tmp_path / hash_user_id("alice@example.com")).resolve()]
+    assert user_watch_roots("alice@example.com") == [
+        (tmp_path / hash_user_id("alice@example.com")).resolve()
+    ]
     assert assert_safe_watch_path(str(alice), user_id="alice@example.com")
     with pytest.raises(ValueError):
         assert_safe_watch_path(str(bob), user_id="alice@example.com")
@@ -319,7 +323,9 @@ def _token(sub, iat=None):
     from stratum import common
 
     now = int(time.time()) if iat is None else iat
-    return jwt.encode({"sub": sub, "iat": now, "exp": now + 3600}, common._jwt_secrets()[0], algorithm="HS256")
+    return jwt.encode(
+        {"sub": sub, "iat": now, "exp": now + 3600}, common._jwt_secrets()[0], algorithm="HS256"
+    )
 
 
 def test_verify_token_rejects_suspended_and_revoked(monkeypatch):

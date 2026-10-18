@@ -151,10 +151,13 @@ async def mix_retrieve_endpoint(
     Includes call chain tracking to prevent infinite loops.
     """
     from stratum.services.knowledge_view import KnowledgeView, KnowledgeViewRequest
+
     result = await asyncio.to_thread(
         KnowledgeView.search,
         KnowledgeViewRequest(
-            query=req.query, top_k=req.top_k, user_id=user_id,
+            query=req.query,
+            top_k=req.top_k,
+            user_id=user_id,
             scopes=["lexical", "dense", "graph"],
         ),
     )

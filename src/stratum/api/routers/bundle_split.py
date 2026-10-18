@@ -116,7 +116,7 @@ async def trigger_dedup(
     return {"status": "done", "groups": len(results), "results": results}
 
 
-from pydantic import BaseModel
+from pydantic import BaseModel  # noqa: E402
 
 
 class BulkMetaPatchRequest(BaseModel):
