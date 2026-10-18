@@ -308,8 +308,6 @@ async def fs_grep(
     """正则搜索 — 在 URI 范围内匹配 layer 内容."""
     from stratum.services.directory_builder import grep
 
-    if not case_sensitive:
-        pattern_ci = pattern  # regex handles IGNORECASE
     results = await asyncio.to_thread(grep, pattern, scope, layer, case_sensitive, limit)
     return {
         "pattern": pattern,
