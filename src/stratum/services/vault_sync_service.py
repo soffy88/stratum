@@ -50,12 +50,27 @@ def assert_safe_vault_path(path_str: str) -> Path:
     )
 
 
-def assert_safe_watch_path(path_str: str) -> Path:
-    """Like assert_safe_vault_path, but prefers STRATUM_FOLDER_WATCH_ROOTS when set."""
+def user_watch_roots(user_id: str) -> list[Path]:
+    """Per-user folder-watch roots: <root>/<hash_user_id>/ (安全审计 🟡13)."""
+    from stratum.utils.user_id_hash import hash_user_id
+
+    raw = os.environ.get("STRATUM_FOLDER_WATCH_ROOTS")
+    base = [Path(p).resolve() for p in raw.split(":") if p.strip()] if raw else allowed_roots()
+    uh = hash_user_id(user_id)
+    return [(r / uh).resolve() for r in base]
+
+
+def assert_safe_watch_path(path_str: str, user_id: str | None = None) -> Path:
+    """Like assert_safe_vault_path, but prefers STRATUM_FOLDER_WATCH_ROOTS when set.
+
+    With user_id, only that user's own subtree <root>/<hash_user_id>/ is allowed,
+    so one user cannot watch (and ingest) another user's directory."""
     if not path_str or not path_str.strip():
         raise ValueError("path required")
     raw = os.environ.get("STRATUM_FOLDER_WATCH_ROOTS")
-    if raw:
+    if user_id is not None:
+        roots = user_watch_roots(user_id)
+    elif raw:
         roots = [Path(p).resolve() for p in raw.split(":") if p.strip()]
     else:
         roots = allowed_roots()

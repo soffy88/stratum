@@ -12,6 +12,8 @@ import logging
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
 from stratum.api.deps import get_current_user
+from stratum.api.routers.metrics import _require_admin_secret
+from stratum.api.routers.quality import _owns_substrate
 from stratum.db import get_conn
 
 log = logging.getLogger(__name__)
@@ -53,6 +55,9 @@ async def trigger_ocr_one(
 ):
     """触发单本扫描书 OCR（异步后台）。"""
     with get_conn() as conn:
+        # 安全审计 🔴4: 只允许对自己的文档触发 OCR(他人/不存在统一 404)。
+        if not _owns_substrate(conn, substrate_id, user.user_id):
+            raise HTTPException(status_code=404, detail="substrate not found")
         row = conn.execute(
             "SELECT id, title, parse_quality, mime FROM substrates WHERE id=?", (substrate_id,)
         ).fetchone()
@@ -77,7 +82,7 @@ async def trigger_ocr_one(
     }
 
 
-@router.post("/api/v1/admin/ocr-batch")
+@router.post("/api/v1/admin/ocr-batch", dependencies=[Depends(_require_admin_secret)])
 async def trigger_ocr_batch(
     background_tasks: BackgroundTasks,
     force: bool = Query(False),
@@ -108,7 +113,7 @@ async def trigger_ocr_batch(
     }
 
 
-@router.get("/api/v1/admin/ocr-candidates")
+@router.get("/api/v1/admin/ocr-candidates", dependencies=[Depends(_require_admin_secret)])
 async def list_ocr_candidates(
     user=Depends(get_current_user),
 ):

@@ -130,6 +130,7 @@ def verify_token(token: str) -> str:
     for secret in _jwt_secrets():
         try:
             payload = _jwt.decode(raw, secret, algorithms=[_JWT_ALGORITHM])
+            _check_principal_status(payload["sub"], payload.get("iat"))
             return payload["sub"]
         except _jwt.ExpiredSignatureError:
             expired = True
@@ -138,6 +139,80 @@ def verify_token(token: str) -> str:
     if expired:
         raise HTTPException(401, "Token expired")
     raise HTTPException(401, "Invalid token")
+
+
+_STATUS_CACHE_TTL = 30.0
+_status_cache: dict[tuple[str, int], tuple[float, str | None]] = {}
+
+
+def _lookup_principal_block(sub: str, iat: int) -> str | None:
+    """Return a reason to reject (suspended / sessions revoked) or None.
+
+    Principals that are not rows in `users` (service tokens, tests) are not affected.
+    Fail open on DB errors so an auth-DB hiccup does not lock everyone out."""
+    import logging
+
+    try:
+        from stratum.db import get_conn
+
+        with get_conn() as conn:
+            row = conn.execute(
+                "SELECT id, is_active, is_suspended FROM users WHERE email = ? OR id = ? LIMIT 1",
+                (sub, sub),
+            ).fetchone()
+            if not row:
+                return None
+            if row[2] is True or row[1] is False:
+                return "Account suspended"
+            srow = conn.execute(
+                "SELECT count(*), "
+                "sum(CASE WHEN revoked_at IS NULL AND expires_at > CURRENT_TIMESTAMP THEN 1 ELSE 0 END), "
+                "max(revoked_at) FROM sessions WHERE user_id = ?",
+                (row[0],),
+            ).fetchone()
+    except Exception as exc:  # noqa: BLE001
+        logging.getLogger(__name__).warning("principal status check skipped: %s", exc)
+        return None
+    if not srow:
+        return None
+    total, active, last_revoked = srow
+    # All of the user's sessions are revoked/expired and the token predates the
+    # last revocation (logout / forced sign-out) → the token is dead too.
+    if (
+        isinstance(total, int)
+        and total > 0
+        and not active
+        and isinstance(last_revoked, datetime)
+        and isinstance(iat, (int, float))
+    ):
+        if last_revoked.tzinfo is None:
+            last_revoked = last_revoked.replace(tzinfo=timezone.utc)
+        ts = last_revoked.timestamp()
+        if iat <= ts:
+            return "Session revoked"
+    return None
+
+
+def _check_principal_status(sub: str, iat: Any) -> None:
+    """安全审计 🟡22: reject access tokens of suspended users / revoked sessions."""
+    if os.environ.get("STRATUM_AUTH_STATUS_CHECK", "1") == "0":
+        return
+    try:
+        iat_i = int(iat) if iat is not None else 0
+    except (TypeError, ValueError):
+        iat_i = 0
+    key = (str(sub), iat_i)
+    now = time.time()
+    hit = _status_cache.get(key)
+    if hit and hit[0] > now:
+        reason = hit[1]
+    else:
+        reason = _lookup_principal_block(str(sub), iat_i)
+        if len(_status_cache) > 10_000:
+            _status_cache.clear()
+        _status_cache[key] = (now + _STATUS_CACHE_TTL, reason)
+    if reason:
+        raise HTTPException(401, reason)
 
 
 async def jwt_auth(request: Request) -> str:
