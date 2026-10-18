@@ -6,6 +6,7 @@ leaves quarantine records, source files, BU rows, and KU rows untouched.
 """
 from __future__ import annotations
 
+import os
 import argparse
 import asyncio
 import json
@@ -19,7 +20,11 @@ STATE_FILES = sorted(ROOT.glob("*_pipeline/*flywheel*state.json"))
 
 
 async def main(apply: bool) -> int:
-    conn = await asyncpg.connect("postgresql://aii:aii_safe_pass@localhost:5437/aii_kg")
+    conn = await asyncpg.connect(
+        os.environ.get("AII_DATABASE_URL")
+        or os.environ.get("DATABASE_URL")
+        or "postgresql://aii@localhost:5437/aii_kg"
+    )
     changed = 0
     for path in STATE_FILES:
         try:

@@ -15,6 +15,7 @@ boundary_conditions(防误用) / dependencies(依赖)。
 
 from __future__ import annotations
 
+import os
 import argparse
 import asyncio
 import json
@@ -25,7 +26,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = Path.home() / ".agents" / "skills"
 EXPORTED = ROOT / "watchdog" / "paper_skill_exported.json"
-DSN = "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg"
+# DSN from env (e.g. ~/.config/keys/aii-pg.env); no password in source.
+DSN = os.environ.get("AII_DATABASE_URL") or os.environ.get("DATABASE_URL") or "postgresql://aii@localhost:5437/aii_kg"
 
 
 def _slugify(s: str) -> str:

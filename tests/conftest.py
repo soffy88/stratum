@@ -1,16 +1,26 @@
 """Shared test fixtures for Stratum tests."""
 
 import os
+from pathlib import Path
 
 # Inject test-only secrets before any module that reads them at import time.
 # setdefault leaves real env vars (e.g. from CI) untouched.
 os.environ.setdefault("JWT_SECRET", "test-only-insecure-key-do-not-use-in-prod-padding")
 os.environ.setdefault("COOKIE_SECRET", "test-only-cookie-secret-do-not-use-in-prod-pad")
 os.environ.setdefault("ADMIN_SECRET", "test-admin-secret-do-not-use-in-prod-padding00")
-# Dev Postgres credentials — match aii-postgres in deploy/docker-compose.yml.
-# stratum.db defaults to 127.0.0.1:5435 user=aii dbname=aii_kg with an empty
-# password, which the dev server rejects (fe_sendauth).
-os.environ.setdefault("STRATUM_PG_PASSWORD", "aii_safe_pass")
+# Test Postgres credentials come from the environment (CI secrets), falling back
+# to the dev box's untracked key file. Never hard-code a password here.
+# stratum.db defaults to 127.0.0.1:5435 user=aii dbname=aii_kg (the disposable
+# bu2q-test-pg container), never the production aii-postgres on 5437.
+_TEST_PG_ENV_FILE = Path(
+    os.environ.get("STRATUM_TEST_PG_ENV_FILE", str(Path.home() / ".config/keys/aii-test-pg.env"))
+)
+if "STRATUM_PG_PASSWORD" not in os.environ and _TEST_PG_ENV_FILE.is_file():
+    for _line in _TEST_PG_ENV_FILE.read_text(encoding="utf-8").splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip().strip("'\""))
 
 import pytest
 import duckdb
@@ -189,3 +199,40 @@ def canonical_source_writer(db):
     from stratum.services.canonical_source_writer import CanonicalSourceWriter
 
     return CanonicalSourceWriter(db)
+
+
+_PROD_PG_PORT = "5437"
+
+
+def _targets_production_pg() -> bool:
+    dsn = os.environ.get("STRATUM_DATABASE_DSN", "")
+    return (
+        os.environ.get("STRATUM_PG_PORT", "5435") == _PROD_PG_PORT
+        or f":{_PROD_PG_PORT}/" in dsn
+        or f"port={_PROD_PG_PORT}" in dsn
+    )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _pg_test_schema_up_to_date():
+    """Bring the test Postgres schema to head before any test runs.
+
+    Refuses to touch the production database (port 5437). If no test PG is
+    reachable (e.g. CI without Postgres) the PG-backed tests fail on their own;
+    the DuckDB-only suite still runs.
+    """
+    if _targets_production_pg():
+        pytest.exit("tests must not run migrations against production PG (5437)", returncode=2)
+    try:
+        import psycopg2
+        from stratum.db import run_pg_migrations
+
+        run_pg_migrations.upgrade()
+    except SystemExit as exc:  # upgrade() exits non-zero when a migration fails
+        if exc.code not in (0, None):
+            pytest.exit(f"test PG migration failed (exit {exc.code})", returncode=2)
+    except psycopg2.OperationalError as exc:
+        import warnings
+
+        warnings.warn(f"test PG unavailable, skipping migrations: {exc}")
+    yield

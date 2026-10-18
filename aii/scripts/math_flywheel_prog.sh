@@ -17,7 +17,7 @@ if [ -n "${RCLONE_PROXY}" ] && [ -z "${HTTPS_PROXY:-}" ]; then
   export no_proxy="${NO_PROXY}"
 fi
 PY=.venv/bin/python
-export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5437/aii_kg}"
+export DATABASE_URL="${DATABASE_URL:-postgresql://aii@localhost:5437/aii_kg}"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1   # 用本地缓存 BGE-M3, 不连 huggingface
 # ★嵌入走共享 aii-embed 微服务(笔记本GPU); 不可用时走本地 BGE-M3(CPU, 慢但可用)
 if [ "${AII_EMBED_BACKEND:-bge}" = "eg2" ]; then

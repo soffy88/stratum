@@ -184,8 +184,8 @@ services:
       #   fulltext 层静默失败。STRATUM_HOME 仅影响 oskill 路径; stratum 自身用 STRATUM_DATA_DIR。
       - STRATUM_HOME=/data/shared/stratum-home
       # P2: AII backend merged into stratum-sl — needs AII's PG DSN for asyncpg pool.
-      # Password matches STRATUM_PG_PASSWORD in aii-secrets.conf.
-      - AII_DATABASE_URL=postgresql://aii:aii_safe_pass@172.19.0.1:5437/aii_kg
+      # Password comes from the environment (e.g. ~/.config/keys/aii-pg.env); never commit it.
+      - AII_DATABASE_URL=postgresql://aii:${AII_PG_PASSWORD:?set AII_PG_PASSWORD}@172.19.0.1:5437/aii_kg
       # P2: AII provider env vars (DeepSeek/NIM/Ollama for AII's LLM routes)
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
       - NVIDIA_NIM_API_KEY=${NVIDIA_NIM_API_KEY:-}

@@ -116,5 +116,9 @@ async def ku_visualize_endpoint(substrate: str = Form(...), limit: int = Form(60
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8301)
+    uvicorn.run(
+        app,
+        host=os.environ.get("AII_EXTRACT_HOST", "127.0.0.1"),
+        port=int(os.environ.get("AII_EXTRACT_PORT", "8301")),
+    )
 
