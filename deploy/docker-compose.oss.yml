@@ -34,6 +34,8 @@ services:
       STRATUM_CORS_ALLOWED_ORIGINS: ${STRATUM_CORS_ALLOWED_ORIGINS}
       EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-disabled}
       VISUAL_BACKEND: ${VISUAL_BACKEND:-disabled}
+      # 0/false/no/off closes public self-registration (POST /api/auth/register -> 403).
+      STRATUM_REGISTRATION_ENABLED: ${STRATUM_REGISTRATION_ENABLED:-1}
     ports:
       - "127.0.0.1:9302:9302"
     depends_on:
