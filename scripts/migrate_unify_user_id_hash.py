@@ -139,14 +139,15 @@ def apply_table(cur, table: str, run_id: str) -> int:
     )
     backed_up = cur.rowcount
     cur.execute(
-        f"UPDATE {fq} SET user_id = {PG_HASH_EXPR} "
-        f"WHERE user_id IS NOT NULL AND user_id !~ %s",
+        f"UPDATE {fq} SET user_id = {PG_HASH_EXPR} WHERE user_id IS NOT NULL AND user_id !~ %s",
         (HASH_RE,),
     )
     updated = cur.rowcount
     if updated != backed_up:
         raise RuntimeError(f"{table}: backed up {backed_up} rows but updated {updated}")
-    cur.execute(f"SELECT count(*) FROM {fq} WHERE user_id IS NOT NULL AND user_id !~ %s", (HASH_RE,))
+    cur.execute(
+        f"SELECT count(*) FROM {fq} WHERE user_id IS NOT NULL AND user_id !~ %s", (HASH_RE,)
+    )
     left = cur.fetchone()[0]
     if left:
         raise RuntimeError(f"{table}: {left} raw rows remain after update")
@@ -156,7 +157,9 @@ def apply_table(cur, table: str, run_id: str) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--dsn", default=os.getenv("STRATUM_PG_DSN"), help="默认读 STRATUM_PG_DSN")
-    ap.add_argument("--tables", default=",".join(DEFAULT_TABLES), help="逗号分隔, 默认 substrates,evidence")
+    ap.add_argument(
+        "--tables", default=",".join(DEFAULT_TABLES), help="逗号分隔, 默认 substrates,evidence"
+    )
     ap.add_argument("--apply", action="store_true", help="真正执行 UPDATE (默认只 dry-run 统计)")
     ap.add_argument("--json", action="store_true", help="以 JSON 输出统计")
     args = ap.parse_args()
@@ -180,11 +183,24 @@ def main() -> int:
                 cur.execute("SET TRANSACTION READ ONLY")
             report = [analyze_table(cur, t) for t in tables]
             total_raw = sum(r.get("raw_rows_to_rewrite", 0) for r in report)
-            blocked = [r for r in report if r.get("unique_conflicts") or r.get("hash_expr_mismatch_in_sample")]
+            blocked = [
+                r
+                for r in report
+                if r.get("unique_conflicts") or r.get("hash_expr_mismatch_in_sample")
+            ]
 
             if args.json:
-                print(json.dumps({"mode": "apply" if args.apply else "dry-run", "tables": report,
-                                  "total_rows_to_rewrite": total_raw}, ensure_ascii=False, indent=2))
+                print(
+                    json.dumps(
+                        {
+                            "mode": "apply" if args.apply else "dry-run",
+                            "tables": report,
+                            "total_rows_to_rewrite": total_raw,
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
             else:
                 print(f"mode: {'APPLY' if args.apply else 'dry-run (只读, 未写库)'}")
                 for r in report:
@@ -195,7 +211,9 @@ def main() -> int:
                 conn.rollback()
                 return 0
             if blocked:
-                print("存在唯一约束冲突或哈希表达式不一致, 拒绝执行; 请先人工处理:", file=sys.stderr)
+                print(
+                    "存在唯一约束冲突或哈希表达式不一致, 拒绝执行; 请先人工处理:", file=sys.stderr
+                )
                 for r in blocked:
                     print("  " + json.dumps(r, ensure_ascii=False), file=sys.stderr)
                 conn.rollback()

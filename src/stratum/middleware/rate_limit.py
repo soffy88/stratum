@@ -14,7 +14,6 @@ API Key auth (P2):
 Uses in-memory store (no Redis dependency for MVP).
 """
 
-from typing import Any
 import os
 import secrets
 import time

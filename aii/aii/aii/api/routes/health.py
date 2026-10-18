@@ -10,9 +10,7 @@ router = APIRouter()
 
 # 看门狗(scripts/watchdog.py, systemd timer每5min)写的结构化健康报告。
 _WATCHDOG_REPORT = Path(
-    os.getenv(
-        "AII_WATCHDOG_REPORT", "/data/soffy/projects/stratum/aii/watchdog/health_report.json"
-    )
+    os.getenv("AII_WATCHDOG_REPORT", "/data/soffy/projects/stratum/aii/watchdog/health_report.json")
 )
 
 
