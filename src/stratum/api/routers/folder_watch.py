@@ -62,7 +62,7 @@ async def add_folder_watch(
     try:
         from stratum.services.vault_sync_service import assert_safe_watch_path
 
-        safe_path = str(assert_safe_watch_path(body.path))
+        safe_path = str(assert_safe_watch_path(body.path, user_id=user_id))
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
 

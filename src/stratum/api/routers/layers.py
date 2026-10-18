@@ -25,6 +25,21 @@ def _assert_owns_substrate(substrate_id: str, user_id: str) -> dict:
     return row
 
 
+def _assert_owns_ku(ku_id: str, user_id: str) -> None:
+    """安全审计 🔴4: 404 unless the KU's source substrate is owned by user.
+
+    KUs without a substrate (or unknown ids) are refused — fail closed."""
+    from stratum.api.routers.quality import _owns_substrate
+    from stratum.db import get_conn
+
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT substrate_id FROM aii.ku_onto WHERE ku_id = ?", (str(ku_id),)
+        ).fetchone()
+        if not row or not row[0] or not _owns_substrate(conn, row[0], user_id):
+            raise HTTPException(404, "KU not found")
+
+
 def _safe_read_source(source_path: str | None, max_chars: int = 10000) -> str | None:
     """Read local source only if under allowed vault/watch roots."""
     if not source_path:
@@ -162,9 +177,10 @@ async def get_substrate_layer(
 async def get_ku_layer(
     ku_id: str, layer: str = Query("L0", pattern="^L[012]$"), user_id: str = Depends(jwt_auth)
 ):
-    """Get a specific layer for a KU."""
+    """Get a specific layer for a KU (owner of the KU's substrate only)."""
     from stratum.services.layer_generator import get_ku_layers
 
+    _assert_owns_ku(ku_id, user_id)
     layers = get_ku_layers(ku_id)
     if layer not in layers:
         raise HTTPException(404, f"Layer {layer} not found for KU {ku_id}")
@@ -292,8 +308,6 @@ async def fs_grep(
     """正则搜索 — 在 URI 范围内匹配 layer 内容."""
     from stratum.services.directory_builder import grep
 
-    if not case_sensitive:
-        pattern_ci = pattern  # regex handles IGNORECASE
     results = await asyncio.to_thread(grep, pattern, scope, layer, case_sensitive, limit)
     return {
         "pattern": pattern,

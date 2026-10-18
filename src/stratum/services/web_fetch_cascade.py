@@ -183,11 +183,26 @@ def _default_timeout() -> float:
         return 25.0
 
 
+class SSRFBlockedError(Exception):
+    """Request (or redirect hop) targets a non-public destination."""
+
+
+def _ssrf_request_hook(request: httpx.Request) -> None:
+    """httpx calls request hooks for the first request AND every redirect hop,
+    so each hop is re-resolved and refused if it is not public (安全审计 🟡9)."""
+    from stratum.services.web_fetch import is_public_destination
+
+    url = str(request.url)
+    if not is_public_destination(url):
+        raise SSRFBlockedError(f"ssrf_blocked: non-public destination {url!r}")
+
+
 def make_client(timeout: float | None = None) -> httpx.Client:
     """Build an httpx client honouring ``STRATUM_WEB_FETCH_PROXY`` when set."""
     kwargs: dict[str, Any] = {
         "timeout": timeout or _default_timeout(),
         "follow_redirects": True,
+        "event_hooks": {"request": [_ssrf_request_hook]},
         "headers": {"User-Agent": _DEFAULT_UA, "Accept-Language": "en,zh;q=0.8"},
     }
     proxy = _proxy_url()
