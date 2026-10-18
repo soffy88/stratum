@@ -7,6 +7,7 @@ misread as a ranking failure when the target is not indexed.
 
 from __future__ import annotations
 
+import os
 import argparse
 import hashlib
 import json
@@ -16,7 +17,13 @@ from pathlib import Path
 import psycopg2
 
 
-DB = dict(host="127.0.0.1", port=5435, user="aii", password="aii_safe_pass", dbname="aii_kg")
+DB = dict(
+    host=os.environ.get("STRATUM_PG_HOST", "127.0.0.1"),
+    port=int(os.environ.get("STRATUM_PG_PORT", "5435")),
+    user=os.environ.get("STRATUM_PG_USER", "aii"),
+    password=os.environ.get("STRATUM_PG_PASSWORD", ""),
+    dbname=os.environ.get("STRATUM_PG_DB", "aii_kg"),
+)
 COMPATIBLE_MODEL = "BAAI/bge-m3"
 COMPATIBLE_DIM = 1024
 

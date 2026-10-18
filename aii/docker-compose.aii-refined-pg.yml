@@ -13,7 +13,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${REFINED_PG_USER:-aii}
-      POSTGRES_PASSWORD: ${REFINED_PG_PASSWORD:-aii_safe_pass}
+      POSTGRES_PASSWORD: ${REFINED_PG_PASSWORD:?set REFINED_PG_PASSWORD}
       POSTGRES_DB: ${REFINED_PG_DB:-aii_refined}
     ports:
       - "127.0.0.1:5436:5432"

@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import os
 import argparse
 import asyncio
 import json
@@ -19,7 +20,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DSN = "postgresql://aii:aii_safe_pass@localhost:5437/aii_kg"
+# DSN from env (e.g. ~/.config/keys/aii-pg.env); no password in source.
+DSN = os.environ.get("AII_DATABASE_URL") or os.environ.get("DATABASE_URL") or "postgresql://aii@localhost:5437/aii_kg"
 MD_POOLS = [
     Path("/home/soffy/books/MD/经济学"),
     Path("/home/soffy/books/MD/中文数学"),

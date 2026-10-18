@@ -39,7 +39,7 @@ export OPENCODE_BASE_URL="${OPENCODE_BASE_URL:-http://192.168.80.1:8791/v1/chat/
 export OPENCODE_MODEL="${OPENCODE_MODEL:-gpt-5.6-luna}"
 export AII_SYNTH_CONCURRENCY="${AII_SYNTH_CONCURRENCY:-4}"
 export KU_REPAIR_SOURCE_BUDGET="${KU_REPAIR_SOURCE_BUDGET:-20}"
-export DATABASE_URL="${DATABASE_URL:-postgresql://aii:aii_safe_pass@localhost:5437/aii_kg}"
+export DATABASE_URL="${DATABASE_URL:-postgresql://aii@localhost:5437/aii_kg}"
 # ★2026-08-16 提速: 本机 7890 代理(opencode-go 直连被 RST; NO_PROXY 白名单保本地服务)
 #   + OPENCODE_KEY_POOL 由 _provider.py 自动读 opencode-keys.txt 全部 key(2 key 轮换)
 export http_proxy="${HTTP_PROXY:-http://127.0.0.1:7890}"
