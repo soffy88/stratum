@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 from fastapi import APIRouter
@@ -8,7 +9,9 @@ from aii.api._envelope import success_response
 router = APIRouter()
 
 # 看门狗(scripts/watchdog.py, systemd timer每5min)写的结构化健康报告。
-_WATCHDOG_REPORT = Path("/data/soffy/projects/stratum/aii/watchdog/health_report.json")
+_WATCHDOG_REPORT = Path(
+    os.getenv("AII_WATCHDOG_REPORT", "/data/soffy/projects/stratum/aii/watchdog/health_report.json")
+)
 
 
 @router.get("/ping")

@@ -14,11 +14,12 @@ API Key auth (P2):
 Uses in-memory store (no Redis dependency for MVP).
 """
 
-from typing import Any
 import os
 import secrets
 import time
-from collections import defaultdict, deque
+from collections import OrderedDict, defaultdict, deque
+from collections.abc import Callable
+from typing import Any
 from dataclasses import dataclass, field
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -38,12 +39,61 @@ class _Window:
         self.timestamps.append(time.time())
 
 
-# Global stores (per-process; sufficient for single-instance MVP)
-_ip_windows: dict[str, dict[str, _Window]] = defaultdict(lambda: defaultdict(_Window))
-_user_windows: dict[str, dict[str, _Window]] = defaultdict(lambda: defaultdict(_Window))
+class _BoundedWindows:
+    """按 key 的窗口表, 带容量上限 + 空闲 TTL 淘汰 (审计 🟡21: 原 defaultdict 无上限).
 
-# AII API key rate limiting — sliding window per key prefix
-_aii_windows: dict[str, deque] = {}
+    行为同 defaultdict: ``store[key]`` 不存在时用 factory 创建. 每次访问把 key 移到末尾
+    (LRU); 新建 key 时从最久未访问的一端淘汰: 空闲超过 ``idle_ttl`` 秒的, 以及超出
+    ``max_keys`` 的. ``idle_ttl`` 取各限流窗口的最大值, 所以被淘汰的 key 窗口内必然
+    已无有效时间戳, 不影响限流结果 (仅在超出 max_keys 时才会提前淘汰活跃 key).
+    """
+
+    def __init__(self, factory: Callable[[], Any], max_keys: int, idle_ttl: float) -> None:
+        self._factory = factory
+        self._max_keys = max(1, max_keys)
+        self._idle_ttl = idle_ttl
+        self._data: OrderedDict[str, tuple[float, Any]] = OrderedDict()
+
+    def __getitem__(self, key: str) -> Any:
+        now = time.monotonic()
+        entry = self._data.get(key)
+        if entry is not None:
+            self._data[key] = (now, entry[1])
+            self._data.move_to_end(key)
+            return entry[1]
+        self._evict(now)
+        value = self._factory()
+        self._data[key] = (now, value)
+        return value
+
+    def _evict(self, now: float) -> None:
+        cutoff = now - self._idle_ttl
+        while self._data:
+            _k, (last, _v) = next(iter(self._data.items()))
+            if last < cutoff or len(self._data) >= self._max_keys:
+                self._data.popitem(last=False)
+            else:
+                break
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._data
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def clear(self) -> None:
+        self._data.clear()
+
+
+_RATE_LIMIT_MAX_KEYS = int(os.getenv("STRATUM_RATE_LIMIT_MAX_KEYS", "100000"))
+
+# Global stores (per-process; sufficient for single-instance MVP)
+# idle TTL = 最长限流窗口 (LIMITS 中 3600s).
+_ip_windows = _BoundedWindows(lambda: defaultdict(_Window), _RATE_LIMIT_MAX_KEYS, 3600)
+_user_windows = _BoundedWindows(lambda: defaultdict(_Window), _RATE_LIMIT_MAX_KEYS, 3600)
+
+# AII API key rate limiting — sliding window per key prefix (窗口 60s)
+_aii_windows = _BoundedWindows(deque, _RATE_LIMIT_MAX_KEYS, 60)
 
 # Config
 LIMITS: dict[str, dict[str, Any]] = {
@@ -115,8 +165,6 @@ def _aii_rate_limit(key: str, path: str) -> bool:
         bucket = f"default:{key[:8]}"
 
     now = time.monotonic()
-    if bucket not in _aii_windows:
-        _aii_windows[bucket] = deque()
     dq = _aii_windows[bucket]
     cutoff = now - window
     while dq and dq[0] <= cutoff:

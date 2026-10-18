@@ -24,8 +24,9 @@ import asyncpg
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
-ROOT = Path("/home/soffy/projects/stratum/aii")
-MD_BASE = Path("/home/soffy/books/MD")
+ROOT = Path(os.getenv("AII_ROOT", "/home/soffy/projects/stratum/aii"))
+MD_BASE = Path(os.getenv("AII_MD_BASE", "/home/soffy/books/MD"))
+ADVMATH_DIR = os.getenv("AII_ADVMATH_DIR", "/mnt/d/books/高级数学经济专用")
 DSN = os.getenv("DATABASE_URL", "postgresql://aii:***REMOVED***@localhost:5437/aii_kg")
 
 OCR_LOG = ROOT / "math_pipeline/ocr_daemon.log"
@@ -85,7 +86,7 @@ CHANNELS = {
         "name": "高级数学经济专用(讲透至高中生可懂, 深度不减)",
         # ★用户自己维护的单一文件夹(源PDF+转换出的MD都在这, 方便自己抽查), 不在
         # MD_BASE(books/MD/)下面, 用 folder_abs 走绝对路径(见下面 folders 的取法)。
-        "folder_abs": ["/mnt/d/books/高级数学经济专用"],
+        "folder_abs": [ADVMATH_DIR],
         "needs_key": True,
         "key_id": "math_en",  # ★闲置key(旧math_flywheel_en.sh已废弃, 见文件头注释)
         "runner": "advmath_flywheel_run.sh",

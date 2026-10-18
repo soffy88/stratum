@@ -161,7 +161,9 @@ async def generate_layers(req: LayerGenerateRequest, user_id: str = Depends(jwt_
 
 @router.get("/layers/substrate/{substrate_id}")
 async def get_substrate_layer(
-    substrate_id: str, layer: str = Query("L0", regex="^L[012]$"), user_id: str = Depends(jwt_auth)
+    substrate_id: str,
+    layer: str = Query("L0", pattern="^L[012]$"),
+    user_id: str = Depends(jwt_auth),
 ):
     """Get a specific layer for a substrate (owner only)."""
     from stratum.services.layer_generator import get_substrate_layers
@@ -175,7 +177,7 @@ async def get_substrate_layer(
 
 @router.get("/layers/ku/{ku_id}")
 async def get_ku_layer(
-    ku_id: str, layer: str = Query("L0", regex="^L[012]$"), user_id: str = Depends(jwt_auth)
+    ku_id: str, layer: str = Query("L0", pattern="^L[012]$"), user_id: str = Depends(jwt_auth)
 ):
     """Get a specific layer for a KU (owner of the KU's substrate only)."""
     from stratum.services.layer_generator import get_ku_layers
@@ -226,7 +228,7 @@ async def fs_tree(
 
 @router.get("/fs/read")
 async def fs_read(
-    uri: str, layer: str = Query("L2", regex="^L[012]$"), user_id: str = Depends(jwt_auth)
+    uri: str, layer: str = Query("L2", pattern="^L[012]$"), user_id: str = Depends(jwt_auth)
 ):
     """Read content from a node at a specific layer."""
     from stratum.services.directory_builder import find_node
@@ -300,7 +302,7 @@ async def fs_build_tree(user_id: str = Depends(jwt_auth)):
 async def fs_grep(
     pattern: str = Query(..., description="Regex pattern"),
     scope: str = Query("viking://", description="URI scope prefix"),
-    layer: str = Query("L2", regex="^L[012]$"),
+    layer: str = Query("L2", pattern="^L[012]$"),
     case_sensitive: bool = Query(False),
     limit: int = Query(50, ge=1, le=200),
     user_id: str = Depends(jwt_auth),
@@ -321,9 +323,9 @@ async def fs_grep(
 @router.get("/fs/find")
 async def fs_find(
     q: str = Query(..., description="Search query"),
-    mode: str = Query("name", regex="^(name|content|semantic)$"),
+    mode: str = Query("name", pattern="^(name|content|semantic)$"),
     node_type: str | None = Query(None),
-    layer: str = Query("L0", regex="^L[012]$"),
+    layer: str = Query("L0", pattern="^L[012]$"),
     limit: int = Query(20, ge=1, le=100),
     user_id: str = Depends(jwt_auth),
 ):
@@ -343,7 +345,7 @@ async def fs_find(
 @router.get("/fs/cat")
 async def fs_cat(
     uri: str = Query(..., description="viking:// URI"),
-    layer: str = Query("L2", regex="^L[012]$"),
+    layer: str = Query("L2", pattern="^L[012]$"),
     user_id: str = Depends(jwt_auth),
 ):
     """读取完整内容 (cat file)."""
