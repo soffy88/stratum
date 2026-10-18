@@ -14,6 +14,7 @@ API Key auth (P2):
 Uses in-memory store (no Redis dependency for MVP).
 """
 
+from typing import Any
 import os
 import secrets
 import time
@@ -96,7 +97,7 @@ _user_windows = _BoundedWindows(lambda: defaultdict(_Window), _RATE_LIMIT_MAX_KE
 _aii_windows = _BoundedWindows(deque, _RATE_LIMIT_MAX_KEYS, 60)
 
 # Config
-LIMITS = {
+LIMITS: dict[str, dict[str, Any]] = {
     "register": {"window": 3600, "max": 3, "key": "ip"},
     "login": {"window": 3600, "max": 10, "key": "ip"},
     "refresh": {"window": 3600, "max": 30, "key": "user"},
@@ -215,16 +216,24 @@ async def rate_limit_middleware(request: Request, call_next):
             )
 
         matched = False
+        read_only = False
         if provided:
             if secrets.compare_digest(provided, main_key):
                 matched = True
             elif stratum_key and secrets.compare_digest(provided, stratum_key):
                 matched = True
+                read_only = True
 
         if not matched:
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Missing or invalid API key for /api/aii/*"},
+            )
+        # 安全审计 🟡7: STRATUM_API_KEY is the read-only key — GET/HEAD only.
+        if read_only and request.method.upper() not in ("GET", "HEAD"):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "STRATUM_API_KEY is read-only (GET/HEAD only)"},
             )
 
         if not _aii_rate_limit(provided, path):

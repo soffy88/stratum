@@ -6,6 +6,7 @@
 
 import json
 import subprocess
+import threading
 from pathlib import Path
 
 from fastapi import APIRouter, Body
@@ -87,12 +88,15 @@ async def put_config(
 async def run_now():
     """立即分类一次: 后台起 auto_classify_books.py(不阻塞), 结果去 /classify/log 看。"""
     try:
-        subprocess.Popen(
+        proc = subprocess.Popen(
             [str(_PY), str(_SCRIPT), "--owner", _OWNER, "--force"],
             cwd=str(_ROOT),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            start_new_session=True,
         )
+        # 安全审计 🟡18: reap the child so it never lingers as a zombie.
+        threading.Thread(target=proc.wait, name="reap-classify", daemon=True).start()
         return success_response({"started": True})
     except Exception as e:
         return error_response("CLASSIFY_RUN_ERROR", str(e))
