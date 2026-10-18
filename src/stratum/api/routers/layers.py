@@ -161,7 +161,9 @@ async def generate_layers(req: LayerGenerateRequest, user_id: str = Depends(jwt_
 
 @router.get("/layers/substrate/{substrate_id}")
 async def get_substrate_layer(
-    substrate_id: str, layer: str = Query("L0", pattern="^L[012]$"), user_id: str = Depends(jwt_auth)
+    substrate_id: str,
+    layer: str = Query("L0", pattern="^L[012]$"),
+    user_id: str = Depends(jwt_auth),
 ):
     """Get a specific layer for a substrate (owner only)."""
     from stratum.services.layer_generator import get_substrate_layers

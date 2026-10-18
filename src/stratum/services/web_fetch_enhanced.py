@@ -49,6 +49,7 @@ def get_fetch_metrics() -> dict[str, int]:
     with _FETCH_METRICS_LOCK:
         return dict(_FETCH_METRICS)
 
+
 # 已知 JS 渲染/SPA 域名 (触发 Crawl4AI)
 _JS_HEAVY_DOMAINS = frozenset(
     (
