@@ -4,6 +4,7 @@ import hashlib
 import os
 import time
 import uuid
+from collections import OrderedDict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -225,9 +226,29 @@ async def jwt_auth(request: Request) -> str:
 # before horizontal scaling. See TECHNICAL_DEBT.md.
 
 
+_DEDUP_CACHE_MAX_DEFAULT = 10_000
+_DEDUP_SWEEP_EVERY = 256
+
+
 class DedupCache:
-    def __init__(self) -> None:
-        self._store: dict[str, tuple[float, Any]] = {}
+    """进程内 TTL 缓存, 带容量上限 (审计 🟡21: 原实现只在 get 时淘汰, 无上限).
+
+    - 每 ``_DEDUP_SWEEP_EVERY`` 次 set 顺带清理一次已过期条目;
+    - 超过 ``max_entries`` 时先清过期, 仍超限则按插入/更新顺序淘汰最旧条目.
+    上限可用环境变量 ``STRATUM_DEDUP_CACHE_MAX`` 覆盖.
+    """
+
+    def __init__(self, max_entries: int | None = None) -> None:
+        if max_entries is None:
+            max_entries = int(os.getenv("STRATUM_DEDUP_CACHE_MAX", _DEDUP_CACHE_MAX_DEFAULT))
+        self._max_entries = max(1, max_entries)
+        self._store: OrderedDict[str, tuple[float, Any]] = OrderedDict()
+        self._sets_since_sweep = 0
+
+    def _purge_expired(self, now: float) -> None:
+        expired = [k for k, (exp, _v) in self._store.items() if now > exp]
+        for k in expired:
+            del self._store[k]
 
     async def get(self, key: str) -> Any | None:
         entry = self._store.get(key)
@@ -240,7 +261,20 @@ class DedupCache:
         return value
 
     async def set(self, key: str, value: Any, ttl: int = 60) -> None:
-        self._store[key] = (time.time() + ttl, value)
+        now = time.time()
+        self._store[key] = (now + ttl, value)
+        self._store.move_to_end(key)
+        self._sets_since_sweep += 1
+        if self._sets_since_sweep >= _DEDUP_SWEEP_EVERY:
+            self._sets_since_sweep = 0
+            self._purge_expired(now)
+        if len(self._store) > self._max_entries:
+            self._purge_expired(now)
+            while len(self._store) > self._max_entries:
+                self._store.popitem(last=False)
+
+    def __len__(self) -> int:
+        return len(self._store)
 
     async def clear(self) -> None:
         self._store.clear()
