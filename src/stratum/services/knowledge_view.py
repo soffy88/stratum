@@ -9,8 +9,11 @@ KnowledgeView is a projection, not a new authority.
 All retrieval backs to PostgreSQL canonical store (stratum.* + aii.*).
 Lexical/vector indexes are rebuildable projections.
 """
+
 from __future__ import annotations
 
+import re
+import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -126,6 +129,90 @@ def _normalize_scopes(scopes: list[Scope] | None) -> list[Scope]:
     return scopes
 
 
+# --- AII Notes lexical retrieval (scope "user-authored") --------------------
+# Notes are user-authored canonical objects (authority: stratum.notes_sl).
+# They enter retrieval ONLY through this facade - no second retrieval path.
+# The pg_trgm GIN index idx_notes_sl_title_body_trgm (migration 093) backs
+# the ILIKE term match below, following the term convention of the substrate
+# lexical channels.
+
+_NOTE_RESULT_TYPE = "note"
+
+
+def _note_search_terms(query: str) -> list[str]:
+    """Split a query into lexical terms; CJK bigrams give substring recall.
+
+    Mirrors retrieval_engine._retrieval_terms (kept local so this facade does
+    not depend on a private helper of the engine layer).
+    """
+    normalised = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", query or "").casefold()).strip()
+    terms = re.findall(r"[a-z0-9]+|[\u3400-\u9fff]+", normalised)
+    grams: list[str] = []
+    for term in terms:
+        if re.fullmatch(r"[\u3400-\u9fff]+", term) and len(term) >= 2:
+            grams.extend(term[i : i + 2] for i in range(len(term) - 1))
+    ordered: list[str] = []
+    for term in terms + grams:
+        if len(term) > 1 and term not in ordered:
+            ordered.append(term)
+    return ordered
+
+
+def _search_notes_lexical(query: str, user_id: str, top_k: int) -> list[dict[str, Any]]:
+    """Lexical search over the caller's own AII Notes (title + Markdown body).
+
+    User isolation is enforced in SQL: only rows owned by the authenticated
+    ``user_id`` with ``deleted_at IS NULL`` are ever returned, so a
+    cross-user hit is impossible by construction, not just by filtering.
+    """
+    terms = _note_search_terms(query)
+    if not terms or not user_id:
+        return []
+    from stratum.db import query as db_query
+
+    combined = "title || ' ' || COALESCE(content_markdown, '')"
+    match = " OR ".join(f"({combined}) ILIKE %(t{i})s" for i in range(len(terms)))
+    score = " + ".join(
+        f"CASE WHEN ({combined}) ILIKE %(t{i})s THEN 1 ELSE 0 END" for i in range(len(terms))
+    )
+    params: dict[str, Any] = {"u": user_id, "k": top_k}
+    for i, term in enumerate(terms):
+        params[f"t{i}"] = f"%{term}%"
+    return db_query(
+        "SELECT id, title, content_markdown, "
+        f"(({score})::double precision / {len(terms):d}) AS score "
+        "FROM stratum.notes_sl "
+        f"WHERE user_id = %(u)s AND deleted_at IS NULL AND ({match}) "
+        "ORDER BY score DESC, id "
+        "LIMIT %(k)s",
+        params,
+    )
+
+
+def _note_row_to_result(row: dict[str, Any]) -> KnowledgeViewResult:
+    """Map a notes_sl row onto the stable KnowledgeViewResult schema."""
+    from stratum.services.search_anchors import locate_anchor
+
+    note_id = str(row["id"])
+    content = row.get("content_markdown") or ""
+    anchor = locate_anchor(content, None)
+    return KnowledgeViewResult(
+        id=note_id,
+        title=row.get("title") or note_id,
+        type=_NOTE_RESULT_TYPE,
+        score=float(row.get("score") or 0.0),
+        snippet=anchor.get("snippet") or content[:300],
+        citation={"source_id": note_id, "quote": content[:300]},
+        paragraph_index=anchor.get("paragraph_index"),
+        char_start=anchor.get("char_start"),
+        char_end=anchor.get("char_end"),
+        anchor_status="ok",
+        deep_link=f"aii://notes/{note_id}",
+        ref_id=note_id,
+        provenance={"source_id": note_id, "projection": "notes_sl"},
+    )
+
+
 def search_knowledge_view(req: KnowledgeViewRequest) -> dict[str, Any]:
     """Single entry point for all retrieval consumers.
 
@@ -140,6 +227,7 @@ def search_knowledge_view(req: KnowledgeViewRequest) -> dict[str, Any]:
 
     # Visual is opt-in and isolated from the legacy path while the flag is off.
     from stratum.config import AII_VISUAL_RETRIEVAL_ENABLED
+
     requested_channels = req.channels or ["metadata", "lexical", "dense", "graph"]
     if "visual" in requested_channels and AII_VISUAL_RETRIEVAL_ENABLED:
         return _search_visual_or_hybrid(req, requested_channels)
@@ -236,6 +324,21 @@ def search_knowledge_view(req: KnowledgeViewRequest) -> dict[str, Any]:
         if errors:
             raise KnowledgeViewInvariantError("; ".join(errors))
 
+    # AII Notes join the single retrieval plane when the caller requests
+    # the "user-authored" scope (contract RETRIEVAL_SCOPES).  Notes are not
+    # substrates, so they skip the substrate title/owner lookup above;
+    # ownership is enforced in SQL (WHERE user_id = ...) and each result
+    # is re-validated against the stable schema below.
+    if req.scopes and "user-authored" in req.scopes:
+        caller = req.user_id or ""
+        for row in _search_notes_lexical(req.query, caller, req.top_k):
+            note_item = _note_row_to_result(row)
+            note_errors = validate_knowledge_view_result(note_item, caller, {note_item.id: caller})
+            if note_errors:
+                raise KnowledgeViewInvariantError("; ".join(note_errors))
+            results.append(note_item)
+        results.sort(key=lambda r: r.score, reverse=True)
+
     return {
         "query": req.query,
         "scopes": _normalize_scopes(req.scopes),
@@ -264,16 +367,25 @@ def validate_knowledge_view_result(
     errors: list[str] = []
     if not user_id or user_id == "default":
         errors.append("authenticated user_id is required")
-    if not result.substrate_id:
-        errors.append("result missing canonical substrate_id")
-    if not result.citation or result.citation.get("source_id") != result.substrate_id:
+    # AII Notes (type "note") are user-authored canonical objects whose
+    # authority is stratum.notes_sl, not substrates: the note id itself
+    # is the canonical, citable source id.
+    is_note = result.type == _NOTE_RESULT_TYPE
+    canonical_id = result.id if is_note else result.substrate_id
+    if not canonical_id:
+        errors.append(
+            "result missing canonical note id"
+            if is_note
+            else "result missing canonical substrate_id"
+        )
+    if not result.citation or result.citation.get("source_id") != canonical_id:
         errors.append("result missing valid citation")
-    if not result.provenance or result.provenance.get("source_id") != result.substrate_id:
+    if not result.provenance or result.provenance.get("source_id") != canonical_id:
         errors.append("result missing valid provenance")
-    if owner_map is not None and result.substrate_id:
+    if owner_map is not None and canonical_id:
         from stratum.utils.user_id_hash import hash_user_id
 
-        owner = owner_map.get(result.substrate_id)
+        owner = owner_map.get(canonical_id)
         if owner not in {user_id, hash_user_id(user_id)}:
             errors.append("result owner does not match authenticated user")
     return errors
@@ -290,6 +402,7 @@ def _search_visual_or_hybrid(req: KnowledgeViewRequest, channels: list[str]) -> 
     from stratum.utils.user_id_hash import hash_user_id
     from stratum.services.visual_embedding import get_visual_embedding_provider
     import json
+
     owner = hash_user_id(req.user_id or "default")
     provider = get_visual_embedding_provider()
     # Text/BGE-M3 vectors are not interchangeable with the visual model.
@@ -297,12 +410,28 @@ def _search_visual_or_hybrid(req: KnowledgeViewRequest, channels: list[str]) -> 
     provider.validate(qv)
     visual: list[dict[str, Any]] = []
     if qv and "visual" in channels:
-        rows = db_query("""SELECT id,source_id,fragment_id,page_number,bbox_json,tile_uri,
+        rows = db_query(
+            """SELECT id,source_id,fragment_id,page_number,bbox_json,tile_uri,
             1-(embedding <=> %(v)s::vector) AS score FROM visual_region_projection
             WHERE user_id=%(u)s AND deleted_at IS NULL AND embedding IS NOT NULL
-            ORDER BY embedding <=> %(v)s::vector LIMIT %(k)s""", {"u": owner, "v": qv, "k": max(req.top_k * 5, 20)})
+            ORDER BY embedding <=> %(v)s::vector LIMIT %(k)s""",
+            {"u": owner, "v": qv, "k": max(req.top_k * 5, 20)},
+        )
         for rank, row in enumerate(rows, 1):
-            visual.append({"id": row["id"], "source_id": row["source_id"], "fragment_id": row["fragment_id"], "page_number": row["page_number"], "bbox": row["bbox_json"] if isinstance(row["bbox_json"], dict) else json.loads(row["bbox_json"] or "{}"), "tile_uri": row["tile_uri"], "score": float(row["score"] or 0), "rank": rank})
+            visual.append(
+                {
+                    "id": row["id"],
+                    "source_id": row["source_id"],
+                    "fragment_id": row["fragment_id"],
+                    "page_number": row["page_number"],
+                    "bbox": row["bbox_json"]
+                    if isinstance(row["bbox_json"], dict)
+                    else json.loads(row["bbox_json"] or "{}"),
+                    "tile_uri": row["tile_uri"],
+                    "score": float(row["score"] or 0),
+                    "rank": rank,
+                }
+            )
     # TEXT_ONLY remains available for comparison; HYBRID uses RRF, never raw scores.
     output = [
         KnowledgeViewResult(
@@ -327,7 +456,7 @@ def _search_visual_or_hybrid(req: KnowledgeViewRequest, channels: list[str]) -> 
                 "projection": "visual_region_projection",
             },
         )
-        for item in visual[:req.top_k]
+        for item in visual[: req.top_k]
     ]
     owner_map = {item.substrate_id: owner for item in output if item.substrate_id}
     for item in output:

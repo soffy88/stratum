@@ -101,3 +101,13 @@
 @media (prefers-reduced-motion: reduce) {
   .aii-mark-ring--outer, .aii-mark-ring--mid { animation: none; }
 }
+
+/* AII Notes：正文 wikilink 渲染出的站内笔记链接 */
+.wikilink-note-body a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.wikilink-note-body a:hover {
+  opacity: 0.75;
+}

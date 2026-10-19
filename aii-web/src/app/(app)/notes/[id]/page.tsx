@@ -2,17 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ODocumentReader, OBacklinkPanel } from "@helios/blocks";
-import type { BacklinkItem, Substrate, Derivative } from "@helios/blocks";
-import { useNote, useBacklinks } from "@/lib/adapters/notes";
+import { useQueryClient } from "@tanstack/react-query";
+import { OBacklinkPanel } from "@helios/blocks";
+import type { BacklinkItem } from "@helios/blocks";
+import { useNote, useBacklinks, useOutgoingLinks } from "@/lib/adapters/notes";
 import { ShareNoteButton } from "@/components/shared/ShareNoteButton";
+import { WikilinkNoteBody } from "@/components/notes/WikilinkNoteBody";
+import { OutgoingLinksPanel } from "@/components/notes/OutgoingLinksPanel";
+import { NoteHistoryPanel } from "@/components/notes/NoteHistoryPanel";
 
 export default function NotePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const id = params.id;
   const { note, isLoading: loadingNote } = useNote(id);
   const { backlinks, isLoading: loadingLinks } = useBacklinks(id);
+  // P0-4：解析正文 [[...]] 出链（id 优先，其次标题）
+  const { links: outgoingLinks } = useOutgoingLinks(note?.content ?? "");
 
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -36,51 +43,19 @@ export default function NotePage() {
     });
     setSaving(false);
     setEditing(false);
+    await queryClient.invalidateQueries({ queryKey: ["note", id] });
     router.refresh();
   }
 
   if (loadingNote) return <p className="text-[var(--color-muted)]">加载中...</p>;
   if (!note) return <p className="text-red-600">笔记未找到</p>;
 
-  // Adapt helios Note → minimal Substrate + Derivative for ODocumentReader
-  const substrate: Substrate = {
-    id: note.id,
-    ulid: note.id,
-    title: note.title,
-    mime: "text/markdown",
-    source_path: null,
-    file_hash: null,
-    byte_size: null,
-    page_count: null,
-    parser: null,
-    language: "zh",
-    has_cjk: true,
-    is_scanned: false,
-    is_pinned: false,
-    pinned_at: null,
-    created_at: note.created_at,
-    updated_at: note.updated_at,
-    meta_json: { medium: "markdown_note", source_type: "inbox_local", source: {} } as Substrate["meta_json"],
-  };
-
-  const derivatives: Derivative[] = note.content
-    ? [
-        {
-          id: `${note.id}#0`,
-          substrate_id: note.id,
-          kind: "translation_zh-zh",
-          seq: 0,
-          content: note.content,
-          embedding_id: null,
-          embedding_dim: null,
-          meta_json: {},
-          created_at: note.created_at,
-        },
-      ]
-    : [];
-
   const handleBacklinkSelect = (item: BacklinkItem) => {
     router.push(`/notes/${item.note.id}`);
+  };
+
+  const handleOutgoingSelect = (targetId: string) => {
+    router.push(`/notes/${targetId}`);
   };
 
   if (editing) {
@@ -115,6 +90,8 @@ export default function NotePage() {
     );
   }
 
+  const resolvedOutgoing = outgoingLinks.filter((l) => l.id !== null);
+
   return (
     <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
       <div>
@@ -130,16 +107,27 @@ export default function NotePage() {
             <ShareNoteButton noteId={id} />
           </div>
         </div>
-        <ODocumentReader substrate={substrate} derivatives={derivatives} />
+        {/* P0-4：正文 [[...]] 渲染为可点击的笔记链接 */}
+        <WikilinkNoteBody content={note.content ?? ""} links={outgoingLinks} />
       </div>
-      {!loadingLinks && (
-        <OBacklinkPanel
-          backlinks={backlinks}
-          targetTitle={note.title ?? undefined}
-          onSelect={handleBacklinkSelect}
-          emptyText="暂无反链"
+      <div className="flex flex-col gap-6">
+        {!loadingLinks && (
+          <OBacklinkPanel
+            backlinks={backlinks}
+            targetTitle={note.title ?? undefined}
+            onSelect={handleBacklinkSelect}
+            emptyText="暂无反链"
+          />
+        )}
+        {/* P0-4：出链面板（这篇笔记链向谁） */}
+        <OutgoingLinksPanel
+          links={resolvedOutgoing}
+          onSelect={handleOutgoingSelect}
+          emptyText="暂无出链"
         />
-      )}
+        {/* P0-1：版本历史 */}
+        <NoteHistoryPanel noteId={id} />
+      </div>
     </div>
   );
 }
