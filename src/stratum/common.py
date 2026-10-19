@@ -4,6 +4,7 @@ import hashlib
 import os
 import time
 import uuid
+from collections import OrderedDict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -130,6 +131,7 @@ def verify_token(token: str) -> str:
     for secret in _jwt_secrets():
         try:
             payload = _jwt.decode(raw, secret, algorithms=[_JWT_ALGORITHM])
+            _check_principal_status(payload["sub"], payload.get("iat"))
             return payload["sub"]
         except _jwt.ExpiredSignatureError:
             expired = True
@@ -138,6 +140,80 @@ def verify_token(token: str) -> str:
     if expired:
         raise HTTPException(401, "Token expired")
     raise HTTPException(401, "Invalid token")
+
+
+_STATUS_CACHE_TTL = 30.0
+_status_cache: dict[tuple[str, int], tuple[float, str | None]] = {}
+
+
+def _lookup_principal_block(sub: str, iat: int) -> str | None:
+    """Return a reason to reject (suspended / sessions revoked) or None.
+
+    Principals that are not rows in `users` (service tokens, tests) are not affected.
+    Fail open on DB errors so an auth-DB hiccup does not lock everyone out."""
+    import logging
+
+    try:
+        from stratum.db import get_conn
+
+        with get_conn() as conn:
+            row = conn.execute(
+                "SELECT id, is_active, is_suspended FROM users WHERE email = ? OR id = ? LIMIT 1",
+                (sub, sub),
+            ).fetchone()
+            if not row:
+                return None
+            if row[2] is True or row[1] is False:
+                return "Account suspended"
+            srow = conn.execute(
+                "SELECT count(*), "
+                "sum(CASE WHEN revoked_at IS NULL AND expires_at > CURRENT_TIMESTAMP THEN 1 ELSE 0 END), "
+                "max(revoked_at) FROM sessions WHERE user_id = ?",
+                (row[0],),
+            ).fetchone()
+    except Exception as exc:  # noqa: BLE001
+        logging.getLogger(__name__).warning("principal status check skipped: %s", exc)
+        return None
+    if not srow:
+        return None
+    total, active, last_revoked = srow
+    # All of the user's sessions are revoked/expired and the token predates the
+    # last revocation (logout / forced sign-out) → the token is dead too.
+    if (
+        isinstance(total, int)
+        and total > 0
+        and not active
+        and isinstance(last_revoked, datetime)
+        and isinstance(iat, (int, float))
+    ):
+        if last_revoked.tzinfo is None:
+            last_revoked = last_revoked.replace(tzinfo=timezone.utc)
+        ts = last_revoked.timestamp()
+        if iat <= ts:
+            return "Session revoked"
+    return None
+
+
+def _check_principal_status(sub: str, iat: Any) -> None:
+    """安全审计 🟡22: reject access tokens of suspended users / revoked sessions."""
+    if os.environ.get("STRATUM_AUTH_STATUS_CHECK", "1") == "0":
+        return
+    try:
+        iat_i = int(iat) if iat is not None else 0
+    except (TypeError, ValueError):
+        iat_i = 0
+    key = (str(sub), iat_i)
+    now = time.time()
+    hit = _status_cache.get(key)
+    if hit and hit[0] > now:
+        reason = hit[1]
+    else:
+        reason = _lookup_principal_block(str(sub), iat_i)
+        if len(_status_cache) > 10_000:
+            _status_cache.clear()
+        _status_cache[key] = (now + _STATUS_CACHE_TTL, reason)
+    if reason:
+        raise HTTPException(401, reason)
 
 
 async def jwt_auth(request: Request) -> str:
@@ -150,9 +226,29 @@ async def jwt_auth(request: Request) -> str:
 # before horizontal scaling. See TECHNICAL_DEBT.md.
 
 
+_DEDUP_CACHE_MAX_DEFAULT = 10_000
+_DEDUP_SWEEP_EVERY = 256
+
+
 class DedupCache:
-    def __init__(self) -> None:
-        self._store: dict[str, tuple[float, Any]] = {}
+    """进程内 TTL 缓存, 带容量上限 (审计 🟡21: 原实现只在 get 时淘汰, 无上限).
+
+    - 每 ``_DEDUP_SWEEP_EVERY`` 次 set 顺带清理一次已过期条目;
+    - 超过 ``max_entries`` 时先清过期, 仍超限则按插入/更新顺序淘汰最旧条目.
+    上限可用环境变量 ``STRATUM_DEDUP_CACHE_MAX`` 覆盖.
+    """
+
+    def __init__(self, max_entries: int | None = None) -> None:
+        if max_entries is None:
+            max_entries = int(os.getenv("STRATUM_DEDUP_CACHE_MAX", _DEDUP_CACHE_MAX_DEFAULT))
+        self._max_entries = max(1, max_entries)
+        self._store: OrderedDict[str, tuple[float, Any]] = OrderedDict()
+        self._sets_since_sweep = 0
+
+    def _purge_expired(self, now: float) -> None:
+        expired = [k for k, (exp, _v) in self._store.items() if now > exp]
+        for k in expired:
+            del self._store[k]
 
     async def get(self, key: str) -> Any | None:
         entry = self._store.get(key)
@@ -165,7 +261,20 @@ class DedupCache:
         return value
 
     async def set(self, key: str, value: Any, ttl: int = 60) -> None:
-        self._store[key] = (time.time() + ttl, value)
+        now = time.time()
+        self._store[key] = (now + ttl, value)
+        self._store.move_to_end(key)
+        self._sets_since_sweep += 1
+        if self._sets_since_sweep >= _DEDUP_SWEEP_EVERY:
+            self._sets_since_sweep = 0
+            self._purge_expired(now)
+        if len(self._store) > self._max_entries:
+            self._purge_expired(now)
+            while len(self._store) > self._max_entries:
+                self._store.popitem(last=False)
+
+    def __len__(self) -> int:
+        return len(self._store)
 
     async def clear(self) -> None:
         self._store.clear()
