@@ -6,6 +6,7 @@ SQL dialect bugs (list_contains, SEQUENCE, etc.) that mock-only tests miss.
 
 Coverage:
   - notes CRUD + cross-user isolation   (tests 1–3)
+  - notes trash bin / restore / purge=true + isolation (tests 3b–3d)
   - agents/run                          (test  4)
   - inbox/submit file upload            (test  5)
   - search IDOR post-filter             (test  6)
@@ -115,7 +116,8 @@ def test_get_note_cross_user_isolation(client, duckdb_test_db):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 3. DELETE /api/v1/notes/{id} — soft-delete; subsequent GET returns 404
+# 3. DELETE /api/v1/notes/{id} — soft-delete by default; subsequent GET 404s,
+#    the note appears in /notes/trash, and POST /notes/{id}/restore revives it
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -134,10 +136,73 @@ def test_delete_note_then_get_is_404(client):
     del_r = client.delete(f"/api/v1/notes/{note_id}", headers=_auth("user-alice"))
     assert del_r.status_code == 200
     assert del_r.json()["status"] == "deleted"
+    assert del_r.json()["mode"] == "soft"
 
-    # Default delete is a hard purge; GET must return 404 afterwards
+    # Default delete is a soft-delete; GET must return 404 afterwards …
     get_r = client.get(f"/api/v1/notes/{note_id}", headers=_auth("user-alice"))
     assert get_r.status_code == 404
+
+    # … the note is listed in the trash bin …
+    trash_r = client.get("/api/v1/notes/trash", headers=_auth("user-alice"))
+    assert trash_r.status_code == 200
+    assert any(n["id"] == note_id for n in trash_r.json())
+
+    # … and can be restored.
+    res_r = client.post(f"/api/v1/notes/{note_id}/restore", headers=_auth("user-alice"))
+    assert res_r.status_code == 200
+    assert res_r.json()["status"] == "restored"
+    assert client.get(f"/api/v1/notes/{note_id}", headers=_auth("user-alice")).status_code == 200
+    trash_r = client.get("/api/v1/notes/trash", headers=_auth("user-alice"))
+    assert all(n["id"] != note_id for n in trash_r.json())
+
+
+def test_delete_note_purge_true_hard_deletes(client):
+    create_r = client.post(
+        "/api/v1/notes",
+        json={"title": "To purge", "content_markdown": "x"},
+        headers=_auth("user-alice"),
+    )
+    note_id = create_r.json()["note_id"]
+
+    del_r = client.delete(f"/api/v1/notes/{note_id}?purge=true", headers=_auth("user-alice"))
+    assert del_r.status_code == 200
+    assert del_r.json()["mode"] == "hard"
+
+    # Purged: gone from everywhere, not in trash.
+    assert client.get(f"/api/v1/notes/{note_id}", headers=_auth("user-alice")).status_code == 404
+    trash_r = client.get("/api/v1/notes/trash", headers=_auth("user-alice"))
+    assert all(n["id"] != note_id for n in trash_r.json())
+    assert (
+        client.get(f"/api/v1/notes/{note_id}/revisions", headers=_auth("user-alice")).status_code
+        == 404
+    )
+
+
+def test_trash_and_restore_cross_user_isolation(client):
+    create_r = client.post(
+        "/api/v1/notes",
+        json={"title": "Alice private", "content_markdown": "x"},
+        headers=_auth("user-alice"),
+    )
+    note_id = create_r.json()["note_id"]
+    client.delete(f"/api/v1/notes/{note_id}", headers=_auth("user-alice"))
+
+    # Bob sees neither the trash entry nor the note; restore is refused.
+    trash_bob = client.get("/api/v1/notes/trash", headers=_auth("user-bob"))
+    assert trash_bob.status_code == 200
+    assert all(n["id"] != note_id for n in trash_bob.json())
+    assert (
+        client.post(f"/api/v1/notes/{note_id}/restore", headers=_auth("user-bob")).status_code
+        == 404
+    )
+    assert client.delete(f"/api/v1/notes/{note_id}", headers=_auth("user-bob")).status_code == 404
+
+
+def test_notes_trash_route_not_shadowed_by_note_id(client):
+    # /notes/trash must resolve to the trash handler, not to get_note("trash").
+    r = client.get("/api/v1/notes/trash", headers=_auth("user-alice"))
+    assert r.status_code == 200
+    assert isinstance(r.json(), list)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
