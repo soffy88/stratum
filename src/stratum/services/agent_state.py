@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 STATES_DIR = Path.home() / ".stratum" / "Meta" / "states"
 MAX_LINES = 30
+_AGENT_NAME_RE = re.compile(r"[A-Za-z0-9_.-]{1,64}")
 
 
 @dataclass
@@ -66,6 +68,8 @@ class StateManager:
         self.states_dir.mkdir(parents=True, exist_ok=True)
 
     def _state_path(self, agent_name: str) -> Path:
+        if not _AGENT_NAME_RE.fullmatch(agent_name or ""):
+            raise ValueError(f"invalid agent name: {agent_name!r}")
         return self.states_dir / f"{agent_name}.json"
 
     def load_state(self, agent_name: str) -> AgentState:
@@ -213,6 +217,14 @@ def get_manager() -> StateManager:
     if _manager is None:
         _manager = StateManager()
     return _manager
+
+
+def get_user_manager(user_id: str) -> StateManager:
+    """Per-user namespace (安全审计 🔴4): API callers only see/clear their own
+    states under states/users/<hash_user_id>/, never the global service states."""
+    from stratum.utils.user_id_hash import hash_user_id
+
+    return StateManager(STATES_DIR / "users" / hash_user_id(user_id))
 
 
 def load_agent_state(agent_name: str) -> AgentState:

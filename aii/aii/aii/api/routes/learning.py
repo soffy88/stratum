@@ -70,13 +70,21 @@ _ERR_INSTR = (
     "application_error(概念懂但用错/算错/跳步) / metacognitive(空白/没意识到不会/方法选错); "
     "并给 remediation(针对该类型的一句话补救建议)。pass=true 时两者给 null。"
 )
-MD_ROOTS = [
-    Path("/home/soffy/books/MD/中文数学"),
-    Path("/home/soffy/books/MD/英文数学"),
-    Path("/home/soffy/books/MD/经济学"),
-    Path("/home/soffy/books/MD/其它"),
-    Path("/mnt/d/books/高级数学经济专用"),
-]
+# 可用环境变量覆盖: AII_MD_ROOTS(os.pathsep 分隔的完整列表), 或分别设 AII_MD_BASE / AII_ADVMATH_DIR。
+_MD_BASE = os.getenv("AII_MD_BASE", "/home/soffy/books/MD")
+_ADVMATH_DIR = os.getenv("AII_ADVMATH_DIR", "/mnt/d/books/高级数学经济专用")
+_MD_ROOTS_ENV = os.getenv("AII_MD_ROOTS", "")
+MD_ROOTS = (
+    [Path(p) for p in _MD_ROOTS_ENV.split(os.pathsep) if p]
+    if _MD_ROOTS_ENV
+    else [
+        Path(_MD_BASE) / "中文数学",
+        Path(_MD_BASE) / "英文数学",
+        Path(_MD_BASE) / "经济学",
+        Path(_MD_BASE) / "其它",
+        Path(_ADVMATH_DIR),
+    ]
+)
 
 
 async def _ctx_conn():
