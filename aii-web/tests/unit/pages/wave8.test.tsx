@@ -3,7 +3,8 @@
  *
  * - JobsPage:      OScheduledJobsManager (Block renders job data)
  * - DocumentsPage: ODocumentTree (Block renders substrate list)
- * - NotePage:      ODocumentReader + OBacklinkPanel (mocked — note data needed)
+ * - NotePage:      WikilinkNoteBody(OMarkdownRenderer) + OBacklinkPanel +
+ *                  OutgoingLinksPanel + NoteHistoryPanel(OEventTimeline) (mocked)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
@@ -69,10 +70,31 @@ vi.mock("@helios/blocks", () => ({
       ))}
     </div>
   ),
-  // ODocumentReader: render just the substrate title in a div (not h1 to avoid collision)
-  ODocumentReader: ({ substrate }: { substrate: { title: string | null } }) => (
-    <div data-testid="document-reader">
-      <p>{substrate.title ?? "无标题"}</p>
+  // OMarkdownRenderer: render raw markdown content (wikilinks pre-rewritten to links)
+  OMarkdownRenderer: ({ content }: { content: string }) => (
+    <div data-testid="markdown-renderer">{content}</div>
+  ),
+  // OEventTimeline: render events with always-visible detail (for restore flow tests)
+  OEventTimeline: ({
+    events,
+    emptyMessage,
+    onEventClick,
+  }: {
+    events: Array<{ id: string; title: string; detail?: React.ReactNode }>;
+    emptyMessage?: string;
+    onEventClick?: (e: { id: string }) => void;
+  }) => (
+    <div data-testid="event-timeline">
+      {events.length === 0 ? (
+        <p>{emptyMessage ?? "暂无事件"}</p>
+      ) : (
+        events.map((e) => (
+          <div key={e.id}>
+            <button onClick={() => onEventClick?.(e)}>{e.title}</button>
+            {e.detail}
+          </div>
+        ))
+      )}
     </div>
   ),
   // OBacklinkPanel: render backlinks list
@@ -241,7 +263,8 @@ describe("DocumentsPage", () => {
 });
 
 // ---------------------------------------------------------------------------
-// NotePage (uses ODocumentReader + OBacklinkPanel)
+// ---------------------------------------------------------------------------
+// NotePage (WikilinkNoteBody + OBacklinkPanel + 出链 + 版本历史)
 // ---------------------------------------------------------------------------
 describe("NoteViewPage (backlinks)", () => {
   const NOTE_DETAIL = {
@@ -255,59 +278,93 @@ describe("NoteViewPage (backlinks)", () => {
     updated_at: "2026-01-01T00:00:00",
   };
 
+  const NOTE_LIST = [{ id: "n1", title: "目标笔记", updated_at: "2026-01-02T00:00:00" }];
+
+  const REVISIONS = [
+    { version: 2, title: "My Note", cause: "编辑", author: "tester", created_at: "2026-01-03T00:00:00" },
+    { version: 1, title: "My Note", cause: "创建", author: "tester", created_at: "2026-01-01T00:00:00" },
+  ];
+
+  const EMPTY_LINKS = { items: [], total: 0 };
+
   beforeEach(() => { vi.clearAllMocks(); mockPush.mockClear(); });
 
-  it("renders note title via ODocumentReader stub", async () => {
+  async function mockNotePage(backlinks: unknown, note: unknown, list: unknown, revisions: unknown) {
     const { apiClient } = await import("@/lib/api-client");
     vi.mocked(apiClient.get).mockImplementation((url: string) => {
-      if (url.endsWith("/backlinks")) return Promise.resolve({ items: [], total: 0 });
-      return Promise.resolve(NOTE_DETAIL);
+      if (url.endsWith("/backlinks")) return Promise.resolve(backlinks);
+      if (url === "/api/v1/notes") return Promise.resolve(list);
+      if (url.endsWith("/revisions")) return Promise.resolve(revisions);
+      return Promise.resolve(note);
     });
+  }
+
+  it("renders note title and markdown body", async () => {
+    await mockNotePage(EMPTY_LINKS, NOTE_DETAIL, [], []);
     render(<NoteViewPage />, { wrapper: W });
-    // The page also renders title as <h1>; scope to ODocumentReader container to be precise
-    await waitFor(() => {
-      const reader = screen.getByTestId("document-reader");
-      expect(within(reader).getByText("My Note")).toBeDefined();
-    });
+    await waitFor(() => expect(screen.getByRole("heading", { name: "My Note" })).toBeDefined());
+    const body = screen.getByTestId("markdown-renderer");
+    expect(within(body).getByText("Some content")).toBeDefined();
+  });
+
+  it("renders [[id]] as a markdown note link", async () => {
+    await mockNotePage(EMPTY_LINKS, { ...NOTE_DETAIL, content: "见 [[n1]]" }, NOTE_LIST, []);
+    render(<NoteViewPage />, { wrapper: W });
+    await waitFor(() =>
+      expect(screen.getByTestId("markdown-renderer").textContent).toContain("[目标笔记](/notes/n1)"),
+    );
   });
 
   it("shows backlinks via OBacklinkPanel stub", async () => {
-    const { apiClient } = await import("@/lib/api-client");
-    vi.mocked(apiClient.get).mockImplementation((url: string) => {
-      if (url.endsWith("/backlinks"))
-        return Promise.resolve({
-          items: [{ id: "n1", title: "Linked Note", snippet: "some text" }],
-          total: 1,
-        });
-      return Promise.resolve(NOTE_DETAIL);
-    });
+    await mockNotePage(
+      { items: [{ id: "n1", title: "Linked Note", snippet: "some text" }], total: 1 },
+      NOTE_DETAIL,
+      [],
+      [],
+    );
     render(<NoteViewPage />, { wrapper: W });
     await waitFor(() => expect(screen.getByText("Linked Note")).toBeDefined());
   });
 
   it("shows empty state in OBacklinkPanel", async () => {
-    const { apiClient } = await import("@/lib/api-client");
-    vi.mocked(apiClient.get).mockImplementation((url: string) => {
-      if (url.endsWith("/backlinks")) return Promise.resolve({ items: [], total: 0 });
-      return Promise.resolve(NOTE_DETAIL);
-    });
+    await mockNotePage(EMPTY_LINKS, NOTE_DETAIL, [], []);
     render(<NoteViewPage />, { wrapper: W });
     await waitFor(() => expect(screen.getByText("暂无反链")).toBeDefined());
   });
 
   it("clicking backlink navigates via OBacklinkPanel stub", async () => {
-    const { apiClient } = await import("@/lib/api-client");
-    vi.mocked(apiClient.get).mockImplementation((url: string) => {
-      if (url.endsWith("/backlinks"))
-        return Promise.resolve({
-          items: [{ id: "n2", title: "Other", snippet: null }],
-          total: 1,
-        });
-      return Promise.resolve(NOTE_DETAIL);
-    });
+    await mockNotePage(
+      { items: [{ id: "n2", title: "Other", snippet: null }], total: 1 },
+      NOTE_DETAIL,
+      [],
+      [],
+    );
     render(<NoteViewPage />, { wrapper: W });
     await waitFor(() => screen.getByText("Other"));
     fireEvent.click(screen.getByText("Other"));
     expect(mockPush).toHaveBeenCalledWith("/notes/n2");
+  });
+
+  it("outgoing panel lists resolved links and navigates", async () => {
+    await mockNotePage(EMPTY_LINKS, { ...NOTE_DETAIL, content: "见 [[n1]]" }, NOTE_LIST, []);
+    render(<NoteViewPage />, { wrapper: W });
+    await waitFor(() => expect(screen.getByText("这篇笔记链向谁")).toBeDefined());
+    fireEvent.click(screen.getByText("目标笔记"));
+    expect(mockPush).toHaveBeenCalledWith("/notes/n1");
+  });
+
+  it("history panel lists versions and restore posts to the API", async () => {
+    const { apiClient } = await import("@/lib/api-client");
+    await mockNotePage(EMPTY_LINKS, NOTE_DETAIL, [], REVISIONS);
+    vi.mocked(apiClient.post).mockResolvedValue({ status: "restored" });
+    render(<NoteViewPage />, { wrapper: W });
+    await waitFor(() => expect(screen.getByText("第 2 版")).toBeDefined());
+    expect(screen.getByText("第 1 版")).toBeDefined();
+    const restoreButtons = screen.getAllByText("恢复到这一版");
+    fireEvent.click(restoreButtons[restoreButtons.length - 1]!);
+    fireEvent.click(screen.getByText("确认恢复"));
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith("/api/v1/notes/test-id/revisions/1/restore", {}),
+    );
   });
 });

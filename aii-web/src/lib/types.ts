@@ -128,3 +128,27 @@ export interface SessionItem {
 export interface SessionListResponse {
   items: SessionItem[];
 }
+
+// ── AII Notes P0：版本历史 / 回收站 ──────────────────────────────────────────
+
+/** GET /api/v1/notes/{id}/revisions 单条（version DESC） */
+export interface NoteRevision {
+  version: number;
+  title: string | null;
+  cause: string | null;
+  author: string | null;
+  /** 后端实际字段名（author 为兼容别名） */
+  author_user_id?: string | null;
+  created_at: string;
+  /** 后端若返回正文快照则展示预览（可选字段） */
+  content_markdown?: string | null;
+  content?: string | null;
+}
+
+/** GET /api/v1/notes/trash 单条 */
+export interface TrashNoteItem {
+  id: string;
+  title: string | null;
+  updated_at: string;
+  deleted_at?: string | null;
+}
