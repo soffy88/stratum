@@ -5,6 +5,7 @@ import Link from "next/link";
 import { apiClient } from "@/lib/api-client";
 import { updateNote, deleteNote } from "@/lib/adapters/notes";
 import { listCornell, type CornellNote } from "@/lib/adapters/cornell";
+import { NoteTrashView } from "@/components/notes/NoteTrashView";
 
 type NoteItem = { id: string; title: string; content?: string; updated_at: string };
 
@@ -19,6 +20,8 @@ export default function NotesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  // P0-2：回收站视图开关
+  const [showTrash, setShowTrash] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -66,6 +69,15 @@ export default function NotesPage() {
   if (loading) return <p className="p-6 text-[var(--color-muted)] text-sm">加载中...</p>;
   if (error) return <p className="p-6 text-red-500 text-sm">加载失败</p>;
 
+  // P0-2：回收站入口
+  if (showTrash) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <NoteTrashView onBack={() => setShowTrash(false)} onRestored={load} />
+      </div>
+    );
+  }
+
   const showHuman = tab === "all" || tab === "human";
   const showMachine = tab === "all" || tab === "machine";
   const empty =
@@ -80,6 +92,13 @@ export default function NotesPage() {
             人类主动笔记与机器康奈尔笔记（B仓去重 KU）共存
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setShowTrash(true)}
+          className="shrink-0 px-3 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-colors"
+        >
+          回收站
+        </button>
       </div>
 
       {/* Tabs */}
