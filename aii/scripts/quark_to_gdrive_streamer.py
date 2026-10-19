@@ -441,11 +441,11 @@ def main():
     def dest_of(item: dict) -> str:
         """解析目标 GDrive 路径，兼容缺失 remote_path 的旧版清单"""
         if "remote_path" in item:
-            return item["remote_path"]
+            return item["remote_path"].replace("gdrive-kimia:", "gdrive:")
         file_path = item.get("file_path", "")
         if file_path:
-            return f"gdrive-kimia:{file_path}"
-        return f"gdrive-kimia:B站付费课程/{item.get('file_name', '')}"
+            return f"gdrive:{file_path}"
+        return f"gdrive:B站付费课程/{item.get('file_name', '')}"
     def process_one(item: dict) -> str:
         """处理单个文件，返回 'success' / 'skip' / 'fail'。仅由工作线程调用。"""
         nonlocal success_count, fail_count, skip_count, bytes_in_session
