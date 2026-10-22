@@ -344,6 +344,16 @@ def _upsert_derivative_markdown(conn, substrate_id: str, content: str) -> None:
         )
 
 
+def _odl_hybrid_available() -> bool:
+    """ODL hybrid OCR 路径是否可用（开关 + docling-fast 后端可达）。"""
+    try:
+        from stratum.services import odl_adapter
+
+        return bool(odl_adapter.is_enabled() and odl_adapter.is_hybrid() and odl_adapter.ocr_available())
+    except Exception:
+        return False
+
+
 def ocr_one(substrate_id: str, *, force: bool = False) -> dict:
     """OCR 单个 substrate。
 
@@ -387,9 +397,15 @@ def ocr_one(substrate_id: str, *, force: bool = False) -> dict:
     meta = json.loads(meta_json or "{}")
     is_math = _is_math_physics_book(title, meta)
 
-    # 决定 OCR 引擎：数理书 → Unlimited-OCR（如服务可用），否则 PPStructureV3
+    # 决定 OCR 引擎：数理书 → Unlimited-OCR（如服务可用），否则 ODL hybrid（如启用）或 PPStructureV3
     use_unlimited = is_math and _unlimited_ocr_available()
-    parser_tag = "unlimited-ocr" if use_unlimited else "paddleocr-v6"
+    use_odl = (not use_unlimited) and _odl_hybrid_available()
+    if use_unlimited:
+        parser_tag = "unlimited-ocr"
+    elif use_odl:
+        parser_tag = "odl-hybrid"
+    else:
+        parser_tag = "paddleocr-v6"
 
     log.info(
         "scan_ocr: starting OCR %s (title=%r, is_math=%s, engine=%s)",
@@ -405,7 +421,19 @@ def ocr_one(substrate_id: str, *, force: bool = False) -> dict:
 
     all_pages_md: list[str] = []
     with tempfile.TemporaryDirectory(prefix="scan_ocr_") as tmp_dir:
+        if use_odl:
+            # ODL hybrid 后端处理整个 PDF（docling-fast OCR），产出单份 markdown
+            from stratum.services import odl_adapter
+
+            try:
+                text = odl_adapter.convert(Path(source_path), use_hybrid=True)
+                all_pages_md = [text]
+                use_odl = False  # 成功：不再逐页 OCR
+            except Exception as exc:
+                log.warning("scan_ocr: ODL hybrid failed, falling back to PaddleOCR: %s", exc)
         for batch_start in range(0, page_count, _PAGE_BATCH):
+            if use_odl:
+                break
             batch_end = min(batch_start + _PAGE_BATCH, page_count)
             page_indices = list(range(batch_start, batch_end))
             log.info("scan_ocr: OCR pages %d-%d / %d", batch_start + 1, batch_end, page_count)

@@ -99,6 +99,18 @@ SMTP_FROM = os.environ.get("STRATUM_SMTP_FROM", "noreply@stratum.kanpan.co")
 HEVI_CONTENT_REPO_URL = os.environ.get("STRATUM_HEVI_CONTENT_REPO", "")
 HEVI_CONTENT_POLL_INTERVAL_MIN = int(os.environ.get("STRATUM_HEVI_POLL_MIN", "5"))
 
+# ── PDF parsing engine (opendataloader-pdf) ──────────────────────────────────
+# ODL is a fast JVM parser; when enabled it becomes the first PDF parser in
+# pdf_to_markdown. Scanned PDFs additionally route to ODL hybrid OCR when a
+# docling-fast backend is reachable (STRATUM_ODL_HYBRID_URL).
+ODL_ENABLED = os.environ.get("STRATUM_ODL_ENABLED", "false").lower() == "true"
+ODL_BIN = os.environ.get("STRATUM_ODL_BIN", "opendataloader-pdf").strip()
+ODL_HYBRID = os.environ.get("STRATUM_ODL_HYBRID", "false").lower() == "true"
+ODL_HYBRID_URL = os.environ.get("STRATUM_ODL_HYBRID_URL", "http://127.0.0.1:5002").strip().rstrip("/")
+ODL_TIMEOUT_S = int(os.environ.get("STRATUM_ODL_TIMEOUT_S", "600"))
+ODL_MIN_CHARS = int(os.environ.get("STRATUM_ODL_MIN_CHARS", "40"))
+ODL_ENABLE = ODL_ENABLED  # short alias used by services
+
 # ── Subscription pricing (CNY) ───────────────────────────────────────────────
 PRICES: dict[str, dict[str, int]] = {
     "plus": {"monthly": 29, "yearly": 299},

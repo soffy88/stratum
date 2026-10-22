@@ -1,7 +1,11 @@
 """PDF → Markdown for inbox ingest.
 
-Prefer Docling (tables + code), then pymupdf4llm/oprim, with a text-only
-``pdftotext`` fallback for environments where richer parser dependencies fail.
+Parser chain (configurable via STRATUM_ODL_ENABLED):
+  1) ODL (opendataloader-pdf) when enabled — fast, accurate text extraction;
+     scanned PDFs route to the ODL hybrid backend (docling-fast) for OCR when
+     STRATUM_ODL_HYBRID is on and the backend is reachable.
+  2) Docling (tables + code), then pymupdf4llm/oprim, then text-only
+     ``pdftotext`` fallback.
 Converts before omodul process_inbox_substrate (same pattern as DOCX→MD).
 """
 
@@ -31,7 +35,24 @@ def pdf_to_markdown(path: Path) -> tuple[Path, str]:
 
     errors: list[str] = []
 
-    # 1) Docling (preferred)
+    # 0) ODL (opendataloader-pdf) — fast JVM parser, optional first choice.
+    # On ODL failure (missing binary, OCR backend down, ...) we fall through to
+    # the existing chain below; ODL never blocks ingestion.
+    try:
+        from stratum.services import odl_adapter
+
+        if odl_adapter.is_enabled():
+            hybrid = odl_adapter.is_hybrid() and not odl_adapter.has_text_layer(path)
+            text = odl_adapter.convert(path, use_hybrid=hybrid)
+            md_path.write_text(text, encoding="utf-8")
+            parser = "odl-hybrid" if hybrid else "odl"
+            log.info("pdf_to_md parser=%s path=%s chars=%d", parser, path.name, len(text))
+            return md_path, parser
+    except Exception as e:
+        errors.append(f"odl:{type(e).__name__}:{e}")
+        log.warning("pdf_to_md ODL unavailable, falling back to chain: %s", e)
+
+    # 1) Docling (preferred when ODL off/unavailable)
     try:
         text = _via_docling(path)
         if text and len(text.strip()) > 40:
