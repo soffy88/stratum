@@ -215,7 +215,9 @@ def test_pdf_to_markdown_odl_failure_falls_back_to_docling(tmp_path: Path):
     body = "docling 兜底输出，足够长。" * 5
 
     with patch.object(odl_adapter, "is_enabled", return_value=True):
-        with patch.object(odl_adapter, "convert", side_effect=odl_adapter.OdlUnavailable("bin missing")):
+        with patch.object(
+            odl_adapter, "convert", side_effect=odl_adapter.OdlUnavailable("bin missing")
+        ):
             with patch.object(m, "_via_docling", return_value=body):
                 out, parser = m.pdf_to_markdown(pdf)
     assert out.read_text(encoding="utf-8") == body

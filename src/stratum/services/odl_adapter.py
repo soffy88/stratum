@@ -114,12 +114,20 @@ def convert(
     argv = [
         binary,
         str(pdf),
-        "--format", "markdown",
-        "-o", str(pdf.parent),
-        "--content-safety-off", "all",
+        "--format",
+        "markdown",
+        "-o",
+        str(pdf.parent),
+        "--content-safety-off",
+        "all",
     ]
     if hybrid:
-        argv += ["--hybrid", "docling-fast", "--hybrid-url", config.ODL_HYBRID_URL or "http://127.0.0.1:5002"]
+        argv += [
+            "--hybrid",
+            "docling-fast",
+            "--hybrid-url",
+            config.ODL_HYBRID_URL or "http://127.0.0.1:5002",
+        ]
 
     proc = subprocess.run(
         argv,

@@ -55,9 +55,15 @@ TEMP_FILE_TTL_MINUTES = int(os.environ.get("STRATUM_TEMP_TTL_MIN", "30"))
 
 # AII visual/document integration flags.  All are deliberately opt-in: a
 # disabled projection must not change the existing retrieval contract.
-AII_VISUAL_RETRIEVAL_ENABLED = os.environ.get("AII_VISUAL_RETRIEVAL_ENABLED", "false").lower() == "true"
-AII_PDF_TRANSLATION_ENABLED = os.environ.get("AII_PDF_TRANSLATION_ENABLED", "false").lower() == "true"
-AII_ARTIFACT_PROVENANCE_ENABLED = os.environ.get("AII_ARTIFACT_PROVENANCE_ENABLED", "false").lower() == "true"
+AII_VISUAL_RETRIEVAL_ENABLED = (
+    os.environ.get("AII_VISUAL_RETRIEVAL_ENABLED", "false").lower() == "true"
+)
+AII_PDF_TRANSLATION_ENABLED = (
+    os.environ.get("AII_PDF_TRANSLATION_ENABLED", "false").lower() == "true"
+)
+AII_ARTIFACT_PROVENANCE_ENABLED = (
+    os.environ.get("AII_ARTIFACT_PROVENANCE_ENABLED", "false").lower() == "true"
+)
 AII_VISUAL_EMBED_PROVIDER = os.environ.get("AII_VISUAL_EMBED_PROVIDER", "qwen3-vl")
 AII_VISUAL_EMBED_MODEL = os.environ.get("AII_VISUAL_EMBED_MODEL", "Qwen3-VL-Embedding-2B")
 AII_VISUAL_EMBED_DIM = int(os.environ.get("AII_VISUAL_EMBED_DIM", "2048"))
@@ -106,7 +112,9 @@ HEVI_CONTENT_POLL_INTERVAL_MIN = int(os.environ.get("STRATUM_HEVI_POLL_MIN", "5"
 ODL_ENABLED = os.environ.get("STRATUM_ODL_ENABLED", "false").lower() == "true"
 ODL_BIN = os.environ.get("STRATUM_ODL_BIN", "opendataloader-pdf").strip()
 ODL_HYBRID = os.environ.get("STRATUM_ODL_HYBRID", "false").lower() == "true"
-ODL_HYBRID_URL = os.environ.get("STRATUM_ODL_HYBRID_URL", "http://127.0.0.1:5002").strip().rstrip("/")
+ODL_HYBRID_URL = (
+    os.environ.get("STRATUM_ODL_HYBRID_URL", "http://127.0.0.1:5002").strip().rstrip("/")
+)
 ODL_TIMEOUT_S = int(os.environ.get("STRATUM_ODL_TIMEOUT_S", "600"))
 ODL_MIN_CHARS = int(os.environ.get("STRATUM_ODL_MIN_CHARS", "40"))
 ODL_ENABLE = ODL_ENABLED  # short alias used by services

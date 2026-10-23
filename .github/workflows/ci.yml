@@ -10,7 +10,7 @@ env:
   STRATUM_PG_HOST: 127.0.0.1
   STRATUM_PG_PORT: 5435
   STRATUM_PG_USER: aii
-  STRATUM_PG_PASSWORD: ***REMOVED***
+  STRATUM_PG_PASSWORD: aii_safe_pass
   STRATUM_PG_DB: aii_kg
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
         image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: aii
-          POSTGRES_PASSWORD: ***REMOVED***
+          POSTGRES_PASSWORD: aii_safe_pass
           POSTGRES_DB: aii_kg
         ports: [5435:5432]
         options: >-
@@ -62,7 +62,7 @@ jobs:
         image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: aii
-          POSTGRES_PASSWORD: ***REMOVED***
+          POSTGRES_PASSWORD: aii_safe_pass
           POSTGRES_DB: aii_kg
         ports: [5435:5432]
         options: >-
@@ -104,7 +104,7 @@ jobs:
         image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: aii
-          POSTGRES_PASSWORD: ***REMOVED***
+          POSTGRES_PASSWORD: aii_safe_pass
           POSTGRES_DB: aii_kg
         ports: [5435:5432]
         options: >-

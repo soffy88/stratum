@@ -349,7 +349,9 @@ def _odl_hybrid_available() -> bool:
     try:
         from stratum.services import odl_adapter
 
-        return bool(odl_adapter.is_enabled() and odl_adapter.is_hybrid() and odl_adapter.ocr_available())
+        return bool(
+            odl_adapter.is_enabled() and odl_adapter.is_hybrid() and odl_adapter.ocr_available()
+        )
     except Exception:
         return False
 
